@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/framework/ddim.h"
+#include "paddle/framework/tensor.h"
 #include "paddle/operators/type_alias.h"
 
 namespace paddle {
@@ -62,10 +64,32 @@ template <typename Place, typename T>
 class SoftmaxGradKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
-    //      auto Y = context.Input<Tensor>(0);
-    //      auto dY = context.Input<Tensor>(0);
-    //      auto dX = context.Output<Tensor>(0);
-    //      dX->mutable_data<T>(context.GetPlace());
+    std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
+
+    auto Y = context.Input<Tensor>(0);
+    auto dY = context.Input<Tensor>(0);
+    auto dX = context.Output<Tensor>(0);
+    dX->mutable_data<T>(context.GetPlace());
+
+    const int batch_size = Y->dims()[0];
+    const int class_num = Y->dims()[1];
+    scale_->Resize(framework::make_ddim({batch_size}));
+    scale_->mutable_data<T>(context.GetPlace());
+
+    for (int i = 0; i < batch_size; ++i) {
+      for (int j = 0; j < class_num; ++j) {
+        auto index = i * batch_size + j;
+        scale_->data<T>()[i] += Y->data<T>()[index] * dY->data<T>()[index];
+      }
+    }
+
+    for (int i = 0; i < batch_size; ++i) {
+      for (int j = 0; j < class_num; ++j) {
+        auto index = i * batch_size + j;
+        dX->data<T>()[index] =
+            Y->data<T>()[index] * (dY->data<T>()[index] - scale_->data<T>()[i]);
+      }
+    }
   }
 };
 

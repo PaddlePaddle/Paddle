@@ -48,7 +48,7 @@ protected:
     PADDLE_ENFORCE(ctx.InputVar(1) != nullptr, "Input(1) should not be null");
     PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
                    "the shape of Input(0) and Input(1) should be the same");
-    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+    ctx.Output<Tensor>(0)->ResizeLike(*ctx.Input<Tensor>(0));
   }
 
   std::string DebugString() const override {

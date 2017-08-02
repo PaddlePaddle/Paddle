@@ -81,6 +81,9 @@ class Tensor {
   /*! Resize the dimensions of the memory block. */
   inline void Resize(const DDim& dims);
 
+  /*! Resize the dimensions of the memory block according to another Tensor */
+  inline void ResizeLike(const Tensor& src);
+
   /*! The internal of two tensors share the same memory block. */
   template <typename T>
   inline void ShareDataWith(const Tensor& src);
