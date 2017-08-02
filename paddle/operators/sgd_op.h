@@ -29,7 +29,7 @@ public:
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
-    EigenVector<T>::Flatten(*param_out).device(*(ctx.GetEigenDevice<Place>())) =
+    EigenVector<T>::Flatten(*param_out).device(ctx.GetEigenDevice<Place>()) =
         EigenVector<T>::Flatten(*param) - lr * EigenVector<T>::Flatten(*grad);
   }
 };
