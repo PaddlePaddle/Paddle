@@ -21,7 +21,7 @@ namespace py = pybind11;
 
 namespace paddle {
 
-namespace pybind {
+namespace framework {
 
 namespace details {
 
@@ -59,11 +59,8 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 
       return py::buffer_info(
           tensor.mutable_data<CUR_TYPE>(tensor.holder_->place()),
-          sizeof(CUR_TYPE),
-          py::format_descriptor<CUR_TYPE>::format(),
-          (size_t)framework::arity(tensor.dims()),
-          dims_outside,
-          strides);
+          sizeof(CUR_TYPE), py::format_descriptor<CUR_TYPE>::format(),
+          (size_t)framework::arity(tensor.dims()), dims_outside, strides);
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
       return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);

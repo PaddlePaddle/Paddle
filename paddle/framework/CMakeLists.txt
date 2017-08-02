@@ -36,3 +36,12 @@ cc_test(net_op_test SRCS net_op_test.cc DEPS net)
 
 cc_library(backward SRCS backward.cc DEPS net)
 cc_test(backward_test SRCS backward_test.cc DEPS backward)
+cc_library(paddle_pybind SHARED
+    SRCS pybind.cc
+    DEPS pybind python
+	fc_op
+	sgd_op
+	add_op
+	mean_op
+	cross_entropy_op
+	recurrent_network_op)
