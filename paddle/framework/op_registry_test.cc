@@ -7,9 +7,9 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
  public:
-  void Run(const std::shared_ptr<Scope>& scope,
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void InferShape(const Scope& scope) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -27,8 +27,8 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class MyTestOp : public OperatorBase {
  public:
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 };
 
@@ -36,9 +36,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInputs("input", "input of cosine op");
-    AddOutput("output", "output of cosine op",
-              /*temporary*/ true);
+    AddInput("input", "input of cosine op").SetMultiple();
+    AddOutput("output", "output of cosine op").SetTemporary();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };
@@ -69,7 +68,7 @@ TEST(OpRegistry, CreateOp) {
 
   std::shared_ptr<paddle::framework::OperatorBase> op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
   float scale_get = op->GetAttr<float>("scale");
@@ -111,7 +110,7 @@ TEST(OpRegistry, DefaultValue) {
 
   std::shared_ptr<paddle::framework::OperatorBase> op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
   ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
@@ -173,7 +172,7 @@ TEST(OpRegistry, CustomChecker) {
   SetInputFormat(&op_desc);
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
   op->Run(scope, dev_ctx);
   int test_attr = op->GetAttr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);

@@ -198,6 +198,11 @@ message RowConvConfig {
   required uint32 context_length = 1;
 }
 
+message SliceConfig {
+  required uint32 start = 1;
+  required uint32 end = 2;
+}
+
 message ProjectionConfig {
   required string type = 1;
   required string name = 2;
@@ -218,6 +223,10 @@ message ProjectionConfig {
 
   // For pool
   optional PoolConfig pool_conf = 12;
+
+  // For slice
+  // Each slice output is the input[start, end)
+  repeated SliceConfig slices = 13;
 }
 
 message OperatorConfig {

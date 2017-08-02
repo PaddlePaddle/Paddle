@@ -129,6 +129,7 @@ __all__ = [
     'gated_unit_layer',
     'crop_layer',
     'sub_nested_seq_layer',
+    'slice_projection',
 ]
 
 
@@ -535,6 +536,45 @@ def identity_projection(input, offset=None, size=None):
         proj = IdentityOffsetProjection(
             input_layer_name=input.name, offset=offset, size=size)
         proj.origin = input
+    return proj
+
+
+def slice_projection(input, slices):
+    """
+    slice_projection can slice the input value into multiple parts,
+    and then select some of them to merge into a new output.
+
+    .. math::
+       output = [input.slices()]
+
+    The example usage is:
+
+    .. code-block:: python
+
+       proj = slice_projection(input=layer, slices=[(0, 10), (20, 30)])
+
+    Note that slice_projection should not have any parameter.
+
+    :param input: Input Layer.
+    :type input: LayerOutput
+    :param slices: An array of slice parameters.
+                   Each slice contains the start and end offsets based
+                   on the input.
+    :type slices: pair of int
+    :return: A SliceProjection object
+    :rtype: SliceProjection
+    """
+    assert len(slices) >= 1
+    start = 0
+    for i in xrange(len(slices)):
+        assert len(slices[i]) == 2
+        # The start position of the next slice needs to be greater than
+        # or equal to the end position of the previous slice.
+        assert slices[i][0] >= start
+        assert slices[i][1] >= slices[i][0]
+        start = slices[i][1]
+    proj = SliceProjection(input_layer_name=input.name, slices=slices)
+    proj.origin = input
     return proj
 
 
@@ -6014,7 +6054,7 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
 @layer_support()
 def sub_nested_seq_layer(input, name=None, top_k=1):
     """
-    The sub_nest_seq_layer accepts two inputs: the first one is a nested
+    The sub_nested_seq_layer accepts two inputs: the first one is a nested
     sequence in PaddlePaddle; the second one is a learnable score or
     distribution over each sequence in the nested sequence.
 
@@ -6025,7 +6065,7 @@ def sub_nested_seq_layer(input, name=None, top_k=1):
 
     .. code-block:: python
     prob = fc_layer(input=data, size=1, act=SequenceSoftmaxActivation())
-    sub_nest_seq = sub_nest_seq_layer(input=[data, prob], top_k=3)
+    sub_nest_seq = sub_nested_seq_layer(input=[data, prob], top_k=3)
 
     :param input: The two input layers. The first input must be a nested
         sequence. The second input is a learnable scores, whose size must be 1.

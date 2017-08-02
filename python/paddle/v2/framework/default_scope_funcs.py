@@ -5,7 +5,7 @@ Default scope function.
 thread-local stack of Scope. Top of that stack is current scope, the bottom 
 of that stack is all scopes' parent. 
 
-Invoking `create_var/get_var`  can `create/get` variable in current scope. 
+Invoking `new_var/find_var`  can `new/find` variable in current scope. 
 Invoking `enter_local_scope/leave_local_scope` can create or destroy local 
 scope. 
 
@@ -19,8 +19,8 @@ import threading
 __tl_scope__ = threading.local()
 
 __all__ = [
-    'get_cur_scope', 'enter_local_scope', 'leave_local_scope', 'create_var',
-    'get_var', 'scoped_function'
+    'get_cur_scope', 'enter_local_scope', 'leave_local_scope', 'new_var',
+    'find_var', 'scoped_function'
 ]
 
 
@@ -33,7 +33,7 @@ def get_cur_scope():
     if cur_scope_stack is None:
         __tl_scope__.cur_scope = list()
     if len(__tl_scope__.cur_scope) == 0:
-        __tl_scope__.cur_scope.append(paddle.v2.framework.core.Scope(None))
+        __tl_scope__.cur_scope.append(paddle.v2.framework.core.Scope())
     return __tl_scope__.cur_scope[-1]
 
 
@@ -42,7 +42,7 @@ def enter_local_scope():
     Enter a new local scope
     """
     cur_scope = get_cur_scope()
-    new_scope = paddle.v2.framework.core.Scope(cur_scope)
+    new_scope = cur_scope.new_scope()
     __tl_scope__.cur_scope.append(new_scope)
 
 
@@ -51,20 +51,21 @@ def leave_local_scope():
     Leave local scope
     """
     __tl_scope__.cur_scope.pop()
+    get_cur_scope().drop_kids()
 
 
-def create_var(name):
+def new_var(name):
     """
     create variable in current scope.
     """
-    return get_cur_scope().create_var(name)
+    return get_cur_scope().new_var(name)
 
 
-def get_var(name):
+def find_var(name):
     """
     get variable in current scope.
     """
-    return get_cur_scope().get_var(name)
+    return get_cur_scope().find_var(name)
 
 
 def scoped_function(func):

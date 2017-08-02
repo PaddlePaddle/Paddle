@@ -24,13 +24,13 @@ class OpTestMeta(type):
             func = getattr(creation.op_creations, self.type, None)
             self.assertIsNotNone(func)
 
-            scope = core.Scope(None)
+            scope = core.Scope()
             kwargs = dict()
 
             for in_name in func.all_input_args:
                 if hasattr(self, in_name):
                     kwargs[in_name] = in_name
-                    var = scope.create_var(in_name).get_tensor()
+                    var = scope.new_var(in_name).get_tensor()
                     arr = getattr(self, in_name)
                     var.set_dims(arr.shape)
                     var.set(arr)
@@ -40,7 +40,7 @@ class OpTestMeta(type):
             for out_name in func.all_output_args:
                 if hasattr(self, out_name):
                     kwargs[out_name] = out_name
-                    scope.create_var(out_name).get_tensor()
+                    scope.new_var(out_name).get_tensor()
 
             for attr_name in func.all_attr_args:
                 if hasattr(self, attr_name):
@@ -54,7 +54,7 @@ class OpTestMeta(type):
             op.run(scope, ctx)
 
             for out_name in func.all_output_args:
-                actual = numpy.array(scope.get_var(out_name).get_tensor())
+                actual = numpy.array(scope.find_var(out_name).get_tensor())
                 expect = getattr(self, out_name)
                 # TODO(qijun) The default decimal is 7, but numpy.dot and eigen.mul
                 # has some diff, and could not pass unittest. So I set decimal 3 here.
