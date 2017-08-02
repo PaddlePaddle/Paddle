@@ -81,9 +81,11 @@ PYBIND11_PLUGIN(core) {
       .def("shape", [](pd::Tensor& self) { return pd::vectorize(self.dims()); })
       .def("set_float_element",
            [](pd::Tensor& self, size_t offset, float f) {
+             // TODO(yuyang18): Only support GPU now.
              self.data<float>()[offset] = f;
            })
       .def("get_float_element", [](pd::Tensor& self, size_t offset) -> float {
+        // TODO(yuyang18): Only support GPU now.
         return self.data<float>()[offset];
       });
 
