@@ -27,8 +27,11 @@ public:
 
     output->mutable_data<T>(context.GetPlace());
 
-    EigenScalar<T>::From(*output).device(*(context.GetEigenDevice<Place>())) =
-        EigenVector<T>::Flatten(*input).mean();
+    auto X = EigenVector<T>::Flatten(*input);
+    auto y = EigenScalar<T>::From(*output);
+    auto place = *context.GetEigenDevice<Place>();
+
+    y.device(place) = X.mean();
   }
 };
 

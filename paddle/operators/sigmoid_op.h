@@ -27,9 +27,11 @@ public:
     auto output = context.Output<Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
-    EigenVector<T>::Flatten(*output).device(
-        *(context.GetEigenDevice<Place>())) =
-        1.0 / (1.0 + (-1.0 * EigenVector<T>::Flatten(*input)).exp());
+    auto X = EigenVector<T>::Flatten(*input);
+    auto Y = EigenVector<T>::Flatten(*output);
+    auto place = *context.GetEigenDevice<Place>();
+
+    Y.device(place) = 1.0 / (1.0 + (-1.0 * X).exp());
   }
 };
 }  // namespace operators
