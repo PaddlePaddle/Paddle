@@ -12,7 +12,16 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/mul_op.h"
+#pragma once
+#include <unordered_set>
+#include "operator.h"
+namespace paddle {
+namespace framework {
 
-REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<ops::GPUPlace, float>);
+// Create the backward operator from a forward operator.
+// TODO(yuyang18): Add more API reference comment.
+extern std::shared_ptr<OperatorBase> Backward(
+    const OperatorBase& forwardOp,
+    const std::unordered_set<std::string>& no_grad_vars);
+}  // namespace framework
+}  // namespace paddle

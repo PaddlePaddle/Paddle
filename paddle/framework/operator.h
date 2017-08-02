@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
@@ -54,6 +55,9 @@ class OperatorBase {
   /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
   static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
 
+  /// Variables with this suffix are supposed to be filled up with zeros.
+  static std::string ZERO_VAR_SUFFIX() { return "@ZERO"; }
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -79,8 +83,12 @@ class OperatorBase {
 
   virtual bool IsNetOp() const { return false; }
 
+  /// rename inputs outputs name
+  void Rename(const std::string& old_name, const std::string& new_name);
+
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
+
   //! Get a input which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
@@ -92,7 +100,13 @@ class OperatorBase {
 
  public:
   std::string type_;
+  // NOTE: in case of OpGrad, inputs_ contains:
+  // I (Inputs)
+  // O (Outputs)
+  // OG (Output Gradients)
   std::vector<std::string> inputs_;
+  // NOTE: in case of OpGrad, outputs_ contains
+  // IG (Inputs Gradients)
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
   // store the arguments' offset described in op_desc.
@@ -147,22 +161,30 @@ class OperatorContext {
 
   template <typename T>
   const T* Input(const size_t index) const {
-    return &(InputVar(index)->Get<T>());
+    auto var = InputVar(index);
+    PADDLE_ENFORCE(var != nullptr, "Input(%d) should not be nullptr", index);
+    return &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const size_t index) const {
-    return OutputVar(index)->GetMutable<T>();
+    auto var = OutputVar(index);
+    PADDLE_ENFORCE(var != nullptr, "Output(%d) should not be nullptr", index);
+    return var->GetMutable<T>();
   }
 
   template <typename T>
   const T* Input(const std::string& name) const {
-    return &(InputVar(name)->Get<T>());
+    auto var = InputVar(name);
+    PADDLE_ENFORCE(var != nullptr, "Input(%s) should not be nullptr", name);
+    return &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
-    return OutputVar(name)->GetMutable<T>();
+    auto var = OutputVar(name);
+    PADDLE_ENFORCE(var != nullptr, "Output(%s) should not be nullptr", name);
+    return var->GetMutable<T>();
   }
 
   template <typename T>
@@ -171,8 +193,12 @@ class OperatorContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return &scope_.FindVar(name)->Get<T>();
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     PADDLE_ENFORCE(var != nullptr,
+                                    "MultiInput(%s:%s) should not be nullptr",
+                                    name, sub_name);
+                     return &var->Get<T>();
                    });
     return res;
   }
@@ -183,8 +209,12 @@ class OperatorContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return scope_.FindVar(name)->GetMutable<T>();
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     PADDLE_ENFORCE(var != nullptr,
+                                    "MultiOutput(%s:%s) should not be nullptr",
+                                    name, sub_name);
+                     return var->GetMutable<T>();
                    });
     return res;
   }

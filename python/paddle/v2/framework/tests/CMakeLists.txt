@@ -8,8 +8,8 @@ add_python_test(test_framework
     test_fc_op.py
     test_add_two_op.py
     test_sgd_op.py
-    test_cross_entropy_op.py
     test_mul_op.py
+    test_mean_op.py
     test_sigmoid_op.py
     test_softmax_op.py
     test_rowwise_add_op.py
