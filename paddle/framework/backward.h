@@ -13,24 +13,15 @@
    limitations under the License. */
 
 #pragma once
-
-#include "paddle/operators/type_alias.h"
-
+#include <unordered_set>
+#include "operator.h"
 namespace paddle {
-namespace operators {
+namespace framework {
 
-template <typename Place, typename T>
-class SigmoidKernel : public OpKernel {
-public:
-  void Compute(const ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>(0);
-    auto output = context.Output<Tensor>(0);
-    output->mutable_data<T>(context.GetPlace());
-
-    EigenVector<T>::Flatten(*output).device(
-        *(context.GetEigenDevice<Place>())) =
-        1.0 / (1.0 + (-1.0 * EigenVector<T>::Flatten(*input)).exp());
-  }
-};
-}  // namespace operators
+// Create the backward operator from a forward operator.
+// TODO(yuyang18): Add more API reference comment.
+extern std::shared_ptr<OperatorBase> Backward(
+    const OperatorBase& forwardOp,
+    const std::unordered_set<std::string>& no_grad_vars);
+}  // namespace framework
 }  // namespace paddle

@@ -124,15 +124,18 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference);
 
-  py::class_<pd::Scope, std::shared_ptr<pd::Scope>>(m, "Scope")
-      .def(py::init<const std::shared_ptr<pd::Scope>&>())
-      .def("get_var",
-           &pd::Scope::GetVariable,
+  py::class_<pd::Scope>(m, "Scope", "")
+      .def("new_var",
+           [](pd::Scope& self, const std::string& name) -> pd::Variable* {
+             return self.NewVar(name);
+           },
            py::return_value_policy::reference)
-      .def("create_var",
-           &pd::Scope::CreateVariable,
+      .def("find_var", &pd::Scope::FindVar, py::return_value_policy::reference)
+      .def(py::init<>())
+      .def("new_scope",
+           [](pd::Scope& self) -> pd::Scope* { return &self.NewScope(); },
            py::return_value_policy::reference)
-      .def("get_var_name", &pd::Scope::GetVariableName);
+      .def("drop_kids", &pd::Scope::DropKids);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -159,18 +162,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-                        return new paddle::platform::CPUDeviceContext();
-                      })
+                    return new paddle::platform::CPUDeviceContext();
+                  })
       .def_static(
           "create",
           [](paddle::platform::GPUPlace& place)
               -> paddle::platform::DeviceContext* {
 #ifdef PADDLE_ONLY_CPU
-                PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+            PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #else
-                return new paddle::platform::CUDADeviceContext(place);
+            return new paddle::platform::CUDADeviceContext(place);
 #endif
-              });
+          });
 
   py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
 
