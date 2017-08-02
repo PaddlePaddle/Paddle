@@ -5,6 +5,7 @@ model_config {
     type: "data"
     size: 10
     active_type: ""
+    init_wgt_from_mkldnn: false
   }
   input_layer_names: "a"
   output_layer_names: "a"

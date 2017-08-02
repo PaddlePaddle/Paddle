@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 128
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstmemory_0__"
@@ -18,6 +19,7 @@ layers {
   reversed: true
   active_gate_type: "tanh"
   active_state_type: "tanh"
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___lstmemory_0__.w0"

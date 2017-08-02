@@ -491,6 +491,14 @@ message LayerConfig {
   repeated uint32 offset = 55;
   repeated uint32 shape = 56;
 
+  // MKLDNN can support initial weight from original CPU weights.
+  // It can speedup scoring time with MKLDNN layers while the layer weights 
+  // are trained without MKLDNN layers
+  // After training with MKLDNN layers, the weight will be stored as MKLDNN format
+  // If restore from this checkpoint must set it true
+  // TODO(TJ): always save mkldnn weight as paddle format when checkpoint
+  //           then can remove this flag
+  optional bool init_wgt_from_mkldnn = 57 [default = false];
 }
 
 message EvaluatorConfig {

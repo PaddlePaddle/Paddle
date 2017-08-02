@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 120
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__bidirectional_gru_0___fw_transform"
@@ -20,6 +21,7 @@ layers {
       output_size: 120
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__bidirectional_gru_0___fw"
@@ -33,6 +35,7 @@ layers {
   bias_parameter_name: "___bidirectional_gru_0___fw.wbias"
   reversed: false
   active_gate_type: "sigmoid"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__bidirectional_gru_0___bw_transform"
@@ -49,6 +52,7 @@ layers {
       output_size: 120
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__bidirectional_gru_0___bw"
@@ -62,6 +66,7 @@ layers {
   bias_parameter_name: "___bidirectional_gru_0___bw.wbias"
   reversed: true
   active_gate_type: "sigmoid"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__bidirectional_gru_0__"
@@ -74,6 +79,7 @@ layers {
   inputs {
     input_layer_name: "__bidirectional_gru_0___bw"
   }
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___bidirectional_gru_0___fw_transform.w0"

@@ -44,7 +44,14 @@ TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
   configArgs << "trainer_id=" << FLAGS_trainer_id << ",local=" << FLAGS_local
              << ",with_cost=" << FLAGS_with_cost << ",use_gpu=" << FLAGS_use_gpu
              << ",parallel_nn=" << FLAGS_parallel_nn
+#ifdef PADDLE_USE_MKLDNN
+             << ",use_mkldnn=" << FLAGS_use_mkldnn
+#endif
              << ",cudnn_version=" << hl_get_cudnn_lib_version();
+#ifndef PADDLE_USE_MKLDNN
+  CHECK(!FLAGS_use_mkldnn) << "Can not use mkldnn, please set WITH_MKLDNN=ON";
+#endif
+
   if (!FLAGS_config_args.empty()) {
     configArgs << "," << FLAGS_config_args;
   }

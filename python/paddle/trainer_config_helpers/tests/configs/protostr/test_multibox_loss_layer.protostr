@@ -6,6 +6,7 @@ layers {
   active_type: ""
   height: 16
   width: 1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "input_conf"
@@ -14,6 +15,7 @@ layers {
   active_type: ""
   height: 1
   width: 8
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "priorbox"
@@ -22,6 +24,7 @@ layers {
   active_type: ""
   height: 4
   width: 8
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "label"
@@ -30,6 +33,7 @@ layers {
   active_type: ""
   height: 4
   width: 6
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "test_multibox_loss"
@@ -56,6 +60,7 @@ layers {
   inputs {
     input_layer_name: "input_conf"
   }
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "priorbox"
 input_layer_names: "label"

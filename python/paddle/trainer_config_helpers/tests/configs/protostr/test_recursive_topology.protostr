@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_0__"
@@ -16,6 +17,7 @@ layers {
   inputs {
     input_layer_name: "data"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_1__"
@@ -28,6 +30,7 @@ layers {
   inputs {
     input_layer_name: "__addto_0__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_2__"
@@ -40,6 +43,7 @@ layers {
   inputs {
     input_layer_name: "__addto_1__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_3__"
@@ -52,6 +56,7 @@ layers {
   inputs {
     input_layer_name: "__addto_2__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_4__"
@@ -64,6 +69,7 @@ layers {
   inputs {
     input_layer_name: "__addto_3__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_5__"
@@ -76,6 +82,7 @@ layers {
   inputs {
     input_layer_name: "__addto_4__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_6__"
@@ -88,6 +95,7 @@ layers {
   inputs {
     input_layer_name: "__addto_5__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_7__"
@@ -100,6 +108,7 @@ layers {
   inputs {
     input_layer_name: "__addto_6__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_8__"
@@ -112,6 +121,7 @@ layers {
   inputs {
     input_layer_name: "__addto_7__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_9__"
@@ -124,6 +134,7 @@ layers {
   inputs {
     input_layer_name: "__addto_8__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_10__"
@@ -136,6 +147,7 @@ layers {
   inputs {
     input_layer_name: "__addto_9__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_11__"
@@ -148,6 +160,7 @@ layers {
   inputs {
     input_layer_name: "__addto_10__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_12__"
@@ -160,6 +173,7 @@ layers {
   inputs {
     input_layer_name: "__addto_11__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_13__"
@@ -172,6 +186,7 @@ layers {
   inputs {
     input_layer_name: "__addto_12__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_14__"
@@ -184,6 +199,7 @@ layers {
   inputs {
     input_layer_name: "__addto_13__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_15__"
@@ -196,6 +212,7 @@ layers {
   inputs {
     input_layer_name: "__addto_14__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_16__"
@@ -208,6 +225,7 @@ layers {
   inputs {
     input_layer_name: "__addto_15__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_17__"
@@ -220,6 +238,7 @@ layers {
   inputs {
     input_layer_name: "__addto_16__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_18__"
@@ -232,6 +251,7 @@ layers {
   inputs {
     input_layer_name: "__addto_17__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_19__"
@@ -244,6 +264,7 @@ layers {
   inputs {
     input_layer_name: "__addto_18__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_20__"
@@ -256,6 +277,7 @@ layers {
   inputs {
     input_layer_name: "__addto_19__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_21__"
@@ -268,6 +290,7 @@ layers {
   inputs {
     input_layer_name: "__addto_20__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_22__"
@@ -280,6 +303,7 @@ layers {
   inputs {
     input_layer_name: "__addto_21__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_23__"
@@ -292,6 +316,7 @@ layers {
   inputs {
     input_layer_name: "__addto_22__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_24__"
@@ -304,6 +329,7 @@ layers {
   inputs {
     input_layer_name: "__addto_23__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_25__"
@@ -316,6 +342,7 @@ layers {
   inputs {
     input_layer_name: "__addto_24__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_26__"
@@ -328,6 +355,7 @@ layers {
   inputs {
     input_layer_name: "__addto_25__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_27__"
@@ -340,6 +368,7 @@ layers {
   inputs {
     input_layer_name: "__addto_26__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_28__"
@@ -352,6 +381,7 @@ layers {
   inputs {
     input_layer_name: "__addto_27__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_29__"
@@ -364,6 +394,7 @@ layers {
   inputs {
     input_layer_name: "__addto_28__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_30__"
@@ -376,6 +407,7 @@ layers {
   inputs {
     input_layer_name: "__addto_29__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__addto_31__"
@@ -388,6 +420,7 @@ layers {
   inputs {
     input_layer_name: "__addto_30__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__"
@@ -399,6 +432,7 @@ layers {
     input_parameter_name: "___fc_layer_0__.w0"
   }
   bias_parameter_name: "___fc_layer_0__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_1__"
@@ -410,6 +444,7 @@ layers {
     input_parameter_name: "___fc_layer_1__.w0"
   }
   bias_parameter_name: "___fc_layer_1__.wbias"
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___fc_layer_0__.w0"

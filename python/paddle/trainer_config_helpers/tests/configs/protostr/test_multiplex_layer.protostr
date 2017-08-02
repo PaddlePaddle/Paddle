@@ -4,24 +4,28 @@ layers {
   type: "data"
   size: 1
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "data1"
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "data2"
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "data3"
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__multiplex_layer_0__"
@@ -40,6 +44,7 @@ layers {
   inputs {
     input_layer_name: "data3"
   }
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "index"
 input_layer_names: "data1"

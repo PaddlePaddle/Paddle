@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 2560
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__row_conv_layer_0__"
@@ -17,6 +18,7 @@ layers {
       context_length: 19
     }
   }
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___row_conv_layer_0__.w0"

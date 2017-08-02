@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 300
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__prelu_layer_0__"
@@ -14,6 +15,7 @@ layers {
     input_layer_name: "input"
     input_parameter_name: "___prelu_layer_0__.w0"
   }
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___prelu_layer_0__.w0"

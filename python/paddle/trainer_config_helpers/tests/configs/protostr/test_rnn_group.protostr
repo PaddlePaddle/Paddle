@@ -4,18 +4,21 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "sub_seq_input"
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "label"
   type: "data"
   size: 1
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_0__"
@@ -32,6 +35,7 @@ layers {
       output_size: 400
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_1__"
@@ -48,23 +52,27 @@ layers {
       output_size: 300
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__recurrent_group_0__"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "seq_input@__recurrent_group_0__"
   type: "scatter_agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_forward+delay1@__recurrent_group_0__"
   type: "agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_forward@__recurrent_group_0__"
@@ -80,12 +88,14 @@ layers {
     input_parameter_name: "_rnn_forward@__recurrent_group_0__.w1"
   }
   bias_parameter_name: "_rnn_forward@__recurrent_group_0__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_forward"
   type: "gather_agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_0__"
@@ -97,23 +107,27 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__recurrent_group_1__"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "seq_input@__recurrent_group_1__"
   type: "scatter_agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_back+delay1@__recurrent_group_1__"
   type: "agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_back@__recurrent_group_1__"
@@ -129,12 +143,14 @@ layers {
     input_parameter_name: "_rnn_back@__recurrent_group_1__.w1"
   }
   bias_parameter_name: "_rnn_back@__recurrent_group_1__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_back"
   type: "gather_agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__first_seq_0__"
@@ -147,23 +163,27 @@ layers {
   select_first: true
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__recurrent_group_2__"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "sub_seq_input@__recurrent_group_2__"
   type: "scatter_agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_subseq_forward+delay1@__recurrent_group_2__"
   type: "agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_subseq_forward@__recurrent_group_2__"
@@ -179,12 +199,14 @@ layers {
     input_parameter_name: "_rnn_subseq_forward@__recurrent_group_2__.w1"
   }
   bias_parameter_name: "_rnn_subseq_forward@__recurrent_group_2__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "rnn_subseq_forward"
   type: "gather_agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_1__"
@@ -196,29 +218,34 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstm_group_0___recurrent_group"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_0__@__lstm_group_0___recurrent_group"
   type: "scatter_agent"
   size: 400
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstm_group_0__+delay1@__lstm_group_0___recurrent_group"
   type: "agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstm_group_0___state+delay1@__lstm_group_0___recurrent_group"
   type: "agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstm_group_0___input_recurrent@__lstm_group_0___recurrent_group"
@@ -244,6 +271,7 @@ layers {
       output_size: 400
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
@@ -259,6 +287,7 @@ layers {
   bias_parameter_name: "___lstm_group_0__@__lstm_group_0___recurrent_group.wbias"
   active_gate_type: "sigmoid"
   active_state_type: "tanh"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstm_group_0___state@__lstm_group_0___recurrent_group"
@@ -269,12 +298,14 @@ layers {
     input_layer_name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
     input_layer_argument: "state"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstm_group_0__"
   type: "gather_agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_2__"
@@ -286,23 +317,27 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gru_group_0___recurrent_group"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_1__@__gru_group_0___recurrent_group"
   type: "scatter_agent"
   size: 300
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gru_group_0__+delay1@__gru_group_0___recurrent_group"
   type: "agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gru_group_0__@__gru_group_0___recurrent_group"
@@ -318,12 +353,14 @@ layers {
   }
   bias_parameter_name: "___gru_group_0__@__gru_group_0___recurrent_group.wbias"
   active_gate_type: "sigmoid"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gru_group_0__"
   type: "gather_agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_3__"
@@ -335,23 +372,27 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__recurrent_group_3__"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "seq_input@__recurrent_group_3__"
   type: "scatter_agent"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__memory_6__@__recurrent_group_3__"
   type: "agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__@__recurrent_group_3__"
@@ -367,12 +408,14 @@ layers {
     input_parameter_name: "___fc_layer_0__@__recurrent_group_3__.w1"
   }
   bias_parameter_name: "___fc_layer_0__@__recurrent_group_3__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__"
   type: "gather_agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_4__"
@@ -384,6 +427,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___mixed_0__.w0"

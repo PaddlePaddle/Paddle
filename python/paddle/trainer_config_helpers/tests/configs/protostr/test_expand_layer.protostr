@@ -4,12 +4,14 @@ layers {
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "data_seq"
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__expand_layer_0__"
@@ -23,6 +25,7 @@ layers {
     input_layer_name: "data_seq"
   }
   trans_type: "seq"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__expand_layer_1__"
@@ -36,6 +39,7 @@ layers {
     input_layer_name: "data_seq"
   }
   trans_type: "non-seq"
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "data"
 input_layer_names: "data_seq"

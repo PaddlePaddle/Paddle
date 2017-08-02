@@ -6,6 +6,7 @@ layers {
   active_type: ""
   height: 48
   width: 42
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__conv_0__"
@@ -37,6 +38,7 @@ layers {
   shared_biases: true
   height: 48
   width: 42
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__pool_0__"
@@ -62,6 +64,7 @@ layers {
   }
   height: 24
   width: 21
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__pad_0__"
@@ -86,6 +89,7 @@ layers {
   }
   height: 27
   width: 25
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___conv_0__.w0"

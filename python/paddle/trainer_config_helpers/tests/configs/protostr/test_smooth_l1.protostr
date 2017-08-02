@@ -4,12 +4,14 @@ layers {
   type: "data"
   size: 300
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "label"
   type: "data"
   size: 300
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__smooth_l1_cost_0__"
@@ -23,6 +25,7 @@ layers {
     input_layer_name: "label"
   }
   coeff: 1.0
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "input"
 input_layer_names: "label"

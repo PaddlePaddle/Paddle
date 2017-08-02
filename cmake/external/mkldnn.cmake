@@ -20,28 +20,29 @@ INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
 SET(MKLDNN_SOURCES_DIR    ${THIRD_PARTY_PATH}/mkldnn)
-SET(MKLDNN_INSTALL_ROOT   ${CMAKE_INSTALL_PREFIX})
-IF(NOT "$ENV{HOME}" STREQUAL "/root")
-    SET(MKLDNN_INSTALL_ROOT  "$ENV{HOME}")
-ENDIF()
-
-SET(MKLDNN_INSTALL_DIR    "${MKLDNN_INSTALL_ROOT}/opt/paddle/third_party/mkldnn")
-SET(MKLDNN_INCLUDE_DIR    "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
+SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
+SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
 IF(WIN32)
-    MESSAGE(WARNING "It is not supported compiling with mkldnn in windows Paddle yet."
+    MESSAGE(WARNING "Windowns is not supported with MKLDNN in Paddle yet."
       "Force WITH_MKLDNN=OFF")
-    SET(WITH_MKLDNN OFF)
+    SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in Windows" FORCE)
     return()
 ELSE(WIN32)
-    SET(MKLDNN_LIBRARY "${MKLDNN_INSTALL_DIR}/lib/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
+    IF(APPLE)
+        MESSAGE(WARNING "MacOS is not supported with MKLDNN in Paddle yet."
+            "Force WITH_MKLDNN=OFF")
+        SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in MacOS" FORCE)
+        #SET(CMAKE_MACOSX_RPATH 1) # hold for MacOS
+        return()
+    ENDIF(APPLE)
+    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
     MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/lib to runtime path")
     SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-    #SET(CMAKE_MACOSX_RPATH 1) # hold for MacOS
     SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/lib")
 ENDIF(WIN32)
 
-INCLUDE_DIRECTORIES(${MKLDNN_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR})
 
 IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
     SET(MKLDNN_DEPENDS   ${MKLML_PROJECT})
@@ -57,16 +58,14 @@ ExternalProject_Add(
     GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
     GIT_TAG             "v0.9"
     PREFIX              ${MKLDNN_SOURCES_DIR}
-    CONFIGURE_COMMAND   mkdir -p <SOURCE_DIR>/build
-    BUILD_COMMAND       cd <SOURCE_DIR>/build
-                        && cmake .. -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR} -DMKLROOT=${MKLDNN_MKLROOT}
-                        && $(MAKE)
-    INSTALL_COMMAND     cd <SOURCE_DIR>/build && $(MAKE) install
     UPDATE_COMMAND      ""
+    CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
+    CMAKE_ARGS          -DMKLROOT=${MKLDNN_MKLROOT}
+    CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
 )
 
 ADD_LIBRARY(mkldnn SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET mkldnn PROPERTY IMPORTED_LOCATION ${MKLDNN_LIBRARY})
-ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
-MESSAGE(STATUS "Mkldnn library: ${MKLDNN_LIBRARY}")
+SET_PROPERTY(TARGET mkldnn PROPERTY IMPORTED_LOCATION ${MKLDNN_LIB})
+ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT} ${MKLDNN_DEPENDS})
+MESSAGE(STATUS "Mkldnn library: ${MKLDNN_LIB}")
 LIST(APPEND external_project_dependencies mkldnn)
