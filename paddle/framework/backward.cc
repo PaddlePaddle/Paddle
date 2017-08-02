@@ -71,7 +71,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
                no_grad_names)) {
     for (auto& name : forwardOp.inputs_) {
       // Mark all input is not need
-      no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
+      no_grad_names.insert(op_helpers::GenGradName(name));
     }
     return NOP();
   }
@@ -169,7 +169,7 @@ std::shared_ptr<OperatorBase> Backward(
   no_grad_names.reserve(no_grad_vars.size());
 
   for (auto& name : no_grad_vars) {
-    no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
+    no_grad_names.insert(op_helpers::GenGradName(name));
   }
   size_t uid = 0;
   return BackwardRecursive(forwardOp, no_grad_names, uid);

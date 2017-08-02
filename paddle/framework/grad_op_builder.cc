@@ -66,7 +66,7 @@ void GradOpBuilder::AddArgIntoGradOp(const OpInOutArg* arg,
                                      bool is_grad) const {
   std::string var_name = arg->proto_name_;
   if (is_grad) {
-    var_name += OperatorBase::GRAD_VAR_SUFFIX();
+    var_name = op_helpers::GenGradName(var_name);
   }
   (*varmap)[var_name] = idx++;
   size_t pre_sz = in_out.size();
@@ -75,7 +75,7 @@ void GradOpBuilder::AddArgIntoGradOp(const OpInOutArg* arg,
             std::back_inserter(in_out));
   if (is_grad) {
     for (size_t i = pre_sz; i < in_out.size(); ++i) {
-      in_out[i] += OperatorBase::GRAD_VAR_SUFFIX();
+      in_out[i] = op_helpers::GenGradName(in_out[i]);
     }
   }
   format.push_back(in_out.size());
