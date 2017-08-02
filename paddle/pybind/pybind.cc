@@ -158,7 +158,7 @@ All parameter, weight, gradient are variables in Paddle.
        "The module will return special predefined variable name in Paddle")
       .def("empty", pd::OperatorBase::EMPTY_VAR_NAME)
       .def("temp", pd::OperatorBase::TMP_VAR_NAME);
-  //clang-format off
+  // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
@@ -174,7 +174,7 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
                   });
-  //clang-format on
+  // clang-format on
 
   py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
 
