@@ -44,6 +44,10 @@ template <typename ClassType>
 void ExposeOperator(ClassType& m) {
   m.def("infer_shape", &ClassType::type::InferShape)
       .def("run", &ClassType::type::Run)
+      .def("type",
+           [](const typename ClassType::type& op) -> std::string {
+             return op.type_;
+           })
       .def("outputs",
            [](const typename ClassType::type& op) -> std::vector<std::string> {
              return op.outputs_;
