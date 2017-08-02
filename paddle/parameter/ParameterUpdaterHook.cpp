@@ -32,9 +32,9 @@ class ParameterPruningHook : public IParameterUpdaterHook {
 public:
   ParameterPruningHook() : initCount_(0) {}
 
-  virtual void preprocess(Parameter *para,
+  void preprocess(Parameter *para,
                           size_t currentPass,
-                          size_t currentBatch) {}
+                          size_t currentBatch) override {}
   void update(Parameter *para) override {
     updateThreadChecker_.check();
     auto &vec = para->getBuf(PARAMETER_VALUE);
