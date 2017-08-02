@@ -289,5 +289,14 @@ class OperatorWithKernel : public OperatorBase {
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
 
+namespace op_helpers {
+
+// Generate the gradient variable's name of a forward varialbe
+std::string GenGradName(const std::string& var) {
+  return var + OperatorBase::GRAD_VAR_SUFFIX();
+}
+
+}  // namespace op_helpers
+
 }  // namespace framework
 }  // namespace paddle
