@@ -49,9 +49,9 @@ public:
                                .reshape(batch_by_one)
                                .broadcast(one_by_class));
 
-    softmax.device(*(context.GetEigenDevice<Place>())) = shifted_logits.exp();
+    softmax.device(context.GetEigenDevice<Place>()) = shifted_logits.exp();
 
-    softmax.device(*(context.GetEigenDevice<Place>())) =
+    softmax.device(context.GetEigenDevice<Place>()) =
         (softmax *
          softmax.sum(along_class)
              .inverse()

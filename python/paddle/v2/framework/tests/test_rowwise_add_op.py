@@ -8,8 +8,8 @@ class TestRowwiseAddOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "rowwise_add"
-        self.X = np.random.random((32, 784)).astype("float32")
-        self.b = np.random.random(784).astype("float32")
+        self.X = np.random.random((32, 84)).astype("float32")
+        self.b = np.random.random(84).astype("float32")
         self.Out = np.add(self.X, self.b)
 
 
