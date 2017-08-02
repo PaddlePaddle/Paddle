@@ -38,7 +38,8 @@ public:
 class SigmoidOpGrad : public OperatorWithKernel {
 protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 1,
+    // need to check input size 2 or 3, (dY, Y) or (dY, Y, X)
+    PADDLE_ENFORCE(ctx.InputSize() == 2,
                    "Sigmoid Gradient Op only have one input");
     PADDLE_ENFORCE(ctx.OutputSize() == 1,
                    "Sigmoid Gradient Op only have one output");
