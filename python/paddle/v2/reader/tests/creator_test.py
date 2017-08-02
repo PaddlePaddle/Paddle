@@ -34,14 +34,5 @@ class TestTextFile(unittest.TestCase):
             self.assertEqual(e, str(idx * 2) + " " + str(idx * 2 + 1))
 
 
-class TestRecordIO(unittest.TestCase):
-    def test_recordio(self):
-        path = os.path.join(
-            os.path.dirname(__file__), "test_recordio_creator.dat")
-        reader = paddle.v2.reader.creator.recordio([path])
-        for idx, r in enumerate(reader()):
-            self.assertSequenceEqual(r, str(idx))
-
-
 if __name__ == '__main__':
     unittest.main()

@@ -20,7 +20,7 @@ namespace framework {
 
 OperatorBase* GradOpBuilder::Build() {
   BuildOpInOutArgList();
-  std::string grad_op_type = OpRegistry::grad_ops().at(op_->type_);
+  std::string grad_op_type = OpRegistry::grad_ops().at(op_.type_);
   OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)();
   grad_op->type_ = grad_op_type;
   CompleteGradOp(grad_op);
@@ -39,15 +39,15 @@ OpInOutArg* GradOpBuilder::BuildArg(const VarProto& var,
 }
 
 void GradOpBuilder::BuildOpInOutArgList() {
-  const OpProto& op_proto = OpRegistry::protos().at(op_->type_);
-  const auto& var_map = *(OpRegistry::VarIndexMaps().at(op_->type_));
+  const OpProto& op_proto = OpRegistry::protos().at(op_.type_);
+  const auto& var_map = *(OpRegistry::VarIndexMaps().at(op_.type_));
   const std::vector<int>& in_format =
-      op_->attrs_.count("input_format")
-          ? op_->GetAttr<std::vector<int>>("input_format")
+      op_.attrs_.count("input_format")
+          ? op_.GetAttr<std::vector<int>>("input_format")
           : std::vector<int>();
   const std::vector<int>& out_format =
-      op_->attrs_.count("output_format")
-          ? op_->GetAttr<std::vector<int>>("output_format")
+      op_.attrs_.count("output_format")
+          ? op_.GetAttr<std::vector<int>>("output_format")
           : std::vector<int>();
   for (const auto& var : op_proto.inputs()) {
     arg_list_.emplace_back(
@@ -70,8 +70,7 @@ void GradOpBuilder::AddArgIntoGradOp(const OpInOutArg* arg,
   }
   (*varmap)[var_name] = idx++;
   size_t pre_sz = in_out.size();
-  auto base_it =
-      arg->type_ == IN ? op_->inputs_.begin() : op_->outputs_.begin();
+  auto base_it = arg->type_ == IN ? op_.inputs_.begin() : op_.outputs_.begin();
   std::copy(base_it + arg->begin_idx_, base_it + arg->end_idx_,
             std::back_inserter(in_out));
   if (is_grad) {
@@ -83,7 +82,7 @@ void GradOpBuilder::AddArgIntoGradOp(const OpInOutArg* arg,
 }
 
 void GradOpBuilder::CompleteGradOp(OperatorBase* grad_op) const {
-  grad_op->attrs_ = op_->attrs_;
+  grad_op->attrs_ = op_.attrs_;
   grad_op->attrs_.erase("input_format");
   grad_op->attrs_.erase("output_format");
   VarIndexMap* grad_varmap = new VarIndexMap();

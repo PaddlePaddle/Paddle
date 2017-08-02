@@ -291,13 +291,15 @@ public:
       : OpProtoAndCheckerMaker(proto, op_checker) {
     const auto& name = RecurrentOp::kArgName;
     // inputs and outputs stored in proto
-    AddInputs(name.inlinks,
-              "the inputs that need to be segmented for each step.");
-    AddInputs(name.boot_memories, "variables to initialize memories.");
+    AddInput(name.inlinks,
+             "the inputs that need to be segmented for each step.")
+        .SetMultiple();
+    AddInput(name.boot_memories, "variables to initialize memories.")
+        .SetMultiple();
     AddInput(name.step_net, "network shared by all steps.");
 
-    AddOutputs(name.outlinks,
-               "the outputs that need to concated for all steps.");
+    AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
+        .SetMultiple();
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
