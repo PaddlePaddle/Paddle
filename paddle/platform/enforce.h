@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <execinfo.h>
 #include <paddle/string/printf.h>
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -39,12 +41,22 @@ namespace platform {
 struct EnforceNotMet : public std::exception {
   std::exception_ptr exp_;
   std::string err_str_;
-
   EnforceNotMet(std::exception_ptr e, const char* f, int l) : exp_(e) {
+    static constexpr int TRACE_STACK_LIMIT = 100;
     try {
       std::rethrow_exception(exp_);
     } catch (const std::exception& exp) {
-      err_str_ = string::Sprintf("%s at [%s:%d]", exp.what(), f, l);
+      std::ostringstream sout;
+      sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
+      sout << "Call Stacks: " << std::endl;
+      void* call_stack[TRACE_STACK_LIMIT];
+      int sz = backtrace(call_stack, TRACE_STACK_LIMIT);
+      auto line = backtrace_symbols(call_stack, sz);
+      for (int i = 0; i < sz; ++i) {
+        sout << line[i] << std::endl;
+      }
+      free(line);
+      err_str_ = sout.str();
     }
   }
 

@@ -43,7 +43,7 @@ class NetOp : public OperatorBase {
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {
+  void InferShape(const Scope& scope) const override {
     for (auto& op : ops_) {
       op->InferShape(scope);
     }
@@ -56,7 +56,7 @@ class NetOp : public OperatorBase {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  void Run(const std::shared_ptr<Scope>& scope,
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
@@ -68,7 +68,16 @@ class NetOp : public OperatorBase {
    */
   void AddOp(const std::shared_ptr<OperatorBase>& op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
+    PADDLE_ENFORCE(op != nullptr, "Cannot Insert Null op");
     ops_.push_back(op);
+  }
+
+  void InsertOp(size_t pos, const std::shared_ptr<OperatorBase>& op) {
+    PADDLE_ENFORCE(!add_op_done_,
+                   "Cannot InsertOp when this network is sealed");
+    PADDLE_ENFORCE(op != nullptr, "Cannot Insert Null op");
+    PADDLE_ENFORCE(pos <= ops_.size(), "Out of range");
+    ops_.insert(ops_.begin() + pos, op);
   }
 
   void CompleteAddOp(bool calculate = true);
