@@ -306,8 +306,7 @@ class OpRegistry {
   static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
     PADDLE_ENFORCE(!op.IsNetOp(),
                    "Use framework::Backward to get backward ops");
-    GradOpBuilder builder(op);
-    std::shared_ptr<OperatorBase> grad_op(builder.Build());
+    std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
     grad_op->Init();
     return grad_op;
   }

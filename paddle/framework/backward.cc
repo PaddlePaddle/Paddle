@@ -42,9 +42,9 @@ static std::shared_ptr<OperatorBase> NOP() {
 //
 //  no_grad_names the gradient variable names without gradient calculating.
 //
-//  uniq_id is a unique index used inside recursively calling BackwardRecursive.
-//  use `uid = uniq_id++;` to get the unique index, and pass `uniq_id` through
-//  recursive calling.
+//  uniq_id is a unique index used inside recursively calling
+//  BackwardRecursive. use `uid = uniq_id++;` to get the unique index, and
+//  pass `uniq_id` through recursive calling.
 //
 //  returns The backward operator. For simple situation, it is a simple
 //  operator. For complex situation, it is a NetOp.
@@ -64,8 +64,8 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     return NOP();
   }
 
-  //  All output gradients of forwarding operator do not need to calculate. Then
-  //  all input gradients cannot be computed at all, and we put them into
+  //  All output gradients of forwarding operator do not need to calculate.
+  //  Then all input gradients cannot be computed at all, and we put them into
   //  `no_grad_names` set. Return an NOP.
   if (AllInSet(forwardOp.outputs_, OperatorBase::GRAD_VAR_SUFFIX(),
                no_grad_names)) {
@@ -83,8 +83,8 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     // Because forwardOp is a net op, it can static_cast.
     auto& forwardNet = static_cast<const NetOp&>(forwardOp);
 
-    // Map from output gradient variable name to operator's indices in backward
-    // net. That operator generates that variable.
+    // Map from output gradient variable name to operator's indices in
+    // backward net. That operator generates that variable.
     std::unordered_map<std::string, std::vector<size_t>> dup_output_ops;
 
     size_t local_op_id = 0;
