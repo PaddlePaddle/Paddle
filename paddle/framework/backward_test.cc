@@ -162,8 +162,8 @@ TEST(Backward, simple_op_grad) {
   auto fwd = f::OpRegistry::CreateOp("rowwise_add", {"X", "b"}, {"Out"}, {});
   ASSERT_NE(fwd, nullptr);
   auto gop = f::OpRegistry::CreateGradOp(*fwd);
-  ASSERT_EQ(1UL, gop->inputs_.size());
-  ASSERT_EQ("Out" + f::OperatorBase::GRAD_VAR_SUFFIX(), gop->inputs_[0]);
+  ASSERT_EQ(4UL, gop->inputs_.size());
+  ASSERT_EQ(f::OperatorBase::EMPTY_VAR_NAME(), gop->inputs_[0]);
   ASSERT_EQ("rowwise_add_grad", gop->type_);
   ASSERT_EQ("X" + f::OperatorBase::GRAD_VAR_SUFFIX(), gop->outputs_[0]);
   ASSERT_EQ("b" + f::OperatorBase::GRAD_VAR_SUFFIX(), gop->outputs_[1]);
@@ -360,7 +360,6 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
             3UL       /* external input number */
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
-                - 1UL /*ignoreGradient varable number*/
                 + 2U /* internal variable number*/);
   EXPECT_EQ(grad_fc.outputs_.size(), 2UL       /* input number of mul*/
                                          + 2UL /* input number of rowwise_add */
