@@ -29,9 +29,10 @@ class LODTensorTester : public ::testing::Test {
     // 0 10 20
     // 0 5 10 15 20
     // 0 2 5 7 10 12 15 20
-    auto lod =
-        std::make_shared<LODTensor::lod_t>(std::vector<std::vector<size_t>>{
-            {0, 10, 20}, {0, 5, 10, 15, 20}, {0, 2, 5, 7, 10, 12, 15, 17, 20}});
+    auto lod = std::make_shared<LODTensor::lod_t>();
+    lod->emplace_back(LODTensor::level_t{0, 10, 20});
+    lod->emplace_back(LODTensor::level_t{0, 5, 10, 15, 20});
+    lod->emplace_back(LODTensor::level_t{0, 2, 5, 7, 10, 12, 15, 17, 20});
 
     auto tensor = std::make_shared<Tensor>();
     tensor->Resize({20 /*batch size*/, 128 /*dim*/});
