@@ -59,15 +59,14 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   //  If all input gradients of forwarding operator do not need to calculate,
   //  just return an NOP. Not return null ptr because NOP does not take
   //  too much time for calculation, but it is useful for simplifying logic.
-  if (AllInSet(forwardOp.inputs_, OperatorBase::GRAD_VAR_SUFFIX(),
-               no_grad_names)) {
+  if (AllInSet(forwardOp.inputs_, op_helpers::GenGradName(""), no_grad_names)) {
     return NOP();
   }
 
   //  All output gradients of forwarding operator do not need to calculate. Then
   //  all input gradients cannot be computed at all, and we put them into
   //  `no_grad_names` set. Return an NOP.
-  if (AllInSet(forwardOp.outputs_, OperatorBase::GRAD_VAR_SUFFIX(),
+  if (AllInSet(forwardOp.outputs_, op_helpers::GenGradName(""),
                no_grad_names)) {
     for (auto& name : forwardOp.inputs_) {
       // Mark all input is not need
@@ -135,7 +134,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     for (std::string& grad_input : grad_op->inputs_) {
       if (no_grad_names.count(grad_input)) {
         std::string prefix = grad_input.substr(
-            0, grad_input.size() - OperatorBase::GRAD_VAR_SUFFIX().size());
+            0, grad_input.size() - op_helpers::GenGradName("").size());
         grad_input = prefix + OperatorBase::ZERO_VAR_SUFFIX();
 
         // If part of input gradient of that operator is not calculated, fill

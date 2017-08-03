@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
+#include "paddle/framework/op_helpers/op_helpers.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
@@ -49,11 +50,6 @@ class OperatorBase {
   /// If a variable is a temporary variable, that name will be set in Python,
   /// but it will be convert to a unique name in scope after OpCreator.
   static std::string TMP_VAR_NAME() { return "@TEMP@"; }
-
-  /// If a variable's name has a certain suffix, it means that the
-  /// variable is the gradient of another varibale.
-  /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
-  static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
 
   /// Variables with this suffix are supposed to be filled up with zeros.
   static std::string ZERO_VAR_SUFFIX() { return "@ZERO"; }
@@ -319,14 +315,7 @@ class OperatorWithKernel : public OperatorBase {
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
 
-namespace op_helpers {
-
-// Generate the gradient variable's name of a forward varialbe
-inline std::string GenGradName(const std::string& var) {
-  return var + OperatorBase::GRAD_VAR_SUFFIX();
-}
-
-}  // namespace op_helpers
-
 }  // namespace framework
+
+}  // namespace paddle
 }  // namespace paddle
