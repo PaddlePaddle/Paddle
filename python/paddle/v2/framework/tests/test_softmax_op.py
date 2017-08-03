@@ -56,7 +56,6 @@ class TestSoftmaxGradOp(unittest.TestCase):
             places.append(core.GPUPlace(0))
 
         for place in places:
-            place = core.CPUPlace()
             y = scope.new_var("Y")
             y_tensor = y.get_tensor()
             y_tensor.set_dims([batch_size, class_num])
