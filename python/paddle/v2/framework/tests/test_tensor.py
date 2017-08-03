@@ -7,6 +7,8 @@ class TestScope(unittest.TestCase):
     def test_int_tensor(self):
         scope = core.Scope()
         var = scope.new_var("test_tensor")
+        place = core.CPUPlace()
+
         tensor = var.get_tensor()
 
         tensor.set_dims([1000, 784])
@@ -24,6 +26,8 @@ class TestScope(unittest.TestCase):
     def test_float_tensor(self):
         scope = core.Scope()
         var = scope.new_var("test_tensor")
+        place = core.CPUPlace()
+
         tensor = var.get_tensor()
 
         tensor.set_dims([1000, 784])

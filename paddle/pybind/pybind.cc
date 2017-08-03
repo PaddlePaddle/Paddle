@@ -16,6 +16,7 @@ limitations under the License. */
 #include <fstream>
 #include <vector>
 
+#include "paddle/framework/backward.h"
 #include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
@@ -35,6 +36,7 @@ USE_OP(onehot_cross_entropy);
 USE_OP_WITHOUT_KERNEL(fc);
 USE_OP(sgd);
 USE_OP(mul);
+USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
@@ -44,6 +46,10 @@ template <typename ClassType>
 void ExposeOperator(ClassType& m) {
   m.def("infer_shape", &ClassType::type::InferShape)
       .def("run", &ClassType::type::Run)
+      .def("type",
+           [](const typename ClassType::type& op) -> std::string {
+             return op.type_;
+           })
       .def("outputs",
            [](const typename ClassType::type& op) -> std::vector<std::string> {
              return op.outputs_;
@@ -157,23 +163,23 @@ All parameter, weight, gradient are variables in Paddle.
        "The module will return special predefined variable name in Paddle")
       .def("empty", pd::OperatorBase::EMPTY_VAR_NAME)
       .def("temp", pd::OperatorBase::TMP_VAR_NAME);
-
+  // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
                       -> paddle::platform::DeviceContext* {
                     return new paddle::platform::CPUDeviceContext();
                   })
-      .def_static(
-          "create",
-          [](paddle::platform::GPUPlace& place)
-              -> paddle::platform::DeviceContext* {
+      .def_static("create",
+                  [](paddle::platform::GPUPlace& place)
+                      -> paddle::platform::DeviceContext* {
 #ifdef PADDLE_ONLY_CPU
-            PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
 #else
-            return new paddle::platform::CUDADeviceContext(place);
+                    return new paddle::platform::CUDADeviceContext(place);
 #endif
-          });
+                  });
+  // clang-format on
 
   py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
 
@@ -191,6 +197,13 @@ All parameter, weight, gradient are variables in Paddle.
                    desc.InitializationErrorString());
     return pd::OpRegistry::CreateOp(desc);
   });
+
+  operator_base.def("backward",
+                    [](const pd::OperatorBase& forwardOp,
+                       const std::unordered_set<std::string>& no_grad_vars) {
+                      return pd::Backward(forwardOp, no_grad_vars);
+                    });
+
   ExposeOperator(operator_base);
 
   py::class_<pd::NetOp, std::shared_ptr<pd::NetOp>> net(m, "Net");

@@ -27,20 +27,26 @@ class OpTestMeta(type):
             scope = core.Scope()
             kwargs = dict()
 
-            for in_name in func.all_input_args:
-                if hasattr(self, in_name):
-                    kwargs[in_name] = in_name
-                    var = scope.new_var(in_name).get_tensor()
-                    arr = getattr(self, in_name)
-                    var.set_dims(arr.shape)
-                    var.set(arr)
-                else:
-                    kwargs[in_name] = "@EMPTY@"
+            places = []
+            places.append(core.CPUPlace())
+            if core.is_compile_gpu():
+                places.append(core.GPUPlace(0))
 
-            for out_name in func.all_output_args:
-                if hasattr(self, out_name):
-                    kwargs[out_name] = out_name
-                    scope.new_var(out_name).get_tensor()
+            for place in places:
+                for in_name in func.all_input_args:
+                    if hasattr(self, in_name):
+                        kwargs[in_name] = in_name
+                        var = scope.new_var(in_name).get_tensor()
+                        arr = getattr(self, in_name)
+                        var.set_dims(arr.shape)
+                        var.set(arr, place)
+                    else:
+                        kwargs[in_name] = "@EMPTY@"
+
+                for out_name in func.all_output_args:
+                    if hasattr(self, out_name):
+                        kwargs[out_name] = out_name
+                        scope.new_var(out_name).get_tensor()
 
                 for attr_name in func.all_attr_args:
                     if hasattr(self, attr_name):
@@ -53,13 +59,13 @@ class OpTestMeta(type):
                 ctx = core.DeviceContext.create(place)
                 op.run(scope, ctx)
 
-            for out_name in func.all_output_args:
-                actual = numpy.array(scope.find_var(out_name).get_tensor())
-                expect = getattr(self, out_name)
-                # TODO(qijun) The default decimal is 7, but numpy.dot and eigen.mul
-                # has some diff, and could not pass unittest. So I set decimal 3 here.
-                # And I will check this in future.
-                numpy.testing.assert_almost_equal(actual, expect, decimal=3)
+                for out_name in func.all_output_args:
+                    actual = numpy.array(scope.find_var(out_name).get_tensor())
+                    expect = getattr(self, out_name)
+                    # TODO(qijun) The default decimal is 7, but numpy.dot and eigen.mul
+                    # has some diff, and could not pass unittest. So I set decimal 3 here.
+                    # And I will check this in future.
+                    numpy.testing.assert_almost_equal(actual, expect, decimal=3)
 
         obj.test_all = test_all
         return obj

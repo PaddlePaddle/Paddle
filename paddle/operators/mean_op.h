@@ -19,22 +19,19 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class SGDOpKernel : public OpKernel {
+class MeanKernel : public OpKernel {
 public:
-  void Compute(const ExecutionContext& ctx) const override {
-    auto param = ctx.Input<Tensor>("param");
-    auto grad = ctx.Input<Tensor>("grad");
-    auto param_out = ctx.Output<Tensor>(0);
-    float lr = ctx.op_.GetAttr<float>("learning_rate");
+  void Compute(const ExecutionContext& context) const override {
+    auto input = context.Input<Tensor>(0);
+    auto output = context.Output<Tensor>(0);
 
-    param_out->mutable_data<T>(ctx.GetPlace());
+    output->mutable_data<T>(context.GetPlace());
 
-    auto p = EigenVector<T>::Flatten(*param);
-    auto g = EigenVector<T>::Flatten(*grad);
-    auto o = EigenVector<T>::Flatten(*param_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto X = EigenVector<T>::Flatten(*input);
+    auto y = EigenScalar<T>::From(*output);
+    auto place = context.GetEigenDevice<Place>();
 
-    o.device(place) = p - lr * g;
+    y.device(place) = X.mean();
   }
 };
 

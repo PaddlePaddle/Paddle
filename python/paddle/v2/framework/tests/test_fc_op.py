@@ -7,6 +7,7 @@ import paddle.v2.framework.create_op_creation_methods as creation
 class TestFc(unittest.TestCase):
     def test_fc(self):
         scope = core.Scope()
+        place = core.CPUPlace()
         x = scope.new_var("X")
 
         x_tensor = x.get_tensor()
