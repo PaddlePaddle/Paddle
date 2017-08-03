@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
-#include "paddle/framework/tensor_bind.h"
+#include "paddle/framework/tensor_py.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "pybind11/numpy.h"
