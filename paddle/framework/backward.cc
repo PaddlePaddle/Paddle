@@ -14,8 +14,8 @@
 
 #include "paddle/framework/backward.h"
 #include <list>
-#include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +32,7 @@ static bool AllInSet(const std::vector<std::string>& names,
 }
 
 static std::shared_ptr<OperatorBase> NOP() {
-  auto net_op = std::make_shared<NetOp>();
+  auto net_op = std::make_shared<operators::NetOp>();
   net_op->type_ = "@NOP@";
   net_op->CompleteAddOp();
   return net_op;
@@ -77,11 +77,11 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   }
 
   // Returned gradient network
-  auto net = std::make_shared<NetOp>();
+  auto net = std::make_shared<operators::NetOp>();
 
   if (forwardOp.IsNetOp()) {
     // Because forwardOp is a net op, it can static_cast.
-    auto& forwardNet = static_cast<const NetOp&>(forwardOp);
+    auto& forwardNet = static_cast<const operators::NetOp&>(forwardOp);
 
     // Map from output gradient variable name to operator's indices in backward
     // net. That operator generates that variable.
@@ -167,6 +167,9 @@ std::shared_ptr<OperatorBase> Backward(
     const std::unordered_set<std::string>& no_grad_vars) {
   std::unordered_set<std::string> no_grad_names;
   no_grad_names.reserve(no_grad_vars.size());
+
+  no_grad_names.insert(OperatorBase::EMPTY_VAR_NAME() +
+                       OperatorBase::GRAD_VAR_SUFFIX());
 
   for (auto& name : no_grad_vars) {
     no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());

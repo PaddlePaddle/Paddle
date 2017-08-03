@@ -19,22 +19,36 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class AddKernel : public OpKernel {
+class MeanKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
-    auto input0 = context.Input<Tensor>(0);
-    auto input1 = context.Input<Tensor>(1);
+    auto input = context.Input<Tensor>(0);
     auto output = context.Output<Tensor>(0);
 
     output->mutable_data<T>(context.GetPlace());
 
-    auto X = EigenVector<T>::Flatten(*input0);
-    auto Y = EigenVector<T>::Flatten(*input1);
-    auto Z = EigenVector<T>::Flatten(*output);
-
+    auto X = EigenVector<T>::Flatten(*input);
+    auto y = EigenScalar<T>::From(*output);
     auto place = context.GetEigenDevice<Place>();
 
-    Z.device(place) = X + Y;
+    y.device(place) = X.mean();
+  }
+};
+
+template <typename Place, typename T>
+class MeanGradKernel : public OpKernel {
+public:
+  void Compute(const ExecutionContext& context) const override {
+    auto OG = context.Input<Tensor>("Out" + OperatorBase::GRAD_VAR_SUFFIX());
+    PADDLE_ENFORCE(framework::product(OG->dims()) == 1,
+                   "Mean Gradient should be scalar");
+    auto IG = context.Output<Tensor>("X" + OperatorBase::GRAD_VAR_SUFFIX());
+    IG->mutable_data<T>(context.GetPlace());
+
+    T ig_size = (T)framework::product(IG->dims());
+
+    EigenVector<T>::Flatten(*IG).device(context.GetEigenDevice<Place>()) =
+        EigenScalar<T>::From(*OG) / ig_size;
   }
 };
 

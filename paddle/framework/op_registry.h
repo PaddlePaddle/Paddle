@@ -401,6 +401,14 @@ class GradOpRegisterHelper {
   }
 
 /**
+ * Macro to Forbid user register Gradient Operator.
+ */
+#define NO_GRADIENT(__op_type)                          \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                       \
+      __reg_gradient_op__##__op_type##__op_type##_grad, \
+      "NO_GRADIENT must be in global namespace")
+
+/**
  * Macro to Register OperatorKernel.
  */
 #define REGISTER_OP_KERNEL(type, DEVICE_TYPE, PlaceType, ...)             \

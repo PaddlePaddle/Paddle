@@ -15,7 +15,6 @@ if(Boost_FOUND)
   add_subdirectory(platform)
   add_subdirectory(framework)
   add_subdirectory(operators)
-  add_subdirectory(pybind)
 endif()
 
 if(WITH_C_API)

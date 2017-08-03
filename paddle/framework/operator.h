@@ -55,6 +55,10 @@ class OperatorBase {
   /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
   static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
 
+  static std::string GRAD_VAR_NAME(const std::string& name) {
+    return name + GRAD_VAR_SUFFIX();
+  }
+
   /// Variables with this suffix are supposed to be filled up with zeros.
   static std::string ZERO_VAR_SUFFIX() { return "@ZERO"; }
 
@@ -161,22 +165,30 @@ class OperatorContext {
 
   template <typename T>
   const T* Input(const size_t index) const {
-    return &(InputVar(index)->Get<T>());
+    auto var = InputVar(index);
+    PADDLE_ENFORCE(var != nullptr, "Input(%d) should not be nullptr", index);
+    return &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const size_t index) const {
-    return OutputVar(index)->GetMutable<T>();
+    auto var = OutputVar(index);
+    PADDLE_ENFORCE(var != nullptr, "Output(%d) should not be nullptr", index);
+    return var->GetMutable<T>();
   }
 
   template <typename T>
   const T* Input(const std::string& name) const {
-    return &(InputVar(name)->Get<T>());
+    auto var = InputVar(name);
+    PADDLE_ENFORCE(var != nullptr, "Input(%s) should not be nullptr", name);
+    return &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
-    return OutputVar(name)->GetMutable<T>();
+    auto var = OutputVar(name);
+    PADDLE_ENFORCE(var != nullptr, "Output(%s) should not be nullptr", name);
+    return var->GetMutable<T>();
   }
 
   template <typename T>
@@ -185,8 +197,12 @@ class OperatorContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return &scope_.FindVar(name)->Get<T>();
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     PADDLE_ENFORCE(var != nullptr,
+                                    "MultiInput(%s:%s) should not be nullptr",
+                                    name, sub_name);
+                     return &var->Get<T>();
                    });
     return res;
   }
@@ -197,8 +213,12 @@ class OperatorContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return scope_.FindVar(name)->GetMutable<T>();
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     PADDLE_ENFORCE(var != nullptr,
+                                    "MultiOutput(%s:%s) should not be nullptr",
+                                    name, sub_name);
+                     return var->GetMutable<T>();
                    });
     return res;
   }
@@ -237,7 +257,7 @@ class ExecutionContext : public OperatorContext {
   template <typename PlaceType,
             typename DeviceType =
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
-  DeviceType* GetEigenDevice() const;
+  DeviceType& GetEigenDevice() const;
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
