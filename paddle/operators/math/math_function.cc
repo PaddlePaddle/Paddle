@@ -32,7 +32,7 @@ void gemm<platform::CPUPlace, float>(const CBLAS_TRANSPOSE transA,
                                      const float beta,
                                      float* C,
                                      const int ldc,
-                                     const platform::DeviceContext* context) {
+                                     platform::DeviceContext* context) {
   cblas_sgemm(CblasRowMajor,
               transA,
               transB,
@@ -63,7 +63,7 @@ void gemm<platform::CPUPlace, double>(const CBLAS_TRANSPOSE transA,
                                       const double beta,
                                       double* C,
                                       const int ldc,
-                                      const platform::DeviceContext* context) {
+                                      platform::DeviceContext* context) {
   cblas_dgemm(CblasRowMajor,
               transA,
               transB,
@@ -78,42 +78,6 @@ void gemm<platform::CPUPlace, double>(const CBLAS_TRANSPOSE transA,
               beta,
               C,
               ldc);
-}
-
-template <>
-void axpy<platform::CPUPlace, float>(const int n,
-                                     const float alpha,
-                                     const float* x,
-                                     float* y,
-                                     const platform::DeviceContext* context) {
-  cblas_saxpy(n, alpha, x, 1, y, 1);
-}
-
-template <>
-void axpy<platform::CPUPlace, double>(const int n,
-                                      const double alpha,
-                                      const double* x,
-                                      double* y,
-                                      const platform::DeviceContext* context) {
-  cblas_daxpy(n, alpha, x, 1, y, 1);
-}
-
-template <>
-float dotProduct<platform::CPUPlace, float>(
-    const int n,
-    const float* x,
-    const float* y,
-    const platform::DeviceContext* context) {
-  return cblas_sdot(n, x, 1, y, 1);
-}
-
-template <>
-double dotProduct<platform::CPUPlace, double>(
-    const int n,
-    const double* x,
-    const double* y,
-    const platform::DeviceContext* context) {
-  return cblas_ddot(n, x, 1, y, 1);
 }
 
 }  // namespace math

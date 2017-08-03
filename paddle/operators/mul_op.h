@@ -37,20 +37,21 @@ public:
     int N = out_dim[1];
     int K = in0_dim[1];
 
-    paddle::operators::math::template gemm<Place, T>(CblasNoTrans,
-                                                     CblasNoTrans,
-                                                     M,
-                                                     N,
-                                                     K,
-                                                     1,
-                                                     input0->data<T>(),
-                                                     K,
-                                                     input1->data<T>(),
-                                                     N,
-                                                     0,
-                                                     output->data<T>(),
-                                                     N,
-                                                     &context.device_context());
+    paddle::operators::math::template gemm<Place, T>(
+        CblasNoTrans,
+        CblasNoTrans,
+        M,
+        N,
+        K,
+        1,
+        input0->data<T>(),
+        K,
+        input1->data<T>(),
+        N,
+        0,
+        output->data<T>(),
+        N,
+        &const_cast<platform::DeviceContext&>(context.device_context()));
   }
 };
 

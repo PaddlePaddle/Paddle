@@ -58,20 +58,7 @@ void gemm(const CBLAS_TRANSPOSE transA,
           const T beta,
           T* C,
           const int ldc,
-          const platform::DeviceContext* context);
-
-template <typename Place, typename T>
-void axpy(const int n,
-          const T alpha,
-          const T* x,
-          T* y,
-          const platform::DeviceContext* context);
-
-template <typename Place, typename T>
-T dotProduct(const int n,
-             const T* x,
-             const T* y,
-             const platform::DeviceContext* context);
+          platform::DeviceContext* context);
 
 }  // namespace math
 }  // namespace operators
