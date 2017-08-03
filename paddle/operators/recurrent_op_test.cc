@@ -11,7 +11,7 @@
   limitations under the License.
 */
 
-#include "paddle/operators/recurrent_network_op.h"
+#include "paddle/operators/recurrent_op.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -20,7 +20,6 @@
 #include "paddle/framework/operator.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/recurrent_op.h"
 
 namespace paddle {
 namespace operators {
