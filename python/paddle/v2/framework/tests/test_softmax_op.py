@@ -33,7 +33,6 @@ class TestSoftmaxGradOp(unittest.TestCase):
 
         batch_size = 3
         class_num = 5
-        # n = number of examples, D = |labels|
         # Initialize X and add 1e-2 for numerical stability
         Y = np.random.rand(batch_size, class_num).astype(np.float32)
         Y = Y + 1e-2
