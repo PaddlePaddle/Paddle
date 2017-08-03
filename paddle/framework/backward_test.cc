@@ -15,7 +15,7 @@
 #include "paddle/framework/backward.h"
 
 #include <gtest/gtest.h>
-#include "paddle/framework/net.h"
+#include "paddle/framework/net_op.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {

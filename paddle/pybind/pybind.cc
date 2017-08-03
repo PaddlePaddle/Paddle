@@ -17,10 +17,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/backward.h"
-#include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
+#include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/tensor_bind.h"

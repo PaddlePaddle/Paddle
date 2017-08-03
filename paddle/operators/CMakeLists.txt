@@ -41,6 +41,9 @@ function(op_library TARGET)
     endif()
 endfunction()
 
+cc_library(net_op SRCS net_op.cc DEPS op_registry)
+cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
+
 op_library(add_op SRCS add_op.cc add_op.cu)
 cc_test(add_op_test SRCS add_op_test.cc DEPS add_op)
 
@@ -59,11 +62,11 @@ op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
 
 op_library(fc_op
     SRCS fc_op.cc
-    DEPS mul_op rowwise_add_op sigmoid_op softmax_op net)
+    DEPS mul_op rowwise_add_op sigmoid_op softmax_op net_op)
 
 op_library(recurrent_network_op
     SRCS recurrent_network_op.cc
-    DEPS op_desc tensor net)
+    DEPS op_desc tensor net_op)
 cc_test(recurrent_network_op_test
     SRCS recurrent_network_op_test.cc
     DEPS recurrent_network_op mul_op add_op)

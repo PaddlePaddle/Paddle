@@ -18,7 +18,7 @@
 #include <cstring>
 #include <sstream>
 
-#include "paddle/framework/net.h"
+#include "paddle/framework/net_op.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/enforce.h"
 
