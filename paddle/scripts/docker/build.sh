@@ -69,7 +69,7 @@ cat <<EOF
 Installing ...
 ========================================
 EOF
-make install
+make install -j `nproc`
 pip install /usr/local/opt/paddle/share/wheels/*.whl
 paddle version
 
@@ -122,7 +122,7 @@ cat <<EOF
 Generating .deb package ...
 ========================================
 EOF
-cpack -D CPACK_GENERATOR='DEB' ..
+cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
 
 
 cat <<EOF
