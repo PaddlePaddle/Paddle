@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 
 LODTensor LODTensor::SliceShared(size_t level_begin, size_t level_end) const {
-  PADDLE_ENFORCE(has_lod(), "has no LOD info, can't be sliced.");
+  PADDLE_ENFORCE(HasLOD(), "has no LOD info, can't be sliced.");
   auto new_lod = details::SliceLOD(*lod_start_pos_, level_begin, level_end);
   // slice levels just need to update LOD info, each level will contains the
   // whole tensor_, so no need to modify tensor_.
@@ -29,15 +29,15 @@ LODTensor LODTensor::SliceShared(size_t level_begin, size_t level_end) const {
 
 LODTensor LODTensor::SliceShared(size_t level, size_t elem_begin,
                                  size_t elem_end) const {
-  PADDLE_ENFORCE(has_lod(), "has no LOD info, can't be sliced.");
-  PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
-                 Levels());
-  PADDLE_ENFORCE(elem_begin < Elements(level),
+  PADDLE_ENFORCE(HasLOD(), "has no LOD info, can't be sliced.");
+  PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
+                 NumLevels());
+  PADDLE_ENFORCE(elem_begin < NumElements(level),
                  "element begin [%d] out of range [%d]", elem_begin,
-                 Elements(level));
-  PADDLE_ENFORCE(elem_end < Elements(level) + 1,
+                 NumElements(level));
+  PADDLE_ENFORCE(elem_end < NumElements(level) + 1,
                  "element end [%d] out of range [%d]", elem_end,
-                 Elements(level));
+                 NumElements(level));
 
   auto new_lod = details::SliceLOD(*lod_start_pos_, level, elem_begin, elem_end,
                                    true /*tensor_shared*/);

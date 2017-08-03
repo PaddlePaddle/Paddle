@@ -33,23 +33,23 @@ namespace framework {
  */
 class LODTensor {
  public:
-// level_t save offsets of each unit.
+// Level save offsets of each unit.
 #ifdef PADDLE_ONLY_CPU
-  using level_t = std::vector<size_t>;
+  using Level = std::vector<size_t>;
 #else
-  using level_t = thrust::device_vector<size_t>;
+  using Level = thrust::device_vector<size_t>;
 #endif
   // LOD stores offsets of each level of units, the largest units level first,
-  // then the smaller units level. Each level_t stores the offsets of units in
+  // then the smaller units level. Each Level stores the offsets of units in
   // Tesor.
-  typedef std::vector<level_t> lod_t;
+  typedef std::vector<Level> LOD;
 
   LODTensor() {}
-  LODTensor(std::shared_ptr<Tensor> tensor, std::shared_ptr<lod_t> lod) {
+  LODTensor(std::shared_ptr<Tensor> tensor, std::shared_ptr<LOD> lod) {
     Reset(tensor, lod);
   }
 
-  void Reset(std::shared_ptr<Tensor> tensor, std::shared_ptr<lod_t> lod) {
+  void Reset(std::shared_ptr<Tensor> tensor, std::shared_ptr<LOD> lod) {
     tensor_ = tensor;
     lod_start_pos_ = lod;
   }
@@ -58,27 +58,27 @@ class LODTensor {
    * Get a element from LOD.
    */
   size_t lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
-                   Levels());
-    PADDLE_ENFORCE(elem < Elements(level),
+    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
+                   NumLevels());
+    PADDLE_ENFORCE(elem < NumElements(level),
                    "element begin [%d] out of range [%d]", elem,
-                   Elements(level));
-    return lod_start_pos_->at(level)[elem];
+                   NumElements(level));
+    return (*lod_start_pos_)[level][elem];
   }
 
   /*
    * Number of LODTensor's levels, each level has units of data, for example,
    * in the sentence's view, article, paragraph, sentence are 3 levels.
    */
-  size_t Levels() const {
+  size_t NumLevels() const {
     return lod_start_pos_ ? lod_start_pos_->size() : 0UL;
   }
   /*
    * Number of elements in a level.
    */
-  size_t Elements(size_t level = 0) const {
-    PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
-                   Levels());
+  size_t NumElements(size_t level = 0) const {
+    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
+                   NumLevels());
     // the last offset is the end of last element
     return lod_start_pos_->at(level).size() - 1;
   }
@@ -121,64 +121,25 @@ class LODTensor {
    * Copy other's lod_start_pos_'s content, free to mutate.
    */
   void CopyLOD(const LODTensor &other) {
-    lod_start_pos_ = std::make_shared<lod_t>(*other.lod_start_pos_);
+    lod_start_pos_ = std::make_shared<LOD>(*other.lod_start_pos_);
   }
   /*
    * Determine whether LODTensor has a valid LOD info.
    */
-  bool has_lod() const { return lod_start_pos_.get(); }
-  std::shared_ptr<lod_t> const lod() const { return lod_start_pos_; }
+  bool HasLOD() const { return bool(lod_start_pos_); }
+  std::shared_ptr<const LOD> lod() const {
+    return std::const_pointer_cast<const LOD>(lod_start_pos_);
+  }
 
   std::shared_ptr<Tensor> &tensor() const { return tensor_; }
   Tensor *raw_tensor() { return tensor_.get(); }
 
  private:
-  mutable std::shared_ptr<lod_t> lod_start_pos_;
+  mutable std::shared_ptr<LOD> lod_start_pos_;
   mutable std::shared_ptr<Tensor> tensor_;
 };
 
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/framework/details/lod_tensor.h"
-
-namespace paddle {
-namespace framework {
-template <typename T>
-LODTensor LODTensor::SliceCopied(size_t level_begin, size_t level_end,
-                                 const platform::Place &dst_place) const {
-  PADDLE_ENFORCE(has_lod(), "has no LOD info, can't be sliced.");
-  auto new_lod = details::SliceLOD(*lod_start_pos_, level_begin, level_end);
-  auto new_tensor = std::make_shared<Tensor>();
-  new_tensor->CopyFrom<T>(*tensor_, dst_place);
-
-  return LODTensor(new_tensor, new_lod);
-}
-
-template <typename T>
-LODTensor LODTensor::SliceCopied(size_t level, size_t elem_begin,
-                                 size_t elem_end,
-                                 const platform::Place &dst_place) const {
-  PADDLE_ENFORCE(has_lod(), "has no LOD info, can't be sliced.");
-  PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
-                 Levels());
-  PADDLE_ENFORCE(elem_begin < Elements(level),
-                 "element begin [%d] out of range [%d]", elem_begin,
-                 Elements(level));
-  PADDLE_ENFORCE(elem_end < Elements(level) + 1,
-                 "element end [%d] out of range [%d]", elem_end,
-                 Elements(level));
-
-  auto new_lod = details::SliceLOD(*lod_start_pos_, level, elem_begin, elem_end,
-                                   false /*tensor_shared*/);
-
-  auto start_idx = new_lod->front().front();
-  auto end_idx = new_lod->front().back() - 1 /*the next element's start*/;
-  auto sliced_tensor = tensor_->Slice<T>(start_idx, end_idx);
-  auto new_tensor = std::make_shared<Tensor>();
-  new_tensor->CopyFrom<T>(sliced_tensor, dst_place);
-
-  return LODTensor(new_tensor, new_lod);
-}
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/framework/lod_tensor_impl.h"
