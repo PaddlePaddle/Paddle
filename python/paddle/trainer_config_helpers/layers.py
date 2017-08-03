@@ -129,6 +129,7 @@ __all__ = [
     'prelu_layer',
     'gated_unit_layer',
     'crop_layer',
+    'clip_layer',
     'slice_projection',
 ]
 
@@ -223,6 +224,7 @@ class LayerType(object):
 
     PRELU = 'prelu'
     CROP_LAYER = 'crop'
+    CLIP_LAYER = 'clip'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6084,3 +6086,36 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
         layer_type=LayerType.CROP_LAYER,
         parents=input,
         size=l.config.size)
+
+
+@wrap_name_default("clip")
+def clip_layer(input, min, max, name=None):
+    """
+    A layer for clipping the input value by the threshold.
+
+    .. math::
+
+        out[i] = \min\left(\max\left(in[i],p_{1}\right),p_{2}\right)
+
+    .. code-block:: python
+
+        clip = clip_layer(input=input_layer, min=-10, max=10)
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput.
+    :param min: The lower threshold for clipping.
+    :type min: double
+    :param max: The upper threshold for clipping.
+    :type max: double
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.CLIP_LAYER,
+        inputs=[input.name],
+        min=min,
+        max=max)
+    return LayerOutput(
+        name, LayerType.CLIP_LAYER, parents=[input], size=input.size)
