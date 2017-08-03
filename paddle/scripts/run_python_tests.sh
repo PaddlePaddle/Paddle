@@ -18,17 +18,12 @@ pushd `dirname $0` > /dev/null
 SCRIPTPATH=$PWD
 popd > /dev/null
 
-USE_VIRTUALENV_FOR_TEST=$1; shift
-PYTHON=$1; shift
-
-if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
-   rm -rf .test_env
-   virtualenv .test_env
-   unset PYTHONHOME
-   unset PYTHONPATH
-   source .test_env/bin/activate
-   PYTHON=python
-fi
+rm -rf .test_env
+virtualenv .test_env
+unset PYTHONHOME
+unset PYTHONPATH
+source .test_env/bin/activate
+PYTHON=python
 
 $PYTHON -m pip install $SCRIPTPATH/../dist/*.whl
 
@@ -49,7 +44,5 @@ do
   fi
 done
 
-if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
-    deactivate
-    rm -rf .test_env
-fi
+deactivate
+rm -rf .test_env
