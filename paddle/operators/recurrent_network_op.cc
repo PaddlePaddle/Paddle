@@ -18,8 +18,8 @@
 #include <cstring>
 #include <sstream>
 
-#include "paddle/framework/net_op.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {

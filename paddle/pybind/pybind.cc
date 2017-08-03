@@ -30,6 +30,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 namespace pd = paddle::framework;
+namespace ops = paddle::operators;
 
 USE_OP(add_two);
 USE_OP(onehot_cross_entropy);
@@ -125,8 +126,8 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
       .def("get_net",
-           [](pd::Variable& self) -> pd::NetOp* {
-             return self.GetMutable<pd::NetOp>();
+           [](pd::Variable& self) -> ops::NetOp* {
+             return self.GetMutable<ops::NetOp>();
            },
            py::return_value_policy::reference);
 
@@ -206,22 +207,23 @@ All parameter, weight, gradient are variables in Paddle.
 
   ExposeOperator(operator_base);
 
-  py::class_<pd::NetOp, std::shared_ptr<pd::NetOp>> net(m, "Net");
+  py::class_<ops::NetOp, std::shared_ptr<ops::NetOp>> net(m, "Net");
 
   net.def_static("create",
-                 []() -> std::shared_ptr<pd::NetOp> {
-                   auto retv = std::make_shared<pd::NetOp>();
+                 []() -> std::shared_ptr<ops::NetOp> {
+                   auto retv = std::make_shared<ops::NetOp>();
                    retv->type_ = "plain_net";
                    return retv;
                  })
-      .def("add_op", &pd::NetOp::AddOp)
-      .def("add_op",
-           [](pd::NetOp& self, const std::shared_ptr<pd::NetOp>& net) -> void {
-             self.AddOp(std::static_pointer_cast<pd::OperatorBase>(net));
-           })
-      .def("complete_add_op", &pd::NetOp::CompleteAddOp)
+      .def("add_op", &ops::NetOp::AddOp)
+      .def(
+          "add_op",
+          [](ops::NetOp& self, const std::shared_ptr<ops::NetOp>& net) -> void {
+            self.AddOp(std::static_pointer_cast<pd::OperatorBase>(net));
+          })
+      .def("complete_add_op", &ops::NetOp::CompleteAddOp)
       .def("complete_add_op",
-           [](std::shared_ptr<pd::NetOp>& self) { self->CompleteAddOp(); });
+           [](std::shared_ptr<ops::NetOp>& self) { self->CompleteAddOp(); });
   ExposeOperator(net);
 
   m.def("unique_integer", UniqueIntegerGenerator);

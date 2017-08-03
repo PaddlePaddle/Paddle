@@ -24,6 +24,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
 /**
  * @brief Network is also a type of Operator
  *
@@ -38,13 +39,13 @@ namespace operators {
  * This is the base class of network, all the networks should implement the APIs
  * it defines.
  */
-class NetOp : public OperatorBase {
+class NetOp : public framework::OperatorBase {
 public:
   /**
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  void InferShape(const Scope& scope) const override {
+  void InferShape(const framework::Scope& scope) const override {
     for (auto& op : ops_) {
       op->InferShape(scope);
     }
@@ -57,7 +58,7 @@ public:
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  void Run(const Scope& scope,
+  void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
