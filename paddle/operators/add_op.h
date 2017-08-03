@@ -32,7 +32,7 @@ public:
     auto Y = EigenVector<T>::Flatten(*input1);
     auto Z = EigenVector<T>::Flatten(*output);
 
-    auto place = *context.GetEigenDevice<Place>();
+    auto place = context.GetEigenDevice<Place>();
 
     Z.device(place) = X + Y;
   }

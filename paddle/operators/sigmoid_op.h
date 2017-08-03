@@ -29,7 +29,7 @@ public:
 
     auto X = EigenVector<T>::Flatten(*input);
     auto Y = EigenVector<T>::Flatten(*output);
-    auto place = *context.GetEigenDevice<Place>();
+    auto place = context.GetEigenDevice<Place>();
 
     Y.device(place) = 1.0 / (1.0 + (-1.0 * X).exp());
   }

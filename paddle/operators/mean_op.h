@@ -29,7 +29,7 @@ public:
 
     auto X = EigenVector<T>::Flatten(*input);
     auto y = EigenScalar<T>::From(*output);
-    auto place = *context.GetEigenDevice<Place>();
+    auto place = context.GetEigenDevice<Place>();
 
     y.device(place) = X.mean();
   }

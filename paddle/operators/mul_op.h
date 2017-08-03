@@ -35,7 +35,7 @@ public:
     auto X = EigenMatrix<T>::From(*input0);
     auto Y = EigenMatrix<T>::From(*input1);
     auto Z = EigenMatrix<T>::From(*output);
-    auto place = *context.GetEigenDevice<Place>();
+    auto place = context.GetEigenDevice<Place>();
 
     Z.device(place) = X.contract(Y, dim_pair);
   }

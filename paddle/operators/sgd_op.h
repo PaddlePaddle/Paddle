@@ -32,7 +32,7 @@ public:
     auto p = EigenVector<T>::Flatten(*param);
     auto g = EigenVector<T>::Flatten(*grad);
     auto o = EigenVector<T>::Flatten(*param_out);
-    auto place = *ctx.GetEigenDevice<Place>();
+    auto place = ctx.GetEigenDevice<Place>();
 
     o.device(place) = p - lr * g;
   }
