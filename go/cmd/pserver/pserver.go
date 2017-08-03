@@ -60,12 +60,12 @@ func main() {
 		idx, err = e.Register(*port)
 		candy.Must(err)
 
-		cp, err = pserver.NewCheckpointFromFile(*checkpointPath, idx, e)
+		cp, err = pserver.LoadCheckpoint(e, idx)
 		if err != nil {
 			if err == pserver.ErrCheckpointNotFound {
 				log.Infof("Could not find the pserver checkpoint.")
 			} else {
-				log.Errorf("Fetch checkpoint failed, %s", err)
+				panic(err)
 			}
 		}
 	}
