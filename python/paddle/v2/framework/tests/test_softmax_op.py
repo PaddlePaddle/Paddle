@@ -50,31 +50,37 @@ class TestSoftmaxGradOp(unittest.TestCase):
         expected = label_softmax_grad(Y, dY)
 
         scope = core.Scope()
-        place = core.CPUPlace()
-        y = scope.new_var("Y")
-        y_tensor = y.get_tensor()
-        y_tensor.set_dims([batch_size, class_num])
-        y_tensor.alloc_float(place)
-        y_tensor.set(Y, place)
+        places = []
+        places.append(core.CPUPlace())
+        if core.is_compile_gpu():
+            places.append(core.GPUPlace(0))
 
-        dy = scope.new_var("Y@GRAD")
-        dy_tensor = dy.get_tensor()
-        dy_tensor.set_dims([batch_size, class_num])
-        dy_tensor.alloc_float(place)
-        dy_tensor.set(dY, place)
+        for place in places:
+            place = core.CPUPlace()
+            y = scope.new_var("Y")
+            y_tensor = y.get_tensor()
+            y_tensor.set_dims([batch_size, class_num])
+            y_tensor.alloc_float(place)
+            y_tensor.set(Y, place)
 
-        x = scope.new_var("X")
-        dx = scope.new_var("X@GRAD")
+            dy = scope.new_var("Y@GRAD")
+            dy_tensor = dy.get_tensor()
+            dy_tensor.set_dims([batch_size, class_num])
+            dy_tensor.alloc_float(place)
+            dy_tensor.set(dY, place)
 
-        tensor = scope.find_var("X@GRAD").get_tensor()
-        backward_op.infer_shape(scope)
-        self.assertEqual([batch_size, class_num], tensor.shape())
+            x = scope.new_var("X")
+            dx = scope.new_var("X@GRAD")
 
-        ctx = core.DeviceContext.create(place)
-        backward_op.run(scope, ctx)
-        actual = np.array(tensor)
+            tensor = scope.find_var("X@GRAD").get_tensor()
+            backward_op.infer_shape(scope)
+            self.assertEqual([batch_size, class_num], tensor.shape())
 
-        np.testing.assert_almost_equal(actual, expected, decimal=3)
+            ctx = core.DeviceContext.create(place)
+            backward_op.run(scope, ctx)
+            actual = np.array(tensor)
+
+            np.testing.assert_almost_equal(actual, expected, decimal=3)
 
 
 if __name__ == '__main__':

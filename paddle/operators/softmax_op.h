@@ -82,13 +82,13 @@ public:
     auto Y_eigen = EigenMatrix<T>::From(*Y);
     auto dY_eigen = EigenMatrix<T>::From(*dY);
     auto dX_eigen = EigenMatrix<T>::From(*dX);
-    auto place = context.GetEigenDevice<Place>()
+    auto place = context.GetEigenDevice<Place>();
 
-                     auto dot = (Y_eigen * dY_eigen)
-                                    .sum(along_class)
-                                    .eval()
-                                    .reshape(batch_by_one)
-                                    .broadcast(one_by_class);
+    auto dot = (Y_eigen * dY_eigen)
+                   .sum(along_class)
+                   .eval()
+                   .reshape(batch_by_one)
+                   .broadcast(one_by_class);
     dX_eigen.device(place) = (dY_eigen - dot) * Y_eigen;
   }
 };
