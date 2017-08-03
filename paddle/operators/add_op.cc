@@ -50,10 +50,6 @@ The equation is: Out = X + Y
 class AddOpGrad : public OperatorWithKernel {
 protected:
   void InferShape(const InferShapeContext &ctx) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "AddOpGrad";
-    return "";
-  }
 };
 
 }  // namespace operators

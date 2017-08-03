@@ -7,17 +7,19 @@ import paddle.v2.framework.create_op_creation_methods as creation
 class TestFc(unittest.TestCase):
     def test_fc(self):
         scope = core.Scope()
+        place = core.CPUPlace()
         x = scope.new_var("X")
+
         x_tensor = x.get_tensor()
         x_tensor.set_dims([1000, 784])
-        x_tensor.alloc_float()
+        x_tensor.alloc_float(place)
 
         w = scope.new_var("W")
         w_tensor = w.get_tensor()
         w_tensor.set_dims([784, 100])
-        w_tensor.alloc_float()
+        w_tensor.alloc_float(place)
 
-        w_tensor.set(numpy.random.random((784, 100)).astype("float32"))
+        w_tensor.set(numpy.random.random((784, 100)).astype("float32"), place)
 
         # Set a real numpy array here.
         # x_tensor.set(numpy.array([]))
@@ -32,7 +34,7 @@ class TestFc(unittest.TestCase):
         op.infer_shape(scope)
         self.assertEqual([1000, 100], tensor.shape())
 
-        ctx = core.DeviceContext.cpu_context()
+        ctx = core.DeviceContext.create(place)
 
         op.run(scope, ctx)
 

@@ -298,6 +298,11 @@ message DetectionOutputConfig {
   optional uint32 width = 9 [default = 1];
 }
 
+message ClipConfig {
+  required double min = 1;
+  required double max = 2;
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -318,6 +323,7 @@ message LayerInputConfig {
   optional RowConvConfig row_conv_conf = 15;
   optional MultiBoxLossConfig multibox_loss_conf = 16;
   optional DetectionOutputConfig detection_output_conf = 17;
+  optional ClipConfig clip_conf = 18;
 }
 
 message LayerConfig {

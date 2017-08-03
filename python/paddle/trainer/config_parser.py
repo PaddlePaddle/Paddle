@@ -2198,6 +2198,20 @@ class RowConvLayer(LayerBase):
         self.create_input_parameter(0, psize, dims)
 
 
+@config_layer('clip')
+class ClipLayer(LayerBase):
+    def __init__(self, name, inputs, min, max, **xargs):
+        super(ClipLayer, self).__init__(name, 'clip', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ClipLayer must have one and only one input.')
+        config_assert(min < max, 'min must be less than max.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.config.inputs[0].clip_conf.min = min
+        self.config.inputs[0].clip_conf.max = max
+
+
 # key: cost type
 # value: cost class
 g_cost_map = {}
@@ -2771,6 +2785,16 @@ class SumToOneNormLayer(LayerBase):
             len(self.inputs) == 1, 'SumToOneNormLayer must have 1 input')
         input_layer0 = self.get_input_layer(0)
         self.set_layer_size(input_layer0.size)
+
+
+@config_layer('row_l2_norm')
+class RowL2NormLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(RowL2NormLayer, self).__init__(
+            name, 'row_l2_norm', 0, inputs=inputs, **xargs)
+        config_assert(len(self.inputs) == 1, 'RowL2NormLayer must have 1 input')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
 
 
 @config_layer('cos_vm')
