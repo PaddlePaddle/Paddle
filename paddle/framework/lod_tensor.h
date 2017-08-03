@@ -107,7 +107,6 @@ class LODTensor {
    * Slice of elements of a level, [elem_begin: elem_end], with tensor shared.
    * @note: low performance in slice lod_start_pos_.
    */
-  template <typename T>
   LODTensor SliceShared(size_t level, size_t elem_begin, size_t elem_end) const;
 
   /*
@@ -138,32 +137,13 @@ class LODTensor {
   mutable std::shared_ptr<Tensor> tensor_;
 };
 
-namespace details {
+}  // namespace framework
+}  // namespace paddle
 
-/*
- * Slice levels from LOD.
- *
- * @lod: LOD to slice.
- * @level_begin: level to begin slice.
- * @level_end: level to end slice.
- */
-std::shared_ptr<LODTensor::lod_t> SliceLOD(const LODTensor::lod_t &lod,
-                                           size_t level_begin,
-                                           size_t level_end);
+#include "paddle/framework/details/lod_tensor.h"
 
-/*
- * Slice elements from a level of LOD.
- *
- * @lod: LOD to slice.
- * @level: which level to slice.
- * @elem_begin: element's index to begin slice.
- * @elem_end: element's index to end slice.
- */
-std::shared_ptr<LODTensor::lod_t> SliceLOD(const LODTensor::lod_t &lod,
-                                           size_t level, size_t elem_begin,
-                                           size_t elem_end, bool tensor_shared);
-}  // namespace details
-
+namespace paddle {
+namespace framework {
 template <typename T>
 LODTensor LODTensor::SliceCopied(size_t level_begin, size_t level_end,
                                  const platform::Place &dst_place) const {
@@ -173,27 +153,6 @@ LODTensor LODTensor::SliceCopied(size_t level_begin, size_t level_end,
   new_tensor->CopyFrom<T>(*tensor_, dst_place);
 
   return LODTensor(new_tensor, new_lod);
-}
-
-template <typename T>
-LODTensor LODTensor::SliceShared(size_t level, size_t elem_begin,
-                                 size_t elem_end) const {
-  PADDLE_ENFORCE(has_lod(), "has no LOD info, can't be sliced.");
-  PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
-                 Levels());
-  PADDLE_ENFORCE(elem_begin < Elements(level),
-                 "element begin [%d] out of range [%d]", elem_begin,
-                 Elements(level));
-  PADDLE_ENFORCE(elem_end < Elements(level) + 1,
-                 "element end [%d] out of range [%d]", elem_end,
-                 Elements(level));
-
-  auto new_lod = details::SliceLOD(*lod_start_pos_, level, elem_begin, elem_end,
-                                   true /*tensor_shared*/);
-
-  // slice elements just need to update LOD info, because offsets are not
-  // changed, so the original tensor_ can be reused.
-  return LODTensor(tensor_, new_lod);
 }
 
 template <typename T>
@@ -217,10 +176,9 @@ LODTensor LODTensor::SliceCopied(size_t level, size_t elem_begin,
   auto end_idx = new_lod->front().back() - 1 /*the next element's start*/;
   auto sliced_tensor = tensor_->Slice<T>(start_idx, end_idx);
   auto new_tensor = std::make_shared<Tensor>();
-  new_tensor->template CopyFrom<T>(sliced_tensor, dst_place);
+  new_tensor->CopyFrom<T>(sliced_tensor, dst_place);
 
   return LODTensor(new_tensor, new_lod);
 }
-
 }  // namespace framework
 }  // namespace paddle

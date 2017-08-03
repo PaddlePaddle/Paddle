@@ -97,7 +97,7 @@ TEST_F(LODTensorTester, SliceCopied_Level) {
 
 TEST_F(LODTensorTester, SliceShared_Element) {
   size_t level = 0;
-  auto new_lod_tensor = lod_tensor->SliceShared<float>(level, 0, 2);
+  auto new_lod_tensor = lod_tensor->SliceShared(level, 0, 2);
   ASSERT_EQ(new_lod_tensor.Levels(), 3UL);
   ASSERT_EQ(new_lod_tensor.Elements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.Elements(1), 4UL);
@@ -105,7 +105,7 @@ TEST_F(LODTensorTester, SliceShared_Element) {
   ASSERT_EQ(new_lod_tensor.raw_tensor(), lod_tensor->raw_tensor());
 
   level = 1;
-  new_lod_tensor = lod_tensor->SliceShared<float>(level, 0, 2);
+  new_lod_tensor = lod_tensor->SliceShared(level, 0, 2);
   ASSERT_EQ(new_lod_tensor.Levels(), 2UL);
   ASSERT_EQ(new_lod_tensor.Elements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.Elements(1), 4UL);
@@ -128,11 +128,21 @@ TEST_F(LODTensorTester, SliceCopied_Element) {
   ASSERT_EQ(new_lod_tensor.Elements(1), 4UL);
   ASSERT_NE(new_lod_tensor.raw_tensor(), lod_tensor->raw_tensor());
 
+  level = 1;
+  // LOD is
+  //    0 5 10
+  //    0 2 5 7 10
   new_lod_tensor = lod_tensor->SliceCopied<float>(level, 1, 3, place);
+  ASSERT_EQ(new_lod_tensor.Levels(), 2UL);
+  ASSERT_EQ(new_lod_tensor.Elements(0), 2UL);
+  ASSERT_EQ(new_lod_tensor.Elements(1), 4UL);
+
   ASSERT_EQ(new_lod_tensor.lod_element(0, 0), 0UL);
   ASSERT_EQ(new_lod_tensor.lod_element(0, 1), 5UL);
   ASSERT_EQ(new_lod_tensor.lod_element(1, 0), 0UL);
-  ASSERT_EQ(new_lod_tensor.lod_element(1, 1), 5UL);
+  ASSERT_EQ(new_lod_tensor.lod_element(1, 1), 2UL);
+  ASSERT_EQ(new_lod_tensor.lod_element(1, 2), 5UL);
+  ASSERT_EQ(new_lod_tensor.lod_element(1, 3), 7UL);
 
   // TODO(superjom) compare the content of these tensors
 }
