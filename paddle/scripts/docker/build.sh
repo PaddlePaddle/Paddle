@@ -69,7 +69,7 @@ cat <<EOF
 Installing ...
 ========================================
 EOF
-make install
+make install -j `nproc`
 pip install /usr/local/opt/paddle/share/wheels/*.whl
 paddle version
 
@@ -122,7 +122,7 @@ cat <<EOF
 Generating .deb package ...
 ========================================
 EOF
-cpack -D CPACK_GENERATOR='DEB' ..
+cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
 
 
 cat <<EOF
@@ -148,7 +148,7 @@ cat >> /paddle/build/Dockerfile <<EOF
 ADD *.deb /
 # run paddle version to install python packages first
 RUN apt-get update &&\
-    apt-get install -y python-pip && pip install -U pip && \
+    apt-get install -y wget python-pip && pip install -U pip && \
     dpkg -i /*.deb ; apt-get install -f -y && \
     apt-get clean -y && \
     rm -f /*.deb && \

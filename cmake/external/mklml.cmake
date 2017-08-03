@@ -16,19 +16,23 @@ IF(NOT ${WITH_MKLML})
   return()
 ENDIF(NOT ${WITH_MKLML})
 
+IF(WIN32 OR APPLE)
+    MESSAGE(WARNING 
+        "Windows or Mac is not supported with MKLML in Paddle yet."
+        "Force WITH_MKLML=OFF")
+    SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in Windows and MacOS" FORCE)
+    return()
+ENDIF()
+
 INCLUDE(ExternalProject)
 
 SET(MKLML_PROJECT       "extern_mklml")
-SET(MKLML_VER           "mklml_lnx_2018.0.20170425")
+SET(MKLML_VER           "mklml_lnx_2018.0.20170720")
 SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.9/${MKLML_VER}.tgz")
 SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
 SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
-SET(MKLML_DST_DIR       "opt/paddle/third_party/mklml")
-SET(MKLML_INSTALL_ROOT  "${CMAKE_INSTALL_PREFIX}")
-IF(NOT "$ENV{HOME}" STREQUAL "/root")
-    SET(MKLML_INSTALL_ROOT  "$ENV{HOME}")
-ENDIF()
-
+SET(MKLML_DST_DIR       "mklml")
+SET(MKLML_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
 SET(MKLML_INSTALL_DIR   ${MKLML_INSTALL_ROOT}/${MKLML_DST_DIR})
 SET(MKLML_ROOT          ${MKLML_INSTALL_DIR}/${MKLML_VER})
 SET(MKLML_INC_DIR       ${MKLML_ROOT}/include)
