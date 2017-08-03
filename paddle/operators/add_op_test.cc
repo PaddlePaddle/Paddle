@@ -15,6 +15,9 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #define private public
 #include <paddle/framework/op_registry.h>
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 USE_OP(add_two);
 // USE_OP(add_two_grad);
 

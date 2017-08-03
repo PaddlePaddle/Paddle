@@ -11,9 +11,9 @@ function(CheckCompilerCXX11Flag)
         endif()
         # TODO(qijun) gcc 4.9 or later versions raise SEGV due to the optimization problem.
         # Use Debug mode instead for now.
-        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9) 
-            set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
-        endif()
+        # if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9) 
+        #    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
+        # endif()
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
         # Apple Clang is a different compiler than upstream Clang which havs different version numbers.

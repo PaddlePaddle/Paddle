@@ -26,6 +26,7 @@ class OpTestMeta(type):
 
             scope = core.Scope()
             kwargs = dict()
+
             places = []
             places.append(core.CPUPlace())
             if core.is_compile_gpu():

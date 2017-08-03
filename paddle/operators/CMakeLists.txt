@@ -46,6 +46,7 @@ cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 
 op_library(add_op SRCS add_op.cc add_op.cu)
 cc_test(add_op_test SRCS add_op_test.cc DEPS add_op)
+nv_test(add_op_kernel_test SRCS add_op_test.cu DEPS add_op)
 
 op_library(mean_op SRCS mean_op.cc mean_op.cu)
 cc_test(mean_op_test SRCS mean_op_test.cc DEPS mean_op)
