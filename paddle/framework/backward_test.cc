@@ -358,7 +358,6 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
             3UL       /* external input number */
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
-                //- 1UL /*ignoreGradient varable number*/
                 + 2U /* internal variable number*/);
   EXPECT_EQ(grad_fc.outputs_.size(), 2UL       /* input number of mul*/
                                          + 2UL /* input number of rowwise_add */
