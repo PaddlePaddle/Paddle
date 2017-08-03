@@ -26,8 +26,8 @@ template <typename Place, typename T>
 class SoftmaxKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>(0);
-    auto output = context.Output<Tensor>(0);
+    auto input = context.Input<Tensor>("X");
+    auto output = context.Output<Tensor>("Y");
     output->mutable_data<T>(context.GetPlace());
 
     auto logits = EigenMatrix<T>::From(*input);

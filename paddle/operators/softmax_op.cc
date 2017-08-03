@@ -20,12 +20,13 @@ namespace operators {
 class SoftmaxOp : public OperatorWithKernel {
 protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 1, "Only one input is need for softmax");
-    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims().size() == 2,
+    PADDLE_ENFORCE(ctx.InputSize() == 1UL,
+                   "Only one input is need for softmax");
+    PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
                    "The input of softmax op must be matrix");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1,
+    PADDLE_ENFORCE(ctx.OutputSize() == 1UL,
                    "Only one output is need for softmax");
-    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+    ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -42,11 +43,11 @@ public:
 class SoftmaxOpGrad : public OperatorWithKernel {
 protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 3,
+    PADDLE_ENFORCE(ctx.InputSize() == 3UL,
                    "Input of SoftmaxOpGrad should be 3, X, Y, YG");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1,
+    PADDLE_ENFORCE(ctx.OutputSize() == 1UL,
                    "Output of SoftmaxOpGrad should be 1");
-    PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(0) should not be null");
+    PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx.InputVar(GRAD_VAR_NAME("Y")) != nullptr,
                    "Input(Y@GRAD) should not be null");
     PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
