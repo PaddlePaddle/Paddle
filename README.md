@@ -72,7 +72,7 @@ We provide [English](http://doc.paddlepaddle.org/develop/doc/) and
 
 - [Deep Learning 101](http://book.paddlepaddle.org/index.html)
 
-  You might want to start from the this online interactive book that can run in Jupyter Notebook.
+  You might want to start from this online interactive book that can run in Jupyter Notebook.
 
 - [Distributed Training](http://doc.paddlepaddle.org/develop/doc/howto/usage/cluster/cluster_train_en.html)
 
