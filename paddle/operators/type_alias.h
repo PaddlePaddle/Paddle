@@ -51,6 +51,7 @@ using CPUPlace = platform::CPUPlace;
 using GPUPlace = platform::GPUPlace;
 using NetOp = framework::NetOp;
 using OpRegistry = framework::OpRegistry;
+using OperatorBase = framework::OperatorBase;
 }  // namespace operators
 }  // namespace paddle
 
