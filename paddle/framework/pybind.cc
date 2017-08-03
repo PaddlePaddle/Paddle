@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,14 @@ limitations under the License. */
 #include <fstream>
 #include <vector>
 
+#include "paddle/framework/backward.h"
 #include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor_bind.h"
+#include "paddle/platform/enforce.h"
+#include "paddle/platform/place.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -43,6 +46,10 @@ template <typename ClassType>
 void ExposeOperator(ClassType &m) {
   m.def("infer_shape", &ClassType::type::InferShape)
       .def("run", &ClassType::type::Run)
+      .def("type",
+           [](const typename ClassType::type &op) -> std::string {
+             return op.type_;
+           })
       .def("outputs",
            [](const typename ClassType::type &op) -> std::vector<std::string> {
              return op.outputs_;
@@ -53,6 +60,14 @@ void ExposeOperator(ClassType &m) {
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
   return generator.fetch_add(1);
+}
+
+bool IsCompileGPU() {
+#ifdef PADDLE_ONLY_CPU
+  return false;
+#else
+  return true;
+#endif
 }
 
 PYBIND11_PLUGIN(core) {
@@ -68,16 +83,29 @@ PYBIND11_PLUGIN(core) {
              self.Resize(make_ddim(dim));
            })
       .def("alloc_float",
-           [](Tensor &self) {
-             self.mutable_data<float>(paddle::platform::CPUPlace());
+           [](pd::Tensor &self, paddle::platform::GPUPlace &place) {
+             self.mutable_data<float>(place);
+           })
+      .def("alloc_float",
+           [](pd::Tensor &self, paddle::platform::CPUPlace &place) {
+             self.mutable_data<float>(place);
            })
       .def("alloc_int",
-           [](Tensor &self) {
-             self.mutable_data<int>(paddle::platform::CPUPlace());
+           [](pd::Tensor &self, paddle::platform::CPUPlace &place) {
+             self.mutable_data<int>(place);
            })
-      .def("set", PyTensorSetFromArray<float>)
-      .def("set", PyTensorSetFromArray<int>)
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); });
+      .def("alloc_int",
+           [](pd::Tensor &self, paddle::platform::GPUPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("set", paddle::pybind::PyCPUTensorSetFromArray<float>)
+      .def("set", paddle::pybind::PyCPUTensorSetFromArray<int>)
+#ifndef PADDLE_ONLY_CPU
+      .def("set", paddle::pybind::PyCUDATensorSetFromArray<float>)
+      .def("set", paddle::pybind::PyCUDATensorSetFromArray<int>)
+#endif
+      .def("shape",
+           [](pd::Tensor &self) { return pd::vectorize(self.dims()); });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
@@ -124,13 +152,29 @@ All parameter, weight, gradient are variables in Paddle.
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
-      .def("empty", OperatorBase::EMPTY_VAR_NAME)
-      .def("temp", OperatorBase::TMP_VAR_NAME);
-
+      .def("empty", pd::OperatorBase::EMPTY_VAR_NAME)
+      .def("temp", pd::OperatorBase::TMP_VAR_NAME);
+  // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
-      .def_static("cpu_context", []() -> paddle::platform::DeviceContext * {
-        return new paddle::platform::CPUDeviceContext();
-      });
+      .def_static("create",
+                  [](paddle::platform::CPUPlace& place)
+                      -> paddle::platform::DeviceContext* {
+                    return new paddle::platform::CPUDeviceContext();
+                  })
+      .def_static("create",
+                  [](paddle::platform::GPUPlace& place)
+                      -> paddle::platform::DeviceContext* {
+#ifdef PADDLE_ONLY_CPU
+                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
+#else
+                    return new paddle::platform::CUDADeviceContext(place);
+#endif
+                  });
+  // clang-format on
+
+  py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
+
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace").def(py::init<>());
 
   py::class_<OperatorBase, std::shared_ptr<OperatorBase>> operator_base(
       m, "Operator");
@@ -144,6 +188,13 @@ All parameter, weight, gradient are variables in Paddle.
                    desc.InitializationErrorString());
     return OpRegistry::CreateOp(desc);
   });
+
+  operator_base.def("backward",
+                    [](const pd::OperatorBase &forwardOp,
+                       const std::unordered_set<std::string> &no_grad_vars) {
+                      return pd::Backward(forwardOp, no_grad_vars);
+                    });
+
   ExposeOperator(operator_base);
 
   py::class_<NetOp, std::shared_ptr<NetOp>> net(m, "Net");
@@ -165,6 +216,8 @@ All parameter, weight, gradient are variables in Paddle.
   ExposeOperator(net);
 
   m.def("unique_integer", UniqueIntegerGenerator);
+
+  m.def("is_compile_gpu", IsCompileGPU);
 
   return m.ptr();
 }
