@@ -6112,7 +6112,8 @@ def clip_layer(input, min, max, name=None):
     :type min: double
     :param max: The upper threshold for clipping.
     :type max: double
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     Layer(
         name=name,
@@ -6127,8 +6128,27 @@ def clip_layer(input, min, max, name=None):
 @wrap_name_default()
 @layer_support()
 def kmax_sequence_score_layer(input, name=None, beam_size=1):
+    """
+    This layer accepts one input which is scores over a sequence or a nested
+    sequence, and returns indices of beam_size sequences with highest scores.
+
+    .. code-block:: python
+
+        kmax_indices = kmax_sequence_score_layer(input=input_layer, beam_size)
+
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer. It is scores over a sequence or a nested
+        sequence and its size must be 1.
+    :type input: LayerOutput.
+    :param beam_size: squence indices with top beam_size scores are returned.
+    :type beam_size: double
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
     assert isinstance(input, LayerOutput), ("kmax_sequence_score_layer "
-                                            "accept only one input.")
+                                            "accepts only one input.")
     assert input.size == 1, (
         "input of kmax_sequence_score_layer is a score"
         "over a sequence or a nested sequence, so its width must be 1.")
