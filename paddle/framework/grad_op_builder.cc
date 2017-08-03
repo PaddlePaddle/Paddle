@@ -26,7 +26,7 @@ using VarIndexMap = std::unordered_map<std::string, int>;
 enum class OpArgType { IN, OUT };
 
 static std::vector<int>* GetOpFormat(OperatorBase* op, const OpArgType& type) {
-  std::string key = type == OpArgType::IN ? "input_format" : "output_name";
+  std::string key = type == OpArgType::IN ? "input_format" : "output_format";
   return op->attrs_.count(key)
              ? &boost::get<std::vector<int>>(op->attrs_.at(key))
              : nullptr;
@@ -34,7 +34,7 @@ static std::vector<int>* GetOpFormat(OperatorBase* op, const OpArgType& type) {
 
 static const std::vector<int>* GetOpFormat(const OperatorBase* op,
                                            const OpArgType& type) {
-  std::string key = type == OpArgType::IN ? "input_format" : "output_name";
+  std::string key = type == OpArgType::IN ? "input_format" : "output_format";
   return op->attrs_.count(key)
              ? &boost::get<std::vector<int>>(op->attrs_.at(key))
              : nullptr;
@@ -84,7 +84,7 @@ OperatorBase* BuildGradOp(const OperatorBase* op) {
   grad_op->attrs_ = op->attrs_;
   grad_op->attrs_.erase("input_format");
   grad_op->attrs_.erase("output_format");
-  if (GetOpFormat(op, OpArgType::OUT) != nullptr) {
+  if (GetOpFormat(op, OpArgType::IN) != nullptr) {
     grad_op->attrs_["output_format"] = std::vector<int>({0});
   }
   if (GetOpFormat(op, OpArgType::IN) != nullptr ||
