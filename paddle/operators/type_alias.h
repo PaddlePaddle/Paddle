@@ -16,6 +16,7 @@
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/net.h"
+#include "paddle/framework/op_helpers/op_helpers.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -52,7 +53,9 @@ using GPUPlace = platform::GPUPlace;
 using NetOp = framework::NetOp;
 using OpRegistry = framework::OpRegistry;
 using OperatorBase = framework::OperatorBase;
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace op_helpers = paddle::framework::op_helpers;

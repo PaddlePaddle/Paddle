@@ -41,7 +41,7 @@ public:
 class MeanGradOp : public OperatorWithKernel {
 protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>("X" + GRAD_VAR_SUFFIX())
+    ctx.Output<Tensor>(op_helpers::GenGradName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
