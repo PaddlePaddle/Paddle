@@ -28,9 +28,11 @@ public:
     output->mutable_data<T>(context.GetPlace());
 
     // The clipping is used in Paddle's raw implenmention
-    EigenVector<T>::Flatten(*output).device(
-        *(context.GetEigenDevice<Place>())) =
-        1.0 / (1.0 + (-1.0 * EigenVector<T>::Flatten(*input)).exp());
+    auto X = EigenVector<T>::Flatten(*input);
+    auto Y = EigenVector<T>::Flatten(*output);
+    auto place = context.GetEigenDevice<Place>();
+
+    Y.device(place) = 1.0 / (1.0 + (-1.0 * X).exp());
   }
 };
 
@@ -38,7 +40,7 @@ template <typename Place, typename T>
 class SigmoidGradKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
-    // maybe a helper funciton is needed fo the name x@GRAD
+    // a helper funciton is needed fo the name x@GRAD
     auto y_t = context.Input<Tensor>("Y");
     auto dy_t = context.Input<Tensor>("Y@GRAD");
     auto dx_t = context.Output<Tensor>("X@GRAD");
