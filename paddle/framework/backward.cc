@@ -59,7 +59,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   //  If all input gradients of forwarding operator do not need to calculate,
   //  just return an NOP. Not return null ptr because NOP does not take
   //  too much time for calculation, but it is useful for simplifying logic.
-  if (AllInSet(forwardOp.inputs_, OperatorBase::GRAD_VAR_SUFFIX(),
+  if (AllInSet(forwardOp.inputs_, kGradVarSuffix,
                no_grad_names)) {
     return NOP();
   }
@@ -67,11 +67,11 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   //  All output gradients of forwarding operator do not need to calculate.
   //  Then all input gradients cannot be computed at all, and we put them into
   //  `no_grad_names` set. Return an NOP.
-  if (AllInSet(forwardOp.outputs_, OperatorBase::GRAD_VAR_SUFFIX(),
+  if (AllInSet(forwardOp.outputs_, kGradVarSuffix,
                no_grad_names)) {
     for (auto& name : forwardOp.inputs_) {
       // Mark all input is not need
-      no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
+      no_grad_names.insert(name + kGradVarSuffix);
     }
     return NOP();
   }
@@ -135,8 +135,8 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     for (std::string& grad_input : grad_op->inputs_) {
       if (no_grad_names.count(grad_input)) {
         std::string prefix = grad_input.substr(
-            0, grad_input.size() - OperatorBase::GRAD_VAR_SUFFIX().size());
-        grad_input = prefix + OperatorBase::ZERO_VAR_SUFFIX();
+            0, grad_input.size() - kGradVarSuffix.size());
+        grad_input = prefix + kZeroVarSuffix;
 
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
@@ -147,7 +147,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
 
     for (std::string& grad_output : grad_op->outputs_) {
       if (no_grad_names.count(grad_output)) {
-        grad_output = OperatorBase::EMPTY_VAR_NAME();
+        grad_output = kEmptyVarName;
       }
     }
 
@@ -168,11 +168,11 @@ std::shared_ptr<OperatorBase> Backward(
   std::unordered_set<std::string> no_grad_names;
   no_grad_names.reserve(no_grad_vars.size());
 
-  no_grad_names.insert(OperatorBase::EMPTY_VAR_NAME() +
-                       OperatorBase::GRAD_VAR_SUFFIX());
+  no_grad_names.insert(kEmptyVarName +
+                       kGradVarSuffix);
 
   for (auto& name : no_grad_vars) {
-    no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
+    no_grad_names.insert(name + kGradVarSuffix);
   }
   size_t uid = 0;
   return BackwardRecursive(forwardOp, no_grad_names, uid);

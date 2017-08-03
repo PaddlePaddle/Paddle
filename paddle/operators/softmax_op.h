@@ -68,8 +68,8 @@ public:
     std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
 
     auto Y = context.Input<Tensor>("Y");
-    auto dY = context.Input<Tensor>(OperatorBase::GRAD_VAR_NAME("Y"));
-    auto dX = context.Output<Tensor>(OperatorBase::GRAD_VAR_NAME("X"));
+    auto dY = context.Input<Tensor>(framework::GradVarName("Y"));
+    auto dX = context.Output<Tensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
 
     const int batch_size = Y->dims()[0];
