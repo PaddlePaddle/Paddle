@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class RowWiseAddKernel : public OpKernel {
+class RowwiseAddKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
     auto out = context.Output<Tensor>(0);
@@ -39,7 +39,7 @@ public:
 };
 
 template <typename Place, typename T>
-class RowWiseAddGradKernel : public OpKernel {
+class RowwiseAddGradKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
     auto XGrad = context.Output<Tensor>(0);
@@ -51,7 +51,7 @@ public:
     auto OutGrad = EigenMatrix<T>::From(*context.Input<Tensor>(3));
     EigenMatrix<T>::From(*XGrad).device(*(context.GetEigenDevice<Place>())) =
         OutGrad;
-    // const int dimension = bGrad.dimension(0);
+
     // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
     EigenVector<T>::Flatten(*bGrad).device(*(context.GetEigenDevice<Place>())) =
         OutGrad.cumsum(1);  // colwise add
