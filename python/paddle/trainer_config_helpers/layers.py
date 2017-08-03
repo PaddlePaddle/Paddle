@@ -131,6 +131,7 @@ __all__ = [
     'crop_layer',
     'clip_layer',
     'slice_projection',
+    'kmax_sequence_score_layer',
 ]
 
 
@@ -225,6 +226,8 @@ class LayerType(object):
     PRELU = 'prelu'
     CROP_LAYER = 'crop'
     CLIP_LAYER = 'clip'
+
+    KMAX_SEQ_SCORE = 'kmax_seq_score'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6119,3 +6122,22 @@ def clip_layer(input, min, max, name=None):
         max=max)
     return LayerOutput(
         name, LayerType.CLIP_LAYER, parents=[input], size=input.size)
+
+
+@wrap_name_default()
+@layer_support()
+def kmax_sequence_score_layer(input, name=None, beam_size=1):
+    assert isinstance(input, LayerOutput), ("kmax_sequence_score_layer "
+                                            "accept only one input.")
+    assert input.size == 1, (
+        "input of kmax_sequence_score_layer is a score"
+        "over a sequence or a nested sequence, so its width must be 1.")
+
+    Layer(
+        name=name,
+        type=LayerType.KMAX_SEQ_SCORE,
+        inputs=[input.name],
+        beam_size=beam_size)
+
+    return LayerOutput(
+        name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)
