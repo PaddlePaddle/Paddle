@@ -122,7 +122,7 @@ cat <<EOF
 Generating .deb package ...
 ========================================
 EOF
-cpack -D CPACK_GENERATOR='DEB' ..
+cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
 
 
 cat <<EOF
