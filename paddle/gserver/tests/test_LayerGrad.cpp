@@ -1899,6 +1899,36 @@ TEST(Layer, CropLayer) {
   }
 }
 
+TEST(Layer, ClipLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("clip");
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ClipConfig* layerConf = input->mutable_clip_conf();
+  double p1 = std::rand() / (double)RAND_MAX;
+  double p2 = std::rand() / (double)RAND_MAX;
+  layerConf->set_min(std::min(p1, p2));
+  layerConf->set_max(std::max(p1, p2));
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "clip", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, RowL2NormLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("row_l2_norm");
+  config.layerConfig.set_size(size);
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  config.layerConfig.add_inputs();
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "row_l2_norm", batchSize, false, useGpu, false);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

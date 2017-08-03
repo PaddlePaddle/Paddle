@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include "paddle/memory/memcpy.h"
 
 namespace paddle {
@@ -62,9 +61,11 @@ inline T* Tensor::mutable_data(platform::Place place) {
     if (platform::is_cpu_place(place)) {
       holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size));
+    } else if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_ONLY_CPU
+      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
     }
-#ifndef PADDLE_ONLY_CPU
-    else if (platform::is_gpu_place(place)) {
+#else
       holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
           boost::get<platform::GPUPlace>(place), size));
     }

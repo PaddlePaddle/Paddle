@@ -33,7 +33,7 @@ public:
     const int rest_size = input.size() / bias_size;
     Eigen::DSizes<int, 1> one_d(input.size());
     Eigen::DSizes<int, 1> bcast(rest_size);
-    output.reshape(one_d).device(*(context.GetEigenDevice<Place>())) =
+    output.reshape(one_d).device(context.GetEigenDevice<Place>()) =
         input.reshape(one_d) + bias.broadcast(bcast).reshape(one_d);
   }
 };
