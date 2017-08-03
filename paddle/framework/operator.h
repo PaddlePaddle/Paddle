@@ -73,10 +73,6 @@ class OperatorBase {
 
   virtual std::string DebugString() const;
 
-  /// Init will be called after CreateOperator, you can put some initialization
-  /// logic here.
-  virtual void Init() {}
-
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
   virtual void InferShape(const Scope& scope) const = 0;

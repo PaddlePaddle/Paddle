@@ -167,7 +167,7 @@ private:
 
 class RecurrentOp final : public OperatorBase {
 public:
-  void Init() override;
+  RecurrentOp();
 
   /**
    * InferShape must be called before Run.
@@ -189,7 +189,7 @@ private:
 
 class RecurrentGradientOp final : public OperatorBase {
 public:
-  void Init() override;
+  RecurrentGradientOp();
 
   /**
    * InferShape must be called before Run.

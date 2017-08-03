@@ -19,7 +19,7 @@ namespace operators {
 
 class FullyConnectedOp : public NetOp {
 public:
-  void Init() override {
+  FullyConnectedOp() {
     AddOp(OpRegistry::CreateOp("mul",
                                {
                                    Input("X"), Input("W"),

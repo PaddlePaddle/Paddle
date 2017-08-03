@@ -73,7 +73,7 @@ class NoGradOpMaker : public OpProtoAndCheckerMaker {
 
 class FcOp : public ops::NetOp {
  public:
-  void Init() override {
+  FcOp() {
     AddOp(OpRegistry::CreateOp("mul", {Input("X"), Input("W")},
                                {Output("mul_result")}, {}));
     auto b_name = Input("b");

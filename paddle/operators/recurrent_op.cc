@@ -277,8 +277,7 @@ const rnn::ArgumentName RecurrentGradientOp::kArgName{"step_net",
                                                       "pre_memories",
                                                       "boot_memories@grad"};
 
-void RecurrentOp::Init() {
-  OperatorBase::Init();
+RecurrentOp::RecurrentOp() {
   std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
   rnn::InitArgument(kArgName, arg.get(), *this);
   alg_.Init(std::move(arg));
@@ -373,8 +372,7 @@ void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
   LinkBootMemoryGradients(step_scopes[0], true /*infer_shape_mode*/);
 }
 
-void RecurrentGradientOp::Init() {
-  OperatorBase::Init();
+RecurrentGradientOp::RecurrentGradientOp() {
   std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
   rnn::InitArgument(kArgName, arg.get(), *this);
   alg_.Init(std::move(arg));

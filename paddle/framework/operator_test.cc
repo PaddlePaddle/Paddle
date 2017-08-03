@@ -23,7 +23,7 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
-  void Init() override { x = 1; }
+  OpWithoutKernelTest() { x = 1; }
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -116,7 +116,7 @@ class CPUKernelTest : public OpKernel {
 // multiple inputs test
 class OperatorMultiInputsTest : public OperatorBase {
  public:
-  void Init() override { x = 1; }
+  OperatorMultiInputsTest() { x = 1; }
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
