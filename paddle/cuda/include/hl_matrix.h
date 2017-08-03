@@ -18,20 +18,6 @@ limitations under the License. */
 #include "hl_base.h"
 
 /**
- * @brief   Matrix addition: C_d[i] = alpha * A_d[i] + beta * B_d[i].
- *
- * @param[in]   A_d     input matrix (M x N).
- * @param[in]   B_d     input matrix (M x N).
- * @param[out]  C_d     output matrix (M x N).
- * @param[in]   dimM    matrix height.
- * @param[in]   dimN    matrix width.
- * @param[in]   alpha   scalar used for addition.
- * @param[in]   beta    scalar used for addition.
- *
- */
-extern void hl_matrix_add(
-    real* A_d, real* B_d, real* C_d, int dimM, int dimN, real alpha, real beta);
-/**
  * @brief   Matrix Softmax.
  *
  * @param[in]   A_d     input maxtrix (M x N).
