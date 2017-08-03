@@ -19,12 +19,6 @@ limitations under the License. */
 
 namespace paddle {
 
-struct NaiveDepthwiseConv {
-    static void run() {
-	}
-
-}
-
 void ComputeDepthwiseConv(){
 
 }
