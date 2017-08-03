@@ -83,29 +83,28 @@ PYBIND11_PLUGIN(core) {
              self.Resize(make_ddim(dim));
            })
       .def("alloc_float",
-           [](pd::Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::GPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_float",
-           [](pd::Tensor &self, paddle::platform::CPUPlace &place) {
+           [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_int",
-           [](pd::Tensor &self, paddle::platform::CPUPlace &place) {
+           [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("alloc_int",
-           [](pd::Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::GPUPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("set", paddle::pybind::PyCPUTensorSetFromArray<float>)
-      .def("set", paddle::pybind::PyCPUTensorSetFromArray<int>)
+      .def("set", PyCPUTensorSetFromArray<float>)
+      .def("set", PyCPUTensorSetFromArray<int>)
 #ifndef PADDLE_ONLY_CPU
-      .def("set", paddle::pybind::PyCUDATensorSetFromArray<float>)
-      .def("set", paddle::pybind::PyCUDATensorSetFromArray<int>)
+      .def("set", PyCUDATensorSetFromArray<float>)
+      .def("set", PyCUDATensorSetFromArray<int>)
 #endif
-      .def("shape",
-           [](pd::Tensor &self) { return pd::vectorize(self.dims()); });
+      .def("shape", [](Tensor &self) { return vectorize(self.dims()); });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
@@ -152,8 +151,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
-      .def("empty", pd::OperatorBase::EMPTY_VAR_NAME)
-      .def("temp", pd::OperatorBase::TMP_VAR_NAME);
+      .def("empty", OperatorBase::EMPTY_VAR_NAME)
+      .def("temp", OperatorBase::TMP_VAR_NAME);
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
@@ -190,9 +189,9 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   operator_base.def("backward",
-                    [](const pd::OperatorBase &forwardOp,
+                    [](const OperatorBase &forwardOp,
                        const std::unordered_set<std::string> &no_grad_vars) {
-                      return pd::Backward(forwardOp, no_grad_vars);
+                      return Backward(forwardOp, no_grad_vars);
                     });
 
   ExposeOperator(operator_base);
