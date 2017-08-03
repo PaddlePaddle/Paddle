@@ -442,7 +442,8 @@ DEFINE_MATRIX_UNARY_PARAMETER_OP(Clip, TWO_PARAMETER,
 template<class T>
 void BaseMatrixT<T>::clip(T p1, T p2) { applyUnary(unary::Clip<T>(p1, p2)); }
 
-DEFINE_MATRIX_BINARY_PARAMETER_OP(ClipDerivative, TWO_PARAMETER, a = b < p1 ? 0 : (b > p2 ? 0 : 1));
+DEFINE_MATRIX_BINARY_PARAMETER_OP(ClipDerivative, TWO_PARAMETER,
+		a = b < p1 ? 0 : (b > p2 ? 0 : 1));
 template<class T>
 void BaseMatrixT<T>::clipDerivative(BaseMatrixT& b, T p1, T p2) {
   applyBinary(binary::ClipDerivative<T>(p1, p2), b);
