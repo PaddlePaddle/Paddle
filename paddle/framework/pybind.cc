@@ -17,11 +17,12 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/backward.h"
-#include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor_py.h"
+#include "paddle/operators/net_op.h"
+#include "paddle/operators/type_alias.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "pybind11/numpy.h"
@@ -118,7 +119,9 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
            py::return_value_policy::reference)
       .def("get_net",
-           [](Variable &self) -> NetOp * { return self.GetMutable<NetOp>(); },
+           [](Variable &self) -> ops::NetOp * {
+             return self.GetMutable<ops::NetOp>();
+           },
            py::return_value_policy::reference);
 
   py::class_<Scope>(m, "Scope", "")
@@ -196,22 +199,24 @@ All parameter, weight, gradient are variables in Paddle.
 
   ExposeOperator(operator_base);
 
-  py::class_<NetOp, std::shared_ptr<NetOp>> net(m, "Net");
+  py::class_<ops::NetOp, std::shared_ptr<ops::NetOp>> net(m, "Net");
 
   net.def_static("create",
-                 []() -> std::shared_ptr<NetOp> {
-                   auto retv = std::make_shared<NetOp>();
+                 []() -> std::shared_ptr<ops::NetOp> {
+                   auto retv = std::make_shared<ops::NetOp>();
                    retv->type_ = "plain_net";
                    return retv;
                  })
-      .def("add_op", &NetOp::AddOp)
-      .def("add_op",
-           [](NetOp &self, const std::shared_ptr<NetOp> &net) -> void {
-             self.AddOp(std::static_pointer_cast<OperatorBase>(net));
-           })
-      .def("complete_add_op", &NetOp::CompleteAddOp)
+      .def("add_op", &ops::NetOp::AddOp)
+      .def(
+          "add_op",
+          [](ops::NetOp &self, const std::shared_ptr<ops::NetOp> &net) -> void {
+            self.AddOp(std::static_pointer_cast<OperatorBase>(net));
+          })
+      .def("complete_add_op", &ops::NetOp::CompleteAddOp)
       .def("complete_add_op",
-           [](std::shared_ptr<NetOp> &self) { self->CompleteAddOp(); });
+           [](std::shared_ptr<ops::NetOp> &self) { self->CompleteAddOp(); });
+
   ExposeOperator(net);
 
   m.def("unique_integer", UniqueIntegerGenerator);
