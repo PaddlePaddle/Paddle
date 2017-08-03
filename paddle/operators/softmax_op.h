@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -82,16 +82,14 @@ public:
     auto Y_eigen = EigenMatrix<T>::From(*Y);
     auto dY_eigen = EigenMatrix<T>::From(*dY);
     auto dX_eigen = EigenMatrix<T>::From(*dX);
-    auto place = context.GetEigenDevice<Place>();
+    auto place = context.GetEigenDevice<Place>()
 
-    dX_eigen.device(place) = dY_eigen;
-    auto dot = (Y_eigen * dY_eigen)
-                   .sum(along_class)
-                   .eval()
-                   .reshape(batch_by_one)
-                   .broadcast(one_by_class);
-    dX_eigen.device(place) -= dot;
-    dX_eigen.device(place) = dX_eigen * Y_eigen;
+                     auto dot = (Y_eigen * dY_eigen)
+                                    .sum(along_class)
+                                    .eval()
+                                    .reshape(batch_by_one)
+                                    .broadcast(one_by_class);
+    dX_eigen.device(place) = (dY_eigen - dot) * Y_eigen;
   }
 };
 
