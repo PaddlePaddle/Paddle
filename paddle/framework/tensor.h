@@ -167,4 +167,4 @@ class Tensor {
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/framework/detail/tensor_impl.h"
+#include "paddle/framework/tensor_impl.h"
