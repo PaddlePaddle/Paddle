@@ -316,6 +316,4 @@ class OperatorWithKernel : public OperatorBase {
 };
 
 }  // namespace framework
-
-}  // namespace paddle
 }  // namespace paddle
