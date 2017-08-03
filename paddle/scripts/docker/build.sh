@@ -69,7 +69,7 @@ cat <<EOF
 Installing ...
 ========================================
 EOF
-make install
+make install -j `nproc`
 pip install /usr/local/opt/paddle/share/wheels/*.whl
 paddle version
 
