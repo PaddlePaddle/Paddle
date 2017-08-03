@@ -1,8 +1,21 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package pserver
 
 // #cgo CFLAGS: -I ../../
-// //FIXME: ldflags contain "build" path
-// #cgo LDFLAGS: ${SRCDIR}/../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++ -lm
+// #cgo LDFLAGS: ${SRCDIR}/client/c/libpaddle_go_optimizer.a -lstdc++ -lm
 // #include "paddle/optimizer/optimizer.h"
 // #include <stdlib.h>
 // #include <string.h>
@@ -15,15 +28,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var nullPtr = unsafe.Pointer(uintptr(0))
-
 type optimizer struct {
 	opt         *C.struct_paddle_optimizer
 	elementType ElementType
+	contentLen  int
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
-	if p == nullPtr {
+	if p == nil {
 		return nil
 	}
 
@@ -35,22 +47,31 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
-func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
+func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer {
 	o := &optimizer{}
 	o.elementType = paramWithConfigs.Param.ElementType
+	o.contentLen = len(paramWithConfigs.Param.Content)
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
+	s := State
+	paramBufferSize := C.size_t(len(p.Content))
 	log.WithFields(log.Fields{
 		"ElementType": p.ElementType,
-		"ParamSize":   len(p.Content),
+		"ParamSize":   paramBufferSize,
 		"ConfigSize":  len(c),
+		"StateSize":   len(s),
 	}).Info("New Optimizer Created with config:")
 	var cbuffer unsafe.Pointer
-	cbuffer = C.malloc(C.size_t(len(p.Content)))
-	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
+	cbuffer = C.malloc(paramBufferSize)
+
+	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), paramBufferSize)
+	var cstate unsafe.Pointer
+	if len(s) != 0 {
+		cstate = unsafe.Pointer(&s[0])
+	}
+
 	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
-		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)/C.sizeof_float),
-		(*C.char)(nullPtr), 0)
+		C.paddle_element_type(p.ElementType), cbuffer, C.int(paramBufferSize), (*C.char)(cstate), C.int(len(s)))
 	return o
 }
 
@@ -60,12 +81,22 @@ func (o *optimizer) GetWeights() []byte {
 	return cArrayToSlice(buffer, int(bufferLen)*C.sizeof_float)
 }
 
+func (o *optimizer) GetStates() []byte {
+	var cbuffer *C.char
+	cbufferLen := C.paddle_optimizer_get_state(o.opt, &cbuffer)
+	return cArrayToSlice(unsafe.Pointer(cbuffer), int(cbufferLen))
+}
+
 func (o *optimizer) UpdateParameter(g Gradient) error {
 	if o.elementType != g.ElementType {
 		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.elementType, g.ElementType)
 	}
 
-	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content))/C.sizeof_float)
+	if o.contentLen != len(g.Content) {
+		return fmt.Errorf("Name: %s, parameter and gradient does not have same content len, parameter: %d, gradient: %d", g.Name, o.contentLen, len(g.Content))
+	}
+
+	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content)))
 	if r != 0 {
 		return fmt.Errorf("optimizer update returned error code: %d", r)
 	}
@@ -73,8 +104,8 @@ func (o *optimizer) UpdateParameter(g Gradient) error {
 }
 
 func (o *optimizer) Cleanup() {
-	if unsafe.Pointer(o.opt) != nullPtr {
+	if unsafe.Pointer(o.opt) != nil {
 		C.paddle_release_optimizer(o.opt)
-		o.opt = (*C.struct_paddle_optimizer)(nullPtr)
+		o.opt = (*C.struct_paddle_optimizer)(nil)
 	}
 }

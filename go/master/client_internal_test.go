@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package master
 
 import (
@@ -40,22 +54,22 @@ func TestGetFinishTask(t *testing.T) {
 		panic(err)
 	}
 	go func(l net.Listener) {
-		s, err := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
-		if err != nil {
-			panic(err)
+		s, sErr := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
+		if sErr != nil {
+			panic(sErr)
 		}
 
 		server := rpc.NewServer()
-		err = server.Register(s)
-		if err != nil {
-			panic(err)
+		sErr = server.Register(s)
+		if sErr != nil {
+			panic(sErr)
 		}
 
 		mux := http.NewServeMux()
 		mux.Handle(rpc.DefaultRPCPath, server)
-		err = http.Serve(l, mux)
-		if err != nil {
-			panic(err)
+		sErr = http.Serve(l, mux)
+		if sErr != nil {
+			panic(sErr)
 		}
 	}(l)
 
@@ -66,11 +80,21 @@ func TestGetFinishTask(t *testing.T) {
 
 	for i := 0; i < totalTask*chunkPerTask; i++ {
 		w := recordio.NewWriter(f, -1, -1)
-		w.Write(nil)
+		_, err = w.Write(nil)
+		if err != nil {
+			panic(err)
+		}
+
 		// call Close to force RecordIO writing a chunk.
-		w.Close()
+		err = w.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
-	f.Close()
+	err = f.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	// Manually intialize client to avoid calling c.getRecords()
 	c := &Client{}
@@ -79,42 +103,56 @@ func TestGetFinishTask(t *testing.T) {
 	ch := make(chan string, 1)
 	ch <- addr
 	go c.monitorMaster(ch)
-	c.SetDataset([]string{path})
+
+	err = c.SetDataset([]string{path})
+	if err != nil {
+		panic(err)
+	}
+
 	checkOnePass := func(i int) {
 		var tasks []Task
 		for idx := 0; idx < totalTask; idx++ {
-			task, err := c.getTask()
-			if err != nil {
-				t.Fatalf("Error: %v, pass: %d\n", err, i)
+			task, cErr := c.getTask(i)
+			if cErr != nil && cErr.Error() != ErrNoMoreAvailable.Error() && cErr.Error() != ErrPassAfter.Error() {
+				t.Fatalf("error: %v, pass: %d\n", cErr, i)
 			}
 			tasks = append(tasks, task)
 		}
 
-		_, err = c.getTask()
-		if err == nil {
+		// getting task before task finishes should return error
+		_, cErr := c.getTask(i)
+		if cErr == nil {
 			t.Fatalf("Should get error, pass: %d\n", i)
 		}
 
-		err = c.taskFinished(tasks[0].ID)
-		if err != nil {
-			t.Fatalf("Error: %v, pass: %d\n", err, i)
+		cErr = c.taskFinished(tasks[0].Meta.ID)
+		if cErr != nil {
+			t.Fatalf("Error: %v, pass: %d\n", cErr, i)
 		}
+		// call taskFailed once won't put the task to failed queue, just ensure
+		// the call
+		cErr = c.taskFailed(tasks[0].Meta)
+		if cErr != nil {
+			t.Fatalf("Error: %v, pass: %d\n", cErr, i)
+		}
+
 		tasks = tasks[1:]
-		task, err := c.getTask()
-		if err != nil {
-			t.Fatal(err)
+		_, cErr = c.getTask(i)
+		if cErr != nil && cErr.Error() != ErrNoMoreAvailable.Error() && cErr.Error() != ErrPassAfter.Error() {
+			t.Fatalf("Should be ErrNoMoreAvailable or ErrPassAfter: %s", cErr)
 		}
-		tasks = append(tasks, task)
 
 		for _, task := range tasks {
-			err = c.taskFinished(task.ID)
-			if err != nil {
-				t.Fatalf("Error: %v, pass: %d\n", err, i)
+			cErr = c.taskFinished(task.Meta.ID)
+			if cErr != nil {
+				t.Fatal(cErr)
 			}
 		}
 	}
 
 	for i := 0; i < 10; i++ {
+		// init pass data
+		c.StartGetRecords(i)
 		checkOnePass(i)
 	}
 }

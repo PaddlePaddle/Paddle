@@ -34,6 +34,11 @@ message AttrProto {
 
     // Supported attribute comments. It helps 3rd-party language generate doc-string.
     required string comment = 3;
+
+    // If that attribute is generated, it means the Paddle third language
+    // binding has responsibility to fill that attribute. End-User should
+    // not set that attribute.
+    optional bool generated = 4 [default=false];
 }
 
 // Input or output message for 3rd-party language binding.
@@ -45,6 +50,45 @@ message VarProto {
 
     // The comment for that input. It helps 3rd-party language generate doc-string.
     required string comment = 2;
+
+    // Is that input/output could be a list or not.
+    // If so, that Op should write a attributed named `input_format` or
+    // `output_format`.
+    //
+    // e.g.
+    //   If the op is a fc op, the inputs are `X`, `W`, `b`. The `X` and `W`
+    //   could be multiple, so the multiple of `X` and `W` is True, and OpDesc
+    //   will hold a attribute of them.
+    //
+    //   The Op desc of same fc could be
+    //   {
+    //      "type": "fc",
+    //      "input": ["X1", "X2", "W1", "W2", "b"],
+    //      "output": "fc.out",
+    //      "attrs" : {
+    //        "input_format": [0, 2, 4, 5]
+    //      }
+    //   }
+    //
+    optional bool multiple = 3 [default=false];
+
+    // It marks that output is a temporary output. That output is not used by
+    // user, but used by other op internally as input. If other op is not use
+    // that output, it could be optimized early.
+    //
+    // Attribute temporary_index will be set in OpDesc if there is some
+    // outputs are temporary.
+    //
+    // output = [ "xxx.out1", "xxx.tmp", "xxx.out2"],
+    // attrs = {
+    //   "temporary_index": [1]
+    // }
+    optional bool temporary = 4 [default=false];
+
+    // The gradient of operator can be ignored immediately
+    // e.g. operator AddOp, y = x1 + x2, the gradient of dy/dx1, dy/dx2
+    // can be ignored for the future optimized on graph.
+    optional bool ignore_gradient = 6;
 }
 
 // Op protocol message for 3rd-party language binding.
@@ -66,4 +110,5 @@ message OpProto {
 
     // The type of that Op.
     required string type = 5;
+
 }

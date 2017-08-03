@@ -636,7 +636,7 @@ void lenToStarts(std::vector<int>& starts) {
   }
   starts.back() = pos;
 }
-}
+}  // namespace
 
 void RecurrentGradientMachine::calcSequenceStartPositions() {
   std::vector<int> starts(commonSeqInfo_.size() + 1);

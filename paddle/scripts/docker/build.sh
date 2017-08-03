@@ -148,14 +148,15 @@ cat >> /paddle/build/Dockerfile <<EOF
 ADD *.deb /
 # run paddle version to install python packages first
 RUN apt-get update &&\
-    apt-get install -y python-pip && pip install -U pip && \
+    apt-get install -y wget python-pip && pip install -U pip && \
     dpkg -i /*.deb ; apt-get install -f -y && \
     apt-get clean -y && \
     rm -f /*.deb && \
     paddle version
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
-
+ADD go/cmd/pserver/pserver /usr/bin/
+ADD go/cmd/master/master /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF

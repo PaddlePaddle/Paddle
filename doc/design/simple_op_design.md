@@ -49,6 +49,7 @@ message AttrProto {
 message VarProto {
 	required string name = 1;
 	required string comment = 2;
+	required bool is_tensor = 3;
 };
 
 message OpProto {

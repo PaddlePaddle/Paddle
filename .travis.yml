@@ -4,6 +4,7 @@ cache:
     - $HOME/.ccache
     - $HOME/.cache/pip
     - $TRAVIS_BUILD_DIR/build/third_party
+    - $TRAVIS_BUILD_DIR/build_android/third_party
 sudo: required
 dist: trusty
 os:
@@ -11,6 +12,7 @@ os:
 env:
   - JOB=build_doc
   - JOB=check_style
+  - JOB=build_android
 addons:
   apt:
     packages:
@@ -39,6 +41,8 @@ before_install:
   - pip install rarfile
   - curl https://glide.sh/get | bash
   - eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+  - go get -u github.com/alecthomas/gometalinter
+  - gometalinter --install
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:

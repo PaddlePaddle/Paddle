@@ -9,6 +9,11 @@ function(CheckCompilerCXX11Flag)
         if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)
             message(FATAL_ERROR "Unsupported GCC version. GCC >= 4.8 required.")
         endif()
+        # TODO(qijun) gcc 4.9 or later versions raise SEGV due to the optimization problem.
+        # Use Debug mode instead for now.
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9) 
+            set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
+        endif()
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
         # Apple Clang is a different compiler than upstream Clang which havs different version numbers.
@@ -109,7 +114,9 @@ set(COMMON_FLAGS
     -Wno-unused-function
     -Wno-error=literal-suffix
     -Wno-error=sign-compare
-    -Wno-error=unused-local-typedefs)
+    -Wno-error=unused-local-typedefs
+    -Wno-error=parentheses-equality # Warnings in Pybind11
+)
 
 set(GPU_COMMON_FLAGS
     -fPIC
@@ -122,6 +129,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
+    -Wno-error=array-bounds # Warnings in Eigen::array
 )
 
 if (APPLE)
@@ -150,7 +158,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
+LIST(APPEND CUDA_NVCC_FLAGS -std=c++11 --default-stream per-thread)
 LIST(APPEND CUDA_NVCC_FLAGS --use_fast_math)
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")

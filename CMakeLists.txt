@@ -13,7 +13,6 @@
 # limitations under the License
 
 cmake_minimum_required(VERSION 3.0)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(PROJ_BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR})
@@ -28,13 +27,17 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-find_package(Boost QUIET)
+if(NOT ANDROID)
+    find_package(Boost QUIET)
+endif()
 
 include(simd)
 
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
+option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    OFF)
+option(WITH_MKLML       "Compile PaddlePaddle with mklml package."      OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -73,6 +76,10 @@ if(ANDROID)
         "Disable PYTHON when cross-compiling for Android" FORCE)
     set(WITH_RDMA OFF CACHE STRING
         "Disable RDMA when cross-compiling for Android" FORCE)
+    set(WITH_MKLDNN OFF CACHE STRING
+        "Disable MKLDNN when cross-compiling for Android" FORCE)
+    set(WITH_MKLML OFF CACHE STRING
+        "Disable MKLML package when cross-compiling for Android" FORCE)
 endif(ANDROID)
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -86,6 +93,7 @@ endif()
 
 ########################################################################################
 
+include(external/mklml)     # download mklml package
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -93,10 +101,12 @@ include(external/gtest)     # download, build, install gtest
 include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
+include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
+include(external/pybind11)    # download pybind11
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
@@ -133,11 +143,20 @@ if(WITH_GPU)
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 
+if(WITH_MKLDNN)
+    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIBRARY} ${MKLDNN_IOMP_LIB})
+endif()
+
 if(USE_NNPACK)
-  list(APPEND EXTERNAL_LIBS ${NNPACK_LIB} ${PTHREADPOOL_LIB} "rt")
+    include(external/nnpack)
+    list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
 endif(USE_NNPACK)
 
 add_subdirectory(proto)
+
+# "add_subdirectory(go)" should be placed after the following loine,
+# because it depends on paddle/optimizer.
+add_subdirectory(paddle/optimizer)
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.
@@ -146,7 +165,9 @@ if(WITH_GOLANG)
 endif(WITH_GOLANG)
 
 add_subdirectory(paddle)
-add_subdirectory(python)
+if(WITH_PYTHON)
+  add_subdirectory(python)
+endif()
 if(WITH_DOC)
     add_subdirectory(doc)
 endif()

@@ -17,36 +17,6 @@ limitations under the License. */
 
 #include "hl_cnn.h"
 
-inline void hl_shrink_col2feature(const real* dataCol,
-                                  size_t channels,
-                                  size_t height,
-                                  size_t width,
-                                  size_t blockH,
-                                  size_t blockW,
-                                  size_t strideH,
-                                  size_t strideW,
-                                  size_t paddingH,
-                                  size_t paddingW,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real* dataIm,
-                                  real alpha,
-                                  real beta) {}
-
-inline void hl_expand_feature2col(const real* dataIm,
-                                  size_t channels,
-                                  size_t height,
-                                  size_t width,
-                                  size_t blockH,
-                                  size_t blockW,
-                                  size_t strideH,
-                                  size_t strideW,
-                                  size_t paddingH,
-                                  size_t paddingW,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real* dataCol) {}
-
 inline void hl_maxpool_forward(const int frameCnt,
                                const real* inputData,
                                const int channels,

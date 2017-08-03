@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package client
 
 import (
@@ -12,7 +26,7 @@ import (
 )
 
 const (
-	DefaultEtcdTimeout time.Duration = 5 * time.Second
+	defaultEtcdTimeout time.Duration = 5 * time.Second
 )
 
 // EtcdClient is used by pserver client that is a part of trainer process.
@@ -47,7 +61,7 @@ func (p *EtcdClient) Desired() int {
 
 		psDesired, err = strconv.Atoi(string(resp.Kvs[0].Value))
 		if err != nil {
-			log.Errorf("psDesired %s invalid %v", psDesired, err)
+			log.Errorf("psDesired %d invalid %v", psDesired, err)
 			time.Sleep(p.timeout)
 			continue
 		}
@@ -66,10 +80,10 @@ func (p *EtcdClient) List() []Server {
 	for {
 		for i := 0; i < psDesired; i++ {
 			ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
-			cancel()
 			psKey := pserver.PsPath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			resp, err := p.client.Get(ctx, psKey)
+			cancel()
 			if err != nil {
 				log.Infof("Get psKey= %s error, %v", psKey, err)
 				time.Sleep(p.timeout)
@@ -106,11 +120,11 @@ func NewEtcd(endpoints string) *EtcdClient {
 	for {
 		cli, err = clientv3.New(clientv3.Config{
 			Endpoints:   ep,
-			DialTimeout: DefaultEtcdTimeout,
+			DialTimeout: defaultEtcdTimeout,
 		})
 		if err != nil {
 			log.Errorf("Init etcd connection failed: %v", err)
-			time.Sleep(DefaultEtcdTimeout)
+			time.Sleep(defaultEtcdTimeout)
 			continue
 		}
 		break
@@ -118,7 +132,7 @@ func NewEtcd(endpoints string) *EtcdClient {
 	log.Infof("Connected to etcd: %s\n", endpoints)
 	client := &EtcdClient{
 		client:    cli,
-		timeout:   DefaultEtcdTimeout,
+		timeout:   defaultEtcdTimeout,
 		endpoints: ep,
 	}
 	return client

@@ -14,85 +14,157 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
+#include <cstring>
 #include <memory>
-#include <type_traits>
+#include <typeindex>
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/enforce.h"
 #include "paddle/memory/memory.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
+namespace pybind {
+namespace details {  // forward declare
+template <bool less, size_t i, typename... args>
+struct CastToPyBufferImpl;
+}  // namespace details
+}  // namespace pybind
+
 namespace framework {
 
 class Tensor {
  public:
+  template <bool less, size_t i, typename... args>
+  friend struct paddle::pybind::details::CastToPyBufferImpl;
+
+  template <typename T, size_t D, int MajorType, typename IndexType>
+  friend struct EigenTensor;
+
+  template <typename T, int MajorType, typename IndexType>
+  friend struct EigenVector;
+
+ public:
+  Tensor() : offset_(0) {}
+
+  /*! Return a pointer to mutable memory block. */
   template <typename T>
-  const T* data() const {
-    PADDLE_ENFORCE(holder_ != nullptr,
-                   "Tensor::data must be called after Tensor::mutable_data.");
-    return static_cast<const T*>(holder_->Ptr());
-  }
+  inline T* data();
 
-  template <typename T,  // must be POD types
-            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
-  T* mutable_data(DDim dims, paddle::platform::Place place) {
-    if (holder_ == nullptr ||
-        !(holder_->Place() ==
-          place) /* some versions of boost::variant don't have operator!= */
-        || holder_->Size() < product(dims) * sizeof(T)) {
-      holder_.reset(new PlaceholderImpl<T>(place, product(dims) * sizeof(T)));
-    }
-    return static_cast<T*>(holder_->Ptr());
-  }
+  /*! Return a pointer to constant memory block. */
+  template <typename T>
+  inline const T* data() const;
 
-  template <typename T,  // must be POD types
-            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
-  T* mutable_data(DDim dims) {
-    return mutable_data<T>(dims, paddle::platform::get_place());
-  }
+  /**
+   * @brief   Return a pointer to mutable memory block.
+   * @note    If not exist, then allocation.
+   */
+  template <typename T>
+  inline T* mutable_data(platform::Place place);
+
+  /**
+   * @brief     Return a pointer to mutable memory block.
+   *
+   * @param[in] dims    The dimensions of the memory block.
+   * @param[in] place   The place of the memory block.
+   *
+   * @note      If not exist, then allocation.
+   */
+  template <typename T>
+  inline T* mutable_data(DDim dims, platform::Place place);
+
+  /*! Return the dimensions of the memory block. */
+  inline const DDim& dims() const;
+
+  /*! Resize the dimensions of the memory block. */
+  inline void Resize(const DDim& dims);
+
+  /*! The internal of two tensors share the same memory block. */
+  template <typename T>
+  inline void ShareDataWith(const Tensor& src);
+
+  /**
+   * @brief   Copy the content of external tensor to a new place.
+   *
+   * @param[in] src   The external tensor.
+   * @param[in] ctx   The device context contains place where to store.
+   *
+   * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+   */
+  template <typename T>
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
+
+  /**
+   * @brief   Return the slice of the tensor.
+   *
+   * @param[in] begin_idx   The begin index of the slice.
+   * @param[in] end_idx     The end index of the slice.
+   */
+  template <typename T>
+  inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
 
  private:
-  // Placeholder hides type T, so it doesn't appear as a template
-  // parameter of Variable.
+  template <typename T>
+  inline void check_memory_size() const;
+
+ private:
+  /**
+   * @note    Placeholder hides type T, so it doesn't appear as a template
+   *          parameter of Variable.
+   */
   struct Placeholder {
     virtual ~Placeholder() {}
-    virtual void* Ptr() const = 0;
-    virtual paddle::platform::Place Place() const = 0;
-    virtual size_t Size() const = 0;
+    virtual void* ptr() const = 0;
+    virtual size_t size() const = 0;
+    virtual std::type_index type() const = 0;
+    virtual platform::Place place() const = 0;
   };
 
-  template <typename T>
+  template <typename T, typename Place>
   struct PlaceholderImpl : public Placeholder {
-   private:
-    class Deleter {
-     public:
-      Deleter(platform::Place place) : place_(place) {}
-      void operator()(T* ptr) {
-        paddle::memory::Free(place_, static_cast<void*>(ptr));
-      }
-
-     private:
-      paddle::platform::Place place_;
-    };
-
-   public:
-    PlaceholderImpl(paddle::platform::Place place, size_t size)
-        : ptr_(static_cast<T*>(paddle::memory::Alloc(place, size)),
-               Deleter(place)),
+    PlaceholderImpl(Place place, size_t size)
+        : ptr_(static_cast<T*>(memory::Alloc(place, size)),
+               memory::PODDeleter<T, Place>(place)),
           place_(place),
-          size_(size) {}
+          size_(size) {
+      PADDLE_ENFORCE(ptr_ != nullptr, "Insufficient %s memory to allocation.",
+                     is_cpu_place(place_) ? "CPU" : "GPU");
+    }
 
-    virtual void* Ptr() const { return static_cast<void*>(ptr_.get()); }
-    virtual size_t Size() const { return size_; }
-    virtual paddle::platform::Place Place() const { return place_; }
+    virtual size_t size() const { return size_; }
+    virtual platform::Place place() const { return place_; }
+    virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
+    virtual std::type_index type() const { return std::type_index(typeid(T)); }
 
-    std::unique_ptr<T, Deleter> ptr_;
-    paddle::platform::Place place_;  // record the place of ptr_.
-    size_t size_;                    // size of the memory block.
+    /*! the pointer of memory block. */
+    std::unique_ptr<T, memory::PODDeleter<T, Place>> ptr_;
+
+    /*! the place of memory block. */
+    platform::Place place_;
+
+    /*! the size of memory block. */
+    size_t size_;
   };
 
-  std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
+  /*! holds the memory block if allocated. */
+  std::shared_ptr<Placeholder> holder_;
+
+  /*! points to dimensions of memory block. */
+  DDim dims_;
+
+  /**
+   * @brief   A PlaceHolder may be shared by more than one tensor.
+   *
+   * @note    Some of them may be slices of the others. So the offset_
+   *          is introduced here to indicate the byte offset between
+   *          PlaceHolder::ptr_ and where the tensor data really begins.
+   */
+  size_t offset_;
 };
 
 }  // namespace framework
 }  // namespace paddle
+
+#include "paddle/framework/tensor_impl.h"

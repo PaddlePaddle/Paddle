@@ -198,6 +198,11 @@ message RowConvConfig {
   required uint32 context_length = 1;
 }
 
+message SliceConfig {
+  required uint32 start = 1;
+  required uint32 end = 2;
+}
+
 message ProjectionConfig {
   required string type = 1;
   required string name = 2;
@@ -218,6 +223,10 @@ message ProjectionConfig {
 
   // For pool
   optional PoolConfig pool_conf = 12;
+
+  // For slice
+  // Each slice output is the input[start, end)
+  repeated SliceConfig slices = 13;
 }
 
 message OperatorConfig {
@@ -289,6 +298,11 @@ message DetectionOutputConfig {
   optional uint32 width = 9 [default = 1];
 }
 
+message ClipConfig {
+  required double min = 1;
+  required double max = 2;
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -309,6 +323,7 @@ message LayerInputConfig {
   optional RowConvConfig row_conv_conf = 15;
   optional MultiBoxLossConfig multibox_loss_conf = 16;
   optional DetectionOutputConfig detection_output_conf = 17;
+  optional ClipConfig clip_conf = 18;
 }
 
 message LayerConfig {
@@ -472,10 +487,16 @@ message LayerConfig {
   // blank label used in ctc loss
   optional uint32 blank = 52 [default = 0];
 
-  // stride parameter for seqlastins layer, AverageLayer, MaxLayer, which 
+  // stride parameter for seqlastins layer, AverageLayer, MaxLayer, which
   // controls the scope of pooling operation. can be set > 0.
   // leave empty or set to -1 to disable this stride pooling.
   optional int32 seq_pool_stride = 53 [default = -1];
+
+  // for crop layer
+  optional int32 axis = 54 [default = 2];
+  repeated uint32 offset = 55;
+  repeated uint32 shape = 56;
+
 }
 
 message EvaluatorConfig {
