@@ -168,6 +168,9 @@ std::shared_ptr<OperatorBase> Backward(
   std::unordered_set<std::string> no_grad_names;
   no_grad_names.reserve(no_grad_vars.size());
 
+  no_grad_names.insert(OperatorBase::EMPTY_VAR_NAME() +
+                       OperatorBase::GRAD_VAR_SUFFIX());
+
   for (auto& name : no_grad_vars) {
     no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
   }
