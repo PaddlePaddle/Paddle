@@ -74,24 +74,24 @@ public:
 
     const int batch_size = Y->dims()[0];
     const int class_num = Y->dims()[1];
-    scale_->Resize(framework::make_ddim({batch_size}));
-    scale_->mutable_data<T>(context.GetPlace());
 
-    for (int i = 0; i < batch_size; ++i) {
-      scale_->data<T>()[i] = 0.0;
-      for (int j = 0; j < class_num; ++j) {
-        auto index = i * class_num + j;
-        scale_->data<T>()[i] += Y->data<T>()[index] * dY->data<T>()[index];
-      }
-    }
+    Eigen::DSizes<int, 1> along_class(1);
+    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int, 2> one_by_class(1, class_num);
 
-    for (int i = 0; i < batch_size; ++i) {
-      for (int j = 0; j < class_num; ++j) {
-        auto index = i * class_num + j;
-        dX->data<T>()[index] =
-            Y->data<T>()[index] * (dY->data<T>()[index] - scale_->data<T>()[i]);
-      }
-    }
+    auto Y_eigen = EigenMatrix<T>::From(*Y);
+    auto dY_eigen = EigenMatrix<T>::From(*dY);
+    auto dX_eigen = EigenMatrix<T>::From(*dX);
+    auto place = context.GetEigenDevice<Place>();
+
+    dX_eigen.device(place) = dY_eigen;
+    auto dot = (Y_eigen * dY_eigen)
+                   .sum(along_class)
+                   .eval()
+                   .reshape(batch_by_one)
+                   .broadcast(one_by_class);
+    dX_eigen.device(place) -= dot;
+    dX_eigen.device(place) = dX_eigen * Y_eigen;
   }
 };
 
