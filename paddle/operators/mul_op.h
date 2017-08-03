@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/operators/math/math_function.h"
 #include "paddle/operators/type_alias.h"
 
 namespace paddle {
@@ -23,22 +24,35 @@ template <typename Place, typename T>
 class MulKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
-    Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
-        {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
-
     auto input0 = context.Input<Tensor>("X");
     auto input1 = context.Input<Tensor>("Y");
     auto output = context.Output<Tensor>(0);
 
     output->mutable_data<T>(context.GetPlace());
 
-    auto X = EigenMatrix<T>::From(*input0);
-    auto Y = EigenMatrix<T>::From(*input1);
-    auto Z = EigenMatrix<T>::From(*output);
-    auto place = context.GetEigenDevice<Place>();
+    auto out_dim = output->dims();
+    auto in0_dim = input0->dims();
 
-    Z.device(place) = X.contract(Y, dim_pair);
+    int M = out_dim[0];
+    int N = out_dim[1];
+    int K = in0_dim[1];
+
+    paddle::operators::math::template gemm<Place, T>(CblasNoTrans,
+                                                     CblasNoTrans,
+                                                     M,
+                                                     N,
+                                                     K,
+                                                     1,
+                                                     input0->data<T>(),
+                                                     K,
+                                                     input1->data<T>(),
+                                                     N,
+                                                     0,
+                                                     output->data<T>(),
+                                                     N,
+                                                     &context.device_context());
   }
 };
+
 }  // namespace operators
 }  // namespace paddle

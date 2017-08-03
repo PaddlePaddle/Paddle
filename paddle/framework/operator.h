@@ -257,6 +257,10 @@ class ExecutionContext : public OperatorContext {
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
+  const platform::DeviceContext& device_context() const {
+    return device_context_;
+  };
+
   const platform::DeviceContext& device_context_;
 };
 
