@@ -187,6 +187,9 @@ class OperatorFactory(object):
 
         return self.get_op_creation_info(t)['method'](**kwargs)
 
+    def types(self):
+        return self.op_methods.keys()
+
     def get_op_creation_info(self, t):
         if t not in self.op_methods:
             raise ValueError("operator %s is not registered", t)

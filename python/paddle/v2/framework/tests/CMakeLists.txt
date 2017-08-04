@@ -1,8 +1,8 @@
 add_python_test(test_framework
     test_protobuf.py
     test_scope.py
+    test_operator.py
     test_default_scope_funcs.py
-    test_op_creation_methods.py
     test_net.py
     test_tensor.py
     test_fc_op.py
@@ -13,5 +13,5 @@ add_python_test(test_framework
     test_sigmoid_op.py
     test_softmax_op.py
     test_rowwise_add_op.py
-    test_network.py
-    gradient_checker.py)
+    gradient_checker.py
+    )
