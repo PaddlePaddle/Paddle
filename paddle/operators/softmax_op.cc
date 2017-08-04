@@ -51,7 +51,7 @@ protected:
     PADDLE_ENFORCE(ctx.InputVar(framework::GradVarName("Y")) != nullptr,
                    "Input(Y@GRAD) should not be null");
     PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
-                   ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
+                       ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
                    "the shape of Input(0) and Input(1) should be the same");
     ctx.Output<Tensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("Y")->dims());

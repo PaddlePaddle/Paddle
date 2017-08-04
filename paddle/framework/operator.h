@@ -45,12 +45,11 @@ const std::string kTempVarName = "@TEMP@";
 const std::string kGradVarSuffix = "@GRAD";
 
 /// Variables with this suffix are supposed to be filled up with zeros.
-const std::string kZeroVarSuffix =  "@ZERO";
+const std::string kZeroVarSuffix = "@ZERO";
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
-
 
 class OperatorBase;
 class InferShapeContext;

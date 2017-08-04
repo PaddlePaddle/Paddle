@@ -59,16 +59,14 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   //  If all input gradients of forwarding operator do not need to calculate,
   //  just return an NOP. Not return null ptr because NOP does not take
   //  too much time for calculation, but it is useful for simplifying logic.
-  if (AllInSet(forwardOp.inputs_, kGradVarSuffix,
-               no_grad_names)) {
+  if (AllInSet(forwardOp.inputs_, kGradVarSuffix, no_grad_names)) {
     return NOP();
   }
 
   //  All output gradients of forwarding operator do not need to calculate.
   //  Then all input gradients cannot be computed at all, and we put them into
   //  `no_grad_names` set. Return an NOP.
-  if (AllInSet(forwardOp.outputs_, kGradVarSuffix,
-               no_grad_names)) {
+  if (AllInSet(forwardOp.outputs_, kGradVarSuffix, no_grad_names)) {
     for (auto& name : forwardOp.inputs_) {
       // Mark all input is not need
       no_grad_names.insert(name + kGradVarSuffix);
@@ -134,8 +132,8 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     std::shared_ptr<OperatorBase> grad_op = OpRegistry::CreateGradOp(forwardOp);
     for (std::string& grad_input : grad_op->inputs_) {
       if (no_grad_names.count(grad_input)) {
-        std::string prefix = grad_input.substr(
-            0, grad_input.size() - kGradVarSuffix.size());
+        std::string prefix =
+            grad_input.substr(0, grad_input.size() - kGradVarSuffix.size());
         grad_input = prefix + kZeroVarSuffix;
 
         // If part of input gradient of that operator is not calculated, fill
@@ -168,8 +166,7 @@ std::shared_ptr<OperatorBase> Backward(
   std::unordered_set<std::string> no_grad_names;
   no_grad_names.reserve(no_grad_vars.size());
 
-  no_grad_names.insert(kEmptyVarName +
-                       kGradVarSuffix);
+  no_grad_names.insert(kEmptyVarName + kGradVarSuffix);
 
   for (auto& name : no_grad_vars) {
     no_grad_names.insert(name + kGradVarSuffix);
@@ -177,5 +174,6 @@ std::shared_ptr<OperatorBase> Backward(
   size_t uid = 0;
   return BackwardRecursive(forwardOp, no_grad_names, uid);
 }
+
 }  // namespace framework
 }  // namespace paddle
