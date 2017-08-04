@@ -1,3 +1,4 @@
+#define EIGEN_USE_GPU
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/fill_zeros_like_op.h"
 
