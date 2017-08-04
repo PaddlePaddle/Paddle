@@ -37,8 +37,13 @@ Configuring cmake in /paddle/build ...
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
       -DWITH_TESTING=${WITH_TESTING:-OFF}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      -DUNITTEST_USE_VIRTUALENV=OFF
 ========================================
 EOF
+
+# Disable UNITTEST_USE_VIRTUALENV in docker because
+# docker environment is fully controlled by this script.
+# See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
