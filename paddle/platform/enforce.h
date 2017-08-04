@@ -162,5 +162,10 @@ inline void throw_on_error(T e) {
     }                                                                   \
   } while (0)
 
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1)                                   \
+  PADDLE_ENFORCE((__VAL0) == (__VAL1), "enforce %s == %s failed, %s != %s", \
+                 #__VAL0, #__VAL1, std::to_string(__VAL0),                  \
+                 std::to_string(__VAL1));
+
 }  // namespace platform
 }  // namespace paddle
