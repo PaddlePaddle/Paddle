@@ -81,3 +81,118 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
 
   ASSERT_TRUE(in_catch);
 }
+
+TEST(ENFORCE_NE, OK) {
+  PADDLE_ENFORCE_NE(1, 2);
+  PADDLE_ENFORCE_NE(1.0, 2UL);
+}
+TEST(ENFORCE_NE, FAIL) {
+  bool in_catch = false;
+
+  try {
+    // 2UL here to check data type compatible
+    PADDLE_ENFORCE_NE(1.0, 1UL);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "enforce 1.0 != 1UL failed, 1.000000 == 1";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
+
+TEST(ENFORCE_GT, OK) { PADDLE_ENFORCE_GT(2, 1); }
+TEST(ENFORCE_GT, FAIL) {
+  bool in_catch = false;
+
+  try {
+    // 2UL here to check data type compatible
+    PADDLE_ENFORCE_GT(1, 2UL);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "enforce 1 > 2UL failed, 1 <= 2";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
+
+TEST(ENFORCE_GE, OK) {
+  PADDLE_ENFORCE_GE(2, 2UL);
+  PADDLE_ENFORCE_GE(3, 2UL);
+  PADDLE_ENFORCE_GE(3, 2);
+  PADDLE_ENFORCE_GE(3.21, 2UL);
+}
+TEST(ENFORCE_GE, FAIL) {
+  bool in_catch = false;
+
+  try {
+    PADDLE_ENFORCE_GE(1, 2UL);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "enforce 1 >= 2UL failed, 1 < 2";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
+
+TEST(ENFORCE_LE, OK) {
+  PADDLE_ENFORCE_LE(1, 1);
+  PADDLE_ENFORCE_LE(1, 1UL);
+  PADDLE_ENFORCE_LE(2, 3UL);
+  PADDLE_ENFORCE_LE(2UL, 3);
+  PADDLE_ENFORCE_LE(2UL, 3.2);
+}
+TEST(ENFORCE_LE, FAIL) {
+  bool in_catch = false;
+
+  try {
+    PADDLE_ENFORCE_GT(1, 2UL);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "enforce 1 > 2UL failed, 1 <= 2";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
+
+TEST(ENFORCE_LT, OK) {
+  PADDLE_ENFORCE_LT(3, 10);
+  PADDLE_ENFORCE_LT(2, 3UL);
+  PADDLE_ENFORCE_LT(2UL, 3);
+}
+TEST(ENFORCE_LT, FAIL) {
+  bool in_catch = false;
+
+  try {
+    PADDLE_ENFORCE_LT(1UL, 0.12);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "enforce 1UL < 0.12 failed, 1 >= 0.12";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
