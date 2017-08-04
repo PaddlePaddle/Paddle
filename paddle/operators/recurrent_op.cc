@@ -303,11 +303,14 @@ public:
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.inlink_alias, "alias of inlinks");
-    AddAttr<std::vector<std::string>>(name.outlink_alias, "alias of outlinks");
-    AddAttr<std::vector<std::string>>(name.pre_memories,
-                                      "names of pre-memories");
-    AddAttr<std::vector<std::string>>(name.memories, "names of memories");
+    AddAttr<std::vector<std::string>>(
+        name.inlink_alias, "alias of inlinks", false);
+    AddAttr<std::vector<std::string>>(
+        name.outlink_alias, "alias of outlinks", false);
+    AddAttr<std::vector<std::string>>(
+        name.pre_memories, "names of pre-memories", false);
+    AddAttr<std::vector<std::string>>(
+        name.memories, "names of memories", false);
 
     AddComment("This is a recurrent group operator.");
   }

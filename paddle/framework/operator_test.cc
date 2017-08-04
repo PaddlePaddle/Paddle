@@ -46,7 +46,7 @@ class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
-    AddAttr<float>("scale", "scale of cosine op");
+    AddAttr<float>("scale", "scale of cosine op", false);
     AddComment("This is test op");
   }
 };
@@ -87,7 +87,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("x", "input of test op");
     AddOutput("y", "output of test op");
-    AddAttr<float>("scale", "scale of cosine op")
+    AddAttr<float>("scale", "scale of cosine op", false)
         .SetDefault(1.0)
         .LargerThan(0.0);
     AddComment("This is test op");
@@ -140,7 +140,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
     AddInput("xs", "inputs of test op").SetMultiple();
     AddInput("k", "input of test op");
     AddOutput("ys", "outputs of test op").SetMultiple();
-    AddAttr<float>("scale", "scale of cosine op")
+    AddAttr<float>("scale", "scale of cosine op", false)
         .SetDefault(1.0)
         .LargerThan(0.0);
     AddComment("This is test op");

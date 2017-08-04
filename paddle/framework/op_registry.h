@@ -48,23 +48,9 @@ class OpProtoAndCheckerMaker {
     std::function<void()> on_multiple_;
     std::function<void()> on_temporary_;
 
-    VariableBuilder& SetMultiple() {
-      var_->set_multiple(true);
-      on_multiple_();
-      return *this;
-    }
-
-    VariableBuilder& SetTemporary() {
-      PADDLE_ENFORCE(bool(on_temporary_), "Cannot set temporary");
-      var_->set_temporary(true);
-      on_temporary_();
-      return *this;
-    }
-
-    VariableBuilder& IgnoreGradient() {
-      var_->set_ignore_gradient(true);
-      return *this;
-    }
+    VariableBuilder& SetMultiple();
+    VariableBuilder& SetTemporary();
+    VariableBuilder& IgnoreGradient();
   };
 
   VariableBuilder AddInput(const std::string& name, const std::string& comment);

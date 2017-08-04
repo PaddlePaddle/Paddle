@@ -18,7 +18,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("input", "input of cosine op");
     AddOutput("output", "output of cosine op");
-    AddAttr<float>("scale", "scale of cosine op")
+    AddAttr<float>("scale", "scale of cosine op", false)
         .SetDefault(1.0)
         .LargerThan(0.0);
     AddComment("This is cos op");
@@ -41,7 +41,7 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };
-    AddAttr<int>("test_attr", "a simple test attribute")
+    AddAttr<int>("test_attr", "a simple test attribute", false)
         .AddCustomChecker(my_checker);
     AddComment("This is my_test op");
   }
@@ -182,8 +182,8 @@ class TestAttrProtoMaker : public pd::OpProtoAndCheckerMaker {
  public:
   TestAttrProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("scale", "scale of test op");
-    AddAttr<float>("scale", "scale of test op");
+    AddAttr<float>("scale", "scale of test op", false);
+    AddAttr<float>("scale", "scale of test op", false);
   }
 };
 

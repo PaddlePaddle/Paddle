@@ -38,10 +38,10 @@ public:
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
     AddOutput("param_out", "output parameter");
-    AddAttr<float>("learning_rate", "learning rate of sgd");
+    AddAttr<float>("learning_rate", "learning rate of SGD", false);
     AddComment(R"DOC(
 
-Simplest sgd algorithm.
+Simplest SGD algorithm.
 
 param_out = param - learning_rate * grad;
 

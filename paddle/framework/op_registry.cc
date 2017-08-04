@@ -41,7 +41,6 @@ OpProtoAndCheckerMaker::VariableBuilder::IgnoreGradient() {
   var_->set_ignore_gradient(true);
   return *this;
 }
-};
 
 OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(
     const std::string& name, const std::string& comment) {

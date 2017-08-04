@@ -52,7 +52,7 @@ public:
     AddOutput("Y", "the output of fc operator");
     AddOutput("before_act", "the before activation output of fc operator")
         .SetTemporary();
-    AddAttr<std::string>("activation", "The activation key for fc layer")
+    AddAttr<std::string>("activation", "The activation key for fc layer", false)
         .SetDefault("sigmoid")
         .InEnum({"sigmoid", "softmax"});
 
