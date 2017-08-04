@@ -15,5 +15,5 @@
 #include "paddle/framework/tensor.h"
 
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {}
 }  // namespace paddle

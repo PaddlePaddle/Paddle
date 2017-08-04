@@ -57,14 +57,14 @@ TEST_F(LODTensorTester, NumElements) {
 
 TEST_F(LODTensorTester, SliceShared_Level) {
   // slice 1 level
-  for (int level = 0; level < 3; level++) {
+  for (size_t level = 0; level < 3UL; ++level) {
     auto new_lod_tensor = lod_tensor->SliceShared(level, level + 1);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0UL), lod_tensor->NumElements(level));
     ASSERT_EQ(new_lod_tensor.tensor(), lod_tensor->tensor());
   }
   // slice 2 level
-  for (int level = 0; level < 2; level++) {
+  for (size_t level = 0; level < 2UL; ++level) {
     auto new_lod_tensor = lod_tensor->SliceShared(level, level + 2);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor->NumElements(level));
@@ -76,7 +76,7 @@ TEST_F(LODTensorTester, SliceShared_Level) {
 
 TEST_F(LODTensorTester, SliceCopied_Level) {
   // slice 1 level
-  for (int level = 0; level < 3; level++) {
+  for (size_t level = 0; level < 3UL; ++level) {
     auto new_lod_tensor =
         lod_tensor->SliceCopied<float>(level, level + 1, place);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
@@ -85,7 +85,7 @@ TEST_F(LODTensorTester, SliceCopied_Level) {
     // TODO(superjom) add tensor comparation here.
   }
   // slice 2 level
-  for (int level = 0; level < 2; level++) {
+  for (size_t level = 0; level < 2UL; ++level) {
     auto new_lod_tensor =
         lod_tensor->SliceCopied<float>(level, level + 2, place);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
