@@ -18,11 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static const float kCrossEntropyLogThreshold{1e-20};
+
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public OpKernel {
 public:
-  static constexpr T const& kLogThreshold = 1e-20;
-
   void Compute(const ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
@@ -38,8 +38,8 @@ public:
 
     // Y[i] = -log(X[i][j])
     for (int i = 0; i < batch_size; ++i) {
-      Ydata[i] = -std::log(
-          std::max(Xdata[i * class_num + label_data[i]], kLogThreshold));
+      Ydata[i] = -std::log(std::max(Xdata[i * class_num + label_data[i]],
+                                    kCrossEntropyLogThreshold));
     }
   }
 };
@@ -47,8 +47,6 @@ public:
 template <typename Place, typename T>
 class OnehotCrossEntropyGradientOpKernel : public OpKernel {
 public:
-  static constexpr T const& kLogThreshold = 1e-20;
-
   void Compute(const ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     auto dX = ctx.Output<Tensor>("X" + OperatorBase::GRAD_VAR_SUFFIX());
@@ -65,8 +63,8 @@ public:
 
     for (int i = 0; i < batch_size; ++i) {
       dXdata[i * class_num + label_data[i]] =
-          -dYdata[i] /
-          std::max(Xdata[i * class_num + label_data[i]], kLogThreshold);
+          -dYdata[i] / std::max(Xdata[i * class_num + label_data[i]],
+                                kCrossEntropyLogThreshold);
     }
   }
 };
