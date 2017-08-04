@@ -35,5 +35,22 @@ public:
   }
 };
 
+template <typename Place, typename T>
+class MeanGradKernel : public OpKernel {
+public:
+  void Compute(const ExecutionContext& context) const override {
+    auto OG = context.Input<Tensor>("Out" + OperatorBase::GRAD_VAR_SUFFIX());
+    PADDLE_ENFORCE(framework::product(OG->dims()) == 1,
+                   "Mean Gradient should be scalar");
+    auto IG = context.Output<Tensor>("X" + OperatorBase::GRAD_VAR_SUFFIX());
+    IG->mutable_data<T>(context.GetPlace());
+
+    T ig_size = (T)framework::product(IG->dims());
+
+    EigenVector<T>::Flatten(*IG).device(context.GetEigenDevice<Place>()) =
+        EigenScalar<T>::From(*OG) / ig_size;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
