@@ -47,7 +47,7 @@ public:
 
     T ig_size = (T)framework::product(IG->dims());
 
-    EigenVector<T>::Flatten(*IG).device(*(context.GetEigenDevice<Place>())) =
+    EigenVector<T>::Flatten(*IG).device((context.GetEigenDevice<Place>())) =
         EigenScalar<T>::From(*OG) / ig_size;
   }
 };
