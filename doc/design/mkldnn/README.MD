@@ -46,7 +46,6 @@ Figure 1. PaddlePaddle on IA.
 ### Layer
 所有的layer相关的C++代码，都会在按照PaddlePaddle的目录结构存放在
 `paddle\gserver\layers`中，文件名以*Mkldnn*开头。
-并且有可能会在Layer.h和Layer.cpp里面添加少量的code，用宏定义`PADDLE_USE_MKLDNN`隔开。
 
 所有MKLDNN的Layer都会继承于一个MKLDNN的父类layer，这个父类mkldnnlayer继承于Paddle的基类layer。
 
@@ -90,13 +89,13 @@ Activation的测试，计划在Paddle原有的测试文件上直接添加测试t
 
 ## KeyPoints
 
-为了更好的符合PaddlePaddle的代码风格，同时又尽可能少的牺牲MKLDNN的性能。
+为了更好的符合PaddlePaddle的代码风格\[[2](#references)\]，同时又尽可能少的牺牲MKLDNN的性能\[[3](#references)\]。
 
 我们总结出一些特别需要注意的点：
 
 1. 使用**deviceId_**。为了尽可能少的在父类Layer中添加变量或者函数，我们决定使用已有的`deviceId_`变量来区分layer的属性，定义`-2`为**MkldnnLayer**特有的设备ID。
 2. 重写父类Layer的**init**函数，修改`deviceId_`为`-2`，代表这个layer是用于跑在MKLDNN的环境下。
-3. 创建**MkldnnMatrix**，用于管理MKLDNN会用到的相关memory函数和接口。
+3. 创建**MkldnnMatrix**，用于管理MKLDNN会用到的相关memory函数、接口以及会用的到格式信息。
 4. 创建**MkldnnBase**，定义一些除了layer和memory相关的类和函数。包括MKLDNN会用到Stream和CpuEngine，和未来可能还会用到FPGAEngine等。
 5. 在**Argument**里添加两个MkldnnMatrixPtr，取名为mkldnnValue和mkldnnGrad，用于存放MkldnnLayer会用到的memory buffer。 并且添加函数cvt(会修改为一个更加合适的函数名)，用于处理"CPU device"和"MKLDNN device"之间memory的相互转化。
 6. 在父类Layer中的**getOutput**函数中添加一段逻辑，用于判断`deviceId`，并针对device在MKLDNN和CPU之间不统一的情况，做一个前期转换。 也就是调用`Argument`的cvt函数把output统一到需要的device上。
@@ -105,4 +104,6 @@ Activation的测试，计划在Paddle原有的测试文件上直接添加测试t
 ## References
 
 1. [Intel Math Kernel Library for Deep Neural Networks (Intel MKL-DNN)](https://github.com/01org/mkl-dnn "Intel MKL-DNN")
+2. [原来的方案](https://github.com/PaddlePaddle/Paddle/pull/3096)会引入**nextLayer**的信息。但是在PaddlePaddle中，无论是重构前的layer还是重构后的op，都不会想要知道next layer/op的信息。
+3. MKLDNN的高性能格式与PaddlePaddle原有的`NCHW`不同(PaddlePaddle中的cudnn部分使用的也是`NCHW`，所以不存在这个问题)，所以需要引入一个转换方法，并且只需要在必要的时候转换这种格式，才能更好的发挥MKLDNN的性能。
 
