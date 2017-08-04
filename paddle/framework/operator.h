@@ -32,9 +32,29 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+/// If a variable is a empty variable, that name will be used.
+const std::string kEmptyVarName = "@EMPTY@";
+
+/// If a variable is a temporary variable, that name will be set in Python,
+/// but it will be convert to a unique name in scope after OpCreator.
+const std::string kTempVarName = "@TEMP@";
+
+/// If a variable's name has a certain suffix, it means that the
+/// variable is the gradient of another varibale.
+/// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+const std::string kGradVarSuffix = "@GRAD";
+
+/// Variables with this suffix are supposed to be filled up with zeros.
+const std::string kZeroVarSuffix = "@ZERO";
+
+inline std::string GradVarName(const std::string& var_name) {
+  return var_name + kGradVarSuffix;
+}
+
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -43,25 +63,6 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
-  /// If a variable is a empty variable, that name will be used.
-  static std::string EMPTY_VAR_NAME() { return "@EMPTY@"; }
-
-  /// If a variable is a temporary variable, that name will be set in Python,
-  /// but it will be convert to a unique name in scope after OpCreator.
-  static std::string TMP_VAR_NAME() { return "@TEMP@"; }
-
-  /// If a variable's name has a certain suffix, it means that the
-  /// variable is the gradient of another varibale.
-  /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
-  static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
-
-  static std::string GRAD_VAR_NAME(const std::string& name) {
-    return name + GRAD_VAR_SUFFIX();
-  }
-
-  /// Variables with this suffix are supposed to be filled up with zeros.
-  static std::string ZERO_VAR_SUFFIX() { return "@ZERO"; }
-
   virtual ~OperatorBase() {}
 
   template <typename T>

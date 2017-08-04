@@ -48,12 +48,12 @@ protected:
     PADDLE_ENFORCE(ctx.OutputSize() == 1UL,
                    "Output of SoftmaxOpGrad should be 1");
     PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx.InputVar(GRAD_VAR_NAME("Y")) != nullptr,
+    PADDLE_ENFORCE(ctx.InputVar(framework::GradVarName("Y")) != nullptr,
                    "Input(Y@GRAD) should not be null");
     PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
-                       ctx.Input<Tensor>(GRAD_VAR_NAME("Y"))->dims(),
+                       ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
                    "the shape of Input(0) and Input(1) should be the same");
-    ctx.Output<Tensor>(GRAD_VAR_NAME("X"))
+    ctx.Output<Tensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("Y")->dims());
   }
 };

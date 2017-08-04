@@ -341,7 +341,7 @@ class OpRegistry {
   static void GenerateTempVariableName(OperatorBase* op) {
     static std::atomic<size_t> gUniqId(0UL);
     for (auto& outname : op->outputs_) {
-      if (outname == OperatorBase::TMP_VAR_NAME()) {
+      if (outname == kTempVarName) {
         outname += op->type_;
         outname += "@";
         outname += std::to_string(gUniqId.fetch_add(1));
