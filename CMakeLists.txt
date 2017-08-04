@@ -16,13 +16,15 @@ cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include(system)
+
 project(paddle VERSION 0.10.0 LANGUAGES CXX C Go)
 
 set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(PROJ_BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 set(PADDLE_VERSION ${PROJECT_VERSION})
 
-include(system)
+message(STATUS "Paddle version is ${PADDLE_VERSION}")
 
 find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)
