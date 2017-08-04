@@ -4,7 +4,7 @@ import numpy as np
 import paddle.v2.framework.core as core
 import paddle.v2.framework.create_op_creation_methods as creation
 
-from op_test_util import OpTestMeta
+from op_test_util import OpTestMeta, GradOpTestMeta
 
 
 def stable_softmax(x):
@@ -21,6 +21,22 @@ class TestSoftmaxOp(unittest.TestCase):
         self.type = "softmax"
         self.X = np.random.random((32, 100)).astype("float32")
         self.Y = np.apply_along_axis(stable_softmax, 1, self.X)
+
+
+class TestSoftmaxGradOp1(unittest.TestCase):
+    __metaclass__ = GradOpTestMeta
+
+    def setUp(self):
+        batch_size = 3
+        class_num = 5
+
+        self.type = "softmax"
+        setattr(self, "Y",
+                np.random.rand(batch_size, class_num).astype(np.float32))
+        setattr(self, "Y@GRAD",
+                np.random.rand(batch_size, class_num).astype(np.float32))
+        setattr(self, "X@GRAD",
+                np.random.rand(batch_size, class_num).astype(np.float32))
 
 
 class TestSoftmaxGradOp(unittest.TestCase):

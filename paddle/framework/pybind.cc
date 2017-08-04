@@ -55,6 +55,10 @@ void ExposeOperator(ClassType &m) {
            [](const typename ClassType::type &op) -> std::vector<std::string> {
              return op.outputs_;
            })
+      .def("inputs",
+           [](const typename ClassType::type &op) -> std::vector<std::string> {
+             return op.inputs_;
+           })
       .def("__str__", &ClassType::type::DebugString);
 }
 
