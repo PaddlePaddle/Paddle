@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/framework/eigen.h"
+#include "paddle/framework/op_helpers/op_helpers.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 
@@ -58,3 +59,4 @@ using OpRegistry = framework::OpRegistry;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace op_helpers = paddle::framework::op_helpers;
