@@ -39,15 +39,8 @@ protected:
 class OnehotCrossEntropyGradientOp : public OperatorWithKernel {
 protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    using framework::op_helpers::GenGradName;
-    auto X_grad = ctx.Output<Tensor>(GenGradName("X"));
-    // auto Y_grad = ctx.Input<Tensor>(GenGradName("Y"));
+    auto X_grad = ctx.Output<Tensor>("X" + OperatorBase::GRAD_VAR_SUFFIX());
     auto X = ctx.Input<Tensor>("X");
-    // auto Y = ctx.Input<Tensor>("Y");
-    // auto label = ctx.Input<Tensor>("label");
-
-    // const auto batch_size = X->dims()[0];
-    // const auto class_num = X->dims()[1];
 
     // TODO(superjom) add enforce here after helper functions ready
     X_grad->Resize(X->dims());

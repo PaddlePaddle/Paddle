@@ -21,7 +21,7 @@ namespace operators {
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public OpKernel {
 public:
-  constexpr T kLOG_THRESHOLD() const { return static_cast<T>(1e-20); }
+  static constexpr T const& kLogThreshold = 1e-20;
 
   void Compute(const ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
@@ -39,7 +39,7 @@ public:
     // Y[i] = -log(X[i][j])
     for (int i = 0; i < batch_size; ++i) {
       Ydata[i] = -std::log(
-          std::max(Xdata[i * class_num + label_data[i]], kLOG_THRESHOLD()));
+          std::max(Xdata[i * class_num + label_data[i]], kLogThreshold));
     }
   }
 };
@@ -47,13 +47,12 @@ public:
 template <typename Place, typename T>
 class OnehotCrossEntropyGradientOpKernel : public OpKernel {
 public:
-  constexpr T kLOG_THRESHOLD() const { return static_cast<T>(1e-20); }
+  static constexpr T const& kLogThreshold = 1e-20;
 
   void Compute(const ExecutionContext& ctx) const override {
-    using framework::op_helpers::GenGradName;
     auto X = ctx.Input<Tensor>("X");
-    auto dX = ctx.Output<Tensor>(GenGradName("X"));
-    auto dY = ctx.Input<Tensor>(GenGradName("Y"));
+    auto dX = ctx.Output<Tensor>("X" + OperatorBase::GRAD_VAR_SUFFIX());
+    auto dY = ctx.Input<Tensor>("Y" + OperatorBase::GRAD_VAR_SUFFIX());
     auto label = ctx.Input<Tensor>("label");
 
     auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());
@@ -67,7 +66,7 @@ public:
     for (int i = 0; i < batch_size; ++i) {
       dXdata[i * class_num + label_data[i]] =
           -dYdata[i] /
-          std::max(Xdata[i * class_num + label_data[i]], kLOG_THRESHOLD());
+          std::max(Xdata[i * class_num + label_data[i]], kLogThreshold);
     }
   }
 };
