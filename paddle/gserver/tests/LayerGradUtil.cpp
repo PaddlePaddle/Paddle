@@ -400,7 +400,6 @@ void initDataLayer(TestConfig testConf,
         const std::vector<int>& labelSeqStartPositions =
             testConf.inputDefs[i].labelSeqStartPositions;
         if (labelSeqStartPositions.size() != 0) {
-          CHECK(!sequenceStartPositions);
           CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
 
           sequenceStartPositions =
@@ -409,6 +408,19 @@ void initDataLayer(TestConfig testConf,
                                            labelSeqStartPositions.size(),
                                            useGpu);
           data.sequenceStartPositions = sequenceStartPositions;
+        }
+
+        const std::vector<int>& labelSubSeqStartPositions =
+            testConf.inputDefs[i].labelSubSeqStartPositions;
+        if (labelSubSeqStartPositions.size() != 0) {
+          CHECK_GE(static_cast<int>(labelSubSeqStartPositions.size()), 2);
+
+          subSequenceStartPositions =
+              ICpuGpuVector::create(labelSubSeqStartPositions.size(), useGpu);
+          subSequenceStartPositions->copyFrom(labelSubSeqStartPositions.data(),
+                                              labelSubSeqStartPositions.size(),
+                                              useGpu);
+          data.subSequenceStartPositions = subSequenceStartPositions;
         }
         break;
       }
