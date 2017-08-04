@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class FillZerosLikeOp : public framework::OperatorWithKernel {
+class FillZerosLikeOp : public OperatorWithKernel {
 protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1UL,
@@ -33,7 +33,7 @@ protected:
   }
 };
 
-class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
+class FillZerosLikeOpMaker : public OpProtoAndCheckerMaker {
 public:
   FillZerosLikeOpMaker(framework::OpProto *proto,
                        framework::OpAttrChecker *op_checker)
