@@ -1,8 +1,28 @@
-## Operator/expression 's Backward
+# Operator/expression 's Backward
 
-### Motivation
+## Motivation
 
 In Neural Network, the backpropagation algorithm follows the chain rule, so we need to compound the fundmental gradient operators/expressions together with chain rule . Every forward network need a backward network to construct the full computation lineage, the operator/ expression's Backward feature will generate the backward pass respect to forward pass.
+ 
+## Backward Operator Registry
+
+A backward network is built up with several backward operators. Backward operators take forward operators' inputs, outputs and output gradients, and then calculate its input gradients. In most cases, there is a one-to-one correspondence between forward and backward operators. We use registry mechanism to save these correspondences, which is quite similar with operator registry itself.
+
+For example, we have got a `add_two_op`, and is registered by the following code:
+
+```cpp
+REGISTER_OP(add_two, AddTwoOp, AddTwoOpMaker);
+```
+
+`add_two` is the operator's type. `AddTwoOp` and `AddTwoOpMaker` are the operator class and the operator maker class respectively.
+
+Assume that we have also got the backward operator of `add_two_op`, which calculating the gradients of `add_two_op`'s inputs. Then we register it by the following way:
+
+```cpp
+REGISTER_GRADIENT_OP(add_two, add_two_grad, AddTwoGradOp);
+```
+
+`add_two_grad` is the type of backward operator, and `AddTwoGradOp` is its class name.
 
 ### Implement : gradient operator registry
 
