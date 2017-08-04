@@ -22,14 +22,6 @@ def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
-def label_softmax_grad(Y, dY):
-    dX = Y * 0.0
-    for i in range(Y.shape[0]):
-        d = numpy.dot(Y[i, :], dY[i, :])
-        dX[i, :] = Y[i, :] * (dY[i, :] - d)
-    return dX
-
-
 class GradChecker(unittest.TestCase):
     def assert_grad(self,
                     forward_op,
@@ -40,7 +32,6 @@ class GradChecker(unittest.TestCase):
         backward_op = core.Operator.backward(forward_op, no_grad_set)
         print(backward_op)
 
-        #
         out_names = forward_op.outputs()
         if len(out_names) != 1:
             raise ValueError("out_names should be 1")
@@ -97,20 +88,7 @@ class GradChecker(unittest.TestCase):
 
         ret_val = get_numeric_gradient(forward_op, numeric_input, output_name,
                                        input_to_check)
-
         out_data = numpy.array(
             cpu_scope.find_var(backward_op.outputs()[0]).get_tensor())
 
         numpy.testing.assert_almost_equal(out_data, ret_val)
-
-
-class SoftmaxGradOpTest(GradChecker):
-    def test_softmax(self):
-        op = create_op("softmax")
-        X = numpy.random.random((3, 4)).astype("float32")
-        inputs = {"X": X}
-        self.assert_grad(op, inputs)
-
-
-if __name__ == '__main__':
-    unittest.main()
