@@ -156,3 +156,26 @@ function(add_python_test TEST_NAME)
         ${USE_VIRTUALENV_FOR_TEST} ${PYTHON_EXECUTABLE} ${ARGN}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
+
+function(add_gtest_parallel)
+    set(oneValueArgs NAME PARALLEL COMMAND WORKING_DIRECTORY)
+    set(multiValueArgs ARGS RUNNER)
+    set(options "")
+    cmake_parse_arguments(add_gtest_parallel "${options}" "${oneValueArgs}"
+            "${multiValueArgs}" ${ARGN})
+    set(RUNNER ${PROJ_ROOT}/paddle/scripts/unittest/run_part_gtest.py)
+    if (NOT add_gtest_parallel_WORKING_DIRECTORY)
+        set(add_gtest_parallel_WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+    if (NOT add_gtest_parallel_PARALLEL)
+        message(FATAL_ERROR "Must set PARALLEL in add_gtest_parallel")
+    endif()
+
+    foreach(i RANGE ${add_gtest_parallel_PARALLEL})
+        add_test(NAME "${add_gtest_parallel_NAME}_${i}"
+                 COMMAND ${add_gtest_parallel_RUNNER}
+                    ${RUNNER} -i ${i} -n ${add_gtest_parallel_PARALLEL}
+                    ${add_gtest_parallel_COMMAND} ${add_gtest_parallel_ARGS}
+                WORKING_DIRECTORY ${add_gtest_parallel_WORKING_DIRECTORY})
+    endforeach()
+endfunction()
