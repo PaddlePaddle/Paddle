@@ -39,12 +39,13 @@ REGISTER_LAYER(kmax_seq_score, KmaxSeqScoreLayer);
 bool KmaxSeqScoreLayer::init(const LayerMap& layerMap,
                              const ParameterMap& parameterMap) {
   bool ret = Layer::init(layerMap, parameterMap);
-  CHECK_EQ(1UL, inputLayers_.size());
+  CHECK_EQ(1U, inputLayers_.size());
 
   beamSize_ = config_.beam_size();
-  CHECK_GE(beamSize_, 1LU);
+  CHECK_GE(beamSize_, 1U);
 
   setNeedSequenceInfo(false);
+  setNeedGradient(false);
   return ret;
 }
 
@@ -96,18 +97,19 @@ void KmaxSeqScoreLayer::forward(PassType passType) {
     scores_ = inputScore;
   }
 
-  MatrixPtr outputValue = getOutputValue();
   Matrix::resizeOrCreate(
-      outputValue,
+      output_.value,
       input.hasSubseq() ? input.getNumSubSequences() : input.getNumSequences(),
-      beamSize_);
-  outputValue->one();
-  outputValue->mulScalar(-1.);
+      beamSize_,
+      false,
+      false);
+  output_.value->one();
+  output_.value->mulScalar(-1.);
 
   kmaxScorePerSeq(scores_->getData(),
                   output_.value->getData(),
-                  input.hasSeq() ? input.subSequenceStartPositions
-                                 : input.sequenceStartPositions);
+                  input.hasSubseq() ? input.subSequenceStartPositions
+                                    : input.sequenceStartPositions);
 }
 
 void KmaxSeqScoreLayer::backward(const UpdateCallback& callback) {}

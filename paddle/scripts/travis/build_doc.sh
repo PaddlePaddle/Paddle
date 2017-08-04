@@ -6,14 +6,14 @@ mkdir -p $TRAVIS_BUILD_DIR/build
 cd $TRAVIS_BUILD_DIR/build
 
 # Compile paddle binaries first
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_GOLANG=ON -DWITH_STYLE_CHECK=OFF
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_MKLDNN=OFF -DWITH_MKLML=OFF -DWITH_GOLANG=ON -DWITH_STYLE_CHECK=OFF
 
 mkdir output
 make -j `nproc`
 find .. -name '*whl' | xargs pip install  # install all wheels.
 rm -rf *
 # Compile Documentation only.
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DWITH_MKLML=OFF -DWITH_DOC=ON
 make -j `nproc` paddle_docs paddle_docs_cn
 
 # check websites for broken links

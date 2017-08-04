@@ -32,7 +32,6 @@ DECLARE_int32(gpu_id);
 DECLARE_bool(thread_local_rand_use_global_seed);
 
 vector<int> randSampling(int range, int n) {
-  srand(1);
   CHECK_GE(range, n);
   vector<int> num(range);
   iota(begin(num), end(num), 0);
@@ -45,7 +44,7 @@ vector<int> randSampling(int range, int n) {
 
 void genRandomSeqInfo(vector<int>& seqStartPosition,
                       vector<int>& subSeqStartPosition) {
-  const int maxSeqNum = 5;
+  const int maxSeqNum = 100;
   // generate random start position information
   int seqNum = 1 + (rand() % maxSeqNum);
   seqStartPosition.resize(seqNum + 1, 0);
@@ -61,78 +60,93 @@ void genRandomSeqInfo(vector<int>& seqStartPosition,
 
 void genRandomGroundTruth(real* values,
                           vector<vector<int>>& groundTruth,
-                          vector<int>& seqStartPosition,
-                          vector<int>& subSeqStartPosition,
-                          bool useSubseqInfo,
+                          vector<int>& startPos,
                           size_t beamSize) {
-  auto genData = [&](real* values, vector<int>& startPos, size_t beamSize) {
-    groundTruth.resize(startPos.size() - 1, vector<int>(beamSize, -1));
-
-    for (size_t i = 0; i < startPos.size() - 1; ++i) {
-      int seqLen = startPos[i + 1] - startPos[i];
-      vector<int> pos =
-          randSampling(seqLen, min(static_cast<int>(beamSize), seqLen));
-      for (size_t j = 0; j < pos.size(); ++j) {
-        groundTruth[i][j] = pos[j];
-        values[subSeqStartPosition[i] + pos[j]] = 1.;
-      }
+  groundTruth.resize(startPos.size() - 1, vector<int>(beamSize, -1));
+  for (size_t i = 0; i < startPos.size() - 1; ++i) {
+    int seqLen = startPos[i + 1] - startPos[i];
+    vector<int> pos =
+        randSampling(seqLen, min(static_cast<int>(beamSize), seqLen));
+    for (size_t j = 0; j < pos.size(); ++j) {
+      groundTruth[i][j] = pos[j];
+      values[startPos[i] + pos[j]] = 1.;
     }
-  };
-
-  if (useSubseqInfo)
-    genData(values, subSeqStartPosition, beamSize);
-  else
-    genData(values, seqStartPosition, beamSize);
+  }
 }
 
-// Test that the batchNormLayer can be followed by a ConvLayer
+void checkLayerOut(vector<vector<int>> groundTruth,
+                   real* layerOut,
+                   size_t beamSize) {
+  for (size_t i = 0; i < groundTruth.size(); ++i) {
+    int begPos = i * beamSize;
+    vector<real> tmp(layerOut + begPos, layerOut + begPos + beamSize);
+    sort(begin(tmp), end(tmp));
+    sort(begin(groundTruth[i]), end(groundTruth[i]));
+    for (size_t j = 0; j < beamSize; ++j) CHECK_EQ(tmp[j], groundTruth[i][j]);
+  }
+}
+
 TEST(Layer, kmaxSeqScoreLayer) {
-  const size_t beamSize = 5;
+  const size_t maxBeamSize = 100;
+  int beamSize = 1 + (rand() % maxBeamSize);
 
   vector<int> seqStartPosition;
   vector<int> subSeqStartPosition;
   genRandomSeqInfo(seqStartPosition, subSeqStartPosition);
   MatrixPtr inValue =
       Matrix::create(subSeqStartPosition.back(), 1, false, false);
-  inValue->randomizeUniform();
 
   for (auto hasSubseq : {false, true}) {
     vector<vector<int>> groundTruth;
+    inValue->randomizeUniform();
     genRandomGroundTruth(inValue->getData(),
                          groundTruth,
-                         seqStartPosition,
-                         subSeqStartPosition,
-                         hasSubseq,
+                         hasSubseq ? subSeqStartPosition : seqStartPosition,
                          beamSize);
 
     for (auto useGpu : {false, true}) {
       TestConfig config;
       config.layerConfig.set_type("kmax_seq_score");
       config.layerConfig.set_beam_size(beamSize);
-      config.inputDefs.push_back(
-          {hasSubseq ? INPUT_HASSUB_SEQUENCE_DATA : INPUT_SEQUENCE_DATA,
-           "layer_0",
-           1,
-           0});
+
+      if (hasSubseq) {
+        config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                                    "scores",
+                                    inValue,
+                                    seqStartPosition,
+                                    subSeqStartPosition});
+      } else {
+        config.inputDefs.push_back(
+            {INPUT_SELF_DEFINE_DATA, "scores", inValue, seqStartPosition});
+      }
       config.layerConfig.add_inputs();
 
       // data layer initialize
       std::vector<DataLayerPtr> dataLayers;
       LayerMap layerMap;
       vector<Argument> datas;
-      initDataLayer(config,
-                    &dataLayers,
-                    &datas,
-                    &layerMap,
-                    "kmax_seq_score",
-                    100,
-                    false,
-                    useGpu);
+      initDataLayer(
+          config,
+          &dataLayers,
+          &datas,
+          &layerMap,
+          "kmax_seq_score",
+          100 /* actually this parameter is unused in self-defined input*/,
+          false,
+          useGpu);
       // test layer initialize
       std::vector<ParameterPtr> parameters;
       LayerPtr kmaxSeqScoreLayer;
+      FLAGS_use_gpu = useGpu;
       initTestLayer(config, &layerMap, &parameters, &kmaxSeqScoreLayer);
       kmaxSeqScoreLayer->forward(PASS_TRAIN);
+
+      const MatrixPtr outValue = kmaxSeqScoreLayer->getOutputValue();
+      CHECK_EQ(outValue->getHeight(),
+               hasSubseq ? subSeqStartPosition.size() - 1
+                         : seqStartPosition.size() - 1);
+      CHECK_EQ(outValue->getWidth(), beamSize);
+      checkLayerOut(groundTruth, outValue->getData(), beamSize);
     }
   }
 }
@@ -141,6 +155,6 @@ int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
   FLAGS_thread_local_rand_use_global_seed = true;
-  srand(1);
+  srand((size_t)(time(NULL)));
   return RUN_ALL_TESTS();
 }
