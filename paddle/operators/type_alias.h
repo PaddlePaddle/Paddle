@@ -15,13 +15,14 @@
 #pragma once
 
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
 
 using OpKernel = framework::OpKernel;
+using OperatorBase = framework::OperatorBase;
 using InferShapeContext = framework::InferShapeContext;
 using ExecutionContext = framework::ExecutionContext;
 using Variable = framework::Variable;
@@ -43,15 +44,16 @@ template <typename T,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = framework::Tensor;
+using Scope = framework::Scope;
 using OperatorWithKernel = framework::OperatorWithKernel;
+using OperatorBase = framework::OperatorBase;
 using OpProtoAndCheckerMaker = framework::OpProtoAndCheckerMaker;
 using OpProto = framework::OpProto;
 using OpAttrChecker = framework::OpAttrChecker;
 using CPUPlace = platform::CPUPlace;
 using GPUPlace = platform::GPUPlace;
-using NetOp = framework::NetOp;
 using OpRegistry = framework::OpRegistry;
-using OperatorBase = framework::OperatorBase;
+
 }  // namespace operators
 }  // namespace paddle
 

@@ -34,8 +34,14 @@ py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
 
-cc_library(net SRCS net.cc DEPS op_registry)
-cc_test(net_op_test SRCS net_op_test.cc DEPS net)
-
-cc_library(backward SRCS backward.cc DEPS net)
+cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward)
+cc_library(paddle_pybind SHARED
+    SRCS pybind.cc
+    DEPS pybind python backward
+	fc_op
+	sgd_op
+	add_op
+	mean_op
+	cross_entropy_op
+	recurrent_op)
