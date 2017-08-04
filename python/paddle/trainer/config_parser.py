@@ -1604,6 +1604,8 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
+    layer_type = 'fc'
+
     def __init__(self,
                  name,
                  size,
@@ -1611,14 +1613,25 @@ class FCLayer(LayerBase):
                  bias=True,
                  error_clipping_threshold=None,
                  **xargs):
-        super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        if use_mkldnn:
+            self.layer_type = 'mkldnn_fc'
+            config_assert(
+                len(inputs) == 1,
+                "MkldnnFCLayer support one and only one input!")
+        super(FCLayer, self).__init__(
+            name, self.layer_type, size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
-            dims = [input_layer.size, self.config.size]
             format = self.inputs[input_index].format
             sparse = format == "csr" or format == "csc"
-
+            if use_mkldnn:
+                dims = [self.config.size, input_layer.size]
+                config_assert(not sparse,
+                              "MkldnnFCLayer do not support sparse format yet")
+            else:
+                dims = [input_layer.size, self.config.size]
             if sparse:
                 psize = self.inputs[input_index].nnz
             else:
@@ -1629,6 +1642,11 @@ class FCLayer(LayerBase):
         self.create_bias_parameter(bias, self.config.size)
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
+
+
+@config_layer('mkldnn_fc')
+class MkldnnFcLayer(FCLayer):
+    layer_type = 'mkldnn_fc'
 
 
 @config_layer('selective_fc')

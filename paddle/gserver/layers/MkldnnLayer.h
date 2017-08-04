@@ -35,8 +35,10 @@ public:
 
   virtual bool init(const LayerMap& layerMap,
                     const ParameterMap& parameterMap) {
-    return Layer::init(layerMap, parameterMap);
+    CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
+                            << "Please set WITH_MKLDNN=ON";
     // TODO(TJ): deivecId
+    return Layer::init(layerMap, parameterMap);
   }
 
   void resetOutput(size_t height, size_t width) { ; }

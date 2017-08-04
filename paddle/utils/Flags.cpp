@@ -20,6 +20,13 @@ DEFINE_bool(use_gpu, false, "Only support CPU training");
 DEFINE_bool(use_gpu, true, "Whether to use GPU for training");
 #endif
 
+#ifdef PADDLE_USE_MKLDNN
+// TODO(TJ): change to true when MKLDNN layers support multi-inputs
+DEFINE_bool(use_mkldnn, false, "Default still keep use CPU training");
+#else
+DEFINE_bool(use_mkldnn, false, "Only support CPU training");
+#endif
+
 DEFINE_bool(parallel_nn,
             false,
             "Whether to use multi-threads to calculate one neural network."
