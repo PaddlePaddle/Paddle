@@ -105,7 +105,16 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
 #endif
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); });
+      .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("set_float_element",
+           [](Tensor &self, size_t offset, float f) {
+             // TODO(yuyang18): Only support GPU now.
+             self.data<float>()[offset] = f;
+           })
+      .def("get_float_element", [](Tensor &self, size_t offset) -> float {
+        // TODO(yuyang18): Only support GPU now.
+        return self.data<float>()[offset];
+      });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
