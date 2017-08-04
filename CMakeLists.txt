@@ -171,3 +171,12 @@ endif()
 if(WITH_DOC)
     add_subdirectory(doc)
 endif()
+
+install(DIRECTORY ${PROJ_ROOT}/paddle/dist/
+        DESTINATION opt/paddle/share/wheels)
+
+install(FILES
+        $<TARGET_FILE:paddle_trainer>
+        $<TARGET_FILE:paddle_merge_model>
+        $<TARGET_FILE:paddle_pserver_main>
+        DESTINATION opt/paddle/bin)
