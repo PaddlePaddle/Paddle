@@ -125,9 +125,15 @@ cat <<EOF
 Generating .deb package ...
 ========================================
 EOF
+set +e
 cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
-
-
+err_code=$?
+if [ ${err_code} -ne 0 ]; then
+  # cat error logs if cpack failed.
+  cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
+  exit ${err_code}
+fi
+set -e
 cat <<EOF
 ========================================
 Generate /paddle/build/Dockerfile ...
