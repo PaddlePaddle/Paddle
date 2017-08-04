@@ -15,6 +15,7 @@ limitations under the License. */
 #include "DepthwiseConvOp.h"
 #include "ConvOp.h"
 #include "GemmFunctor.h"
+#include "paddle/function/neon/DepthwiseConvCpu.h"
 
 namespace paddle {
 
@@ -39,6 +40,23 @@ public:
                   int paddingW,
                   T* outputData) {
     // TODO(zhaolong) : cpu implementation of depthwise convolution
+    CHECK_EQ(strideH, strideW);
+    CHECK_EQ(paddingH, paddingW);
+    CHECK_EQ(filterHeight, filterWidth);
+    ComputeDepthwiseConv(inputData,
+                         filterData,
+                         batchSize,
+                         outputChannels,
+                         outputHeight,
+                         outputWidth,
+                         inputChannels,
+                         inputHeight,
+                         inputWidth,
+                         filterMultiplier,
+                         filterHeight,
+                         strideH,
+                         paddingH,
+                         outputData);
   }
 };
 
@@ -63,6 +81,7 @@ public:
                   int paddingW,
                   T* inputGrad) {}
   // TODO(zhaolong) : cpu implementation of depthwise convolution
+  // we intend to use the bp function in expandConv
 };
 
 template <class T>
@@ -109,6 +128,8 @@ public:
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
+    CHECK_EQ(paddingH(), paddingW());
+    CHECK_EQ(strideH(), strideW());
     check(inputs, outputs);
 
     const TensorShape& input = inputs[0].shape();
@@ -126,13 +147,32 @@ public:
     size_t outputWidth = output[3];
     size_t filterMultiplier = outputChannels / groups_;
     CHECK_EQ(inputChannels, groups_);
+    // currently only support filterHeight == filterWidth
+    CHECK_EQ(filterHeight, filterWidth);
 
     real* inputData = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
     real* outputData = outputs[0].data<real>();
+    real* inputDataTemp = inputData;
+
+    if (Device == DEVICE_TYPE_CPU && paddingH() > 0) {
+      int inputPaddingSize = batchSize * inputChannels *
+                             (inputHeight + 2 * paddingH()) *
+                             (inputWidth + 2 * paddingW());
+      resizeBuffer<Device>(inputPaddingSize);
+      real* colData = reinterpret_cast<real*>(memory_->getBuf());
+      padSrc2Dest<real>(inputData,
+                        colData,
+                        batchSize * inputChannels,
+                        inputHeight + 2 * paddingH(),
+                        inputWidth + 2 * paddingW(),
+                        paddingH(),
+                        0.0f);
+      inputDataTemp = colData;
+    }
 
     DepthwiseConvFunctor<Device, real> depthwiseConv;
-    depthwiseConv(inputData,
+    depthwiseConv(inputDataTemp,
                   filterData,
                   batchSize,
                   outputChannels,

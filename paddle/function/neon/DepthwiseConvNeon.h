@@ -20,38 +20,50 @@ limitations under the License. */
 #endif
 
 namespace paddle {
+
 namespace neon {
 
 template <int filterSize, int stride>
-struct DepthwiseConvKernel{};
-
-struct NaiveDepthwiseConv {
-    static void run() {
-	}
-
-};
+struct DepthwiseConvNeonKernel {};
 
 #ifdef HAVE_NEON
 
 template <>
-struct DepthwiseConvKernel<3, 1>{
-    static void run(){
-    }
+struct DepthwiseConvNeonKernel<3, 1> {
+  static void run(const T* inputPaddedData,
+                  const T* filterData,
+                  int batchSize,
+                  int outputChannels,
+                  int outputHeight,
+                  int outputWidth,
+                  int inputChannels,
+                  int inputPaddedHeight,
+                  int inputPaddedWidth,
+                  int filterMultiplier,
+                  int filterSize,
+                  int stride,
+                  T* outputData) {}
 };
 
 template <>
-struct DepthwiseConvKernel<3, 2>{
-    static void run(){
-    }
+struct DepthwiseConvNeonKernel<3, 2> {
+  static void run(const T* inputPaddedData,
+                  const T* filterData,
+                  int batchSize,
+                  int outputChannels,
+                  int outputHeight,
+                  int outputWidth,
+                  int inputChannels,
+                  int inputPaddedHeight,
+                  int inputPaddedWidth,
+                  int filterMultiplier,
+                  int filterSize,
+                  int stride,
+                  T* outputData) {}
 };
 
-#endif 
+#endif
 
-void DepthwiseConvTypeGuide(){
+}  // namespace neon
 
-}
-
-} // namespace neon
-} // namespace paddle
-
-
+}  // namespace paddle

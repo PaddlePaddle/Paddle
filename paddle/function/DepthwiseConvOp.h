@@ -156,4 +156,39 @@ public:
                   T* filterGrad);
 };
 
+template <class T>
+void padSrc2Dest(
+    T* src, T* dest, int num, int destHeight, int destWidth, int pad, T value) {
+  for (int num_i = 0; num_i < num; num_i++) {
+    int h = 0;
+    for (; h < pad; h++) {
+      for (int w = 0; w < destWidth; w++) {
+        dest[w] = value;
+      }
+      dest += destWidth;
+    }
+    int center_Height = destHeight - pad;
+    for (; h < center_Height; h++) {
+      int w = 0;
+      for (; w < pad; w++) {
+        dest[w] = value;
+      }
+      for (; w < destWidth - pad; w++) {
+        dest[w] = src[w - pad];
+      }
+      for (; w < destWidth; w++) {
+        dest[w] = value;
+      }
+      dest += destWidth;
+      src += (destWidth - 2 * pad);
+    }
+    for (; h < destHeight; h++) {
+      for (int w = 0; w < destWidth; w++) {
+        dest[w] = value;
+      }
+      dest += destWidth;
+    }
+  }
+}
+
 }  // namespace paddle
