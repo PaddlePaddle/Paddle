@@ -21,6 +21,25 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+VariableBuilder& OpProtoAndCheckerMaker::VariableBuilder::SetMultiple() {
+  var_->set_multiple(true);
+  on_multiple_();
+  return *this;
+}
+
+VariableBuilder& OpProtoAndCheckerMaker::VariableBuilder::SetTemporary() {
+  PADDLE_ENFORCE(bool(on_temporary_), "Cannot set temporary");
+  var_->set_temporary(true);
+  on_temporary_();
+  return *this;
+}
+
+VariableBuilder& OpProtoAndCheckerMaker::VariableBuilder::IgnoreGradient() {
+  var_->set_ignore_gradient(true);
+  return *this;
+}
+};
+
 VariableBuilder OpProtoAndCheckerMaker::AddInput(const std::string& name,
                                                  const std::string& comment) {
   auto input = proto_->mutable_inputs()->Add();
