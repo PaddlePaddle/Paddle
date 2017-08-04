@@ -2,6 +2,7 @@ import paddle.v2.framework.core as core
 import unittest
 import numpy
 import paddle.v2.framework.create_op_creation_methods as creation
+from gradient_checker import get_numeric_gradient
 
 
 def create_op(op_type):
@@ -17,7 +18,7 @@ def create_op(op_type):
     return op
 
 
-def gradvar_name(var_name):
+def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
@@ -54,7 +55,7 @@ class GradChecker(unittest.TestCase):
         ctx = core.DeviceContext.create(cpu_place)
 
         # create input var and set value
-        for name, value in forward_op.inputs().iteritems():
+        for name, value in inputs.iteritems():
             assert name in in_names
             var = cpu_scope.new_var(name).get_tensor()
             var.set_dims(value.shape)
@@ -64,13 +65,22 @@ class GradChecker(unittest.TestCase):
         for out_name in forward_op.outputs():
             cpu_scope.new_var(out_name).get_tensor()
 
+        # infer the shape of output var and set value of output var
         forward_op.infer_shape(cpu_scope)
         forward_op.run(cpu_scope, ctx)
 
-        # create forward output grad var
+        # create input grad var and set shape as the input var
+        for name in forward_op.inputs():
+            in_tensor = cpu_scope.find_var(name).get_tensor()
+            grad_tensor = cpu_scope.new_var(grad_var_name(name)).get_tensor()
+            grad_tensor.set_dims(in_tensor.shape())
+
+        # create output grad var
+        # set shape as the output var
+        # set value of this grad to ones
         for name in forward_op.outputs():
             out_tensor = cpu_scope.find_var(name).get_tensor()
-            grad_tensor = cpu_scope.new_var(gradvar_name(name)).get_tensor()
+            grad_tensor = cpu_scope.new_var(grad_var_name(name)).get_tensor()
             grad_tensor.set_dims(out_tensor.shape())
             data = 1.0 * numpy.ones(out_tensor.shape())
             grad_tensor.set(data, cpu_place)
@@ -78,21 +88,26 @@ class GradChecker(unittest.TestCase):
         backward_op.infer_shape(cpu_scope)
         backward_op.run(cpu_scope, ctx)
 
+        numeric_input = dict()
+        for name in backward_op.inputs():
+            data = numpy.array(cpu_scope.find_var(name).get_tensor())
+            numeric_input[name] = data
+        output_name = forward_op.outputs()[0]
+        input_to_check = forward_op.inputs()[0]
+
+        ret_val = get_numeric_gradient(forward_op, numeric_input, output_name,
+                                       input_to_check)
+
         out_data = numpy.array(
-            cpu_scope.find_var(gradvar_name("X")).get_tensor())
+            cpu_scope.find_var(backward_op.outputs()[0]).get_tensor())
 
-        Y_data = numpy.array(cpu_scope.find_var("Y").get_tensor())
-        dY_data = numpy.array(
-            cpu_scope.find_var(gradvar_name("Y")).get_tensor())
-        expect = label_softmax_grad(Y_data, dY_data)
-
-        numpy.testing.assert_almost_equal(out_data, expect)
+        numpy.testing.assert_almost_equal(out_data, ret_val)
 
 
 class SoftmaxGradOpTest(GradChecker):
-    def test_add_two(self):
+    def test_softmax(self):
         op = create_op("softmax")
-        X = numpy.random.random((100, 100)).astype("float32")
+        X = numpy.random.random((3, 4)).astype("float32")
         inputs = {"X": X}
         self.assert_grad(op, inputs)
 
