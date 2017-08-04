@@ -271,7 +271,7 @@ class OpRegistry {
   static std::unordered_map<std::string, OpProto>& protos() {
     static std::unordered_map<std::string, OpProto> protos_;
     return protos_;
-  };
+  }
 
   static std::unordered_map<std::string, std::string>& grad_ops() {
     static std::unordered_map<std::string, std::string> grad_ops_;
@@ -293,7 +293,7 @@ class OpRegistry {
   static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
     static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
     return op_checkers_;
-  };
+  }
 
   static void GenerateTempVariableName(OperatorBase* op) {
     static std::atomic<size_t> gUniqId(0UL);
@@ -310,7 +310,7 @@ class OpRegistry {
 template <typename OpType, typename ProtoMakerType>
 class OpRegisterHelper {
  public:
-  OpRegisterHelper(const char* op_type) {
+  explicit OpRegisterHelper(const char* op_type) {
     OpRegistry::RegisterOp<OpType, ProtoMakerType>(op_type);
   }
 };
