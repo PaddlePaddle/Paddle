@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using namespace paddle::framework;
+using namespace paddle::framework;  // NOLINT
 
 namespace rnn {
 
@@ -94,7 +94,7 @@ void InitArgument(const ArgumentName& name, Argument* arg);
 };  // namespace rnn
 
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
-// TODO:
+// TODO(Yan Chunwei):
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
 // 3. Internal Memory.
@@ -172,12 +172,10 @@ public:
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const Scope& scope) const override {
-    alg_.InferShape(scope);
-  }
+  void InferShape(const Scope& scope) const override { alg_.InferShape(scope); }
 
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 
@@ -194,12 +192,10 @@ public:
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const Scope& scope) const override {
-    alg_.InferShape(scope);
-  }
+  void InferShape(const Scope& scope) const override { alg_.InferShape(scope); }
 
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 
