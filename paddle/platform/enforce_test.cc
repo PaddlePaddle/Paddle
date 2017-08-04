@@ -34,3 +34,50 @@ TEST(ENFORCE, FAILED) {
   }
   ASSERT_TRUE(in_catch);
 }
+
+TEST(ENFORCE, NO_ARG_OK) {
+  int a = 2;
+  int b = 2;
+  PADDLE_ENFORCE_EQ(a, b);
+  // test enforce with extra message.
+  PADDLE_ENFORCE_EQ(a, b, "some thing wrong %s", "info");
+}
+
+TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
+  int a = 2;
+  bool in_catch = false;
+
+  try {
+    PADDLE_ENFORCE_EQ(a, 1 + 3);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "enforce a == 1 + 3 failed, 2 != 4";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
+
+TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
+  int a = 2;
+  bool in_catch = false;
+
+  try {
+    PADDLE_ENFORCE_EQ(a, 1 + 3, "%s size not match", "their");
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg =
+        "enforce a == 1 + 3 failed, 2 != 4\ntheir size not match";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
