@@ -14,11 +14,11 @@
   limitations under the License.
 */
 
-#include "paddle/framework/net.h"
+#include "paddle/operators/net_op.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
 
 void NetOp::CompleteAddOp(bool calc) {
   add_op_done_ = true;
@@ -74,5 +74,5 @@ std::string NetOp::DebugString() const {
 
 bool NetOp::IsNetOp() const { return true; }
 
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle
