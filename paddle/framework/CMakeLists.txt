@@ -12,13 +12,15 @@ cc_test(variable_test SRCS variable_test.cc)
 cc_library(scope SRCS scope.cc)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
+cc_library(attribute SRCS attribute.cc)
+
 proto_library(attribute_proto SRCS attribute.proto)
 proto_library(op_proto SRCS op_proto.proto DEPS attribute_proto)
 proto_library(op_desc SRCS op_desc.proto DEPS attribute_proto)
 cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
 cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
 
-cc_library(operator SRCS operator.cc DEPS op_desc device_context tensor scope)
+cc_library(operator SRCS operator.cc DEPS op_desc device_context tensor scope attribute)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
 cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS op_proto operator)

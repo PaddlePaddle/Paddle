@@ -27,12 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// helper class to set attribute type
-struct AttrTypeHelper {
-  template <typename T>
-  static void SetAttrType(AttrProto* attr);
-};
-
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
