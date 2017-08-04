@@ -45,11 +45,13 @@ class LODTensor {
   typedef std::vector<Level> LOD;
 
   LODTensor() {}
-  LODTensor(std::shared_ptr<Tensor> tensor, std::shared_ptr<LOD> lod) {
+  LODTensor(const std::shared_ptr<Tensor> &tensor,
+            const std::shared_ptr<LOD> &lod) {
     Reset(tensor, lod);
   }
 
-  void Reset(std::shared_ptr<Tensor> tensor, std::shared_ptr<LOD> lod) {
+  void Reset(const std::shared_ptr<Tensor> &tensor,
+             const std::shared_ptr<LOD> &lod) {
     tensor_ = tensor;
     lod_start_pos_ = lod;
   }
@@ -131,12 +133,12 @@ class LODTensor {
     return std::const_pointer_cast<const LOD>(lod_start_pos_);
   }
 
-  std::shared_ptr<Tensor> &tensor() const { return tensor_; }
+  std::shared_ptr<Tensor> &tensor() { return tensor_; }
   Tensor *raw_tensor() { return tensor_.get(); }
 
  private:
-  mutable std::shared_ptr<LOD> lod_start_pos_;
-  mutable std::shared_ptr<Tensor> tensor_;
+  std::shared_ptr<LOD> lod_start_pos_;
+  std::shared_ptr<Tensor> tensor_;
 };
 
 }  // namespace framework
