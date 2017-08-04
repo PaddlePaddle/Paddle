@@ -55,7 +55,7 @@ class CPUDeviceContext : public DeviceContext {
 
 class CUDADeviceContext : public DeviceContext {
  public:
-  CUDADeviceContext(GPUPlace);  // NOLINT
+  explicit CUDADeviceContext(GPUPlace);
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */

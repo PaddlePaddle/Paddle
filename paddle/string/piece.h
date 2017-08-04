@@ -39,8 +39,8 @@ public:
   // size_ is 0.
   Piece();
   Piece(const char* d, size_t n);
-  Piece(const char* d);         // NOLINT
-  Piece(const std::string& s);  // NOLINT
+  explicit Piece(const char* d);
+  explicit Piece(const std::string& s);
 
   const char* data() const { return data_; }
   size_t len() const { return size_; }

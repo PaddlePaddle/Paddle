@@ -19,8 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using namespace paddle::framework;  // NOLINT
-
 namespace rnn {
 
 /**
