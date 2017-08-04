@@ -154,8 +154,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
-      .def("empty", kEmptyVarName)
-      .def("temp", kTempVarName);
+      .def("empty", []() { return kEmptyVarName; })
+      .def("temp", []() { return kTempVarName; });
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
