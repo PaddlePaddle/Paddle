@@ -67,28 +67,14 @@ class OpProtoAndCheckerMaker {
     }
   };
 
-  VariableBuilder AddInput(const std::string& name,
-                           const std::string& comment) {
-    auto input = proto_->mutable_inputs()->Add();
-    *input->mutable_name() = name;
-    *input->mutable_comment() = comment;
-    return VariableBuilder{input, [=] { this->SetHasMultipleInput(); },
-                           nullptr};
-  }
+  VariableBuilder AddInput(const std::string& name, const std::string& comment);
 
   VariableBuilder AddOutput(const std::string& name,
-                            const std::string& comment) {
-    auto output = proto_->mutable_outputs()->Add();
-    *output->mutable_name() = name;
-    *output->mutable_comment() = comment;
-    return VariableBuilder{output, [=] { this->SetHasMultipleOutput(); },
-                           [=] { this->SetHasTemporaryOutput(); }};
-  }
+                            const std::string& comment);
 
   template <typename T>
   TypedAttrChecker<T>& AddAttr(const std::string& name,
-                               const std::string& comment,
-                               bool generated = false) {
+                               const std::string& comment, bool generated) {
     auto attr = proto_->mutable_attrs()->Add();
     *attr->mutable_name() = name;
     *attr->mutable_comment() = comment;
@@ -102,69 +88,11 @@ class OpProtoAndCheckerMaker {
   }
 
  private:
-  void SetHasMultiple(const std::string& in_out, bool* flag) {
-    if (!*flag) {
-      AddAttr<std::vector<int>>(in_out + "_format",
-                                "The multiple index of " + in_out +
-                                    "\n"
-                                    R"DOC(
-This attribute is used by Paddle core framework. Paddle's Op support each input
-or output could be a list of variable. This attribute is used to show how that
-list organized.
-
-e.g.
-  input = ["a", "b", "c", "d", "e", "f"]
-  input_format = [0, 4, 5, 6]
-
-means
-  The number of all input variables this op is six, and they are segmented into
-  three inputs.
-
-  The first input is input[0:4], second is input[4:5], third is input[5:6].
-)DOC",
-                                /*generated*/ true);
-      *flag = true;
-    }
-  }
-
-  void SetHasMultipleInput() { SetHasMultiple("input", &has_multiple_input_); }
-  void SetHasMultipleOutput() {
-    SetHasMultiple("output", &has_multiple_output_);
-  }
-
-  void SetHasTemporaryOutput() {
-    if (!has_temporary_output_) {
-      AddAttr<std::vector<int>>("temporary_index",
-                                R"DOC(The temporary index of output.
-
-Not all output of Paddle Op is used by user. For faster computation, each op
-could output some its internal state to other op, other op could take that
-output to make compute faster.
-
-Add a mark to which output is temporary is helpful for future optimization.
-)DOC",
-                                /*generated*/ true)
-          .SetDefault(std::vector<int>());
-      has_temporary_output_ = true;
-    }
-  }
-
-  void CheckNoDuplicatedInOutAttrs() {
-    std::unordered_set<std::string> names;
-    auto checker = [&](const std::string& name) {
-      PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
-      names.insert(name);
-    };
-    for (auto& attr : proto_->attrs()) {
-      checker(attr.name());
-    }
-    for (auto& input : proto_->inputs()) {
-      checker(input.name());
-    }
-    for (auto& output : proto_->outputs()) {
-      checker(output.name());
-    }
-  }
+  void SetHasMultiple(const std::string& in_out, bool* flag);
+  void SetHasMultipleInput();
+  void SetHasMultipleOutput();
+  void SetHasTemporaryOutput();
+  void CheckNoDuplicatedInOutAttrs();
 
   OpProto* proto_;
   OpAttrChecker* op_checker_;
