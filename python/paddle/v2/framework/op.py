@@ -1,8 +1,7 @@
 import paddle.v2.framework.core as core
-import paddle.v2.framework.proto.op_proto_pb2 as op_proto_pb2
-import paddle.v2.framework.proto.op_desc_pb2 as op_desc_pb2
 import paddle.v2.framework.proto.attr_type_pb2 as attr_type_pb2
-import cStringIO
+import paddle.v2.framework.proto.op_desc_pb2 as op_desc_pb2
+import paddle.v2.framework.proto.op_proto_pb2 as op_proto_pb2
 
 
 def get_all_op_protos():
@@ -146,66 +145,6 @@ class OpDescCreationMethod(object):
         return False
 
 
-def get_docstring_from_op_proto(op_proto):
-    """
-    Generate docstring from a OpProto
-    :param op_proto: a OpProto instance.
-    :type op_proto: op_proto_pb2.OpProto
-    :return: docstring
-    """
-    if not isinstance(op_proto, op_proto_pb2.OpProto):
-        raise TypeError("Input must be OpProto")
-    f = cStringIO.StringIO()
-    f.write(op_proto.comment)
-    f.write("\n")
-
-    def __append_param__(name, comment, type):
-        # Maybe replace the following line with template engine is better.
-        f.write(":param ")
-        f.write(name)
-        f.write(": ")
-        f.write(comment)
-        f.write("\n")
-        f.write(":type ")
-        f.write(name)
-        f.write(": ")
-        f.write(type)
-        f.write("\n")
-
-    for ipt in op_proto.inputs:
-        __append_param__(ipt.name, ipt.comment, "list | basestr"
-                         if ipt.multiple else "basestr")
-
-    temp_var_prefix = \
-        "This is a temporary variable. It does not have to set by user. "
-    for opt in op_proto.outputs:
-        __append_param__(opt.name, opt.comment if not opt.temporary else
-                         temp_var_prefix + opt.comment, "list | basestr"
-                         if opt.multiple else "basestr")
-
-    for attr in op_proto.attrs:
-        attr_type = None
-        if attr.type == attr_type_pb2.INT:
-            attr_type = "int"
-        elif attr.type == attr_type_pb2.FLOAT:
-            attr_type = "float"
-        elif attr.type == attr_type_pb2.STRING:
-            attr_type = "basestr"
-        elif attr.type == attr_type_pb2.INTS:
-            attr_type = "list of int"
-        elif attr.type == attr_type_pb2.FLOATS:
-            attr_type = "list of float"
-        elif attr.type == attr_type_pb2.STRINGS:
-            attr_type = "list of basestr"
-
-        if attr_type is None:
-            raise RuntimeError("Not supported attribute type " + attr.type)
-
-        __append_param__(attr.name, attr.comment, attr_type)
-
-    return f.getvalue()
-
-
 def create_op_creation_method(op_proto):
     """
     Generate op creation method for an OpProto
@@ -232,7 +171,7 @@ class OperatorFactory(object):
         self.op_methods = dict()
         for op_proto in get_all_op_protos():
             method = create_op_creation_method(op_proto)
-            self.op_methods[method.name] = method
+            self.op_methods[method['name']] = method
 
     def __call__(self, *args, **kwargs):
         if 'type' in kwargs:
