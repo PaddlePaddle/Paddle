@@ -285,7 +285,7 @@ class OperatorWithKernel : public OperatorBase {
     platform::Place place_;
 
     OpKernelKey() = default;
-    OpKernelKey(const platform::DeviceContext& dev_ctx) {
+    explicit OpKernelKey(const platform::DeviceContext& dev_ctx) {
       place_ = dev_ctx.GetPlace();
     }
 
