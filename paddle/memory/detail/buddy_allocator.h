@@ -39,7 +39,7 @@ class BuddyAllocator {
 
  public:
   void* Alloc(size_t unaligned_size);
-  void Free(void*);
+  void Free(void* ptr);
   size_t Used();
 
  public:

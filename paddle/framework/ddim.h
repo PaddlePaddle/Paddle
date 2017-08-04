@@ -25,18 +25,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-namespace {
-typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>, Dim<6>, Dim<7>,
-                       Dim<8>, Dim<9>>
-    DDimVar;
-}
-
 /**
  * \brief A dynamically sized dimension.
  *
  * The number of dimensions must be between [1, 9].
  */
 struct DDim {
+  typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>, Dim<6>, Dim<7>,
+                         Dim<8>, Dim<9>>
+      DDimVar;
   DDimVar var;
 
   DDim() : var(Dim<1>()) {}

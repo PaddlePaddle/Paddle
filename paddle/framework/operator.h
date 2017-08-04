@@ -55,6 +55,10 @@ class OperatorBase {
   /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
   static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
 
+  static std::string GRAD_VAR_NAME(const std::string& name) {
+    return name + GRAD_VAR_SUFFIX();
+  }
+
   /// Variables with this suffix are supposed to be filled up with zeros.
   static std::string ZERO_VAR_SUFFIX() { return "@ZERO"; }
 
@@ -253,7 +257,7 @@ class ExecutionContext : public OperatorContext {
   template <typename PlaceType,
             typename DeviceType =
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
-  DeviceType* GetEigenDevice() const;
+  DeviceType& GetEigenDevice() const;
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
@@ -280,7 +284,7 @@ class OperatorWithKernel : public OperatorBase {
     platform::Place place_;
 
     OpKernelKey() = default;
-    OpKernelKey(const platform::DeviceContext& dev_ctx) {
+    explicit OpKernelKey(const platform::DeviceContext& dev_ctx) {
       place_ = dev_ctx.GetPlace();
     }
 
