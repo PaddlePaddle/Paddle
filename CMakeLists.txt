@@ -13,13 +13,16 @@
 # limitations under the License
 
 cmake_minimum_required(VERSION 3.0)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+project(paddle VERSION 0.10.0 LANGUAGES CXX C Go)
+
 set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(PROJ_BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR})
+set(PADDLE_VERSION ${PROJECT_VERSION})
 
 include(system)
-
-project(paddle CXX C Go)
 
 find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)
@@ -117,7 +120,6 @@ include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
 include(flags)              # set paddle compile flags
-include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 
 

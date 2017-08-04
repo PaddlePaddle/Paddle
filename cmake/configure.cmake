@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+add_definitions(-DPADDLE_VERSION=${PROJECT_VERSION})
+
 if(NOT WITH_PYTHON)
     add_definitions(-DPADDLE_NO_PYTHON)
 endif(NOT WITH_PYTHON)
