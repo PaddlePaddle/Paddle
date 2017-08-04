@@ -49,29 +49,27 @@ cmake .. \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
       -DWITH_TESTING=${WITH_TESTING:-OFF} \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+      -DUNITTEST_USE_VIRTUALENV=OFF
 
 cat <<EOF
-========================================
-Building in /paddle/build ...
+============================================
+Building and installing in /paddle/build ...
    Build unit tests: ${WITH_TESTING:-OFF}
-========================================
-EOF
-make -j `nproc`
-if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    pip uninstall -y py-paddle paddle || true
-    ctest --output-on-failure
-fi
-
-
-cat <<EOF
-========================================
-Installing ...
-========================================
+============================================
 EOF
 make install -j `nproc`
 pip install /usr/local/opt/paddle/share/wheels/*.whl
 paddle version
+
+if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+cat <<EOF
+========================================
+Running unit tests ...
+========================================
+EOF
+    ctest --output-on-failure
+fi
 
 
 # To build documentation, we need to run cmake again after installing
