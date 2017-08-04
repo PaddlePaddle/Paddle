@@ -191,7 +191,7 @@ inline void throw_on_error(T e) {
 // if two values have different data types, choose a compatible type for them.
 template <typename T1, typename T2>
 struct CompatibleType {
-  static constexpr const bool& t1_to_t2 = std::is_convertible<T1, T2>::value;
+  static const bool t1_to_t2 = std::is_convertible<T1, T2>::value;
   typedef typename std::conditional<t1_to_t2, T2, T1>::type type;
 };
 
