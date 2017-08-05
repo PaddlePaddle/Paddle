@@ -22,7 +22,9 @@ static const float kCrossEntropyLogThreshold{1e-20};
 
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public OpKernel {
-public:
+ public:
+  constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
+
   void Compute(const ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
@@ -46,11 +48,11 @@ public:
 
 template <typename Place, typename T>
 class OnehotCrossEntropyGradientOpKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
-    auto dX = ctx.Output<Tensor>("X" + OperatorBase::GRAD_VAR_SUFFIX());
-    auto dY = ctx.Input<Tensor>("Y" + OperatorBase::GRAD_VAR_SUFFIX());
+    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto label = ctx.Input<Tensor>("label");
 
     auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());

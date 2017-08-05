@@ -67,6 +67,7 @@ struct InputDef {
   bool isStatic;
   std::vector<int> labelInitValue;
   std::vector<int> labelSeqStartPositions;
+  std::vector<int> labelSubSeqStartPositions;
   MatrixPtr selfDefinedData;
 
   InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn) {
@@ -81,8 +82,10 @@ struct InputDef {
   InputDef(InputType type,
            string nameIn,
            MatrixPtr selfDefinedData,
-           std::vector<int> selfDefinedSeqStartPos = {})
+           std::vector<int> selfDefinedSeqStartPos = {},
+           std::vector<int> selfDefinedSubSeqStartPos = {})
       : labelSeqStartPositions(selfDefinedSeqStartPos),
+        labelSubSeqStartPositions(selfDefinedSubSeqStartPos),
         selfDefinedData(selfDefinedData) {
     inputType = type;
     name = nameIn;
