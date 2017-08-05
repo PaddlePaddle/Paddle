@@ -83,24 +83,21 @@ TEST(GradOpBuilder, MutiInOut) {
   EXPECT_EQ(grad_test_op->Input("Out1"), "out1");
   EXPECT_EQ(grad_test_op->Inputs("Out2_mult"),
             std::vector<std::string>({"out2_1", "out2_2"}));
-  EXPECT_EQ(grad_test_op->Input("Out1" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-            "out1" + f::OperatorBase::GRAD_VAR_SUFFIX());
-  EXPECT_EQ(
-      grad_test_op->Inputs("Out2_mult" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-      std::vector<std::string>(
-          {"out2_1" + f::OperatorBase::GRAD_VAR_SUFFIX(),
-           "out2_2" + f::OperatorBase::GRAD_VAR_SUFFIX()}));
+  EXPECT_EQ(grad_test_op->Input("Out1" + f::kGradVarSuffix),
+            "out1" + f::kGradVarSuffix);
+  EXPECT_EQ(grad_test_op->Inputs("Out2_mult" + f::kGradVarSuffix),
+            std::vector<std::string>(
+                {"out2_1" + f::kGradVarSuffix, "out2_2" + f::kGradVarSuffix}));
 
   ASSERT_EQ(grad_test_op->outputs_.size(), 5UL);
-  EXPECT_EQ(grad_test_op->Output("In1" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-            "in1" + f::OperatorBase::GRAD_VAR_SUFFIX());
-  EXPECT_EQ(
-      grad_test_op->Outputs("In2_mult" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-      std::vector<std::string>({"in2_1" + f::OperatorBase::GRAD_VAR_SUFFIX(),
-                                "in2_2" + f::OperatorBase::GRAD_VAR_SUFFIX(),
-                                "in2_3" + f::OperatorBase::GRAD_VAR_SUFFIX()}));
-  EXPECT_EQ(grad_test_op->Output("In3" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-            "in3" + f::OperatorBase::GRAD_VAR_SUFFIX());
+  EXPECT_EQ(grad_test_op->Output("In1" + f::kGradVarSuffix),
+            "in1" + f::kGradVarSuffix);
+  EXPECT_EQ(grad_test_op->Outputs("In2_mult" + f::kGradVarSuffix),
+            std::vector<std::string>({"in2_1" + f::kGradVarSuffix,
+                                      "in2_2" + f::kGradVarSuffix,
+                                      "in2_3" + f::kGradVarSuffix}));
+  EXPECT_EQ(grad_test_op->Output("In3" + f::kGradVarSuffix),
+            "in3" + f::kGradVarSuffix);
 }
 
 TEST(GradOpBuilder, IOIgnoredInGradient) {
@@ -116,30 +113,25 @@ TEST(GradOpBuilder, IOIgnoredInGradient) {
   ASSERT_EQ(grad_test_op->inputs_.size(), 5UL + 3UL + 3UL);
   EXPECT_EQ(grad_test_op->Input("In1"), "in1");
   EXPECT_EQ(grad_test_op->Inputs("In2_mult"),
-            std::vector<std::string>({f::OperatorBase::EMPTY_VAR_NAME(),
-                                      f::OperatorBase::EMPTY_VAR_NAME()}));
+            std::vector<std::string>({f::kEmptyVarName, f::kEmptyVarName}));
   EXPECT_EQ(grad_test_op->Inputs("In3_mult"),
             std::vector<std::string>({"in3_1", "in3_2"}));
   EXPECT_EQ(grad_test_op->Inputs("Out1_mult"),
             std::vector<std::string>({"out1_1", "out1_2"}));
-  EXPECT_EQ(grad_test_op->Input("Out2"), f::OperatorBase::EMPTY_VAR_NAME());
-  EXPECT_EQ(
-      grad_test_op->Inputs("Out1_mult" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-      std::vector<std::string>(
-          {"out1_1" + f::OperatorBase::GRAD_VAR_SUFFIX(),
-           "out1_2" + f::OperatorBase::GRAD_VAR_SUFFIX()}));
-  EXPECT_EQ(grad_test_op->Input("Out2" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-            "out2" + f::OperatorBase::GRAD_VAR_SUFFIX());
+  EXPECT_EQ(grad_test_op->Input("Out2"), f::kEmptyVarName);
+  EXPECT_EQ(grad_test_op->Inputs("Out1_mult" + f::kGradVarSuffix),
+            std::vector<std::string>(
+                {"out1_1" + f::kGradVarSuffix, "out1_2" + f::kGradVarSuffix}));
+  EXPECT_EQ(grad_test_op->Input("Out2" + f::kGradVarSuffix),
+            "out2" + f::kGradVarSuffix);
 
   ASSERT_EQ(grad_test_op->outputs_.size(), 5UL);
-  EXPECT_EQ(grad_test_op->Output("In1" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-            "in1" + f::OperatorBase::GRAD_VAR_SUFFIX());
-  EXPECT_EQ(
-      grad_test_op->Outputs("In2_mult" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-      std::vector<std::string>({"in2_1" + f::OperatorBase::GRAD_VAR_SUFFIX(),
-                                "in2_2" + f::OperatorBase::GRAD_VAR_SUFFIX()}));
-  EXPECT_EQ(
-      grad_test_op->Outputs("In3_mult" + f::OperatorBase::GRAD_VAR_SUFFIX()),
-      std::vector<std::string>({"in3_1" + f::OperatorBase::GRAD_VAR_SUFFIX(),
-                                "in3_2" + f::OperatorBase::GRAD_VAR_SUFFIX()}));
+  EXPECT_EQ(grad_test_op->Output("In1" + f::kGradVarSuffix),
+            "in1" + f::kGradVarSuffix);
+  EXPECT_EQ(grad_test_op->Outputs("In2_mult" + f::kGradVarSuffix),
+            std::vector<std::string>(
+                {"in2_1" + f::kGradVarSuffix, "in2_2" + f::kGradVarSuffix}));
+  EXPECT_EQ(grad_test_op->Outputs("In3_mult" + f::kGradVarSuffix),
+            std::vector<std::string>(
+                {"in3_1" + f::kGradVarSuffix, "in3_2" + f::kGradVarSuffix}));
 }

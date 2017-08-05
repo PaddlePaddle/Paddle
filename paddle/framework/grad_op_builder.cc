@@ -56,8 +56,7 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
 
   for (const auto& arg : src_arg_list) {
     std::string src_name = arg.name();
-    std::string dst_name =
-        is_grad ? src_name + OperatorBase::GRAD_VAR_SUFFIX() : src_name;
+    std::string dst_name = is_grad ? src_name + kGradVarSuffix : src_name;
     (*dst_op->in_out_idxs_)[dst_name] = idx++;
     int src_arg_idx = src_op->in_out_idxs_->at(src_name);
     int src_begin =
@@ -65,10 +64,9 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
     int src_end = src_format == nullptr ? src_arg_idx + 1
                                         : src_format->at(src_arg_idx + 1);
     for (int i = src_begin; i < src_end; ++i) {
-      std::string s = is_grad ? src_inout[i] + OperatorBase::GRAD_VAR_SUFFIX()
-                              : arg.ignore_gradient()
-                                    ? OperatorBase::EMPTY_VAR_NAME()
-                                    : src_inout[i];
+      std::string s =
+          is_grad ? src_inout[i] + kGradVarSuffix
+                  : (arg.ignore_gradient() ? kEmptyVarName : src_inout[i]);
       dst_inout.emplace_back(s);
     }
     if (dst_format != nullptr) {
