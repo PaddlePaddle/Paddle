@@ -21,15 +21,14 @@ namespace rnn {
 namespace fmw = paddle::framework;
 
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& inlinks,
-                   const size_t seq_len,
+                   const std::vector<Link>& inlinks, const size_t seq_len,
                    bool infer_shape_mode) {
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
   for (size_t i = 0; i < inlinks.size(); ++i) {
     auto input_var = step_scopes[0]->FindVar(inlinks[i].external);
-    PADDLE_ENFORCE(input_var != nullptr,
-                   "input link [%s] is not in scope.",
+    PADDLE_ENFORCE(input_var != nullptr, "input link [%s] is not in scope.",
                    inlinks[i].external);
+
     Tensor* input = input_var->GetMutable<Tensor>();
     fmw::DDim dims = input->dims();
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
@@ -47,13 +46,11 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
 }
 
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& outlinks,
-                   const size_t seq_len,
+                   const std::vector<Link>& outlinks, const size_t seq_len,
                    bool infer_shape_mode) {
   for (size_t i = 0; i < outlinks.size(); i++) {
     auto output_var = step_scopes[0]->FindVar(outlinks[i].external);
-    PADDLE_ENFORCE(output_var != nullptr,
-                   "output link [%s] is not in scope.",
+    PADDLE_ENFORCE(output_var != nullptr, "output link [%s] is not in scope.",
                    outlinks[i].external);
     Tensor* output = output_var->GetMutable<Tensor>();
     if (infer_shape_mode) {
@@ -80,22 +77,16 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
 
 void LinkMemories(const std::vector<Scope*>& scopes,
                   const std::vector<rnn::MemoryAttr>& memories,
-                  const size_t step_id,
-                  const int offset,
+                  const size_t step_id, const int offset,
                   bool infer_shape_mode) {
   PADDLE_ENFORCE(step_id < scopes.size(),
-                 "step [%d] is out of range of step scopes' size [%d]",
-                 step_id,
+                 "step [%d] is out of range of step scopes' size [%d]", step_id,
                  scopes.size());
   PADDLE_ENFORCE(static_cast<int>(step_id) + offset >= 0,
-                 "offset [%d] must be large than -[%d]",
-                 offset,
-                 step_id);
+                 "offset [%d] must be large than -[%d]", offset, step_id);
   PADDLE_ENFORCE(step_id + offset < scopes.size(),
                  "offset [%d] is out of range, it must be less than (%d - %d)",
-                 offset,
-                 scopes.size(),
-                 step_id);
+                 offset, scopes.size(), step_id);
   auto scope = scopes[step_id];
   auto linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
@@ -109,8 +100,7 @@ void LinkMemories(const std::vector<Scope*>& scopes,
   }
 }
 
-void InitArgument(const ArgumentName& name,
-                  Argument* arg,
+void InitArgument(const ArgumentName& name, Argument* arg,
                   const OperatorBase& op) {
   arg->step_net = op.Input(name.step_net);
   arg->step_scopes = op.Output(name.step_scopes);
@@ -119,8 +109,7 @@ void InitArgument(const ArgumentName& name,
   auto inlink_alias = op.GetAttr<std::vector<std::string>>(name.inlink_alias);
   PADDLE_ENFORCE(inlinks.size() == inlink_alias.size(),
                  "the size of inlinks and inlink_alias don't match:%d,%d",
-                 inlinks.size(),
-                 inlink_alias.size());
+                 inlinks.size(), inlink_alias.size());
   for (size_t i = 0; i < inlinks.size(); ++i) {
     rnn::Link link;
     link.external = inlinks[i];
@@ -132,8 +121,7 @@ void InitArgument(const ArgumentName& name,
   auto outlink_alias = op.GetAttr<std::vector<std::string>>(name.outlink_alias);
   PADDLE_ENFORCE(outlinks.size() == outlink_alias.size(),
                  "the size of outlinks and outlink_alias don't match:%d,%d",
-                 outlinks.size(),
-                 outlink_alias.size());
+                 outlinks.size(), outlink_alias.size());
   for (size_t i = 0; i < outlinks.size(); ++i) {
     rnn::Link link;
     link.external = outlinks[i];
@@ -149,12 +137,10 @@ void InitArgument(const ArgumentName& name,
 
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "the size of memories, boot_memories don't match:%d,%d",
-                 memories.size(),
-                 boot_memories.size());
+                 memories.size(), boot_memories.size());
   PADDLE_ENFORCE(pre_memories.size() == boot_memories.size(),
                  "the size of pre_memories, boot_memories don't match:%d,%d",
-                 pre_memories.size(),
-                 boot_memories.size());
+                 pre_memories.size(), boot_memories.size());
   PADDLE_ENFORCE(memories.size() > 0, "more than 1 memories should be set");
 
   for (size_t i = 0; i < memories.size(); ++i) {
