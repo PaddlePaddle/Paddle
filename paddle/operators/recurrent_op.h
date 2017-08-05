@@ -18,7 +18,6 @@
 
 namespace paddle {
 namespace operators {
-
 namespace rnn {
 
 /**
