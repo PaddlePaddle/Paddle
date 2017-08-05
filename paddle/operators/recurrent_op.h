@@ -20,8 +20,6 @@
 namespace paddle {
 namespace operators {
 
-using namespace paddle::framework;  // NOLINT
-
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
 // TODO(Yan Chunwei):
 // 1. No-padding computing for sequences with indifinite length in one batch.
@@ -32,14 +30,15 @@ using namespace paddle::framework;  // NOLINT
 
 class RecurrentAlgorithm {
 public:
-  void Run(const Scope& scope, const platform::DeviceContext& dev_ctx) const;
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const;
 
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const Scope& scope) const;
+  void InferShape(const framework::Scope& scope) const;
 
 protected:
   /*
@@ -48,13 +47,15 @@ protected:
    * NOTE the scopes are reused in both the forward and backward, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(const Scope& scope) const;
+  void CreateScopes(const framework::Scope& scope) const;
 
-  const std::vector<Scope*>& GetStepScopes(const Scope& scope) const {
-    return *scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
+  const std::vector<framework::Scope*>& GetStepScopes(
+      const framework::Scope& scope) const {
+    return *scope.FindVar(arg_->step_scopes)
+                ->GetMutable<std::vector<framework::Scope*>>();
   }
 
-  void InitMemories(Scope* step_scopes, bool infer_shape_mode) const;
+  void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
@@ -75,18 +76,22 @@ class RecurrentGradientAlgorithm {
 public:
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
-  void Run(const Scope& scope, const platform::DeviceContext& dev_ctx) const;
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const;
 
-  void LinkBootMemoryGradients(Scope* step_scopes, bool infer_shape_mode) const;
+  void LinkBootMemoryGradients(framework::Scope* step_scopes,
+                               bool infer_shape_mode) const;
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const Scope& scope) const;
+  void InferShape(const framework::Scope& scope) const;
 
 protected:
-  inline const std::vector<Scope*>& GetStepScopes(const Scope& scope) const {
-    return *scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
+  inline const std::vector<framework::Scope*>& GetStepScopes(
+      const framework::Scope& scope) const {
+    return *scope.FindVar(arg_->step_scopes)
+                ->GetMutable<std::vector<framework::Scope*>>();
   }
 
 private:
@@ -94,16 +99,18 @@ private:
   mutable size_t seq_len_;
 };
 
-class RecurrentOp final : public OperatorBase {
+class RecurrentOp final : public framework::OperatorBase {
 public:
   void Init() override;
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const Scope& scope) const override { alg_.InferShape(scope); }
+  void InferShape(const framework::Scope& scope) const override {
+    alg_.InferShape(scope);
+  }
 
-  void Run(const Scope& scope,
+  void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
@@ -114,16 +121,18 @@ private:
   RecurrentAlgorithm alg_;
 };
 
-class RecurrentGradientOp final : public OperatorBase {
+class RecurrentGradientOp final : public framework::OperatorBase {
 public:
   void Init() override;
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const Scope& scope) const override { alg_.InferShape(scope); }
+  void InferShape(const framework::Scope& scope) const override {
+    alg_.InferShape(scope);
+  }
 
-  void Run(const Scope& scope,
+  void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }

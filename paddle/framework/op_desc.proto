@@ -15,7 +15,7 @@ limitations under the License. */
 syntax="proto2";
 package paddle.framework;
 
-import "attr_type.proto";
+import "attribute.proto";
 
 // AttrDesc is used to describe Attributes of an Operator. It contain's
 // name, type, and value of Attribute.

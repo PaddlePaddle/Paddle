@@ -20,7 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
