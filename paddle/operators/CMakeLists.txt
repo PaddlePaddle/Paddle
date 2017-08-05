@@ -41,6 +41,11 @@ function(op_library TARGET)
     endif()
 endfunction()
 
+op_library(gather SRCS gather_func.cc)
+cc_test(gather_test SRCS gather_test.cc DEPS gather)
+
+op_library(scatter SRCS scatter_func.cc)
+
 op_library(add_op SRCS add_op.cc add_op.cu)
 cc_test(add_op_test SRCS add_op_test.cc DEPS add_op)
 

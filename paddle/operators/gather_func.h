@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,51 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <memory.h>
 #include <cstring>
+
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/place.h"
 
-/**
- * Return a new tensor from source tensor, gathered according to index
- * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
- * return: output tensor
- */
-template <typename Place, typename T>
-Tensor* Gather(Tensor* src, Tensor* index) {
-  // check index of shape 1-D
-  PADDLE_ENFORCE(index->dims().size() == 1);
-  int index_size = index->dims()[0];
+using paddle::framework::Tensor;
+using paddle::framework::DDim;
 
-  // Source shape
-  auto src_dims = src->dims();
-  DDim output_dims(dims_src);
-  // Create a tensor of shape [index_size, dim_src[1:]]
-  output_dims[0] = index_size;
-
-  Tensor* New_tensor;
-  float* output = nullptr;
-
-  /* slice size */
-  int slice_size = 1;
-  for (size_t i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-
-  /* Gathering */
-  if (place == CPUPlace()) {
-    // init for CPU
-    output = New_tensor.mutable_data<T>(output_dims, CPUPlace());
-    CPUGather(
-        src->data(), index->data(), slice_size, new_tensor->mutable_data());
-  } else {  // GPU
-    // init for GPU
-    output = New_tensor.mutable_data<T>(output_dims, GPUPlace());
-    /* how to specialize device??*/
-    GPUGather(
-        d, src->data(), index->data(), slice_size, new_tensor->mutable_data());
-  }
-  return New_tensor;
-}
+namespace paddle {
+namespace operators {
 
 /* Implementation of CPU copy */
 template <typename T>
@@ -70,48 +37,61 @@ void CPUGather(const T* params,
 
   for (size_t i = 0; i < index_size; ++i) {
     int index_ = indices[i];
-    /* copy src[index_] to output[i] */
-    memcpy(
-        output + i * slice_bytes, params + index_ * slice_bytes, slice_bytes);
+    // copy src[index_] to output[i]
+    memcpy(output + i * slice_size, params + index_ * slice_size, slice_bytes);
   }
 }
 
 /* Implementation of GPU copy:
-   I suppose the GPUDevice& d, contains gpu_id and thread_id
-   d = cuda_stream(gpu_id_, stream_id_);
+  I suppose the GPUDevice& d, contains gpu_id and thread_id
+  d = cuda_stream(gpu_id_, stream_id_);
 */
 template <typename T>
-void GPUGather(const GPUDevice& d,
-               const T* src,
+void GPUGather(const T* src,
                const int* index,
                const int slice_size,
                const int index_size,
-               T* output) {
-  int block_count = slice_size * index_size;
-  int thread_per_block = 1024;
+               T* output);
 
-  GatherOpKernel<T><<<block_count, thread_per_block, 0, d.stream()>>>(
-      src, index, output, slice_size, indices_size, slice_size, out_size);
-}
-
+/**
+ * Return a new tensor from source tensor, gathered according to index
+ * input[src]: type-T source Tensor
+ * input[index]: type-int index Tensor (1-D)
+ * return: output tensor
+ */
 template <typename T>
-__global__ void GatherOpKernel(const T* params,
-                               const int* indices,
-                               T* out,
-                               int64 indices_size,
-                               int64 slice_size,
-                               int64 out_size) {
-  /* I suppose we have the following macro,
-     which I strongly suggest that we should put in cuda:
-  #define CUDA_1D_KERNEL_LOOP(i, n)                            \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; \
-       i += blockDim.x * gridDim.x)
-  */
-  CUDA_1D_KERNEL_LOOP(i, out_size) {
-    int indices_i = i / slice_size;
-    int slice_i = i - indices_i * slice_size;  // offset inside the slice
-    int gather_i = indices[indices_i];
-    int params_i = gather_i * slice_size + slice_i;
-    out[i] = *(params + params_i);
+void Gather(const platform::Place& place,
+            const paddle::framework::Tensor* src,
+            const paddle::framework::Tensor* index,
+            paddle::framework::Tensor* output) {
+  // check index of shape 1-D
+  PADDLE_ENFORCE(index->dims().size() == 1);
+  int index_size = index->dims()[0];
+
+  auto src_dims = src->dims();
+  DDim output_dims(src_dims);
+  output_dims[0] = index_size;
+
+  // slice size
+  int slice_size = 1;
+  for (size_t i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+
+  // Gathering
+  if (platform::is_cpu_place(place)) {
+    CPUGather<T>(src->data<T>(),
+                 index->data<int>(),
+                 slice_size,
+                 index_size,
+                 output->data<T>());
+  } else {
+    // init for GPU
+    // output_arr = output->mutable_data<T>(output_dims, platform::GPUPlace());
+    // how to specialize device??
+    // GPUGather(
+    //    d, src->data(), index->data(), slice_size,
+    //    new_tensor->mutable_data());
   }
 }
+
+}  // namespace operators
+}  // namespace paddle
