@@ -6092,37 +6092,41 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def sub_nested_seq_layer(input, name=None, top_k=1):
+def sub_nested_seq_layer(input, selected_indices, name=None):
     """
     The sub_nested_seq_layer accepts two inputs: the first one is a nested
-    sequence in PaddlePaddle; the second one is a learnable score or
-    distribution over each sequence in the nested sequence.
+    sequence; the second one is a set of selceted indices in the nested sequence.
 
-    Then sub_nest_seq_layer selects top k sentences with highest scores or
-    probabilites according to the second input.
+
+    Then sub_nest_seq_layer selects trims the first input according to the
+    selected indices to give a new output. This layer is used in beam training.
 
     The example usage is:
 
     .. code-block:: python
-    prob = fc_layer(input=data, size=1, act=SequenceSoftmaxActivation())
-    sub_nest_seq = sub_nested_seq_layer(input=[data, prob], top_k=3)
+    sub_nest_seq = sub_nested_seq_layer(input=[data, selected_indices])
 
-    :param input: The two input layers. The first input must be a nested
-        sequence. The second input is a learnable scores, whose size must be 1.
+
+    :param input: A nested sequence.
+    :type input: LayerOutput
+    :param selected_indices: a set of sequence indices in the nested sequence.
     :type input: LayerOutput
     :param name: name of this layer.
     :type name: basestring
-    :param top_k: number of sequences with highest probabilies to select.
-    :type top_k: int
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert isinstance(input, collections.Sequence) and len(input) == 2, (
-        'sub_nest_seq_layer has exactly two inputs.')
+    assert isinstance(input, LayerOutput), (
+        'The first input of '
+        'sub_nested_seq_layer must be a Paddle layer.')
+    assert isinstance(selected_indices, LayerOutput), (
+        'The second input of '
+        'sub_nested_seq_layer must be a Paddle layer.')
+
     l = Layer(
-        inputs=[x.name for x in input],
+        inputs=input.name,
+        selected_indices=selected_indices.name,
         name=name,
-        top_k=top_k,
         type=LayerType.SUB_NESTED_SEQ)
     return LayerOutput(
         name=name,

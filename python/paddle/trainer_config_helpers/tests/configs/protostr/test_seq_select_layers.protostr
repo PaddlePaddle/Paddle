@@ -1,20 +1,15 @@
 type: "nn"
 layers {
-  name: "input"
+  name: "input_seq"
   type: "data"
   size: 300
   active_type: ""
 }
 layers {
-  name: "__fc_layer_0__"
-  type: "fc"
-  size: 1
-  active_type: "sequence_softmax"
-  inputs {
-    input_layer_name: "input"
-    input_parameter_name: "___fc_layer_0__.w0"
-  }
-  bias_parameter_name: "___fc_layer_0__.wbias"
+  name: "input"
+  type: "data"
+  size: 5
+  active_type: ""
 }
 layers {
   name: "__sub_nested_seq_layer_0__"
@@ -22,41 +17,20 @@ layers {
   size: 300
   active_type: ""
   inputs {
-    input_layer_name: "input"
+    input_layer_name: "input_seq"
   }
   inputs {
-    input_layer_name: "__fc_layer_0__"
+    input_layer_name: "input"
   }
-  top_k: 1
 }
-parameters {
-  name: "___fc_layer_0__.w0"
-  size: 300
-  initial_mean: 0.0
-  initial_std: 0.057735026919
-  dims: 300
-  dims: 1
-  initial_strategy: 0
-  initial_smart: true
-}
-parameters {
-  name: "___fc_layer_0__.wbias"
-  size: 1
-  initial_mean: 0.0
-  initial_std: 0.0
-  dims: 1
-  dims: 1
-  initial_strategy: 0
-  initial_smart: false
-}
-input_layer_names: "input"
+input_layer_names: "input_seq"
 output_layer_names: "__sub_nested_seq_layer_0__"
 sub_models {
   name: "root"
+  layer_names: "input_seq"
   layer_names: "input"
-  layer_names: "__fc_layer_0__"
   layer_names: "__sub_nested_seq_layer_0__"
-  input_layer_names: "input"
+  input_layer_names: "input_seq"
   output_layer_names: "__sub_nested_seq_layer_0__"
   is_recurrent_layer_group: false
 }

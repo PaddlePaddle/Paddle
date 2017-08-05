@@ -2,8 +2,10 @@
 #coding=utf-8
 from paddle.trainer_config_helpers import *
 
-data = data_layer(name='input', size=300)
-prob = fc_layer(input=data, size=1, act=SequenceSoftmaxActivation())
-sub_nest_seq = sub_nested_seq_layer(input=[data, prob], top_k=1)
+beam_size = 5
+
+data = data_layer(name='input_seq', size=300)
+selected_ids = data_layer(name='input', size=beam_size)
+sub_nest_seq = sub_nested_seq_layer(input=data, selected_indices=selected_ids)
 
 outputs(sub_nest_seq)
