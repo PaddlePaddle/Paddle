@@ -23,8 +23,6 @@ static const float kCrossEntropyLogThreshold{1e-20};
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public OpKernel {
  public:
-  constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
-
   void Compute(const ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
