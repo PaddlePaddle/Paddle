@@ -57,13 +57,11 @@ cmake .. \
 
 cat <<EOF
 ============================================
-Building and installing in /paddle/build ...
+Building in /paddle/build ...
    Build unit tests: ${WITH_TESTING:-OFF}
 ============================================
 EOF
-make install -j `nproc`
-pip install /usr/local/opt/paddle/share/wheels/*.whl
-paddle version
+make -j `nproc`
 
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
 cat <<EOF
@@ -71,6 +69,10 @@ cat <<EOF
 Running unit tests ...
 ========================================
 EOF
+    # make install should also be test when unittest
+    make install -j `nproc`
+    pip install /usr/local/opt/paddle/share/wheels/*.whl
+    paddle version
     ctest --output-on-failure
 fi
 
@@ -86,6 +88,11 @@ Building documentation ...
    In /paddle/build_doc
 ========================================
 EOF
+    # build documentation need install Paddle before
+    make install -j `nproc`
+    pip install /usr/local/opt/paddle/share/wheels/*.whl
+    paddle version
+
     mkdir -p /paddle/build_doc
     pushd /paddle/build_doc
     cmake .. \
