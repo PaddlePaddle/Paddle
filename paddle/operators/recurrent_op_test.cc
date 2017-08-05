@@ -391,3 +391,4 @@ TEST(RecurrentOp, LinkMemories) {
 
 USE_OP(add_two);
 USE_OP(mul);
+USE_OP_WITHOUT_KERNEL(recurrent_op);
