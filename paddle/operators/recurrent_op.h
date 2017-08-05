@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using namespace paddle::framework;
+using namespace paddle::framework;  // NOLINT
 
 namespace rnn {
 
@@ -72,26 +72,29 @@ struct ArgumentName {
  */
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<Link>& inlinks,
-                   const size_t seq_len);
+                   const size_t seq_len,
+                   bool infer_shape_mode);
 
 /**
  * Process outputs of step nets and merge to variables.
  */
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<Link>& outlinks,
-                   const size_t seq_len);
+                   const size_t seq_len,
+                   bool infer_shape_mode);
 
 void LinkMemories(const std::vector<Scope*>& step_scopes,
                   const std::vector<MemoryAttr>& memories,
-                  size_t step_id,
-                  int offset);
+                  const size_t step_id,
+                  const int offset,
+                  bool infer_shape_mode);
 
 void InitArgument(const ArgumentName& name, Argument* arg);
 
 };  // namespace rnn
 
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
-// TODO:
+// TODO(Yan Chunwei):
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
 // 3. Internal Memory.
@@ -122,7 +125,7 @@ protected:
     return *scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
   }
 
-  void InitMemories(Scope* step_scopes) const;
+  void InitMemories(Scope* step_scopes, bool infer_shape_mode) const;
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
@@ -145,7 +148,7 @@ public:
 
   void Run(const Scope& scope, const platform::DeviceContext& dev_ctx) const;
 
-  void LinkBootMemoryGradients(Scope* step_scopes) const;
+  void LinkBootMemoryGradients(Scope* step_scopes, bool infer_shape_mode) const;
 
   /**
    * InferShape must be called before Run.
@@ -169,12 +172,10 @@ public:
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const Scope& scope) const override {
-    alg_.InferShape(scope);
-  }
+  void InferShape(const Scope& scope) const override { alg_.InferShape(scope); }
 
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 
@@ -191,12 +192,10 @@ public:
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const Scope& scope) const override {
-    alg_.InferShape(scope);
-  }
+  void InferShape(const Scope& scope) const override { alg_.InferShape(scope); }
 
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 

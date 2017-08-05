@@ -306,8 +306,7 @@ class OpRegistry {
   static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
     PADDLE_ENFORCE(!op.IsNetOp(),
                    "Use framework::Backward to get backward ops");
-    GradOpBuilder builder(op);
-    std::shared_ptr<OperatorBase> grad_op(builder.Build());
+    std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
     grad_op->Init();
     return grad_op;
   }
@@ -315,7 +314,7 @@ class OpRegistry {
   static std::unordered_map<std::string, OpProto>& protos() {
     static std::unordered_map<std::string, OpProto> protos_;
     return protos_;
-  };
+  }
 
   static std::unordered_map<std::string, std::string>& grad_ops() {
     static std::unordered_map<std::string, std::string> grad_ops_;
@@ -337,7 +336,7 @@ class OpRegistry {
   static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
     static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
     return op_checkers_;
-  };
+  }
 
   static void GenerateTempVariableName(OperatorBase* op) {
     static std::atomic<size_t> gUniqId(0UL);
@@ -354,7 +353,7 @@ class OpRegistry {
 template <typename OpType, typename ProtoMakerType>
 class OpRegisterHelper {
  public:
-  OpRegisterHelper(const char* op_type) {
+  explicit OpRegisterHelper(const char* op_type) {
     OpRegistry::RegisterOp<OpType, ProtoMakerType>(op_type);
   }
 };
@@ -399,6 +398,14 @@ class GradOpRegisterHelper {
   int __op_gradient_register_##__op_type##__grad_op_type##_handle__() {        \
     return 0;                                                                  \
   }
+
+/**
+ * Macro to Forbid user register Gradient Operator.
+ */
+#define NO_GRADIENT(__op_type)                          \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                       \
+      __reg_gradient_op__##__op_type##__op_type##_grad, \
+      "NO_GRADIENT must be in global namespace")
 
 /**
  * Macro to Register OperatorKernel.
