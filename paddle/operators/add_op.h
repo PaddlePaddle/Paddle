@@ -20,7 +20,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class AddKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto input0 = context.Input<Tensor>(0);
     auto input1 = context.Input<Tensor>(1);

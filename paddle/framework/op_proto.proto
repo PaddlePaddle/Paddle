@@ -22,7 +22,7 @@ limitations under the License. */
 syntax = "proto2";
 package paddle.framework;
 
-import "attr_type.proto";
+import "attribute.proto";
 
 // Attribute protocol message for 3rd-party language binding.
 // It will store the Op support what attribute and what type.
