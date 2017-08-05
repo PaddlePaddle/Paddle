@@ -38,10 +38,10 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    "input link [%s] is not in scope.",
                    inlinks[i].external);
     Tensor* input = input_var->GetMutable<Tensor>();
-    DDim dims = input->dims();
+    framework::DDim dims = input->dims();
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
                    "all the inlinks must have same length");
-    DDim step_dims = slice_ddim(dims, 1, dims.size());
+    framework::DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
           step_scopes[j]->NewVar(inlinks[i].internal)->GetMutable<Tensor>();
@@ -64,13 +64,13 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    outlinks[i].external);
     Tensor* output = output_var->GetMutable<Tensor>();
     if (infer_shape_mode) {
-      DDim step_dims = step_scopes[0]
-                           ->FindVar(outlinks[i].internal)
-                           ->GetMutable<Tensor>()
-                           ->dims();
+      framework::DDim step_dims = step_scopes[0]
+                                      ->FindVar(outlinks[i].internal)
+                                      ->GetMutable<Tensor>()
+                                      ->dims();
       std::vector<int> dims_vec = vectorize(step_dims);
       dims_vec.insert(dims_vec.begin(), seq_len);
-      output->Resize(make_ddim(dims_vec));
+      output->Resize(framework::make_ddim(dims_vec));
     } else {
       output->mutable_data<float>(platform::CPUPlace());
       for (size_t j = 0; j < seq_len; j++) {
