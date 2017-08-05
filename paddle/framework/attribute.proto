@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-syntax="proto2";
+syntax = "proto2";
 package paddle.framework;
 
 // Attribute Type for paddle's Op.
 // Op contains many attributes. Each type of attributes could be different.
 // The AttrType will be shared between AttrDesc and AttrProto.
 enum AttrType {
-    INT = 0;
-    FLOAT = 1;
-    STRING = 2;
-    INTS = 3;
-    FLOATS = 4;
-    STRINGS = 5;
+  INT = 0;
+  FLOAT = 1;
+  STRING = 2;
+  INTS = 3;
+  FLOATS = 4;
+  STRINGS = 5;
 }
