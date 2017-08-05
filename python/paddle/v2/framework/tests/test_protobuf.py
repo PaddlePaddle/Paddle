@@ -1,12 +1,12 @@
 import paddle.v2.framework.proto.op_proto_pb2
-import paddle.v2.framework.proto.attr_type_pb2
+import paddle.v2.framework.proto.attribute_pb2
 import unittest
 
 
 class TestFrameworkProto(unittest.TestCase):
     def test_all(self):
         op_proto_lib = paddle.v2.framework.proto.op_proto_pb2
-        attr_type_lib = paddle.v2.framework.proto.attr_type_pb2
+        attr_type_lib = paddle.v2.framework.proto.attribute_pb2
         op_proto = op_proto_lib.OpProto()
         ipt0 = op_proto.inputs.add()
         ipt0.name = "a"
