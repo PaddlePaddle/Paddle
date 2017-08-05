@@ -27,7 +27,7 @@ public:
                                {Output("before_act")},
                                {}));
     auto b = Input("b");
-    if (b != EMPTY_VAR_NAME()) {
+    if (b != framework::kEmptyVarName) {
       AddOp(OpRegistry::CreateOp("rowwise_add",
                                  {Output("before_act"), Input("b")},
                                  {Output("before_act")},
