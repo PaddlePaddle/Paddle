@@ -20,7 +20,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class MeanKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto input = context.Input<Tensor>(0);
     auto output = context.Output<Tensor>(0);
@@ -37,7 +37,7 @@ public:
 
 template <typename Place, typename T>
 class MeanGradKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto OG = context.Input<Tensor>("Out" + framework::kGradVarSuffix);
     PADDLE_ENFORCE(framework::product(OG->dims()) == 1,

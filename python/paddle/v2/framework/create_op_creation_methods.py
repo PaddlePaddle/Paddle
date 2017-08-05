@@ -1,7 +1,7 @@
 import paddle.v2.framework.core as core
 import paddle.v2.framework.proto.op_proto_pb2 as op_proto_pb2
 import paddle.v2.framework.proto.op_desc_pb2 as op_desc_pb2
-import paddle.v2.framework.proto.attr_type_pb2 as attr_type_pb2
+import paddle.v2.framework.proto.attribute_pb2 as attribute_pb2
 import cStringIO
 
 
@@ -57,7 +57,7 @@ class OpDescCreationMethod(object):
             op_desc.attrs.extend([out_format])
         if len(tmp_index) != 0:
             tmp_index_attr = op_desc.attrs.add()
-            tmp_index_attr.type = attr_type_pb2.INTS
+            tmp_index_attr.type = attribute_pb2.INTS
             tmp_index_attr.name = "temporary_index"
             tmp_index_attr.ints.extend(tmp_index)
 
@@ -73,17 +73,17 @@ class OpDescCreationMethod(object):
                 new_attr = op_desc.attrs.add()
                 new_attr.name = attr.name
                 new_attr.type = attr.type
-                if attr.type == attr_type_pb2.INT:
+                if attr.type == attribute_pb2.INT:
                     new_attr.i = user_defined_attr
-                elif attr.type == attr_type_pb2.FLOAT:
+                elif attr.type == attribute_pb2.FLOAT:
                     new_attr.f = user_defined_attr
-                elif attr.type == attr_type_pb2.STRING:
+                elif attr.type == attribute_pb2.STRING:
                     new_attr.s = user_defined_attr
-                elif attr.type == attr_type_pb2.INTS:
+                elif attr.type == attribute_pb2.INTS:
                     new_attr.ints.extend(user_defined_attr)
-                elif attr.type == attr_type_pb2.FLOATS:
+                elif attr.type == attribute_pb2.FLOATS:
                     new_attr.floats.extend(user_defined_attr)
-                elif attr.type == attr_type_pb2.STRINGS:
+                elif attr.type == attribute_pb2.STRINGS:
                     new_attr.strings.extend(user_defined_attr)
                 else:
                     raise NotImplementedError("Not support attribute type " +
@@ -109,7 +109,7 @@ class OpDescCreationMethod(object):
         retv = []
         if multiple:
             var_format = op_desc_pb2.AttrDesc()
-            var_format.type = attr_type_pb2.INTS
+            var_format.type = attribute_pb2.INTS
             var_format.name = "%s_format" % in_out
             var_format.ints.append(0)
 
@@ -185,17 +185,17 @@ def get_docstring_from_op_proto(op_proto):
 
     for attr in op_proto.attrs:
         attr_type = None
-        if attr.type == attr_type_pb2.INT:
+        if attr.type == attribute_pb2.INT:
             attr_type = "int"
-        elif attr.type == attr_type_pb2.FLOAT:
+        elif attr.type == attribute_pb2.FLOAT:
             attr_type = "float"
-        elif attr.type == attr_type_pb2.STRING:
+        elif attr.type == attribute_pb2.STRING:
             attr_type = "basestr"
-        elif attr.type == attr_type_pb2.INTS:
+        elif attr.type == attribute_pb2.INTS:
             attr_type = "list of int"
-        elif attr.type == attr_type_pb2.FLOATS:
+        elif attr.type == attribute_pb2.FLOATS:
             attr_type = "list of float"
-        elif attr.type == attr_type_pb2.STRINGS:
+        elif attr.type == attribute_pb2.STRINGS:
             attr_type = "list of basestr"
 
         if attr_type is None:
