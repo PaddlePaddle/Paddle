@@ -22,12 +22,15 @@ USE_VIRTUALENV_FOR_TEST=$1; shift
 PYTHON=$1; shift
 
 if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
-   rm -rf .test_env
-   virtualenv .test_env
-   unset PYTHONHOME
-   unset PYTHONPATH
-   source .test_env/bin/activate
-   PYTHON=python
+    if [ "$PADDLE_TEST_SKIP_CLEAN_VIRTUAL_ENV" != "ON" ]
+    then
+	   rm -rf .test_env
+    fi
+    virtualenv .test_env
+    unset PYTHONHOME
+    unset PYTHONPATH
+    source .test_env/bin/activate
+    PYTHON=python
 fi
 
 $PYTHON -m pip install $SCRIPTPATH/../dist/*.whl
@@ -51,5 +54,8 @@ done
 
 if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
     deactivate
-    rm -rf .test_env
+    if [ "$PADDLE_TEST_SKIP_CLEAN_VIRTUAL_ENV" != "ON" ]
+    then
+	rm -rf .test_env
+    fi
 fi
