@@ -1899,6 +1899,68 @@ TEST(Layer, CropLayer) {
   }
 }
 
+TEST(Layer, SubNestedSequenceLayer) {
+  const int layerSize = 128;
+
+  TestConfig config;
+  config.layerConfig.set_type("sub_nested_seq");
+  config.layerConfig.set_top_k(2);
+  config.layerConfig.set_name("sub_nested_seq_layer");
+  config.layerConfig.set_size(layerSize);
+
+  // Generate the first input
+  srand((size_t)(time(NULL)));
+  const int batchSize = 128;
+  const int maxSeqLen = 100;
+  const int maxSubSeqNum = 50;
+  // sequenceStartPositioins info for the first input.
+  vector<int> seqStartPos1(batchSize + 1, 0);
+  // subSequenceStartPositioins info for the first input.
+  vector<int> subSeqStartPos;
+  subSeqStartPos.push_back(0);
+
+  // sequenceStartPositioins info for the second input.
+  vector<int> seqStartPos2(batchSize + 1, 0);
+
+  size_t curPos = 0;
+  for (int i = 1; i < batchSize + 1; ++i) {
+    int seqNum = uniformRandom(maxSubSeqNum);
+    seqStartPos2[i] = seqStartPos2[i - 1] + seqNum;
+    for (int j = 0; j < seqNum; ++j) {
+      int seqLen = uniformRandom(maxSeqLen);
+      subSeqStartPos.push_back(curPos + seqLen);
+      curPos += seqLen;
+    }
+    seqStartPos1[i] = curPos;
+  }
+
+  MatrixPtr dataInputPtr1 = Matrix::create(curPos, layerSize, false, false);
+  dataInputPtr1->randomizeUniform();
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                              "layer_0",
+                              dataInputPtr1,
+                              seqStartPos1,
+                              subSeqStartPos});
+  config.layerConfig.add_inputs();
+
+  // Generate the second input
+  MatrixPtr dataInputPtr2 =
+      Matrix::create(seqStartPos2[batchSize], 1, false, false);
+  dataInputPtr2->randomizeUniform();
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "layer_1", dataInputPtr2, seqStartPos2});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "sub_nested_seq",
+                  /* batchSize */ 100,
+                  /* trans */ false,
+                  /* useGpu*/ useGpu,
+                  /* useWeight */ false);
+  }
+}
+
 TEST(Layer, ClipLayer) {
   const size_t batchSize = 128;
   const size_t size = 512;

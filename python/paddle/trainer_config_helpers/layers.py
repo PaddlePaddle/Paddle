@@ -129,6 +129,7 @@ __all__ = [
     'prelu_layer',
     'gated_unit_layer',
     'crop_layer',
+    'sub_nested_seq_layer',
     'clip_layer',
     'slice_projection',
 ]
@@ -224,6 +225,7 @@ class LayerType(object):
 
     PRELU = 'prelu'
     CROP_LAYER = 'crop'
+    SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
 
     @staticmethod
@@ -6084,6 +6086,47 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
     return LayerOutput(
         name=name,
         layer_type=LayerType.CROP_LAYER,
+        parents=input,
+        size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def sub_nested_seq_layer(input, name=None, top_k=1):
+    """
+    The sub_nested_seq_layer accepts two inputs: the first one is a nested
+    sequence in PaddlePaddle; the second one is a learnable score or
+    distribution over each sequence in the nested sequence.
+
+    Then sub_nest_seq_layer selects top k sentences with highest scores or
+    probabilites according to the second input.
+
+    The example usage is:
+
+    .. code-block:: python
+    prob = fc_layer(input=data, size=1, act=SequenceSoftmaxActivation())
+    sub_nest_seq = sub_nested_seq_layer(input=[data, prob], top_k=3)
+
+    :param input: The two input layers. The first input must be a nested
+        sequence. The second input is a learnable scores, whose size must be 1.
+    :type input: LayerOutput
+    :param name: name of this layer.
+    :type name: basestring
+    :param top_k: number of sequences with highest probabilies to select.
+    :type top_k: int
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, collections.Sequence) and len(input) == 2, (
+        'sub_nest_seq_layer has exactly two inputs.')
+    l = Layer(
+        inputs=[x.name for x in input],
+        name=name,
+        top_k=top_k,
+        type=LayerType.SUB_NESTED_SEQ)
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SUB_NESTED_SEQ,
         parents=input,
         size=l.config.size)
 

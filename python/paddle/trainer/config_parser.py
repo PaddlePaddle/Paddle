@@ -2657,6 +2657,25 @@ class SubSequenceLayer(LayerBase):
         self.create_bias_parameter(bias, size)
 
 
+@config_layer('sub_nested_seq')
+class SubNestedSequenceLayer(LayerBase):
+    def __init__(self, name, inputs, top_k=1, bias=False, **xargs):
+        super(SubNestedSequenceLayer, self).__init__(
+            name, 'sub_nested_seq', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(inputs) == 2,
+            ('SubNestSequenceLayer must have 2 inputs: '
+             'input1 is a nested sequence; input2 is a learnable distribution '
+             'or scores over each sentence in the nested sequence. '))
+        input_layer0 = self.get_input_layer(0)
+        size = input_layer0.size
+        self.set_layer_size(size)
+
+        self.config.top_k = top_k
+        input_layer1 = self.get_input_layer(1)
+        assert (input_layer1.size == 1)
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):

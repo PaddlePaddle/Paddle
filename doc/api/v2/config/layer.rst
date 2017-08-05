@@ -257,6 +257,11 @@ seq_concat
 ..  autoclass:: paddle.v2.layer.seq_concat
     :noindex:
 
+sub_nested_seq
+--------------
+..  autoclass:: paddle.v2.layer.sub_nested_seq
+    :noindex:
+
 Reshaping Layers
 ================
 
