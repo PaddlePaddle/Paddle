@@ -33,6 +33,8 @@ RUN apt-get update && \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools && \
     apt-get clean -y
+
+# paddle is using numpy.flip, which is introduced since 1.12.0
 RUN pip install -y 'numpy>=1.12.0'
 
 # Install Go and glide
