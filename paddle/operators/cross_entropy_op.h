@@ -20,7 +20,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public OpKernel {
-public:
+ public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
   void Compute(const ExecutionContext& ctx) const override {

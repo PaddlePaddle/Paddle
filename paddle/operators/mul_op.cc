@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 class MulOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
     auto dim0 = ctx.Input<Tensor>(0)->dims();
@@ -34,7 +34,7 @@ protected:
 };
 
 class MulOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
@@ -49,7 +49,7 @@ The equation is: Out = X * Y
 };
 
 class MulOpGrad : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "MulGrad";

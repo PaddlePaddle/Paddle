@@ -40,7 +40,7 @@ namespace operators {
  * it defines.
  */
 class NetOp : public framework::OperatorBase {
-public:
+ public:
   /**
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
@@ -90,7 +90,7 @@ public:
 
   std::vector<std::shared_ptr<OperatorBase>> ops_;
 
-private:
+ private:
   bool add_op_done_{false};
 
   template <typename T, typename KeyType>
