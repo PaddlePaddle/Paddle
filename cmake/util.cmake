@@ -118,7 +118,6 @@ endfunction()
 macro(add_unittest_without_exec TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
     link_paddle_test(${TARGET_NAME})
-    add_style_check_target(${TARGET_NAME} ${ARGN})
 endmacro()
 
 # add_unittest

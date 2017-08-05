@@ -32,7 +32,7 @@ struct CPUPlace {
 
 struct GPUPlace {
   GPUPlace() : GPUPlace(0) {}
-  GPUPlace(int d) : device(d) {}
+  explicit GPUPlace(int d) : device(d) {}
 
   // needed for variant equality comparison
   inline bool operator==(const GPUPlace &o) const { return device == o.device; }

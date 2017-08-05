@@ -11,17 +11,22 @@
   limitations under the License.
 */
 
+#include "paddle/operators/recurrent_op.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/framework/net.h"
+#include "paddle/framework/ddim.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/tensor.h"
-#include "paddle/operators/recurrent_op.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
+
+using framework::make_ddim;
+using framework::DDim;
 
 class RecurrentOpTest : public ::testing::Test {
 protected:
@@ -71,7 +76,7 @@ protected:
   }
 
   void CreateRNNOp() {
-    OpDesc op_desc;
+    framework::OpDesc op_desc;
 
     op_desc.set_type("recurrent_op");
     // inlinks 0
