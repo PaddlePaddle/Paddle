@@ -27,12 +27,13 @@ RUN apt-get update && \
     git python-pip python-dev openssh-server bison  \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
-    python-numpy python-matplotlib gcc-4.8 g++-4.8 \
+    python-matplotlib gcc-4.8 g++-4.8 \
     automake locales clang-format-3.8 swig doxygen cmake  \
     liblapack-dev liblapacke-dev libboost-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools && \
     apt-get clean -y
+RUN pip install -y 'numpy>=1.12.0'
 
 # Install Go and glide
 RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
