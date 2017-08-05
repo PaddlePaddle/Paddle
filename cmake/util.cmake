@@ -149,19 +149,12 @@ endfunction()
 # Create a python unittest using run_python_tests.sh,
 # which takes care of making correct running environment
 function(add_python_test TEST_NAME)
-    if (UNITTEST_USE_VIRTUALENV)
-        add_test(NAME ${TEST_NAME}
-            COMMAND env PADDLE_PACKAGE_DIR=${PADDLE_PYTHON_PACKAGE_DIR}
-            bash ${PROJ_ROOT}/paddle/scripts/run_python_tests.sh ${ARGN}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    else()
-        foreach(arg ${ARGN})
-            get_filename_component(py_fn ${arg} NAME_WE)
-            set(TRG_NAME ${TEST_NAME}_${py_fn})
-            add_test(NAME ${TRG_NAME}
-                    COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
-                    python2 ${arg}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-        endforeach()
-    endif()
+    foreach(arg ${ARGN})
+        get_filename_component(py_fn ${arg} NAME_WE)
+        set(TRG_NAME ${TEST_NAME}_${py_fn})
+        add_test(NAME ${TRG_NAME}
+                COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
+                python2 ${arg}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endforeach()
 endfunction()

@@ -35,7 +35,7 @@ RUN apt-get update && \
     apt-get clean -y
 
 # paddle is using numpy.flip, which is introduced since 1.12.0
-RUN pip install -y 'numpy>=1.12.0'
+RUN pip --no-cache-dir install 'numpy>=1.12.0'
 
 # Install Go and glide
 RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \

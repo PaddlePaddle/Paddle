@@ -37,7 +37,6 @@ Configuring cmake in /paddle/build ...
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
       -DWITH_TESTING=${WITH_TESTING:-OFF}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-      -DUNITTEST_USE_VIRTUALENV=OFF
 ========================================
 EOF
 
@@ -54,8 +53,7 @@ cmake .. \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
       -DWITH_TESTING=${WITH_TESTING:-OFF} \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DUNITTEST_USE_VIRTUALENV=OFF
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
 ============================================
