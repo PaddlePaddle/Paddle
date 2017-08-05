@@ -81,7 +81,7 @@ fi
 # PaddlePaddle.  This awkwardness is due to
 # https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
 # describes a solution.
-if [[ ${WITH_DOC} == "ON" ]]; then
+if [[ ${WITH_DOC:-OFF} == "ON" ]]; then
     cat <<EOF
 ========================================
 Building documentation ...
@@ -125,20 +125,23 @@ fi
 
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-cat <<EOF
+if [[ ${WITH_DEB:-OFF} == "ON" ]]; then
+    cat <<EOF
 ========================================
 Generating .deb package ...
 ========================================
 EOF
-set +e
-cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
-err_code=$?
-if [ ${err_code} -ne 0 ]; then
-  # cat error logs if cpack failed.
-  cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
-  exit ${err_code}
+    set +e
+    cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
+    err_code=$?
+    if [ ${err_code} -ne 0 ]; then
+        # cat error logs if cpack failed.
+        cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
+        exit ${err_code}
+    fi
+    set -e
 fi
-set -e
+
 cat <<EOF
 ========================================
 Generate /paddle/build/Dockerfile ...
