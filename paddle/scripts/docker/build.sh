@@ -39,6 +39,10 @@ Configuring cmake in /paddle/build ...
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
 EOF
+
+# Disable UNITTEST_USE_VIRTUALENV in docker because
+# docker environment is fully controlled by this script.
+# See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
@@ -52,26 +56,23 @@ cmake .. \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
-========================================
-Building in /paddle/build ...
+============================================
+Building and installing in /paddle/build ...
    Build unit tests: ${WITH_TESTING:-OFF}
-========================================
-EOF
-make -j `nproc`
-if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    pip uninstall -y py-paddle paddle || true
-    ctest --output-on-failure
-fi
-
-
-cat <<EOF
-========================================
-Installing ...
-========================================
+============================================
 EOF
 make install -j `nproc`
 pip install /usr/local/opt/paddle/share/wheels/*.whl
 paddle version
+
+if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+cat <<EOF
+========================================
+Running unit tests ...
+========================================
+EOF
+    ctest --output-on-failure
+fi
 
 
 # To build documentation, we need to run cmake again after installing
@@ -122,9 +123,15 @@ cat <<EOF
 Generating .deb package ...
 ========================================
 EOF
+set +e
 cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
-
-
+err_code=$?
+if [ ${err_code} -ne 0 ]; then
+  # cat error logs if cpack failed.
+  cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
+  exit ${err_code}
+fi
+set -e
 cat <<EOF
 ========================================
 Generate /paddle/build/Dockerfile ...
