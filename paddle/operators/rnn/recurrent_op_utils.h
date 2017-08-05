@@ -71,26 +71,21 @@ struct ArgumentName {
  * Prepare inputs for each step net.
  */
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& inlinks,
-                   const size_t seq_len,
+                   const std::vector<Link>& inlinks, const size_t seq_len,
                    bool infer_shape_mode);
 
 /**
  * Process outputs of step nets and merge to variables.
  */
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& outlinks,
-                   const size_t seq_len,
+                   const std::vector<Link>& outlinks, const size_t seq_len,
                    bool infer_shape_mode);
 
 void LinkMemories(const std::vector<Scope*>& step_scopes,
-                  const std::vector<MemoryAttr>& memories,
-                  const size_t step_id,
-                  const int offset,
-                  bool infer_shape_mode);
+                  const std::vector<MemoryAttr>& memories, const size_t step_id,
+                  const int offset, bool infer_shape_mode);
 
-void InitArgument(const ArgumentName& name,
-                  Argument* arg,
+void InitArgument(const ArgumentName& name, Argument* arg,
                   const OperatorBase& op);
 
 }  // namespace rnn
