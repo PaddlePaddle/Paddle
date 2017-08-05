@@ -32,17 +32,22 @@ __all__ = [
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
+
 # When running unit tests, there could be multiple processes that
 # trying to create DATA_HOME directory simultaneously, so we cannot
 # use a if condition to check for the existence of the directory;
 # instead, we use the filesystem as the synchronization mechanism by
 # catching returned errors.
-try:
-    os.makedirs(DATA_HOME)
-except OSError as exc:
-    if exc.errno != errno.EEXIST:
-        raise
-    pass
+def must_mkdirs(path):
+    try:
+        os.makedirs(DATA_HOME)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+        pass
+
+
+must_mkdirs(DATA_HOME)
 
 
 def md5file(fname):
@@ -91,6 +96,19 @@ def fetch_all():
             getattr(
                 importlib.import_module("paddle.v2.dataset.%s" % module_name),
                 "fetch")()
+
+
+def fetch_all_recordio(path):
+    for module_name in filter(lambda x: not x.startswith("__"),
+                              dir(paddle.v2.dataset)):
+        if "convert" in dir(
+                importlib.import_module("paddle.v2.dataset.%s" % module_name)) and \
+                not module_name == "common":
+            ds_path = os.path.join(path, module_name)
+            must_mkdirs(ds_path)
+            getattr(
+                importlib.import_module("paddle.v2.dataset.%s" % module_name),
+                "convert")(ds_path)
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):

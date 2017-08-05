@@ -24,7 +24,6 @@ IF(WITH_PYTHON)
 ENDIF(WITH_PYTHON)
 
 SET(py_env "")
-SET(USE_VIRTUALENV_FOR_TEST 1)
 IF(PYTHONINTERP_FOUND)
     find_python_module(pip REQUIRED)
     find_python_module(numpy REQUIRED)

@@ -133,7 +133,7 @@ def convert(path):
     """
     Converts dataset to recordio format
     """
-    paddle.v2.dataset.common.convert(path, train100(), 10, "cifar_train100")
-    paddle.v2.dataset.common.convert(path, test100(), 10, "cifar_test100")
-    paddle.v2.dataset.common.convert(path, train10(), 10, "cifar_train10")
-    paddle.v2.dataset.common.convert(path, test10(), 10, "cifar_test10")
+    paddle.v2.dataset.common.convert(path, train100(), 1000, "cifar_train100")
+    paddle.v2.dataset.common.convert(path, test100(), 1000, "cifar_test100")
+    paddle.v2.dataset.common.convert(path, train10(), 1000, "cifar_train10")
+    paddle.v2.dataset.common.convert(path, test10(), 1000, "cifar_test10")

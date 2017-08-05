@@ -19,8 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using namespace paddle::framework;
-
 namespace rnn {
 
 /**
@@ -70,31 +68,27 @@ struct ArgumentName {
 /**
  * Prepare inputs for each step net.
  */
-void SegmentInputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& inlinks,
-                   const size_t seq_len,
+void SegmentInputs(const std::vector<framework::Scope*>& step_scopes,
+                   const std::vector<Link>& inlinks, const size_t seq_len,
                    bool infer_shape_mode);
 
 /**
  * Process outputs of step nets and merge to variables.
  */
-void ConcatOutputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& outlinks,
-                   const size_t seq_len,
+void ConcatOutputs(const std::vector<framework::Scope*>& step_scopes,
+                   const std::vector<Link>& outlinks, const size_t seq_len,
                    bool infer_shape_mode);
 
-void LinkMemories(const std::vector<Scope*>& step_scopes,
-                  const std::vector<MemoryAttr>& memories,
-                  const size_t step_id,
-                  const int offset,
-                  bool infer_shape_mode);
+void LinkMemories(const std::vector<framework::Scope*>& step_scopes,
+                  const std::vector<MemoryAttr>& memories, const size_t step_id,
+                  const int offset, bool infer_shape_mode);
 
 void InitArgument(const ArgumentName& name, Argument* arg);
 
 };  // namespace rnn
 
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
-// TODO:
+// TODO(Yan Chunwei):
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
 // 3. Internal Memory.
@@ -102,32 +96,35 @@ void InitArgument(const ArgumentName& name, Argument* arg);
 //    Refer to: https://arxiv.org/pdf/1502.02367.pdf
 
 class RecurrentAlgorithm {
-public:
-  void Run(const Scope& scope, const platform::DeviceContext& dev_ctx) const;
+ public:
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const;
 
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const Scope& scope) const;
+  void InferShape(const framework::Scope& scope) const;
 
-protected:
+ protected:
   /*
    * The step scopes will be stored in the father scope as a variable.
    *
    * NOTE the scopes are reused in both the forward and backward, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(const Scope& scope) const;
+  void CreateScopes(const framework::Scope& scope) const;
 
-  const std::vector<Scope*>& GetStepScopes(const Scope& scope) const {
-    return *scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
+  const std::vector<framework::Scope*>& GetStepScopes(
+      const framework::Scope& scope) const {
+    return *scope.FindVar(arg_->step_scopes)
+                ->GetMutable<std::vector<framework::Scope*>>();
   }
 
-  void InitMemories(Scope* step_scopes, bool infer_shape_mode) const;
+  void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
 
-private:
+ private:
   std::unique_ptr<rnn::Argument> arg_;
   mutable size_t seq_len_;
 };
@@ -143,69 +140,73 @@ class RecurrentGradientAlgorithm {
    * lot, and the latter is a wrapper acts like an dapter for it to make RNN an
    * operator.
    */
-public:
+ public:
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
-  void Run(const Scope& scope, const platform::DeviceContext& dev_ctx) const;
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const;
 
-  void LinkBootMemoryGradients(Scope* step_scopes, bool infer_shape_mode) const;
+  void LinkBootMemoryGradients(framework::Scope* step_scopes,
+                               bool infer_shape_mode) const;
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const Scope& scope) const;
+  void InferShape(const framework::Scope& scope) const;
 
-protected:
-  inline const std::vector<Scope*>& GetStepScopes(const Scope& scope) const {
-    return *scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
+ protected:
+  inline const std::vector<framework::Scope*>& GetStepScopes(
+      const framework::Scope& scope) const {
+    return *scope.FindVar(arg_->step_scopes)
+                ->GetMutable<std::vector<framework::Scope*>>();
   }
 
-private:
+ private:
   std::unique_ptr<rnn::Argument> arg_;
   mutable size_t seq_len_;
 };
 
-class RecurrentOp final : public OperatorBase {
-public:
+class RecurrentOp final : public framework::OperatorBase {
+ public:
   void Init() override;
 
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const Scope& scope) const override {
+  void InferShape(const framework::Scope& scope) const override {
     alg_.InferShape(scope);
   }
 
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 
   static const rnn::ArgumentName kArgName;
 
-private:
+ private:
   RecurrentAlgorithm alg_;
 };
 
-class RecurrentGradientOp final : public OperatorBase {
-public:
+class RecurrentGradientOp final : public framework::OperatorBase {
+ public:
   void Init() override;
 
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const Scope& scope) const override {
+  void InferShape(const framework::Scope& scope) const override {
     alg_.InferShape(scope);
   }
 
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 
   static const rnn::ArgumentName kArgName;
 
-private:
+ private:
   RecurrentGradientAlgorithm alg_;
 };
 
