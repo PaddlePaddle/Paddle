@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 class OnehotCrossEntropyOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2,
                    "Input size of OnehotCrossEntropyOp must be two");
@@ -48,7 +48,7 @@ protected:
 };
 
 class OnehotCrossEntropyOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   OnehotCrossEntropyOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of OnehotCrossEntropyOp");
@@ -65,8 +65,7 @@ OnehotCrossEntropy Operator.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(onehot_cross_entropy,
-            ops::OnehotCrossEntropyOp,
+REGISTER_OP(onehot_cross_entropy, ops::OnehotCrossEntropyOp,
             ops::OnehotCrossEntropyOpMaker);
 REGISTER_OP_CPU_KERNEL(onehot_cross_entropy,
                        ops::OnehotCrossEntropyOpKernel<ops::CPUPlace, float>);

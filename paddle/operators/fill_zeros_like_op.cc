@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 class FillZerosLikeOp : public framework::OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1UL,
                    "Input size of FillZerosLikeOp must be one.");
@@ -36,7 +36,7 @@ protected:
 };
 
 class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
-public:
+ public:
   FillZerosLikeOpMaker(framework::OpProto *proto,
                        framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
@@ -52,8 +52,7 @@ The output will have the same size with input.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(fill_zeros_like,
-            paddle::operators::FillZerosLikeOp,
+REGISTER_OP(fill_zeros_like, paddle::operators::FillZerosLikeOp,
             paddle::operators::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
