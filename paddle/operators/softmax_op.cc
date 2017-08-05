@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 class SoftmaxOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1UL,
                    "Only one input is need for softmax");
@@ -31,7 +31,7 @@ protected:
 };
 
 class SoftmaxOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   SoftmaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "input of softmax");
@@ -41,7 +41,7 @@ public:
 };
 
 class SoftmaxOpGrad : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 3UL,
                    "Input of SoftmaxOpGrad should be 3, X, Y, YG");
