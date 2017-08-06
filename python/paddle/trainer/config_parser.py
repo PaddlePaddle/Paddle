@@ -565,6 +565,35 @@ class IdentityOffsetProjection(Projection):
         return []
 
 
+@config_class
+class SliceProjection(Projection):
+    type = 'slice'
+
+    def __init__(self, input_layer_name, slices, **xargs):
+        super(SliceProjection, self).__init__(input_layer_name, **xargs)
+        input = g_layer_map[input_layer_name]
+        if input.type in ["exconv", "cudnn_conv"]:
+            # the slice operator is for the channel dimension
+            assert input.num_filters is not None
+            channels = input.num_filters
+            image_size = input.size / channels
+            assert slices[len(slices) - 1][1] <= channels
+            for i in xrange(len(slices)):
+                slice = self.proj_conf.slices.add()
+                slice.start = slices[i][0] * image_size
+                slice.end = slices[i][1] * image_size
+                self.size += slice.end - slice.start
+        else:
+            config_assert(False,
+                          'Currently the input should be convolution layer')
+
+    def calc_parameter_size(self, input_size, output_size):
+        return 0
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return []
+
+
 # DotMulProjection performs element-wise multiplication with weight
 @config_class
 class DotMulProjection(Projection):
@@ -2169,6 +2198,20 @@ class RowConvLayer(LayerBase):
         self.create_input_parameter(0, psize, dims)
 
 
+@config_layer('clip')
+class ClipLayer(LayerBase):
+    def __init__(self, name, inputs, min, max, **xargs):
+        super(ClipLayer, self).__init__(name, 'clip', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ClipLayer must have one and only one input.')
+        config_assert(min < max, 'min must be less than max.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.config.inputs[0].clip_conf.min = min
+        self.config.inputs[0].clip_conf.max = max
+
+
 # key: cost type
 # value: cost class
 g_cost_map = {}
@@ -2723,6 +2766,16 @@ class SumToOneNormLayer(LayerBase):
             len(self.inputs) == 1, 'SumToOneNormLayer must have 1 input')
         input_layer0 = self.get_input_layer(0)
         self.set_layer_size(input_layer0.size)
+
+
+@config_layer('row_l2_norm')
+class RowL2NormLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(RowL2NormLayer, self).__init__(
+            name, 'row_l2_norm', 0, inputs=inputs, **xargs)
+        config_assert(len(self.inputs) == 1, 'RowL2NormLayer must have 1 input')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
 
 
 @config_layer('cos_vm')

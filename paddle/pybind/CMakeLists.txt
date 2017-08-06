@@ -1,3 +1,10 @@
-cc_library(paddle_pybind SHARED SRCS pybind.cc DEPS pybind python
-        add_op fc_op sgd_op cross_entropy_op random_op)
-        add_op fc_op sgd_op cross_entropy_op recurrent_network_op guassian_random_op)
+cc_library(paddle_pybind SHARED
+    SRCS pybind.cc
+    DEPS pybind python backward
+	fc_op
+	sgd_op
+	add_op
+	mean_op
+  guassian_random_op
+	cross_entropy_op
+	recurrent_op)

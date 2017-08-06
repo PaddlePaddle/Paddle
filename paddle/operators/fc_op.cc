@@ -18,31 +18,29 @@ namespace paddle {
 namespace operators {
 
 class FullyConnectedOp : public NetOp {
-public:
+ public:
   void Init() override {
     AddOp(OpRegistry::CreateOp("mul",
                                {
                                    Input("X"), Input("W"),
                                },
-                               {Output("before_act")},
-                               {}));
+                               {Output("before_act")}, {}));
     auto b = Input("b");
-    if (b != EMPTY_VAR_NAME()) {
+    if (b != framework::kEmptyVarName) {
       AddOp(OpRegistry::CreateOp("rowwise_add",
                                  {Output("before_act"), Input("b")},
-                                 {Output("before_act")},
-                                 {}));
+                                 {Output("before_act")}, {}));
     }
 
     auto activation = GetAttr<std::string>("activation");
-    AddOp(OpRegistry::CreateOp(
-        activation, {Output("before_act")}, {Output("Y")}, {}));
+    AddOp(OpRegistry::CreateOp(activation, {Output("before_act")},
+                               {Output("Y")}, {}));
     CompleteAddOp(false);
   }
 };
 
 class FullyConnectedOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   FullyConnectedOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input of fc operator");
@@ -50,8 +48,8 @@ public:
     AddInput("b", "the bias of fc operator");
 
     AddOutput("Y", "the output of fc operator");
-    AddOutput(
-        "before_act", "the before activation output of fc operator", true);
+    AddOutput("before_act", "the before activation output of fc operator")
+        .SetTemporary();
     AddAttr<std::string>("activation", "The activation key for fc layer")
         .SetDefault("sigmoid")
         .InEnum({"sigmoid", "softmax"});

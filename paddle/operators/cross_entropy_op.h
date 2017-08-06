@@ -18,28 +18,53 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static const float kCrossEntropyLogThreshold{1e-20};
+
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public OpKernel {
-public:
-  constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
+ public:
+  void Compute(const ExecutionContext& ctx) const override {
+    auto X = ctx.Input<Tensor>("X");
+    const T* Xdata = X->data<T>();
+    const int* label_data = ctx.Input<Tensor>(1)->data<int>();
+    auto Y = ctx.Output<Tensor>("Y");
 
-  void Compute(const KernelContext& context) const override {
-    auto X = context.Input(0)->Get<Tensor>();
-    const T* X_data = X.data<T>();
-    const int* label_data = context.Input(1)->Get<Tensor>().data<int>();
-    auto* Y = context.Output(0)->GetMutable<Tensor>();
+    Y->mutable_data<T>(ctx.GetPlace());
 
-    Y->mutable_data<T>(context.GetPlace());
+    T* Ydata = Y->data<T>();
 
-    T* Y_data = Y->data<T>();
-
-    int batch_size = X.dims()[0];
-    int class_num = X.dims()[1];
+    int batch_size = X->dims()[0];
+    int class_num = X->dims()[1];
 
     // Y[i] = -log(X[i][j])
     for (int i = 0; i < batch_size; ++i) {
-      Y_data[i] = -std::log(
-          std::max(X_data[i * class_num + label_data[i]], LOG_THRESHOLD()));
+      Ydata[i] = -std::log(std::max(Xdata[i * class_num + label_data[i]],
+                                    kCrossEntropyLogThreshold));
+    }
+  }
+};
+
+template <typename Place, typename T>
+class OnehotCrossEntropyGradientOpKernel : public OpKernel {
+ public:
+  void Compute(const ExecutionContext& ctx) const override {
+    auto X = ctx.Input<Tensor>("X");
+    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto label = ctx.Input<Tensor>("label");
+
+    auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());
+    auto* dYdata = dY->template data<T>();
+    auto* Xdata = X->template data<T>();
+    auto* label_data = label->data<int>();
+
+    const int batch_size = X->dims()[0];
+    const int class_num = X->dims()[1];
+
+    for (int i = 0; i < batch_size; ++i) {
+      dXdata[i * class_num + label_data[i]] =
+          -dYdata[i] / std::max(Xdata[i * class_num + label_data[i]],
+                                kCrossEntropyLogThreshold);
     }
   }
 };
