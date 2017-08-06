@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "Layer.h"
+#include "MkldnnBase.h"
 #include "mkldnn.hpp"
 
 namespace paddle {
