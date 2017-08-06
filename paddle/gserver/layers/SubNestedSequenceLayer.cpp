@@ -31,13 +31,9 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 private:
-  void checkInputs(const Argument& inputSeq, const Argument& seqScores);
-  void calSelectedCols(const Argument& scores,
-                       const int* subSeqStartPos,
-                       size_t topK);
-  void partialSortIndex(const std::vector<real>& values,
-                        int k,
-                        std::vector<size_t>& indices);
+  void calSelectedCols(const MatrixPtr scores,
+                       const int* seqStartPos,
+                       const int* subSeqStartPos);
   void buildOutputSeqInfo();
 
   std::vector<int> outSeqStartInfo_;
@@ -61,74 +57,12 @@ bool SubNestedSequenceLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void SubNestedSequenceLayer::checkInputs(const Argument& inputSeq,
-                                         const Argument& seqScores) {
-  CHECK(inputSeq.hasSubseq()) << "The first input of SubNestSequence layer "
-                              << "must be a nested sequence.";
-  CHECK(seqScores.hasSeq())
-      << "The second input of SubNestSequence layer must be a sequence.";
-  CHECK_EQ(seqScores.value->getWidth(), 1U)
-      << "The second input of SubNestedSequenceLayer is scores "
-      << "over each sequence in a nested sequence, "
-      << "so its size should be 1.";
-  CHECK_EQ(inputSeq.getNumSubSequences(), seqScores.value->getHeight())
-      << "The second input of SubNestedSequenceLayer is scores "
-      << "over each sequence in a nested sequence, so its height should be "
-      << "equal to number of sequence in the first input.";
-}
-
-void SubNestedSequenceLayer::partialSortIndex(const std::vector<real>& values,
-                                              int k,
-                                              std::vector<size_t>& indices) {
-  CHECK_GE(values.size(), k);
-  indices.resize(values.size(), 0);
-  std::iota(begin(indices), end(indices), 0U);
-  std::partial_sort(begin(indices),
-                    begin(indices) + k,
-                    end(indices),
-                    [&](size_t a, size_t b) { return values[a] > values[b]; });
-}
-
-void SubNestedSequenceLayer::calSelectedCols(const Argument& scores,
-                                             const int* subSeqStartPos,
-                                             size_t topK) {
+void SubNestedSequenceLayer::calSelectedCols(const MatrixPtr selected_indices,
+                                             const int* seqStartPos,
+                                             const int* subSeqStartPos) {
   selectedRows_.clear();
   outSubSeqStartInfo_.resize(1, 0);
   outSeqStartInfo_.resize(1, 0);
-
-  real* seqScores = nullptr;
-  if (useGpu_) {
-    Matrix::resizeOrCreate(scoreOverInputSeq_,
-                           scores.value->getHeight(),
-                           scores.value->getWidth(),
-                           false /* trans */,
-                           false /* useGpu */);
-    scoreOverInputSeq_->copyFrom(*scores.value);
-    seqScores = scoreOverInputSeq_->getData();
-  } else {
-    seqScores = scores.value->getData();
-  }
-
-  int* scoreSeqStartPos = scores.sequenceStartPositions->getMutableData(false);
-  for (int i = 0; i < scores.getNumSequences(); ++i) {
-    int seqLen = scoreSeqStartPos[i + 1] - scoreSeqStartPos[i];
-    int selectedSeqNum = std::min(static_cast<int>(config_.top_k()), seqLen);
-
-    std::vector<size_t> sortedIdx;
-    partialSortIndex(std::vector<real>(seqScores + scoreSeqStartPos[i],
-                                       seqScores + scoreSeqStartPos[i + 1]),
-                     selectedSeqNum,
-                     sortedIdx);
-
-    for (int j = 0; j < selectedSeqNum; ++j) {
-      int begPos = subSeqStartPos[scoreSeqStartPos[i] + sortedIdx[j]];
-      int endPos = subSeqStartPos[scoreSeqStartPos[i] + sortedIdx[j] + 1];
-      for (int m = begPos; m < endPos; ++m) selectedRows_.push_back(m);
-      outSubSeqStartInfo_.push_back(outSubSeqStartInfo_.back() + endPos -
-                                    begPos);
-    }
-    outSeqStartInfo_.push_back(outSubSeqStartInfo_.back());
-  }
 }
 
 void SubNestedSequenceLayer::buildOutputSeqInfo() {
@@ -147,14 +81,17 @@ void SubNestedSequenceLayer::buildOutputSeqInfo() {
 
 void SubNestedSequenceLayer::forward(PassType passType) {
   Layer::forward(passType);
+
   const Argument& inputSeq = getInput(0);
-  const Argument& seqScores = getInput(1);
+  const MatrixPtr selected_indices = getInputValue(1);
+  CHECK(inputSeq.hasSubseq()) << "The first input of SubNestSequence layer "
+                              << "must be a nested sequence.";
+  CHECK_EQ(inputSeq.getNumSequences(), selected_indices->getHeight());
 
-  checkInputs(inputSeq, seqScores);
+  calSelectedCols(selected_indices,
+                  inputSeq.sequenceStartPositions->getMutableData(false),
+                  inputSeq.subSequenceStartPositions->getMutableData(false));
 
-  calSelectedCols(seqScores,
-                  inputSeq.subSequenceStartPositions->getMutableData(false),
-                  config_.top_k());
   resetOutput(selectedRows_.size(), getSize());
   buildOutputSeqInfo();
 
@@ -170,10 +107,10 @@ void SubNestedSequenceLayer::forward(PassType passType) {
 }
 
 void SubNestedSequenceLayer::backward(const UpdateCallback& callback) {
-  MatrixPtr inputGrad1 = getInputGrad(0);
+  MatrixPtr inputSeqGrad = getInputGrad(0);
   MatrixPtr outputGrad = getOutputGrad();
 
-  if (inputGrad1) outputGrad->addToRows(*inputGrad1, *rowIndice_);
+  if (inputSeqGrad) outputGrad->addToRows(*inputSeqGrad, *rowIndice_);
 }
 
 }  // namespace paddle
