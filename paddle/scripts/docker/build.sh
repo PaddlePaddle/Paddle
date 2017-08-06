@@ -39,6 +39,10 @@ Configuring cmake in /paddle/build ...
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
 EOF
+
+# Disable UNITTEST_USE_VIRTUALENV in docker because
+# docker environment is fully controlled by this script.
+# See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
@@ -49,18 +53,15 @@ cmake .. \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
       -DWITH_TESTING=${WITH_TESTING:-OFF} \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DUNITTEST_USE_VIRTUALENV=OFF
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
 ============================================
-Building and installing in /paddle/build ...
+Building in /paddle/build ...
    Build unit tests: ${WITH_TESTING:-OFF}
 ============================================
 EOF
-make install -j `nproc`
-pip install /usr/local/opt/paddle/share/wheels/*.whl
-paddle version
+make -j `nproc`
 
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
 cat <<EOF
@@ -68,6 +69,10 @@ cat <<EOF
 Running unit tests ...
 ========================================
 EOF
+    # make install should also be test when unittest
+    make install -j `nproc`
+    pip install /usr/local/opt/paddle/share/wheels/*.whl
+    paddle version
     ctest --output-on-failure
 fi
 
@@ -76,13 +81,18 @@ fi
 # PaddlePaddle.  This awkwardness is due to
 # https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
 # describes a solution.
-if [[ ${WITH_DOC} == "ON" ]]; then
+if [[ ${WITH_DOC:-OFF} == "ON" ]]; then
     cat <<EOF
 ========================================
 Building documentation ...
    In /paddle/build_doc
 ========================================
 EOF
+    # build documentation need install Paddle before
+    make install -j `nproc`
+    pip install /usr/local/opt/paddle/share/wheels/*.whl
+    paddle version
+
     mkdir -p /paddle/build_doc
     pushd /paddle/build_doc
     cmake .. \
@@ -115,13 +125,22 @@ fi
 
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-cat <<EOF
+if [[ ${WITH_DEB:-OFF} == "ON" ]]; then
+    cat <<EOF
 ========================================
 Generating .deb package ...
 ========================================
 EOF
-cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
-
+    set +e
+    cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
+    err_code=$?
+    if [ ${err_code} -ne 0 ]; then
+        # cat error logs if cpack failed.
+        cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
+        exit ${err_code}
+    fi
+    set -e
+fi
 
 cat <<EOF
 ========================================

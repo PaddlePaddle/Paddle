@@ -57,10 +57,7 @@ class OpTestMeta(type):
                 for out_name in Operator.get_op_output_names(self.type):
                     actual = numpy.array(scope.find_var(out_name).get_tensor())
                     expect = getattr(self, out_name)
-                    # TODO(qijun) The default decimal is 7, but numpy.dot and eigen.mul
-                    # has some diff, and could not pass unittest. So I set decimal 3 here.
-                    # And I will check this in future.
-                    numpy.testing.assert_almost_equal(actual, expect, decimal=3)
+                    numpy.isclose(actual, expect)
 
         obj.test_all = test_all
         return obj
