@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #if __cplusplus > 201402L
-#include "boost/any.hpp"
+#include <any.hpp>
 
 namespace paddle {
 // use std::any for C++ 17
@@ -24,7 +24,7 @@ using std::bad_any_cast;
 }  // namespace paddle
 
 #else
-#include <any.hpp>
+#include "boost/any.hpp"
 
 namespace paddle {
 // use boost::any for C++ 11
