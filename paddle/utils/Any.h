@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 #if __cplusplus > 201402L
-#include <any>
+#include "boost/any.hpp"
 
 namespace paddle {
-// using std::any for C++ 17
+// use std::any for C++ 17
 using std::any;
 using std::any_cast;
 using std::bad_any_cast;
@@ -27,9 +27,9 @@ using std::bad_any_cast;
 #include <any.hpp>
 
 namespace paddle {
-// use linb::any for C++ 11
-using linb::any;
-using linb::any_cast;
-using linb::bad_any_cast;
+// use boost::any for C++ 11
+using boost::any;
+using boost::any_cast;
+using boost::bad_any_cast;
 }  // namespace paddle
 #endif
