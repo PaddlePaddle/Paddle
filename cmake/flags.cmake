@@ -116,7 +116,6 @@ set(COMMON_FLAGS
     -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs
     -Wno-error=parentheses-equality # Warnings in pybind11
-    --expt-relaxed-constexpr # surppress warnings in Eigen
 )
 
 set(GPU_COMMON_FLAGS
@@ -131,7 +130,6 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
-    --expt-relaxed-constexpr # surppress warnings in Eigen
 )
 
 if (APPLE)

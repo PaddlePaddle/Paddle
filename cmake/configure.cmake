@@ -60,7 +60,7 @@ else()
         message(FATAL_ERROR "Paddle need cudnn to compile")
     endif()
 
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}" "--expt-relaxed-constexpr")
 
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
