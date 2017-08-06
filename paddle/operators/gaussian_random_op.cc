@@ -12,9 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/operators/gaussian_random_op.h"
 #include "glog/logging.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/random_op.h"
 
 namespace paddle {
 namespace operators {
@@ -22,7 +22,7 @@ namespace operators {
 template <typename T>
 class GaussianRandomOpKernel<platform::CPUPlace, T>
     : public framework::OpKernel {
-public:
+ public:
   void Compute(const framework::KernelContext& context) const override {
     auto mean = context.op_.GetAttr<T>("mean");
     auto std = context.op_.GetAttr<T>("std");
@@ -40,7 +40,7 @@ public:
 };
 
 class GaussianRandomOp : public framework::OperatorWithKernel {
-protected:
+ protected:
   void InferShape(
       const std::vector<const framework::Tensor*>& inputs,
       const std::vector<framework::Tensor*>& outputs) const override {
@@ -54,7 +54,7 @@ protected:
 };
 
 class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
-public:
+ public:
   GaussianRandomOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
@@ -74,8 +74,7 @@ The eqution : Out = GaussianRandom(Shape=(d0, d1, ...), Dtype, mean, std)
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(gaussian_random,
-            paddle::operators::GaussianRandomOp,
+REGISTER_OP(gaussian_random, paddle::operators::GaussianRandomOp,
             paddle::operators::GaussianRandomOpMaker);
 
 typedef paddle::operators::GaussianRandomOpKernel<paddle::platform::CPUPlace,
