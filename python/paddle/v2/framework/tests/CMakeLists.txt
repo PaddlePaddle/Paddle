@@ -3,6 +3,7 @@ add_python_test(test_framework
     test_scope.py
     test_default_scope_funcs.py
     test_op_creation_methods.py
+    test_cross_entropy_op.py
     test_net.py
     test_tensor.py
     test_fc_op.py
