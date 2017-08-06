@@ -88,6 +88,94 @@ void MkldnnLayer::mkldnnForwardFC(int bs,
   stream_->submit(pipelineFwd_);
 }
 
+void MkldnnLayer::resetBackwardFC(int bs,
+                                  int ic,
+                                  int ih,
+                                  int iw,
+                                  real* botDiff,
+                                  real* botData,
+                                  int oc,
+                                  real* topDiff,
+                                  real* wgtDiff,
+                                  real* wgtData,
+                                  real* biasDiff) {
+  bool hasSpatial = ih == 1 && iw == 1 ? false : true;
+  engine_ = CpuEngine::Instance().getEngine();
+
+  // backward weight
+  mem::desc botMD = hasSpatial ? createMD({bs, ic, ih, iw}, format::nchw)
+                               : createMD({bs, ic}, format::nc);
+  mem::desc wgtMD = hasSpatial ? createMD({oc, ic, ih, iw}, format::oihw)
+                               : createMD({oc, ic}, format::oi);
+  mem::desc topMD = createMD({bs, oc}, format::nc);
+  mem::desc biasMD = biasDiff != NULL ? createMD({oc}, format::x)
+                                      : createMD({}, format::format_undef);
+
+  fc_fwd::desc fwdDesc =
+      fc_fwd::desc(mkldnn::prop_kind::forward, botMD, wgtMD, topMD);
+  fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
+  fc_bwdWgt::desc bwdWgtDesc =
+      biasDiff != NULL ? fc_bwdWgt::desc(botMD, wgtMD, biasMD, topMD)
+                       : fc_bwdWgt::desc(botMD, wgtMD, topMD);
+  fc_bwdWgt::primitive_desc bwdWgtPD =
+      fc_bwdWgt::primitive_desc(bwdWgtDesc, engine_, fwdPD);
+
+  mem botVal = mem(mem::primitive_desc(botMD, engine_), botData);
+  mem wgtGrad = mem(mem::primitive_desc(wgtMD, engine_), wgtDiff);
+  mem topGrad = mem(mem::primitive_desc(topMD, engine_), topDiff);
+
+  if (biasDiff != NULL) {
+    mem biasGrad = mem(mem::primitive_desc(biasMD, engine_), biasDiff);
+    bwdWgt_.reset(new fc_bwdWgt(bwdWgtPD, botVal, topGrad, wgtGrad, biasGrad));
+  } else {
+    bwdWgt_.reset(new fc_bwdWgt(bwdWgtPD, botVal, topGrad, wgtGrad));
+  }
+  pipelineBwd_.clear();
+  pipelineBwd_.push_back(*bwdWgt_);
+
+  // backward data
+  if (botDiff == NULL) {
+    return;
+  }
+
+  fc_bwdData::desc bwdDataDesc = fc_bwdData::desc(botMD, wgtMD, topMD);
+  fc_bwdData::primitive_desc bwdDataPD =
+      fc_bwdData::primitive_desc(bwdDataDesc, engine_, fwdPD);
+  mem botGrad = mem(mem::primitive_desc(botMD, engine_), botDiff);
+  mem wgtVal = mem(mem::primitive_desc(wgtMD, engine_), wgtData);
+  bwdData_.reset(new fc_bwdData(bwdDataPD, topGrad, wgtVal, botGrad));
+  pipelineBwd_.push_back(*bwdData_);
+}
+
+void MkldnnLayer::mkldnnBackwardFC(int bs,
+                                   int ic,
+                                   int ih,
+                                   int iw,
+                                   real* botDiff,
+                                   real* botData,
+                                   int oc,
+                                   real* topDiff,
+                                   real* wgtDiff,
+                                   real* wgtData,
+                                   real* biasDiff) {
+  // if input size changed, reset it
+  resetBackwardFC(bs,
+                  ic,
+                  ih,
+                  iw,
+                  botDiff,
+                  botData,
+                  oc,
+                  topDiff,
+                  wgtDiff,
+                  wgtData,
+                  biasDiff);
+
+  // just forward
+  // update botdata
+  stream_->submit(pipelineBwd_);
+}
+
 mem::desc MkldnnLayer::createMD(mem::dims dims,
                                 mem::format fmt,
                                 mem::data_type type) {

@@ -77,7 +77,6 @@ void MkldnnFcLayer::reshape() {
 
 void MkldnnFcLayer::forward(PassType passType) {
   Layer::forward(passType);
-
   reshape();
 
   {
@@ -97,6 +96,40 @@ void MkldnnFcLayer::forward(PassType passType) {
 }
 
 void MkldnnFcLayer::backward(const UpdateCallback& callback) {
-  ;  // bool hasBias = biases_ && biases_->getWGrad();
+  /* Do derivation */ {
+    REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
+    backwardActivation();
+  }
+
+  bool hasBias = biases_ && biases_->getWGrad();
+  {
+    REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
+    real* inVal = getInputValue(0)->getData();
+    real* inGrad =
+        getInputGrad(0) != nullptr ? getInputGrad(0)->getData() : NULL;
+    real* outGrad = getOutputGrad()->getData();
+    real* wgtGrad = weight_->getWGrad()->getData();
+    real* wgtVal = weight_->getW()->getData();
+    real* biasGrad = hasBias ? biases_->getWGrad()->getData() : NULL;
+    mkldnnBackwardFC(bs_,
+                     ic_,
+                     ih_,
+                     iw_,
+                     inGrad,
+                     inVal,
+                     oc_,
+                     outGrad,
+                     wgtGrad,
+                     wgtVal,
+                     biasGrad);
+  }
+
+  {
+    REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
+    weight_->getParameterPtr()->incUpdate(callback);
+    if (hasBias) {
+      biases_->getParameterPtr()->incUpdate(callback);
+    }
+  }
 }
 }  // namespace paddle

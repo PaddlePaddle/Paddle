@@ -42,6 +42,8 @@ protected:
   std::shared_ptr<MkldnnStream> stream_;
 
   std::shared_ptr<mkldnn::primitive> fwd_;
+  std::shared_ptr<mkldnn::primitive> bwdWgt_;
+  std::shared_ptr<mkldnn::primitive> bwdData_;
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
@@ -56,7 +58,10 @@ public:
         oh_(0),
         ow_(0),
         engine_(mkldnn::engine::cpu, 0),
-        stream_(nullptr) {}
+        stream_(nullptr),
+        fwd_(nullptr),
+        bwdWgt_(nullptr),
+        bwdData_(nullptr) {}
 
   ~MkldnnLayer() {}
 
@@ -81,6 +86,30 @@ public:
                        real* topData,
                        real* wgtData,
                        real* biasData);
+
+  void resetBackwardFC(int bs,
+                       int ic,
+                       int ih,
+                       int iw,
+                       real* botDiff,
+                       real* botData,
+                       int oc,
+                       real* topDiff,
+                       real* wgtDiff,
+                       real* wgtData,
+                       real* biasDiff);
+
+  void mkldnnBackwardFC(int bs,
+                        int ic,
+                        int ih,
+                        int iw,
+                        real* botDiff,
+                        real* botData,
+                        int oc,
+                        real* topDiff,
+                        real* wgtDiff,
+                        real* wgtData,
+                        real* biasDiff);
 
   // TODO(TJ): move to MkldnnMatrix
   // create memory desc
