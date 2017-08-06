@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MkldnnFcLayer.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -20,11 +21,82 @@ REGISTER_LAYER(mkldnn_fc, MkldnnFcLayer);
 
 bool MkldnnFcLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
-  return MkldnnLayer::init(layerMap, parameterMap);
+  if (!MkldnnLayer::init(layerMap, parameterMap)) {
+    return false;
+  }
+
+  CHECK_EQ(inputLayers_.size(), 1) << "Only support one input layer yet!";
+  CHECK_EQ(inputLayers_.size(), parameters_.size());
+  CHECK(!parameters_[0]->isSparse()) << "Do not support sparse yet";
+
+  // output size, cat not be changed
+  oc_ = getSize();
+  oh_ = 1;
+  ow_ = 1;
+
+  // input size can not change in FC
+  iLayerSize_ = inputLayers_[0]->getSize();
+  CHECK_EQ(parameters_[0]->getSize(), iLayerSize_ * oc_);
+
+  // create weight
+  weight_ =
+      std::unique_ptr<Weight>(new Weight(oc_, iLayerSize_, parameters_[0], 0));
+
+  // create biases
+  if (biasParameter_.get() != NULL) {
+    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_));
+  }
+  return true;
 }
 
-void MkldnnFcLayer::forward(PassType passType) {}
+void MkldnnFcLayer::reshape() {
+  const Argument& input = getInput(0);
+  int batchSize = input.getBatchSize();
+  if (bs_ == batchSize) {
+    return;
+  }
+  bs_ = batchSize;
+  ih_ = input.getFrameHeight();
+  iw_ = input.getFrameWidth();
+  if (ih_ == 0) {
+    ih_ = 1;
+  }
+  if (iw_ == 0) {
+    iw_ = 1;
+  }
+  CHECK_EQ(iLayerSize_, inputLayers_[0]->getSize());
+  ic_ = iLayerSize_ / (ih_ * iw_);
+  CHECK_EQ(size_t(ic_ * ih_ * iw_), iLayerSize_) << "not divisible";
+  CHECK_EQ(size_t(oc_), getSize());
 
-void MkldnnFcLayer::backward(const UpdateCallback& callback) {}
+  // reset output
+  output_.setFrameHeight(oh_);
+  output_.setFrameWidth(ow_);
+  resetOutput(bs_, oc_);
+}
 
+void MkldnnFcLayer::forward(PassType passType) {
+  Layer::forward(passType);
+
+  reshape();
+
+  {
+    REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
+    real* input = getInputValue(0)->getData();
+    real* output = getOutputValue()->getData();
+    real* wgt = weight_->getW()->getData();
+    bool hasBias = biases_ && biases_->getW();
+    real* bias = hasBias ? biases_->getW()->getData() : NULL;
+    mkldnnForwardFC(bs_, ic_, ih_, iw_, input, oc_, output, wgt, bias);
+  }
+
+  /* activation */ {
+    REGISTER_TIMER_INFO("FwActTimer", getName().c_str());
+    forwardActivation();
+  }
+}
+
+void MkldnnFcLayer::backward(const UpdateCallback& callback) {
+  ;  // bool hasBias = biases_ && biases_->getWGrad();
+}
 }  // namespace paddle

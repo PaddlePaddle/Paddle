@@ -29,20 +29,65 @@ typedef std::shared_ptr<MkldnnLayer> MkldnnLayerPtr;
  *
  */
 class MkldnnLayer : public Layer {
+protected:
+  // batch size
+  int bs_;
+  // input image channel, height and width
+  int ic_, ih_, iw_;
+  // output image channel, height and width
+  int oc_, oh_, ow_;
+
+  // mkldnn engine, stream and primivtives
+  mkldnn::engine engine_;
+  std::shared_ptr<MkldnnStream> stream_;
+
+  std::shared_ptr<mkldnn::primitive> fwd_;
+  std::vector<mkldnn::primitive> pipelineFwd_;
+  std::vector<mkldnn::primitive> pipelineBwd_;
+
 public:
-  explicit MkldnnLayer(const LayerConfig& config) : Layer(config) {}
+  explicit MkldnnLayer(const LayerConfig& config)
+      : Layer(config),
+        bs_(0),
+        ic_(0),
+        ih_(0),
+        iw_(0),
+        oc_(0),
+        oh_(0),
+        ow_(0),
+        engine_(mkldnn::engine::cpu, 0),
+        stream_(nullptr) {}
 
   ~MkldnnLayer() {}
 
-  virtual bool init(const LayerMap& layerMap,
-                    const ParameterMap& parameterMap) {
-    CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
-                            << "Please set WITH_MKLDNN=ON";
-    // TODO(TJ): deivecId
-    return Layer::init(layerMap, parameterMap);
-  }
+  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
-  void resetOutput(size_t height, size_t width) { ; }
+  void resetForwardFC(int bs,
+                      int ic,
+                      int ih,
+                      int iw,
+                      real* botData,
+                      int oc,
+                      real* topData,
+                      real* wgtData,
+                      real* biasData);
+
+  void mkldnnForwardFC(int bs,
+                       int ic,
+                       int ih,
+                       int iw,
+                       real* botData,
+                       int oc,
+                       real* topData,
+                       real* wgtData,
+                       real* biasData);
+
+  // TODO(TJ): move to MkldnnMatrix
+  // create memory desc
+  inline mkldnn::memory::desc createMD(
+      mkldnn::memory::dims dims,
+      mkldnn::memory::format fmt,
+      mkldnn::memory::data_type type = mkldnn::memory::data_type::f32);
 };
 
 }  // namespace paddle
