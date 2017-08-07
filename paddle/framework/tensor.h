@@ -26,19 +26,17 @@ limitations under the License. */
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
-namespace pybind {
-namespace details {  // forward declare
-template <bool less, size_t i, typename... args>
-struct CastToPyBufferImpl;
-}  // namespace details
-}  // namespace pybind
 
 namespace framework {
+namespace details {
+template <bool less, size_t i, typename... args>
+struct CastToPyBufferImpl;
+}
 
 class Tensor {
  public:
   template <bool less, size_t i, typename... args>
-  friend struct paddle::pybind::details::CastToPyBufferImpl;
+  friend struct details::CastToPyBufferImpl;
 
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;

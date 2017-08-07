@@ -1,10 +1,12 @@
+#include "paddle/operators/net_op.h"
+
 #include <gtest/gtest.h>
-#include <paddle/framework/net.h>
-#include <paddle/framework/op_registry.h>
-#include <paddle/framework/operator.h>
+
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
 
 static int infer_shape_cnt = 0;
 static int run_cnt = 0;
@@ -73,7 +75,7 @@ TEST(OpKernel, all) {
   ASSERT_THROW(net->AddOp(op2), paddle::platform::EnforceNotMet);
 }
 
-TEST(Net, insert_op) {
+TEST(NetOp, insert_op) {
   NetOp net;
   auto op1 = std::make_shared<EmptyOp>();
   op1->inputs_ = {"x", "w1", "b1"};
@@ -85,5 +87,5 @@ TEST(Net, insert_op) {
   ASSERT_EQ(3UL, net.ops_.size());
 }
 
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle

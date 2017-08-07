@@ -15,43 +15,40 @@
 #pragma once
 
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
 
 using OpKernel = framework::OpKernel;
+using OperatorBase = framework::OperatorBase;
 using InferShapeContext = framework::InferShapeContext;
 using ExecutionContext = framework::ExecutionContext;
 using Variable = framework::Variable;
-template <typename T,
-          int MajorType = Eigen::RowMajor,
+template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T,
-          int MajorType = Eigen::RowMajor,
+template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T,
-          int MajorType = Eigen::RowMajor,
+template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
+template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = framework::Tensor;
+using Scope = framework::Scope;
 using OperatorWithKernel = framework::OperatorWithKernel;
+using OperatorBase = framework::OperatorBase;
 using OpProtoAndCheckerMaker = framework::OpProtoAndCheckerMaker;
 using OpProto = framework::OpProto;
 using OpAttrChecker = framework::OpAttrChecker;
 using CPUPlace = platform::CPUPlace;
 using GPUPlace = platform::GPUPlace;
-using NetOp = framework::NetOp;
 using OpRegistry = framework::OpRegistry;
-using OperatorBase = framework::OperatorBase;
+
 }  // namespace operators
 }  // namespace paddle
 
