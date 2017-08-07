@@ -12,9 +12,11 @@ class TestAddOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "add_two"
-        self.X = numpy.random.random((102, 105)).astype("float32")
-        self.Y = numpy.random.random((102, 105)).astype("float32")
-        self.Out = self.X + self.Y
+        self.inputs = {
+            'X': numpy.random.random((102, 105)).astype("float32"),
+            'Y': numpy.random.random((102, 105)).astype("float32")
+        }
+        self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
 
 
 class TestAddGradOp(unittest.TestCase):

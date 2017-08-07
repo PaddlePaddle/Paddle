@@ -20,8 +20,10 @@ class TestSoftmaxOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "softmax"
-        self.X = np.random.random((32, 100)).astype("float32")
-        self.Y = np.apply_along_axis(stable_softmax, 1, self.X)
+        self.inputs = {'X': np.random.random((32, 100)).astype("float32")}
+        self.outputs = {
+            'Y': np.apply_along_axis(stable_softmax, 1, self.inputs['X'])
+        }
 
 
 # Reference implementation of cross entropy with soft labels

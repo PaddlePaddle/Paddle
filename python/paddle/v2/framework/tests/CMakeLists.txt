@@ -1,17 +1,23 @@
-add_python_test(test_framework
-    test_protobuf.py
-    test_scope.py
-    test_default_scope_funcs.py
-    test_op_creation_methods.py
-    test_net.py
-    test_tensor.py
-    test_fc_op.py
-    test_add_two_op.py
-    test_sgd_op.py
-    test_mul_op.py
-    test_mean_op.py
-    test_sigmoid_op.py
-    test_softmax_op.py
-    test_rowwise_add_op.py
-    test_network.py
-    gradient_checker.py)
+py_test(test_net SRCS test_net.py)
+
+py_test(test_fc_op SRCS test_fc_op.py)
+py_test(test_scope SRCS test_scope.py)
+
+py_test(test_tensor SRCS test_tensor.py)
+py_test(test_mul_op SRCS test_mul_op.py)
+
+py_test(test_network SRCS test_network.py)
+py_test(test_mean_op SRCS test_mean_op.py)
+
+py_test(test_protobuf SRCS test_protobuf.py)
+
+py_test(test_add_two_op SRCS test_add_two_op.py)
+py_test(test_sigmoid_op SRCS test_sigmoid_op.py)
+py_test(test_softmax_op SRCS test_softmax_op.py)
+
+py_test(gradient_checker SRCS gradient_checker.py)
+
+py_test(test_rowwise_add_op SRCS test_rowwise_add_op.py)
+
+py_test(test_default_scope_funcs SRCS test_default_scope_funcs.py)
+py_test(test_op_creation_methods SRCS test_op_creation_methods.py)
