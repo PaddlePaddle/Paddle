@@ -12,5 +12,8 @@ class TestSigmoidOp(unittest.TestCase):
         self.outputs = {'Y': 1 / (1 + np.exp(-self.inputs['X']))}
 
 
+#class TestSigmoidGradOp(unittest.TestCase):
+#TODO(qingqing) add unit test
+
 if __name__ == '__main__':
     unittest.main()
