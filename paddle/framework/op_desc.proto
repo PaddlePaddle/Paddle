@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-syntax="proto2";
+syntax = "proto2";
 package paddle.framework;
 
 import "attribute.proto";
@@ -22,14 +22,14 @@ import "attribute.proto";
 //
 // e.g, for scale=3.0: name=scala, type=AttrType.FLOAT, value=3.0
 message AttrDesc {
-    required string name = 1;
-    required AttrType type = 2;
-    optional int32 i = 3;
-    optional float f = 4;
-    optional string s = 5;
-    repeated int32 ints = 6;
-    repeated float floats = 7;
-    repeated string strings = 8;
+  required string name = 1;
+  required AttrType type = 2;
+  optional int32 i = 3;
+  optional float f = 4;
+  optional string s = 5;
+  repeated int32 ints = 6;
+  repeated float floats = 7;
+  repeated string strings = 8;
 };
 
 // Protocol Message to describe an Operator.
@@ -42,15 +42,15 @@ message AttrDesc {
 // 3rd-party language can build this proto message and call
 // AddOp(const OpDesc& op_desc) of Paddle core to create an Operator.
 message OpDesc {
-    // input names of this Operator.
-    repeated string inputs = 1;
+  // input names of this Operator.
+  repeated string inputs = 1;
 
-    // output names of this Operator.
-    repeated string outputs = 2;
+  // output names of this Operator.
+  repeated string outputs = 2;
 
-    // type of this Operator, such as "add", "sub", "fc".
-    required string type = 3;
+  // type of this Operator, such as "add", "sub", "fc".
+  required string type = 3;
 
-    // Attributes of this Operator. e.g., scale=3.0 in cosine op.
-    repeated AttrDesc attrs = 4;
+  // Attributes of this Operator. e.g., scale=3.0 in cosine op.
+  repeated AttrDesc attrs = 4;
 };

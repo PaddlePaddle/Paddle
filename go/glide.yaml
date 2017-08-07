@@ -14,11 +14,13 @@ import:
   version: ^1.0.0
 - package: github.com/topicai/candy
 - package: golang.org/x/crypto
-  vcs: git
   repo: https://github.com/golang/crypto.git
+  vcs: git
 - package: golang.org/x/sys
-  vcs: git
   repo: https://github.com/golang/sys.git
-- package: golang.org/x/text
   vcs: git
+- package: golang.org/x/text
   repo: https://github.com/golang/text.git
+  vcs: git
+- package: github.com/satori/go.uuid
+  version: v1.1.0

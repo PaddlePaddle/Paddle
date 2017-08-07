@@ -20,4 +20,4 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       -DWITH_SWIG_PY=OFF \
       ..
 make -j `nproc`
-make install
+make install -j `nproc`

@@ -1,2 +1,6 @@
-add_python_test(test_swig_api
-    testArguments.py testGradientMachine.py testMatrix.py testVector.py testTrain.py testTrainer.py)
+py_test(testTrain SRCS testTrain.py)
+py_test(testMatrix SRCS testMatrix.py)
+py_test(testVector SRCS testVector.py)
+py_test(testTrainer SRCS testTrainer.py)
+py_test(testArguments SRCS testArguments.py)
+py_test(testGradientMachine SRCS testGradientMachine.py)

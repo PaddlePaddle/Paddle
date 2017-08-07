@@ -186,7 +186,10 @@ Error __must_check forward(Argument& act) {
                                     useGpu(act.deviceId));
   }
 
-  auto starts = act.sequenceStartPositions->getVector(useGpu(act.deviceId));
+  auto starts =
+      act.hasSubseq()
+          ? act.subSequenceStartPositions->getVector(useGpu(act.deviceId))
+          : act.sequenceStartPositions->getVector(useGpu(act.deviceId));
   act.value->sequenceSoftmax(*act.value, *starts);
   return Error();
 }
@@ -197,8 +200,9 @@ Error __must_check backward(Argument& act) {
         "Input width for each timestep of sequence softmax should be 1");
   }
 
-  size_t numSequences = act.getNumSequences();
-  const int* starts = act.sequenceStartPositions->getData(false);
+  size_t numSequences =
+      act.hasSubseq() ? act.getNumSubSequences() : act.getNumSequences();
+  const int* starts = act.getCpuStartPositions();
 
   for (size_t i = 0; i < numSequences; ++i) {
     // TODO(Dangqingqing) optimization for GPU

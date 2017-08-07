@@ -157,22 +157,22 @@ class CPUKernalMultiInputsTest : public OpKernel {
     ASSERT_EQ(xs[2], "x2");
 
     auto inVar0 = ctx.MultiInputVar("xs");
-    ASSERT_EQ(inVar0.size(), 3);
+    ASSERT_EQ(inVar0.size(), 3U);
 
     auto intVar1 = ctx.InputVar("k");
     ASSERT_NE(intVar1, nullptr);
 
     auto outVar0 = ctx.MultiOutputVar("ys");
-    ASSERT_EQ(outVar0.size(), 2);
+    ASSERT_EQ(outVar0.size(), 2U);
 
     auto inTensor0 = ctx.MultiInput<Tensor>("xs");
-    ASSERT_EQ(inTensor0.size(), 3);
+    ASSERT_EQ(inTensor0.size(), 3U);
 
     auto intTensor1 = ctx.Input<Tensor>("k");
     ASSERT_NE(intTensor1, nullptr);
 
     auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
-    ASSERT_EQ(outTensor0.size(), 2);
+    ASSERT_EQ(outTensor0.size(), 2U);
 
     auto k = ctx.op_.Input("k");
     ASSERT_EQ(k, "k0");

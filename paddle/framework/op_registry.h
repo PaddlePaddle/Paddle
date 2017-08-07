@@ -174,6 +174,12 @@ class OpRegistry {
     return CreateOp(op_desc.type(), inputs, outputs, attrs);
   }
 
+  static bool SupportGPU(const std::string& op_type) {
+    OperatorWithKernel::OpKernelKey key;
+    key.place_ = platform::GPUPlace();
+    return OperatorWithKernel::AllOpKernels().at(op_type).count(key) != 0;
+  }
+
   static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
     PADDLE_ENFORCE(!op.IsNetOp(),
                    "Use framework::Backward to get backward ops");
@@ -212,7 +218,7 @@ class OpRegistry {
   static void GenerateTempVariableName(OperatorBase* op) {
     static std::atomic<size_t> gUniqId(0UL);
     for (auto& outname : op->outputs_) {
-      if (outname == OperatorBase::TMP_VAR_NAME()) {
+      if (outname == kTempVarName) {
         outname += op->type_;
         outname += "@";
         outname += std::to_string(gUniqId.fetch_add(1));

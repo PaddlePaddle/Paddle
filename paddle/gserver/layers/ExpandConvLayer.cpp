@@ -57,8 +57,7 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
       convGradFilterType = "GemmConvGradFilter";
     }
 
-    if (FLAGS_use_nnpack) {
-      CHECK_EQ(isDeconv_, false);
+    if (FLAGS_use_nnpack && !isDeconv_) {
       createFunction(forward_,
                      "NNPACKConv",
                      FuncConfig()

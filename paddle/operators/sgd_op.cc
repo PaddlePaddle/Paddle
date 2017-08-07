@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 class SGDOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of SGDOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of SGDOp must be one");
@@ -32,7 +32,7 @@ protected:
 };
 
 class SGDOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   SGDOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "input parameter");
