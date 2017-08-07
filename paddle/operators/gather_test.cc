@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/operators/gather.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
-#include "paddle/operators/gather_func.h"
 #include "paddle/platform/place.h"
 
 #include <gtest/gtest.h>
 #include <iostream>
 #include <string>
 
-TEST(_abc_, GatherData) {
+TEST(Gather, GatherData) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   using namespace paddle::operators;
