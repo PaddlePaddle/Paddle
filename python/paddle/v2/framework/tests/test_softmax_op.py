@@ -87,7 +87,7 @@ class SoftmaxGradOpTest(GradientChecker):
     def test_softmax(self):
         op = create_op("softmax")
         inputs = {"X": np.random.random((3, 4)).astype("float32")}
-        self.assert_grad(op, inputs, set("X"), "Y")
+        self.check_grad(op, inputs, set("X"), "Y")
 
 
 if __name__ == '__main__':

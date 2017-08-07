@@ -96,13 +96,27 @@ def get_numeric_gradient(op,
 
 
 class GradientChecker(unittest.TestCase):
-    def assert_grad(self,
-                    forward_op,
-                    input_vars,
-                    inputs_to_check,
-                    output_name,
-                    no_grad_set=set(),
-                    only_cpu=False):
+    def check_grad(self,
+                   forward_op,
+                   input_vars,
+                   inputs_to_check,
+                   output_name,
+                   no_grad_set=set(),
+                   only_cpu=False,
+                   rtol=0.005,
+                   atol=0.05):
+        """
+        :param forward_op: used to create backward_op
+        :param input_vars: numpy value of input variable. The following
+            computation will use these variables.
+        :param inputs_to_check: inputs var names that should check gradient.
+        :param output_name: output name that used to
+        :param rtol: The relative tolerance parameter.
+        :param atol: The absolute tolerance parameter.
+        :param no_grad_set: used when create backward ops
+        :param only_cpu: only compute and check gradient on cpu kernel.
+        :return:
+        """
         out_names = filter(lambda name: name != "@TEMP@", forward_op.outputs())
         if len(out_names) != 1:
             raise ValueError("non empty out_names should be 1")
@@ -141,7 +155,7 @@ class GradientChecker(unittest.TestCase):
             for out_name in forward_op.outputs():
                 scope.new_var(out_name).get_tensor()
 
-            # infer the shape of output var and set value of output var
+            # infer the shape of output var and compute/set value of output var
             forward_op.infer_shape(scope)
             forward_op.run(scope, ctx)
 
@@ -159,6 +173,8 @@ class GradientChecker(unittest.TestCase):
             for name in backward_op.outputs():
                 scope.new_var(name).get_tensor()
 
+            # infer the shape of input gradient var and compute/set it's value
+            # with backward ops
             backward_op.infer_shape(scope)
             backward_op.run(scope, ctx)
 
@@ -199,8 +215,8 @@ class GradientChecker(unittest.TestCase):
                     numpy.allclose(
                         cpu_grad[check_name],
                         gpu_grad[check_name],
-                        rtol=0.05,
-                        atol=100),
+                        rtol=rtol,
+                        atol=atol),
                     "cpu op gradient and gpu op gradient are not equal")
 
 
