@@ -50,22 +50,15 @@ macro(add_paddle_exe TARGET_NAME)
   link_paddle_exe(${TARGET_NAME})
 endmacro()
 
-add_paddle_exe(paddle_trainer
-    TrainerMain.cpp)
+add_paddle_exe(paddle_trainer TrainerMain.cpp)
+set_target_properties(paddle_trainer PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_paddle_exe(paddle_merge_model
-    MergeModel.cpp)
+add_paddle_exe(paddle_merge_model MergeModel.cpp)
+set_target_properties(paddle_merge_model PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 if(WITH_TESTING)
     add_subdirectory(tests)
 endif()
-install(TARGETS paddle_trainer paddle_merge_model
-    RUNTIME DESTINATION opt/paddle/bin
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-        GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
-
-set_target_properties(paddle_trainer PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
-set_target_properties(paddle_merge_model PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 if(APPLE)
   set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
