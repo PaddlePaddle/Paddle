@@ -8,8 +8,8 @@ class TestMeanOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "mean"
-        self.X = np.random.random((32, 784)).astype("float32")
-        self.Out = np.mean(self.X)
+        self.inputs = {'X': np.random.random((32, 784)).astype("float32")}
+        self.outputs = {'Out': np.mean(self.inputs['X'])}
 
 
 if __name__ == '__main__':
