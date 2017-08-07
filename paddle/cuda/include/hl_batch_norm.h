@@ -20,20 +20,18 @@ limitations under the License. */
 /**
  * @brief   batch norm inferece.
  *
- * @param[in]   input        input data.
- * @param[out]  output       output data.
- * @param[in]   scale        batch normalization scale parameter (in original
- *                           paper scale is referred to as gamma).
- * @param[in]   bias         batch normalization bias parameter (in original
- *                           paper scale is referred to as beta).
+ * @param[in]   input         input data.
+ * @param[out]  output        output data.
+ * @param[in]   scale         batch normalization scale parameter (in original
+ *                            paper scale is referred to as gamma).
+ * @param[in]   bias          batch normalization bias parameter (in original
+ *                            paper scale is referred to as beta).
  * @param[in]   estimatedMean
- * @param[in]   estimatedVar It is suggested that resultRunningMean,
- *                           resultRunningVariance from the
- *                           cudnnBatchNormalizationForwardTraining call
- *                           accumulated during the training phase are passed
- *                           as inputs here.
- * @param[in]   epsilon      Epsilon value used in the batch
- *                           normalization formula.
+ * @param[in]   estimatedVar  The moving mean and variance
+ *                            accumulated during the training phase are passed
+ *                            as inputs here.
+ * @param[in]   epsilon       Epsilon value used in the batch
+ *                            normalization formula.
  */
 extern void hl_batch_norm_cuda_inference(const real* input,
                                          real* output,

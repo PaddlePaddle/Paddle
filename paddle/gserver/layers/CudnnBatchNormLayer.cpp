@@ -81,8 +81,8 @@ void CudnnBatchNormLayer::forward(PassType passType) {
   } else {
     // used movingMean and movingVar in testing
     if (batchSize > 1024) {
-      // when batchSize is larger than 1024, there is a bug
-      // in cudnn library.
+      // there is a bug in cudnn library when the batch size
+      // is larger than 1024.
       hl_batch_norm_cuda_inference(input,
                                    output,
                                    gamma,
