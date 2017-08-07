@@ -1,17 +1,15 @@
 configure_file(submit_local.sh.in
-    submit_local.sh
+    paddle
     @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/submit_local.sh DESTINATION bin
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/paddle DESTINATION bin
         PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-            GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
-        RENAME paddle)
+            GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
 
 configure_file(tools/usage_stat/usage.sh
-    usage.sh
+    paddle_usage
     @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/usage.sh DESTINATION opt/paddle/bin
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/paddle_usage DESTINATION opt/paddle/bin
         PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-            GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
-        RENAME paddle_usage)
+            GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
