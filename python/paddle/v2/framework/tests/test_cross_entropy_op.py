@@ -20,5 +20,7 @@ class TestSGD(unittest.TestCase):
         self.outputs = {'Y': numpy.array(Y).astype("float32")}
 
 
+# TODO(superjom) add gradient check
+
 if __name__ == "__main__":
     unittest.main()

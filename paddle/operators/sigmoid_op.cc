@@ -17,7 +17,7 @@ namespace paddle {
 namespace operators {
 
 class SigmoidOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
@@ -26,7 +26,7 @@ protected:
 };
 
 class SigmoidOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "sigmoid input");
@@ -36,7 +36,7 @@ public:
 };
 
 class SigmoidOpGrad : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "SigmoidGrad";
