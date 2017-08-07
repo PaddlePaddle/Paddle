@@ -27,6 +27,7 @@ namespace paddle {
 
 class RowL2NormLayer : public Layer {
 protected:
+  static const real EPS;
   MatrixPtr inSquare_;
   MatrixPtr l2NormReciprocal_;
   MatrixPtr dotSum_;
@@ -42,6 +43,8 @@ public:
 };
 
 REGISTER_LAYER(row_l2_norm, RowL2NormLayer);
+
+const real RowL2NormLayer::EPS = 1E-6;
 
 bool RowL2NormLayer::init(const LayerMap& layerMap,
                           const ParameterMap& parameterMap) {
@@ -69,6 +72,7 @@ void RowL2NormLayer::forward(PassType passType) {
   Matrix::resizeOrCreate(l2NormReciprocal_, batchSize, 1, false, useGpu_);
   inSquare_->rowSum(*l2NormReciprocal_);
   l2NormReciprocal_->sqrt2(*l2NormReciprocal_);
+  l2NormReciprocal_->add(EPS);
   l2NormReciprocal_->scalarDiv(*l2NormReciprocal_, 1.0);
   outV->rowScale(0, *inV, *l2NormReciprocal_);
 }
