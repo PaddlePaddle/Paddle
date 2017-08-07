@@ -268,7 +268,7 @@ class ExecutionContext : public OperatorContext {
 
   const platform::DeviceContext* device_context() const {
     return device_context_;
-  };
+  }
 
   const platform::DeviceContext* device_context_;
 };
