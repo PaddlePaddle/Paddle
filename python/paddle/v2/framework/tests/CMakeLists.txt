@@ -14,4 +14,5 @@ add_python_test(test_framework
     test_softmax_op.py
     test_rowwise_add_op.py
     test_network.py
-    gradient_checker.py)
+    gradient_checker.py
+    test_uniform_random_op.py)

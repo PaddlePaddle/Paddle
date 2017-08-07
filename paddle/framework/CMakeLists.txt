@@ -38,9 +38,10 @@ cc_test(backward_test SRCS backward_test.cc DEPS backward)
 cc_library(paddle_pybind SHARED
     SRCS pybind.cc
     DEPS pybind python backward
-	fc_op
-	sgd_op
-	add_op
-	mean_op
-	cross_entropy_op
-	recurrent_op)
+    fc_op
+    sgd_op
+    add_op
+    mean_op
+    cross_entropy_op
+    recurrent_op
+    uniform_random_op)
