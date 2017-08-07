@@ -41,9 +41,9 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SoftmaxOpGrad : public OperatorWithKernel {
+class SoftmaxOpGrad : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 3UL,
                    "Input of SoftmaxOpGrad should be 3, X, Y, YG");
     PADDLE_ENFORCE(ctx.OutputSize() == 1UL,

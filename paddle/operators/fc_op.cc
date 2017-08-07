@@ -12,14 +12,17 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
+#include "paddle/operators/net_op.h"
+
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-class FullyConnectedOp : public framework::NetOp {
+using OpRegistry = framework::OpRegistry;
+
+class FullyConnectedOp : public NetOp {
  public:
   void Init() override {
     AddOp(OpRegistry::CreateOp("mul",
