@@ -29,7 +29,7 @@ using framework::make_ddim;
 using framework::DDim;
 
 class RecurrentOpTest : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() override {
     CreateGlobalVariables();
     CreateStepNet();
@@ -174,7 +174,7 @@ TEST_F(RecurrentOpTest, Run) {
 }
 
 class RecurrentGradientAlgorithmTest : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() override {
     CreateGlobalVariables();
     CreateStepScopes();
@@ -277,13 +277,11 @@ protected:
     LOG(INFO) << "create variable step_net";
     Variable* var = scope_.NewVar("step_net");
     auto net = var->GetMutable<NetOp>();
-    net->AddOp(OpRegistry::CreateOp("mul",
-                                    {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
-                                    {"rnn/h_pre_grad", "rnn/w_grad"},
-                                    {}));
+    net->AddOp(OpRegistry::CreateOp("mul", {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
+                                    {"rnn/h_pre_grad", "rnn/w_grad"}, {}));
 
-    net->AddOp(OpRegistry::CreateOp(
-        "add_two", {"rnn/h_grad"}, {"rnn/x_grad", "rnn/s_grad"}, {}));
+    net->AddOp(OpRegistry::CreateOp("add_two", {"rnn/h_grad"},
+                                    {"rnn/x_grad", "rnn/s_grad"}, {}));
     net->CompleteAddOp();
   }
 
@@ -297,9 +295,7 @@ protected:
     inlink.internal = "rnn/x";
     auto step_scopes =
         scope_.FindVar("step_scopes")->GetMutable<std::vector<Scope*>>();
-    rnn::SegmentInputs(*step_scopes,
-                       std::vector<rnn::Link>{inlink},
-                       10,
+    rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink}, 10,
                        true /*infer_shape_mode*/);
   }
 
@@ -314,8 +310,8 @@ protected:
     auto step_scopes =
         scope_.FindVar("step_scopes")->GetMutable<std::vector<Scope*>>();
     for (int i = 1; i < 10; ++i) {
-      rnn::LinkMemories(
-          *step_scopes, memories, i, -1, true /*infer_shape_mode*/);
+      rnn::LinkMemories(*step_scopes, memories, i, -1,
+                        true /*infer_shape_mode*/);
     }
   }
 
@@ -395,3 +391,4 @@ TEST(RecurrentOp, LinkMemories) {
 
 USE_OP(add_two);
 USE_OP(mul);
+USE_OP_WITHOUT_KERNEL(recurrent_op);

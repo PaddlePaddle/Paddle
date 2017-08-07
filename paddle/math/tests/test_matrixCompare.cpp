@@ -1146,7 +1146,7 @@ void testBatch2seqPadding(int batchSize, int inputDim) {
 
   IVectorPtr cpuSequence;
   generateSequenceStartPositions(batchSize, cpuSequence);
-  for (int i = 0; i < cpuSequence->getSize(); ++i) {
+  for (int i = 0; i < int(cpuSequence->getSize()); ++i) {
     (cpuSequence->getData())[i] += 1;  // so no way that maxSeqLen is 0;
   }
 

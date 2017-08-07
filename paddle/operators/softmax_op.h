@@ -24,7 +24,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class SoftmaxKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto input = context.Input<Tensor>("X");
     auto output = context.Output<Tensor>("Y");
@@ -63,7 +63,7 @@ public:
 
 template <typename Place, typename T>
 class SoftmaxGradKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
 
