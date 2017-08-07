@@ -17,9 +17,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SoftmaxOp : public OperatorWithKernel {
+class SoftmaxOp : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1UL,
                    "Only one input is need for softmax");
     PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
@@ -30,9 +30,10 @@ class SoftmaxOp : public OperatorWithKernel {
   }
 };
 
-class SoftmaxOpMaker : public OpProtoAndCheckerMaker {
+class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SoftmaxOpMaker(framework::OpProto *proto,
+                 framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "input of softmax");
     AddOutput("Y", "output of softmax");
@@ -61,8 +62,10 @@ class SoftmaxOpGrad : public OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
-REGISTER_OP_CPU_KERNEL(softmax, ops::SoftmaxKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(softmax,
+                       ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);
 REGISTER_GRADIENT_OP(softmax, softmax_grad, ops::SoftmaxOpGrad);
-REGISTER_OP_CPU_KERNEL(softmax_grad,
-                       ops::SoftmaxGradKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_grad, ops::SoftmaxGradKernel<paddle::platform::CPUPlace, float>);

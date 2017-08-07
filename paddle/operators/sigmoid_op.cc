@@ -13,21 +13,23 @@
    limitations under the License. */
 
 #include "paddle/operators/sigmoid_op.h"
+
 namespace paddle {
 namespace operators {
 
-class SigmoidOp : public OperatorWithKernel {
+class SigmoidOp : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
     ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
-class SigmoidOpMaker : public OpProtoAndCheckerMaker {
+class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SigmoidOpMaker(framework::OpProto *proto,
+                 framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "sigmoid input");
     AddOutput("Y", "sigmoid output");
@@ -35,9 +37,9 @@ class SigmoidOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class SigmoidOpGrad : public OperatorWithKernel {
+class SigmoidOpGrad : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {}
+  void InferShape(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "SigmoidGrad";
     return "";
@@ -47,7 +49,9 @@ class SigmoidOpGrad : public OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP(sigmoid, ops::SigmoidOp, ops::SigmoidOpMaker);
 REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, ops::SigmoidOpGrad);
 
-REGISTER_OP_CPU_KERNEL(sigmoid, ops::SigmoidKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sigmoid,
+                       ops::SigmoidKernel<paddle::platform::CPUPlace, float>);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -13,9 +13,10 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/framework/op_registry.h"
 #include "paddle/operators/softmax_op.h"
 
-REGISTER_OP_GPU_KERNEL(softmax, ops::SoftmaxKernel<ops::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(softmax_grad,
-                       ops::SoftmaxGradKernel<ops::GPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(softmax,
+                       ops::SoftmaxKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    softmax_grad, ops::SoftmaxGradKernel<paddle::platform::GPUPlace, float>);

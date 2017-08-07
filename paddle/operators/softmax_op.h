@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
-class SoftmaxKernel : public OpKernel {
+class SoftmaxKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
     auto input = context.Input<Tensor>("X");
     auto output = context.Output<Tensor>("Y");
     output->mutable_data<T>(context.GetPlace());
@@ -43,21 +45,19 @@ class SoftmaxKernel : public OpKernel {
     Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
     Eigen::DSizes<int, 2> one_by_class(1, num_classes);
 
-    auto shifted_logits = (logits -
-                           logits.maximum(along_class)
-                               .eval()
-                               .reshape(batch_by_one)
-                               .broadcast(one_by_class));
+    auto shifted_logits = (logits - logits.maximum(along_class)
+                                        .eval()
+                                        .reshape(batch_by_one)
+                                        .broadcast(one_by_class));
 
     softmax.device(context.GetEigenDevice<Place>()) = shifted_logits.exp();
 
     softmax.device(context.GetEigenDevice<Place>()) =
-        (softmax *
-         softmax.sum(along_class)
-             .inverse()
-             .eval()
-             .reshape(batch_by_one)
-             .broadcast(one_by_class));
+        (softmax * softmax.sum(along_class)
+                       .inverse()
+                       .eval()
+                       .reshape(batch_by_one)
+                       .broadcast(one_by_class));
   }
 };
 

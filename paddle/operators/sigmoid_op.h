@@ -13,16 +13,21 @@
    limitations under the License. */
 
 #pragma once
-
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
-class SigmoidKernel : public OpKernel {
+class SigmoidKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
     auto input = context.Input<Tensor>(0);
     auto output = context.Output<Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
