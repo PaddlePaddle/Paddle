@@ -55,12 +55,12 @@ void testFcLayer(const testFCDesc& pm) {
 }
 
 TEST(MkldnnLayer, fcLayer) {
-  testFcLayer({2, 2, 3, 1, 1}); /*
-   testFcLayer({16, 32, 64, 1, 1});
-   testFcLayer({8, 16, 32, 13, 13});
-   testFcLayer({4, 12, 18, 13, 11});
-   testFcLayer({2, 64, 32, 16, 16});
-   testFcLayer({15, 3, 6, 16, 16});*/
+  testFcLayer({2, 2, 3, 1, 1});
+  testFcLayer({3, 7, 19, 1, 1});
+  testFcLayer({8, 16, 32, 13, 13});
+  testFcLayer({4, 12, 18, 13, 11});
+  testFcLayer({2, 64, 32, 16, 16});
+  testFcLayer({15, 3, 6, 16, 16});
 }
 
 // TODO(TJ): add branch test

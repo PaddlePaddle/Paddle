@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "MkldnnTester.h"
 #include "paddle/gserver/layers/MkldnnBase.h"
+#include "paddle/gserver/layers/MkldnnLayer.h"
 
 namespace paddle {
 
@@ -145,7 +146,10 @@ void MkldnnTester::checkBackwardWgts() {
   vector<VectorPtr> dnnWgts;  // used to temply save mkldnn weights
   saveWgt(parameters_[DNN], dnnWgts);
 
-  // TODO(TJ): cvtWgtToPaddle
+  const MkldnnLayerPtr dnnlayer =
+      std::dynamic_pointer_cast<MkldnnLayer>(dnnLayer_);
+  CHECK(dnnlayer);
+  dnnlayer->cvtWgtToPaddle();
   for (size_t i = 0; i < parameters_[DNN].size(); ++i) {
     const VectorPtr& dnn = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& ref = parameters_[REF][i]->getBuf(PARAMETER_VALUE);
@@ -233,11 +237,10 @@ void MkldnnTester::printMatrix(const MatrixPtr& m) {
   if (!log_) {
     return;
   }
-#ifdef _DEBUG
-  std::ostream str;
-  m->print(str);
-  VLOG(lvl_) << str;
-#endif
+
+  std::ostringstream ostr;
+  m->print(ostr);
+  VLOG(lvl_) << std::endl << ostr.str();
 }
 
 void MkldnnTester::printVector(const VectorPtr& v) {
@@ -245,15 +248,9 @@ void MkldnnTester::printVector(const VectorPtr& v) {
     return;
   }
 
-  CHECK(v);
-  CHECK(v->getData());
-  const real* pd = v->getData();
-  const size_t sz = v->getSize();
-  std::stringstream row;
-  for (size_t i = 0; i < sz; ++i) {
-    row << pd[i] << ", ";
-  }
-  VLOG(lvl_) << row.str();
+  std::ostringstream ostr;
+  v->print(ostr, v->getSize());
+  VLOG(lvl_) << std::endl << ostr.str();
 }
 
 double MkldnnTester::getDelta(const real* d1,
@@ -335,7 +332,6 @@ void MkldnnTester::run(const TestConfig& dnn,
 
   // Firstly always set flag false to initial from paddle weight
   TestConfig first = dnn;
-  //  first.layerConfig.set_init_wgt_from_mkldnn(false);
 
   // reset and run once
   reset(first, ref, batchSize);
@@ -348,8 +344,6 @@ void MkldnnTester::run(const TestConfig& dnn,
 
   // firstly get the flag
   bool initWgtFromMkldnn = false;
-  // dnn.layerConfig.has_init_wgt_from_mkldnn() &&
-  // dnn.layerConfig.init_wgt_from_mkldnn();
 
   if (initWgtFromMkldnn) {
     // after run once the mkldnn weight has been stored in dnnlayer

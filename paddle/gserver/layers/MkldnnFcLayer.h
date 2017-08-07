@@ -29,25 +29,30 @@ protected:
   // input layer size, can not be change after init
   size_t iLayerSize_;  // == ic * ih * iw
 
+  bool hasInitedWgt_;
+
   // fc weight and bias
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> biases_;
 
 public:
-  explicit MkldnnFcLayer(const LayerConfig& config) : MkldnnLayer(config) {}
+  explicit MkldnnFcLayer(const LayerConfig& config)
+      : MkldnnLayer(config), hasInitedWgt_(false) {}
 
   ~MkldnnFcLayer() {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
-  void initWgt();
+  void cvtWgtFromPaddle() override;
 
-  void reshape();
+  void cvtWgtToPaddle() override;
 
   void forward(PassType passType) override;
 
   void backward(const UpdateCallback& callback) override;
+
+  void reshape();
 };
 
 }  // namespace paddle

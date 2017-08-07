@@ -40,12 +40,23 @@ protected:
   // mkldnn engine, stream and primivtives
   mkldnn::engine engine_;
   std::shared_ptr<MkldnnStream> stream_;
-
   std::shared_ptr<mkldnn::primitive> fwd_;
   std::shared_ptr<mkldnn::primitive> bwdWgt_;
   std::shared_ptr<mkldnn::primitive> bwdData_;
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
+
+  // TODO(TJ): change below memory as MkldnnMatrixPtr type
+  // input == bottom, output == top
+  // value == data, grad == diff
+  std::shared_ptr<mkldnn::memory> inVal_;
+  std::shared_ptr<mkldnn::memory> inGrad_;
+  std::shared_ptr<mkldnn::memory> outVal_;
+  std::shared_ptr<mkldnn::memory> outGrad_;
+  std::shared_ptr<mkldnn::memory> wgtVal_;
+  std::shared_ptr<mkldnn::memory> wgtGrad_;
+  std::shared_ptr<mkldnn::memory> biasVal_;
+  std::shared_ptr<mkldnn::memory> biasGrad_;
 
 public:
   explicit MkldnnLayer(const LayerConfig& config)
@@ -66,6 +77,20 @@ public:
   ~MkldnnLayer() {}
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+
+  virtual void printSizeInfo();
+
+  /**
+   * convert weight from paddle format to mkldnn format
+   * weight_ will be override
+   */
+  virtual void cvtWgtFromPaddle() { ; }
+
+  /**
+   * convert mkldnn weight to paddle format
+   * weight_ will be override
+   */
+  virtual void cvtWgtToPaddle() { ; }
 
   void resetForwardFC(int bs,
                       int ic,

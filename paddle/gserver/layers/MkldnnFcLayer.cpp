@@ -42,7 +42,6 @@ bool MkldnnFcLayer::init(const LayerMap& layerMap,
   // create weight
   weight_ =
       std::unique_ptr<Weight>(new Weight(oc_, iLayerSize_, parameters_[0], 0));
-  initWgt();
 
   // create biases
   if (biasParameter_.get() != NULL) {
@@ -51,20 +50,36 @@ bool MkldnnFcLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void MkldnnFcLayer::initWgt() {
+void MkldnnFcLayer::cvtWgtFromPaddle() {
+  if (hasInitedWgt_) {
+    return;
+  }
+
   // The weight_ is transposed from initial paddle weight
   MatrixPtr paddleWgt = Matrix::create(
       weight_->getW()->getData(), iLayerSize_, oc_, false, false);
 
   std::ostringstream ostr;
   paddleWgt->print(ostr);
-  VLOG(DNN_BASE) << ostr.str();
+  VLOG(DNN_ALL) << "Initial Weight from paddle: " << std::endl << ostr.str();
 
-  // Firstly in mkldnn, the matrix is transposed from initial paddle weight
+  // The mkldnn weight is transposed from initial paddle matrix
   MatrixPtr paddleWgtT;
   paddleWgt->transpose(paddleWgtT, true);
 
   weight_->getW()->copyFrom(*paddleWgtT);
+  hasInitedWgt_ = true;
+}
+
+void MkldnnFcLayer::cvtWgtToPaddle() {
+  MatrixPtr dnnWgt = weight_->getW();
+  MatrixPtr paddleWgt;
+  dnnWgt->transpose(paddleWgt, true);
+
+  // copy paddle weight and override on weight_
+  MatrixPtr dnnWgtT = Matrix::create(
+      dnnWgt->getData(), dnnWgt->getWidth(), dnnWgt->getHeight(), false, false);
+  dnnWgtT->copyFrom(*paddleWgt);
 }
 
 void MkldnnFcLayer::reshape() {
@@ -86,6 +101,7 @@ void MkldnnFcLayer::reshape() {
   ic_ = iLayerSize_ / (ih_ * iw_);
   CHECK_EQ(size_t(ic_ * ih_ * iw_), iLayerSize_) << "not divisible";
   CHECK_EQ(size_t(oc_), getSize());
+  printSizeInfo();
 
   // reset output
   output_.setFrameHeight(oh_);
