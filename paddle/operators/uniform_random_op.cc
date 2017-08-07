@@ -49,5 +49,4 @@ Used to initialize tensor with uniform random generator.
 }  // namespace paddle
 
 REGISTER_OP(uniform_random, ops::RandomOp, ops::RandomOpMaker);
-REGISTER_OP_CPU_KERNEL(uniform_random,
-                       ops::UniformRandomKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(uniform_random, ops::CPUUniformRandomKernel<float>);

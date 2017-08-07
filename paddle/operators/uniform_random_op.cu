@@ -12,7 +12,54 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/uniform_random_op.h"
+#include <thrust/device_ptr.h>
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/random.h>
+#include <thrust/transform.h>
+#include "paddle/operators/type_alias.h"
 
-REGISTER_OP_GPU_KERNEL(uniform_random,
-                       ops::UniformRandomKernel<ops::GPUPlace, float>);
+namespace paddle {
+namespace operators {
+
+template <typename T>
+struct UniformGenerator {
+  T min_, max_;
+  unsigned int seed_;
+
+  __host__ __device__ UniformGenerator(T min, T max, int seed)
+      : min_(min), max_(max), seed_(seed) {}
+
+  __host__ __device__ T operator()(const unsigned int n) const {
+    thrust::minstd_rand rng;
+    rng.seed(seed_);
+    thrust::uniform_real_distribution<T> dist(min_, max_);
+    rng.discard(n);
+    return dist(rng);
+  }
+};
+
+template <typename T>
+class GPUUniformRandomKernel : public OpKernel {
+ public:
+  void Compute(const ExecutionContext& context) const override {
+    auto* tensor = context.Output<Tensor>(0);
+    T* data = tensor->mutable_data<T>(context.GetPlace());
+    unsigned int seed =
+        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    T min = static_cast<T>(context.op_.GetAttr<float>("min"));
+    T max = static_cast<T>(context.op_.GetAttr<float>("max"));
+    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    ssize_t N = framework::product(tensor->dims());
+    thrust::transform(index_sequence_begin, index_sequence_begin + N,
+                      thrust::device_ptr<T>(data),
+                      UniformGenerator<T>(min, max, seed));
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+REGISTER_OP_GPU_KERNEL(uniform_random, ops::GPUUniformRandomKernel<float>);

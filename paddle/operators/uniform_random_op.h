@@ -13,25 +13,30 @@
    limitations under the License. */
 
 #pragma once
+#include <random>
+#include <type_traits>
 #include "paddle/operators/type_alias.h"
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
-class UniformRandomKernel : public OpKernel {
+template <typename T>
+class CPUUniformRandomKernel : public OpKernel {
  public:
-  void Compute(const ExecutionContext &context) const override {
-    auto tensor = context.Output<Tensor>(0);
-    tensor->mutable_data<T>(context.GetPlace());
-
-    auto eigenTensor = EigenVector<T>::Flatten(*tensor);
-    auto dev = context.GetEigenDevice<Place>();
-    auto min = context.op_.GetAttr<float>("min");
-    auto max = context.op_.GetAttr<float>("max");
-    auto seed = static_cast<uint64_t>(context.op_.GetAttr<int>("seed"));
-    auto diff = max - min;
-    Eigen::internal::UniformRandomGenerator<T> gen(seed);
-    eigenTensor.device(dev) = eigenTensor.random(gen) * diff + min;
+  void Compute(const ExecutionContext& context) const override {
+    auto* tensor = context.Output<Tensor>(0);
+    T* data = tensor->mutable_data<T>(context.GetPlace());
+    unsigned int seed =
+        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+    std::minstd_rand engine;
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    engine.seed(seed);
+    std::uniform_real_distribution<T> dist(static_cast<T>(context.op_.GetAttr<float>("min")),
+                                           static_cast<T>(context.op_.GetAttr<float>("max")));
+    for (ssize_t i = 0; i < framework::product(tensor->dims()); ++i) {
+      data[i] = dist(engine);
+    }
   }
 };
 
