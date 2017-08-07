@@ -12,7 +12,7 @@ static int infer_shape_cnt = 0;
 static int run_cnt = 0;
 
 class TestOp : public OperatorBase {
-public:
+ public:
   void InferShape(const framework::Scope& scope) const override {
     ++infer_shape_cnt;
   }
@@ -23,7 +23,7 @@ public:
 };
 
 class EmptyOp : public OperatorBase {
-public:
+ public:
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}

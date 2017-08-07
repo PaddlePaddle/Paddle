@@ -20,7 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
@@ -32,9 +32,29 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+/// If a variable is a empty variable, that name will be used.
+const std::string kEmptyVarName = "@EMPTY@";
+
+/// If a variable is a temporary variable, that name will be set in Python,
+/// but it will be convert to a unique name in scope after OpCreator.
+const std::string kTempVarName = "@TEMP@";
+
+/// If a variable's name has a certain suffix, it means that the
+/// variable is the gradient of another varibale.
+/// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+const std::string kGradVarSuffix = "@GRAD";
+
+/// Variables with this suffix are supposed to be filled up with zeros.
+const std::string kZeroVarSuffix = "@ZERO";
+
+inline std::string GradVarName(const std::string& var_name) {
+  return var_name + kGradVarSuffix;
+}
+
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -43,25 +63,6 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
-  /// If a variable is a empty variable, that name will be used.
-  static std::string EMPTY_VAR_NAME() { return "@EMPTY@"; }
-
-  /// If a variable is a temporary variable, that name will be set in Python,
-  /// but it will be convert to a unique name in scope after OpCreator.
-  static std::string TMP_VAR_NAME() { return "@TEMP@"; }
-
-  /// If a variable's name has a certain suffix, it means that the
-  /// variable is the gradient of another varibale.
-  /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
-  static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
-
-  static std::string GRAD_VAR_NAME(const std::string& name) {
-    return name + GRAD_VAR_SUFFIX();
-  }
-
-  /// Variables with this suffix are supposed to be filled up with zeros.
-  static std::string ZERO_VAR_SUFFIX() { return "@ZERO"; }
-
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -251,7 +252,7 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 class ExecutionContext : public OperatorContext {
  public:
   ExecutionContext(const OperatorBase* op, const Scope& scope,
-                   const platform::DeviceContext& device_context)
+                   const platform::DeviceContext* device_context)
       : OperatorContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
@@ -259,13 +260,13 @@ class ExecutionContext : public OperatorContext {
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
-  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+  platform::Place GetPlace() const { return device_context_->GetPlace(); }
 
-  const platform::DeviceContext& device_context() const {
+  const platform::DeviceContext* device_context() const {
     return device_context_;
   };
 
-  const platform::DeviceContext& device_context_;
+  const platform::DeviceContext* device_context_;
 };
 
 class OpKernel {
@@ -314,7 +315,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(this, scope, dev_ctx));
+    opKernel->Compute(ExecutionContext(this, scope, &dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&

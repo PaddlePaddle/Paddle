@@ -22,7 +22,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class MulKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto* input0 = context.Input<Tensor>("X");
     auto* input1 = context.Input<Tensor>("Y");
@@ -31,14 +31,8 @@ public:
     output->mutable_data<T>(context.GetPlace());
 
     paddle::operators::math::template matmul<Place, T>(
-        *input0,
-        false,
-        *input1,
-        false,
-        1,
-        output,
-        0,
-        &const_cast<platform::DeviceContext&>(context.device_context()));
+        *input0, false, *input1, false, 1, output, 0,
+        const_cast<platform::DeviceContext*>(context.device_context()));
   }
 };
 

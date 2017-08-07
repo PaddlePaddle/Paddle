@@ -21,7 +21,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class SigmoidKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto input = context.Input<Tensor>(0);
     auto output = context.Output<Tensor>(0);
