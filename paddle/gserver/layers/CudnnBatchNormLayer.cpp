@@ -80,9 +80,21 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    savedInvVar);
   } else {
     // used movingMean and movingVar in testing
-    if (batchSize > 1024) {
-      // there is a bug in cudnn library when the batch size
-      // is larger than 1024.
+    if (batchSize <= 1024) {
+      hl_batch_norm_forward_inference(ioDesc_,
+                                      input,
+                                      ioDesc_,
+                                      output,
+                                      bnParamDesc_,
+                                      gamma,
+                                      beta,
+                                      movingMean,
+                                      movingVar,
+                                      EPS);
+    } else {
+      // There is a limitation in cudnn library.
+      // When the batch size is larger than 1024 in cuDNN v5.1,
+      // the cudnnBatchNormalizationForwardInference will fail.
       hl_batch_norm_cuda_inference(input,
                                    output,
                                    gamma,
@@ -94,17 +106,6 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    channels_,
                                    imageH_,
                                    imageW_);
-    } else {
-      hl_batch_norm_forward_inference(ioDesc_,
-                                      input,
-                                      ioDesc_,
-                                      output,
-                                      bnParamDesc_,
-                                      gamma,
-                                      beta,
-                                      movingMean,
-                                      movingVar,
-                                      EPS);
     }
   }
 

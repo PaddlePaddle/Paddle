@@ -25,11 +25,11 @@ __global__ void batchNormInference(real* output,
                                    size_t channel,
                                    size_t height,
                                    size_t width) {
-  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int tid = threadIdx.x;
   const int num = channel * height * width;
-  const int batch = blockIdx.y;
+  const int batch = blockIdx.x;
   for (int i = tid; i < num; i += blockDim.x) {
-    const int c = (i / (height * width)) % channel;
+    const int c = i / (height * width);
     const int id = batch * num + i;
     real val = input[id] - estimatedMean[c];
     val /= sqrt(estimatedVar[c] + epsilon);
@@ -50,19 +50,17 @@ void hl_batch_norm_cuda_inference(const real* input,
                                   size_t channel,
                                   size_t height,
                                   size_t width) {
-  dim3 block(256, 1);
-  dim3 grid(1, batchSize);
-  batchNormInference<<<grid, block, 0, STREAM_DEFAULT>>>(output,
-                                                         input,
-                                                         scale,
-                                                         bias,
-                                                         estimatedMean,
-                                                         estimatedVar,
-                                                         epsilon,
-                                                         batchSize,
-                                                         channel,
-                                                         height,
-                                                         width);
+  batchNormInference<<<batchSize, 256, 0, STREAM_DEFAULT>>>(output,
+                                                            input,
+                                                            scale,
+                                                            bias,
+                                                            estimatedMean,
+                                                            estimatedVar,
+                                                            epsilon,
+                                                            batchSize,
+                                                            channel,
+                                                            height,
+                                                            width);
 
   CHECK_SYNC("hl_batch_norm_cuda_inference failed!");
 }
