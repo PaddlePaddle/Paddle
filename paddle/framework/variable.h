@@ -25,8 +25,7 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    PADDLE_ENFORCE(IsType<T>(), "Variable must be type %s, current type: %s",
-                   typeid(T).name(), holder_->Type().name());
+    PADDLE_ENFORCE(IsType<T>(), "Variable must be type %s", typeid(T).name());
     return *static_cast<const T*>(holder_->Ptr());
   }
 

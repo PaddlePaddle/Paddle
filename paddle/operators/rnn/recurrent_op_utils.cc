@@ -34,7 +34,6 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
                    "all the inlinks must have same length");
     fmw::DDim step_dims = slice_ddim(dims, 1, dims.size());
-    LOG(INFO) << "segment inputs to dim " << step_dims;
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
           step_scopes[j]->NewVar(inlinks[i].internal)->GetMutable<Tensor>();
@@ -55,7 +54,6 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    outlinks[i].external);
     Tensor* output = output_var->GetMutable<Tensor>();
 
-    LOG(INFO) << "concat output in infershape " << infer_shape_mode;
     if (infer_shape_mode) {
       auto step_scope_var = step_scopes[0]->FindVar(outlinks[i].internal);
       PADDLE_ENFORCE(step_scope_var != nullptr, "%s not in scope",

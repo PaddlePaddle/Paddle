@@ -54,9 +54,3 @@ TEST(Scope, FindScope) {
   EXPECT_EQ(&s, s.FindScope(v));
   EXPECT_EQ(&s, ss.FindScope(v));
 }
-
-TEST(Scope, debug_string) {
-  Scope s;
-  s.NewVar("a");
-  std::cout << s.debug_string();
-}

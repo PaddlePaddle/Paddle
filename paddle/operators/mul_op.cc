@@ -20,11 +20,6 @@ namespace operators {
 class MulOp : public OperatorWithKernel {
  protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    LOG(INFO) << "mulop input 0 " << ctx.op_.Input("X") << " dim "
-              << ctx.Input<Tensor>(0)->dims();
-    LOG(INFO) << "mulop input 1 " << ctx.op_.Input("Y") << " dim "
-              << ctx.Input<Tensor>(1)->dims();
-
     PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
     auto dim0 = ctx.Input<Tensor>(0)->dims();
     auto dim1 = ctx.Input<Tensor>(1)->dims();
