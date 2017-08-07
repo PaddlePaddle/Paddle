@@ -14,6 +14,7 @@ py_test(test_protobuf SRCS test_protobuf.py)
 py_test(test_add_two_op SRCS test_add_two_op.py)
 py_test(test_sigmoid_op SRCS test_sigmoid_op.py)
 py_test(test_softmax_op SRCS test_softmax_op.py)
+py_test(test_cross_entropy_op SRCS test_cross_entropy_op.py)
 
 py_test(gradient_checker SRCS gradient_checker.py)
 
