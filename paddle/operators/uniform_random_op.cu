@@ -16,7 +16,8 @@
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -38,11 +39,14 @@ struct UniformGenerator {
   }
 };
 
+// It seems that Eigen::Tensor::random in GPU will SEGFAULT.
+// Use std::random and thrust::random(thrust is a std library in CUDA) to
+// implement uniform random.
 template <typename T>
-class GPUUniformRandomKernel : public OpKernel {
+class GPUUniformRandomKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& context) const override {
-    auto* tensor = context.Output<Tensor>(0);
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* tensor = context.Output<framework::Tensor>(0);
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed =
         static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
@@ -62,4 +66,5 @@ class GPUUniformRandomKernel : public OpKernel {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(uniform_random, ops::GPUUniformRandomKernel<float>);
+REGISTER_OP_GPU_KERNEL(uniform_random,
+                       paddle::operators::GPUUniformRandomKernel<float>);
