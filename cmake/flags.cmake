@@ -195,6 +195,7 @@ endif()
 # Modern gpu architectures: Pascal
 if (CUDA_VERSION VERSION_GREATER "8.0" OR CUDA_VERSION VERSION_EQUAL "8.0")
       list(APPEND __arch_flags " -gencode arch=compute_60,code=sm_60")
+      list(APPEND CUDA_NVCC_FLAGS --expt-relaxed-constexpr)
 endif()
 
 # Custom gpu architecture
