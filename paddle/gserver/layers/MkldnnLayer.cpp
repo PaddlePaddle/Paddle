@@ -26,7 +26,8 @@ namespace paddle {
 bool MkldnnLayer::init(const LayerMap& layerMap,
                        const ParameterMap& parameterMap) {
   CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
-                          << "Please set WITH_MKLDNN=ON";
+                          << "Please set WITH_MKLDNN=ON "
+                          << "and set use_mkldnn=True";
   // TODO(TJ): deivecId
   return Layer::init(layerMap, parameterMap);
 }

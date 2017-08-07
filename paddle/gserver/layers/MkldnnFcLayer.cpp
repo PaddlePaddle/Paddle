@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MkldnnFcLayer.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -41,12 +42,29 @@ bool MkldnnFcLayer::init(const LayerMap& layerMap,
   // create weight
   weight_ =
       std::unique_ptr<Weight>(new Weight(oc_, iLayerSize_, parameters_[0], 0));
+  initWgt();
 
   // create biases
   if (biasParameter_.get() != NULL) {
     biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_));
   }
   return true;
+}
+
+void MkldnnFcLayer::initWgt() {
+  // The weight_ is transposed from initial paddle weight
+  MatrixPtr paddleWgt = Matrix::create(
+      weight_->getW()->getData(), iLayerSize_, oc_, false, false);
+
+  std::ostringstream ostr;
+  paddleWgt->print(ostr);
+  VLOG(DNN_BASE) << ostr.str();
+
+  // Firstly in mkldnn, the matrix is transposed from initial paddle weight
+  MatrixPtr paddleWgtT;
+  paddleWgt->transpose(paddleWgtT, true);
+
+  weight_->getW()->copyFrom(*paddleWgtT);
 }
 
 void MkldnnFcLayer::reshape() {

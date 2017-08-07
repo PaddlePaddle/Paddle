@@ -41,6 +41,8 @@ public:
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
+  void initWgt();
+
   void reshape();
 
   void forward(PassType passType) override;
