@@ -2657,6 +2657,51 @@ class SubSequenceLayer(LayerBase):
         self.create_bias_parameter(bias, size)
 
 
+@config_layer('seq_slice')
+class SeqSliceLayer(LayerBase):
+    def __init__(self, name, inputs, starts, ends, bias=False, **xargs):
+        if isinstance(inputs, list):
+            assert len(inputs) == 1, ('the first input of sequence slice layer '
+                                      'is a single sequence input.')
+        else:
+            inputs = [inputs]
+
+        if starts is not None:
+            if isinstance(starts, list):
+                assert len(starts) == 1, (
+                    'the start indices for sequence slice layer cannot '
+                    'be a list having more than one element.')
+                starts = starts[0]
+            inputs.append(starts)
+
+        if ends is not None:
+            if isinstance(ends, list):
+                assert len(ends) == 1, (
+                    'the end indices for sequence slice layer cannot '
+                    'be a list having more than one element.')
+                ends = ends[0]
+            inputs.append(ends)
+        assert len(inputs) >= 2, (
+            'the sequence slice layer has at least two inputs.')
+
+        super(SeqSliceLayer, self).__init__(
+            name, 'seq_slice', 0, inputs=inputs, **xargs)
+        input_layer0 = self.get_input_layer(0)
+        size = input_layer0.size
+        self.set_layer_size(size)
+
+        if len(inputs) == 3:
+            assert (
+                self.get_input_layer(1).size == self.get_input_layer(2).size), (
+                    'If start and end indices are both given to'
+                    'sequence slice layer, they should have the same width.')
+        elif len(inputs) == 2:
+            if starts is not None:
+                self.config.select_first = True
+            else:
+                self.config.select_first = False
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
