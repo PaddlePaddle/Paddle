@@ -187,6 +187,9 @@ inline void throw_on_error(T e) {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                            \
+  PADDLE_ENFORCE(nullptr != (__VAL), #__VAL " should not be null\n%s", \
+                 paddle::string::Sprintf("" __VA_ARGS__));
 
 // if two values have different data types, choose a compatible type for them.
 template <typename T1, typename T2>

@@ -196,3 +196,30 @@ TEST(ENFORCE_LT, FAIL) {
 
   ASSERT_TRUE(in_catch);
 }
+
+TEST(ENFORCE_NOT_NULL, OK) {
+  int* a = new int;
+  PADDLE_ENFORCE_NOT_NULL(a);
+  delete a;
+
+  auto b = std::make_shared<int>();
+  PADDLE_ENFORCE_NOT_NULL(b);
+}
+TEST(ENFORCE_NOT_NULL, FAIL) {
+  bool in_catch = false;
+  int* a{nullptr};
+
+  try {
+    PADDLE_ENFORCE_NOT_NULL(a);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "a should not be null";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}

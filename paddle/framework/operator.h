@@ -167,28 +167,28 @@ class OperatorContext {
   template <typename T>
   const T* Input(const size_t index) const {
     auto var = InputVar(index);
-    PADDLE_ENFORCE(var != nullptr, "Input(%d) should not be nullptr", index);
+    PADDLE_ENFORCE_NOT_NULL(var, "Input(%d) should not be nullptr", index);
     return &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const size_t index) const {
     auto var = OutputVar(index);
-    PADDLE_ENFORCE(var != nullptr, "Output(%d) should not be nullptr", index);
+    PADDLE_ENFORCE_NOT_NULL(var, "Output(%d) should not be nullptr", index);
     return var->GetMutable<T>();
   }
 
   template <typename T>
   const T* Input(const std::string& name) const {
     auto var = InputVar(name);
-    PADDLE_ENFORCE(var != nullptr, "Input(%s) should not be nullptr", name);
+    PADDLE_ENFORCE_NOT_NULL(var, "Input(%s) should not be nullptr", name);
     return &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
     auto var = OutputVar(name);
-    PADDLE_ENFORCE(var != nullptr, "Output(%s) should not be nullptr", name);
+    PADDLE_ENFORCE_NOT_NULL(var, "Output(%s) should not be nullptr", name);
     return var->GetMutable<T>();
   }
 
@@ -200,9 +200,9 @@ class OperatorContext {
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
-                     PADDLE_ENFORCE(var != nullptr,
-                                    "MultiInput(%s:%s) should not be nullptr",
-                                    name, sub_name);
+                     PADDLE_ENFORCE_NOT_NULL(
+                         var, "MultiInput(%s:%s) should not be nullptr", name,
+                         sub_name);
                      return &var->Get<T>();
                    });
     return res;
@@ -216,9 +216,9 @@ class OperatorContext {
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
-                     PADDLE_ENFORCE(var != nullptr,
-                                    "MultiOutput(%s:%s) should not be nullptr",
-                                    name, sub_name);
+                     PADDLE_ENFORCE_NOT_NULL(
+                         var, "MultiOutput(%s:%s) should not be nullptr", name,
+                         sub_name);
                      return var->GetMutable<T>();
                    });
     return res;
