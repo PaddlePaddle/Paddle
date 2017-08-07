@@ -28,7 +28,7 @@ class OpTestMeta(type):
             kwargs = dict()
             places = []
             places.append(core.CPUPlace())
-            if core.is_compile_gpu() and core.Operator.suppport_gpu(self.type):
+            if core.is_compile_gpu() and core.Operator.support_gpu(self.type):
                 places.append(core.GPUPlace(0))
 
             for place in places:
