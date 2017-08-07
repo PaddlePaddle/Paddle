@@ -6097,9 +6097,11 @@ def sub_nested_seq_layer(input, selected_indices, name=None):
     The sub_nested_seq_layer accepts two inputs: the first one is a nested
     sequence; the second one is a set of selceted indices in the nested sequence.
 
+    Then sub_nest_seq_layer trims the first nested sequence input according to
+    the selected indices to form a new output.
 
-    Then sub_nest_seq_layer selects trims the first input according to the
-    selected indices to give a new output. This layer is used in beam training.
+    This layer is useful in beam training.
+
 
     The example usage is:
 
