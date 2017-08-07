@@ -34,6 +34,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
                    "all the inlinks must have same length");
     fmw::DDim step_dims = slice_ddim(dims, 1, dims.size());
+    LOG(INFO) << "segment inputs to dim " << step_dims;
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
           step_scopes[j]->NewVar(inlinks[i].internal)->GetMutable<Tensor>();
@@ -53,11 +54,14 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
     PADDLE_ENFORCE(output_var != nullptr, "output link [%s] is not in scope.",
                    outlinks[i].external);
     Tensor* output = output_var->GetMutable<Tensor>();
+
+    LOG(INFO) << "concat output in infershape " << infer_shape_mode;
     if (infer_shape_mode) {
-      fmw::DDim step_dims = step_scopes[0]
-                                ->FindVar(outlinks[i].internal)
-                                ->GetMutable<Tensor>()
-                                ->dims();
+      auto step_scope_var = step_scopes[0]->FindVar(outlinks[i].internal);
+      PADDLE_ENFORCE(step_scope_var != nullptr, "%s not in scope",
+                     outlinks[i].internal);
+      fmw::DDim step_dims =
+          step_scope_var->template GetMutable<Tensor>()->dims();
       std::vector<int> dims_vec = vectorize(step_dims);
       dims_vec.insert(dims_vec.begin(), seq_len);
       output->Resize(fmw::make_ddim(dims_vec));
@@ -79,14 +83,15 @@ void LinkMemories(const std::vector<Scope*>& scopes,
                   const std::vector<rnn::MemoryAttr>& memories,
                   const size_t step_id, const int offset,
                   bool infer_shape_mode) {
-  PADDLE_ENFORCE(step_id < scopes.size(),
-                 "step [%d] is out of range of step scopes' size [%d]", step_id,
-                 scopes.size());
-  PADDLE_ENFORCE(static_cast<int>(step_id) + offset >= 0,
-                 "offset [%d] must be large than -[%d]", offset, step_id);
-  PADDLE_ENFORCE(step_id + offset < scopes.size(),
-                 "offset [%d] is out of range, it must be less than (%d - %d)",
-                 offset, scopes.size(), step_id);
+  PADDLE_ENFORCE_LT(step_id, scopes.size(),
+                    "step [%d] is out of range of step scopes' size [%d]",
+                    step_id, scopes.size());
+  PADDLE_ENFORCE_GE(static_cast<int>(step_id) + offset, 0,
+                    "offset [%d] must be large than -[%d]", offset, step_id);
+  PADDLE_ENFORCE_LT(
+      step_id + offset, scopes.size(),
+      "offset [%d] is out of range, it must be less than (%d - %d)", offset,
+      scopes.size(), step_id);
   auto scope = scopes[step_id];
   auto linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {

@@ -174,7 +174,10 @@ class OperatorContext {
   template <typename T>
   T* Output(const size_t index) const {
     auto var = OutputVar(index);
-    PADDLE_ENFORCE(var != nullptr, "Output(%d) should not be nullptr", index);
+    PADDLE_ENFORCE(var != nullptr,
+                   "Output(%d) not be nullptr, which means variable [%s] not "
+                   "exist in scope",
+                   index, op_.outputs_[index]);
     return var->GetMutable<T>();
   }
 

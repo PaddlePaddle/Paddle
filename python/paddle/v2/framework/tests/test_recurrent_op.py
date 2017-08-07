@@ -1,3 +1,4 @@
+import logging
 import paddle.v2.framework.core as core
 import unittest
 import numpy as np
@@ -7,10 +8,9 @@ ops = creation.op_creations
 
 
 def create_tensor(scope, name, shape):
-    tensor = scope.create_var(name).get_tensor()
+    tensor = scope.new_var(name).get_tensor()
     tensor.set_dims(shape)
-    tensor.alloc_float()
-    tensor.set(np.random.random(shape))
+    tensor.set(np.random.random(shape), core.CPUPlace())
     return tensor
 
 
@@ -31,40 +31,37 @@ class TestRNN(unittest.TestCase):
         - h
     '''
 
+    input_dim = 30
+    batch_size = 50
+    weight_dim = 15
+    sent_len = 11
+
     def init(self):
-        input_dim = 30
-        batch_size = 50
-        weight_dim = 15
 
-        self.scope = core.Scope(None)
+        self.scope = core.Scope()
 
-        # create vars
-        create_tensor(self.scope, "x", [batch_size, input_dim])
-        create_tensor(self.scope, "W", [input_dim, weight_dim])
-        create_tensor(self.scope, "U", [weight_dim, weight_dim])
-        create_tensor(self.scope, "h_boot", [batch_size, weight_dim])
+        self.create_global_variables()
+        self.create_step_net()
+        rnn_op = self.create_rnn_op()
 
-        x_alias = "x@alias"
-        y_alias = "y@alias"
-        memory = "h@alias"
-        prememory = "h@pre"
-        output = "rnn_out"
-        output_alias = "rnn_out@alias"
+        ctx = core.DeviceContext.create(core.CPUPlace())
+        print 'infer_shape'
+        rnn_op.infer_shape(self.scope)
 
-        # create step net
-        stepnet_var = self.scope.create_var("stepnet")
-        stepnet = stepnet_var.get_net()
-        # stepnet = core.Net.create()
-        x_fc_op = ops.fc(X=x_alias, W="W", Y="Wx")
-        h_fc_op = ops.fc(X=prememory, W="U", Y="Uh")
-        sum_op = ops.add_two(X="Wx", Y="Uh", Out="sum")
-        sig_op = ops.sigmoid(X="sum", Y=memory)
-        stepnet.add_op(x_fc_op)
-        stepnet.add_op(h_fc_op)
-        stepnet.add_op(sum_op)
-        stepnet.add_op(sig_op)
-        stepnet.complete_add_op(True)
+        rnn_op.run(self.scope, ctx)
 
+    def create_global_variables(self):
+        # create inlink
+        create_tensor(self.scope, "x",
+                      [self.sent_len, self.batch_size, self.input_dim])
+        create_tensor(self.scope, "W", [self.input_dim, self.input_dim])
+        create_tensor(self.scope, "U", [self.input_dim, self.input_dim])
+        create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim])
+        self.scope.new_var("step_scopes")
+        self.scope.new_var("h@alias")
+        self.scope.new_var("h")
+
+    def create_rnn_op(self):
         # create RNNOp
         rnnop = ops.recurrent_op(
             # inputs
@@ -72,17 +69,27 @@ class TestRNN(unittest.TestCase):
             boot_memories=["h_boot"],
             step_net="stepnet",
             # outputs
-            outlinks=[output],
+            outlinks=["h"],
             step_scopes="step_scopes",
             # attributes
             inlink_alias=["x@alias"],
-            outlink_alias=[output_alias],
-            pre_memories=[prememory],
-            memories=[memory])
+            outlink_alias=["h@alias"],
+            pre_memories=["h@pre"],
+            memories=["h@alias"])
+        return rnnop
 
-        ctx = core.DeviceContext.cpu_context()
-        rnnop.infer_shape(self.scope)
-        rnnop.run(self.scope, ctx)
+    def create_step_net(self):
+        var = self.scope.new_var("stepnet")
+        stepnet = var.get_net()
+
+        x_fc_op = ops.fc(X="x@alias", W="W", Y="Wx")
+        h_fc_op = ops.fc(X="h@pre", W="U", Y="Uh")
+        sum_op = ops.add_two(X="Wx", Y="Uh", Out="sum")
+        sig_op = ops.sigmoid(X="sum", Y="h@alias")
+
+        for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
+            stepnet.add_op(op)
+        stepnet.complete_add_op(True)
 
     def test_recurrent(self):
         self.init()

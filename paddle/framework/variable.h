@@ -25,7 +25,8 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    PADDLE_ENFORCE(IsType<T>(), "Variable must be type %s", typeid(T).name());
+    PADDLE_ENFORCE(IsType<T>(), "Variable must be type %s, current type: %s",
+                   typeid(T).name(), holder_->Type().name());
     return *static_cast<const T*>(holder_->Ptr());
   }
 
@@ -42,6 +43,8 @@ class Variable {
     return holder_ != nullptr &&
            std::type_index(typeid(T)) == std::type_index(holder_->Type());
   }
+
+  const std::type_info& Type() const { return holder_->Type(); }
 
  private:
   struct Placeholder {

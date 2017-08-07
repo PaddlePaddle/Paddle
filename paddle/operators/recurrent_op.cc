@@ -29,20 +29,35 @@ void RecurrentAlgorithm::InferShape(const Scope& scope) const {
   seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
                  ->GetMutable<Tensor>()
                  ->dims()[0];
+  LOG(INFO) << "seq_len_: " << seq_len_;
   CreateScopes(scope);
   auto step_scopes = GetStepScopes(scope);
+  LOG(INFO) << "SegmentInputs";
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
                      true /*infer_shape_mode*/);
+  LOG(INFO) << "InitMemories";
   InitMemories(step_scopes[0], true /*infer_shape_mode*/);
   Variable* net = scope.FindVar(arg_->step_net);
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
+
+  LOG(INFO) << "net doc\n" << net->GetMutable<NetOp>()->DebugString();
   for (size_t i = 0; i < seq_len_; i++) {
+    LOG(INFO) << "LinkMemories: " << i;
     if (i > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, i, -1,
                         true /*infer_shape_mode*/);
     }
+
+    LOG(INFO) << "net op infershape: " << i;
+    PADDLE_ENFORCE_EQ(step_scopes[i]
+                          ->FindVar("h@pre")
+                          ->template GetMutable<Tensor>()
+                          ->dims()
+                          .size(),
+                      2);
     net->GetMutable<NetOp>()->InferShape(*step_scopes[i]);
   }
+  LOG(INFO) << "concat output";
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
                      true /*infer_shape_mode*/);
 }
@@ -56,6 +71,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
   Variable* net = scope.FindVar(arg_->step_net);
 
   for (size_t step_id = 0; step_id < seq_len_; step_id++) {
+    // create output alias variables
     if (step_id > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1,
                         false /*infer_shape_mode*/);
@@ -67,22 +83,34 @@ void RecurrentAlgorithm::Run(const Scope& scope,
 }
 
 void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
-  // TODO(xxx) Only two scopes are needed for inference, this case will be
+  // TODO(superjom) Only two scopes are needed for inference, this case will be
   // supported later.
-  auto step_scopes =
-      scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
+  LOG(INFO) << "create scopes";
+  auto step_scopes_var = scope.FindVar(arg_->step_scopes);
+  PADDLE_ENFORCE(step_scopes_var != nullptr, "");
+  auto step_scopes = step_scopes_var->GetMutable<std::vector<Scope*>>();
+
+  // Now all variables in scope must be created outside of op.
+  auto var = scope.FindVar(arg_->step_net);
+  PADDLE_ENFORCE(var != nullptr, "no stepnet called %s in scope",
+                 arg_->step_net);
+  auto net_op = var->GetMutable<NetOp>();
+  PADDLE_ENFORCE(!net_op->outputs_.empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
+      LOG(INFO) << "create scope " << i;
       auto& step_scope = scope.NewScope();
 
-      // Now all variables in scope must be created outside of op.
-      auto net_op = scope.FindVar(arg_->step_net)->GetMutable<NetOp>();
+      // create step net's temp inputs
       for (auto& input : net_op->inputs_) {
         // the weight are located in parent scope
-        if (!step_scope.FindVar(input)) step_scope.NewVar(input);
+        if (!step_scope.FindVar(input))
+          step_scope.NewVar(input)->GetMutable<Tensor>();
       }
-      for (auto& output : net_op->outputs_) {
+      // create stepnet's outputs
+      for (const auto& output : net_op->outputs_) {
+        LOG(INFO) << "net_op.output " << output;
         step_scope.NewVar(output);
       }
       step_scopes->emplace_back(&step_scope);
@@ -93,13 +121,27 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
 void RecurrentAlgorithm::InitMemories(Scope* step_scope,
                                       bool infer_shape_mode) const {
   for (auto& attr : arg_->memories) {
+    LOG(INFO) << string::Sprintf("init memory %s, pre %s, boot %s", attr.var,
+                                 attr.pre_var, attr.boot_var);
     Tensor* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<Tensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists", attr.var,
                    attr.boot_var);
     Tensor* boot_mem = step_scope->FindVar(attr.boot_var)->GetMutable<Tensor>();
     if (infer_shape_mode) {
+      LOG(INFO) << "boot_mem.dims() " << boot_mem->dims();
       pre_mem->Resize(boot_mem->dims());
+      LOG(INFO) << "pre_mem.dims() " << pre_mem->dims();
+      PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
+
+      // for debug
+      auto h_boot = step_scope->FindVar("h_boot")->GetMutable<Tensor>();
+      auto h_pre = step_scope->FindVar("h@pre")->GetMutable<Tensor>();
+      LOG(INFO) << "h_boot.dims() " << h_boot->dims();
+      LOG(INFO) << "h_pre.dims() " << h_pre->dims();
+      PADDLE_ENFORCE_EQ(h_boot->dims().size(), 2);
+      PADDLE_ENFORCE_EQ(h_pre->dims().size(), 2);
+
     } else {
       pre_mem->ShareDataWith<float>(*boot_mem);
     }
