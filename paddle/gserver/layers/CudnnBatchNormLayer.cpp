@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "CudnnBatchNormLayer.h"
 #include "Layer.h"
+#include "paddle/cuda/include/hl_batch_norm.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -79,16 +80,32 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    savedInvVar);
   } else {
     // used movingMean and movingVar in testing
-    hl_batch_norm_forward_inference(ioDesc_,
-                                    input,
-                                    ioDesc_,
-                                    output,
-                                    bnParamDesc_,
-                                    gamma,
-                                    beta,
-                                    movingMean,
-                                    movingVar,
-                                    EPS);
+    if (batchSize > 1024) {
+      // when batchSize is larger than 1024, there is a bug
+      // in cudnn library.
+      hl_batch_norm_cuda_inference(input,
+                                   output,
+                                   gamma,
+                                   beta,
+                                   movingMean,
+                                   movingVar,
+                                   EPS,
+                                   batchSize,
+                                   channels_,
+                                   imageH_,
+                                   imageW_);
+    } else {
+      hl_batch_norm_forward_inference(ioDesc_,
+                                      input,
+                                      ioDesc_,
+                                      output,
+                                      bnParamDesc_,
+                                      gamma,
+                                      beta,
+                                      movingMean,
+                                      movingVar,
+                                      EPS);
+    }
   }
 
   /* activation */ {
