@@ -24,14 +24,14 @@ void FunctionApi(typename Tensor<real, DType>::Matrix& output,
 
 template <>
 void FunctionApi<DEVICE_TYPE_CPU>(CpuMatrix& output, const CpuMatrix& input) {
-  EXPECT_EQ(output.getHeight(), 100);
-  EXPECT_EQ(output.getWidth(), 200);
+  EXPECT_EQ(output.getHeight(), 100U);
+  EXPECT_EQ(output.getWidth(), 200U);
 }
 
 template <>
 void FunctionApi<DEVICE_TYPE_GPU>(GpuMatrix& output, const GpuMatrix& input) {
-  EXPECT_EQ(output.getHeight(), 10);
-  EXPECT_EQ(output.getWidth(), 20);
+  EXPECT_EQ(output.getHeight(), 10U);
+  EXPECT_EQ(output.getWidth(), 20U);
 }
 
 template <DeviceType DType>
@@ -85,14 +85,14 @@ void testBufferArgs(const BufferArgs& inputs,
 }
 
 void testBufferArgs(const BufferArgs& inputs, const CheckBufferArg& check) {
-  EXPECT_EQ(inputs.size(), 1);
+  EXPECT_EQ(inputs.size(), 1U);
   check(inputs[0]);
 }
 
 TEST(Arguments, Matrix) {
   MatrixPtr matrix = Matrix::create(100, 200);
   CheckBufferArg check = [=](const BufferArg& arg) {
-    EXPECT_EQ(arg.shape().ndims(), 2);
+    EXPECT_EQ(arg.shape().ndims(), 2U);
     EXPECT_EQ(arg.shape()[0], 100);
     EXPECT_EQ(arg.shape()[1], 200);
     EXPECT_EQ(arg.data(), matrix->getData());

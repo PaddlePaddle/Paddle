@@ -15,77 +15,10 @@
 #pragma once
 
 #include "paddle/framework/operator.h"
+#include "paddle/operators/rnn/recurrent_op_utils.h"
 
 namespace paddle {
 namespace operators {
-
-namespace rnn {
-
-/**
- * Memory of a RNN (same as the role of `Momory` in PaddlePaddle).
- *
- * Memory attributes cached by this op, dims will be infered from
- * boot memories in father scope. Other attributes are copied from Op's proto
- * attributes.
- */
-struct MemoryAttr {
-  // name of current state variable
-  std::string var;
-  // name of previous step's state variable
-  std::string pre_var;
-  // name of the variables to init this memory (same role of `boot_layer` in
-  // PaddlePaddle), which is store in father's scope.
-  std::string boot_var;
-};
-
-struct Link {
-  // input or output links name.
-  std::string internal;
-  // alias to avoid duplicate keys in scopes.
-  std::string external;
-};
-
-struct Argument {
-  std::string step_net;
-  std::string step_scopes;
-  std::vector<Link> inlinks;
-  std::vector<Link> outlinks;
-  std::vector<rnn::MemoryAttr> memories;
-};
-
-struct ArgumentName {
-  std::string step_net;
-  std::string step_scopes;
-  std::string inlinks;
-  std::string outlinks;
-  std::string inlink_alias;   // the alias of inlinks in step net.
-  std::string outlink_alias;  // the alias of outlinks in step net.
-  std::string memories;       // the memory name
-  std::string pre_memories;   // the previous memory name
-  std::string boot_memories;  // the boot memory name
-};
-
-/**
- * Prepare inputs for each step net.
- */
-void SegmentInputs(const std::vector<framework::Scope*>& step_scopes,
-                   const std::vector<Link>& inlinks, const size_t seq_len,
-                   bool infer_shape_mode);
-
-/**
- * Process outputs of step nets and merge to variables.
- */
-void ConcatOutputs(const std::vector<framework::Scope*>& step_scopes,
-                   const std::vector<Link>& outlinks, const size_t seq_len,
-                   bool infer_shape_mode);
-
-void LinkMemories(const std::vector<framework::Scope*>& step_scopes,
-                  const std::vector<MemoryAttr>& memories, const size_t step_id,
-                  const int offset, bool infer_shape_mode);
-
-void InitArgument(const ArgumentName& name, Argument* arg);
-
-};  // namespace rnn
 
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
 // TODO(Yan Chunwei):
