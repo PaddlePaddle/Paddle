@@ -76,10 +76,10 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   auto step_scopes = step_scopes_var->GetMutable<std::vector<Scope*>>();
 
   // Now all variables in scope must be created outside of op.
-  auto var = scope.FindVar(arg_->step_net);
-  PADDLE_ENFORCE(var != nullptr, "no stepnet called %s in scope",
+  auto net_var = scope.FindVar(arg_->step_net);
+  PADDLE_ENFORCE(net_var != nullptr, "no stepnet called %s in scope",
                  arg_->step_net);
-  auto net_op = var->GetMutable<NetOp>();
+  auto net_op = net_var->GetMutable<NetOp>();
   PADDLE_ENFORCE(!net_op->outputs_.empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {

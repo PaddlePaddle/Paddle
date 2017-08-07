@@ -43,7 +43,6 @@ class TestRNN(unittest.TestCase):
         self.create_global_variables()
         self.create_step_net()
         rnn_op = self.create_rnn_op()
-
         ctx = core.DeviceContext.create(core.CPUPlace())
         print 'infer_shape'
         rnn_op.infer_shape(self.scope)
