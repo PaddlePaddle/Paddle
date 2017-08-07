@@ -29,17 +29,16 @@ class GradChecker(unittest.TestCase):
                     input_to_check=set(),
                     no_grad_set=set(),
                     only_cpu=False):
-        backward_op = core.Operator.backward(forward_op, no_grad_set)
-        print(backward_op)
-
-        out_names = forward_op.outputs()
+        out_names = filter(lambda name: name != "@TEMP@", forward_op.outputs())
         if len(out_names) != 1:
-            raise ValueError("out_names should be 1")
+            raise ValueError("non empty out_names should be 1")
 
-        in_names = backward_op.inputs()
+        in_names = forward_op.inputs()
         for no_grad in no_grad_set:
             if no_grad not in in_names:
                 raise ValueError("no_grad should be in in_names")
+
+        backward_op = core.Operator.backward(forward_op, no_grad_set)
 
         cpu_scope = core.Scope()
         cpu_place = core.CPUPlace()
@@ -60,12 +59,6 @@ class GradChecker(unittest.TestCase):
         forward_op.infer_shape(cpu_scope)
         forward_op.run(cpu_scope, ctx)
 
-        # create input grad var and set shape as the input var
-        for name in forward_op.inputs():
-            in_tensor = cpu_scope.find_var(name).get_tensor()
-            grad_tensor = cpu_scope.new_var(grad_var_name(name)).get_tensor()
-            grad_tensor.set_dims(in_tensor.shape())
-
         # create output grad var
         # set shape as the output var
         # set value of this grad to ones
@@ -76,19 +69,23 @@ class GradChecker(unittest.TestCase):
             data = 1.0 * numpy.ones(out_tensor.shape())
             grad_tensor.set(data, cpu_place)
 
+        # create input grad var
+        for name in backward_op.outputs():
+            cpu_scope.new_var(name).get_tensor()
+
         backward_op.infer_shape(cpu_scope)
         backward_op.run(cpu_scope, ctx)
 
         numeric_input = dict()
-        for name in backward_op.inputs():
+        for name in forward_op.inputs():
             data = numpy.array(cpu_scope.find_var(name).get_tensor())
             numeric_input[name] = data
         output_name = forward_op.outputs()[0]
         input_to_check = forward_op.inputs()[0]
 
-        ret_val = get_numeric_gradient(forward_op, numeric_input, output_name,
-                                       input_to_check)
-        out_data = numpy.array(
+        numeric_grad = get_numeric_gradient(forward_op, numeric_input,
+                                            output_name, input_to_check)
+        op_grad = numpy.array(
             cpu_scope.find_var(backward_op.outputs()[0]).get_tensor())
 
-        numpy.testing.assert_almost_equal(out_data, ret_val)
+        numpy.testing.assert_almost_equal(numeric_grad, op_grad, decimal=1e-2)

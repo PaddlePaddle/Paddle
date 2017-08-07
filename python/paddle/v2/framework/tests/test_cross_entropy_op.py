@@ -1,9 +1,10 @@
 import unittest
 import numpy
 from op_test_util import OpTestMeta
+from grad_test_util import GradChecker, create_op
 
 
-class TestSGD(unittest.TestCase):
+class TestCrossEntropy(unittest.TestCase):
     __metaclass__ = OpTestMeta
 
     def setUp(self):
@@ -19,6 +20,17 @@ class TestSGD(unittest.TestCase):
 
 
 # TODO(superjom) add gradient check
+class CrossEntropyGradOpTest(GradChecker):
+    def test_softmax_grad(self):
+        op = create_op("onehot_cross_entropy")
+        batch_size = 100
+        class_num = 10
+        inputs = {
+            "X": numpy.random.random((3, 4)).astype("float32"),
+            "label": 5 * numpy.ones(batch_size).astype("int32")
+        }
+        self.assert_grad(op, inputs)
+
 
 if __name__ == "__main__":
     unittest.main()

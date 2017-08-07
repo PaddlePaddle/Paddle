@@ -69,7 +69,8 @@ REGISTER_OP(onehot_cross_entropy, ops::OnehotCrossEntropyOp,
             ops::OnehotCrossEntropyOpMaker);
 REGISTER_OP_CPU_KERNEL(onehot_cross_entropy,
                        ops::OnehotCrossEntropyOpKernel<ops::CPUPlace, float>);
-
+REGISTER_GRADIENT_OP(onehot_cross_entropy, onehot_cross_entropy_grad,
+                     ops::OnehotCrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(
     onehot_cross_entropy_grad,
     ops::OnehotCrossEntropyGradientOpKernel<ops::CPUPlace, float>);

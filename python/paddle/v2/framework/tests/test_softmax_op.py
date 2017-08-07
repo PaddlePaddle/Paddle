@@ -24,6 +24,15 @@ class TestSoftmaxOp(unittest.TestCase):
         self.Y = np.apply_along_axis(stable_softmax, 1, self.X)
 
 
+# Reference implementation of cross entropy with soft labels
+def label_softmax_grad(Y, dY):
+    dX = Y * 0.0
+    for i in range(Y.shape[0]):
+        d = np.dot(Y[i, :], dY[i, :])
+        dX[i, :] = Y[i, :] * (dY[i, :] - d)
+    return dX
+
+
 class TestSoftmaxGradOp(unittest.TestCase):
     def test_softmax_grad(self):
         op = creation.op_creations.softmax(X="X", Y="Y")
@@ -38,14 +47,6 @@ class TestSoftmaxGradOp(unittest.TestCase):
         Y = np.random.rand(batch_size, class_num).astype(np.float32)
         Y = Y + 1e-2
         dY = np.random.rand(batch_size, class_num).astype(np.float32)
-
-        # Reference implementation of cross entropy with soft labels
-        def label_softmax_grad(Y, dY):
-            dX = Y * 0.0
-            for i in range(batch_size):
-                d = np.dot(Y[i, :], dY[i, :])
-                dX[i, :] = Y[i, :] * (dY[i, :] - d)
-            return dX
 
         expected = label_softmax_grad(Y, dY)
 
