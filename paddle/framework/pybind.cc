@@ -32,7 +32,7 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_OP(onehot_cross_entropy);
+USE_OP_CPU(onehot_cross_entropy);
 USE_OP_WITHOUT_KERNEL(fc);
 USE_OP(sgd);
 USE_OP(mul);
@@ -105,7 +105,16 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
 #endif
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); });
+      .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("set_float_element",
+           [](Tensor &self, size_t offset, float f) {
+             // TODO(yuyang18): Only support GPU now.
+             self.data<float>()[offset] = f;
+           })
+      .def("get_float_element", [](Tensor &self, size_t offset) -> float {
+        // TODO(yuyang18): Only support GPU now.
+        return self.data<float>()[offset];
+      });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
@@ -154,8 +163,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
-      .def("empty", OperatorBase::EMPTY_VAR_NAME)
-      .def("temp", OperatorBase::TMP_VAR_NAME);
+      .def("empty", []() { return kEmptyVarName; })
+      .def("temp", []() { return kTempVarName; });
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
@@ -190,6 +199,8 @@ All parameter, weight, gradient are variables in Paddle.
                    desc.InitializationErrorString());
     return OpRegistry::CreateOp(desc);
   });
+
+  operator_base.def_static("support_gpu", &OpRegistry::SupportGPU);
 
   operator_base.def("backward",
                     [](const OperatorBase &forwardOp,

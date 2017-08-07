@@ -68,7 +68,7 @@ class PODDeleter {
   static_assert(std::is_pod<T>::value, "T must be POD");
 
  public:
-  PODDeleter(Place place) : place_(place) {}
+  explicit PODDeleter(Place place) : place_(place) {}
   void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr)); }
 
  private:

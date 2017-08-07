@@ -190,6 +190,11 @@ public:
     std::vector<int> ids;
 
     /**
+     * @brief idsProb, log probability of each generated words.
+     */
+    std::vector<real> idsProb;
+
+    /**
      * @brief logProb, current probability of path.
      */
     real logProb;
@@ -228,11 +233,13 @@ public:
      */
     Path(Path& old, int newId, real logProb, int machineId, int topIndex)
         : ids(old.ids),
+          idsProb(old.idsProb),
           logProb(old.logProb + logProb),
           machineId(machineId),
           topIndex(topIndex),
           seqId(old.seqId) {
       ids.push_back(newId);
+      idsProb.push_back(logProb);
       if (!old.probHistory.empty()) {
         this->probHistory = old.probHistory;
         // probHistory store current prob, not sum
@@ -411,8 +418,9 @@ protected:
 
   struct Generator {
     GeneratorConfig config;
-    std::vector<int> ids;  // store generated sequences
-    Argument outArg;       // final output argument
+    std::vector<int> ids;       // store generated sequences
+    std::vector<real> idsProb;  // log probability of each generated word
+    Argument outArg;            // final output argument
   };
   bool generating_;
   Generator generator_;

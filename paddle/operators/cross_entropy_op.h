@@ -18,28 +18,68 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+T tolerable_value(T x) {
+  static_assert(std::is_floating_point<T>::value,
+                "tolerable_value works only on float, "
+                "double and double double.");
+
+  const T kApproInf = 1e20;
+
+  if (x == INFINITY) {
+    return kApproInf;
+  }
+
+  if (x == -INFINITY) {
+    return -kApproInf;
+  }
+
+  return x;
+}
+
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public OpKernel {
-public:
-  constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
-
+ public:
   void Compute(const ExecutionContext& ctx) const override {
-    auto X = ctx.Input<Tensor>(0);
-    const T* X_data = X->data<T>();
+    auto X = ctx.Input<Tensor>("X");
+    const T* Xdata = X->data<T>();
     const int* label_data = ctx.Input<Tensor>(1)->data<int>();
-    auto Y = ctx.Output<Tensor>(0);
+    auto Y = ctx.Output<Tensor>("Y");
 
     Y->mutable_data<T>(ctx.GetPlace());
 
-    T* Y_data = Y->data<T>();
+    T* Ydata = Y->data<T>();
 
     int batch_size = X->dims()[0];
     int class_num = X->dims()[1];
 
-    // Y[i] = -log(X[i][j])
     for (int i = 0; i < batch_size; ++i) {
-      Y_data[i] = -std::log(
-          std::max(X_data[i * class_num + label_data[i]], LOG_THRESHOLD()));
+      int index = i * class_num + label_data[i];
+      Ydata[i] = -tolerable_value(std::log(Xdata[index]));
+    }
+  }
+};
+
+template <typename Place, typename T>
+class OnehotCrossEntropyGradientOpKernel : public OpKernel {
+ public:
+  void Compute(const ExecutionContext& ctx) const override {
+    auto X = ctx.Input<Tensor>("X");
+    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto label = ctx.Input<Tensor>("label");
+
+    auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());
+    auto* dYdata = dY->template data<T>();
+    auto* Xdata = X->template data<T>();
+    auto* label_data = label->data<int>();
+
+    const int batch_size = X->dims()[0];
+    const int class_num = X->dims()[1];
+
+    for (int i = 0; i < batch_size; ++i) {
+      int index = i * class_num + label_data[i];
+      dXdata[index] = -tolerable_value(dYdata[i] / Xdata[index]);
     }
   }
 };
