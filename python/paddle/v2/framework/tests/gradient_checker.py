@@ -3,23 +3,18 @@ import unittest
 import numpy
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
-import numpy
-import unittest
 
 __all__ = ['get_numeric_gradient']
 
 
 def create_op(op_type):
-    func = getattr(creation.op_creations, op_type, None)
-    assert (func is not None)
-
     kwargs = dict()
-    for in_name in func.all_input_args:
+    for in_name in Operator.get_op_input_names(op_type):
         kwargs[in_name] = in_name
-    for out_name in func.all_output_args:
+    for out_name in Operator.get_op_output_names(op_type):
         kwargs[out_name] = out_name
-    op = func(**kwargs)
-    return op
+
+    return Operator(op_type, **kwargs)
 
 
 def grad_var_name(var_name):
@@ -242,7 +237,7 @@ if __name__ == '__main__':
                     dX[i, :] = Y[i, :] * (dY[i, :] - d)
                 return dX
 
-            softmax_op = op_creations.softmax(X="X", Y="Y")
+            softmax_op = Operator("softmax", X="X", Y="Y")
 
             X = numpy.random.random((2, 2)).astype("float32")
             Y = numpy.apply_along_axis(stable_softmax, 1, X)
