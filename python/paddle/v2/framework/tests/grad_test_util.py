@@ -25,8 +25,9 @@ def grad_var_name(var_name):
 class GradChecker(unittest.TestCase):
     def assert_grad(self,
                     forward_op,
-                    inputs=dict(),
-                    input_to_check=set(),
+                    input_vars,
+                    inputs_to_check,
+                    output_name,
                     no_grad_set=set(),
                     only_cpu=False):
         out_names = filter(lambda name: name != "@TEMP@", forward_op.outputs())
@@ -38,6 +39,10 @@ class GradChecker(unittest.TestCase):
             if no_grad not in in_names:
                 raise ValueError("no_grad should be in in_names")
 
+        for check_name in inputs_to_check:
+            if check_name not in in_names:
+                raise ValueError("check name should be in in_names")
+
         backward_op = core.Operator.backward(forward_op, no_grad_set)
 
         cpu_scope = core.Scope()
@@ -45,7 +50,7 @@ class GradChecker(unittest.TestCase):
         ctx = core.DeviceContext.create(cpu_place)
 
         # create input var and set value
-        for name, value in inputs.iteritems():
+        for name, value in input_vars.iteritems():
             assert name in in_names
             var = cpu_scope.new_var(name).get_tensor()
             var.set_dims(value.shape)
@@ -80,12 +85,11 @@ class GradChecker(unittest.TestCase):
         for name in forward_op.inputs():
             data = numpy.array(cpu_scope.find_var(name).get_tensor())
             numeric_input[name] = data
-        output_name = forward_op.outputs()[0]
-        input_to_check = forward_op.inputs()[0]
-
-        numeric_grad = get_numeric_gradient(forward_op, numeric_input,
-                                            output_name, input_to_check)
-        op_grad = numpy.array(
-            cpu_scope.find_var(backward_op.outputs()[0]).get_tensor())
-
-        numpy.testing.assert_almost_equal(numeric_grad, op_grad, decimal=1e-2)
+        for check_name in inputs_to_check:
+            numeric_grad = get_numeric_gradient(forward_op, numeric_input,
+                                                output_name, check_name)
+            op_grad = numpy.array(
+                cpu_scope.find_var(grad_var_name(check_name)).get_tensor())
+            self.assertTrue(
+                numpy.allclose(
+                    numeric_grad, op_grad, rtol=0.05, atol=100))

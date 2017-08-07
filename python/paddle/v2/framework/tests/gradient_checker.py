@@ -10,7 +10,7 @@ def get_numeric_gradient(op,
                          input_values,
                          output_name,
                          input_to_check,
-                         delta=1e-2,
+                         delta=0.005,
                          local_scope=None):
     """
     Get Numeric Gradient for an operator's input.

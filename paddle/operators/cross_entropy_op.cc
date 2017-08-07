@@ -32,6 +32,9 @@ class OnehotCrossEntropyOp : public OperatorWithKernel {
                    "X's dimension must be 2.");
     PADDLE_ENFORCE(ctx.Output<Tensor>(0)->dims().size() == 1,
                    "label's dimension must be 1.");
+    PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims()[0] ==
+                       ctx.Input<Tensor>("label")->dims()[0],
+                   "batch size should be equal");
     ctx.Output<Tensor>(0)->Resize({ctx.Input<Tensor>(0)->dims()[0]});
   }
 };
