@@ -9,8 +9,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/platform/enforce.h"
+#include <memory>
+
 #include "gtest/gtest.h"
+#include "paddle/platform/enforce.h"
 
 TEST(ENFORCE, OK) {
   PADDLE_ENFORCE(true, "Enforce is ok %d now %f", 123, 0.345);
@@ -201,9 +203,6 @@ TEST(ENFORCE_NOT_NULL, OK) {
   int* a = new int;
   PADDLE_ENFORCE_NOT_NULL(a);
   delete a;
-
-  auto b = std::make_shared<int>();
-  PADDLE_ENFORCE_NOT_NULL(b);
 }
 TEST(ENFORCE_NOT_NULL, FAIL) {
   bool in_catch = false;
