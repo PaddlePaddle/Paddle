@@ -103,16 +103,14 @@ class GradientChecker(unittest.TestCase):
                    output_name,
                    no_grad_set=set(),
                    only_cpu=False,
-                   rtol=0.005,
-                   atol=0.05):
+                   max_relative_err=0.005):
         """
         :param forward_op: used to create backward_op
         :param input_vars: numpy value of input variable. The following
             computation will use these variables.
         :param inputs_to_check: inputs var names that should check gradient.
         :param output_name: output name that used to
-        :param rtol: The relative tolerance parameter.
-        :param atol: The absolute tolerance parameter.
+        :param max_relative_err: The relative tolerance parameter.
         :param no_grad_set: used when create backward ops
         :param only_cpu: only compute and check gradient on cpu kernel.
         :return:
@@ -133,12 +131,17 @@ class GradientChecker(unittest.TestCase):
         backward_op = core.Operator.backward(forward_op, no_grad_set)
 
         places = [core.CPUPlace()]
-        if core.is_compile_gpu() and not only_cpu:
+        if not only_cpu and core.is_compile_gpu() \
+                and core.Operator.support_gpu(backward_op.type):
             places.append(core.GPUPlace(0))
 
         numeric_grad = dict()
         cpu_grad = dict()
         gpu_grad = dict()
+
+        for check_name in inputs_to_check:
+            numeric_grad[check_name] = \
+                get_numeric_gradient(forward_op, input_vars, output_name, check_name)
 
         for place in places:
             scope = core.Scope()
@@ -174,32 +177,14 @@ class GradientChecker(unittest.TestCase):
                 scope.new_var(name).get_tensor()
 
             # infer the shape of input gradient var and compute/set it's value
-            # with backward ops
+            # with backward op
             backward_op.infer_shape(scope)
             backward_op.run(scope, ctx)
 
-            numeric_input = dict()
-            for name in forward_op.inputs():
-                data = numpy.array(scope.find_var(name).get_tensor())
-                numeric_input[name] = data
             for check_name in inputs_to_check:
-                # get and store numeric_grad
-                if not numeric_grad.has_key(check_name):
-                    numeric_grad[check_name] = \
-                        get_numeric_gradient(forward_op, numeric_input, output_name, check_name)
                 # get xpu_grad
                 op_grad = numpy.array(
                     scope.find_var(grad_var_name(check_name)).get_tensor())
-
-                # check numeric_grad early with CPUPlace
-                if isinstance(place, core.CPUPlace):
-                    self.assertTrue(
-                        numpy.allclose(
-                            numeric_grad[check_name],
-                            op_grad,
-                            rtol=0.05,
-                            atol=100),
-                        "numeric_gradient and cpu op gradient are not equal")
 
                 # store cpu grad
                 if isinstance(place, core.CPUPlace):
@@ -208,15 +193,26 @@ class GradientChecker(unittest.TestCase):
                 if isinstance(place, core.GPUPlace):
                     gpu_grad[check_name] = op_grad
 
-        # compile cpu and gpu grad
-        if core.is_compile_gpu() and not only_cpu:
-            for check_name in cpu_grad:
+        # check numeric_grad early with CPUPlace
+        for check_name in numeric_grad:
+            # check numeric grad and cpu grad
+            self.assertTrue(
+                numpy.allclose(
+                    numeric_grad[check_name],
+                    cpu_grad[check_name],
+                    rtol=max_relative_err,
+                    atol=100),
+                "cpu op gradient and gpu op gradient are not equal")
+
+            # check numeric and gpu grad
+            if core.is_compile_gpu() and not only_cpu \
+                    and core.Operator.support_gpu(backward_op.type):
                 self.assertTrue(
                     numpy.allclose(
-                        cpu_grad[check_name],
+                        numeric_grad[check_name],
                         gpu_grad[check_name],
-                        rtol=rtol,
-                        atol=atol),
+                        rtol=max_relative_err,
+                        atol=100),
                     "cpu op gradient and gpu op gradient are not equal")
 
 
