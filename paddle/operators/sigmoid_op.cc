@@ -39,10 +39,8 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class SigmoidOpGrad : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "SigmoidGrad";
-    return "";
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
@@ -55,3 +53,5 @@ REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, ops::SigmoidOpGrad);
 
 REGISTER_OP_CPU_KERNEL(sigmoid,
                        ops::SigmoidKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_grad, ops::SigmoidGradKernel<paddle::platform::CPUPlace, float>);

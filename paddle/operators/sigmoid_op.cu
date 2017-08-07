@@ -18,3 +18,5 @@
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(sigmoid,
                        ops::SigmoidKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    sigmoid_grad, ops::SigmoidGradKernel<paddle::platform::GPUPlace, float>);
