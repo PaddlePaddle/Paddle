@@ -69,8 +69,13 @@ ENDIF(NOT ${CBLAS_FOUND})
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 
-ADD_LIBRARY(cblas STATIC IMPORTED)
-SET_PROPERTY(TARGET cblas PROPERTY IMPORTED_LOCATION ${CBLAS_LIBRARIES})
+# FIXME(gangliao): generate cblas target to track all high performance
+# linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
+SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/lib_any_dummy.c)
+FILE(WRITE ${dummyfile} "const char * dummy_any = \"${dummyfile}\";")
+ADD_LIBRARY(cblas STATIC ${dummyfile})
+TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)
     LIST(APPEND external_project_dependencies cblas)
