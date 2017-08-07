@@ -24,7 +24,8 @@ class FillZerosLikeKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* output = context.Output<framework::Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
-    framework::EigenVector<T>::Flatten(*output).setZero();
+    auto t = framework::EigenVector<T>::Flatten(*output);
+    t.device(context.GetEigenDevice<Place>()) = t.constant(T(0));
   }
 };
 
