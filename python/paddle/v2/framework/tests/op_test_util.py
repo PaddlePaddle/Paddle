@@ -29,7 +29,7 @@ class OpTestMeta(type):
 
             for place in places:
                 for in_name in Operator.get_op_input_names(self.type):
-                    if hasattr(self, "inputs") and in_name in self.inputs
+                    if hasattr(self, "inputs") and in_name in self.inputs:
                         kwargs[in_name] = in_name
                         var = scope.new_var(in_name).get_tensor()
                         arr = self.inputs[in_name]

@@ -181,7 +181,7 @@ class OperatorFactory(object):
         self.op_methods = dict()
         for op_proto in get_all_op_protos():
             method = create_op_creation_method(op_proto)
-            self.op_methods[method['name']] = method
+            self.op_methods[method.name] = method
 
     def __call__(self, *args, **kwargs):
         if 'type' in kwargs:
