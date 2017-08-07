@@ -24,7 +24,7 @@ T tolerable_value(T x) {
                 "tolerable_value works only on float, "
                 "double and double double.");
 
-  const T kApproInf = 1e-20;
+  const T kApproInf = 1e20;
 
   if (x == INFINITY) {
     return kApproInf;
