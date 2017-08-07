@@ -403,3 +403,16 @@ function(py_proto_compile TARGET_NAME)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
 endfunction()
+
+function(py_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(options STATIC static SHARED shared)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
+    add_test(NAME ${TARGET_NAME}
+             COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
+             python2 ${py_test_SRCS}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  endif()
+endfunction()
