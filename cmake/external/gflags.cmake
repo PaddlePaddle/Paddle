@@ -28,7 +28,14 @@ INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 ExternalProject_Add(
     extern_gflags
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/gflags/gflags.git"
+    # TODO(yiwang): The annoying warnings mentioned in
+    # https://github.com/PaddlePaddle/Paddle/issues/3277 are caused by
+    # gflags.  I fired a PR https://github.com/gflags/gflags/pull/230
+    # to fix it.  Before it gets accepted by the gflags team, we use
+    # my personal fork, which contains above fix, temporarily.  Let's
+    # change this back to the official Github repo once my PR is
+    # merged.
+    GIT_REPOSITORY  "https://github.com/wangkuiyi/gflags.git"
     PREFIX          ${GFLAGS_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

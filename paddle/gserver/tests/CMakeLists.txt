@@ -1,5 +1,10 @@
 # gserver pacakge unittests
 
+file(GLOB_RECURSE GSERVER_HEADER RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.h")
+file(GLOB_RECURSE GSERVER_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cpp")
+add_style_check_target(paddle_gserver ${GSERVER_SOURCES})
+add_style_check_target(paddle_gserver ${GSERVER_HEADER})
+
 ################### test_ProtoDataProvider ############
 add_unittest_without_exec(test_ProtoDataProvider
     test_ProtoDataProvider.cpp)
@@ -50,7 +55,7 @@ add_unittest_without_exec(test_DetectionOutput
     test_DetectionOutput.cpp
     LayerGradUtil.cpp)
 
-add_test(NAME test_DetectionOutput 
+add_test(NAME test_DetectionOutput
     COMMAND test_DetectionOutput)
 ################# test_ConvUnify #######################
 add_unittest_without_exec(test_ConvUnify

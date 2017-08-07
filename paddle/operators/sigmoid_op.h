@@ -21,7 +21,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class SigmoidKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto input = context.Input<Tensor>(0);
     auto output = context.Output<Tensor>(0);
@@ -38,19 +38,18 @@ public:
 
 template <typename Place, typename T>
 class SigmoidGradKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
-    // a helper funciton is needed fo the name x@GRAD
-    auto y_t = context.Input<Tensor>("Y");
-    auto dy_t = context.Input<Tensor>("Y@GRAD");
-    auto dx_t = context.Output<Tensor>("X@GRAD");
+    auto Y_t = context.Input<Tensor>("Y");
+    auto dY_t = context.Input<Tensor>(framework::GradVarName("Y"));
+    auto dX_t = context.Output<Tensor>(framework::GradVarName("X"));
 
-    dx_t->mutable_data<T>(context.GetPlace());
+    dX_t->mutable_data<T>(context.GetPlace());
 
-    auto dx = EigenVector<T>::Flatten(*dx_t);
-    auto y = EigenVector<T>::Flatten(*y_t);
-    auto dy = EigenVector<T>::Flatten(*dy_t);
-    dx.device(*(context.GetEigenDevice<Place>())) = dy * y * (1. - y);
+    auto dX = EigenVector<T>::Flatten(*dX_t);
+    auto Y = EigenVector<T>::Flatten(*Y_t);
+    auto dY = EigenVector<T>::Flatten(*dY_t);
+    dX.device(context.GetEigenDevice<Place>()) = dY * Y * (1. - Y);
   }
 };
 

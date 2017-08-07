@@ -14,15 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/framework/op_desc.pb.h>
-#include <paddle/framework/operator.h>
+#include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
+#include "paddle/operators/type_alias.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
+
 /**
  * @brief Network is also a type of Operator
  *
@@ -37,13 +39,13 @@ namespace framework {
  * This is the base class of network, all the networks should implement the APIs
  * it defines.
  */
-class NetOp : public OperatorBase {
+class NetOp : public framework::OperatorBase {
  public:
   /**
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  void InferShape(const Scope& scope) const override {
+  void InferShape(const framework::Scope& scope) const override {
     for (auto& op : ops_) {
       op->InferShape(scope);
     }
@@ -56,7 +58,7 @@ class NetOp : public OperatorBase {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  void Run(const Scope& scope,
+  void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
@@ -97,5 +99,5 @@ class NetOp : public OperatorBase {
   }
 };
 
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle
