@@ -8,8 +8,8 @@ class TestFillZerosLikeOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "fill_zeros_like"
-        self.Src = numpy.random.random((219, 232)).astype("float32")
-        self.Dst = numpy.zeros_like(self.Src)
+        self.inputs = {'Src': numpy.random.random((219, 232)).astype("float32")}
+        self.outputs = {'Dst': numpy.zeros_like(self.inputs['Src'])}
 
 
 if __name__ == '__main__':
