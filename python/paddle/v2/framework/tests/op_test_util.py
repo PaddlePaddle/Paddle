@@ -33,23 +33,28 @@ class OpTestMeta(type):
 
             for place in places:
                 for in_name in func.all_input_args:
-                    if hasattr(self, in_name):
+                    if hasattr(self, "inputs") and in_name in self.inputs:
                         kwargs[in_name] = in_name
                         var = scope.new_var(in_name).get_tensor()
-                        arr = getattr(self, in_name)
+                        arr = self.inputs[in_name]
                         var.set_dims(arr.shape)
                         var.set(arr, place)
                     else:
                         kwargs[in_name] = "@EMPTY@"
 
                 for out_name in func.all_output_args:
-                    if hasattr(self, out_name):
-                        kwargs[out_name] = out_name
-                        scope.new_var(out_name).get_tensor()
+                    if not hasattr(self, "outputs"):
+                        raise ValueError(
+                            "The test op must set self.outputs dict.")
+                    if out_name not in self.outputs:
+                        raise ValueError("The %s is not in self.outputs dict." %
+                                         (out_name))
+                    kwargs[out_name] = out_name
+                    scope.new_var(out_name).get_tensor()
 
                 for attr_name in func.all_attr_args:
-                    if hasattr(self, attr_name):
-                        kwargs[attr_name] = getattr(self, attr_name)
+                    if hasattr(self, "attrs") and attr_name in self.attrs:
+                        kwargs[attr_name] = self.attrs[attr_name]
 
                 op = func(**kwargs)
 
@@ -60,7 +65,7 @@ class OpTestMeta(type):
 
                 for out_name in func.all_output_args:
                     actual = numpy.array(scope.find_var(out_name).get_tensor())
-                    expect = getattr(self, out_name)
+                    expect = self.outputs[out_name]
                     numpy.isclose(actual, expect)
 
         obj.test_all = test_all
