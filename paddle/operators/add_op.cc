@@ -18,10 +18,10 @@ namespace paddle {
 namespace operators {
 
 class AddOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of AddOp must be two");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of AddOp must be one");
+    PADDLE_ENFORCE_EQ(ctx.InputSize(), 2);
+    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1);
     PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
                    "Inputs of AddOp must all be set");
     PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
@@ -33,7 +33,7 @@ protected:
 };
 
 class AddOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of add op");
@@ -48,7 +48,7 @@ The equation is: Out = X + Y
 };
 
 class AddOpGrad : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {}
 };
 

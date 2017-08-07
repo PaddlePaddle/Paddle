@@ -20,7 +20,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class RowWiseAddKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto out = context.Output<Tensor>(0);
     out->mutable_data<T>(context.GetPlace());

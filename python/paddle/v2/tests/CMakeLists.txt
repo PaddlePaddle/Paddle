@@ -1,2 +1,7 @@
-add_python_test(test_v2_api test_data_feeder.py test_op.py test_parameters.py
-test_layer.py test_rnn_layer.py test_topology.py test_image.py)
+py_test(test_op SRCS test_op.py)
+py_test(test_image SRCS test_image.py)
+py_test(test_layer SRCS test_layer.py)
+py_test(test_topology SRCS test_topology.py)
+py_test(test_rnn_layer SRCS test_rnn_layer.py)
+py_test(test_parameters SRCS test_parameters.py)
+py_test(test_data_feeder SRCS test_data_feeder.py)

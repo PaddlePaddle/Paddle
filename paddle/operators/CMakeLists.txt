@@ -63,5 +63,6 @@ op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
 op_library(fc_op
     SRCS fc_op.cc
     DEPS mul_op rowwise_add_op sigmoid_op softmax_op net_op)
-op_library(recurrent_op SRCS recurrent_op.cc DEPS op_desc tensor op_registry operator net_op)
+op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
+    DEPS op_desc tensor op_registry operator net_op)
 cc_test(recurrent_op_test SRCS recurrent_op_test.cc DEPS recurrent_op gtest mul_op add_op)
