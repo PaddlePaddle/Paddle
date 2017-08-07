@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "CosSimOp.h"
 #include "hl_base.h"
 #include "hl_device_functions.cuh"
-#include "CosSimOp.h"
 
 namespace paddle {
 
-template<int block_size>
+template <int block_size>
 __global__ void KeCosSim(real* output,
                          const real* input1,
                          const real* input2,
@@ -78,8 +78,8 @@ void hlCossim(real* output,
   dim3 threads(block_size, 1);
   dim3 grid(1, input1_height);
 
-  KeCosSim<block_size><<<grid, threads, 0, STREAM_DEFAULT>>>
-    (output, input1, input2, width, input1_height, input2_height, scale);
+  KeCosSim<block_size><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      output, input1, input2, width, input1_height, input2_height, scale);
   CHECK_SYNC("hlCossim failed");
 }
 
@@ -99,7 +99,7 @@ void CosSimForward<DEVICE_TYPE_GPU>(GpuMatrix& out_mat,
   hlCossim(out, x, y, dim, in1_mat.getHeight(), in2_mat.getHeight(), scale);
 }
 
-template<int block_size>
+template <int block_size>
 __global__ void KeCosSimDerivative(const real* grad,
                                    const real* output,
                                    const real* prev_out_x,
@@ -148,14 +148,13 @@ __global__ void KeCosSimDerivative(const real* grad,
   if (xy[0] == 0) {
     real reciprocal = 1.0 / (sqrt(xx[0]) * sqrt(yy[0]));
     for (int index = tid; index < width; index += block_size) {
-      prev_grad_x[index] +=
-        scale * grad[ty] * prev_out_y[index] * reciprocal;
+      prev_grad_x[index] += scale * grad[ty] * prev_out_y[index] * reciprocal;
       if (input2_height > 1) {
-        prev_grad_y[index] +=
-          scale * grad[ty] * prev_out_x[index] * reciprocal;
+        prev_grad_y[index] += scale * grad[ty] * prev_out_x[index] * reciprocal;
       } else {
-        paddle::paddleAtomicAdd(prev_grad_y + index,
-          scale * grad[ty] * prev_out_x[index] * reciprocal);
+        paddle::paddleAtomicAdd(
+            prev_grad_y + index,
+            scale * grad[ty] * prev_out_x[index] * reciprocal);
       }
     }
   } else {
@@ -163,17 +162,18 @@ __global__ void KeCosSimDerivative(const real* grad,
     real reciprocalSquareSumX = 1.0 / xx[0];
     real reciprocalSquareSumY = 1.0 / yy[0];
     for (int index = tid; index < width; index += block_size) {
-      prev_grad_x[index] += output[ty] * grad[ty] *
-        (prev_out_y[index] * reciprocalXY -
-         prev_out_x[index] * reciprocalSquareSumX);
+      prev_grad_x[index] +=
+          output[ty] * grad[ty] * (prev_out_y[index] * reciprocalXY -
+                                   prev_out_x[index] * reciprocalSquareSumX);
       if (input2_height > 1) {
-        prev_grad_y[index] += output[ty] * grad[ty] *
-          (prev_out_x[index] * reciprocalXY -
-           prev_out_y[index] * reciprocalSquareSumY);
+        prev_grad_y[index] +=
+            output[ty] * grad[ty] * (prev_out_x[index] * reciprocalXY -
+                                     prev_out_y[index] * reciprocalSquareSumY);
       } else {
-        paddle::paddleAtomicAdd(prev_grad_y + index, output[ty] * grad[ty] *
-          (prev_out_x[index] * reciprocalXY -
-           prev_out_y[index] * reciprocalSquareSumY));
+        paddle::paddleAtomicAdd(
+            prev_grad_y + index,
+            output[ty] * grad[ty] * (prev_out_x[index] * reciprocalXY -
+                                     prev_out_y[index] * reciprocalSquareSumY));
       }
     }
   }
@@ -198,9 +198,17 @@ void hlCossimDerivative(const real* grad,
   const int block_size = 256;
   dim3 threads(block_size, 1);
   dim3 grid(1, input1_height);
-  KeCosSimDerivative<block_size><<<grid, threads, 0, STREAM_DEFAULT>>>
-    (grad, output, prev_out_x, prev_out_y, prev_grad_x, prev_grad_y, width,
-        input1_height, input2_height, scale);
+  KeCosSimDerivative<block_size><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      grad,
+      output,
+      prev_out_x,
+      prev_out_y,
+      prev_grad_x,
+      prev_grad_y,
+      width,
+      input1_height,
+      input2_height,
+      scale);
   CHECK_SYNC("hlCossimDerivate failed");
 }
 
@@ -214,9 +222,9 @@ void CosSimBackward<DEVICE_TYPE_GPU>(const GpuMatrix& out_grad,
                                      real scale) {
   CHECK(out_grad.getData() && out_val.getData() && in1_val.getData() &&
         in2_val.getData() && in1_grad.getData() && in2_grad.getData());
-  CHECK(out_grad.useGpu_ && out_val.useGpu_ && in1_val.useGpu_
-        && in2_val.useGpu_ && in1_grad.useGpu_ && in2_grad.useGpu_)
-        << "Matrix types are not equally GPU";
+  CHECK(out_grad.useGpu_ && out_val.useGpu_ && in1_val.useGpu_ &&
+        in2_val.useGpu_ && in1_grad.useGpu_ && in2_grad.useGpu_)
+      << "Matrix types are not equally GPU";
 
   size_t dim = in1_val.getWidth();
   const real* grad = out_grad.getData();

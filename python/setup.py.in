@@ -14,7 +14,7 @@ packages=['paddle',
           'paddle.v2.framework.proto']
 
 setup_requires=["requests",
-                "numpy",
+                "numpy>=1.12",
                 "protobuf==3.1",
                 "recordio",
                 "matplotlib",

@@ -22,7 +22,9 @@ setup(name="py_paddle",
       package_data={'py_paddle':['*.py','_swig_paddle.so']},
       install_requires = [
         'nltk>=3.2.2',
-        'numpy>=1.8.0',      # The numpy is required.
+        # We use `numpy.flip` in `test_image.py`.
+        # `numpy.flip` is introduced in `1.12.0`
+        'numpy>=1.12.0',      # The numpy is required.
         'protobuf==${PROTOBUF_VERSION}'    # The paddle protobuf version
       ],
       url='http://www.paddlepaddle.org/',
