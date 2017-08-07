@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #pragma once
 
 #include <boost/variant.hpp>
@@ -6,6 +20,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "paddle/framework/attribute.pb.h"
+#include "paddle/framework/op_desc.pb.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
@@ -14,13 +31,19 @@ namespace framework {
 typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
                        std::vector<float>, std::vector<std::string>>
     Attribute;
+
 typedef std::unordered_map<std::string, Attribute> AttributeMap;
+
+template <typename T>
+AttrType AttrTypeID();
+
+Attribute GetAttrValue(const AttrDesc& attr_desc);
 
 // check whether a value(attribute) fit a certain limit
 template <typename T>
 class LargerThanChecker {
  public:
-  LargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
+  explicit LargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(T& value) const {
     PADDLE_ENFORCE(value > lower_bound_, "larger_than check fail");
   }
@@ -35,7 +58,8 @@ class LargerThanChecker {
 template <typename T>
 class DefaultValueSetter {
  public:
-  DefaultValueSetter(T default_value) : default_value_(default_value) {}
+  explicit DefaultValueSetter(T default_value)
+      : default_value_(default_value) {}
   void operator()(T& value) const { value = default_value_; }
 
  private:
@@ -78,7 +102,8 @@ class TypedAttrChecker {
   typedef std::function<void(T&)> ValueChecker;
 
  public:
-  TypedAttrChecker(const std::string& attr_name) : attr_name_(attr_name) {}
+  explicit TypedAttrChecker(const std::string& attr_name)
+      : attr_name_(attr_name) {}
 
   TypedAttrChecker& InEnum(const std::unordered_set<T>& range) {
     value_checkers_.push_back(EnumInContainer<T>(range));
