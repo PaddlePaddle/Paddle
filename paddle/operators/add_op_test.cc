@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #define private public
-#include <paddle/framework/op_registry.h>
+#include "paddle/framework/op_registry.h"
+
 USE_OP(add_two);
 // USE_OP(add_two_grad);
 

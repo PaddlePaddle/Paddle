@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/fill_zeros_like_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -52,8 +50,8 @@ The output will have the same size with input.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(fill_zeros_like, paddle::operators::FillZerosLikeOp,
-            paddle::operators::FillZerosLikeOpMaker);
+namespace ops = paddle::operators;
+REGISTER_OP(fill_zeros_like, ops::FillZerosLikeOp, ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
-    paddle::operators::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);
+    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);
