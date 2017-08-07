@@ -24,33 +24,20 @@ template <typename Place, typename T>
 class MulKernel : public OpKernel {
 public:
   void Compute(const ExecutionContext& context) const override {
-    auto input0 = context.Input<Tensor>("X");
-    auto input1 = context.Input<Tensor>("Y");
-    auto output = context.Output<Tensor>(0);
+    auto* input0 = context.Input<Tensor>("X");
+    auto* input1 = context.Input<Tensor>("Y");
+    auto* output = context.Output<Tensor>(0);
 
     output->mutable_data<T>(context.GetPlace());
 
-    auto out_dim = output->dims();
-    auto in0_dim = input0->dims();
-
-    int M = out_dim[0];
-    int N = out_dim[1];
-    int K = in0_dim[1];
-
-    paddle::operators::math::template gemm<Place, T>(
-        CblasNoTrans,
-        CblasNoTrans,
-        M,
-        N,
-        K,
+    paddle::operators::math::template matmul<Place, T>(
+        *input0,
+        false,
+        *input1,
+        false,
         1,
-        input0->data<T>(),
-        K,
-        input1->data<T>(),
-        N,
+        output,
         0,
-        output->data<T>(),
-        N,
         &const_cast<platform::DeviceContext&>(context.device_context()));
   }
 };

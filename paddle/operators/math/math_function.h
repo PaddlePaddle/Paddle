@@ -38,6 +38,7 @@ extern "C" {
 #endif
 
 #include <cmath>
+#include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
@@ -59,6 +60,17 @@ void gemm(const CBLAS_TRANSPOSE transA,
           T* C,
           const int ldc,
           platform::DeviceContext* context);
+
+// matrix multiply with continous memory
+template <typename Place, typename T>
+void matmul(const framework::Tensor& in1,
+            bool in1_T,
+            const framework::Tensor& in2,
+            bool in2_T,
+            float alpha,
+            framework::Tensor* out,
+            float beta,
+            platform::DeviceContext* context);
 
 }  // namespace math
 }  // namespace operators

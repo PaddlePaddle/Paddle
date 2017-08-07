@@ -103,6 +103,8 @@ class Tensor {
   template <typename T>
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
 
+  platform::Place place() const { return holder_->place(); }
+
  private:
   template <typename T>
   inline void check_memory_size() const;
