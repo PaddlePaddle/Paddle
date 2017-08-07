@@ -43,8 +43,6 @@ class Variable {
            std::type_index(typeid(T)) == std::type_index(holder_->Type());
   }
 
-  const std::type_info& Type() const { return holder_->Type(); }
-
  private:
   struct Placeholder {
     virtual ~Placeholder() {}

@@ -42,7 +42,6 @@ void RecurrentAlgorithm::InferShape(const Scope& scope) const {
       rnn::LinkMemories(step_scopes, arg_->memories, i, -1,
                         true /*infer_shape_mode*/);
     }
-
     net->GetMutable<NetOp>()->InferShape(*step_scopes[i]);
   }
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
