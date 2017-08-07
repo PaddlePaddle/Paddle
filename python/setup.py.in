@@ -19,7 +19,7 @@ packages=['paddle',
           'py_paddle']
 
 setup_requires=["requests",
-                "numpy>=1.8.0",
+                "numpy>=1.12",
                 "protobuf==3.1",
                 "recordio",
                 "matplotlib",

@@ -8,10 +8,13 @@ class TestSGD(unittest.TestCase):
 
     def setUp(self):
         self.type = "sgd"
-        self.param = numpy.random.random((342, 345)).astype("float32")
-        self.grad = numpy.random.random((342, 345)).astype("float32")
-        self.learning_rate = 0.1
-        self.param_out = self.param - self.learning_rate * self.grad
+        w = numpy.random.random((102, 105)).astype("float32")
+        g = numpy.random.random((102, 105)).astype("float32")
+        lr = 0.1
+
+        self.inputs = {'param': w, 'grad': g}
+        self.attrs = {'learning_rate': lr}
+        self.outputs = {'param_out': w - lr * g}
 
 
 if __name__ == "__main__":

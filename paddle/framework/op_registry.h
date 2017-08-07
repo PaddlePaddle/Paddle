@@ -19,56 +19,13 @@ limitations under the License. */
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
-#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/attribute.h"
 #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
 
 namespace paddle {
 namespace framework {
-
-// helper class to set attribute type
-struct AttrTypeHelper {
-  template <typename T>
-  static void SetAttrType(AttrProto* attr);
-
-  static Attribute GetAttrValue(const AttrDesc& attr_desc) {
-    switch (attr_desc.type()) {
-      case paddle::framework::AttrType::INT: {
-        return attr_desc.i();
-      }
-      case paddle::framework::AttrType::FLOAT: {
-        return attr_desc.f();
-      }
-      case paddle::framework::AttrType::STRING: {
-        return attr_desc.s();
-      }
-      case paddle::framework::AttrType::INTS: {
-        std::vector<int> val(attr_desc.ints_size());
-        for (int i = 0; i < attr_desc.ints_size(); ++i) {
-          val[i] = attr_desc.ints(i);
-        }
-        return val;
-      }
-      case paddle::framework::AttrType::FLOATS: {
-        std::vector<float> val(attr_desc.floats_size());
-        for (int i = 0; i < attr_desc.floats_size(); ++i) {
-          val[i] = attr_desc.floats(i);
-        }
-        return val;
-      }
-      case paddle::framework::AttrType::STRINGS: {
-        std::vector<std::string> val(attr_desc.strings_size());
-        for (int i = 0; i < attr_desc.strings_size(); ++i) {
-          val[i] = attr_desc.strings(i);
-        }
-        return val;
-      }
-    }
-    PADDLE_ENFORCE(false, "Unknown OpDesc::AttrDesc::type !");
-    return boost::blank();
-  }
-};
 
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
@@ -86,43 +43,46 @@ class OpProtoAndCheckerMaker {
   }
 
  protected:
-  void AddInput(const std::string& name, const std::string& comment,
-                bool multiple = false, bool ignore_gradient = false) {
+  struct VariableBuilder {
+    VarProto* var_;
+    std::function<void()> on_multiple_;
+    std::function<void()> on_temporary_;
+
+    VariableBuilder& SetMultiple() {
+      var_->set_multiple(true);
+      on_multiple_();
+      return *this;
+    }
+
+    VariableBuilder& SetTemporary() {
+      PADDLE_ENFORCE(bool(on_temporary_), "Cannot set temporary");
+      var_->set_temporary(true);
+      on_temporary_();
+      return *this;
+    }
+
+    VariableBuilder& IgnoreGradient() {
+      var_->set_ignore_gradient(true);
+      return *this;
+    }
+  };
+
+  VariableBuilder AddInput(const std::string& name,
+                           const std::string& comment) {
     auto input = proto_->mutable_inputs()->Add();
     *input->mutable_name() = name;
     *input->mutable_comment() = comment;
-    input->set_ignore_gradient(ignore_gradient);
-    input->set_multiple(multiple);
-    if (multiple) {
-      SetHasMultipleInput();
-    }
+    return VariableBuilder{input, [=] { this->SetHasMultipleInput(); },
+                           nullptr};
   }
 
-  void AddInputs(const std::string& name, const std::string& comment,
-                 bool ignore_gradient = false) {
-    AddInput(name, comment, true, ignore_gradient);
-  }
-
-  void AddOutput(const std::string& name, const std::string& comment,
-                 bool temporary = false, bool multiple = false,
-                 bool ignore_gradient = false) {
+  VariableBuilder AddOutput(const std::string& name,
+                            const std::string& comment) {
     auto output = proto_->mutable_outputs()->Add();
     *output->mutable_name() = name;
     *output->mutable_comment() = comment;
-    output->set_ignore_gradient(ignore_gradient);
-    output->set_multiple(multiple);
-    if (multiple) {
-      SetHasMultipleOutput();
-    }
-    output->set_temporary(temporary);
-    if (temporary) {
-      SetHasTemporaryOutput();
-    }
-  }
-
-  void AddOutputs(const std::string& name, const std::string& comment,
-                  bool temporary = false, bool ignore_gradient = false) {
-    AddOutput(name, comment, temporary, true, ignore_gradient);
+    return VariableBuilder{output, [=] { this->SetHasMultipleOutput(); },
+                           [=] { this->SetHasTemporaryOutput(); }};
   }
 
   template <typename T>
@@ -133,7 +93,7 @@ class OpProtoAndCheckerMaker {
     *attr->mutable_name() = name;
     *attr->mutable_comment() = comment;
     attr->set_generated(generated);
-    AttrTypeHelper::SetAttrType<T>(attr);
+    attr->set_type(AttrTypeID<T>());
     return op_checker_->AddAttrChecker<T>(name);
   }
 
@@ -294,16 +254,16 @@ class OpRegistry {
 
     AttributeMap attrs;
     for (auto& attr : op_desc.attrs()) {
-      attrs[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
+      attrs[attr.name()] = GetAttrValue(attr);
     }
 
     return CreateOp(op_desc.type(), inputs, outputs, attrs);
   }
 
-  static std::shared_ptr<OperatorBase> CreateGradOp(
-      std::shared_ptr<OperatorBase> op) {
-    GradOpBuilder builder(op.get());
-    std::shared_ptr<OperatorBase> grad_op(builder.Build());
+  static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
+    PADDLE_ENFORCE(!op.IsNetOp(),
+                   "Use framework::Backward to get backward ops");
+    std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
     grad_op->Init();
     return grad_op;
   }
@@ -311,7 +271,7 @@ class OpRegistry {
   static std::unordered_map<std::string, OpProto>& protos() {
     static std::unordered_map<std::string, OpProto> protos_;
     return protos_;
-  };
+  }
 
   static std::unordered_map<std::string, std::string>& grad_ops() {
     static std::unordered_map<std::string, std::string> grad_ops_;
@@ -333,12 +293,12 @@ class OpRegistry {
   static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
     static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
     return op_checkers_;
-  };
+  }
 
   static void GenerateTempVariableName(OperatorBase* op) {
     static std::atomic<size_t> gUniqId(0UL);
     for (auto& outname : op->outputs_) {
-      if (outname == OperatorBase::TMP_VAR_NAME()) {
+      if (outname == kTempVarName) {
         outname += op->type_;
         outname += "@";
         outname += std::to_string(gUniqId.fetch_add(1));
@@ -350,7 +310,7 @@ class OpRegistry {
 template <typename OpType, typename ProtoMakerType>
 class OpRegisterHelper {
  public:
-  OpRegisterHelper(const char* op_type) {
+  explicit OpRegisterHelper(const char* op_type) {
     OpRegistry::RegisterOp<OpType, ProtoMakerType>(op_type);
   }
 };
@@ -395,6 +355,14 @@ class GradOpRegisterHelper {
   int __op_gradient_register_##__op_type##__grad_op_type##_handle__() {        \
     return 0;                                                                  \
   }
+
+/**
+ * Macro to Forbid user register Gradient Operator.
+ */
+#define NO_GRADIENT(__op_type)                          \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                       \
+      __reg_gradient_op__##__op_type##__op_type##_grad, \
+      "NO_GRADIENT must be in global namespace")
 
 /**
  * Macro to Register OperatorKernel.

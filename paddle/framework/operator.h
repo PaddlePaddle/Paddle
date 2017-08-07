@@ -14,12 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
@@ -31,22 +32,29 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename T>
-struct EigenDeviceConverter;
+/// If a variable is a empty variable, that name will be used.
+const std::string kEmptyVarName = "@EMPTY@";
 
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
+/// If a variable is a temporary variable, that name will be set in Python,
+/// but it will be convert to a unique name in scope after OpCreator.
+const std::string kTempVarName = "@TEMP@";
 
-#ifndef PADDLE_ONLY_CPU
-template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
-#endif
+/// If a variable's name has a certain suffix, it means that the
+/// variable is the gradient of another varibale.
+/// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+const std::string kGradVarSuffix = "@GRAD";
+
+/// Variables with this suffix are supposed to be filled up with zeros.
+const std::string kZeroVarSuffix = "@ZERO";
+
+inline std::string GradVarName(const std::string& var_name) {
+  return var_name + kGradVarSuffix;
+}
 
 class OperatorBase;
+class InferShapeContext;
+class ExecutionContext;
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -55,18 +63,6 @@ class OperatorBase;
  */
 class OperatorBase {
  public:
-  /// If a variable is a empty variable, that name will be used.
-  static std::string EMPTY_VAR_NAME() { return "@EMPTY@"; }
-
-  /// If a variable is a temporary variable, that name will be set in Python,
-  /// but it will be convert to a unique name in scope after OpCreator.
-  static std::string TMP_VAR_NAME() { return "@TEMP@"; }
-
-  /// If a variable's name has a certain suffix, it means that the
-  /// variable is the gradient of another varibale.
-  /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
-  static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
-
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -84,16 +80,20 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
+  virtual void InferShape(const Scope& scope) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const std::shared_ptr<Scope>& scope,
+  virtual void Run(const Scope& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
   virtual bool IsNetOp() const { return false; }
 
+  /// rename inputs outputs name
+  void Rename(const std::string& old_name, const std::string& new_name);
+
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
+
   //! Get a input which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
@@ -105,90 +105,182 @@ class OperatorBase {
 
  public:
   std::string type_;
+  // NOTE: in case of OpGrad, inputs_ contains:
+  // I (Inputs)
+  // O (Outputs)
+  // OG (Output Gradients)
   std::vector<std::string> inputs_;
+  // NOTE: in case of OpGrad, outputs_ contains
+  // IG (Inputs Gradients)
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
   // store the arguments' offset described in op_desc.
   std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
-class KernelContext {
+class OperatorContext {
  public:
-  KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
-                const platform::DeviceContext& device_context)
-      : op_(*op), scope_(scope), device_context_(device_context) {}
+  OperatorContext(const OperatorBase* op, const Scope& scope)
+      : op_(*op), scope_(scope) {}
 
-  const Variable* Input(int index) const {
-    return scope_->GetVariable(op_.inputs_[index]);
+  size_t InputSize() const { return op_.inputs_.size(); }
+
+  size_t OutputSize() const { return op_.outputs_.size(); }
+
+  const Variable* InputVar(const size_t index) const {
+    return scope_.FindVar(op_.inputs_.at(index));
   }
 
-  Variable* Output(int index) const {
-    return scope_->GetVariable(op_.outputs_[index]);
+  Variable* OutputVar(const size_t index) const {
+    return scope_.FindVar(op_.outputs_.at(index));
   }
 
-  const Variable* Input(const std::string& name) const {
-    return scope_->GetVariable(op_.Input(name));
+  const Variable* InputVar(const std::string& name) const {
+    return scope_.FindVar(op_.Input(name));
   }
 
-  const Variable* Output(const std::string& name) const {
-    return scope_->GetVariable(op_.Output(name));
+  Variable* OutputVar(const std::string& name) const {
+    return scope_.FindVar(op_.Output(name));
   }
 
-  const std::vector<const Variable*> Inputs(const std::string& name) const {
+  const std::vector<const Variable*> MultiInputVar(
+      const std::string& name) const {
     auto names = op_.Inputs(name);
     std::vector<const Variable*> res;
+    res.reserve(names.size());
     std::transform(
-        names.begin(), names.end(), res.begin(),
-        [this](const std::string& name) { return scope_->GetVariable(name); });
+        names.begin(), names.end(), std::back_inserter(res),
+        [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
 
-  const std::vector<const Variable*> Outputs(const std::string& name) const {
+  std::vector<const Variable*> MultiOutputVar(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<const Variable*> res;
+    res.reserve(names.size());
     std::transform(
-        names.begin(), names.end(), res.begin(),
-        [this](const std::string& name) { return scope_->GetVariable(name); });
+        names.begin(), names.end(), std::back_inserter(res),
+        [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
+
+  template <typename T>
+  const T* Input(const size_t index) const {
+    auto var = InputVar(index);
+    PADDLE_ENFORCE(var != nullptr, "Input(%d) should not be nullptr", index);
+    return &var->Get<T>();
+  }
+
+  template <typename T>
+  T* Output(const size_t index) const {
+    auto var = OutputVar(index);
+    PADDLE_ENFORCE(
+        var != nullptr,
+        "Output(%d) not be nullptr, which means variable [%s] does not "
+        "exist in scope",
+        index, op_.outputs_[index]);
+    return var->GetMutable<T>();
+  }
+
+  template <typename T>
+  const T* Input(const std::string& name) const {
+    auto var = InputVar(name);
+    PADDLE_ENFORCE(var != nullptr, "Input(%s) should not be nullptr", name);
+    return &var->Get<T>();
+  }
+
+  template <typename T>
+  T* Output(const std::string& name) const {
+    auto var = OutputVar(name);
+    PADDLE_ENFORCE(var != nullptr, "Output(%s) should not be nullptr", name);
+    return var->GetMutable<T>();
+  }
+
+  template <typename T>
+  const std::vector<const T*> MultiInput(const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<const T*> res;
+    res.reserve(names.size());
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     PADDLE_ENFORCE(var != nullptr,
+                                    "MultiInput(%s:%s) should not be nullptr",
+                                    name, sub_name);
+                     return &var->Get<T>();
+                   });
+    return res;
+  }
+
+  template <typename T>
+  std::vector<const T*> MultiOutput(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    std::vector<const T*> res;
+    res.reserve(names.size());
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     PADDLE_ENFORCE(var != nullptr,
+                                    "MultiOutput(%s:%s) should not be nullptr",
+                                    name, sub_name);
+                     return var->GetMutable<T>();
+                   });
+    return res;
+  }
+
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
+
+class InferShapeContext : public OperatorContext {
+ public:
+  InferShapeContext(const OperatorBase* op, const Scope& scope)
+      : OperatorContext(op, scope) {}
+};
+
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+#endif
+
+class ExecutionContext : public OperatorContext {
+ public:
+  ExecutionContext(const OperatorBase* op, const Scope& scope,
+                   const platform::DeviceContext* device_context)
+      : OperatorContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
             typename DeviceType =
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
-  DeviceType* GetEigenDevice() const;
+  DeviceType& GetEigenDevice() const;
 
-  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+  platform::Place GetPlace() const { return device_context_->GetPlace(); }
 
-  const OperatorBase& op_;
-  const std::shared_ptr<Scope>& scope_;
-  const platform::DeviceContext& device_context_;
+  const platform::DeviceContext* device_context_;
 };
 
 class OpKernel {
  public:
   /**
-   * KernelContext is the only parameter of Kernel Run function.
+   * ExecutionContext is the only parameter of Kernel Run function.
    * Run will get input/output variables, state such as momentum and
    * device resource such as CUDA stream, cublas handle, etc. from
-   * KernelContext. User should construct it before run the Operator.
+   * ExecutionContext. User should construct it before run the Operator.
    */
 
-  virtual void Compute(const KernelContext& context) const = 0;
+  virtual void Compute(const ExecutionContext& context) const = 0;
 
   virtual ~OpKernel() {}
-};
-
-template <typename T>
-struct VarToTensor {};
-
-template <>
-struct VarToTensor<Tensor*> {
-  Tensor* operator()(Variable* var) { return var->GetMutable<Tensor>(); }
-};
-
-template <>
-struct VarToTensor<const Tensor*> {
-  const Tensor* operator()(Variable* var) { return &var->Get<Tensor>(); }
 };
 
 class OperatorWithKernel : public OperatorBase {
@@ -197,7 +289,7 @@ class OperatorWithKernel : public OperatorBase {
     platform::Place place_;
 
     OpKernelKey() = default;
-    OpKernelKey(const platform::DeviceContext& dev_ctx) {
+    explicit OpKernelKey(const platform::DeviceContext& dev_ctx) {
       place_ = dev_ctx.GetPlace();
     }
 
@@ -216,10 +308,14 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const Scope& scope) const {
+    InferShape(InferShapeContext(this, scope));
+  }
+
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(KernelContext(this, scope, dev_ctx));
+    opKernel->Compute(ExecutionContext(this, scope, &dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -228,34 +324,8 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  void InferShape(const std::shared_ptr<Scope>& scope) const final {
-    std::vector<const Tensor*> ins;
-    VarNamesToTensors(scope, inputs_, &ins);
-    std::vector<Tensor*> outs;
-    VarNamesToTensors(scope, outputs_, &outs);
-    InferShape(ins, outs);
-  };
-
- private:
-  template <typename T>
-  void VarNamesToTensors(const std::shared_ptr<Scope>& scope,
-                         const std::vector<std::string>& var_names,
-                         std::vector<T>* container) const {
-    container->reserve(var_names.size());
-    VarToTensor<T> convert;
-    for (auto& name : var_names) {
-      auto var = scope->GetVariable(name);
-      if (var != nullptr) {
-        container->push_back(convert(var));
-      } else {
-        container->push_back(nullptr);
-      }
-    }
-  }
-
  protected:
-  virtual void InferShape(const std::vector<const Tensor*>& inputs,
-                          const std::vector<Tensor*>& outputs) const = 0;
+  virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
 
 }  // namespace framework

@@ -24,42 +24,49 @@ class OpTestMeta(type):
             func = getattr(creation.op_creations, self.type, None)
             self.assertIsNotNone(func)
 
-            scope = core.Scope(None)
+            scope = core.Scope()
             kwargs = dict()
+            places = []
+            places.append(core.CPUPlace())
+            if core.is_compile_gpu():
+                places.append(core.GPUPlace(0))
 
-            for in_name in func.all_input_args:
-                if hasattr(self, in_name):
-                    kwargs[in_name] = in_name
-                    var = scope.create_var(in_name).get_tensor()
-                    arr = getattr(self, in_name)
-                    var.set_dims(arr.shape)
-                    var.set(arr)
-                else:
-                    kwargs[in_name] = "@EMPTY@"
+            for place in places:
+                for in_name in func.all_input_args:
+                    if hasattr(self, "inputs") and in_name in self.inputs:
+                        kwargs[in_name] = in_name
+                        var = scope.new_var(in_name).get_tensor()
+                        arr = self.inputs[in_name]
+                        var.set_dims(arr.shape)
+                        var.set(arr, place)
+                    else:
+                        kwargs[in_name] = "@EMPTY@"
 
-            for out_name in func.all_output_args:
-                if hasattr(self, out_name):
+                for out_name in func.all_output_args:
+                    if not hasattr(self, "outputs"):
+                        raise ValueError(
+                            "The test op must set self.outputs dict.")
+                    if out_name not in self.outputs:
+                        raise ValueError("The %s is not in self.outputs dict." %
+                                         (out_name))
                     kwargs[out_name] = out_name
-                    scope.create_var(out_name).get_tensor()
+                    scope.new_var(out_name).get_tensor()
 
-            for attr_name in func.all_attr_args:
-                if hasattr(self, attr_name):
-                    kwargs[attr_name] = getattr(self, attr_name)
+                for attr_name in func.all_attr_args:
+                    if hasattr(self, "attrs") and attr_name in self.attrs:
+                        kwargs[attr_name] = self.attrs[attr_name]
 
-            op = func(**kwargs)
+                op = func(**kwargs)
 
-            op.infer_shape(scope)
+                op.infer_shape(scope)
 
-            ctx = core.DeviceContext.cpu_context()
-            op.run(scope, ctx)
+                ctx = core.DeviceContext.create(place)
+                op.run(scope, ctx)
 
-            for out_name in func.all_output_args:
-                actual = numpy.array(scope.get_var(out_name).get_tensor())
-                expect = getattr(self, out_name)
-                # TODO(qijun) The default decimal is 7, but numpy.dot and eigen.mul
-                # has some diff, and could not pass unittest. So I set decimal 3 here.
-                # And I will check this in future.
-                numpy.testing.assert_almost_equal(actual, expect, decimal=3)
+                for out_name in func.all_output_args:
+                    actual = numpy.array(scope.find_var(out_name).get_tensor())
+                    expect = self.outputs[out_name]
+                    numpy.isclose(actual, expect)
 
         obj.test_all = test_all
         return obj

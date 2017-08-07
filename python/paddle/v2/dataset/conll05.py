@@ -233,5 +233,5 @@ def convert(path):
     """
     Converts dataset to recordio format
     """
-    paddle.v2.dataset.common.convert(path, test(), 10, "conl105_train")
-    paddle.v2.dataset.common.convert(path, test(), 10, "conl105_test")
+    paddle.v2.dataset.common.convert(path, test(), 1000, "conl105_train")
+    paddle.v2.dataset.common.convert(path, test(), 1000, "conl105_test")

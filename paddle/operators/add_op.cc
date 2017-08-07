@@ -18,22 +18,22 @@ namespace paddle {
 namespace operators {
 
 class AddOp : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "Input size of AddOp must be two");
-    PADDLE_ENFORCE(outputs.size() == 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE(
-        inputs[0] != nullptr && inputs[1] != nullptr && outputs[0] != nullptr,
-        "Inputs/Outputs of AddOp must all be set");
-    PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
+ protected:
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx.InputSize(), 2);
+    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1);
+    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
+                   "Inputs of AddOp must all be set");
+    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
+                   "Outputs of AddOp must all be set");
+    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
                    "Two input of Add Op's dimension must be same.");
-    outputs[0]->Resize(inputs[0]->dims());
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
 class AddOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of add op");
@@ -48,13 +48,8 @@ The equation is: Out = X + Y
 };
 
 class AddOpGrad : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "AddOpGrad";
-    return "";
-  }
+ protected:
+  void InferShape(const InferShapeContext &ctx) const override {}
 };
 
 }  // namespace operators

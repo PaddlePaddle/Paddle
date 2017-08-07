@@ -17,17 +17,16 @@ namespace paddle {
 namespace operators {
 
 class SigmoidOp : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 1, "Sigmoid Op only have one input");
-    PADDLE_ENFORCE(outputs.size() == 1, "Sigmoid Op only have one output");
-    outputs[0]->Resize(inputs[0]->dims());
+ protected:
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
+    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
 class SigmoidOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "sigmoid input");
@@ -37,12 +36,9 @@ public:
 };
 
 class SigmoidOpGrad : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "SigmoidGrad";
-    return "";
+ protected:
+  void InferShape(const InferShapeContext &ctx) const override {
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
@@ -53,3 +49,5 @@ REGISTER_OP(sigmoid, ops::SigmoidOp, ops::SigmoidOpMaker);
 REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, ops::SigmoidOpGrad);
 
 REGISTER_OP_CPU_KERNEL(sigmoid, ops::SigmoidKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sigmoid_grad,
+                       ops::SigmoidGradKernel<ops::CPUPlace, float>);

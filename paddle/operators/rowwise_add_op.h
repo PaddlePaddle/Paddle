@@ -20,22 +20,20 @@ namespace operators {
 
 template <typename Place, typename T>
 class RowWiseAddKernel : public OpKernel {
-public:
-  void Compute(const KernelContext& context) const override {
-    auto in0 = context.Input(0)->Get<Tensor>();
-    auto in1 = context.Input(1)->Get<Tensor>();
-    auto* out = context.Output(0)->GetMutable<Tensor>();
+ public:
+  void Compute(const ExecutionContext& context) const override {
+    auto out = context.Output<Tensor>(0);
     out->mutable_data<T>(context.GetPlace());
 
-    auto input = EigenMatrix<T>::From(in0);
-    auto bias = EigenVector<T>::From(in1);
+    auto input = EigenMatrix<T>::From(*context.Input<Tensor>(0));
+    auto bias = EigenVector<T>::From(*context.Input<Tensor>(1));
     auto output = EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);
     const int rest_size = input.size() / bias_size;
     Eigen::DSizes<int, 1> one_d(input.size());
     Eigen::DSizes<int, 1> bcast(rest_size);
-    output.reshape(one_d).device(*(context.GetEigenDevice<Place>())) =
+    output.reshape(one_d).device(context.GetEigenDevice<Place>()) =
         input.reshape(one_d) + bias.broadcast(bcast).reshape(one_d);
   }
 };

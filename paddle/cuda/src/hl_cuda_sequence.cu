@@ -16,36 +16,36 @@ limitations under the License. */
 #include "hl_device_functions.cuh"
 #include "paddle/utils/Logging.h"
 
-__global__ void KeMaxSequenceForward(real *input,
-                                     const int *sequence,
+__global__ void KeMaxSequenceForward(real* input,
+                                     const int* sequence,
                                      real* output,
-                                     int *index,
+                                     int* index,
                                      int numSequences,
                                      int dim) {
   int dimIdx = threadIdx.x;
   int sequenceId = blockIdx.x;
   if (sequenceId >= numSequences) return;
   int start = sequence[sequenceId];
-  int end = sequence[sequenceId+1];
+  int end = sequence[sequenceId + 1];
 
   for (int i = dimIdx; i < dim; i += blockDim.x) {
     real tmp = -HL_FLOAT_MAX;
     int tmpId = -1;
     for (int insId = start; insId < end; insId++) {
-      if (tmp < input[insId*dim + i]) {
-        tmp = input[insId*dim + i];
+      if (tmp < input[insId * dim + i]) {
+        tmp = input[insId * dim + i];
         tmpId = insId;
       }
     }
-    output[sequenceId*dim + i] = tmp;
-    index[sequenceId*dim + i] = tmpId;
+    output[sequenceId * dim + i] = tmp;
+    index[sequenceId * dim + i] = tmpId;
   }
 }
 
 void hl_max_sequence_forward(real* input,
                              const int* sequence,
                              real* output,
-                             int *index,
+                             int* index,
                              int numSequences,
                              int dim) {
   CHECK_NOTNULL(input);
@@ -55,29 +55,23 @@ void hl_max_sequence_forward(real* input,
 
   dim3 threads(256, 1);
   dim3 grid(numSequences, 1);
-  KeMaxSequenceForward<<< grid, threads, 0, STREAM_DEFAULT >>>
-      (input, sequence, output, index, numSequences, dim);
+  KeMaxSequenceForward<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      input, sequence, output, index, numSequences, dim);
   CHECK_SYNC("hl_max_sequence_forward failed");
 }
 
-__global__ void KeMaxSequenceBackward(real *outputGrad,
-                                      int *index,
-                                      real* inputGrad,
-                                      int numSequences,
-                                      int dim) {
+__global__ void KeMaxSequenceBackward(
+    real* outputGrad, int* index, real* inputGrad, int numSequences, int dim) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   int colIdx = idx % dim;
-  if (idx < numSequences*dim) {
+  if (idx < numSequences * dim) {
     int insId = index[idx];
     inputGrad[insId * dim + colIdx] += outputGrad[idx];
   }
 }
 
-void hl_max_sequence_backward(real* outputGrad,
-                              int *index,
-                              real* inputGrad,
-                              int numSequences,
-                              int dim) {
+void hl_max_sequence_backward(
+    real* outputGrad, int* index, real* inputGrad, int numSequences, int dim) {
   CHECK_NOTNULL(outputGrad);
   CHECK_NOTNULL(index);
   CHECK_NOTNULL(inputGrad);
@@ -85,12 +79,12 @@ void hl_max_sequence_backward(real* outputGrad,
   unsigned int blocks = (numSequences * dim + 128 - 1) / 128;
   dim3 threads(128, 1);
   dim3 grid(blocks, 1);
-  KeMaxSequenceBackward<<< grid, threads, 0, STREAM_DEFAULT >>>
-      (outputGrad, index, inputGrad, numSequences, dim);
+  KeMaxSequenceBackward<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      outputGrad, index, inputGrad, numSequences, dim);
   CHECK_SYNC("hl_max_sequence_backward failed");
 }
 
-template<int blockDimX, int blockDimY, int gridDimX, bool AddRow>
+template <int blockDimX, int blockDimY, int gridDimX, bool AddRow>
 __global__ void KeMatrixAddRows(real* output,
                                 real* table,
                                 int* ids,
@@ -104,8 +98,8 @@ __global__ void KeMatrixAddRows(real* output,
   while (sampleId < numSamples) {
     int tableId = ids[sampleId];
     if ((0 <= tableId) && (tableId < tableSize)) {
-      real *outputData = output + sampleId * dim;
-      real *tableData = table + tableId * dim;
+      real* outputData = output + sampleId * dim;
+      real* tableData = table + tableId * dim;
       for (int i = idx; i < dim; i += blockDimX) {
         if (AddRow == 0) {
           outputData[i] += tableData[i];
@@ -114,24 +108,27 @@ __global__ void KeMatrixAddRows(real* output,
         }
       }
     }
-    sampleId += blockDimY*gridDimX;
+    sampleId += blockDimY * gridDimX;
   }
 }
 
-template<int blockDimX, int blockDimY, int gridDimX, bool seq2batch, bool isAdd>
-__global__
-void KeSequence2Batch(real *batch,
-                      real *sequence,
-                      const int *batchIndex,
-                      int seqWidth,
-                      int batchCount) {
+template <int blockDimX,
+          int blockDimY,
+          int gridDimX,
+          bool seq2batch,
+          bool isAdd>
+__global__ void KeSequence2Batch(real* batch,
+                                 real* sequence,
+                                 const int* batchIndex,
+                                 int seqWidth,
+                                 int batchCount) {
   int idx = threadIdx.x;
   int idy = threadIdx.y;
   int id = blockIdx.x + idy * gridDimX;
   while (id < batchCount) {
     int seqId = batchIndex[id];
-    real* batchData = batch + id*seqWidth;
-    real* seqData = sequence + seqId*seqWidth;
+    real* batchData = batch + id * seqWidth;
+    real* seqData = sequence + seqId * seqWidth;
     for (int i = idx; i < seqWidth; i += blockDimX) {
       if (seq2batch) {
         if (isAdd) {
@@ -147,13 +144,13 @@ void KeSequence2Batch(real *batch,
         }
       }
     }
-    id += blockDimY*gridDimX;
+    id += blockDimY * gridDimX;
   }
 }
 
-void hl_sequence2batch_copy(real *batch,
-                            real *sequence,
-                            const int *batchIndex,
+void hl_sequence2batch_copy(real* batch,
+                            real* sequence,
+                            const int* batchIndex,
                             int seqWidth,
                             int batchCount,
                             bool seq2batch) {
@@ -164,18 +161,18 @@ void hl_sequence2batch_copy(real *batch,
   dim3 threads(128, 8);
   dim3 grid(8, 1);
   if (seq2batch) {
-    KeSequence2Batch<128, 8, 8, 1, 0><<< grid, threads, 0, STREAM_DEFAULT >>>
-      (batch, sequence, batchIndex, seqWidth, batchCount);
+    KeSequence2Batch<128, 8, 8, 1, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+        batch, sequence, batchIndex, seqWidth, batchCount);
   } else {
-    KeSequence2Batch<128, 8, 8, 0, 0><<< grid, threads, 0, STREAM_DEFAULT >>>
-      (batch, sequence, batchIndex, seqWidth, batchCount);
+    KeSequence2Batch<128, 8, 8, 0, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+        batch, sequence, batchIndex, seqWidth, batchCount);
   }
   CHECK_SYNC("hl_sequence2batch_copy failed");
 }
 
-void hl_sequence2batch_add(real *batch,
-                           real *sequence,
-                           int *batchIndex,
+void hl_sequence2batch_add(real* batch,
+                           real* sequence,
+                           int* batchIndex,
                            int seqWidth,
                            int batchCount,
                            bool seq2batch) {
@@ -186,23 +183,22 @@ void hl_sequence2batch_add(real *batch,
   dim3 threads(128, 8);
   dim3 grid(8, 1);
   if (seq2batch) {
-    KeSequence2Batch<128, 8, 8, 1, 1><<< grid, threads, 0, STREAM_DEFAULT >>>
-      (batch, sequence, batchIndex, seqWidth, batchCount);
+    KeSequence2Batch<128, 8, 8, 1, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+        batch, sequence, batchIndex, seqWidth, batchCount);
   } else {
-    KeSequence2Batch<128, 8, 8, 0, 1><<< grid, threads, 0, STREAM_DEFAULT >>>
-      (batch, sequence, batchIndex, seqWidth, batchCount);
+    KeSequence2Batch<128, 8, 8, 0, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+        batch, sequence, batchIndex, seqWidth, batchCount);
   }
   CHECK_SYNC("hl_sequence2batch_add failed");
 }
 
-template<bool normByTimes, bool seq2batch>
-__global__
-void KeSequence2BatchPadding(real* batch,
-                             real* sequence,
-                             const int* sequenceStartPositions,
-                             const size_t sequenceWidth,
-                             const size_t maxSequenceLength,
-                             const size_t numSequences) {
+template <bool normByTimes, bool seq2batch>
+__global__ void KeSequence2BatchPadding(real* batch,
+                                        real* sequence,
+                                        const int* sequenceStartPositions,
+                                        const size_t sequenceWidth,
+                                        const size_t maxSequenceLength,
+                                        const size_t numSequences) {
   int batchIdx = blockIdx.y;
   int sequenceStart = sequenceStartPositions[batchIdx];
   int sequenceLength = sequenceStartPositions[batchIdx + 1] - sequenceStart;
@@ -269,45 +265,56 @@ void hl_sequence2batch_copy_padding(real* batch,
   int blockDimY = CUDA_BLOCK_SIZE / blockDimX;
   dim3 threads(blockDimX, blockDimY);
 
-  int gridDimX = (maxSequenceLength * blockDimX + CUDA_BLOCK_SIZE - 1) /
-      CUDA_BLOCK_SIZE;
+  int gridDimX = (maxSequenceLength + blockDimY - 1) / blockDimY;
   int gridDimY = numSequences;
   dim3 grid(gridDimX, gridDimY);
 
   if (seq2batch) {
     /* sequence -> batch */
     if (normByTimes) {
-      KeSequence2BatchPadding<1, 1><<< grid, threads, 0, STREAM_DEFAULT >>>(
-              batch, sequence, sequenceStartPositions,
-              sequenceWidth, maxSequenceLength, numSequences);
+      KeSequence2BatchPadding<1, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+          batch,
+          sequence,
+          sequenceStartPositions,
+          sequenceWidth,
+          maxSequenceLength,
+          numSequences);
     } else {
-      KeSequence2BatchPadding<0, 1><<< grid, threads, 0, STREAM_DEFAULT >>>(
-              batch, sequence, sequenceStartPositions,
-              sequenceWidth, maxSequenceLength, numSequences);
+      KeSequence2BatchPadding<0, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+          batch,
+          sequence,
+          sequenceStartPositions,
+          sequenceWidth,
+          maxSequenceLength,
+          numSequences);
     }
   } else {
     /* batch -> sequence */
     if (normByTimes) {
-      KeSequence2BatchPadding<1, 0><<< grid, threads, 0, STREAM_DEFAULT >>>(
-              batch, sequence, sequenceStartPositions,
-              sequenceWidth, maxSequenceLength, numSequences);
+      KeSequence2BatchPadding<1, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+          batch,
+          sequence,
+          sequenceStartPositions,
+          sequenceWidth,
+          maxSequenceLength,
+          numSequences);
     } else {
-      KeSequence2BatchPadding<0, 0><<< grid, threads, 0, STREAM_DEFAULT >>>(
-              batch, sequence, sequenceStartPositions,
-              sequenceWidth, maxSequenceLength, numSequences);
+      KeSequence2BatchPadding<0, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+          batch,
+          sequence,
+          sequenceStartPositions,
+          sequenceWidth,
+          maxSequenceLength,
+          numSequences);
     }
   }
 
   CHECK_SYNC("hl_sequence2batch_copy_padding failed");
 }
 
-__device__ inline float my_rsqrt(float x) {
-  return rsqrtf(x);
-}
+__device__ inline float my_rsqrt(float x) { return rsqrtf(x); }
 
-__device__ inline double my_rsqrt(double x) {
-  return rsqrt(x);
-}
+__device__ inline double my_rsqrt(double x) { return rsqrt(x); }
 
 __global__ void KeSequenceAvgForward(real* dst,
                                      real* src,
@@ -328,8 +335,8 @@ __global__ void KeSequenceAvgForward(real* dst,
     for (int i = start; i < end; i++) {
       sum += src[i * width + col];
     }
-    sum = mode == 1 ? sum :
-        (mode == 0 ? sum / seqLength : sum * my_rsqrt((real)seqLength));
+    sum = mode == 1 ? sum : (mode == 0 ? sum / seqLength
+                                       : sum * my_rsqrt((real)seqLength));
     dst[gid] += sum;
   }
 }
@@ -348,10 +355,10 @@ void hl_sequence_avg_forward(real* dst,
   int grid = DIVUP(width * height, 512);
 
   CHECK(mode == 0 || mode == 1 || mode == 2)
-    << "mode error in hl_sequence_avg_forward!";
+      << "mode error in hl_sequence_avg_forward!";
 
-  KeSequenceAvgForward<<< grid, block, 0, STREAM_DEFAULT >>>
-           (dst, src, starts, height, width, mode);
+  KeSequenceAvgForward<<<grid, block, 0, STREAM_DEFAULT>>>(
+      dst, src, starts, height, width, mode);
   CHECK_SYNC("hl_sequence_avg_forward failed");
 }
 
@@ -371,8 +378,8 @@ __global__ void KeSequenceAvgBackward(real* dst,
     int seqLength = end - start;
     if (seqLength == 0) return;
     real grad = src[gid];
-    grad = mode == 1 ? grad :
-        (mode == 0 ? grad / seqLength : grad * my_rsqrt((real)seqLength));
+    grad = mode == 1 ? grad : (mode == 0 ? grad / seqLength
+                                         : grad * my_rsqrt((real)seqLength));
     for (int i = start; i < end; i++) {
       dst[i * width + col] += grad;
     }
@@ -393,9 +400,9 @@ void hl_sequence_avg_backward(real* dst,
   int grid = DIVUP(width * height, 512);
 
   CHECK(mode == 0 || mode == 1 || mode == 2)
-    << "mode error in hl_sequence_avg_backward!";
+      << "mode error in hl_sequence_avg_backward!";
 
-  KeSequenceAvgBackward<<< grid, block, 0, STREAM_DEFAULT >>>
-           (dst, src, starts, height, width, mode);
+  KeSequenceAvgBackward<<<grid, block, 0, STREAM_DEFAULT>>>(
+      dst, src, starts, height, width, mode);
   CHECK_SYNC("hl_sequence_avg_backward failed");
 }
