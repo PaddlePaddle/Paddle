@@ -6129,7 +6129,7 @@ def clip_layer(input, min, max, name=None):
 @layer_support()
 def kmax_sequence_score_layer(input, name=None, beam_size=1):
     """
-    This layer accepts one input which is scores over a sequence or a nested
+    This layer accepts one input which are scores over a sequence or a nested
     sequence, and returns indices of beam_size sequences with highest scores.
 
     .. code-block:: python
@@ -6139,7 +6139,7 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 
     :param name: The Layer Name.
     :type name: basestring
-    :param input: The input layer. It is scores over a sequence or a nested
+    :param input: The input layer. It stores scores over a sequence or a nested
         sequence and its size must be 1.
     :type input: LayerOutput.
     :param beam_size: squence indices with top beam_size scores are returned.

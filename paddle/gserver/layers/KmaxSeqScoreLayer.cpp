@@ -97,19 +97,13 @@ void KmaxSeqScoreLayer::forward(PassType passType) {
     scores_ = inputScore;
   }
 
-  Matrix::resizeOrCreate(
-      output_.value,
-      input.hasSubseq() ? input.getNumSubSequences() : input.getNumSequences(),
-      beamSize_,
-      false,
-      false);
+  int seqNum =
+      input.hasSubseq() ? input.getNumSubSequences() : input.getNumSequences();
+  Matrix::resizeOrCreate(output_.value, seqNum, beamSize_, false, false);
   output_.value->one();
   output_.value->mulScalar(-1.);
 
-  kmaxScorePerSeq(scores_->getData(),
-                  output_.value->getData(),
-                  input.hasSubseq() ? input.subSequenceStartPositions
-                                    : input.sequenceStartPositions);
+  kmaxScorePerSeq(scores_->getData(), output_.value->getData(), seqNum);
 }
 
 void KmaxSeqScoreLayer::backward(const UpdateCallback& callback) {}
