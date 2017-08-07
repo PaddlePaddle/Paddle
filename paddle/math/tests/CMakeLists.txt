@@ -7,8 +7,11 @@ add_simple_unittest(test_SparseMatrix)
 add_simple_unittest(test_RowBuffer)
 
 # TODO(yuyang18): Refactor TestUtil.cpp. Remove this cross module reference.
-add_unittest(test_matrixCompare
+add_unittest_without_exec(test_matrixCompare
     test_matrixCompare.cpp)
+add_gtest_parallel(NAME test_matrixCompare
+        COMMAND test_matrixCompare
+        PARALLEL 12)
 
 add_simple_unittest(test_sparseMatrixCompare)
 add_simple_unittest(test_perturbation)

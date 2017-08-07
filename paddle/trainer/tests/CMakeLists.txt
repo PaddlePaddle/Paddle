@@ -51,11 +51,12 @@ add_test(NAME test_CompareTwoOpts
 add_unittest_without_exec(test_CompareSparse
     test_CompareSparse.cpp)
 if(NOT ON_TRAVIS)
-  add_test(NAME test_CompareSparse
-    COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
+  add_gtest_parallel(NAME test_CompareSparse
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
+    RUNNER ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
               ./.set_port.sh -p port -n 6
-                  ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
+    WORKING_DIRECTORY ${PROJ_ROOT}/paddle/
+    PARALLEL 4)
 endif()
 ################# test_recurrent_machine_generation ###############
 add_unittest_without_exec(test_recurrent_machine_generation

@@ -16,19 +16,25 @@ add_test(NAME test_ProtoDataProvider
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
 
+
+
+
 ################# test_LayerGrad #######################
 add_unittest_without_exec(test_LayerGrad
     test_LayerGrad.cpp
     LayerGradUtil.cpp)
-add_test(NAME test_LayerGrad
-    COMMAND test_LayerGrad)
+
+add_gtest_parallel(NAME test_LayerGrad
+        COMMAND test_LayerGrad
+        PARALLEL 12)
 
 ################ test_CRFLayerGrad ####################
 add_unittest_without_exec(test_CRFLayerGrad
     test_CRFLayerGrad.cpp
     LayerGradUtil.cpp)
-add_test(NAME test_CRFLayerGrad
-    COMMAND test_CRFLayerGrad)
+add_gtest_parallel(NAME test_CRFLayerGrad
+        COMMAND test_CRFLayerGrad
+        PARALLEL 3)
 
 
 add_unittest_without_exec(test_ActivationGrad
