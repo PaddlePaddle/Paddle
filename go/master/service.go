@@ -78,12 +78,11 @@ type taskEntry struct {
 }
 
 type masterState struct {
-	Todo     []taskEntry
-	Pending  map[int]taskEntry // map from task ID to task entry
-	Done     []taskEntry
-	Failed   []taskEntry
-	CurPass  int
-	JobTasks []taskEntry
+	Todo    []taskEntry
+	Pending map[int]taskEntry // map from task ID to task entry
+	Done    []taskEntry
+	Failed  []taskEntry
+	CurPass int
 }
 
 // Service is the master server service.
@@ -297,8 +296,7 @@ func (s *Service) SetDataset(globPaths []string, _ *int) error {
 		return err
 	}
 
-	s.state.JobTasks = partition(chunks, s.chunksPerTask)
-	s.state.Todo = s.state.JobTasks
+	s.state.Todo = partition(chunks, s.chunksPerTask)
 
 	err = s.snapshot()
 	if err != nil {
@@ -361,6 +359,7 @@ func (s *Service) logFields() log.Fields {
 		"pendingLen": len(s.state.Pending),
 		"doneLen":    len(s.state.Done),
 		"failedLen":  len(s.state.Failed),
+		"curPass":    s.state.CurPass,
 	}
 }
 
@@ -431,7 +430,7 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	if len(s.state.Todo) == 0 && len(s.state.Pending) == 0 {
 		// increase master side pass count if all tasks finished
 		s.state.CurPass++
-		s.state.Todo = s.state.JobTasks
+		s.state.Todo = append(s.state.Done, s.state.Failed...)
 		s.state.Done = []taskEntry{}
 		// TODO(typhoonzero): deal with failed tasks
 		s.state.Failed = []taskEntry{}
