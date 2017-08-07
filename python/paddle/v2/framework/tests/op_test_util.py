@@ -24,7 +24,7 @@ class OpTestMeta(type):
             scope = core.Scope()
             kwargs = dict()
             places = [core.CPUPlace()]
-            if core.is_compile_gpu():
+            if core.is_compile_gpu() and core.Operator.support_gpu(self.type):
                 places.append(core.GPUPlace(0))
 
             for place in places:
@@ -62,7 +62,9 @@ class OpTestMeta(type):
                 for out_name in Operator.get_op_output_names(self.type):
                     actual = numpy.array(scope.find_var(out_name).get_tensor())
                     expect = self.outputs[out_name]
-                    numpy.isclose(actual, expect)
+                    self.assertTrue(
+                        numpy.allclose(actual, expect),
+                        "output name: " + out_name + "has diff")
 
         obj.test_all = test_all
         return obj
