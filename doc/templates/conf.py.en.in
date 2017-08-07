@@ -15,12 +15,11 @@ import sys
 import os, subprocess
 import shlex
 from recommonmark import parser, transform
+sys.path.append(os.path.abspath('@PROJ_ROOT@/python'))
 try:
-   import py_paddle
    import paddle
    import paddle.v2
 except ImportError:
-   print("Must install paddle python package before generating documentation")
    sys.exit(1)
 
 
