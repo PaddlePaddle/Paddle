@@ -31,22 +31,42 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 private:
-  void reorganizeSeqInfo(const ICpuGpuVectorPtr seqStartPos,
-                         const ICpuGpuVectorPtr subSeqStartPos);
-  void calSelectedCols(const MatrixPtr selectedIndices,
-                       const std::vector<std::vector<int>> inputSeqInfo);
-  void buildOutputSeqInfo();
+  /*
+   * This functions generates the indices of rows in a batch according to the
+   * indices of selected sub-sequence in each sequence.
+   *
+   * Examples:
+   * selectedIndices:
+   *   [
+   *     [0, 1, -1],
+   *     [0, 1, 2],
+   *     [0, -1, -1],
+   *     [0, 2, 3],
+   *   ]
+   * inputSeqInfo:
+   *   [
+   *     [0,3,4],
+   *     [4,5,7,10,15],
+   *     [15,20],
+   *     [20,22,23,25,28]
+   *   ]
+   *
+   * ths output is saved to private member rowIndice_;
+   * [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
+   *  16,17,18,19,20,21,22,23,24,25,26,27]
+   */
 
-  std::vector<int> outSeqStartInfo_;
-  std::vector<int> outSubSeqStartInfo_;
+  void calSelectedCols(const MatrixPtr selectedIndices,
+                       const std::vector<std::vector<int>>& inputSeqInfo);
 
   // if the second input of this layer is on GPU memory, copy it to CPU memory.
   MatrixPtr selIdsCpu_;
-  // reorganize sequenceStartPositions and subSequenceStartPositions altogether
-  // into a 2d vector to facilitate the sequence selection process.
-  std::vector<std::vector<int>> inputSeqInfo_;
 
-  // the final seleted row indices in a batch,
+  // reorganized sequenceStartPositions and subSequenceStartPositions
+  // into a 2d vector to facilitate the sequence selection process.
+  std::vector<std::vector<int>> inputSeqInfoVec_;
+
+  // the final selected row indices in a batch,
   // rowIdx_ and selectedRows_ actually share a same memory.
   IVectorPtr rowIndice_;
   std::vector<int> selectedRows_;
@@ -63,30 +83,13 @@ bool SubNestedSequenceLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void SubNestedSequenceLayer::reorganizeSeqInfo(
-    const ICpuGpuVectorPtr seqStartPos, const ICpuGpuVectorPtr subSeqStartPos) {
-  int* seqStarts = seqStartPos->getMutableData(false);
-  int* subSeqStarts = subSeqStartPos->getMutableData(false);
-
-  int seqNum = seqStartPos->getSize() - 1;
-  inputSeqInfo_.resize(seqNum, std::vector<int>());
-  int seqIdx = 0;
-  for (size_t i = 0; i < subSeqStartPos->getSize(); ++i) {
-    inputSeqInfo_[seqIdx].push_back(subSeqStarts[i]);
-    if (subSeqStarts[i] == seqStarts[seqIdx + 1]) {
-      seqIdx++;
-      if (seqIdx == seqNum) return;
-      inputSeqInfo_[seqIdx].push_back(subSeqStarts[i]);
-    }
-  }
-}
-
 void SubNestedSequenceLayer::calSelectedCols(
     const MatrixPtr selectedIndices,
-    const std::vector<std::vector<int>> inputSeqInfo) {
+    const std::vector<std::vector<int>>& inputSeqInfo) {
   selectedRows_.clear();
-  outSubSeqStartInfo_.resize(1, 0);
-  outSeqStartInfo_.resize(1, 0);
+
+  std::vector<int> outSeqStartInfo(1, 0);
+  std::vector<int> outSubSeqStartInfo(1, 0);
 
   size_t seqNum = selectedIndices->getHeight();
   size_t beamSize = selectedIndices->getWidth();
@@ -94,30 +97,35 @@ void SubNestedSequenceLayer::calSelectedCols(
     for (size_t j = 0; j < beamSize; ++j) {
       if (selectedIndices->getElement(i, j) == -1.) break;
       int selSubSeqIdx = selectedIndices->getElement(i, j);
-      CHECK_GT(inputSeqInfo_[i].size() - 1, selSubSeqIdx);
+      CHECK_GT(inputSeqInfoVec_[i].size() - 1, selSubSeqIdx);
 
-      size_t subSeqLen =
-          inputSeqInfo_[i][selSubSeqIdx + 1] - inputSeqInfo_[i][selSubSeqIdx];
+      size_t subSeqLen = inputSeqInfoVec_[i][selSubSeqIdx + 1] -
+                         inputSeqInfoVec_[i][selSubSeqIdx];
       for (size_t k = 0; k < subSeqLen; ++k)
-        selectedRows_.push_back(inputSeqInfo_[i][selSubSeqIdx] + k);
-      outSubSeqStartInfo_.push_back(outSubSeqStartInfo_.back() + subSeqLen);
+        selectedRows_.push_back(inputSeqInfoVec_[i][selSubSeqIdx] + k);
+      outSubSeqStartInfo.push_back(outSubSeqStartInfo.back() + subSeqLen);
     }
-    outSeqStartInfo_.push_back(outSubSeqStartInfo_.back());
+    outSeqStartInfo.push_back(outSubSeqStartInfo.back());
   }
-}
 
-void SubNestedSequenceLayer::buildOutputSeqInfo() {
-  Argument& output = getOutput();
+  if (useGpu_) {
+    rowIndice_ = IVector::create(selectedRows_.size(), useGpu_);
+    rowIndice_->copyFrom(selectedRows_.data(), selectedRows_.size());
+  } else {
+    rowIndice_ =
+        IVector::create(selectedRows_.data(), selectedRows_.size(), useGpu_);
+  }
+
+  // create the sequence information for the output.
+  ICpuGpuVector::resizeOrCreate(
+      output_.sequenceStartPositions, outSeqStartInfo.size(), false);
+  output_.sequenceStartPositions->copyFrom(
+      outSeqStartInfo.data(), outSeqStartInfo.size(), false);
 
   ICpuGpuVector::resizeOrCreate(
-      output.sequenceStartPositions, outSeqStartInfo_.size(), false);
-  output.sequenceStartPositions->copyFrom(
-      outSeqStartInfo_.data(), outSeqStartInfo_.size(), false);
-
-  ICpuGpuVector::resizeOrCreate(
-      output.subSequenceStartPositions, outSubSeqStartInfo_.size(), false);
-  output.subSequenceStartPositions->copyFrom(
-      outSubSeqStartInfo_.data(), outSubSeqStartInfo_.size(), false);
+      output_.subSequenceStartPositions, outSubSeqStartInfo.size(), false);
+  output_.subSequenceStartPositions->copyFrom(
+      outSubSeqStartInfo.data(), outSubSeqStartInfo.size(), false);
 }
 
 void SubNestedSequenceLayer::forward(PassType passType) {
@@ -131,7 +139,7 @@ void SubNestedSequenceLayer::forward(PassType passType) {
 
   if (dynamic_cast<GpuMatrix*>(selectedIndices.get())) {
     /*
-     * Currently, the second input for this layer generated by
+     * Currently, the second input for this layer is generated by
      * kmax_sequence_score_layer whose output is always stored on CPU,
      * or a data_layer which canbe on GPU.
      *
@@ -149,20 +157,12 @@ void SubNestedSequenceLayer::forward(PassType passType) {
     selIdsCpu_ = selectedIndices;
   }
 
-  reorganizeSeqInfo(inputSeq.sequenceStartPositions,
-                    inputSeq.subSequenceStartPositions);
-  calSelectedCols(selIdsCpu_, inputSeqInfo_);
+  Argument::reorganizeSeqInfo(inputSeq.sequenceStartPositions,
+                              inputSeq.subSequenceStartPositions,
+                              inputSeqInfoVec_);
+  calSelectedCols(selIdsCpu_, inputSeqInfoVec_);
+
   resetOutput(selectedRows_.size(), getSize());
-
-  if (useGpu_) {
-    rowIndice_ = IVector::create(selectedRows_.size(), useGpu_);
-    rowIndice_->copyFrom(selectedRows_.data(), selectedRows_.size());
-  } else {
-    rowIndice_ =
-        IVector::create(selectedRows_.data(), selectedRows_.size(), useGpu_);
-  }
-
-  buildOutputSeqInfo();
   getOutputValue()->selectRows(*getInputValue(0), *rowIndice_);
 }
 
