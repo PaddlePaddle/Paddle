@@ -2,9 +2,6 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-
 namespace paddle {
 namespace operators {
 
