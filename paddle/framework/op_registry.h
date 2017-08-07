@@ -129,50 +129,9 @@ class OpRegistry {
   static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VarNameList& inputs,
                                                 const VarNameList& outputs,
-                                                const AttributeMap& attrs) {
-    auto op_create_it = op_creators().find(type);
-    PADDLE_ENFORCE(op_create_it != op_creators().end(),
-                   "Operator %s cannot be found.", type);
+                                                const AttributeMap& attrs);
 
-    auto op = op_create_it->second();
-    op->type_ = type;
-    op->inputs_ = inputs;
-    op->outputs_ = outputs;
-
-    op->attrs_ = attrs;
-    op_checkers().at(type).Check(op->attrs_);
-
-    GenerateTempVariableName(op);
-
-    {
-      auto var_index_it = VarIndexMaps().find(type);
-      if (var_index_it != VarIndexMaps().end()) {
-        op->in_out_idxs_ = var_index_it->second;
-      }
-    }
-
-    op->Init();
-    return std::shared_ptr<OperatorBase>(op);
-  }
-
-  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
-    std::vector<std::string> inputs;
-    inputs.reserve((size_t)op_desc.inputs_size());
-    std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
-              std::back_inserter(inputs));
-
-    std::vector<std::string> outputs;
-    outputs.reserve((size_t)op_desc.outputs_size());
-    std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
-              std::back_inserter(outputs));
-
-    AttributeMap attrs;
-    for (auto& attr : op_desc.attrs()) {
-      attrs[attr.name()] = GetAttrValue(attr);
-    }
-
-    return CreateOp(op_desc.type(), inputs, outputs, attrs);
-  }
+  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
   static bool SupportGPU(const std::string& op_type) {
     OperatorWithKernel::OpKernelKey key;
@@ -256,8 +215,9 @@ class GradOpRegisterHelper {
  * Macro to Register Operator.
  */
 #define REGISTER_OP(__op_type, __op_class, __op_maker_class)                 \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(__reg_op__##__op_type,                      \
-                                 "REGISTER_OP must be in global namespace"); \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                            \
+      __reg_op__##__op_type,                                                 \
+      "REGISTER_OP must be called in the global namespace");                 \
   static ::paddle::framework::OpRegisterHelper<__op_class, __op_maker_class> \
       __op_register_##__op_type##__(#__op_type);                             \
   int __op_register_##__op_type##_handle__() { return 0; }

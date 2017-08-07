@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
 
@@ -127,6 +127,54 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   for (auto& output : proto_->outputs()) {
     checker(output.name());
   }
+}
+
+static std::shared_ptr<OperatorBase> OpRegistry::CreateOp(
+    const std::string& type, const VarNameList& inputs,
+    const VarNameList& outputs, const AttributeMap& attrs) {
+  auto op_create_it = op_creators().find(type);
+  PADDLE_ENFORCE(op_create_it != op_creators().end(),
+                 "Operator %s cannot be found.", type);
+
+  auto op = op_create_it->second();
+  op->type_ = type;
+  op->inputs_ = inputs;
+  op->outputs_ = outputs;
+
+  op->attrs_ = attrs;
+  op_checkers().at(type).Check(op->attrs_);
+
+  GenerateTempVariableName(op);
+
+  {
+    auto var_index_it = VarIndexMaps().find(type);
+    if (var_index_it != VarIndexMaps().end()) {
+      op->in_out_idxs_ = var_index_it->second;
+    }
+  }
+
+  op->Init();
+  return std::shared_ptr<OperatorBase>(op);
+}
+
+static std::shared_ptr<OperatorBase> OpRegistry::CreateOp(
+    const OpDesc& op_desc) {
+  std::vector<std::string> inputs;
+  inputs.reserve((size_t)op_desc.inputs_size());
+  std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
+            std::back_inserter(inputs));
+
+  std::vector<std::string> outputs;
+  outputs.reserve((size_t)op_desc.outputs_size());
+  std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
+            std::back_inserter(outputs));
+
+  AttributeMap attrs;
+  for (auto& attr : op_desc.attrs()) {
+    attrs[attr.name()] = GetAttrValue(attr);
+  }
+
+  return CreateOp(op_desc.type(), inputs, outputs, attrs);
 }
 
 }  // namespace framework
