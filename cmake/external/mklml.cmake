@@ -17,7 +17,7 @@ IF(NOT ${WITH_MKLML})
 ENDIF(NOT ${WITH_MKLML})
 
 IF(WIN32 OR APPLE)
-    MESSAGE(WARNING 
+    MESSAGE(WARNING
         "Windows or Mac is not supported with MKLML in Paddle yet."
         "Force WITH_MKLML=OFF")
     SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in Windows and MacOS" FORCE)
@@ -54,11 +54,11 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${MKLML_SOURCE_DIR}
     DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate -O ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz ${MKLML_URL}
+    DOWNLOAD_COMMAND      wget --quiet --no-check-certificate -O ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz ${MKLML_URL}
                           && tar -xzf ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
-    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT} 
+    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${MKLML_INSTALL_ROOT}
 )
 
