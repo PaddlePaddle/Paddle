@@ -5,7 +5,7 @@ import paddle.v2.framework.core as core
 import paddle.v2.framework.create_op_creation_methods as creation
 
 from op_test_util import OpTestMeta
-from grad_test_util import GradChecker, create_op
+from gradient_checker import GradientChecker, create_op
 
 
 def stable_softmax(x):
@@ -83,7 +83,7 @@ class TestSoftmaxGradOp(unittest.TestCase):
             np.testing.assert_almost_equal(actual, expected, decimal=3)
 
 
-class SoftmaxGradOpTest(GradChecker):
+class SoftmaxGradOpTest(GradientChecker):
     def test_softmax(self):
         op = create_op("softmax")
         inputs = {"X": np.random.random((3, 4)).astype("float32")}

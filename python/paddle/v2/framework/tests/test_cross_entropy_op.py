@@ -1,7 +1,7 @@
 import unittest
 import numpy
 from op_test_util import OpTestMeta
-from grad_test_util import GradChecker, create_op
+from gradient_checker import GradientChecker, create_op
 
 
 class TestCrossEntropy(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestCrossEntropy(unittest.TestCase):
         self.Y = numpy.array(Y).astype("float32")
 
 
-class CrossEntropyGradOpTest(GradChecker):
+class CrossEntropyGradOpTest(GradientChecker):
     def test_softmax_grad(self):
         op = create_op("onehot_cross_entropy")
         batch_size = 100
