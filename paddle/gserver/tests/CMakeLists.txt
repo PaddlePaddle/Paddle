@@ -50,7 +50,7 @@ add_unittest_without_exec(test_DetectionOutput
     test_DetectionOutput.cpp
     LayerGradUtil.cpp)
 
-add_test(NAME test_DetectionOutput 
+add_test(NAME test_DetectionOutput
     COMMAND test_DetectionOutput)
 ################# test_ConvUnify #######################
 add_unittest_without_exec(test_ConvUnify
