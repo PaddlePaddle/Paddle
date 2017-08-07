@@ -200,6 +200,8 @@ All parameter, weight, gradient are variables in Paddle.
     return OpRegistry::CreateOp(desc);
   });
 
+  operator_base.def_static("support_gpu", &OpRegistry::SupportGPU);
+
   operator_base.def("backward",
                     [](const OperatorBase &forwardOp,
                        const std::unordered_set<std::string> &no_grad_vars) {
