@@ -2,7 +2,9 @@ package client_test
 
 import (
 	"io/ioutil"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -16,6 +18,10 @@ func TestSelector(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := embed.NewConfig()
+	lpurl, _ := url.Parse("http://localhost:0")
+	lcurl, _ := url.Parse("http://localhost:0")
+	cfg.LPUrls = []url.URL{*lpurl}
+	cfg.LCUrls = []url.URL{*lcurl}
 	cfg.Dir = etcdDir
 	e, err := embed.StartEtcd(cfg)
 	if err != nil {
@@ -30,6 +36,9 @@ func TestSelector(t *testing.T) {
 	}()
 
 	<-e.Server.ReadyNotify()
+
+	port := strings.Split(e.Clients[0].Addr().String(), ":")[1]
+	endpoint := "127.0.0.1:" + port
 
 	var mu sync.Mutex
 	selectedCount := 0
@@ -53,10 +62,10 @@ func TestSelector(t *testing.T) {
 		}
 	}
 
-	c0 := client.NewEtcd("127.0.0.1:2379")
-	c1 := client.NewEtcd("127.0.0.1:2379")
-	c2 := client.NewEtcd("127.0.0.1:2379")
-	c3 := client.NewEtcd("127.0.0.1:2379")
+	c0 := client.NewEtcd(endpoint)
+	c1 := client.NewEtcd(endpoint)
+	c2 := client.NewEtcd(endpoint)
+	c3 := client.NewEtcd(endpoint)
 	wg.Add(3)
 	go selectAndDone(c0)
 	go selectAndDone(c1)
