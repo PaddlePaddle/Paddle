@@ -149,7 +149,7 @@ void MkldnnTester::checkBackwardWgts() {
   const MkldnnLayerPtr dnnlayer =
       std::dynamic_pointer_cast<MkldnnLayer>(dnnLayer_);
   CHECK(dnnlayer);
-  dnnlayer->cvtWgtToPaddle();
+  dnnlayer->convertWeightsToPaddle();
   for (size_t i = 0; i < parameters_[DNN].size(); ++i) {
     const VectorPtr& dnn = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& ref = parameters_[REF][i]->getBuf(PARAMETER_VALUE);

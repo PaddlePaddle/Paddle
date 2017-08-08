@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "MkldnnLayer.h"
 
-// using namespace mkldnn;  // NOLINT
 using mem = mkldnn::memory;  // NOLINT
 typedef mem::format format;
 typedef mkldnn::inner_product_forward fc_fwd;
@@ -94,7 +93,7 @@ void MkldnnLayer::mkldnnForwardFC(int bs,
   // if input size changed, reset it
   resetForwardFC(bs, ic, ih, iw, botData, oc, topData, wgtData, biasData);
 
-  this->cvtWgtFromPaddle();
+  this->convertWeightsFromPaddle();
 
   // update input, since the data might be changed if this is after data layer
   inVal_->set_data_handle(botData);
@@ -208,9 +207,9 @@ void MkldnnLayer::mkldnnBackwardFC(int bs,
 }
 
 void MkldnnLayer::printSizeInfo() {
-  VLOG(DNN_SIZES) << "bs: " << bs_ << ", ic: " << ic_ << ", ih: " << ih_
-                  << ", iw: " << iw_ << ", oc: " << oc_ << ", oh: " << oh_
-                  << ", ow: " << ow_;
+  VLOG(DNN_SIZES) << getName() << ": bs: " << bs_ << ", ic: " << ic_
+                  << ", ih: " << ih_ << ", iw: " << iw_ << ", oc: " << oc_
+                  << ", oh: " << oh_ << ", ow: " << ow_;
 }
 
 mem::desc MkldnnLayer::createMD(mem::dims dims,

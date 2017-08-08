@@ -87,13 +87,13 @@ public:
    * convert weight from paddle format to mkldnn format
    * weight_ will be override
    */
-  virtual void cvtWgtFromPaddle() { ; }
+  virtual void convertWeightsFromPaddle() {}
 
   /**
    * convert mkldnn weight to paddle format
    * weight_ will be override
    */
-  virtual void cvtWgtToPaddle() { ; }
+  virtual void convertWeightsToPaddle() {}
 
   void resetForwardFC(int bs,
                       int ic,

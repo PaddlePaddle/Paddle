@@ -50,7 +50,7 @@ bool MkldnnFcLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void MkldnnFcLayer::cvtWgtFromPaddle() {
+void MkldnnFcLayer::convertWeightsFromPaddle() {
   if (FLAGS_use_mkldnn_wgt) {
     return;
   }
@@ -75,7 +75,7 @@ void MkldnnFcLayer::cvtWgtFromPaddle() {
   hasInitedWgt_ = true;
 }
 
-void MkldnnFcLayer::cvtWgtToPaddle() {
+void MkldnnFcLayer::convertWeightsToPaddle() {
   MatrixPtr dnnWgt = weight_->getW();
   MatrixPtr paddleWgt;
   dnnWgt->transpose(paddleWgt, true);

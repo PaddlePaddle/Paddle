@@ -44,9 +44,9 @@ public:
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
-  void cvtWgtFromPaddle() override;
+  void convertWeightsFromPaddle() override;
 
-  void cvtWgtToPaddle() override;
+  void convertWeightsToPaddle() override;
 
   void forward(PassType passType) override;
 

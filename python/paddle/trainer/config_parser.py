@@ -1614,13 +1614,13 @@ class FCLayer(LayerBase):
                  error_clipping_threshold=None,
                  **xargs):
         use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        use_mkldnn_wgt = bool(
+            int(g_command_config_args.get("use_mkldnn_wgt", 0)))
         if use_mkldnn:
             self.layer_type = 'mkldnn_fc'
             config_assert(
                 len(inputs) == 1,
                 "MkldnnFCLayer support one and only one input!")
-            use_mkldnn_wgt = bool(
-                int(g_command_config_args.get("use_mkldnn_wgt", 0)))
         super(FCLayer, self).__init__(
             name, self.layer_type, size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
