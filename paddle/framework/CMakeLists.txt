@@ -44,4 +44,5 @@ cc_library(paddle_pybind SHARED
     mean_op
     cross_entropy_op
     recurrent_op
-    uniform_random_op)
+    uniform_random_op
+    fill_zeros_like_op)

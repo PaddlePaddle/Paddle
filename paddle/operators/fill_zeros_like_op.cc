@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/fill_zeros_like_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
