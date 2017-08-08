@@ -18,6 +18,7 @@ limitations under the License. */
 #ifndef PADDLE_WITHOUT_GOLANG
 #include "paddle/trainer/NewRemoteParameterUpdater.h"
 #endif
+#include <iostream>
 #include "paddle/trainer/RemoteParameterUpdater.h"
 #include "paddle/trainer/ThreadParameterUpdater.h"
 
@@ -34,11 +35,13 @@ ParameterUpdater *ParameterUpdater::createLocalUpdater(
 ParameterUpdater *ParameterUpdater::createNewRemoteUpdater(
     OptimizationConfig *config,
     const std::string pserverSpec,
-    const bool useEtcd) throw(UnsupportError) {
+    const bool useEtcd,
+    const std::string optConfigStr) throw(UnsupportError) {
 #ifndef PADDLE_WITHOUT_GOLANG
   auto updater = new ParameterUpdater();
+  std::cout << "conf in c++" << optConfigStr << endl;
   updater->m->updater.reset(new paddle::NewRemoteParameterUpdater(
-      config->m->getConfig(), pserverSpec, useEtcd));
+      config->m->getConfig(), pserverSpec, useEtcd, optConfigStr));
   return updater;
 #else
   throw UnsupportError();

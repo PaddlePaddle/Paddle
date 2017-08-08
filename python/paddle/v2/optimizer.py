@@ -46,6 +46,7 @@ class Optimizer(object):
         """
             setup new golang pserver optimizer config proto
         """
+        import py_paddle.swig_paddle as swig_api
 
         def parse_list(values, message):
             if isinstance(values[0], dict):
@@ -69,7 +70,7 @@ class Optimizer(object):
 
         # create new optimizer with proto config, add new optimizer here
         self.__opt_conf_new__ = OptimizerConfig()
-        dict_to_protobuf(**kwargs, self.__opt_conf_new__)
+        dict_to_protobuf(kwargs, self.__opt_conf_new__)
 
     def enable_types(self):
         """
@@ -94,13 +95,14 @@ class Optimizer(object):
 
     def __create_new_remote_updater__(self, pserver_spec, use_etcd):
         import py_paddle.swig_paddle as swig_api
+        print self.__opt_conf_new__.SerializeToString()
         if not self.__opt_conf_new__:
-            return swig_api.ParameterUpdater.createNewRemoteUpdater(
-                self.__opt_conf__, pserver_spec, use_etcd)
+            raise AttributeError(
+                "must set optimizer config using set_remote_optimizer_config")
         else:
             return swig_api.ParameterUpdater.createNewRemoteUpdater(
                 self.__opt_conf__, pserver_spec, use_etcd,
-                self.__opt_conf_new__)
+                self.__opt_conf_new__.SerializeToString())
 
     def create_updater(self, is_local, num_passes, use_sparse_updater,
                        pserver_spec, use_etcd):

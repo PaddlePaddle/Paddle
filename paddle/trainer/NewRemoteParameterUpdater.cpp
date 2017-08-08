@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "NewRemoteParameterUpdater.h"
+#include <iostream>
 #include "Trainer.h"
 #include "paddle/utils/Stat.h"
 
@@ -31,26 +32,17 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
 NewRemoteParameterUpdater::NewRemoteParameterUpdater(
     const OptimizationConfig &config,
     const std::string pserverSpec,
-    const bool useEtcd)
-    : trainerConfig_(config),
-      parameterClient_(-1),
-      newParameters_(nullptr),
-      newGradients_(nullptr),
-      pserverSpec_(pserverSpec),
-      useEtcd_(useEtcd) {}
-
-NewRemoteParameterUpdater::NewRemoteParameterUpdater(
-    const OptimizationConfig &config,
-    const std::string pserverSpec,
     const bool useEtcd,
-    const OptimizerConfig &optconfig)
+    const std::string &optconfigstr)
     : trainerConfig_(config),
       parameterClient_(-1),
       newParameters_(nullptr),
       newGradients_(nullptr),
       pserverSpec_(pserverSpec),
-      useEtcd_(useEtcd),
-      optimizerConfigNew_(optconfig) {}
+      useEtcd_(useEtcd) {
+  std::cout << "proto string in c++: " << optconfigstr << endl;
+  optimizerConfigNew_.ParseFromString(optconfigstr)
+}
 
 void NewRemoteParameterUpdater::init(
     const std::vector<ParameterPtr> &parameters) {

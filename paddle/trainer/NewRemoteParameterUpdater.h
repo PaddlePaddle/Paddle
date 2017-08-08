@@ -34,11 +34,8 @@ public:
                             const std::string pserverSpec);
   NewRemoteParameterUpdater(const OptimizationConfig& config,
                             const std::string pserverSpec,
-                            const bool useEtcd);
-  NewRemoteParameterUpdater(const OptimizationConfig& config,
-                            const std::string pserverSpec,
                             const bool useEtcd,
-                            const OptimizerConfig& optconfig);
+                            const std::string& optconfigstr);
   ~NewRemoteParameterUpdater() {
     releaseNewParameter(newParameters_);
     releaseNewParameter(newGradients_);
@@ -113,7 +110,7 @@ protected:
   /// pserver side optimizer configurations of protobuf format
   /// NOTE: OptimizationConfig for legacy C++ pserver and
   /// OptimizerConfig for new golang pserver
-  OptimizerConfig& optimizerConfigNew_;
+  OptimizerConfig optimizerConfigNew_;
   /// internal parameter client object for exchanging data with pserver
   paddle_pserver_client parameterClient_;
   /// the parameters for new pserver client
