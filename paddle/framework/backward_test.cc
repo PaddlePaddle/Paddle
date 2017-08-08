@@ -17,16 +17,21 @@
 #include <gtest/gtest.h>
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace framework {
 
+using OperatorBase = framework::OperatorBase;
+using OpProtoAndCheckerMaker = framework::OpProtoAndCheckerMaker;
+using OpProto = framework::OpProto;
+using OpAttrChecker = framework::OpAttrChecker;
+using Scope = framework::Scope;
+using DeviceContext = platform::DeviceContext;
+
 class EmptyOp : public OperatorBase {
  public:
   void InferShape(const Scope &scope) const override {}
-  void Run(const Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
+  void Run(const Scope &scope, const DeviceContext &dev_ctx) const override {}
 };
 
 class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
@@ -71,7 +76,7 @@ class NoGradOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class FcOp : public ops::NetOp {
+class FcOp : public operators::NetOp {
  public:
   void Init() override {
     AddOp(OpRegistry::CreateOp("mul",
@@ -145,6 +150,7 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace f = paddle::framework;
+namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
 REGISTER_OP(rowwise_add, f::EmptyOp, f::RowWiseAddOpMaker);
 REGISTER_GRADIENT_OP(rowwise_add, rowwise_add_grad, f::EmptyOp);

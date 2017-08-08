@@ -87,6 +87,8 @@ class OperatorBase {
 
   virtual bool IsNetOp() const { return false; }
 
+  virtual bool SupportGPU() const { return false; }
+
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
@@ -160,14 +162,14 @@ class OperatorContext {
   template <typename T>
   const T* Input(const std::string& name) const {
     auto var = InputVar(name);
-    PADDLE_ENFORCE(var != nullptr, "Input(%s) should not be nullptr", name);
+    PADDLE_ENFORCE_NOT_NULL(var, "Input(%s) should not be nullptr", name);
     return &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
     auto var = OutputVar(name);
-    PADDLE_ENFORCE(var != nullptr, "Output(%s) should not be nullptr", name);
+    PADDLE_ENFORCE_NOT_NULL(var, "Output(%s) should not be nullptr", name);
     return var->GetMutable<T>();
   }
 
@@ -179,9 +181,9 @@ class OperatorContext {
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
-                     PADDLE_ENFORCE(var != nullptr,
-                                    "MultiInput(%s:%s) should not be nullptr",
-                                    name, sub_name);
+                     PADDLE_ENFORCE_NOT_NULL(
+                         var, "MultiInput(%s:%s) should not be nullptr", name,
+                         sub_name);
                      return &var->Get<T>();
                    });
     return res;
@@ -195,9 +197,9 @@ class OperatorContext {
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
-                     PADDLE_ENFORCE(var != nullptr,
-                                    "MultiOutput(%s:%s) should not be nullptr",
-                                    name, sub_name);
+                     PADDLE_ENFORCE_NOT_NULL(
+                         var, "MultiOutput(%s:%s) should not be nullptr", name,
+                         sub_name);
                      return var->GetMutable<T>();
                    });
     return res;
@@ -283,7 +285,7 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void InferShape(const Scope& scope) const {
+  void InferShape(const Scope& scope) const override {
     InferShape(InferShapeContext(this, scope));
   }
 
@@ -297,6 +299,12 @@ class OperatorWithKernel : public OperatorBase {
   AllOpKernels() {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
+  }
+
+  bool SupportGPU() const override {
+    OperatorWithKernel::OpKernelKey key;
+    key.place_ = platform::GPUPlace();
+    return OperatorWithKernel::AllOpKernels().at(type_).count(key) != 0;
   }
 
  protected:

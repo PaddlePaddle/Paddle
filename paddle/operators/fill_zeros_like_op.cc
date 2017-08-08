@@ -42,8 +42,8 @@ The output will have the same size with input.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(fill_zeros_like, paddle::operators::FillZerosLikeOp,
-            paddle::operators::FillZerosLikeOpMaker);
+namespace ops = paddle::operators;
+REGISTER_OP(fill_zeros_like, ops::FillZerosLikeOp, ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
-    paddle::operators::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);
+    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);

@@ -17,18 +17,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SoftmaxOp : public OperatorWithKernel {
+class SoftmaxOp : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
                    "The input of softmax op must be matrix");
     ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
 
-class SoftmaxOpMaker : public OpProtoAndCheckerMaker {
+class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SoftmaxOpMaker(framework::OpProto *proto,
+                 framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "input of softmax");
     AddOutput("Y", "output of softmax");
@@ -36,12 +37,12 @@ class SoftmaxOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class SoftmaxOpGrad : public OperatorWithKernel {
+class SoftmaxOpGrad : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx.InputVar(framework::GradVarName("Y")) != nullptr,
-                   "Input(Y@GRAD) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
+                            "Input(Y@GRAD) should not be null");
     PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
                        ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
                    "the shape of Input(0) and Input(1) should be the same");
@@ -53,8 +54,11 @@ class SoftmaxOpGrad : public OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
-REGISTER_OP_CPU_KERNEL(softmax, ops::SoftmaxKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(softmax,
+                       ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);
 REGISTER_GRADIENT_OP(softmax, softmax_grad, ops::SoftmaxOpGrad);
-REGISTER_OP_CPU_KERNEL(softmax_grad,
-                       ops::SoftmaxGradKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_grad, ops::SoftmaxGradKernel<paddle::platform::CPUPlace, float>);

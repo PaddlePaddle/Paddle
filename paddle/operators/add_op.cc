@@ -17,9 +17,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class AddOp : public OperatorWithKernel {
+class AddOp : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
                       ctx.Input<Tensor>("Y")->dims(),
                       "Two input of Add Op's dimension must be same.");
@@ -27,9 +27,9 @@ class AddOp : public OperatorWithKernel {
   }
 };
 
-class AddOpMaker : public OpProtoAndCheckerMaker {
+class AddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  AddOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of add op");
     AddInput("Y", "The second input of add op");
@@ -42,14 +42,17 @@ The equation is: Out = X + Y
   }
 };
 
-class AddOpGrad : public OperatorWithKernel {
+class AddOpGrad : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {}
+  void InferShape(const framework::InferShapeContext &ctx) const override {}
 };
 
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP(add_two, ops::AddOp, ops::AddOpMaker);
 REGISTER_GRADIENT_OP(add_two, add_two_grad, ops::AddOpGrad);
-REGISTER_OP_CPU_KERNEL(add_two, ops::AddKernel<ops::CPUPlace, float>);
+
+REGISTER_OP_CPU_KERNEL(add_two,
+                       ops::AddKernel<paddle::platform::CPUPlace, float>);
