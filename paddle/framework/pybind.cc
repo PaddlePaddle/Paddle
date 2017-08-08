@@ -43,6 +43,8 @@ USE_OP(rowwise_add);
 USE_OP(fill_zeros_like);
 USE_OP_WITHOUT_KERNEL(recurrent_op);
 USE_OP(gaussian_random);
+USE_OP(uniform_random);
+
 namespace paddle {
 namespace framework {
 template <typename ClassType>

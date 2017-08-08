@@ -3248,6 +3248,16 @@ class CTCLayer(LayerBase):
         config_assert(len(self.inputs) == 2, 'CTCLayer must have 2 inputs')
 
 
+@config_layer('kmax_seq_score')
+class KmaxSeqScoreLayer(LayerBase):
+    def __init__(self, name, inputs, beam_size, **xargs):
+        super(KmaxSeqScoreLayer, self).__init__(
+            name, 'kmax_seq_score', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1, 'KmaxSeqScoreLayer has only one input.')
+        self.config.beam_size = beam_size
+
+
 @config_layer('warp_ctc')
 class WarpCTCLayer(LayerBase):
     def __init__(self,

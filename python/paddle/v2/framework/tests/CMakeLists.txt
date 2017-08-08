@@ -25,3 +25,4 @@ py_test(test_op_creation_methods SRCS test_op_creation_methods.py)
 py_test(test_operator SRCS test_operator.py)
 
 py_test(test_gaussian_random_op SRCS test_gaussian_random_op.py)
+py_test(test_uniform_random_op SRCS test_uniform_random_op.py)
