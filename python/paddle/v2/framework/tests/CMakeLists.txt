@@ -21,3 +21,5 @@ py_test(test_rowwise_add_op SRCS test_rowwise_add_op.py)
 
 py_test(test_default_scope_funcs SRCS test_default_scope_funcs.py)
 py_test(test_op_creation_methods SRCS test_op_creation_methods.py)
+
+py_test(test_gaussian_random_op SRCS test_gaussian_random_op.py)
