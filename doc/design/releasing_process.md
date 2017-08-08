@@ -11,6 +11,15 @@ Paddle每次发新的版本，遵循以下流程:
 	* 编译这个版本的Ubuntu Deb包。如果失败，修复Ubuntu Deb包编译问题，Patch号加一，返回第二步。
 	* 使用Regression Test List作为检查列表，测试Docker镜像/ubuntu安装包的功能正确性
 		* 如果失败，记录下所有失败的例子，在这个`release/版本号`分支中，修复所有bug后，Patch号加一，返回第二步
+	* 编译这个版本的python wheel包，并发布到pypi。
+		* 由于pypi.python.org目前遵循[严格的命名规范PEP 513](https://www.python.org/dev/peps/pep-0513)，在使用twine上传之前，需要重命名wheel包中platform相关的后缀，比如将`linux_x86_64`修改成`manylinux1_x86_64`。
+		* pypi上的package名称为paddlepaddle和paddlepaddle_gpu，如果要上传GPU版本的包，需要修改build/python/setup.py中，name: "paddlepaddle_gpu"并重新打包wheel包：`python setup.py bdist_wheel`。
+		* 上传方法：
+			```
+			cd build/python
+			pip install twine
+			twine upload dist/[package to upload]
+			```
 4. 第三步完成后，将`release/版本号`分支合入master分支，并删除`release/版本号`分支。将master分支的合入commit打上tag，tag为`版本号`。同时再将`master`分支合入`develop`分支。最后删除`release/版本号`分支。
 5. 编译master分支的Docker发行镜像，发布到dockerhub。编译ubuntu的deb包，发布到github release页面
 6. 协同完成Release Note的书写

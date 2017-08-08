@@ -35,6 +35,8 @@ add_dependencies(framework_py_proto framework_py_proto_init)
 
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward)
+
+if(WITH_PYTHON)
 cc_library(paddle_pybind SHARED
     SRCS pybind.cc
     DEPS pybind python backward
@@ -46,3 +48,4 @@ cc_library(paddle_pybind SHARED
     recurrent_op
     uniform_random_op
     fill_zeros_like_op)
+endif(WITH_PYTHON)

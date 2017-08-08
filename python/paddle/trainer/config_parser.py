@@ -2657,6 +2657,31 @@ class SubSequenceLayer(LayerBase):
         self.create_bias_parameter(bias, size)
 
 
+@config_layer('sub_nested_seq')
+class SubNestedSequenceLayer(LayerBase):
+    def __init__(self, name, inputs, selected_indices, bias=False, **xargs):
+        if isinstance(inputs, list):
+            assert len(inputs) == 1, ('the first input of sub_nested_seq '
+                                      'layer is a single nested sequence.')
+            inputs = inputs[0]
+        if isinstance(selected_indices, list):
+            assert len(selected_indices) == 1, (
+                'the second input of '
+                'sub_nested_seq layer is a single layer which is a '
+                'set of selected indices.')
+            selected_indices = selected_indices[0]
+
+        super(SubNestedSequenceLayer, self).__init__(
+            name,
+            'sub_nested_seq',
+            0,
+            inputs=[inputs, selected_indices],
+            **xargs)
+        input_layer0 = self.get_input_layer(0)
+        size = input_layer0.size
+        self.set_layer_size(size)
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
