@@ -99,21 +99,23 @@ class GradientChecker(unittest.TestCase):
                    output_name,
                    no_grad_set=set(),
                    only_cpu=False,
-                   max_relative_err=0.005):
+                   max_relative_error=0.005):
         """
         :param forward_op: used to create backward_op
         :param input_vars: numpy value of input variable. The following
             computation will use these variables.
         :param inputs_to_check: inputs var names that should check gradient.
         :param output_name: output name that used to
-        :param max_relative_err: The relative tolerance parameter.
+        :param max_relative_error: The relative tolerance parameter.
         :param no_grad_set: used when create backward ops
         :param only_cpu: only compute and check gradient on cpu kernel.
         :return:
         """
-        out_names = filter(lambda name: name != "@TEMP@", forward_op.outputs())
-        if len(out_names) != 1:
-            raise ValueError("non empty out_names should be 1")
+        tmp_outs = forward_op.temp_outputs()
+        no_tmp_out = filter(lambda name: name not in tmp_outs,
+                            forward_op.outputs())
+        if len(no_tmp_out) != 1:
+            raise ValueError("non temp out_names should be 1")
 
         in_names = forward_op.inputs()
         for no_grad in no_grad_set:
@@ -135,10 +137,12 @@ class GradientChecker(unittest.TestCase):
         cpu_grad = dict()
         gpu_grad = dict()
 
+        # get numeric gradient
         for check_name in inputs_to_check:
             numeric_grad[check_name] = \
                 get_numeric_gradient(forward_op, input_vars, output_name, check_name)
 
+        # get operator gradient according to different device
         for place in places:
             scope = core.Scope()
             ctx = core.DeviceContext.create(place)
@@ -196,9 +200,9 @@ class GradientChecker(unittest.TestCase):
                 numpy.allclose(
                     numeric_grad[check_name],
                     cpu_grad[check_name],
-                    rtol=max_relative_err,
+                    rtol=max_relative_error,
                     atol=100),
-                "cpu op gradient and gpu op gradient are not equal")
+                "numeric gradient and cpu kernel gradient are not equal")
 
             # check numeric and gpu grad
             if core.is_compile_gpu() and not only_cpu \
@@ -207,9 +211,9 @@ class GradientChecker(unittest.TestCase):
                     numpy.allclose(
                         numeric_grad[check_name],
                         gpu_grad[check_name],
-                        rtol=max_relative_err,
+                        rtol=max_relative_error,
                         atol=100),
-                    "cpu op gradient and gpu op gradient are not equal")
+                    "numeric gradient and gpu kernel gradient are not equal")
 
 
 if __name__ == '__main__':

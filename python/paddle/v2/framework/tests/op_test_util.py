@@ -1,6 +1,5 @@
 import numpy
 import paddle.v2.framework.core as core
-import paddle.v2.framework.create_op_creation_methods as creation
 from paddle.v2.framework.op import Operator
 
 
