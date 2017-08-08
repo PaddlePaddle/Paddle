@@ -51,7 +51,7 @@ void NewRemoteParameterUpdater::init(
   // create parameter server client.
   if (useEtcd_) {
     parameterClient_ = paddle_new_etcd_pserver_client(
-        (char *)pserverSpec_.c_str(), FLAGS_trainer_id == 0);
+        (char *)pserverSpec_.c_str());
   } else {
     parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
                                                  FLAGS_trainer_id == 0);

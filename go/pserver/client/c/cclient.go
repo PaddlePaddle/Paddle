@@ -90,8 +90,12 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 
 type selector bool
 
-func (s selector) Select() bool {
-	return bool(s)
+func (s selector) Select() (bool, error) {
+	return bool(s), nil
+}
+
+func (s selector) Done() error {
+	return nil
 }
 
 type lister []client.Server
@@ -114,11 +118,10 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcdEndpoints *C.char, selected int) C.paddle_pserver_client {
-	// TODO(Longfei: use etcd lock to decide which trainer to initialize the parameters)
+func paddle_new_etcd_pserver_client(etcdEndpoints *C.char) C.paddle_pserver_client {
 	addr := C.GoString(etcdEndpoints)
 	etcdClient := client.NewEtcd(addr)
-	c := client.NewClient(etcdClient, etcdClient.Desired(), selector(selected != 0))
+	c := client.NewClient(etcdClient, etcdClient.Desired(), etcdClient)
 	return add(c)
 }
 
@@ -136,7 +139,12 @@ func paddle_pserver_client_release(client C.paddle_pserver_client) {
 //export paddle_begin_init_params
 func paddle_begin_init_params(client C.paddle_pserver_client) C.int {
 	c := get(client)
-	if selected := c.BeginInitParams(); selected {
+	selected, err := c.BeginInitParams()
+	if err != nil {
+		panic(err)
+	}
+
+	if selected {
 		return 1
 	}
 	return 0

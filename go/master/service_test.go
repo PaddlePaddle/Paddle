@@ -1,6 +1,7 @@
 package master_test
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -8,13 +9,12 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/embed"
-	"github.com/docker/docker/pkg/ioutils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewServiceWithEtcd(t *testing.T) {
 	// setup an embed etcd server
-	etcdDir, err := ioutils.TempDir("", "")
+	etcdDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
