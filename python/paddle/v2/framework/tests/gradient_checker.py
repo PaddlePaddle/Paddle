@@ -92,12 +92,22 @@ def get_numeric_gradient(op,
 
 
 class GradientChecker(unittest.TestCase):
+    def __is_close(self, numeric_grads, scope, max_relative_error):
+        for name in numeric_grads:
+            op_grad = numpy.array(
+                scope.find_var(grad_var_name(name)).get_tensor())
+            is_close = numpy.allclose(
+                numeric_grads[name], op_grad, rtol=max_relative_error, atol=100)
+            if not is_close:
+                return False
+        return True
+
     def check_grad(self,
                    forward_op,
                    input_vars,
                    inputs_to_check,
                    output_name,
-                   no_grad_set=set(),
+                   no_grad_set=None,
                    only_cpu=False,
                    max_relative_error=0.005):
         """
@@ -111,6 +121,9 @@ class GradientChecker(unittest.TestCase):
         :param only_cpu: only compute and check gradient on cpu kernel.
         :return:
         """
+        if no_grad_set is None:
+            no_grad_set = set()
+
         tmp_outs = forward_op.temp_outputs()
         no_tmp_out = filter(lambda name: name not in tmp_outs,
                             forward_op.outputs())
@@ -130,9 +143,6 @@ class GradientChecker(unittest.TestCase):
             places.append(core.GPUPlace(0))
 
         numeric_grad = dict()
-        cpu_grad = dict()
-        gpu_grad = dict()
-
         # get numeric gradient
         for check_name in inputs_to_check:
             numeric_grad[check_name] = \
@@ -145,7 +155,8 @@ class GradientChecker(unittest.TestCase):
 
             # create input var and set value
             for name, value in input_vars.iteritems():
-                assert name in in_names
+                if name not in in_names:
+                    raise ValueError(name + " not in op.inputs_")
                 var = scope.new_var(name).get_tensor()
                 var.set_dims(value.shape)
                 var.set(value, place)
@@ -177,39 +188,15 @@ class GradientChecker(unittest.TestCase):
             backward_op.infer_shape(scope)
             backward_op.run(scope, ctx)
 
-            for check_name in inputs_to_check:
-                # get xpu_grad
-                op_grad = numpy.array(
-                    scope.find_var(grad_var_name(check_name)).get_tensor())
-
-                # store cpu grad
-                if isinstance(place, core.CPUPlace):
-                    cpu_grad[check_name] = op_grad
-                # store gpu grad
+            if isinstance(place, core.CPUPlace):
+                msg = "CPU kernel gradient is not close to numeric gradient"
+            else:
                 if isinstance(place, core.GPUPlace):
-                    gpu_grad[check_name] = op_grad
-
-        # check numeric_grad early with CPUPlace
-        for check_name in numeric_grad:
-            # check numeric grad and cpu grad
+                    msg = "CPU kernel gradient is not close to numeric gradient"
+                else:
+                    raise ValueError("unknown place " + type(place))
             self.assertTrue(
-                numpy.allclose(
-                    numeric_grad[check_name],
-                    cpu_grad[check_name],
-                    rtol=max_relative_error,
-                    atol=100),
-                "numeric gradient and cpu kernel gradient are not equal")
-
-            # check numeric and gpu grad
-            if core.is_compile_gpu() and not only_cpu \
-                    and core.Operator.support_gpu(backward_op.type()):
-                self.assertTrue(
-                    numpy.allclose(
-                        numeric_grad[check_name],
-                        gpu_grad[check_name],
-                        rtol=max_relative_error,
-                        atol=100),
-                    "numeric gradient and gpu kernel gradient are not equal")
+                self.__is_close(numeric_grad, scope, max_relative_error), msg)
 
 
 if __name__ == '__main__':
