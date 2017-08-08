@@ -22,19 +22,19 @@ class FullyConnectedOp : public NetOp {
   void Init() override {
     AddOp(OpRegistry::CreateOp("mul",
                                {
-                                   Input("X"), Input("W"),
+                                   {"X", {Input("X")}}, {"Y", {Input("W")}},
                                },
-                               {Output("before_act")}, {}));
+                               {{"Out", {Output("before_act")}}}, {}));
     auto b = Input("b");
     if (b != framework::kEmptyVarName) {
-      AddOp(OpRegistry::CreateOp("rowwise_add",
-                                 {Output("before_act"), Input("b")},
-                                 {Output("before_act")}, {}));
+      AddOp(OpRegistry::CreateOp(
+          "rowwise_add", {{"X", {Output("before_act")}}, {"b", {Input("b")}}},
+          {{"Out", {Output("before_act")}}}, {}));
     }
 
     auto activation = GetAttr<std::string>("activation");
-    AddOp(OpRegistry::CreateOp(activation, {Output("before_act")},
-                               {Output("Y")}, {}));
+    AddOp(OpRegistry::CreateOp(activation, {{"X", {Output("before_act")}}},
+                               {{"Out", {Output("Out")}}}, {}));
     CompleteAddOp(false);
   }
 };
@@ -47,7 +47,7 @@ class FullyConnectedOpMaker : public OpProtoAndCheckerMaker {
     AddInput("W", "the weight of fc operator");
     AddInput("b", "the bias of fc operator");
 
-    AddOutput("Y", "the output of fc operator");
+    AddOutput("Out", "the output of fc operator");
     AddOutput("before_act", "the before activation output of fc operator")
         .SetTemporary();
     AddAttr<std::string>("activation", "The activation key for fc layer")

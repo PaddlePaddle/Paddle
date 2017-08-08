@@ -53,9 +53,10 @@ void ExposeOperator(ClassType &m) {
              return op.type_;
            })
       .def("outputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             return op.outputs_;
-           })
+           [](const typename ClassType::type &op)
+               -> std::unordered_map<std::string, std::vector<std::string>> {
+                 return op.outputs_;
+               })
       .def("__str__", &ClassType::type::DebugString);
 }
 

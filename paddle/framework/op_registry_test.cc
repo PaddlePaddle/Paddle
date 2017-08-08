@@ -57,8 +57,13 @@ REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  auto input = op_desc.add_inputs();
+  input->set_op_proto_name("input");
+  *input->mutable_var_names()->Add() = "aa";
+
+  auto output = op_desc.add_outputs();
+  output->set_op_proto_name("output");
+  *output->mutable_var_names()->Add() = "bb";
 
   float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
@@ -78,8 +83,13 @@ TEST(OpRegistry, CreateOp) {
 TEST(OpRegistry, IllegalAttr) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  auto input = op_desc.add_inputs();
+  input->set_op_proto_name("input");
+  *input->mutable_var_names()->Add() = "aa";
+
+  auto output = op_desc.add_outputs();
+  output->set_op_proto_name("output");
+  *output->mutable_var_names()->Add() = "bb";
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -103,8 +113,13 @@ TEST(OpRegistry, IllegalAttr) {
 TEST(OpRegistry, DefaultValue) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  auto input = op_desc.add_inputs();
+  input->set_op_proto_name("input");
+  *input->mutable_var_names()->Add() = "aa";
+
+  auto output = op_desc.add_outputs();
+  output->set_op_proto_name("output");
+  *output->mutable_var_names()->Add() = "bb";
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
@@ -127,8 +142,13 @@ static void SetInputFormat(paddle::framework::OpDesc* desc) {
 TEST(OpRegistry, CustomChecker) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
-  op_desc.add_inputs("ii");
-  op_desc.add_outputs("oo");
+  auto input = op_desc.add_inputs();
+  input->set_op_proto_name("input");
+  *input->mutable_var_names()->Add() = "ii";
+
+  auto output = op_desc.add_outputs();
+  output->set_op_proto_name("output");
+  *output->mutable_var_names()->Add() = "oo";
   SetInputFormat(&op_desc);
 
   // attr 'test_attr' is not set
