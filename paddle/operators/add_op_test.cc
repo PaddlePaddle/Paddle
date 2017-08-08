@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 
 USE_OP(add_two);
-// USE_OP(add_two_grad);
 
 TEST(AddOp, GetOpProto) {
   auto& protos = paddle::framework::OpRegistry::protos();

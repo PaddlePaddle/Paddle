@@ -16,4 +16,5 @@
 #include "paddle/operators/mul_op.h"
 
 namespace ops = paddle::operators;
+
 REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);

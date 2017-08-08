@@ -63,6 +63,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
 REGISTER_OP_CPU_KERNEL(softmax,
                        ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);

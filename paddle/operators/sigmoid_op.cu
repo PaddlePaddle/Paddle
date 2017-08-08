@@ -16,6 +16,7 @@
 #include "paddle/operators/sigmoid_op.h"
 
 namespace ops = paddle::operators;
+
 REGISTER_OP_GPU_KERNEL(sigmoid,
                        ops::SigmoidKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(

@@ -16,6 +16,7 @@
 #include "paddle/operators/softmax_op.h"
 
 namespace ops = paddle::operators;
+
 REGISTER_OP_GPU_KERNEL(softmax,
                        ops::SoftmaxKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(

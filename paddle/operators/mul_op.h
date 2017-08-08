@@ -45,5 +45,6 @@ class MulKernel : public framework::OpKernel {
     Z.device(place) = X.contract(Y, dim_pair);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
