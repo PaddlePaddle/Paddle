@@ -30,6 +30,12 @@ add_unittest_without_exec(test_CRFLayerGrad
 add_test(NAME test_CRFLayerGrad
     COMMAND test_CRFLayerGrad)
 
+################ test_SeqSliceLayerGrad ####################
+add_unittest_without_exec(test_SeqSliceLayerGrad
+    test_SeqSliceLayerGrad.cpp
+    LayerGradUtil.cpp)
+add_test(NAME test_SeqSliceLayerGrad
+    COMMAND test_SeqSliceLayerGrad)
 
 add_unittest_without_exec(test_ActivationGrad
     test_ActivationGrad.cpp
