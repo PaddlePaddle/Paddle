@@ -30,7 +30,7 @@ const (
 
 func TestServiceFull(t *testing.T) {
 	var cp pserver.Checkpoint
-	s, err := pserver.NewService(0, 1, "", nil, cp)
+	s, err := pserver.NewService(0, time.Hour, "", nil, cp)
 	if err != nil {
 		t.Error(err)
 	}
@@ -102,7 +102,7 @@ func TestServiceFull(t *testing.T) {
 
 func TestMultipleInit(t *testing.T) {
 	var cp pserver.Checkpoint
-	s, err := pserver.NewService(0, 1, "", nil, cp)
+	s, err := pserver.NewService(0, time.Hour, "", nil, cp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestMultipleInit(t *testing.T) {
 
 func TestUninitialized(t *testing.T) {
 	var cp pserver.Checkpoint
-	s, err := pserver.NewService(0, 1, "", nil, cp)
+	s, err := pserver.NewService(0, time.Hour, "", nil, cp)
 	err = s.SendGrad(pserver.Gradient{}, nil)
 	if err.Error() != pserver.Uninitialized {
 		t.Fatal(err)
@@ -128,7 +128,7 @@ func TestUninitialized(t *testing.T) {
 
 func TestBlockUntilInitialized(t *testing.T) {
 	var cp pserver.Checkpoint
-	s, err := pserver.NewService(0, 1, "", nil, cp)
+	s, err := pserver.NewService(0, time.Hour, "", nil, cp)
 	if err != nil {
 		t.Error(err)
 	}

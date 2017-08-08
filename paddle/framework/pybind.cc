@@ -29,7 +29,7 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_OP(onehot_cross_entropy);
+USE_OP_CPU(onehot_cross_entropy);
 USE_OP_WITHOUT_KERNEL(fc);
 USE_OP(sgd);
 USE_OP(mul);
@@ -37,6 +37,7 @@ USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
+USE_OP(fill_zeros_like);
 USE_OP_WITHOUT_KERNEL(recurrent_op);
 namespace paddle {
 namespace framework {
@@ -199,6 +200,8 @@ All parameter, weight, gradient are variables in Paddle.
                    desc.InitializationErrorString());
     return OpRegistry::CreateOp(desc);
   });
+
+  operator_base.def_static("support_gpu", &OpRegistry::SupportGPU);
 
   operator_base.def("backward",
                     [](const OperatorBase &forwardOp,

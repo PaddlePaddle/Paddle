@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 import paddle.v2.framework.core as core
-import paddle.v2.framework.create_op_creation_methods as creation
+from paddle.v2.framework.op import Operator
 
 from op_test_util import OpTestMeta
 
@@ -27,7 +27,7 @@ class TestSoftmaxOp(unittest.TestCase):
 
 class TestSoftmaxGradOp(unittest.TestCase):
     def test_softmax_grad(self):
-        op = creation.op_creations.softmax(X="X", Y="Y")
+        op = Operator('softmax', X="X", Y="Y")
         backward_op = core.Operator.backward(op, set())
         self.assertEqual(backward_op.type(), "softmax_grad")
         expected = '''Op(softmax_grad), inputs:(X, Y, Y@GRAD), outputs:(X@GRAD).'''

@@ -1,5 +1,5 @@
 import paddle.v2.framework.core as core
-from paddle.v2.framework.create_op_creation_methods import op_creations
+from paddle.v2.framework.op import Operator
 import numpy
 import unittest
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     class GetNumericGradientTest(unittest.TestCase):
         def test_add_op(self):
-            add_op = op_creations.add_two(X="X", Y="Y", Out="Z")
+            add_op = Operator('add_two', X="X", Y="Y", Out="Z")
             x = numpy.random.random((10, 1)).astype("float32")
             y = numpy.random.random((10, 1)).astype("float32")
 
