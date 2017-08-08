@@ -1,7 +1,7 @@
 import paddle.v2.framework.core as core
 import unittest
 import numpy
-import paddle.v2.framework.create_op_creation_methods as creation
+from paddle.v2.framework.op import Operator
 
 
 class TestFc(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestFc(unittest.TestCase):
         # Set a real numpy array here.
         # x_tensor.set(numpy.array([]))
 
-        op = creation.op_creations.fc(X="X", Y="Y", W="W")
+        op = Operator("fc", X="X", Y="Y", W="W")
 
         for out in op.outputs():
             if scope.find_var(out) is None:
