@@ -13,15 +13,11 @@
 # serve to show the default.
 import sys
 import os, subprocess
+sys.path.insert(0, os.path.abspath('@PROJ_ROOT@/python'))
 import shlex
 from recommonmark import parser, transform
-try:
-   import py_paddle
-   import paddle
-   import paddle.v2
-except ImportError:
-   print("Must install paddle python package before generating documentation")
-   sys.exit(1)
+import paddle
+import paddle.v2
 
 MarkdownParser = parser.CommonMarkParser
 AutoStructify = transform.AutoStructify
