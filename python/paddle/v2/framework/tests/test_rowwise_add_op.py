@@ -15,5 +15,7 @@ class TestRowwiseAddOp(unittest.TestCase):
         self.outputs = {'Out': np.add(self.inputs['X'], self.inputs['b'])}
 
 
+#TODO(dzh): rowwise_grad check
+
 if __name__ == '__main__':
     unittest.main()
