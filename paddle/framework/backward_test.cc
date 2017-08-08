@@ -166,6 +166,8 @@ REGISTER_OP(fc, f::FcOp, f::FcOpMaker);
 REGISTER_OP(many_output_op, f::EmptyOp, f::ManyOutputOpMaker);
 REGISTER_GRADIENT_OP(many_output_op, many_output_op_grad, f::EmptyOp);
 
+TEST(Backward, need_to_be_removed) {}
+
 //
 // TEST(Backward, simple_op_grad) {
 //  auto fwd = f::OpRegistry::CreateOp(
