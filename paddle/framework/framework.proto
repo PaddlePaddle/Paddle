@@ -40,8 +40,8 @@ message OpDesc {
   };
 
   message Var {
-    string name;                 // e.g. "X"
-    int dup = 2 [ default = 0 ]; // e.g., "1"
+    required string name;                 // e.g. "X"
+    optional int dup = 2 [ default = 0 ]; // e.g., "1"
   };
 
   required string type = 3;
