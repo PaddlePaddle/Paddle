@@ -25,8 +25,8 @@ class RowWiseAddKernel : public OpKernel {
     auto out = context.Output<Tensor>(0);
     out->mutable_data<T>(context.GetPlace());
 
-    auto input = EigenMatrix<T>::From(*context.Input<Tensor>(0));
-    auto bias = EigenVector<T>::From(*context.Input<Tensor>(1));
+    auto input = EigenMatrix<T>::From(*context.Input<Tensor>("X"));
+    auto bias = EigenVector<T>::From(*context.Input<Tensor>("b"));
     auto output = EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);

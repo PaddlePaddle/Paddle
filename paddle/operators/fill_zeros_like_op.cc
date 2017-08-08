@@ -20,16 +20,8 @@ namespace operators {
 class FillZerosLikeOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 1UL,
-                   "Input size of FillZerosLikeOp must be one.");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1UL,
-                   "Output size of AddOp must be one.");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr,
-                   "Input of FillZerosLikeOp must be set.");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
-                   "Output of FillZerosLikeOp must be set.");
-    ctx.Output<framework::Tensor>(0)->Resize(
-        ctx.Input<framework::Tensor>(0)->dims());
+    ctx.Output<framework::Tensor>("Dst")->Resize(
+        ctx.Input<framework::Tensor>("Src")->dims());
   }
 };
 

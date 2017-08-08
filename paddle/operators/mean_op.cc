@@ -20,11 +20,9 @@ namespace operators {
 class MeanOp : public OperatorWithKernel {
  protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 1, "Input size of AddOp must be one");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.OutputVar(0) != nullptr,
-                   "Input/Output of MeanOp must be initialized.");
-    ctx.Output<Tensor>(0)->Resize(framework::make_ddim({1}));
+    PADDLE_ENFORCE(ctx.InputVar("X") != nullptr,
+                   "Input of MeanOp must be initialized.");
+    ctx.Output<Tensor>("Out")->Resize({1});
   }
 };
 

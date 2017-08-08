@@ -22,9 +22,9 @@ template <typename Place, typename T>
 class AddKernel : public OpKernel {
  public:
   void Compute(const ExecutionContext& context) const override {
-    auto input0 = context.Input<Tensor>(0);
-    auto input1 = context.Input<Tensor>(1);
-    auto output = context.Output<Tensor>(0);
+    auto* input0 = context.Input<Tensor>("X");
+    auto* input1 = context.Input<Tensor>("Y");
+    auto* output = context.Output<Tensor>("Out");
 
     output->mutable_data<T>(context.GetPlace());
 

@@ -47,8 +47,8 @@ class IOIgnoredOpMaker : public OpProtoAndCheckerMaker {
 namespace f = paddle::framework;
 
 TEST(GradOpBuilder, AddTwo) {
-  std::shared_ptr<f::OperatorBase> add_op(
-      f::OpRegistry::CreateOp("add_two", {"x", "y"}, {"out"}, {}));
+  std::shared_ptr<f::OperatorBase> add_op(f::OpRegistry::CreateOp(
+      "add_two", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
   std::shared_ptr<f::OperatorBase> grad_add_op =
       f::OpRegistry::CreateGradOp(*add_op);
   EXPECT_EQ(static_cast<int>(grad_add_op->inputs_.size()), 4);
@@ -70,8 +70,10 @@ TEST(GradOpBuilder, MutiInOut) {
   f::AttributeMap attrs{{"input_format", std::vector<int>{0, 1, 4, 5}},
                         {"output_format", std::vector<int>{0, 1, 3}}};
   std::shared_ptr<f::OperatorBase> test_op(f::OpRegistry::CreateOp(
-      "mult_io", {"in1", "in2_1", "in2_2", "in2_3", "in3"},
-      {"out1", "out2_1", "out2_2"}, attrs));
+      "mult_io", {{"In1", {"in1"}},
+                  {"In2_mult", {"in2_1", "in2_2", "in2_3"}},
+                  {"In3", {"in3"}}},
+      {{"Out1", {"Out2_mult"}}, {"Out2", {"out2_1", "out2_2"}}}, attrs));
   std::shared_ptr<f::OperatorBase> grad_test_op =
       f::OpRegistry::CreateGradOp(*test_op);
 
@@ -104,8 +106,10 @@ TEST(GradOpBuilder, IOIgnoredInGradient) {
   f::AttributeMap attrs{{"input_format", std::vector<int>{0, 1, 3, 5}},
                         {"output_format", std::vector<int>{0, 2, 3}}};
   std::shared_ptr<f::OperatorBase> test_op(f::OpRegistry::CreateOp(
-      "io_ignored", {"in1", "in2_1", "in2_2", "in3_1", "in3_2"},
-      {"out1_1", "out1_2", "out2"}, attrs));
+      "io_ignored", {{"In1", {"in1"}},
+                     {"In2_mult", {"in2_1", "in2_2"}},
+                     {"In3_mult", {"in3_1", "in3_2"}}},
+      {{"Out1_mult", {"out1_1", "out1_2"}}, {"Out2", {"out2"}}}, attrs));
   std::shared_ptr<f::OperatorBase> grad_test_op =
       f::OpRegistry::CreateGradOp(*test_op);
 

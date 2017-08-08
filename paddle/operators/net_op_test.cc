@@ -47,23 +47,24 @@ TEST(OpKernel, all) {
   ASSERT_NE(net, nullptr);
 
   auto op1 = std::make_shared<TestOp>();
-  op1->inputs_ = {"x", "w1", "b1"};
-  op1->outputs_ = {"y"};
+  op1->inputs_ = {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}};
+  op1->outputs_ = {{"Out", {"y"}}};
   net->AddOp(op1);
 
   auto op2 = std::make_shared<TestOp>();
-  op2->inputs_ = {"y", "w2", "b2"};
-  op2->outputs_ = {"z"};
+  op2->inputs_ = {{"X", {"y"}}, {"W", {"w2"}}, {"b", {"b2"}}};
+  op2->outputs_ = {{"Out", {"z"}}};
   net->AddOp(op2);
 
   net->CompleteAddOp();
-  AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"}, net->inputs_);
-  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_);
+  AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
+                               net->inputs_.at("__all__"));
+  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_.at("__all__"));
   auto tmp_idx_iter = net->attrs_.find("temporary_index");
   ASSERT_NE(net->attrs_.end(), tmp_idx_iter);
   auto& tmp_idx = boost::get<std::vector<int>>(tmp_idx_iter->second);
   ASSERT_EQ(1UL, tmp_idx.size());
-  ASSERT_EQ("y", net->outputs_[tmp_idx[0]]);
+  ASSERT_EQ("y", net->outputs_.at("__all__")[tmp_idx[0]]);
 
   Scope scope;
   platform::CPUDeviceContext dev_ctx;
@@ -78,8 +79,8 @@ TEST(OpKernel, all) {
 TEST(NetOp, insert_op) {
   NetOp net;
   auto op1 = std::make_shared<EmptyOp>();
-  op1->inputs_ = {"x", "w1", "b1"};
-  op1->outputs_ = {"y"};
+  op1->inputs_ = {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}};
+  op1->outputs_ = {{"Out", {"y"}}};
   net.AddOp(op1);
   net.InsertOp(0, op1);
   ASSERT_EQ(2UL, net.ops_.size());

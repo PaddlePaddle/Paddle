@@ -20,15 +20,24 @@
 namespace paddle {
 namespace framework {
 
-static bool AllInSet(const std::vector<std::string>& names,
-                     const std::string& suffix,
-                     const std::unordered_set<std::string>& set) {
+template <typename Map, typename T>
+static void ForEachVarName(Map& names, T callback) {
   for (auto& name : names) {
-    if (set.find(name + suffix) == set.end()) {
-      return false;
+    for (auto& n : name.second) {
+      if (callback(n)) break;
     }
   }
-  return true;
+}
+
+static bool AllInSet(
+    const std::unordered_map<std::string, std::vector<std::string>>& names,
+    const std::string& suffix, const std::unordered_set<std::string>& set) {
+  bool ret_val = true;
+  ForEachVarName(names, [&ret_val, &set, &suffix](const std::string& n) {
+    ret_val = set.find(n + suffix) == set.end();
+    return !ret_val;
+  });
+  return ret_val;
 }
 
 static std::shared_ptr<OperatorBase> NOP() {
@@ -67,10 +76,11 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   //  Then all input gradients cannot be computed at all, and we put them into
   //  `no_grad_names` set. Return an NOP.
   if (AllInSet(forwardOp.outputs_, kGradVarSuffix, no_grad_names)) {
-    for (auto& name : forwardOp.inputs_) {
-      // Mark all input is not need
-      no_grad_names.insert(name + kGradVarSuffix);
-    }
+    ForEachVarName(forwardOp.inputs_,
+                   [&no_grad_names](const std::string& name) -> bool {
+                     no_grad_names.insert(GradVarName(name));
+                     return false;
+                   });
     return NOP();
   }
 
@@ -92,9 +102,11 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
       auto fwd = *it;
       auto bwd = BackwardRecursive(*fwd, no_grad_names, uniq_id);
       net->AddOp(bwd);
-      for (auto& out : bwd->outputs_) {
-        dup_output_ops[out].emplace_back(local_op_id);
-      }
+      ForEachVarName(bwd->outputs_,
+                     [&dup_output_ops, local_op_id](const std::string& out) {
+                       dup_output_ops[out].emplace_back(local_op_id);
+                       return false;
+                     });
     }
     // Get unique ID for this method.
     auto uid = uniq_id++;
@@ -116,7 +128,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
       insert_position.push_back(
           {dup_op.back(),
            OpRegistry::CreateOp(
-               "add", {dup_outputs}, {name},
+               "add", {{"X", {dup_outputs}}}, {{"Out", {name}}},
                {{"input_format",
                  std::vector<int>{0, static_cast<int>(dup_outputs.size())}}})});
     }
@@ -130,7 +142,9 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
 
   } else {
     std::shared_ptr<OperatorBase> grad_op = OpRegistry::CreateGradOp(forwardOp);
-    for (std::string& grad_input : grad_op->inputs_) {
+
+    ForEachVarName(grad_op->inputs_, [&no_grad_names,
+                                      &net](std::string& grad_input) {
       if (no_grad_names.count(grad_input)) {
         std::string prefix =
             grad_input.substr(0, grad_input.size() - kGradVarSuffix.size());
@@ -138,16 +152,19 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
 
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
-        net->AddOp(OpRegistry::CreateOp("fill_zeros_like", {prefix},
-                                        {grad_input}, {}));
+        net->AddOp(OpRegistry::CreateOp("fill_zeros_like", {{"Src", {prefix}}},
+                                        {{"Dst", {grad_input}}}, {}));
       }
-    }
+      return false;
+    });
 
-    for (std::string& grad_output : grad_op->outputs_) {
-      if (no_grad_names.count(grad_output)) {
-        grad_output = kEmptyVarName;
-      }
-    }
+    ForEachVarName(grad_op->outputs_,
+                   [&no_grad_names](std::string& grad_output) {
+                     if (no_grad_names.count(grad_output)) {
+                       grad_output = kEmptyVarName;
+                     }
+                     return false;
+                   });
 
     if (net->ops_.empty()) {  // Current no aux op is added to network
       return grad_op;

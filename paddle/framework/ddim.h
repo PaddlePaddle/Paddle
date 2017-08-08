@@ -73,6 +73,8 @@ struct DDim {
   DDim operator*(DDim d) const;
 
   ssize_t size() const;
+
+  std::string DebugString() const;
 };
 
 /**

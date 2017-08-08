@@ -34,83 +34,72 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 #endif
 
 const std::string& OperatorBase::Input(const std::string& name) const {
-  PADDLE_ENFORCE(in_out_idxs_ != nullptr,
-                 "Input Output Indices could not be nullptr");
-  auto it = in_out_idxs_->find(name);
-  PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
+  auto it = inputs_.find(name);
+  PADDLE_ENFORCE(it != inputs_.end(), "Op %s does not have output %s", type_,
                  name);
-  if (attrs_.count("input_format") == 0) {
-    return inputs_.at((size_t)it->second);
-  } else {
-    const auto& input_format = GetAttr<std::vector<int>>("input_format");
-    int idx = input_format[it->second];
-    return inputs_.at((size_t)idx);
-  }
+  PADDLE_ENFORCE_EQ(it->second.size(), 1UL,
+                    "Op %s input %s should contain only one variable", type_,
+                    name);
+  return it->second[0];
 }
 
-std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
-  PADDLE_ENFORCE(in_out_idxs_ != nullptr, "IO Idx could not be nullptr");
-  auto input_format = GetAttr<std::vector<int>>("input_format");
-  auto offset = in_out_idxs_->at(name);
-  PADDLE_ENFORCE(input_format.at(static_cast<size_t>(offset) + 1) <=
-                     static_cast<int>(inputs_.size()),
-                 "Input Out Of Range");
-
-  return std::vector<std::string>{
-      inputs_.begin() + input_format.at(offset),
-      inputs_.begin() + input_format.at(offset + 1)};
+const std::vector<std::string>& OperatorBase::Inputs(
+    const std::string& name) const {
+  return inputs_.at(name);
 }
 
 const std::string& OperatorBase::Output(const std::string& name) const {
-  PADDLE_ENFORCE(in_out_idxs_ != nullptr, "InOut Indice could not be nullptr");
-  auto it = in_out_idxs_->find(name);
-  PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
+  auto it = outputs_.find(name);
+  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output %s", type_,
                  name);
-  if (attrs_.count("output_format") == 0) {
-    return outputs_.at((size_t)it->second);
-  } else {
-    const auto& output_format = GetAttr<std::vector<int>>("output_format");
-    int idx = output_format[it->second];
-    return outputs_.at((size_t)idx);
-  }
+  PADDLE_ENFORCE_EQ(it->second.size(), 1UL,
+                    "Op %s input %s should contain only one variable", type_,
+                    name);
+  return it->second[0];
 }
 
-std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
-  PADDLE_ENFORCE(in_out_idxs_ != nullptr, "InOut Indice could not be nullptr");
-  auto output_format = GetAttr<std::vector<int>>("output_format");
-  auto offset = in_out_idxs_->at(name);
-  PADDLE_ENFORCE(output_format.at(static_cast<size_t>(offset) + 1) <=
-                     static_cast<int>(outputs_.size()),
-                 "Output Out of Range");
-  return std::vector<std::string>{
-      outputs_.begin() + output_format.at(offset),
-      outputs_.begin() + output_format.at(offset + 1)};
+const std::vector<std::string>& OperatorBase::Outputs(
+    const std::string& name) const {
+  return outputs_.at(name);
 }
 
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
-  ss << "Op(" << type_ << "), inputs:(";
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    ss << inputs_[i];
-    if (i != inputs_.size() - 1) {
-      ss << ", ";
+  ss << "Op(" << type_ << "), inputs:{";
+  for (auto& input : inputs_) {
+    ss << input.first << "[";
+    for (size_t i = 0; i < input.second.size(); ++i) {
+      ss << input.second[i];
+      if (i != input.second.size() - 1) {
+        ss << ", ";
+      }
     }
+    ss << "]";
   }
-  ss << "), outputs:(";
-  for (size_t i = 0; i < outputs_.size(); ++i) {
-    ss << outputs_[i];
-    if (i != outputs_.size() - 1) {
-      ss << ", ";
+  ss << "}, outputs:{";
+  for (auto& output : outputs_) {
+    ss << output.first << "[";
+    for (size_t i = 0; i < output.second.size(); ++i) {
+      ss << output.second[i];
+      if (i != output.second.size() - 1) {
+        ss << ", ";
+      }
     }
+    ss << "]";
   }
-  ss << ").";
+  ss << "}.";
   return ss.str();
 }
 
 void OperatorBase::Rename(const std::string& old_name,
                           const std::string& new_name) {
-  std::replace(inputs_.begin(), inputs_.end(), old_name, new_name);
-  std::replace(outputs_.begin(), outputs_.end(), old_name, new_name);
+  for (auto& input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  for (auto& output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
 }
 
 }  // namespace framework

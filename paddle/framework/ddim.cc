@@ -284,5 +284,11 @@ DDim::DDim(std::initializer_list<int> init_list) {
   *this = make_ddim(init_list);
 }
 
+std::string DDim::DebugString() const {
+  std::ostringstream ss;
+  ss << *this;
+  return ss.str();
+}
+
 }  // namespace framework
 }  // namespace paddle
