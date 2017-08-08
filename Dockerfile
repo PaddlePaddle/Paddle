@@ -38,8 +38,8 @@ RUN apt-get update && \
 RUN pip --no-cache-dir install 'numpy>=1.12.0'
 
 # Install Go and glide
-RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go.tgz && \
+RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
+    tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
     mkdir /root/gopath/src && \
