@@ -138,8 +138,7 @@ class GradientChecker(unittest.TestCase):
         backward_op = core.Operator.backward(forward_op, no_grad_set)
 
         places = [core.CPUPlace()]
-        if not only_cpu and core.is_compile_gpu() \
-                and core.Operator.support_gpu(backward_op.type()):
+        if not only_cpu and core.is_compile_gpu() and backward_op.support_gpu():
             places.append(core.GPUPlace(0))
 
         numeric_grad = dict()

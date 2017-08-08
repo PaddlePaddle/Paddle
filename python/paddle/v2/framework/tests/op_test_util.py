@@ -23,7 +23,7 @@ class OpTestMeta(type):
             scope = core.Scope()
             kwargs = dict()
             places = [core.CPUPlace()]
-            if core.is_compile_gpu() and core.Operator.support_gpu(self.type):
+            if core.is_compile_gpu():
                 places.append(core.GPUPlace(0))
 
             for place in places:
@@ -52,6 +52,8 @@ class OpTestMeta(type):
                         kwargs[attr_name] = self.attrs[attr_name]
 
                 op = Operator(self.type, **kwargs)
+                if isinstance(place, core.GPUPlace) and not op.support_gpu():
+                    return
 
                 op.infer_shape(scope)
 

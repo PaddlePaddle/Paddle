@@ -60,6 +60,7 @@ void ExposeOperator(ClassType &m) {
            [](const typename ClassType::type &op) -> std::vector<std::string> {
              return op.inputs_;
            })
+      .def("support_gpu", &ClassType::type::SupportGPU)
       .def("temp_outputs",
            [](const typename ClassType::type &op) -> std::vector<std::string> {
              auto iter = op.attrs_.find("temporary_index");
@@ -219,8 +220,6 @@ All parameter, weight, gradient are variables in Paddle.
                    desc.InitializationErrorString());
     return OpRegistry::CreateOp(desc);
   });
-
-  operator_base.def_static("support_gpu", &OpRegistry::SupportGPU);
 
   operator_base.def("backward",
                     [](const OperatorBase &forwardOp,
