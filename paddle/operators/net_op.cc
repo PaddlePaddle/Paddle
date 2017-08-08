@@ -15,6 +15,7 @@
 */
 
 #include "paddle/operators/net_op.h"
+#include <set>
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -23,36 +24,39 @@ namespace operators {
 void NetOp::CompleteAddOp(bool calc) {
   add_op_done_ = true;
   if (!calc) return;
-  std::unordered_set<std::string> input_set;
-  std::unordered_set<std::string> output_set;
-  std::unordered_set<std::string> temp_output;
+  std::set<std::string> input_set;
+  std::set<std::string> output_set;
+  std::set<std::string> temp_output;
   for (auto& op : ops_) {
     for (auto& ipt : op->inputs_) {
-      if (!Contains(output_set, ipt)) {  // Not other op's output
-        input_set.insert(ipt);
-      } else {
-        temp_output.insert(ipt);
+      for (auto& var_name : ipt.second) {
+        if (!Contains(output_set, var_name)) {  // Not other op's output
+          input_set.insert(var_name);
+        } else {
+          temp_output.insert(var_name);
+        }
       }
     }
 
     for (auto& opt : op->outputs_) {
-      output_set.insert(opt);
+      for (auto& var_name : opt.second) {
+        output_set.insert(var_name);
+      }
     }
   }
+  auto& inputs = inputs_["all"];
+  inputs.reserve(input_set.size());
+  std::copy(input_set.begin(), input_set.end(), std::back_inserter(inputs));
+  auto& outputs = outputs_["all"];
+  outputs.reserve(output_set.size());
+  std::copy(output_set.begin(), output_set.end(), std::back_inserter(outputs));
 
-  inputs_.reserve(input_set.size());
-  std::copy(input_set.begin(), input_set.end(), std::back_inserter(inputs_));
-  std::sort(inputs_.begin(), inputs_.end());
-
-  outputs_.reserve(output_set.size());
-  std::copy(output_set.begin(), output_set.end(), std::back_inserter(outputs_));
-  std::sort(outputs_.begin(), outputs_.end());
-
+  //! TODO figure out how to generate temporary_index in Network.
   std::vector<int> tmp_index;
   tmp_index.reserve(temp_output.size());
-  int output_len = static_cast<int>(outputs_.size());
+  int output_len = static_cast<int>(outputs.size());
   for (int i = 0; i < output_len; ++i) {
-    if (Contains(temp_output, outputs_[i])) {
+    if (Contains(temp_output, outputs[i])) {
       tmp_index.push_back(i);
     }
   }

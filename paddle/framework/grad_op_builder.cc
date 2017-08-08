@@ -13,12 +13,12 @@ express or implied. See the License for the specific language governing
 permissions and limitations under the License. */
 
 #include "paddle/framework/grad_op_builder.h"
-#include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
-
+/**
 class OpRegistry;
 
 using VarIndexMap = std::unordered_map<std::string, int>;
@@ -98,6 +98,7 @@ OperatorBase* BuildGradOp(const OperatorBase* op) {
   TransOpArg(op, grad_op, OpArgType::IN, OpArgType::OUT, out_idx, true);  // IG
   return grad_op;
 }
-
+**/
+OperatorBase* BuildGradOp(const OperatorBase* op) { return nullptr; }
 }  // namespace framework
 }  // namespace paddle

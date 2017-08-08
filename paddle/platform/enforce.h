@@ -195,12 +195,28 @@ struct CompatibleType {
   typedef typename std::conditional<t1_to_t2, T2, T1>::type type;
 };
 
+template <typename T>
+inline std::string enforce_to_string(const T& val) {
+  std::ostringstream sout;
+  sout << val;
+  return sout.str();
+}
+template <>
+inline std::string enforce_to_string(const std::string& val) {
+  return val;
+}
+template <>
+inline std::string enforce_to_string(const char* const& val) {
+  return std::string(val);
+}
+
 #define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)        \
   PADDLE_ENFORCE(__COMPATIBLE_TYPE(__VAL0, __VAL1, __VAL0)                    \
                      __CMP __COMPATIBLE_TYPE(__VAL0, __VAL1, __VAL1),         \
                  "enforce %s " #__CMP " %s failed, %s " #__INV_CMP " %s\n%s", \
-                 #__VAL0, #__VAL1, std::to_string(__VAL0),                    \
-                 std::to_string(__VAL1),                                      \
+                 #__VAL0, #__VAL1,                                            \
+                 paddle::platform::enforce_to_string(__VAL0),                 \
+                 paddle::platform::enforce_to_string(__VAL1),                 \
                  paddle::string::Sprintf("" __VA_ARGS__));
 
 #define __COMPATIBLE_TYPE(__VAL0, __VAL1, __VAL)              \

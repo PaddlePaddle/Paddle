@@ -21,8 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/attribute.h"
-#include "paddle/framework/op_desc.pb.h"
-#include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -95,13 +94,12 @@ class OperatorBase {
   const std::string& Input(const std::string& name) const;
 
   //! Get a input which has multiple variables.
-  //! TODO add a vector_view to prevent memory copy.
-  std::vector<std::string> Inputs(const std::string& name) const;
+  const std::vector<std::string>& Inputs(const std::string& name) const;
   //! Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
-  std::vector<std::string> Outputs(const std::string& name) const;
+  const std::vector<std::string>& Outputs(const std::string& name) const;
 
  public:
   std::string type_;
@@ -109,13 +107,12 @@ class OperatorBase {
   // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
-  std::vector<std::string> inputs_;
+  std::unordered_map<std::string, std::vector<std::string>> inputs_;
+
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  std::vector<std::string> outputs_;
+  std::unordered_map<std::string, std::vector<std::string>> outputs_;
   AttributeMap attrs_;
-  // store the arguments' offset described in op_desc.
-  std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
 class OperatorContext {
@@ -123,16 +120,12 @@ class OperatorContext {
   OperatorContext(const OperatorBase* op, const Scope& scope)
       : op_(*op), scope_(scope) {}
 
-  size_t InputSize() const { return op_.inputs_.size(); }
-
-  size_t OutputSize() const { return op_.outputs_.size(); }
-
-  const Variable* InputVar(const size_t index) const {
-    return scope_.FindVar(op_.inputs_.at(index));
+  size_t InputSize(const std::string& name) const {
+    return op_.inputs_.at(name).size();
   }
 
-  Variable* OutputVar(const size_t index) const {
-    return scope_.FindVar(op_.outputs_.at(index));
+  size_t OutputSize(const std::string& name) const {
+    return op_.outputs_.at(name).size();
   }
 
   const Variable* InputVar(const std::string& name) const {
@@ -162,24 +155,6 @@ class OperatorContext {
         names.begin(), names.end(), std::back_inserter(res),
         [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
-  }
-
-  template <typename T>
-  const T* Input(const size_t index) const {
-    auto var = InputVar(index);
-    PADDLE_ENFORCE(var != nullptr, "Input(%d) should not be nullptr", index);
-    return &var->Get<T>();
-  }
-
-  template <typename T>
-  T* Output(const size_t index) const {
-    auto var = OutputVar(index);
-    PADDLE_ENFORCE(
-        var != nullptr,
-        "Output(%d) not be nullptr, which means variable [%s] does not "
-        "exist in scope",
-        index, op_.outputs_[index]);
-    return var->GetMutable<T>();
   }
 
   template <typename T>

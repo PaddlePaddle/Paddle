@@ -20,15 +20,10 @@ namespace operators {
 class AddOp : public OperatorWithKernel {
  protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 2);
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1);
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
-                   "Inputs of AddOp must all be set");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
-                   "Outputs of AddOp must all be set");
-    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
-                   "Two input of Add Op's dimension must be same.");
-    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
+                      ctx.Input<Tensor>("Y")->dims(),
+                      "Two input of Add Op's dimension must be same.");
+    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
 

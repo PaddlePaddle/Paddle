@@ -40,8 +40,8 @@ message OpDesc {
   };
 
   message Var {
-    required string name;                 // e.g. "X"
-    optional int dup = 2 [ default = 0 ]; // e.g., "1"
+    required string op_proto_name = 1;
+    repeated string var_names = 2;
   };
 
   required string type = 3;
@@ -57,7 +57,7 @@ message OpProto {
   message Var {
     required string name = 1;
     required string comment = 2;
-    // OpDesc::Var::dup indices the duplica.
+
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool no_gradient = 5 [ default = false ];
