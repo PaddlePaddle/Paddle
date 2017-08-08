@@ -14,16 +14,18 @@
 
 #include "paddle/operators/recurrent_op.h"
 
-#include <glog/logging.h>
 #include <cstring>
 #include <sstream>
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
+
+using Scope = framework::Scope;
+using Variable = framework::Variable;
+using Tensor = framework::Tensor;
 
 void RecurrentAlgorithm::InferShape(const Scope& scope) const {
   seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
@@ -135,10 +137,11 @@ void RecurrentOp::Init() {
   alg_.Init(std::move(arg));
 }
 
-class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+class RecurrentAlgorithmProtoAndCheckerMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
-  RecurrentAlgorithmProtoAndCheckerMaker(OpProto* proto,
-                                         OpAttrChecker* op_checker)
+  RecurrentAlgorithmProtoAndCheckerMaker(framework::OpProto* proto,
+                                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     const auto& name = RecurrentOp::kArgName;
     // inputs and outputs stored in proto
