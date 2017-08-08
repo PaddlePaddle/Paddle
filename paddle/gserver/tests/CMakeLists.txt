@@ -50,7 +50,7 @@ add_unittest_without_exec(test_DetectionOutput
     test_DetectionOutput.cpp
     LayerGradUtil.cpp)
 
-add_test(NAME test_DetectionOutput 
+add_test(NAME test_DetectionOutput
     COMMAND test_DetectionOutput)
 ################# test_ConvUnify #######################
 add_unittest_without_exec(test_ConvUnify
@@ -66,6 +66,16 @@ add_unittest_without_exec(test_BatchNorm
 
 add_test(NAME test_BatchNorm
     COMMAND test_BatchNorm)
+
+
+################# test_KmaxSeqScore #######################
+add_unittest_without_exec(test_KmaxSeqScore
+    test_KmaxSeqScore.cpp
+    LayerGradUtil.cpp)
+
+add_test(NAME test_KmaxSeqScore
+    COMMAND test_KmaxSeqScore)
+
 ################## test_Evaluator #######################
 add_unittest(test_Evaluator
     test_Evaluator.cpp)

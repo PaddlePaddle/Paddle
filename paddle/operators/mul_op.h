@@ -13,27 +13,38 @@
    limitations under the License. */
 
 #pragma once
-
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
-class MulKernel : public OpKernel {
-public:
-  void Compute(const ExecutionContext& context) const override {
+class MulKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
+    auto input0 = context.Input<Tensor>("X");
+    auto input1 = context.Input<Tensor>("Y");
     auto output = context.Output<Tensor>(0);
+
     output->mutable_data<T>(context.GetPlace());
 
-    EigenMatrix<T>::From(*output).device(context.GetEigenDevice<Place>()) =
-        EigenMatrix<T>::From(*context.Input<Tensor>("X"))
-            .contract(EigenMatrix<T>::From(*context.Input<Tensor>("Y")),
-                      dim_pair);
+    auto X = EigenMatrix<T>::From(*input0);
+    auto Y = EigenMatrix<T>::From(*input1);
+    auto Z = EigenMatrix<T>::From(*output);
+    auto place = context.GetEigenDevice<Place>();
+
+    Z.device(place) = X.contract(Y, dim_pair);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle

@@ -13,30 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/fill_zeros_like_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 
 class FillZerosLikeOp : public framework::OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 1UL,
-                   "Input size of FillZerosLikeOp must be one.");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1UL,
-                   "Output size of AddOp must be one.");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr,
-                   "Input of FillZerosLikeOp must be set.");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
-                   "Output of FillZerosLikeOp must be set.");
+    PADDLE_ENFORCE_EQ(ctx.InputSize(), 1UL,
+                      "Input size of FillZerosLikeOp must be one.");
+    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1UL,
+                      "Output size of AddOp must be one.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0),
+                            "Input of FillZerosLikeOp must be set.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(0),
+                            "Output of FillZerosLikeOp must be set.");
     ctx.Output<framework::Tensor>(0)->Resize(
         ctx.Input<framework::Tensor>(0)->dims());
   }
 };
 
 class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
-public:
+ public:
   FillZerosLikeOpMaker(framework::OpProto *proto,
                        framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
@@ -52,9 +50,8 @@ The output will have the same size with input.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(fill_zeros_like,
-            paddle::operators::FillZerosLikeOp,
-            paddle::operators::FillZerosLikeOpMaker);
+namespace ops = paddle::operators;
+REGISTER_OP(fill_zeros_like, ops::FillZerosLikeOp, ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
-    paddle::operators::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);
+    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);

@@ -12,14 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_base.h"
 #include "CrossMapNormalOp.h"
+#include "hl_base.h"
 
 namespace paddle {
 
-__global__ void KeCMRNormFillScale(size_t imageSize, const real* in,
-                                   real* scale, size_t channels,
-                                   size_t height, size_t width, size_t size,
+__global__ void KeCMRNormFillScale(size_t imageSize,
+                                   const real* in,
+                                   real* scale,
+                                   size_t channels,
+                                   size_t height,
+                                   size_t width,
+                                   size_t size,
                                    real alpha) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < imageSize) {
@@ -51,8 +55,10 @@ __global__ void KeCMRNormFillScale(size_t imageSize, const real* in,
   }
 }
 
-__global__ void KeCMRNormOutput(size_t inputSize, const real* in,
-                                const real* scale, real negative_beta,
+__global__ void KeCMRNormOutput(size_t inputSize,
+                                const real* in,
+                                const real* scale,
+                                real negative_beta,
                                 real* out) {
   const int index = threadIdx.x + blockIdx.x * blockDim.x;
   if (index < inputSize) {
@@ -74,24 +80,30 @@ void CrossMapNormal<DEVICE_TYPE_GPU>(real* outputs,
   size_t imageSize = numSamples * height * width;
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
-  KeCMRNormFillScale<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (imageSize, inputs, denoms, channels, height, width, size, scale);
+  KeCMRNormFillScale<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+      imageSize, inputs, denoms, channels, height, width, size, scale);
 
-  size_t inputSize = numSamples * height * width *channels;
+  size_t inputSize = numSamples * height * width * channels;
   blockSize = 1024;
   gridSize = (inputSize + 1024 - 1) / 1024;
-  KeCMRNormOutput<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (inputSize, inputs, denoms, -pow, outputs);
+  KeCMRNormOutput<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+      inputSize, inputs, denoms, -pow, outputs);
 
   CHECK_SYNC("CrossMapNormal");
 }
 
-__global__ void KeCMRNormDiff(size_t imageSize, const real* bottom_data,
-                              const real* top_data, const real* scale,
-                              const real* top_diff, size_t channels,
-                              size_t height, size_t width, size_t size,
-                              real negative_beta, real cache_ratio,
-                              real* bottom_diff ) {
+__global__ void KeCMRNormDiff(size_t imageSize,
+                              const real* bottom_data,
+                              const real* top_data,
+                              const real* scale,
+                              const real* top_diff,
+                              size_t channels,
+                              size_t height,
+                              size_t width,
+                              size_t size,
+                              real negative_beta,
+                              real cache_ratio,
+                              real* bottom_diff) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < imageSize) {
     const int w = idx % width;
@@ -113,17 +125,17 @@ __global__ void KeCMRNormDiff(size_t imageSize, const real* bottom_data,
     while (index < channels + post_pad) {
       if (index < channels) {
         accum += top_diff[index * step] * top_data[index * step] /
-          scale[index * step];
+                 scale[index * step];
       }
       if (index >= size) {
         accum -= top_diff[(index - size) * step] *
-          top_data[(index - size) * step] / scale[(index - size) * step];
+                 top_data[(index - size) * step] / scale[(index - size) * step];
       }
       if (index >= post_pad) {
         bottom_diff[(index - post_pad) * step] +=
-          top_diff[(index - post_pad) * step] *
-          pow(scale[(index - post_pad) * step], negative_beta) - cache_ratio *
-          bottom_data[(index - post_pad) * step] * accum;
+            top_diff[(index - post_pad) * step] *
+                pow(scale[(index - post_pad) * step], negative_beta) -
+            cache_ratio * bottom_data[(index - post_pad) * step] * accum;
       }
       ++index;
     }
@@ -147,9 +159,18 @@ void CrossMapNormalGrad<DEVICE_TYPE_GPU>(real* inputsGrad,
 
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
-  KeCMRNormDiff <<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (imageSize, inputsValue, outputsValue, denoms, outputsGrad, channels,
-      height, width, size, -pow, 2.0f * pow * scale, inputsGrad);
+  KeCMRNormDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(imageSize,
+                                                            inputsValue,
+                                                            outputsValue,
+                                                            denoms,
+                                                            outputsGrad,
+                                                            channels,
+                                                            height,
+                                                            width,
+                                                            size,
+                                                            -pow,
+                                                            2.0f * pow * scale,
+                                                            inputsGrad);
   CHECK_SYNC("CrossMapNormalGrad");
 }
 

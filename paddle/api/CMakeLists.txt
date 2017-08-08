@@ -82,19 +82,13 @@ SWIG_LINK_LIBRARIES(swig_paddle
 add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so
     COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle
     COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PROJ_ROOT}/paddle/py_paddle
-    COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-    COMMAND ${CMAKE_COMMAND} -E touch dist/.timestamp
-    COMMAND rm -rf py_paddle.egg-info build
+    COMMAND ${CMAKE_COMMAND} -E touch .timestamp
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle
     DEPENDS _swig_paddle
 )
 
 # TODO(yuyang18) : make wheel name calculated by cmake
 add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so)
-
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/dist/
-    DESTINATION opt/paddle/share/wheels
-)
 
 if(WITH_TESTING)
     IF(NOT PY_PIP_FOUND)
@@ -108,7 +102,7 @@ if(WITH_TESTING)
             BUILD_COMMAND       ""
             INSTALL_COMMAND     env ${py_env} ${PYTHON_EXECUTABLE} setup.py install
             BUILD_IN_SOURCE     1
-            DEPENDS python setuptools python_api_wheel
+            #DEPENDS python setuptools python_api_wheel
         )
     ENDIF()
     add_subdirectory(test)

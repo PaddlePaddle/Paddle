@@ -33,58 +33,71 @@ Configuring cmake in /paddle/build ...
       -DWITH_AVX=${WITH_AVX:-OFF}
       -DWITH_GOLANG=${WITH_GOLANG:-OFF}
       -DWITH_SWIG_PY=ON
+      -DWITH_C_API=${WITH_C_API:-OFF}
+      -DWITH_PYTHON=${WITH_PYTHON:-ON}
+      -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
       -DCUDNN_ROOT=/usr/
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
       -DWITH_TESTING=${WITH_TESTING:-OFF}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
 EOF
+
+# Disable UNITTEST_USE_VIRTUALENV in docker because
+# docker environment is fully controlled by this script.
+# See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
       -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
-      -DWITH_SWIG_PY=ON \
+      -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
+      -DWITH_C_API=${WITH_C_API:-OFF} \
+      -DWITH_PYTHON=${WITH_PYTHON:-ON} \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
       -DWITH_TESTING=${WITH_TESTING:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
-========================================
+============================================
 Building in /paddle/build ...
    Build unit tests: ${WITH_TESTING:-OFF}
-========================================
+============================================
 EOF
 make -j `nproc`
+
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    pip uninstall -y py-paddle paddle || true
-    ctest --output-on-failure
-fi
-
-
 cat <<EOF
 ========================================
-Installing ...
+Running unit tests ...
 ========================================
 EOF
-make install
-pip install /usr/local/opt/paddle/share/wheels/*.whl
-paddle version
+    # make install should also be test when unittest
+    make install -j `nproc`
+    pip install /usr/local/opt/paddle/share/wheels/*.whl
+    paddle version
+    ctest --output-on-failure
+fi
 
 
 # To build documentation, we need to run cmake again after installing
 # PaddlePaddle.  This awkwardness is due to
 # https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
 # describes a solution.
-if [[ ${WITH_DOC} == "ON" ]]; then
+if [[ ${WITH_DOC:-OFF} == "ON" ]]; then
     cat <<EOF
 ========================================
 Building documentation ...
    In /paddle/build_doc
 ========================================
 EOF
+    # build documentation need install Paddle before
+    make install -j `nproc`
+    pip install /usr/local/opt/paddle/share/wheels/*.whl
+    paddle version
+
     mkdir -p /paddle/build_doc
     pushd /paddle/build_doc
     cmake .. \
@@ -117,13 +130,22 @@ fi
 
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-cat <<EOF
+if [[ ${WITH_DEB:-OFF} == "ON" ]]; then
+    cat <<EOF
 ========================================
 Generating .deb package ...
 ========================================
 EOF
-cpack -D CPACK_GENERATOR='DEB' ..
-
+    set +e
+    cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
+    err_code=$?
+    if [ ${err_code} -ne 0 ]; then
+        # cat error logs if cpack failed.
+        cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
+        exit ${err_code}
+    fi
+    set -e
+fi
 
 cat <<EOF
 ========================================

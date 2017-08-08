@@ -13,9 +13,10 @@
    limitations under the License. */
 
 #include "paddle/framework/backward.h"
+
 #include <list>
-#include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +33,7 @@ static bool AllInSet(const std::vector<std::string>& names,
 }
 
 static std::shared_ptr<OperatorBase> NOP() {
-  auto net_op = std::make_shared<NetOp>();
+  auto net_op = std::make_shared<operators::NetOp>();
   net_op->type_ = "@NOP@";
   net_op->CompleteAddOp();
   return net_op;
@@ -42,9 +43,9 @@ static std::shared_ptr<OperatorBase> NOP() {
 //
 //  no_grad_names the gradient variable names without gradient calculating.
 //
-//  uniq_id is a unique index used inside recursively calling BackwardRecursive.
-//  use `uid = uniq_id++;` to get the unique index, and pass `uniq_id` through
-//  recursive calling.
+//  uniq_id is a unique index used inside recursively calling
+//  BackwardRecursive. use `uid = uniq_id++;` to get the unique index, and
+//  pass `uniq_id` through recursive calling.
 //
 //  returns The backward operator. For simple situation, it is a simple
 //  operator. For complex situation, it is a NetOp.
@@ -59,32 +60,30 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   //  If all input gradients of forwarding operator do not need to calculate,
   //  just return an NOP. Not return null ptr because NOP does not take
   //  too much time for calculation, but it is useful for simplifying logic.
-  if (AllInSet(forwardOp.inputs_, OperatorBase::GRAD_VAR_SUFFIX(),
-               no_grad_names)) {
+  if (AllInSet(forwardOp.inputs_, kGradVarSuffix, no_grad_names)) {
     return NOP();
   }
 
-  //  All output gradients of forwarding operator do not need to calculate. Then
-  //  all input gradients cannot be computed at all, and we put them into
+  //  All output gradients of forwarding operator do not need to calculate.
+  //  Then all input gradients cannot be computed at all, and we put them into
   //  `no_grad_names` set. Return an NOP.
-  if (AllInSet(forwardOp.outputs_, OperatorBase::GRAD_VAR_SUFFIX(),
-               no_grad_names)) {
+  if (AllInSet(forwardOp.outputs_, kGradVarSuffix, no_grad_names)) {
     for (auto& name : forwardOp.inputs_) {
       // Mark all input is not need
-      no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
+      no_grad_names.insert(name + kGradVarSuffix);
     }
     return NOP();
   }
 
   // Returned gradient network
-  auto net = std::make_shared<NetOp>();
+  auto net = std::make_shared<operators::NetOp>();
 
   if (forwardOp.IsNetOp()) {
     // Because forwardOp is a net op, it can static_cast.
-    auto& forwardNet = static_cast<const NetOp&>(forwardOp);
+    auto& forwardNet = static_cast<const operators::NetOp&>(forwardOp);
 
-    // Map from output gradient variable name to operator's indices in backward
-    // net. That operator generates that variable.
+    // Map from output gradient variable name to operator's indices in
+    // backward net. That operator generates that variable.
     std::unordered_map<std::string, std::vector<size_t>> dup_output_ops;
 
     size_t local_op_id = 0;
@@ -134,9 +133,9 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     std::shared_ptr<OperatorBase> grad_op = OpRegistry::CreateGradOp(forwardOp);
     for (std::string& grad_input : grad_op->inputs_) {
       if (no_grad_names.count(grad_input)) {
-        std::string prefix = grad_input.substr(
-            0, grad_input.size() - OperatorBase::GRAD_VAR_SUFFIX().size());
-        grad_input = prefix + OperatorBase::ZERO_VAR_SUFFIX();
+        std::string prefix =
+            grad_input.substr(0, grad_input.size() - kGradVarSuffix.size());
+        grad_input = prefix + kZeroVarSuffix;
 
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
@@ -147,7 +146,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
 
     for (std::string& grad_output : grad_op->outputs_) {
       if (no_grad_names.count(grad_output)) {
-        grad_output = OperatorBase::EMPTY_VAR_NAME();
+        grad_output = kEmptyVarName;
       }
     }
 
@@ -168,11 +167,14 @@ std::shared_ptr<OperatorBase> Backward(
   std::unordered_set<std::string> no_grad_names;
   no_grad_names.reserve(no_grad_vars.size());
 
+  no_grad_names.insert(kEmptyVarName + kGradVarSuffix);
+
   for (auto& name : no_grad_vars) {
-    no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
+    no_grad_names.insert(name + kGradVarSuffix);
   }
   size_t uid = 0;
   return BackwardRecursive(forwardOp, no_grad_names, uid);
 }
+
 }  // namespace framework
 }  // namespace paddle

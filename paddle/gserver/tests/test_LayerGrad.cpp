@@ -1899,6 +1899,101 @@ TEST(Layer, CropLayer) {
   }
 }
 
+vector<real> randSampling(real range, int n) {
+  CHECK_GE(range, n);
+  vector<real> num(range);
+  iota(begin(num), end(num), 0.);
+  if (range == n) return num;
+
+  random_shuffle(begin(num), end(num));
+  num.resize(n);
+  sort(begin(num), end(num));
+  return num;
+}
+
+TEST(Layer, SubNestedSequenceLayer) {
+  // layer size is not crutial for this layer,
+  // so use a small layer size in unittest
+  const int layerSize = 4;
+
+  const int maxSeqNum = 50;
+  const int maxSeqLen = 50;
+  const int maxBeamSize = 32;
+
+  srand((size_t)(time(NULL)));
+  int beamSize = 1 + (rand() % maxBeamSize);
+
+  TestConfig config;
+  config.layerConfig.set_type("sub_nested_seq");
+  config.layerConfig.set_name("sub_nested_seq_layer");
+  config.layerConfig.set_size(layerSize);
+
+  int seqNum = 1 + (rand() % maxSeqNum);
+
+  // sequence information for the first input, it is a nested sequence
+  vector<int> seqStartPos(seqNum + 1, 0);
+  vector<int> subSeqStartPos(1, 0);
+
+  // selected indices
+  MatrixPtr selectedIndices = Matrix::create(seqNum, beamSize, false, false);
+  selectedIndices->one();
+  selectedIndices->mulScalar(-1.);
+  real* indicesData = selectedIndices->getData();
+
+  for (int i = 0; i < seqNum; ++i) {
+    int subSeqNum = 1 + (rand() % maxSeqNum);
+    for (int j = 0; j < subSeqNum; ++j) {
+      subSeqStartPos.push_back(subSeqStartPos.back() +
+                               (1 + (rand() % maxSeqLen)));
+    }
+    vector<real> selSeqs =
+        randSampling(static_cast<real>(subSeqNum), min(beamSize, subSeqNum));
+    memcpy(indicesData + (i * beamSize),
+           selSeqs.data(),
+           selSeqs.size() * sizeof(real));
+    seqStartPos[i + 1] = subSeqStartPos.back();
+  }
+
+  MatrixPtr seqInputPtr =
+      Matrix::create(seqStartPos.back(), layerSize, false, false);
+  seqInputPtr->randomizeUniform();
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                              "nested_seq_input",
+                              seqInputPtr,
+                              seqStartPos,
+                              subSeqStartPos});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "selected_indices", selectedIndices});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "sub_nested_seq",
+                  /* batchSize */ seqNum,
+                  /* trans */ false,
+                  /* useGpu*/ useGpu,
+                  /* useWeight */ false);
+  }
+}
+
+TEST(Layer, ClipLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("clip");
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ClipConfig* layerConf = input->mutable_clip_conf();
+  double p1 = std::rand() / (double)RAND_MAX;
+  double p2 = std::rand() / (double)RAND_MAX;
+  layerConf->set_min(std::min(p1, p2));
+  layerConf->set_max(std::max(p1, p2));
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "clip", batchSize, false, useGpu, false);
+  }
+}
+
 TEST(Layer, RowL2NormLayer) {
   const size_t batchSize = 128;
   const size_t size = 512;

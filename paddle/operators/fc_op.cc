@@ -12,38 +12,42 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "type_alias.h"
+#include "paddle/operators/net_op.h"
+
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using OpRegistry = framework::OpRegistry;
+
 class FullyConnectedOp : public NetOp {
-public:
+ public:
   void Init() override {
     AddOp(OpRegistry::CreateOp("mul",
                                {
                                    Input("X"), Input("W"),
                                },
-                               {Output("before_act")},
-                               {}));
+                               {Output("before_act")}, {}));
     auto b = Input("b");
-    if (b != EMPTY_VAR_NAME()) {
+    if (b != framework::kEmptyVarName) {
       AddOp(OpRegistry::CreateOp("rowwise_add",
                                  {Output("before_act"), Input("b")},
-                                 {Output("before_act")},
-                                 {}));
+                                 {Output("before_act")}, {}));
     }
 
     auto activation = GetAttr<std::string>("activation");
-    AddOp(OpRegistry::CreateOp(
-        activation, {Output("before_act")}, {Output("Y")}, {}));
+    AddOp(OpRegistry::CreateOp(activation, {Output("before_act")},
+                               {Output("Y")}, {}));
     CompleteAddOp(false);
   }
 };
 
-class FullyConnectedOpMaker : public OpProtoAndCheckerMaker {
-public:
-  FullyConnectedOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+class FullyConnectedOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  FullyConnectedOpMaker(framework::OpProto *proto,
+                        framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input of fc operator");
     AddInput("W", "the weight of fc operator");
@@ -68,4 +72,5 @@ USE_OP(rowwise_add);
 USE_OP(sigmoid);
 USE_OP(softmax);
 
+namespace ops = paddle::operators;
 REGISTER_OP(fc, ops::FullyConnectedOp, ops::FullyConnectedOpMaker);

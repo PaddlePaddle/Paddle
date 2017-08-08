@@ -17,7 +17,7 @@ foreach(filename ${proto_filenames})
             COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
             ARGS "--python_out=${PROJ_ROOT}/python/paddle/proto"
             "-I" ${CMAKE_CURRENT_SOURCE_DIR} ${ABS_FIL}
-            DEPENDS ${ABS_FIL} ${external_project_dependencies})
+            DEPENDS ${ABS_FIL} protoc)
 endforeach()
 
 add_custom_target(gen_proto_py ALL DEPENDS ${PROTO_GEN_PY})

@@ -1,8 +1,7 @@
 import paddle.v2.framework.core as core
 import paddle.v2.framework.proto.op_proto_pb2 as op_proto_pb2
 import paddle.v2.framework.proto.op_desc_pb2 as op_desc_pb2
-import paddle.v2.framework.proto.attr_type_pb2 as attr_type_pb2
-import cStringIO
+import paddle.v2.framework.proto.attribute_pb2 as attribute_pb2
 
 
 def get_all_op_protos():
@@ -57,7 +56,7 @@ class OpDescCreationMethod(object):
             op_desc.attrs.extend([out_format])
         if len(tmp_index) != 0:
             tmp_index_attr = op_desc.attrs.add()
-            tmp_index_attr.type = attr_type_pb2.INTS
+            tmp_index_attr.type = attribute_pb2.INTS
             tmp_index_attr.name = "temporary_index"
             tmp_index_attr.ints.extend(tmp_index)
 
@@ -73,17 +72,17 @@ class OpDescCreationMethod(object):
                 new_attr = op_desc.attrs.add()
                 new_attr.name = attr.name
                 new_attr.type = attr.type
-                if attr.type == attr_type_pb2.INT:
+                if attr.type == attribute_pb2.INT:
                     new_attr.i = user_defined_attr
-                elif attr.type == attr_type_pb2.FLOAT:
+                elif attr.type == attribute_pb2.FLOAT:
                     new_attr.f = user_defined_attr
-                elif attr.type == attr_type_pb2.STRING:
+                elif attr.type == attribute_pb2.STRING:
                     new_attr.s = user_defined_attr
-                elif attr.type == attr_type_pb2.INTS:
+                elif attr.type == attribute_pb2.INTS:
                     new_attr.ints.extend(user_defined_attr)
-                elif attr.type == attr_type_pb2.FLOATS:
+                elif attr.type == attribute_pb2.FLOATS:
                     new_attr.floats.extend(user_defined_attr)
-                elif attr.type == attr_type_pb2.STRINGS:
+                elif attr.type == attribute_pb2.STRINGS:
                     new_attr.strings.extend(user_defined_attr)
                 else:
                     raise NotImplementedError("Not support attribute type " +
@@ -109,7 +108,7 @@ class OpDescCreationMethod(object):
         retv = []
         if multiple:
             var_format = op_desc_pb2.AttrDesc()
-            var_format.type = attr_type_pb2.INTS
+            var_format.type = attribute_pb2.INTS
             var_format.name = "%s_format" % in_out
             var_format.ints.append(0)
 
@@ -146,64 +145,14 @@ class OpDescCreationMethod(object):
         return False
 
 
-def get_docstring_from_op_proto(op_proto):
-    """
-    Generate docstring from a OpProto
-    :param op_proto: a OpProto instance.
-    :type op_proto: op_proto_pb2.OpProto
-    :return: docstring
-    """
-    if not isinstance(op_proto, op_proto_pb2.OpProto):
-        raise TypeError("Input must be OpProto")
-    f = cStringIO.StringIO()
-    f.write(op_proto.comment)
-    f.write("\n")
-
-    def __append_param__(name, comment, type):
-        # Maybe replace the following line with template engine is better.
-        f.write(":param ")
-        f.write(name)
-        f.write(": ")
-        f.write(comment)
-        f.write("\n")
-        f.write(":type ")
-        f.write(name)
-        f.write(": ")
-        f.write(type)
-        f.write("\n")
-
-    for ipt in op_proto.inputs:
-        __append_param__(ipt.name, ipt.comment, "list | basestr"
-                         if ipt.multiple else "basestr")
-
-    temp_var_prefix = \
-        "This is a temporary variable. It does not have to set by user. "
-    for opt in op_proto.outputs:
-        __append_param__(opt.name, opt.comment if not opt.temporary else
-                         temp_var_prefix + opt.comment, "list | basestr"
-                         if opt.multiple else "basestr")
-
-    for attr in op_proto.attrs:
-        attr_type = None
-        if attr.type == attr_type_pb2.INT:
-            attr_type = "int"
-        elif attr.type == attr_type_pb2.FLOAT:
-            attr_type = "float"
-        elif attr.type == attr_type_pb2.STRING:
-            attr_type = "basestr"
-        elif attr.type == attr_type_pb2.INTS:
-            attr_type = "list of int"
-        elif attr.type == attr_type_pb2.FLOATS:
-            attr_type = "list of float"
-        elif attr.type == attr_type_pb2.STRINGS:
-            attr_type = "list of basestr"
-
-        if attr_type is None:
-            raise RuntimeError("Not supported attribute type " + attr.type)
-
-        __append_param__(attr.name, attr.comment, attr_type)
-
-    return f.getvalue()
+class OpInfo(object):
+    def __init__(self, name, method, inputs, outputs, attrs, no_temp_outputs):
+        self.name = name
+        self.method = method
+        self.inputs = inputs
+        self.outputs = outputs
+        self.attrs = attrs
+        self.no_temp_outputs = no_temp_outputs
 
 
 def create_op_creation_method(op_proto):
@@ -216,38 +165,57 @@ def create_op_creation_method(op_proto):
         opdesc = method(*args, **kwargs)
         return core.Operator.create(opdesc.SerializeToString())
 
-    __impl__.__doc__ = get_docstring_from_op_proto(op_proto)
-    __impl__.all_input_args = [var.name for var in op_proto.inputs]
-    __impl__.all_output_args = [var.name for var in op_proto.outputs]
-    __impl__.all_attr_args = [attr.name for attr in op_proto.attrs]
-    __impl__.all_not_temp_output_args = [
-        var.name for var in op_proto.outputs if not var.temporary
-    ]
-
-    return __impl__
-
-
-class OpCreationsHolder(object):
-    """
-    A object will holds all op creation methods.
-    
-    Use `op_creations.xxx_op` to access them.
-    """
-    pass
+    return OpInfo(
+        method=__impl__,
+        name=op_proto.type,
+        inputs=[var.name for var in op_proto.inputs],
+        outputs=[var.name for var in op_proto.outputs],
+        attrs=[attr.name for attr in op_proto.attrs],
+        no_temp_outputs=[
+            var.name for var in op_proto.outputs if not var.temporary
+        ])
 
 
-op_creations = OpCreationsHolder()
+class OperatorFactory(object):
+    def __init__(self):
+        self.op_methods = dict()
+        for op_proto in get_all_op_protos():
+            method = create_op_creation_method(op_proto)
+            self.op_methods[method.name] = method
+
+    def __call__(self, *args, **kwargs):
+        if 'type' in kwargs:
+            if len(args) != 0:
+                raise ValueError("All Paddle argument should be key-word "
+                                 "argument except type")
+            t = kwargs.pop('type')
+        else:
+            if len(args) != 1:
+                raise ValueError("All Paddle argument should be key-word "
+                                 "argument except type")
+            t = args[0]
+
+        return self.get_op_info(t).method(**kwargs)
+
+    def types(self):
+        return self.op_methods.keys()
+
+    def get_op_info(self, t):
+        if t not in self.op_methods:
+            raise ValueError("operator %s is not registered", t)
+        return self.op_methods.get(t)
+
+    def get_op_input_names(self, type):
+        return self.get_op_info(type).inputs
+
+    def get_op_output_names(self, type):
+        return self.get_op_info(type).outputs
+
+    def get_op_attr_names(self, type):
+        return self.get_op_info(type).attrs
+
+    def get_op_no_temp_output_names(self, type):
+        return self.get_op_info(type).no_temp_outputs
 
 
-def __bootstrap__():
-    """
-    Bootstrap function for this module. It will dynamic create all op creation
-    methods in runtime.
-    """
-    for op_proto in get_all_op_protos():
-        func = create_op_creation_method(op_proto)
-        func.__name__ = str(op_proto.type)
-        setattr(op_creations, func.__name__, func)
-
-
-__bootstrap__()
+Operator = OperatorFactory()  # Default global factory

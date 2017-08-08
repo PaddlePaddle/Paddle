@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "glog/logging.h"
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
 class FillZerosLikeKernel : public framework::OpKernel {
-public:
+ public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* output = context.Output<framework::Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
-    framework::EigenVector<T>::Flatten(*output).setZero();
+    auto t = framework::EigenVector<T>::Flatten(*output);
+    t.device(context.GetEigenDevice<Place>()) = t.constant(T(0));
   }
 };
 
