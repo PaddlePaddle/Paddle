@@ -24,4 +24,5 @@ cmake-build-*
 python/paddle/v2/framework/core.so
 CMakeFiles
 cmake_install.cmake
-
+paddle/.timestamp
+python/paddlepaddle.egg-info/
