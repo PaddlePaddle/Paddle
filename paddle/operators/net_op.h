@@ -59,6 +59,15 @@ class NetOp : public framework::OperatorBase {
     }
   }
 
+  bool SupportGPU() const override {
+    for (auto& op : ops_) {
+      if (!op->SupportGPU()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * @brief Add an operator by ptr
    */
