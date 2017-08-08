@@ -191,7 +191,7 @@ class GradientChecker(unittest.TestCase):
                 msg = "CPU kernel gradient is not close to numeric gradient"
             else:
                 if isinstance(place, core.GPUPlace):
-                    msg = "CPU kernel gradient is not close to numeric gradient"
+                    msg = "GPU kernel gradient is not close to numeric gradient"
                 else:
                     raise ValueError("unknown place " + type(place))
             self.assertTrue(
