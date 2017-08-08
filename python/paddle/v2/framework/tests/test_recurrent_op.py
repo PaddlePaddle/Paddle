@@ -2,9 +2,64 @@ import logging
 import paddle.v2.framework.core as core
 import unittest
 import numpy as np
-import paddle.v2.framework.create_op_creation_methods as creation
+from paddle.v2.framework.op import Operator
 
-ops = creation.op_creations
+
+def py_sigmoid(x):
+    return 1. / (1 + np.exp(-x))
+
+
+class PySimpleRNN(object):
+    '''
+    A simple implementation of RNN based on numpy, to futhur test RecurrentOp's alogorithm
+    '''
+    def __init__(self,
+                 input_dim = 30,
+                 batch_size = 50,
+                 weight_dim = 15,
+                 sent_len = 11):
+        self.x = np.random.normal(size=(sent_len, batch_size, input_dim))
+        self.W = np.random.normal(size=(input_dim, input_dim))
+        self.U = np.random.normal(size=(input_dim, input_dim))
+        self.h_boot = np.random.normal(size=(batch_size, input_dim))
+
+        # memories
+        self.mems = [np.zeros(shape=(batch_size, input_dim)) for i in range(sent_len)]
+
+    def forward(self):
+        xs = self.segment_inputs()
+        for step_id in range(self.x.shape[0]):
+            self.step(step_id, xs[step_id])
+        return self.concat_outputs()
+
+    def segment_inputs(self):
+        return [self.x[i] for i in range(self.x.shape[0])]
+
+    def concat_outputs(self):
+        return np.array(self.mems)
+
+    def step(self, step_id, x):
+        '''
+        run a step
+        '''
+        mem = self.mems[step_id]
+        if step_id > 0:
+            pre_mem = self.mems[step_id-1]
+        else:
+            pre_mem = self.h_boot
+        xW = np.matmul(x, self.W)
+        hU = np.matmul(mem, self.U)
+
+        sum = xW + hU
+        self.mems[step_id] = py_sigmoid(sum)
+
+class PySimpleRNNTest(unittest.TestCase):
+    def setUp(self):
+        self.rnn = PySimpleRNN()
+
+    def test_forward(self):
+        output = self.rnn.forward()
+        print 'output', output
 
 
 def create_tensor(scope, name, shape):
@@ -14,7 +69,7 @@ def create_tensor(scope, name, shape):
     return tensor
 
 
-class TestRNN(unittest.TestCase):
+class TestRecurrentOp(unittest.TestCase):
     '''
     Test RNNOp
 
@@ -28,7 +83,7 @@ class TestRNN(unittest.TestCase):
     memories:
         - h
     outputs:
-        - h
+       - h
     '''
 
     input_dim = 30
@@ -36,7 +91,7 @@ class TestRNN(unittest.TestCase):
     weight_dim = 15
     sent_len = 11
 
-    def init(self):
+    def forward(self):
 
         self.scope = core.Scope()
 
@@ -46,7 +101,6 @@ class TestRNN(unittest.TestCase):
         ctx = core.DeviceContext.create(core.CPUPlace())
         print 'infer_shape'
         rnn_op.infer_shape(self.scope)
-
         rnn_op.run(self.scope, ctx)
 
     def create_global_variables(self):
@@ -62,7 +116,7 @@ class TestRNN(unittest.TestCase):
 
     def create_rnn_op(self):
         # create RNNOp
-        rnnop = ops.recurrent_op(
+        rnnop = Operator("recurrent_op",
             # inputs
             inlinks=["x"],
             boot_memories=["h_boot"],
@@ -81,17 +135,18 @@ class TestRNN(unittest.TestCase):
         var = self.scope.new_var("stepnet")
         stepnet = var.get_net()
 
-        x_fc_op = ops.fc(X="x@alias", W="W", Y="Wx")
-        h_fc_op = ops.fc(X="h@pre", W="U", Y="Uh")
-        sum_op = ops.add_two(X="Wx", Y="Uh", Out="sum")
-        sig_op = ops.sigmoid(X="sum", Y="h@alias")
+        x_fc_op = Operator("fc", X="x@alias", W="W", Y="Wx")
+        h_fc_op = Operator("fc", X="h@pre", W="U", Y="Uh")
+        sum_op = Operator("add_two", X="Wx", Y="Uh", Out="sum")
+        sig_op = Operator("sigmoid", X="sum", Y="h@alias")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
             stepnet.add_op(op)
         stepnet.complete_add_op(True)
 
-    def test_recurrent(self):
-        self.init()
+    def test_forward(self):
+        print 'test recurrent op forward'
+        self.forward()
 
 
 if __name__ == '__main__':
