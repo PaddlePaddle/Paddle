@@ -1,6 +1,6 @@
 import unittest
 import paddle.v2.framework.core as core
-import paddle.v2.framework.op as Operator
+from paddle.v2.framework.op import Operator
 import numpy
 
 
