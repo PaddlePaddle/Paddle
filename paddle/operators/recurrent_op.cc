@@ -36,6 +36,7 @@ void RecurrentAlgorithm::InferShape(const Scope& scope) const {
   InitMemories(step_scopes[0], true /*infer_shape_mode*/);
   Variable* net = scope.FindVar(arg_->step_net);
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
+
   for (size_t i = 0; i < seq_len_; i++) {
     if (i > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, i, -1,
@@ -56,6 +57,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
   Variable* net = scope.FindVar(arg_->step_net);
 
   for (size_t step_id = 0; step_id < seq_len_; step_id++) {
+    // create output alias variables
     if (step_id > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1,
                         false /*infer_shape_mode*/);
@@ -67,22 +69,31 @@ void RecurrentAlgorithm::Run(const Scope& scope,
 }
 
 void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
-  // TODO(xxx) Only two scopes are needed for inference, this case will be
+  // TODO(superjom) Only two scopes are needed for inference, this case will be
   // supported later.
-  auto step_scopes =
-      scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
+  auto step_scopes_var = scope.FindVar(arg_->step_scopes);
+  PADDLE_ENFORCE(step_scopes_var != nullptr, "");
+  auto step_scopes = step_scopes_var->GetMutable<std::vector<Scope*>>();
+
+  // Now all variables in scope must be created outside of op.
+  auto net_var = scope.FindVar(arg_->step_net);
+  PADDLE_ENFORCE(net_var != nullptr, "no stepnet called %s in scope",
+                 arg_->step_net);
+  auto net_op = net_var->GetMutable<NetOp>();
+  PADDLE_ENFORCE(!net_op->outputs_.empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
       auto& step_scope = scope.NewScope();
 
-      // Now all variables in scope must be created outside of op.
-      auto net_op = scope.FindVar(arg_->step_net)->GetMutable<NetOp>();
+      // create step net's temp inputs
       for (auto& input : net_op->inputs_) {
         // the weight are located in parent scope
-        if (!step_scope.FindVar(input)) step_scope.NewVar(input);
+        if (!step_scope.FindVar(input))
+          step_scope.NewVar(input)->GetMutable<Tensor>();
       }
-      for (auto& output : net_op->outputs_) {
+      // create stepnet's outputs
+      for (const auto& output : net_op->outputs_) {
         step_scope.NewVar(output);
       }
       step_scopes->emplace_back(&step_scope);
@@ -100,6 +111,7 @@ void RecurrentAlgorithm::InitMemories(Scope* step_scope,
     Tensor* boot_mem = step_scope->FindVar(attr.boot_var)->GetMutable<Tensor>();
     if (infer_shape_mode) {
       pre_mem->Resize(boot_mem->dims());
+      PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
     } else {
       pre_mem->ShareDataWith<float>(*boot_mem);
     }

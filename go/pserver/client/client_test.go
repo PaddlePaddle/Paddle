@@ -59,7 +59,7 @@ func initClient() [numPserver]int {
 
 		go func(l net.Listener) {
 			var cp pserver.Checkpoint
-			s, err := pserver.NewService(0, 1, "", nil, cp)
+			s, err := pserver.NewService(0, time.Hour, "", nil, cp)
 			if err != nil {
 				panic(err)
 			}

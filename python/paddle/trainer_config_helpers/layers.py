@@ -129,9 +129,11 @@ __all__ = [
     'prelu_layer',
     'gated_unit_layer',
     'crop_layer',
+    'sub_nested_seq_layer',
     'clip_layer',
     'slice_projection',
     'seq_slice_layer',
+    'kmax_sequence_score_layer',
 ]
 
 
@@ -225,8 +227,11 @@ class LayerType(object):
 
     PRELU = 'prelu'
     CROP_LAYER = 'crop'
+    SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
     SEQ_SLICE = 'seq_slice'
+
+    KMAX_SEQ_SCORE = 'kmax_seq_score'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6090,6 +6095,53 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
         size=l.config.size)
 
 
+@wrap_name_default()
+@layer_support()
+def sub_nested_seq_layer(input, selected_indices, name=None):
+    """
+    The sub_nested_seq_layer accepts two inputs: the first one is a nested
+    sequence; the second one is a set of selceted indices in the nested sequence.
+
+    Then sub_nest_seq_layer trims the first nested sequence input according
+    to the selected indices to form a new output. This layer is useful in
+    beam training.
+
+    The example usage is:
+
+    .. code-block:: python
+
+        sub_nest_seq = sub_nested_seq_layer(input=[data, selected_indices])
+
+
+    :param input: A nested sequence.
+    :type input: LayerOutput
+    :param selected_indices: a set of sequence indices in the nested sequence.
+    :type input: LayerOutput
+    :param name: name of this layer.
+    :type name: basestring
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of '
+        'sub_nested_seq_layer must be a Paddle layer.')
+    assert isinstance(selected_indices, LayerOutput), (
+        'The second input of '
+        'sub_nested_seq_layer must be a Paddle layer.')
+
+    l = Layer(
+        inputs=input.name,
+        selected_indices=selected_indices.name,
+        name=name,
+        type=LayerType.SUB_NESTED_SEQ)
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SUB_NESTED_SEQ,
+        parents=input,
+        size=l.config.size)
+
+
 @wrap_name_default("clip")
 def clip_layer(input, min, max, name=None):
     """
@@ -6111,7 +6163,8 @@ def clip_layer(input, min, max, name=None):
     :type min: double
     :param max: The upper threshold for clipping.
     :type max: double
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     Layer(
         name=name,
@@ -6187,3 +6240,40 @@ def seq_slice_layer(input, starts, ends, name=None):
         ends=ends.name if ends is not None else None)
     return LayerOutput(
         name, LayerType.SEQ_SLICE, parents=[input], size=input.size)
+
+
+@layer_support()
+def kmax_sequence_score_layer(input, name=None, beam_size=1):
+    """
+    This layer accepts one input which are scores over a sequence or a nested
+    sequence, and returns indices of beam_size sequences with highest scores.
+
+    .. code-block:: python
+
+        kmax_indices = kmax_sequence_score_layer(input=input_layer, beam_size)
+
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer. It stores scores over a sequence or a nested
+        sequence and its size must be 1.
+    :type input: LayerOutput.
+    :param beam_size: squence indices with top beam_size scores are returned.
+    :type beam_size: double
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput), ("kmax_sequence_score_layer "
+                                            "accepts only one input.")
+    assert input.size == 1, (
+        "input of kmax_sequence_score_layer is a score"
+        "over a sequence or a nested sequence, so its width must be 1.")
+
+    Layer(
+        name=name,
+        type=LayerType.KMAX_SEQ_SCORE,
+        inputs=[input.name],
+        beam_size=beam_size)
+
+    return LayerOutput(
+        name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)
