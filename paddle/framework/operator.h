@@ -88,6 +88,8 @@ class OperatorBase {
 
   virtual bool IsNetOp() const { return false; }
 
+  virtual bool SupportGPU() const { return false; }
+
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
@@ -308,7 +310,7 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void InferShape(const Scope& scope) const {
+  void InferShape(const Scope& scope) const override {
     InferShape(InferShapeContext(this, scope));
   }
 
@@ -322,6 +324,12 @@ class OperatorWithKernel : public OperatorBase {
   AllOpKernels() {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
+  }
+
+  bool SupportGPU() const override {
+    OperatorWithKernel::OpKernelKey key;
+    key.place_ = platform::GPUPlace();
+    return OperatorWithKernel::AllOpKernels().at(type_).count(key) != 0;
   }
 
  protected:
