@@ -27,8 +27,9 @@ class CrossEntropyGradOpTest(GradientChecker):
         batch_size = 100
         class_num = 10
         inputs = {
-            "X": numpy.random.random((batch_size, class_num)).astype("float32"),
-            "label": 5 * numpy.ones(batch_size).astype("int32")
+            "X": numpy.random.uniform(
+                0.1, 1.0, [batch_size, class_num]).astype("float32"),
+            "label": (class_num / 2) * numpy.ones(batch_size).astype("int32")
         }
         self.check_grad(op, inputs, set("X"), "Y")
 
