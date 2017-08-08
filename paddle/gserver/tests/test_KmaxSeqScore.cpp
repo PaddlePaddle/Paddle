@@ -88,7 +88,7 @@ void checkLayerOut(vector<vector<int>> groundTruth,
 
 TEST(Layer, kmaxSeqScoreLayer) {
   const size_t maxBeamSize = 100;
-  int beamSize = 1 + (rand() % maxBeamSize);
+  size_t beamSize = 1 + (rand() % maxBeamSize);
 
   vector<int> seqStartPosition;
   vector<int> subSeqStartPosition;

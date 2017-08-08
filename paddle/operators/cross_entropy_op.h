@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename T>
 T tolerable_value(T x) {
@@ -38,9 +40,9 @@ T tolerable_value(T x) {
 }
 
 template <typename Place, typename T>
-class OnehotCrossEntropyOpKernel : public OpKernel {
+class OnehotCrossEntropyOpKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
     const int* label_data = ctx.Input<Tensor>(1)->data<int>();
@@ -61,9 +63,9 @@ class OnehotCrossEntropyOpKernel : public OpKernel {
 };
 
 template <typename Place, typename T>
-class OnehotCrossEntropyGradientOpKernel : public OpKernel {
+class OnehotCrossEntropyGradientOpKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));

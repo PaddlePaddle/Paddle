@@ -14,13 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/op_desc.pb.h"
-#include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
-#include "paddle/operators/type_alias.h"
-#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
