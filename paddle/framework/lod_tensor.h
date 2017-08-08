@@ -129,9 +129,7 @@ class LODTensor {
    * Determine whether LODTensor has a valid LOD info.
    */
   bool HasLOD() const { return bool(lod_start_pos_); }
-  std::shared_ptr<const LOD> lod() const {
-    return std::const_pointer_cast<const LOD>(lod_start_pos_);
-  }
+  LOD *lod() const { return lod_start_pos_.get(); }
 
   std::shared_ptr<Tensor> &tensor() { return tensor_; }
   Tensor *raw_tensor() { return tensor_.get(); }
