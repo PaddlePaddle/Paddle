@@ -24,20 +24,31 @@ REGISTER_GRADIENT_OP(add_two, add_two_grad, AddTwoGradOp);
 
 `add_two_grad` is the type of backward operator, and `AddTwoGradOp` is its class name.
 
-### Implement : gradient operator registry
+## Backward Opeartor Creating
 
-|                        | forward operator | backward operator                |
-| ---------------------- | ---------------- | -------------------------------- |
-| **Operator::inputs_**  | Inputs           | Inputs, Outputs, OutputGradients |
-| **Operator::outputs_** | Outputs          | InputGradients                   |
+### Usage
 
-Inputs/Outputs means the input/output of the operator,  InputGradients/OutputGradients is the gradient respect to forward opeartor. Forward operator and Backward operator are isomorphic, save their corresponding needs into member attribute.
+Given a certain forward operator, we can get its corresponding backward opeartor by calling:
 
-We use a global hash map record the gradient operators available, follow the philosophy  of minimum core, make operator pluggable unit. Each gradient is an operator and it needs to regist itself. 
+```cpp
+OperatorBase* bwd_op = BuildGradOp(const OperatorBase* fwd_op);
+``` 
 
-grad_op_builder(fengjiayi)
+The function `BuildGradOp` will sequentially execute following processes:
 
-### Implement : Backward network
+1. Getting the `type_` of given forward operator, and then creating the corresponding backward operator.
+
+2. Copying all the attributes of forward operator expect `input_format` and `output_format`(if it has), for their elements differ between forward and backward operators.
+
+3. Copying forward operator's `inputs_` and `outputs_` to backward operator's `inputs_`. And adding forward inputs' gradient variables into backward `output_`, adding forward outputs' gradient variables into backward `input_`.
+
+4. Building backward operator's `input_format`, `output_format` (if necessary) and `in_out_idxs_` according to its `inputs_` and `outputs_` just created.
+
+## Backward Network Building
+
+A backward network is a series of backward operators. The main idea of building a backward network is creating backward operators in the inverted sequence and put them together.
+
+In our design, the network itself is also a kind of operator. So the operators contained by a big network may be some small network. 
 
 given a forward network, it generates the backward network. We only care about the Gradients—`OutputGradients`,`InputGradients`.
 
