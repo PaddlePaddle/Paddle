@@ -96,7 +96,7 @@ void SubNestedSequenceLayer::calSelectedCols(
   for (size_t i = 0; i < seqNum; ++i) {
     for (size_t j = 0; j < beamSize; ++j) {
       if (selectedIndices->getElement(i, j) == -1.) break;
-      int selSubSeqIdx = selectedIndices->getElement(i, j);
+      size_t selSubSeqIdx = selectedIndices->getElement(i, j);
       CHECK_GT(inputSeqInfoVec_[i].size() - 1, selSubSeqIdx);
 
       size_t subSeqLen = inputSeqInfoVec_[i][selSubSeqIdx + 1] -
