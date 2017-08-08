@@ -12,23 +12,19 @@ cc_test(variable_test SRCS variable_test.cc)
 cc_library(scope SRCS scope.cc)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
-proto_library(attribute_proto SRCS attribute.proto)
-proto_library(op_proto SRCS op_proto.proto DEPS attribute_proto)
-proto_library(op_desc SRCS op_desc.proto DEPS attribute_proto)
-cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
-cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
+proto_library(framework_proto SRCS framework.proto)
 
-cc_library(attribute SRCS attribute.cc DEPS op_desc op_proto)
+cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 
-cc_library(operator SRCS operator.cc DEPS op_desc device_context tensor scope attribute)
+cc_library(operator SRCS operator.cc DEPS framework_proto device_context tensor scope attribute)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
-cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS op_proto operator)
-cc_library(op_registry SRCS op_registry.cc DEPS op_desc grad_op_builder)
+cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS operator)
+cc_library(op_registry SRCS op_registry.cc DEPS grad_op_builder)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 cc_test(grad_op_builder_test SRCS grad_op_builder_test.cc DEPS grad_op_builder op_registry add_op)
 
-py_proto_compile(framework_py_proto SRCS attribute.proto op_proto.proto op_desc.proto)
+py_proto_compile(framework_py_proto SRCS framework.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
