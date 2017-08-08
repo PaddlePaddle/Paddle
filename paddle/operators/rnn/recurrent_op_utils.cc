@@ -18,7 +18,9 @@ namespace paddle {
 namespace operators {
 namespace rnn {
 
-namespace fmw = paddle::framework;
+namespace f = paddle::framework;
+
+using Tensor = framework::Tensor;
 
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<Link>& inlinks, const size_t seq_len,
@@ -30,10 +32,10 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    inlinks[i].external);
 
     Tensor* input = input_var->GetMutable<Tensor>();
-    fmw::DDim dims = input->dims();
+    f::DDim dims = input->dims();
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
                    "all the inlinks must have same length");
-    fmw::DDim step_dims = slice_ddim(dims, 1, dims.size());
+    f::DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
           step_scopes[j]->NewVar(inlinks[i].internal)->GetMutable<Tensor>();
@@ -58,11 +60,10 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
       auto step_scope_var = step_scopes[0]->FindVar(outlinks[i].internal);
       PADDLE_ENFORCE(step_scope_var != nullptr, "%s not in scope",
                      outlinks[i].internal);
-      fmw::DDim step_dims =
-          step_scope_var->template GetMutable<Tensor>()->dims();
+      f::DDim step_dims = step_scope_var->template GetMutable<Tensor>()->dims();
       std::vector<int> dims_vec = vectorize(step_dims);
       dims_vec.insert(dims_vec.begin(), seq_len);
-      output->Resize(fmw::make_ddim(dims_vec));
+      output->Resize(f::make_ddim(dims_vec));
     } else {
       output->mutable_data<float>(platform::CPUPlace());
       for (size_t j = 0; j < seq_len; j++) {
@@ -104,7 +105,7 @@ void LinkMemories(const std::vector<Scope*>& scopes,
 }
 
 void InitArgument(const ArgumentName& name, Argument* arg,
-                  const OperatorBase& op) {
+                  const framework::OperatorBase& op) {
   arg->step_net = op.Input(name.step_net);
   arg->step_scopes = op.Output(name.step_scopes);
 

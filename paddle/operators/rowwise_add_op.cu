@@ -15,5 +15,6 @@
 #define EIGEN_USE_GPU
 #include "paddle/operators/rowwise_add_op.h"
 
-REGISTER_OP_GPU_KERNEL(rowwise_add,
-                       ops::RowWiseAddKernel<ops::GPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(
+    rowwise_add, ops::RowWiseAddKernel<paddle::platform::GPUPlace, float>);

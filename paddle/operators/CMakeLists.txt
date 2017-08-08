@@ -60,6 +60,7 @@ op_library(cross_entropy_op SRCS cross_entropy_op.cc cross_entropy_op.cu)
 op_library(fill_zeros_like_op SRCS fill_zeros_like_op.cc fill_zeros_like_op.cu)
 
 op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
+cc_test(sgd_op_test SRCS sgd_op_test.cc DEPS sgd_op)
 
 op_library(fc_op
     SRCS fc_op.cc
