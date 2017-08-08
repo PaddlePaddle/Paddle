@@ -13,8 +13,8 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/fill_zeros_like_op.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/fill_zeros_like_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
