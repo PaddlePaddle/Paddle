@@ -7,6 +7,8 @@ cd $TRAVIS_BUILD_DIR/build
 
 # Compile Documentation only.
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DWITH_MKLML=OFF -DWITH_DOC=ON
+make -j `nproc` paddle_proto
+make -j `nproc` gen_proto_py
 make -j `nproc` paddle_docs paddle_docs_cn
 
 # check websites for broken links
