@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
-#include <chrono>
 #include <memory>
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -40,7 +39,6 @@ class DeviceContext {
 
 class CPUDeviceContext : public DeviceContext {
  public:
-  typedef std::mt19937 random_generator_type;
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace);
   virtual ~CPUDeviceContext() {}
@@ -49,16 +47,7 @@ class CPUDeviceContext : public DeviceContext {
 
   Place GetPlace() const override;
 
-  random_generator_type& RandGenerator() {
-    if (!rand_generator_) {
-      rand_generator_.reset(new random_generator_type(random_seed_));
-    }
-    return *rand_generator_.get();
-  }
-
  private:
-  unsigned random_seed_;
-  std::unique_ptr<random_generator_type> rand_generator_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
@@ -97,7 +86,8 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::CudaStreamDevice> eigen_stream_;
 
  private:
-  unsigned random_seed_;
+  uint64_t seed_;
+
   // clang-format off
   cudnnHandle_t     cudnn_handle_     = nullptr;
   cublasHandle_t    cublas_handle_    = nullptr;

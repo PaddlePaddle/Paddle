@@ -21,12 +21,10 @@ Eigen::DefaultDevice* DeviceContext::get_eigen_device<Eigen::DefaultDevice>()
 }
 
 CPUDeviceContext::CPUDeviceContext() {
-  random_seed_ = std::chrono::system_clock::now().time_since_epoch().count();
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
-  random_seed_ = std::chrono::system_clock::now().time_since_epoch().count();
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
@@ -44,7 +42,6 @@ Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
 }
 
 CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
-  random_seed_ = std::chrono::system_clock::now().time_since_epoch().count();
   SetDeviceId(place_.device);
   // TODO(qijun) Pass a created cuda stream to Eigen::CudaStreamDevice directly
   // here will cause segment fault. We must implement a class derived from
@@ -111,8 +108,8 @@ curandGenerator_t CUDADeviceContext::curand_generator() {
     SetDeviceId(place_.device);
     PADDLE_ENFORCE(dynload::curandCreateGenerator(&curand_generator_,
                                                   CURAND_RNG_PSEUDO_DEFAULT));
-    PADDLE_ENFORCE(dynload::curandSetPseudoRandomGeneratorSeed(
-        curand_generator_, random_seed_));
+    PADDLE_ENFORCE(
+        dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
   }
   return curand_generator_;
 }
