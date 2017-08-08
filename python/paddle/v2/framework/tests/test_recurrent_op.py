@@ -6,8 +6,7 @@ from paddle.v2.framework.op import Operator
 
 
 def py_sigmoid(x):
-    return 1. / (1 + np.exp(-x))
-
+    return 1. / (1. + np.exp(-x))
 
 class PySimpleRNN(object):
     '''
@@ -62,10 +61,10 @@ class PySimpleRNNTest(unittest.TestCase):
         print 'output', output
 
 
-def create_tensor(scope, name, shape):
+def create_tensor(scope, name, shape, np_data):
     tensor = scope.new_var(name).get_tensor()
     tensor.set_dims(shape)
-    tensor.set(np.random.random(shape), core.CPUPlace())
+    tensor.set(np_data, core.CPUPlace())
     return tensor
 
 
@@ -91,25 +90,36 @@ class TestRecurrentOp(unittest.TestCase):
     weight_dim = 15
     sent_len = 11
 
+    def setUp(self):
+        self.py_rnn = PySimpleRNN(self.input_dim,
+                                  self.batch_size,
+                                  self.weight_dim,
+                                  self.sent_len)
+
+
     def forward(self):
-
         self.scope = core.Scope()
-
         self.create_global_variables()
         self.create_step_net()
         rnn_op = self.create_rnn_op()
         ctx = core.DeviceContext.create(core.CPUPlace())
-        print 'infer_shape'
         rnn_op.infer_shape(self.scope)
         rnn_op.run(self.scope, ctx)
+        return np.array(self.scope.find_var("h").get_tensor())
 
     def create_global_variables(self):
         # create inlink
+        x_np_data = self.py_rnn.x
         create_tensor(self.scope, "x",
-                      [self.sent_len, self.batch_size, self.input_dim])
-        create_tensor(self.scope, "W", [self.input_dim, self.input_dim])
-        create_tensor(self.scope, "U", [self.input_dim, self.input_dim])
-        create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim])
+                      [self.sent_len, self.batch_size, self.input_dim], x_np_data)
+        W_np_data = self.py_rnn.W
+        create_tensor(self.scope, "W", [self.input_dim, self.input_dim], W_np_data)
+
+        U_np_data = self.py_rnn.U
+        create_tensor(self.scope, "U", [self.input_dim, self.input_dim], U_np_data)
+
+        h_boot_np_data = self.py_rnn.h_boot
+        create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim], h_boot_np_data)
         self.scope.new_var("step_scopes")
         self.scope.new_var("h@alias")
         self.scope.new_var("h")
@@ -146,8 +156,12 @@ class TestRecurrentOp(unittest.TestCase):
 
     def test_forward(self):
         print 'test recurrent op forward'
-        self.forward()
-
+        pd_output = self.forward()
+        py_output = self.py_rnn.forward()
+        print 'pd_output', pd_output
+        print
+        print 'py_output', py_output
+        self.assertEqual(pd_output.shape, py_output.shape)
 
 if __name__ == '__main__':
     unittest.main()
