@@ -51,6 +51,10 @@ bool MkldnnFcLayer::init(const LayerMap& layerMap,
 }
 
 void MkldnnFcLayer::cvtWgtFromPaddle() {
+  if (FLAGS_use_mkldnn_wgt) {
+    return;
+  }
+
   if (hasInitedWgt_) {
     return;
   }

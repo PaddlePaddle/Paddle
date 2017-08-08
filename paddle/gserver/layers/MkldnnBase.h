@@ -23,8 +23,6 @@ typedef enum {
   DNN_TESTS = 1,
   DNN_SIZES,
   DNN_FMTS,
-  DNN_TESTS_DETAILS,
-  DNN_TESTS_MORE,
   DNN_ALL,
 } DNN_LOG_LEVEL;
 

@@ -19,6 +19,9 @@ limitations under the License. */
 #include "MkldnnBase.h"
 #include "mkldnn.hpp"
 
+DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_mkldnn_wgt);
+
 namespace paddle {
 
 class MkldnnLayer;

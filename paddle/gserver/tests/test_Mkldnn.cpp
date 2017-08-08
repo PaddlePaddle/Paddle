@@ -23,6 +23,7 @@ using namespace paddle;  // NOLINT
 DECLARE_bool(thread_local_rand_use_global_seed);
 DECLARE_bool(use_gpu);
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_mkldnn_wgt);
 
 struct testFCDesc {
   int bs;

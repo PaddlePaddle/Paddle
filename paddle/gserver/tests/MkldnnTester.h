@@ -58,7 +58,7 @@ public:
     iter_ = iter;
     eps_ = epsilon;
     log_ = false;
-    lvl_ = DNN_TESTS_MORE;
+    lvl_ = DNN_ALL;
   }
 
   ~MkldnnTester() {}
@@ -72,7 +72,7 @@ public:
            size_t iter = 3,
            float epsilon = 1e-4,
            bool log = false,
-           int level = DNN_TESTS_MORE);
+           int level = DNN_ALL);
   void setLogLevel(int lvl) { lvl_ = lvl; }
 
 private:

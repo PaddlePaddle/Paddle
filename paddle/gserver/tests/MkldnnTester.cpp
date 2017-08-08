@@ -118,7 +118,7 @@ void MkldnnTester::checkForward() {
   printTopDatas();
   double delta = compareMatrix(testLayers_[DNN]->getOutputValue(),
                                testLayers_[REF]->getOutputValue());
-  VLOG(DNN_TESTS_DETAILS) << "Check Forward";
+  VLOG(DNN_ALL) << "Check Forward";
   EXPECT_LE(fabs(delta), eps_);
 }
 
@@ -162,7 +162,7 @@ void MkldnnTester::checkBackwardWgts() {
     EXPECT_LE(fabs(delta), eps_);
   }
 
-  VLOG(DNN_TESTS_DETAILS) << "Restore dnn weights before comapre";
+  VLOG(DNN_ALL) << "Restore dnn weights before comapre";
   restoreWgt(dnnWgts, parameters_[DNN]);
 }
 
@@ -275,8 +275,8 @@ double MkldnnTester::getDelta(const real* d1,
   EXPECT_TRUE(std::isnormal(sum));
   EXPECT_FALSE(std::isinf(sum));
   EXPECT_FALSE(std::isnan(delta));
-  VLOG(DNN_TESTS_MORE) << "reference avg data: " << sum / len
-                       << ", delta: " << delta / sum << ", failCnt:" << failCnt;
+  VLOG(DNN_ALL) << "reference avg data: " << sum / len
+                << ", delta: " << delta / sum << ", failCnt:" << failCnt;
   return (failCnt / (float)len) > failRate ? maxOut : delta / sum;
 }
 
@@ -330,43 +330,37 @@ void MkldnnTester::run(const TestConfig& dnn,
   log_ = log;
   lvl_ = level;
 
-  // Firstly always set flag false to initial from paddle weight
-  TestConfig first = dnn;
-
+  // Firstly test FLAGS_use_mkldnn_wgt = false
+  FLAGS_use_mkldnn_wgt = false;
   // reset and run once
-  reset(first, ref, batchSize);
+  reset(dnn, ref, batchSize);
   randomWgtDatas();
   clearWgtDiffs();
   clearBotDiffs();
-
-  VLOG(DNN_TESTS) << "Check Iteration 0";
-  runOnce();
-
-  // firstly get the flag
-  bool initWgtFromMkldnn = false;
-
-  if (initWgtFromMkldnn) {
-    // after run once the mkldnn weight has been stored in dnnlayer
-    // then save the weigths and restart again
-    vector<VectorPtr> dnnWgts, refWgts;
-    CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
-    saveWgt(parameters_[DNN], dnnWgts);
-    saveWgt(parameters_[REF], refWgts);
-
-    // restart again with flag true
-    reset(dnn, ref, batchSize);
-
-    // restore wgt
-    restoreWgt(dnnWgts, parameters_[DNN]);
-    restoreWgt(refWgts, parameters_[REF]);
-    clearWgtDiffs();
-    clearBotDiffs();
-
-    // at least run once
+  for (size_t i = 0; i < iter_; ++i) {
+    VLOG(DNN_TESTS) << "Check Iteration " << i;
     runOnce();
   }
 
-  for (size_t i = 1; i < iter_; ++i) {
+  // Then test FLAGS_use_mkldnn_wgt = true
+  FLAGS_use_mkldnn_wgt = true;
+  // after run once the mkldnn weight has been stored in dnnlayer
+  // then save the weigths and restart again
+  vector<VectorPtr> dnnWgts, refWgts;
+  CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
+  saveWgt(parameters_[DNN], dnnWgts);
+  saveWgt(parameters_[REF], refWgts);
+
+  // restart again with flag true
+  reset(dnn, ref, batchSize);
+
+  // restore wgt
+  restoreWgt(dnnWgts, parameters_[DNN]);
+  restoreWgt(refWgts, parameters_[REF]);
+  clearWgtDiffs();
+  clearBotDiffs();
+
+  for (size_t i = 0; i < iter_; ++i) {
     VLOG(DNN_TESTS) << "Check Iteration " << i;
     runOnce();
   }
