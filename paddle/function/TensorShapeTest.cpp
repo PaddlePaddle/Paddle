@@ -44,7 +44,7 @@ TEST(TensorShape, GetAndSet) {
   EXPECT_EQ(t.ndims(), 3U);
   EXPECT_EQ(t.getElements(), 6U);
 
-  EXPECT_EQ(t[1], 2);
+  EXPECT_EQ(t[1], 2U);
   t.setDim(1, 100);
   EXPECT_EQ(t.getElements(), 300U);
   EXPECT_EQ(t[1], 100U);
