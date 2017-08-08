@@ -40,7 +40,7 @@ class DeviceContext {
 class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
-  CPUDeviceContext(CPUPlace);
+  explicit CPUDeviceContext(CPUPlace);
   virtual ~CPUDeviceContext() {}
 
   Eigen::DefaultDevice* eigen_device() const;
@@ -69,10 +69,10 @@ class CUDADeviceContext : public DeviceContext {
 
   // clang-format off
   /*! \brief  Return cublas handle in the device context. */
-  cublasHandle_t    cublas_handle   ();
+  cublasHandle_t    cublas_handle();
 
   /*! \brief  Return cudnn  handle in the device context. */
-  cudnnHandle_t     cudnn_handle    ();
+  cudnnHandle_t     cudnn_handle();
 
   /*! \brief  Return curand handle in the device context. */
   curandGenerator_t curand_generator();

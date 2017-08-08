@@ -18,26 +18,38 @@ namespace paddle {
 namespace operators {
 
 class OnehotCrossEntropyOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 2,
-                   "Input size of OnehotCrossEntropyOp must be two");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1,
-                   "Output size of OnehotCrossEntropyOp must be one");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
-                   "Inputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
-                   "Outputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims().size() == 2,
-                   "X's dimension must be 2.");
-    PADDLE_ENFORCE(ctx.Output<Tensor>(0)->dims().size() == 1,
-                   "label's dimension must be 1.");
+    PADDLE_ENFORCE_EQ(ctx.InputSize(), 2,
+                      "Input size of OnehotCrossEntropyOp must be two");
+    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1,
+                      "Output size of OnehotCrossEntropyOp must be one");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0),
+                            "0-th input of OnehotCrossEntropyOp should be set");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(1),
+                            "1-th input of OnehotCrossEntropyOp should be set");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(0),
+                            "Outputs of OnehotCrossEntropyOp must all be set");
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>(0)->dims().size(), 2);
+    PADDLE_ENFORCE_EQ(ctx.Output<Tensor>(0)->dims().size(), 1,
+                      "label's dimension must be 1.");
     ctx.Output<Tensor>(0)->Resize({ctx.Input<Tensor>(0)->dims()[0]});
   }
 };
 
+class OnehotCrossEntropyGradientOp : public OperatorWithKernel {
+ protected:
+  void InferShape(const InferShapeContext &ctx) const override {
+    auto X_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto X = ctx.Input<Tensor>("X");
+
+    // TODO(superjom) add enforce here after helper functions ready
+    X_grad->Resize(X->dims());
+  }
+};
+
 class OnehotCrossEntropyOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   OnehotCrossEntropyOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of OnehotCrossEntropyOp");
@@ -54,8 +66,12 @@ OnehotCrossEntropy Operator.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(onehot_cross_entropy,
-            ops::OnehotCrossEntropyOp,
+REGISTER_OP(onehot_cross_entropy, ops::OnehotCrossEntropyOp,
             ops::OnehotCrossEntropyOpMaker);
 REGISTER_OP_CPU_KERNEL(onehot_cross_entropy,
                        ops::OnehotCrossEntropyOpKernel<ops::CPUPlace, float>);
+REGISTER_GRADIENT_OP(onehot_cross_entropy, onehot_cross_entropy_grad,
+                     ops::OnehotCrossEntropyGradientOp);
+REGISTER_OP_CPU_KERNEL(
+    onehot_cross_entropy_grad,
+    ops::OnehotCrossEntropyGradientOpKernel<ops::CPUPlace, float>);
