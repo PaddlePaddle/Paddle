@@ -32,7 +32,7 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_OP(onehot_cross_entropy);
+USE_OP_CPU(onehot_cross_entropy);
 USE_OP_WITHOUT_KERNEL(fc);
 USE_OP(sgd);
 USE_OP(mul);
@@ -40,7 +40,9 @@ USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
+USE_OP(fill_zeros_like);
 USE_OP_WITHOUT_KERNEL(recurrent_op);
+USE_OP(uniform_random);
 namespace paddle {
 namespace framework {
 template <typename ClassType>
@@ -54,6 +56,26 @@ void ExposeOperator(ClassType &m) {
       .def("outputs",
            [](const typename ClassType::type &op) -> std::vector<std::string> {
              return op.outputs_;
+           })
+      .def("inputs",
+           [](const typename ClassType::type &op) -> std::vector<std::string> {
+             return op.inputs_;
+           })
+      .def("support_gpu", &ClassType::type::SupportGPU)
+      .def("temp_outputs",
+           [](const typename ClassType::type &op) -> std::vector<std::string> {
+             auto iter = op.attrs_.find("temporary_index");
+             std::vector<std::string> ret;
+             if (iter == op.attrs_.end()) {
+               return ret;
+             } else {
+               auto tmp_idx = boost::get<std::vector<int>>(iter->second);
+               ret.reserve(tmp_idx.size());
+               for (auto &index : tmp_idx) {
+                 ret.push_back(op.outputs_.at(index));
+               }
+               return ret;
+             }
            })
       .def("__str__", &ClassType::type::DebugString);
 }

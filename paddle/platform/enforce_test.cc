@@ -9,8 +9,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/platform/enforce.h"
+#include <memory>
+
 #include "gtest/gtest.h"
+#include "paddle/platform/enforce.h"
 
 TEST(ENFORCE, OK) {
   PADDLE_ENFORCE(true, "Enforce is ok %d now %f", 123, 0.345);
@@ -188,6 +190,30 @@ TEST(ENFORCE_LT, FAIL) {
   } catch (paddle::platform::EnforceNotMet error) {
     in_catch = true;
     const std::string msg = "enforce 1UL < 0.12 failed, 1 >= 0.12";
+    const char* what = error.what();
+    for (size_t i = 0; i < msg.length(); ++i) {
+      ASSERT_EQ(what[i], msg[i]);
+    }
+  }
+
+  ASSERT_TRUE(in_catch);
+}
+
+TEST(ENFORCE_NOT_NULL, OK) {
+  int* a = new int;
+  PADDLE_ENFORCE_NOT_NULL(a);
+  delete a;
+}
+TEST(ENFORCE_NOT_NULL, FAIL) {
+  bool in_catch = false;
+  int* a{nullptr};
+
+  try {
+    PADDLE_ENFORCE_NOT_NULL(a);
+
+  } catch (paddle::platform::EnforceNotMet error) {
+    in_catch = true;
+    const std::string msg = "a should not be null";
     const char* what = error.what();
     for (size_t i = 0; i < msg.length(); ++i) {
       ASSERT_EQ(what[i], msg[i]);
