@@ -126,7 +126,7 @@ class GradientChecker(unittest.TestCase):
 
         places = [core.CPUPlace()]
         if not only_cpu and core.is_compile_gpu() \
-                and core.Operator.support_gpu(backward_op.type):
+                and core.Operator.support_gpu(backward_op.type()):
             places.append(core.GPUPlace(0))
 
         numeric_grad = dict()
@@ -202,7 +202,7 @@ class GradientChecker(unittest.TestCase):
 
             # check numeric and gpu grad
             if core.is_compile_gpu() and not only_cpu \
-                    and core.Operator.support_gpu(backward_op.type):
+                    and core.Operator.support_gpu(backward_op.type()):
                 self.assertTrue(
                     numpy.allclose(
                         numeric_grad[check_name],
