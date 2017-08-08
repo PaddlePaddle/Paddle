@@ -135,7 +135,7 @@ void SubNestedSequenceLayer::forward(PassType passType) {
   CHECK(inputSeq.hasSubseq()) << "The first input of SubNestSequence layer "
                               << "must be a nested sequence.";
   const MatrixPtr selectedIndices = getInputValue(1);
-  CHECK_EQ(inputSeq.getNumSequences(), selectedIndices->getHeight());
+  CHECK_EQ(size_t(inputSeq.getNumSequences()), selectedIndices->getHeight());
 
   if (dynamic_cast<GpuMatrix*>(selectedIndices.get())) {
     /*
