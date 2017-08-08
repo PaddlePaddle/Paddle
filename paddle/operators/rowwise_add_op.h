@@ -20,7 +20,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class RowwiseAddKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto out = context.Output<Tensor>(0);
     out->mutable_data<T>(context.GetPlace());
@@ -33,14 +33,14 @@ public:
     const int rest_size = input.size() / bias_size;
     Eigen::DSizes<int, 1> one_d(input.size());
     Eigen::DSizes<int, 1> bcast(rest_size);
-    output.reshape(one_d).device(*(context.GetEigenDevice<Place>())) =
+    output.reshape(one_d).device(context.GetEigenDevice<Place>()) =
         input.reshape(one_d) + bias.broadcast(bcast).reshape(one_d);
   }
 };
 
 template <typename Place, typename T>
 class RowwiseAddGradKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& context) const override {
     auto XGrad = context.Output<Tensor>(0);
     auto bGrad = context.Output<Tensor>(1);

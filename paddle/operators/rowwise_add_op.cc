@@ -17,7 +17,7 @@ namespace paddle {
 namespace operators {
 
 class RowwiseAddOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2UL,
                    "Two inputs is needed by rowwise add");
@@ -33,7 +33,7 @@ protected:
 };
 
 class RowwiseAddOpMaker : public OpProtoAndCheckerMaker {
-public:
+ public:
   RowwiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
@@ -47,7 +47,7 @@ for i in xrange(X.shape[0]):
   }
 };
 class RowwiseAddGradOp : public OperatorWithKernel {
-protected:
+ protected:
   void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 4UL,
                    "RowwiseAddGrad inputs is I, O, OG, size must be 4");

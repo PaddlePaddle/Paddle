@@ -20,7 +20,7 @@ namespace operators {
 
 template <typename Place, typename T>
 class SGDOpKernel : public OpKernel {
-public:
+ public:
   void Compute(const ExecutionContext& ctx) const override {
     auto param = ctx.Input<Tensor>("param");
     auto grad = ctx.Input<Tensor>("grad");
@@ -29,8 +29,12 @@ public:
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
-    EigenVector<T>::Flatten(*param_out).device(*(ctx.GetEigenDevice<Place>())) =
-        EigenVector<T>::Flatten(*param) - lr * EigenVector<T>::Flatten(*grad);
+    auto p = EigenVector<T>::Flatten(*param);
+    auto g = EigenVector<T>::Flatten(*grad);
+    auto o = EigenVector<T>::Flatten(*param_out);
+    auto place = ctx.GetEigenDevice<Place>();
+
+    o.device(place) = p - lr * g;
   }
 };
 

@@ -32,7 +32,7 @@ import (
 
 func main() {
 	port := flag.Int("port", 0, "port of the pserver")
-	index := flag.Int("index", -1, "index of this pserver, should be larger or equal than 0")
+	index := flag.Int("index", -1, "index of the pserver, set to -1 if use etcd for auto pserver index registry")
 	etcdEndpoint := flag.String("etcd-endpoint", "http://127.0.0.1:2379",
 		"comma separated endpoint string for pserver to connect to etcd")
 	dialTimeout := flag.Duration("dial-timeout", 5*time.Second, "dial timeout")
@@ -60,12 +60,12 @@ func main() {
 		idx, err = e.Register(*port)
 		candy.Must(err)
 
-		cp, err = pserver.NewCheckpointFromFile(*checkpointPath, idx, e)
+		cp, err = pserver.LoadCheckpoint(e, idx)
 		if err != nil {
 			if err == pserver.ErrCheckpointNotFound {
 				log.Infof("Could not find the pserver checkpoint.")
 			} else {
-				log.Errorf("Fetch checkpoint failed, %s", err)
+				panic(err)
 			}
 		}
 	}

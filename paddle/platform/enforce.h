@@ -144,12 +144,12 @@ inline void throw_on_error(T e) {
   throw_on_error(e, "");
 }
 
-#define PADDLE_THROW(...)                                      \
-  do {                                                         \
-    throw ::paddle::platform::EnforceNotMet(                   \
-        std::make_exception_ptr(                               \
-            std::runtime_error(string::Sprintf(__VA_ARGS__))), \
-        __FILE__, __LINE__);                                   \
+#define PADDLE_THROW(...)                                              \
+  do {                                                                 \
+    throw ::paddle::platform::EnforceNotMet(                           \
+        std::make_exception_ptr(                                       \
+            std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
+        __FILE__, __LINE__);                                           \
   } while (0)
 
 #define PADDLE_ENFORCE(...)                                             \
@@ -161,6 +161,42 @@ inline void throw_on_error(T e) {
                                               __FILE__, __LINE__);      \
     }                                                                   \
   } while (0)
+
+/*
+ * Some enforce helpers here, usage:
+ *    int a = 1;
+ *    int b = 2;
+ *    PADDLE_ENFORCE_EQ(a, b);
+ *
+ *    will raise an expression described as follows:
+ *    "enforce a == b failed, 1 != 2" with detailed stack infomation.
+ *
+ *    extra messages is also supported, for example:
+ *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
+ */
+
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
+#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
+#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
+#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
+#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
+#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                            \
+  PADDLE_ENFORCE(nullptr != (__VAL), #__VAL " should not be null\n%s", \
+                 paddle::string::Sprintf("" __VA_ARGS__));
+
+#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)        \
+  PADDLE_ENFORCE(__VAL0 __CMP __VAL1,                                         \
+                 "enforce %s " #__CMP " %s failed, %s " #__INV_CMP " %s\n%s", \
+                 #__VAL0, #__VAL1, std::to_string(__VAL0),                    \
+                 std::to_string(__VAL1),                                      \
+                 paddle::string::Sprintf("" __VA_ARGS__));
 
 }  // namespace platform
 }  // namespace paddle
