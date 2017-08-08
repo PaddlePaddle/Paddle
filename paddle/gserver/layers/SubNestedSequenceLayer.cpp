@@ -52,11 +52,10 @@ private:
    *   ]
    *
    * ths output is saved to private member rowIndice_;
-   * [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-   *  16,17,18,19,20,21,22,23,24,25,26,27]
+   * [0,1,2,3,4,5,6,7,8,9,15,16,17,18,19,20,21,23,24,25,26,27]
    */
 
-  void calSelectedCols(const MatrixPtr selectedIndices,
+  void calSelectedRows(const MatrixPtr selectedIndices,
                        const std::vector<std::vector<int>>& inputSeqInfo);
 
   // if the second input of this layer is on GPU memory, copy it to CPU memory.
@@ -67,7 +66,7 @@ private:
   std::vector<std::vector<int>> inputSeqInfoVec_;
 
   // the final selected row indices in a batch,
-  // rowIdx_ and selectedRows_ actually share a same memory.
+  // rowIndice_ and selectedRows_ actually share a same memory.
   IVectorPtr rowIndice_;
   std::vector<int> selectedRows_;
 };
@@ -83,7 +82,7 @@ bool SubNestedSequenceLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void SubNestedSequenceLayer::calSelectedCols(
+void SubNestedSequenceLayer::calSelectedRows(
     const MatrixPtr selectedIndices,
     const std::vector<std::vector<int>>& inputSeqInfo) {
   selectedRows_.clear();
@@ -96,6 +95,11 @@ void SubNestedSequenceLayer::calSelectedCols(
   for (size_t i = 0; i < seqNum; ++i) {
     for (size_t j = 0; j < beamSize; ++j) {
       if (selectedIndices->getElement(i, j) == -1.) break;
+      // TODO(caoying)
+      // Here selSubSeqIdx is automatically converted from real to int
+      // This is very dangerous if user fill this matrix himself, invalid data
+      // may occur. The selected indices should be stored in
+      // CpuSparseMatrix with SparseValueType set to NO_VALUE.
       int selSubSeqIdx = selectedIndices->getElement(i, j);
       CHECK_GT(inputSeqInfoVec_[i].size() - 1, selSubSeqIdx);
 
@@ -160,7 +164,7 @@ void SubNestedSequenceLayer::forward(PassType passType) {
   Argument::reorganizeSeqInfo(inputSeq.sequenceStartPositions,
                               inputSeq.subSequenceStartPositions,
                               inputSeqInfoVec_);
-  calSelectedCols(selIdsCpu_, inputSeqInfoVec_);
+  calSelectedRows(selIdsCpu_, inputSeqInfoVec_);
 
   resetOutput(selectedRows_.size(), getSize());
   getOutputValue()->selectRows(*getInputValue(0), *rowIndice_);

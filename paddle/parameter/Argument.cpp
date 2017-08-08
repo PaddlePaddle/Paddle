@@ -670,19 +670,28 @@ void Argument::reorganizeSeqInfo(
     const ICpuGpuVectorPtr seqStartPos,
     const ICpuGpuVectorPtr subSeqStartPos,
     std::vector<std::vector<int>>& reorganizedSeqInfo) {
-  int* seqStarts = seqStartPos->getMutableData(false);
-  int* subSeqStarts = subSeqStartPos->getMutableData(false);
+  CHECK(seqStartPos);
 
   int seqNum = seqStartPos->getSize() - 1;
-  reorganizedSeqInfo.resize(seqNum, std::vector<int>());
-  int seqIdx = 0;
-  for (size_t i = 0; i < subSeqStartPos->getSize(); ++i) {
-    reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
-    if (subSeqStarts[i] == seqStarts[seqIdx + 1]) {
-      seqIdx++;
-      if (seqIdx == seqNum) return;
+  int* seqStarts = seqStartPos->getMutableData(false);
+
+  if (subSeqStartPos) {
+    int* subSeqStarts = subSeqStartPos->getMutableData(false);
+    reorganizedSeqInfo.resize(seqNum, std::vector<int>());
+    int seqIdx = 0;
+    for (size_t i = 0; i < subSeqStartPos->getSize(); ++i) {
       reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
+      if (subSeqStarts[i] == seqStarts[seqIdx + 1]) {
+        seqIdx++;
+        if (seqIdx == seqNum) return;
+        reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
+      }
     }
+  } else {
+    reorganizedSeqInfo.resize(1, std::vector<int>(seqNum + 1, 0));
+    memcpy(reorganizedSeqInfo[0].data(),
+           seqStarts,
+           sizeof(int) * seqStartPos->getSize());
   }
 }
 

@@ -26,9 +26,9 @@ using namespace std;     // NOLINT
 DECLARE_int32(gpu_id);
 DECLARE_bool(thread_local_rand_use_global_seed);
 
-const int MAX_SEQ_NUM = 5;
-const int MAX_SEQ_LEN = 5;
-const int MAX_BEAM_SIZE = 3;
+const int MAX_SEQ_NUM = 17;
+const int MAX_SEQ_LEN = 23;
+const int MAX_BEAM_SIZE = 13;
 
 vector<real> randSampling(real range, int n) {
   CHECK_GE(range, n);
@@ -46,8 +46,7 @@ void genSeqInfo(vector<int>& seqStartPos, vector<int>& subSeqStartPos) {
   seqStartPos.resize(1, 0);
   subSeqStartPos.resize(1, 0);
 
-  // srand((size_t)(time(NULL)));
-  srand(1);
+  srand((size_t)(time(NULL)));
   int seqNum = 1 + (rand() % MAX_SEQ_NUM);
   for (int i = 0; i < seqNum; ++i) {
     int subSeqNum = 1 + (rand() % MAX_SEQ_NUM);
@@ -105,7 +104,7 @@ void genTestData(vector<int>& seqStartPos,
                  vector<vector<real>>& starts,
                  vector<vector<real>>& ends,
                  bool hasSubseq) {
-  size_t beamSize = MAX_BEAM_SIZE;
+  size_t beamSize = 1 + (rand() % MAX_BEAM_SIZE);
   genSeqInfo(seqStartPos, subSeqStartPos);
 
   genStarts(hasSubseq ? subSeqStartPos : seqStartPos, starts, beamSize);
@@ -167,16 +166,21 @@ void testSeqSliceLayer(bool hasSubseq,
     config.inputDefs.push_back(
         {INPUT_SELF_DEFINE_DATA, "starts", startMatrixPtr});
     config.layerConfig.add_inputs();
+    config.layerConfig.set_select_first(true);
   }
 
   // add end indices
   if (ends.size()) {
     vector<real> endsToVec;
     flatten2dVector(ends, endsToVec);
+
     MatrixPtr endMatrixPtr =
         Matrix::create(ends.size(), ends[0].size(), false, false);
+    endMatrixPtr->copyFrom(endsToVec.data(), endsToVec.size());
+
     config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "ends", endMatrixPtr});
     config.layerConfig.add_inputs();
+    config.layerConfig.set_select_first(false);
   }
 
   testLayerGrad(config, "seq_slice", /*batchSize*/ 100, false, useGpu, false);
@@ -188,10 +192,15 @@ TEST(Layer, SeqSliceLayer) {
   vector<vector<real>> starts;
   vector<vector<real>> ends;
 
+  std::vector<bool> mode = {false};
+#ifndef PADDLE_ONLY_CPU
+  mode.push_back(true);
+#endif
   genSeqInfo(seqStartPos, subSeqStartPos);
-  for (bool hasSubseq : {false, true}) {
+  for (bool hasSubseq : {true, false}) {
+    LOG(INFO) << "hasSubSeq : " << hasSubseq;
     genTestData(seqStartPos, subSeqStartPos, starts, ends, hasSubseq);
-    for (bool useGpu : {false, true}) {
+    for (bool useGpu : mode) {
       vector<vector<real>> tmp;
       testSeqSliceLayer(
           hasSubseq, useGpu, seqStartPos, subSeqStartPos, tmp, ends);

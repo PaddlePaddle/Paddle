@@ -97,6 +97,11 @@ void KmaxSeqScoreLayer::forward(PassType passType) {
     scores_ = inputScore;
   }
 
+  // TODO(caoying)
+  // Here selSubSeqIdx is automatically converted from real to int
+  // This is very dangerous if user fill this matrix himself, invalid data may
+  // occur. The selected indices should be stored in
+  // CpuSparseMatrix with SparseValueType set to NO_VALUE.
   Matrix::resizeOrCreate(
       output_.value,
       input.hasSubseq() ? input.getNumSubSequences() : input.getNumSequences(),
