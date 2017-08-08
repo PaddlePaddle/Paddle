@@ -7,4 +7,5 @@ cc_library(paddle_pybind SHARED
 	mean_op
   guassian_random_op
 	cross_entropy_op
-	recurrent_op)
+	recurrent_op
+	fill_zeros_like_op)

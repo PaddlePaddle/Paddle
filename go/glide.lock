@@ -1,5 +1,5 @@
-hash: 2a1c0eca5c07a130e3d224f9821f96cfa37a39bf6bce141c855bbc57ef569f1c
-updated: 2017-07-29T07:34:48.722757905+08:00
+hash: 1b9b07408ca7fac27a374dc2ccd2433e4bff090484008a037df967284949a582
+updated: 2017-08-03T21:46:51.744995189Z
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -145,6 +145,8 @@ imports:
   version: a1dba9ce8baed984a2495b658c82687f8157b98f
   subpackages:
   - xfs
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/sirupsen/logrus
   version: a3f95b5c423586578a4e099b11a46c2479628cac
 - name: github.com/topicai/candy

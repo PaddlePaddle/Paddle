@@ -103,7 +103,7 @@ func (p *EtcdClient) List() []Server {
 				time.Sleep(p.timeout)
 				continue
 			}
-			log.Infof("got value (%s) for key: %s", psAddr, psKey)
+			log.Debugf("got value (%s) for key: %s", psAddr, psKey)
 			servers[i].Index = i
 			servers[i].Addr = psAddr
 		}
