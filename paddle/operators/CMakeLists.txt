@@ -53,6 +53,7 @@ op_library(rowwise_add_op SRCS rowwise_add_op.cu rowwise_add_op.cc)
 
 op_library(sigmoid_op SRCS sigmoid_op.cc sigmoid_op.cu)
 op_library(softmax_op SRCS softmax_op.cc softmax_op.cu)
+op_library(gaussian_random_op SRCS gaussian_random_op.cc gaussian_random_op.cu)
 op_library(cross_entropy_op SRCS cross_entropy_op.cc cross_entropy_op.cu)
 op_library(fill_zeros_like_op SRCS fill_zeros_like_op.cc fill_zeros_like_op.cu)
 
