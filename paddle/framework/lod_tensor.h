@@ -31,7 +31,7 @@ namespace framework {
  * LODTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */
-class LODTensor {
+class LODTensor : public Tensor {
  public:
 // Level save offsets of each unit.
 #ifdef PADDLE_ONLY_CPU
