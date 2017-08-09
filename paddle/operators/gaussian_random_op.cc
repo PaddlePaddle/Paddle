@@ -22,8 +22,8 @@ template <typename T>
 class GaussianRandomKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    T mean = static_cast<T>(context.op_.GetAttr<T>("mean"));
-    T std = static_cast<T>(context.op_.GetAttr<T>("std"));
+    float mean = context.op_.GetAttr<float>("mean");
+    float std = context.op_.GetAttr<float>("std");
     auto* tensor = context.Output<framework::Tensor>(0);
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
@@ -35,7 +35,8 @@ class GaussianRandomKernel : public framework::OpKernel {
     }
     std::mt19937 g(seed);
     std::normal_distribution<T> distribution(mean, std);
-    for (int i = 0; i < framework::product(tensor->dims()); ++i) {
+    ssize_t size = framework::product(tensor->dims());
+    for (int i = 0; i < size; ++i) {
       data[i] = distribution(g);
     }
   }
