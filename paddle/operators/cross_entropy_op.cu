@@ -14,3 +14,8 @@
 
 #define EIGEN_USE_GPU
 #include "paddle/operators/cross_entropy_op.h"
+
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(
+    onehot_cross_entropy,
+    ops::OnehotCrossEntropyOpKernel<paddle::platform::GPUPlace, float>);

@@ -59,6 +59,13 @@ private:
                        const std::vector<std::vector<int>>& inputSeqInfo);
 
   // if the second input of this layer is on GPU memory, copy it to CPU memory.
+  // TODO(caoying)
+  // In PaddlePaddle, the currently available matrixes all a have real-typed
+  // data field, but the selected indices information are actually int-typed
+  // (with -1 as a special token). Storing indices information in real-typed
+  // Matrix leads to converting real to int. This is very dangerous if a user
+  // fills this matrix himself, invalid data may occur.
+  // The selected indices should be stored in an int-typed matrix.
   MatrixPtr selIdsCpu_;
 
   // reorganized sequenceStartPositions and subSequenceStartPositions
@@ -95,12 +102,7 @@ void SubNestedSequenceLayer::calSelectedRows(
   for (size_t i = 0; i < seqNum; ++i) {
     for (size_t j = 0; j < beamSize; ++j) {
       if (selectedIndices->getElement(i, j) == -1.) break;
-      // TODO(caoying)
-      // Here selSubSeqIdx is automatically converted from real to int
-      // This is very dangerous if user fill this matrix himself, invalid data
-      // may occur. The selected indices should be stored in
-      // CpuSparseMatrix with SparseValueType set to NO_VALUE.
-      int selSubSeqIdx = selectedIndices->getElement(i, j);
+      size_t selSubSeqIdx = selectedIndices->getElement(i, j);
       CHECK_GT(inputSeqInfoVec_[i].size() - 1, selSubSeqIdx);
 
       size_t subSeqLen = inputSeqInfoVec_[i][selSubSeqIdx + 1] -
@@ -139,7 +141,7 @@ void SubNestedSequenceLayer::forward(PassType passType) {
   CHECK(inputSeq.hasSubseq()) << "The first input of SubNestSequence layer "
                               << "must be a nested sequence.";
   const MatrixPtr selectedIndices = getInputValue(1);
-  CHECK_EQ(inputSeq.getNumSequences(), selectedIndices->getHeight());
+  CHECK_EQ(size_t(inputSeq.getNumSequences()), selectedIndices->getHeight());
 
   if (dynamic_cast<GpuMatrix*>(selectedIndices.get())) {
     /*

@@ -98,10 +98,12 @@ void KmaxSeqScoreLayer::forward(PassType passType) {
   }
 
   // TODO(caoying)
-  // Here selSubSeqIdx is automatically converted from real to int
-  // This is very dangerous if user fill this matrix himself, invalid data may
-  // occur. The selected indices should be stored in
-  // CpuSparseMatrix with SparseValueType set to NO_VALUE.
+  // In PaddlePaddle, the currently available matrixes all a have real-typed
+  // data field, but the selected indices information are actually int-typed
+  // (with -1 as a special token). Storing indices information in real-typed
+  // Matrix leads to converting real to int. This is very dangerous if a user
+  // fills this matrix himself, invalid data may occur.
+  // The selected indices should be stored in an int-typed matrix.
   Matrix::resizeOrCreate(
       output_.value,
       input.hasSubseq() ? input.getNumSubSequences() : input.getNumSequences(),
