@@ -411,7 +411,7 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
+             COMMAND env PYTHONPATH=${CMAKE_SOURCE_DIR}/python:${CMAKE_SOURCE_DIR}/paddle:${PADDLE_PYTHON_PACKAGE_DIR}
              python2 ${py_test_SRCS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
