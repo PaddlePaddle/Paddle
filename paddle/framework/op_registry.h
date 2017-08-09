@@ -414,7 +414,7 @@ class OpKernelRegistrar : public Registrar {
       "USE_OP_ITSELF must be called in global namespace");        \
   extern int TouchOpRegistrar_##op_type();                        \
   static int use_op_itself_##op_type##_ __attribute__((unused)) = \
-      TouchOpRegistrar_##op_type##()
+      TouchOpRegistrar_##op_type()
 
 #define USE_OP_KERNEL(op_type, DEVICE_TYPE)                      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
@@ -423,7 +423,7 @@ class OpKernelRegistrar : public Registrar {
   extern int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE(); \
   static int use_op_kernel_##op_type##_##DEVICE_TYPE##_          \
       __attribute__((unused)) =                                  \
-          TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE##()
+          TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
 
 #ifdef PADDLE_ONLY_CPU
 #define USE_OP(op_type)   \
