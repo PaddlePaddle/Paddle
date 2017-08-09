@@ -85,21 +85,19 @@ TEST(GradOpBuilder, MutiInOut) {
   EXPECT_EQ(grad_test_op->Input("Out1"), "out1");
   EXPECT_EQ(grad_test_op->Inputs("Out2_mult"),
             std::vector<std::string>({"out2_1", "out2_2"}));
-  EXPECT_EQ(grad_test_op->Input("Out1" + f::kGradVarSuffix),
-            "out1" + f::kGradVarSuffix);
-  EXPECT_EQ(grad_test_op->Inputs("Out2_mult" + f::kGradVarSuffix),
+  EXPECT_EQ(grad_test_op->Input(f::GradVarName("Out1")),
+            f::GradVarName("out1"));
+  EXPECT_EQ(grad_test_op->Inputs(f::GradVarName("Out2_mult")),
             std::vector<std::string>(
-                {"out2_1" + f::kGradVarSuffix, "out2_2" + f::kGradVarSuffix}));
+                {f::GradVarName("out2_1"), f::GradVarName("out2_2")}));
 
   ASSERT_EQ(grad_test_op->outputs_.size(), 5UL);
-  EXPECT_EQ(grad_test_op->Output("In1" + f::kGradVarSuffix),
-            "in1" + f::kGradVarSuffix);
-  EXPECT_EQ(grad_test_op->Outputs("In2_mult" + f::kGradVarSuffix),
-            std::vector<std::string>({"in2_1" + f::kGradVarSuffix,
-                                      "in2_2" + f::kGradVarSuffix,
-                                      "in2_3" + f::kGradVarSuffix}));
-  EXPECT_EQ(grad_test_op->Output("In3" + f::kGradVarSuffix),
-            "in3" + f::kGradVarSuffix);
+  EXPECT_EQ(grad_test_op->Output(f::GradVarName("In1")), f::GradVarName("in1"));
+  EXPECT_EQ(grad_test_op->Outputs(f::GradVarName("In2_mult")),
+            std::vector<std::string>({f::GradVarName("in2_1"),
+                                      f::GradVarName("in2_2"),
+                                      f::GradVarName("in2_3")}));
+  EXPECT_EQ(grad_test_op->Output(f::GradVarName("In3")), f::GradVarName("in3"));
 }
 
 TEST(GradOpBuilder, IOIgnoredInGradient) {
@@ -123,19 +121,18 @@ TEST(GradOpBuilder, IOIgnoredInGradient) {
   EXPECT_EQ(grad_test_op->Inputs("Out1_mult"),
             std::vector<std::string>({"out1_1", "out1_2"}));
   EXPECT_EQ(grad_test_op->Input("Out2"), f::kEmptyVarName);
-  EXPECT_EQ(grad_test_op->Inputs("Out1_mult" + f::kGradVarSuffix),
+  EXPECT_EQ(grad_test_op->Inputs(f::GradVarName("Out1_mult")),
             std::vector<std::string>(
-                {"out1_1" + f::kGradVarSuffix, "out1_2" + f::kGradVarSuffix}));
-  EXPECT_EQ(grad_test_op->Input("Out2" + f::kGradVarSuffix),
-            "out2" + f::kGradVarSuffix);
+                {f::GradVarName("out1_1"), f::GradVarName("out1_2")}));
+  EXPECT_EQ(grad_test_op->Input(f::GradVarName("Out2")),
+            f::GradVarName("out2"));
 
   ASSERT_EQ(grad_test_op->outputs_.size(), 5UL);
-  EXPECT_EQ(grad_test_op->Output("In1" + f::kGradVarSuffix),
-            "in1" + f::kGradVarSuffix);
-  EXPECT_EQ(grad_test_op->Outputs("In2_mult" + f::kGradVarSuffix),
+  EXPECT_EQ(grad_test_op->Output(f::GradVarName("In1")), f::GradVarName("in1"));
+  EXPECT_EQ(grad_test_op->Outputs(f::GradVarName("In2_mult")),
             std::vector<std::string>(
-                {"in2_1" + f::kGradVarSuffix, "in2_2" + f::kGradVarSuffix}));
-  EXPECT_EQ(grad_test_op->Outputs("In3_mult" + f::kGradVarSuffix),
+                {f::GradVarName("in2_1"), f::GradVarName("in2_2")}));
+  EXPECT_EQ(grad_test_op->Outputs(f::GradVarName("In3_mult")),
             std::vector<std::string>(
-                {"in3_1" + f::kGradVarSuffix, "in3_2" + f::kGradVarSuffix}));
+                {f::GradVarName("in3_1"), f::GradVarName("in3_2")}));
 }

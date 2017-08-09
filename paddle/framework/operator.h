@@ -32,19 +32,19 @@ namespace paddle {
 namespace framework {
 
 /// If a variable is a empty variable, that name will be used.
-const std::string kEmptyVarName = "@EMPTY@";
+constexpr char kEmptyVarName[] = "@EMPTY@";
 
 /// If a variable is a temporary variable, that name will be set in Python,
 /// but it will be convert to a unique name in scope after OpCreator.
-const std::string kTempVarName = "@TEMP@";
+constexpr char kTempVarName[] = "@TEMP@";
 
 /// If a variable's name has a certain suffix, it means that the
 /// variable is the gradient of another varibale.
 /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
-const std::string kGradVarSuffix = "@GRAD";
+constexpr char kGradVarSuffix[] = "@GRAD";
 
 /// Variables with this suffix are supposed to be filled up with zeros.
-const std::string kZeroVarSuffix = "@ZERO";
+constexpr char kZeroVarSuffix[] = "@ZERO";
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
