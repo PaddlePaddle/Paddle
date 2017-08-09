@@ -55,17 +55,17 @@ TEST_F(LODTensorTester, NumElements) {
   ASSERT_EQ(lod_tensor->NumElements(2), 8UL);
 }
 
-TEST_F(LODTensorTester, SliceShared_Level) {
+TEST_F(LODTensorTester, SliceLevels) {
   // slice 1 level
   for (size_t level = 0; level < 3UL; ++level) {
-    auto new_lod_tensor = lod_tensor->SliceShared(level, level + 1);
+    auto new_lod_tensor = lod_tensor->SliceLevels(level, level + 1);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0UL), lod_tensor->NumElements(level));
     ASSERT_EQ(new_lod_tensor.tensor(), lod_tensor->tensor());
   }
   // slice 2 level
   for (size_t level = 0; level < 2UL; ++level) {
-    auto new_lod_tensor = lod_tensor->SliceShared(level, level + 2);
+    auto new_lod_tensor = lod_tensor->SliceLevels(level, level + 2);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor->NumElements(level));
     ASSERT_EQ(new_lod_tensor.NumElements(1),
@@ -74,9 +74,9 @@ TEST_F(LODTensorTester, SliceShared_Level) {
   }
 }
 
-TEST_F(LODTensorTester, SliceShared_Element) {
+TEST_F(LODTensorTester, SliceInLevel) {
   size_t level = 0;
-  auto new_lod_tensor = lod_tensor->SliceShared(level, 0, 2);
+  auto new_lod_tensor = lod_tensor->SliceInLevel(level, 0, 2);
   ASSERT_EQ(new_lod_tensor.NumLevels(), 3UL);
   ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);
@@ -84,7 +84,7 @@ TEST_F(LODTensorTester, SliceShared_Element) {
   ASSERT_EQ(new_lod_tensor.raw_tensor(), lod_tensor->raw_tensor());
 
   level = 1;
-  new_lod_tensor = lod_tensor->SliceShared(level, 0, 2);
+  new_lod_tensor = lod_tensor->SliceInLevel(level, 0, 2);
   ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);

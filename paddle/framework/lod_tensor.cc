@@ -13,13 +13,14 @@
    limitations under the License. */
 
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/details/lod_tensor.h"
 
 #include <glog/logging.h>
 
 namespace paddle {
 namespace framework {
 
-LODTensor LODTensor::SliceShared(size_t level_begin, size_t level_end) const {
+LODTensor LODTensor::SliceLevels(size_t level_begin, size_t level_end) const {
   PADDLE_ENFORCE(HasLOD(), "has no LOD info, can't be sliced.");
   auto new_lod = details::SliceLOD(*lod_start_pos_, level_begin, level_end);
   // slice levels just need to update LOD info, each level will contains the
@@ -27,8 +28,8 @@ LODTensor LODTensor::SliceShared(size_t level_begin, size_t level_end) const {
   return LODTensor(tensor_, new_lod);
 }
 
-LODTensor LODTensor::SliceShared(size_t level, size_t elem_begin,
-                                 size_t elem_end) const {
+LODTensor LODTensor::SliceInLevel(size_t level, size_t elem_begin,
+                                  size_t elem_end) const {
   PADDLE_ENFORCE(HasLOD(), "has no LOD info, can't be sliced.");
   PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
                  NumLevels());

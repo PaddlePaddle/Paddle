@@ -88,13 +88,14 @@ class LODTensor {
   /*
    * Slice of levels[level_begin:level_end], with tensor shared.
    */
-  LODTensor SliceShared(size_t level_begin, size_t level_end) const;
+  LODTensor SliceLevels(size_t level_begin, size_t level_end) const;
 
   /*
    * Slice of elements of a level, [elem_begin: elem_end], with tensor shared.
    * @note: low performance in slice lod_start_pos_.
    */
-  LODTensor SliceShared(size_t level, size_t elem_begin, size_t elem_end) const;
+  LODTensor SliceInLevel(size_t level, size_t elem_begin,
+                         size_t elem_end) const;
 
   /*
    * Copy other's lod_start_pos_, to share LOD info.
@@ -126,5 +127,3 @@ class LODTensor {
 
 }  // namespace framework
 }  // namespace paddle
-
-#include "paddle/framework/lod_tensor_impl.h"
