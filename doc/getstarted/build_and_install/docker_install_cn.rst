@@ -80,7 +80,7 @@ PaddlePaddle发布新版本的时候都会发布对应版本的生产镜像以�
 
    .. code-block:: bash
 
-      docker run -d -p 2202:22 -p 8888:8888 paddledev/paddle:0.10.0-dev
+      docker run -d -p 2202:22 -p 8888:8888 paddledev/paddle:0.10.0-dev /usr/sbin/sshd -D
 
    然后用密码 :code:`root` SSH进入容器：
 
