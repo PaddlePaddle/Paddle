@@ -302,6 +302,10 @@ public:
   bool isSparse() const { return true; }
 
 private:
+  using Matrix::mul;
   using Matrix::copyFrom;
+  using Matrix::rowMax;
+  using Matrix::print;
+  using Matrix::subMatrix;
 };
 }  // namespace paddle

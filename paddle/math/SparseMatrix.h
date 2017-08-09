@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <cstddef>
-#include "Matrix.h"
 #include "CpuSparseMatrix.h"
+#include "Matrix.h"
 
 namespace paddle {
 
@@ -234,6 +234,9 @@ public:
 private:
   using Matrix::mul;
   using Matrix::copyFrom;
+  using Matrix::rowMax;
+  using Matrix::print;
+  using Matrix::subMatrix;
 };
 
 }  // namespace paddle
