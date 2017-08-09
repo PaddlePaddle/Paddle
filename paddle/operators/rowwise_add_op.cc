@@ -13,12 +13,13 @@
    limitations under the License. */
 
 #include "paddle/operators/rowwise_add_op.h"
+
 namespace paddle {
 namespace operators {
 
-class RowwiseAddOp : public OperatorWithKernel {
+class RowwiseAddOp : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2UL,
                    "Two inputs is needed by rowwise add");
     auto dim0 = ctx.Input<Tensor>(0)->dims();
@@ -32,9 +33,10 @@ class RowwiseAddOp : public OperatorWithKernel {
   }
 };
 
-class RowwiseAddOpMaker : public OpProtoAndCheckerMaker {
+class RowwiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RowwiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  RowWiseAddOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
     AddInput("b", "The right input of row-wise add op, must be vector");
@@ -61,10 +63,12 @@ class RowwiseAddGradOp : public OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP(rowwise_add, ops::RowwiseAddOp, ops::RowwiseAddOpMaker);
-REGISTER_OP_CPU_KERNEL(rowwise_add,
-                       ops::RowwiseAddKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    rowwise_add, ops::RowwiseAddKernel<paddle::platform::CPUPlace, float>);
 
 REGISTER_GRADIENT_OP(rowwise_add, rowwise_add_grad, ops::RowwiseAddGradOp);
-REGISTER_OP_CPU_KERNEL(rowwise_add_grad,
-                       ops::RowwiseAddGradKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    rowwise_add_grad,
+    ops::RowwiseAddGradKernel<paddle::platform::CPUPlace, float>);

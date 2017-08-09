@@ -15,7 +15,6 @@
 */
 
 #include "paddle/operators/net_op.h"
-#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {

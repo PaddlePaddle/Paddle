@@ -13,15 +13,24 @@
    limitations under the License. */
 
 #pragma once
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
 class RowwiseAddKernel : public OpKernel {
  public:
-  void Compute(const ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
     auto out = context.Output<Tensor>(0);
     out->mutable_data<T>(context.GetPlace());
 
@@ -39,9 +48,9 @@ class RowwiseAddKernel : public OpKernel {
 };
 
 template <typename Place, typename T>
-class RowwiseAddGradKernel : public OpKernel {
+class RowwiseAddGradKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
     auto* XGrad = context.Output<Tensor>(0);
     auto* bGrad = context.Output<Tensor>(1);
     XGrad->mutable_data<T>(context.GetPlace());

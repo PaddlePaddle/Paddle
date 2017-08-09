@@ -13,16 +13,21 @@
    limitations under the License. */
 
 #pragma once
-
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
-class MulKernel : public OpKernel {
+class MulKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
@@ -40,5 +45,6 @@ class MulKernel : public OpKernel {
     Z.device(place) = X.contract(Y, dim_pair);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
