@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class RowwiseAddKernel : public OpKernel {
+class RowwiseAddKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto out = context.Output<Tensor>(0);
