@@ -92,7 +92,8 @@ def get_numeric_gradient(op,
 
 
 class GradientChecker(unittest.TestCase):
-    def __is_close(self, numeric_grads, scope, max_relative_error, msg_prefix):
+    def assert_is_close(self, numeric_grads, scope, max_relative_error,
+                        msg_prefix):
         for name in numeric_grads:
             b = numpy.array(scope.find_var(grad_var_name(name)).get_tensor())
             a = numeric_grads[name]
@@ -199,8 +200,8 @@ class GradientChecker(unittest.TestCase):
             backward_op.infer_shape(scope)
             backward_op.run(scope, ctx)
 
-            self.__is_close(numeric_grad, scope, max_relative_error,
-                            "Gradient Check On %s" % str(place))
+            self.assert_is_close(numeric_grad, scope, max_relative_error,
+                                 "Gradient Check On %s" % str(place))
 
 
 if __name__ == '__main__':
