@@ -120,9 +120,9 @@ class OperatorBase {
   std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
-class OperatorContext {
+class InferShapeContext {
  public:
-  OperatorContext(const OperatorBase* op, const Scope& scope)
+  InferShapeContext(const OperatorBase* op, const Scope& scope)
       : op_(*op), scope_(scope) {}
 
   size_t InputSize() const { return op_.inputs_.size(); }
@@ -234,12 +234,6 @@ class OperatorContext {
   const Scope& scope_;
 };
 
-class InferShapeContext : public OperatorContext {
- public:
-  InferShapeContext(const OperatorBase* op, const Scope& scope)
-      : OperatorContext(op, scope) {}
-};
-
 template <typename T>
 struct EigenDeviceConverter;
 
@@ -255,11 +249,11 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 };
 #endif
 
-class ExecutionContext : public OperatorContext {
+class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase* op, const Scope& scope,
                    const platform::DeviceContext* device_context)
-      : OperatorContext(op, scope), device_context_(device_context) {}
+      : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
             typename DeviceType =
