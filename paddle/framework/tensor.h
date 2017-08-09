@@ -49,6 +49,8 @@ class Tensor {
  public:
   Tensor() : offset_(0) {}
 
+  virtual Tensor* Clone() const { return new Tensor; }
+
   /*! Return a pointer to mutable memory block. */
   template <typename T>
   inline T* data();
@@ -104,6 +106,8 @@ class Tensor {
    */
   template <typename T>
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+
+  virtual ~Tensor() {}
 
  private:
   template <typename T>

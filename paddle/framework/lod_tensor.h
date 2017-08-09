@@ -45,14 +45,7 @@ class LODTensor : public Tensor {
   typedef std::vector<Level> LOD;
 
   LODTensor() {}
-  LODTensor(const std::shared_ptr<Tensor> &tensor, const LOD &lod) {
-    Reset(tensor, lod);
-  }
-
-  void Reset(const std::shared_ptr<Tensor> &tensor, const LOD &lod) {
-    tensor_ = tensor;
-    lod_start_pos_ = lod;
-  }
+  explicit LODTensor(const LOD &lod) : lod_start_pos_(lod) {}
 
   /*
    * Get a element from LOD.
@@ -84,12 +77,14 @@ class LODTensor : public Tensor {
   /*
    * Slice of levels[level_begin:level_end], with tensor shared.
    */
+  template <typename T>
   LODTensor SliceLevels(size_t level_begin, size_t level_end) const;
 
   /*
    * Slice of elements of a level, [elem_begin: elem_end], with tensor shared.
    * @note: low performance in slice lod_start_pos_.
    */
+  template <typename T>
   LODTensor SliceInLevel(size_t level, size_t elem_begin,
                          size_t elem_end) const;
 
@@ -104,13 +99,13 @@ class LODTensor : public Tensor {
    */
   const LOD &lod() const { return lod_start_pos_; }
 
-  std::shared_ptr<Tensor> &tensor() { return tensor_; }
-  Tensor *raw_tensor() { return tensor_.get(); }
+  virtual ~LODTensor() {}
 
  private:
   LOD lod_start_pos_;
-  std::shared_ptr<Tensor> tensor_;
 };
 
 }  // namespace framework
 }  // namespace paddle
+
+#include "paddle/framework/lod_tensor_impl.h"
