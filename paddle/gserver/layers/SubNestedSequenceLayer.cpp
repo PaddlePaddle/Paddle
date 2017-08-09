@@ -96,7 +96,7 @@ void SubNestedSequenceLayer::calSelectedCols(
   for (size_t i = 0; i < seqNum; ++i) {
     for (size_t j = 0; j < beamSize; ++j) {
       if (selectedIndices->getElement(i, j) == -1.) break;
-      int selSubSeqIdx = selectedIndices->getElement(i, j);
+      size_t selSubSeqIdx = selectedIndices->getElement(i, j);
       CHECK_GT(inputSeqInfoVec_[i].size() - 1, selSubSeqIdx);
 
       size_t subSeqLen = inputSeqInfoVec_[i][selSubSeqIdx + 1] -
@@ -135,7 +135,7 @@ void SubNestedSequenceLayer::forward(PassType passType) {
   CHECK(inputSeq.hasSubseq()) << "The first input of SubNestSequence layer "
                               << "must be a nested sequence.";
   const MatrixPtr selectedIndices = getInputValue(1);
-  CHECK_EQ(inputSeq.getNumSequences(), selectedIndices->getHeight());
+  CHECK_EQ(size_t(inputSeq.getNumSequences()), selectedIndices->getHeight());
 
   if (dynamic_cast<GpuMatrix*>(selectedIndices.get())) {
     /*

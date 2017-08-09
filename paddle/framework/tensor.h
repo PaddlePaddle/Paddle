@@ -18,6 +18,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <vector>
+
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"

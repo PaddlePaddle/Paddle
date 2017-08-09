@@ -19,7 +19,7 @@ TEST(Tensor, Dims) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor tt;
-  tt.Resize(make_ddim({2, 3, 4}));
+  tt.Resize({2, 3, 4});
   DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
