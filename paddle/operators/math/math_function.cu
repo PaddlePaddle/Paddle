@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/math_function.h"
-
 namespace paddle {
 namespace operators {
 namespace math {
@@ -26,6 +25,8 @@ void gemm<platform::GPUPlace, float>(
     platform::DeviceContext* context) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -44,6 +45,8 @@ void gemm<platform::GPUPlace, double>(
     const int ldc, platform::DeviceContext* context) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
+  lda = (transA == CblasNoTrans) ? K : M;
+  ldb = (transB == CblasNoTrans) ? N : K;
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -118,7 +121,6 @@ void matmul<platform::GPUPlace, double>(const framework::Tensor& in1,
                                    in1.data<double>(), K, in2.data<double>(), N,
                                    beta, out->data<double>(), N, context);
 }
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
