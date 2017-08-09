@@ -371,7 +371,7 @@ class OpKernelRegistrar : public Registrar {
   static ::paddle::framework::GradOpRegistrar<grad_op_class>                 \
       __op_gradient_registrar_##op_type##_##grad_op_type##__(#op_type,       \
                                                              #grad_op_type); \
-  int TouchOpGradientRegister_##op_type() {                                  \
+  int TouchOpGradientRegistrar_##op_type() {                                 \
     __op_gradient_registrar_##op_type##_##grad_op_type##__.Touch();          \
     return 0;                                                                \
   }
@@ -416,6 +416,14 @@ class OpKernelRegistrar : public Registrar {
   static int use_op_itself_##op_type##_ __attribute__((unused)) = \
       TouchOpRegistrar_##op_type()
 
+#define USE_OP_GRADIENT(op_type)                                    \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                   \
+      __use_op_gradient_##op_type,                                  \
+      "USE_OP_GRADIENT must be called in global namespace");        \
+  extern int TouchOpGradientRegistrar_##op_type();                  \
+  static int use_op_gradient_##op_type##_ __attribute__((unused)) = \
+      TouchOpGradientRegistrar_##op_type()
+
 #define USE_OP_KERNEL(op_type, DEVICE_TYPE)                      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
       __use_op_kernel_##op_type##_##DEVICE_TYPE##__,             \
@@ -425,9 +433,10 @@ class OpKernelRegistrar : public Registrar {
       __attribute__((unused)) =                                  \
           TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
 
-#define USE_CPU_OP(op_type) \
-  USE_OP_ITSELF(op_type);   \
-  USE_OP_KERNEL(op_type, CPU)
+#define USE_CPU_OP(op_type)    \
+  USE_OP_ITSELF(op_type);      \
+  USE_OP_KERNEL(op_type, CPU); \
+  USE_OP_GRADIENT(op_type)
 
 #ifdef PADDLE_ONLY_CPU
 #define USE_OP(op_type) USE_CPU_OP(op_type)
