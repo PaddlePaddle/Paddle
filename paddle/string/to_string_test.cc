@@ -15,13 +15,13 @@
 #include "paddle/string/to_string.h"
 #include <gtest/gtest.h>
 
-constexpr char OUT_STR[] = "User Defined Output";
+constexpr char kOutputString[] = "User Defined Output";
 class UserDefinedClass {
 public:
 };
 
 std::ostream& operator<<(std::ostream& s, const UserDefinedClass& ins) {
-  s << OUT_STR;
+  s << kOutputString;
   return s;
 }
 
@@ -35,5 +35,5 @@ TEST(to_string, normal) {
 TEST(to_string, user_defined) {
   using namespace paddle::string;
   UserDefinedClass instance;
-  ASSERT_EQ(OUT_STR, to_string(instance));
+  ASSERT_EQ(kOutputString, to_string(instance));
 }
