@@ -95,7 +95,6 @@ class Optimizer(object):
 
     def __create_new_remote_updater__(self, pserver_spec, use_etcd):
         import py_paddle.swig_paddle as swig_api
-        print self.__opt_conf_new__.SerializeToString()
         if not self.__opt_conf_new__:
             raise AttributeError(
                 "must set optimizer config using set_remote_optimizer_config")

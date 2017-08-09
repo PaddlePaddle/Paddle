@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "NewRemoteParameterUpdater.h"
-#include <iostream>
 #include "Trainer.h"
 #include "paddle/utils/Stat.h"
 
@@ -40,8 +39,7 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
       newGradients_(nullptr),
       pserverSpec_(pserverSpec),
       useEtcd_(useEtcd) {
-  std::cout << "proto string in c++: " << optconfigstr << endl;
-  optimizerConfigNew_.ParseFromString(optconfigstr)
+  optimizerConfigNew_.ParseFromString(optconfigstr);
 }
 
 void NewRemoteParameterUpdater::init(
@@ -96,11 +94,48 @@ void NewRemoteParameterUpdater::init(
         }
       }
     }
-    std::string bytes = optimizerConfigNew_.SerializeAsString();
-    const char *array = bytes.data();
-    int size = (int)bytes.size();
-    paddle_init_param(
-        parameterClient_, *newParameters_[i], (void *)array, size);
+    for (int i = 0; i < parameterSize(); ++i) {
+      OptimizerConfig optConfigPerParameter;
+      optConfigPerParameter.CopyFrom(optimizerConfigNew_);
+      // overwrite config for each parameter
+      auto paramConfig = parameters_[i]->getConfig();
+      // FIXME: overwrite only when lr_policy is const
+      if (paramConfig.has_learning_rate() &&
+          optConfigPerParameter.lr_policy() == paddle::OptimizerConfig::Const) {
+        optConfigPerParameter.mutable_const_lr()->set_learning_rate(
+            paramConfig.learning_rate());
+      }
+      if (paramConfig.has_decay_rate()) {
+        switch (optConfigPerParameter.optimizer()) {
+          case 1:  // SGD
+            optConfigPerParameter.mutable_sgd()->set_decay(
+                paramConfig.decay_rate());
+            break;
+          case 2:  // Adadelta
+            optConfigPerParameter.mutable_adadelta()->set_decay(
+                paramConfig.decay_rate());
+            break;
+          case 3:  // Adagrad
+            optConfigPerParameter.mutable_adagrad()->set_decay(
+                paramConfig.decay_rate());
+            break;
+          case 4:  // Adam
+            optConfigPerParameter.mutable_adam()->set_decay(
+                paramConfig.decay_rate());
+            break;
+        }
+      }
+      if (paramConfig.has_momentum() &&
+          optConfigPerParameter.optimizer() == 1) {
+        optConfigPerParameter.mutable_sgd()->set_momentum(
+            paramConfig.momentum());
+      }
+      std::string bytes = optConfigPerParameter.SerializeAsString();
+      const char *array = bytes.data();
+      int size = (int)bytes.size();
+      paddle_init_param(
+          parameterClient_, *newParameters_[i], (void *)array, size);
+    }
     paddle_finish_init_params(parameterClient_);
     LOG(INFO) << "paddle_begin_init_params done";
   } else {

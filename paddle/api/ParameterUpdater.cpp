@@ -18,7 +18,6 @@ limitations under the License. */
 #ifndef PADDLE_WITHOUT_GOLANG
 #include "paddle/trainer/NewRemoteParameterUpdater.h"
 #endif
-#include <iostream>
 #include "paddle/trainer/RemoteParameterUpdater.h"
 #include "paddle/trainer/ThreadParameterUpdater.h"
 
@@ -39,12 +38,11 @@ ParameterUpdater *ParameterUpdater::createNewRemoteUpdater(
     const std::string optConfigStr) throw(UnsupportError) {
 #ifndef PADDLE_WITHOUT_GOLANG
   auto updater = new ParameterUpdater();
-  std::cout << "conf in c++" << optConfigStr << endl;
   updater->m->updater.reset(new paddle::NewRemoteParameterUpdater(
       config->m->getConfig(), pserverSpec, useEtcd, optConfigStr));
   return updater;
 #else
-  throw UnsupportError();
+  throw UnsupportError("not compiled with WITH_GOLANG");
 #endif
 }
 
