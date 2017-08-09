@@ -30,7 +30,7 @@ namespace py = pybind11;
 
 USE_OP(add_two);
 USE_OP_CPU(onehot_cross_entropy);
-USE_OP_WITHOUT_KERNEL(fc);
+USE_OP_ITSELF(fc);
 USE_OP(sgd);
 USE_OP(mul);
 USE_OP(mean);
@@ -38,7 +38,7 @@ USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
 USE_OP(fill_zeros_like);
-USE_OP_WITHOUT_KERNEL(recurrent_op);
+USE_OP_ITSELF(recurrent_op);
 USE_OP(uniform_random);
 namespace paddle {
 namespace framework {
