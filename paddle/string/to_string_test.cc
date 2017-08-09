@@ -25,25 +25,12 @@ std::ostream& operator<<(std::ostream& s, const UserDefinedClass& ins) {
   return s;
 }
 
-// android macro comes from
-// https://stackoverflow.com/questions/15328751/android-macro-suddenly-not-defined
-#if !defined(ANDROID) && !defined(__ANDROID__)
-// In android, std::to_string is not defined.
-// https://stackoverflow.com/questions/22774009/android-ndk-stdto-string-support
 TEST(to_string, normal) {
   using namespace paddle::string;
-  ASSERT_EQ(std::to_string(10), to_string(10));
+  ASSERT_EQ("10", to_string(10));
   ASSERT_EQ("abc", to_string("abc"));
-
-  auto std_to_string = std::to_string(1.2);
-  auto my_to_string = to_string(1.2);
-
-  // std::to_string might fill zero after float value, like 1.2000
-  for (size_t i = 0; i < my_to_string.size(); ++i) {
-    ASSERT_EQ(my_to_string[i], std_to_string[i]);
-  }
+  ASSERT_EQ("1.2", to_string(1.2));
 }
-#endif
 
 TEST(to_string, user_defined) {
   using namespace paddle::string;
