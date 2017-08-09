@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <paddle/framework/op_registry.h>
-USE_OP(sgd);
+USE_NO_GRAD_OP(sgd);
 TEST(SGDOp, GetOpProto) {
   auto& protos = paddle::framework::OpRegistry::protos();
   auto it = protos.find("sgd");

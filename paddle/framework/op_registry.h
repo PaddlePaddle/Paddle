@@ -416,6 +416,12 @@ class OpKernelRegistrar : public Registrar {
   static int use_op_itself_##op_type##_ __attribute__((unused)) = \
       TouchOpRegistrar_##op_type()
 
+// TODO(jiayi): Most ops' gradient op have not been compeleted. So we use
+// `NO_GRAD` to disable micro USE_OP_GRADIENT(op_type). Otherwise the code can't
+// be compiled. `NO_GRAD` should be removed after all gradient ops are
+// compeleted.
+#define NO_GRAD
+#ifndef NO_GRAD
 #define USE_OP_GRADIENT(op_type)                                    \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                   \
       __use_op_gradient_##op_type,                                  \
@@ -423,28 +429,39 @@ class OpKernelRegistrar : public Registrar {
   extern int TouchOpGradientRegistrar_##op_type();                  \
   static int use_op_gradient_##op_type##_ __attribute__((unused)) = \
       TouchOpGradientRegistrar_##op_type()
+#else
+#define USE_OP_GRADIENT(op_type)
+#endif
 
-#define USE_OP_KERNEL(op_type, DEVICE_TYPE)                      \
+#define USE_OP_DEVICE_KERNEL(op_type, DEVICE_TYPE)               \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
       __use_op_kernel_##op_type##_##DEVICE_TYPE##__,             \
-      "USE_OP_KERNEL must be in global namespace");              \
+      "USE_OP_DEVICE_KERNEL must be in global namespace");       \
   extern int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE(); \
   static int use_op_kernel_##op_type##_##DEVICE_TYPE##_          \
       __attribute__((unused)) =                                  \
           TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
 
-#define USE_CPU_OP(op_type)    \
-  USE_OP_ITSELF(op_type);      \
-  USE_OP_KERNEL(op_type, CPU); \
+#ifdef PADDLE_ONLY_CPU
+#define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
+#else
+#define USE_OP_KERNEL(op_type)        \
+  USE_OP_DEVICE_KERNEL(op_type, CPU); \
+  USE_OP_DEVICE_KERNEL(op_type, GPU)
+#endif
+
+#define USE_NO_GRAD_OP(op_type) \
+  USE_OP_ITSELF(op_type);       \
+  USE_OP_KERNEL(op_type)
+
+#define USE_CPU_OP(op_type)           \
+  USE_OP_ITSELF(op_type);             \
+  USE_OP_DEVICE_KERNEL(op_type, CPU); \
   USE_OP_GRADIENT(op_type)
 
-#ifdef PADDLE_ONLY_CPU
-#define USE_OP(op_type) USE_CPU_OP(op_type)
-#else
-#define USE_OP(op_type) \
-  USE_CPU_OP(op_type);  \
-  USE_OP_KERNEL(op_type, GPU)
-#endif
+#define USE_OP(op_type)    \
+  USE_NO_GRAD_OP(op_type); \
+  USE_OP_GRADIENT(op_type)
 
 }  // namespace framework
 }  // namespace paddle
