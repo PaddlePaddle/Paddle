@@ -29,7 +29,7 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_OP_CPU(onehot_cross_entropy);
+USE_CPU_OP(onehot_cross_entropy);
 USE_OP_ITSELF(fc);
 USE_OP(sgd);
 USE_OP(mul);
