@@ -425,14 +425,15 @@ class OpKernelRegistrar : public Registrar {
       __attribute__((unused)) =                                  \
           TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
 
-#ifdef PADDLE_ONLY_CPU
-#define USE_OP(op_type)   \
-  USE_OP_ITSELF(op_type); \
+#define USE_CPU_OP(op_type) \
+  USE_OP_ITSELF(op_type);   \
   USE_OP_KERNEL(op_type, CPU)
+
+#ifdef PADDLE_ONLY_CPU
+#define USE_OP(op_type) USE_CPU_OP(op_type)
 #else
-#define USE_OP(op_type)        \
-  USE_OP_ITSELF(op_type);      \
-  USE_OP_KERNEL(op_type, CPU); \
+#define USE_OP(op_type) \
+  USE_CPU_OP(op_type);  \
   USE_OP_KERNEL(op_type, GPU)
 #endif
 
