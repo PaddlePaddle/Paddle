@@ -47,6 +47,8 @@ class LODTensor : public Tensor {
   LODTensor() {}
   explicit LODTensor(const LOD &lod) : lod_start_pos_(lod) {}
 
+  virtual Tensor *Clone() const { return new LODTensor(lod_start_pos_); }
+
   /*
    * Get a element from LOD.
    */
