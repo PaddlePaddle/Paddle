@@ -40,6 +40,9 @@ protected:
   // output image channel, height and width
   int oc_, oh_, ow_;
 
+  // backward also need reset after reset forward handle
+  bool needResetBwd_;
+
   // mkldnn engine, stream and primivtives
   mkldnn::engine engine_;
   std::shared_ptr<MkldnnStream> stream_;
@@ -50,8 +53,6 @@ protected:
   std::vector<mkldnn::primitive> pipelineBwd_;
 
   // TODO(TJ): change below memory as MkldnnMatrixPtr type
-  // input == bottom, output == top
-  // value == data, grad == diff
   std::shared_ptr<mkldnn::memory> inVal_;
   std::shared_ptr<mkldnn::memory> inGrad_;
   std::shared_ptr<mkldnn::memory> outVal_;
@@ -71,6 +72,7 @@ public:
         oc_(0),
         oh_(0),
         ow_(0),
+        needResetBwd_(true),
         engine_(mkldnn::engine::cpu, 0),
         stream_(nullptr),
         fwd_(nullptr),
@@ -79,9 +81,21 @@ public:
 
   ~MkldnnLayer() {}
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  virtual bool init(const LayerMap& layerMap,
+                    const ParameterMap& parameterMap) {
+    if (!Layer::init(layerMap, parameterMap)) {
+      return false;
+    }
 
-  virtual void printSizeInfo();
+    CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
+                            << "Please set WITH_MKLDNN=ON "
+                            << "and set use_mkldnn=True";
+    stream_.reset(new MkldnnStream());
+    engine_ = CpuEngine::Instance().getEngine();
+
+    // TODO(TJ): deivecId
+    return true;
+  }
 
   /**
    * convert weight from paddle format to mkldnn format
@@ -95,56 +109,24 @@ public:
    */
   virtual void convertWeightsToPaddle() {}
 
-  void resetForwardFC(int bs,
-                      int ic,
-                      int ih,
-                      int iw,
-                      real* botData,
-                      int oc,
-                      real* topData,
-                      real* wgtData,
-                      real* biasData);
-
-  void mkldnnForwardFC(int bs,
-                       int ic,
-                       int ih,
-                       int iw,
-                       real* botData,
-                       int oc,
-                       real* topData,
-                       real* wgtData,
-                       real* biasData);
-
-  void resetBackwardFC(int bs,
-                       int ic,
-                       int ih,
-                       int iw,
-                       real* botDiff,
-                       real* botData,
-                       int oc,
-                       real* topDiff,
-                       real* wgtDiff,
-                       real* wgtData,
-                       real* biasDiff);
-
-  void mkldnnBackwardFC(int bs,
-                        int ic,
-                        int ih,
-                        int iw,
-                        real* botDiff,
-                        real* botData,
-                        int oc,
-                        real* topDiff,
-                        real* wgtDiff,
-                        real* wgtData,
-                        real* biasDiff);
+  /**
+   * print info about sizes
+   */
+  virtual void printSizeInfo() {
+    VLOG(MKLDNN_SIZES) << getName() << ": bs: " << bs_ << ", ic: " << ic_
+                       << ", ih: " << ih_ << ", iw: " << iw_ << ", oc: " << oc_
+                       << ", oh: " << oh_ << ", ow: " << ow_;
+  }
 
   // TODO(TJ): move to MkldnnMatrix
   // create memory desc
   inline mkldnn::memory::desc createMD(
       mkldnn::memory::dims dims,
       mkldnn::memory::format fmt,
-      mkldnn::memory::data_type type = mkldnn::memory::data_type::f32);
+      mkldnn::memory::data_type type = mkldnn::memory::data_type::f32) {
+    // TODO(TJ): isFmtSuppoted(fmt)
+    return mkldnn::memory::desc(dims, type, fmt);
+  }
 };
 
 }  // namespace paddle

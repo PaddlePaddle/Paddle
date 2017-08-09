@@ -1626,15 +1626,14 @@ class FCLayer(LayerBase):
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
+            dims = [input_layer.size, self.config.size]
             format = self.inputs[input_index].format
             sparse = format == "csr" or format == "csc"
             if use_mkldnn:
                 config_assert(not sparse,
                               "MkldnnFCLayer do not support sparse format yet")
-            if use_mkldnn and use_mkldnn_wgt:
-                dims = [self.config.size, input_layer.size]
-            else:
-                dims = [input_layer.size, self.config.size]
+                if use_mkldnn_wgt:
+                    dims = [self.config.size, input_layer.size]
             if sparse:
                 psize = self.inputs[input_index].nnz
             else:

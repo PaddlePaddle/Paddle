@@ -19,12 +19,12 @@ limitations under the License. */
 namespace paddle {
 
 typedef enum {
-  DNN_BASE = 1,
-  DNN_TESTS = 1,
-  DNN_SIZES,
-  DNN_FMTS,
-  DNN_ALL,
-} DNN_LOG_LEVEL;
+  MKLDNN_BASE = 1,   // basical info of MKLDNN
+  MKLDNN_TESTS = 1,  // gtest info of MKLDNN
+  MKLDNN_SIZES = 2,  // size info of MKLDNN
+  MKLDNN_FMTS = 3,   // format info of MKLDNN
+  MKLDNN_ALL = 4,    // show all info of MKLDNN
+} MKLDNN_LOG_LEVEL;
 
 /**
  * @brief MKLDNN CPU engine.
@@ -68,7 +68,7 @@ public:
   /**
    * @brief Submit stream
    * @param prims The primitives vector
-   *        block Waiting for the stream to complete
+   * @param block Waiting for the stream to complete
    */
   void submit(std::vector<mkldnn::primitive>& prims, bool block = true) {
     resetState();
@@ -84,8 +84,8 @@ public:
       return;
     }
     // TODO(TJ): change me when mkldnn have method to reset this state
-    stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
     // stream_.reset(new mkldnn::stream(mkldnn::stream::kind::lazy));
+    stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
     ready_ = true;
   }
 

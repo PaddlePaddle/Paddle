@@ -23,7 +23,6 @@ using namespace paddle;  // NOLINT
 DECLARE_bool(thread_local_rand_use_global_seed);
 DECLARE_bool(use_gpu);
 DECLARE_bool(use_mkldnn);
-DECLARE_bool(use_mkldnn_wgt);
 
 struct testFCDesc {
   int bs;
@@ -56,12 +55,12 @@ void testFcLayer(const testFCDesc& pm) {
 }
 
 TEST(MkldnnLayer, fcLayer) {
-  testFcLayer({2, 2, 3, 1, 1});
-  testFcLayer({3, 7, 19, 1, 1});
-  testFcLayer({8, 16, 32, 13, 13});
-  testFcLayer({4, 12, 18, 13, 11});
-  testFcLayer({2, 64, 32, 16, 16});
-  testFcLayer({15, 3, 6, 16, 16});
+  testFcLayer({/*bs*/ 2, /*ic*/ 2, /*oc*/ 3, /*ih*/ 1, /*iw*/ 1});
+  testFcLayer({/*bs*/ 3, /*ic*/ 7, /*oc*/ 19, /*ih*/ 1, /*iw*/ 1});
+  testFcLayer({/*bs*/ 8, /*ic*/ 16, /*oc*/ 32, /*ih*/ 13, /*iw*/ 13});
+  testFcLayer({/*bs*/ 4, /*ic*/ 12, /*oc*/ 18, /*ih*/ 13, /*iw*/ 11});
+  testFcLayer({/*bs*/ 2, /*ic*/ 64, /*oc*/ 32, /*ih*/ 16, /*iw*/ 16});
+  testFcLayer({/*bs*/ 15, /*ic*/ 3, /*oc*/ 6, /*ih*/ 16, /*iw*/ 16});
 }
 
 // TODO(TJ): add branch test

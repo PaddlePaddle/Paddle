@@ -30,6 +30,7 @@ protected:
   size_t iLayerSize_;  // == ic * ih * iw
 
   bool hasInitedWgt_;
+  bool hasSpatial_;
 
   // fc weight and bias
   std::unique_ptr<Weight> weight_;
@@ -37,7 +38,7 @@ protected:
 
 public:
   explicit MkldnnFcLayer(const LayerConfig& config)
-      : MkldnnLayer(config), hasInitedWgt_(false) {}
+      : MkldnnLayer(config), hasInitedWgt_(false), hasSpatial_(true) {}
 
   ~MkldnnFcLayer() {}
 
@@ -52,7 +53,25 @@ public:
 
   void backward(const UpdateCallback& callback) override;
 
+protected:
+  /**
+   * reshape the input image sizes
+   * and reset output buffer size
+   * and reset mkldnn forward
+   */
   void reshape();
+
+  /**
+   * reset the forward primitve and memory
+   * only would be called when input size changes
+   */
+  void resetFwd();
+
+  /**
+   * reset the backward primitve and memory for mkldnn fc
+   * only would be called when needed
+   */
+  void resetBwd();
 };
 
 }  // namespace paddle

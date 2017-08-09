@@ -118,7 +118,7 @@ void MkldnnTester::checkForward() {
   printTopDatas();
   double delta = compareMatrix(testLayers_[DNN]->getOutputValue(),
                                testLayers_[REF]->getOutputValue());
-  VLOG(DNN_ALL) << "Check Forward";
+  VLOG(MKLDNN_ALL) << "Check Forward";
   EXPECT_LE(fabs(delta), eps_);
 }
 
@@ -162,7 +162,7 @@ void MkldnnTester::checkBackwardWgts() {
     EXPECT_LE(fabs(delta), eps_);
   }
 
-  VLOG(DNN_ALL) << "Restore dnn weights before comapre";
+  VLOG(MKLDNN_ALL) << "Restore dnn weights before comapre";
   restoreWgt(dnnWgts, parameters_[DNN]);
 }
 
@@ -275,8 +275,8 @@ double MkldnnTester::getDelta(const real* d1,
   EXPECT_TRUE(std::isnormal(sum));
   EXPECT_FALSE(std::isinf(sum));
   EXPECT_FALSE(std::isnan(delta));
-  VLOG(DNN_ALL) << "reference avg data: " << sum / len
-                << ", delta: " << delta / sum << ", failCnt:" << failCnt;
+  VLOG(MKLDNN_ALL) << "reference avg data: " << sum / len
+                   << ", delta: " << delta / sum << ", failCnt:" << failCnt;
   return (failCnt / (float)len) > failRate ? maxOut : delta / sum;
 }
 
@@ -306,10 +306,8 @@ void MkldnnTester::runOnce() {
 
   // clear buffers
   // ref code will addto the diff, dnn code will writeto it
+  // and clearTopDatas() and clearWgtDiffs() should be coverd by test layers
   clearBotDiffs(REF);
-  // below two should be coverd by test layers
-  // clearTopDatas();
-  // clearWgtDiffs();
 }
 
 void MkldnnTester::run(const TestConfig& dnn,
@@ -321,8 +319,8 @@ void MkldnnTester::run(const TestConfig& dnn,
                        float epsilon,
                        bool log,
                        int level) {
-  VLOG(DNN_TESTS) << "Test MKLDNN functionality: " << dnn.layerConfig.type()
-                  << " vs " << ref.layerConfig.type();
+  VLOG(MKLDNN_TESTS) << "Test MKLDNN functionality: " << dnn.layerConfig.type()
+                     << " vs " << ref.layerConfig.type();
   ih_ = inputImgH;
   iw_ = inputImgW;
   iter_ = iter;
@@ -338,14 +336,14 @@ void MkldnnTester::run(const TestConfig& dnn,
   clearWgtDiffs();
   clearBotDiffs();
   for (size_t i = 0; i < iter_; ++i) {
-    VLOG(DNN_TESTS) << "Check Iteration " << i;
+    VLOG(MKLDNN_TESTS) << "Check Iteration " << i;
     runOnce();
   }
 
   // Then test FLAGS_use_mkldnn_wgt = true
   FLAGS_use_mkldnn_wgt = true;
   // after run once the mkldnn weight has been stored in dnnlayer
-  // then save the weigths and restart again
+  // then save the weights and restart again
   vector<VectorPtr> dnnWgts, refWgts;
   CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
   saveWgt(parameters_[DNN], dnnWgts);
@@ -361,7 +359,7 @@ void MkldnnTester::run(const TestConfig& dnn,
   clearBotDiffs();
 
   for (size_t i = 0; i < iter_; ++i) {
-    VLOG(DNN_TESTS) << "Check Iteration " << i;
+    VLOG(MKLDNN_TESTS) << "Check Iteration " << i;
     runOnce();
   }
 }
