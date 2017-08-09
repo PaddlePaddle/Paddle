@@ -15,6 +15,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <memory>
 
 namespace paddle {
@@ -29,10 +30,12 @@ class LODTensorTester : public ::testing::Test {
     // 0 10 20
     // 0 5 10 15 20
     // 0 2 5 7 10 12 15 20
-    auto lod = std::make_shared<LODTensor::LOD>();
-    lod->push_back(std::vector<size_t>{0, 10, 20});
-    lod->push_back(std::vector<size_t>{0, 5, 10, 15, 20});
-    lod->push_back(std::vector<size_t>{0, 2, 5, 7, 10, 12, 15, 17, 20});
+    LODTensor::LOD lod;
+    lod.push_back(std::vector<size_t>{0, 10, 20});
+    lod.push_back(std::vector<size_t>{0, 5, 10, 15, 20});
+    lod.push_back(std::vector<size_t>{0, 2, 5, 7, 10, 12, 15, 17, 20});
+
+    ASSERT_EQ(lod.size(), 3UL);
 
     auto tensor = std::make_shared<Tensor>();
     tensor->Resize({20 /*batch size*/, 128 /*dim*/});
@@ -77,11 +80,11 @@ TEST_F(LODTensorTester, SliceLevels) {
 TEST_F(LODTensorTester, SliceInLevel) {
   size_t level = 0;
   auto new_lod_tensor = lod_tensor->SliceInLevel(level, 0, 2);
-  ASSERT_EQ(new_lod_tensor.NumLevels(), 3UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(2), 8UL);
-  ASSERT_EQ(new_lod_tensor.raw_tensor(), lod_tensor->raw_tensor());
+  EXPECT_EQ(new_lod_tensor.NumLevels(), 3UL);
+  EXPECT_EQ(new_lod_tensor.NumElements(0), 2UL);
+  EXPECT_EQ(new_lod_tensor.NumElements(1), 4UL);
+  EXPECT_EQ(new_lod_tensor.NumElements(2), 8UL);
+  EXPECT_EQ(new_lod_tensor.raw_tensor(), lod_tensor->raw_tensor());
 
   level = 1;
   new_lod_tensor = lod_tensor->SliceInLevel(level, 0, 2);
@@ -93,14 +96,16 @@ TEST_F(LODTensorTester, SliceInLevel) {
 
 TEST_F(LODTensorTester, ShareLOD) {
   LODTensor new_lod_tensor;
-  new_lod_tensor.ShareLOD(*lod_tensor);
+  new_lod_tensor.CopyLOD(*lod_tensor);
   ASSERT_EQ(new_lod_tensor.lod(), lod_tensor->lod());
 }
 
 TEST_F(LODTensorTester, CopyLOD) {
   LODTensor new_lod_tensor;
   new_lod_tensor.CopyLOD(*lod_tensor);
-  ASSERT_NE(new_lod_tensor.lod(), lod_tensor->lod());
+  bool equals = std::equal(lod_tensor->lod().begin(), lod_tensor->lod().end(),
+                           new_lod_tensor.lod().begin());
+  ASSERT_TRUE(equals);
 }
 
 }  // namespace framework

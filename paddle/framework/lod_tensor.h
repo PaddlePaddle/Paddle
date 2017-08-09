@@ -45,13 +45,11 @@ class LODTensor : public Tensor {
   typedef std::vector<Level> LOD;
 
   LODTensor() {}
-  LODTensor(const std::shared_ptr<Tensor> &tensor,
-            const std::shared_ptr<LOD> &lod) {
+  LODTensor(const std::shared_ptr<Tensor> &tensor, const LOD &lod) {
     Reset(tensor, lod);
   }
 
-  void Reset(const std::shared_ptr<Tensor> &tensor,
-             const std::shared_ptr<LOD> &lod) {
+  void Reset(const std::shared_ptr<Tensor> &tensor, const LOD &lod) {
     tensor_ = tensor;
     lod_start_pos_ = lod;
   }
@@ -65,16 +63,14 @@ class LODTensor : public Tensor {
     PADDLE_ENFORCE(elem < NumElements(level),
                    "element begin [%d] out of range [%d]", elem,
                    NumElements(level));
-    return (*lod_start_pos_)[level][elem];
+    return (lod_start_pos_)[level][elem];
   }
 
   /*
    * Number of LODTensor's levels, each level has units of data, for example,
    * in the sentence's view, article, paragraph, sentence are 3 levels.
    */
-  size_t NumLevels() const {
-    return lod_start_pos_ ? lod_start_pos_->size() : 0UL;
-  }
+  size_t NumLevels() const { return lod_start_pos_.size(); }
   /*
    * Number of elements in a level.
    */
@@ -82,7 +78,7 @@ class LODTensor : public Tensor {
     PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
                    NumLevels());
     // the last offset is the end of last element
-    return lod_start_pos_->at(level).size() - 1;
+    return lod_start_pos_[level].size() - 1;
   }
 
   /*
@@ -98,30 +94,21 @@ class LODTensor : public Tensor {
                          size_t elem_end) const;
 
   /*
-   * Copy other's lod_start_pos_, to share LOD info.
-   * @note: the LOD info should not be changed.
-   */
-  void ShareLOD(const LODTensor &other) {
-    lod_start_pos_ = other.lod_start_pos_;
-  }
-
-  /*
    * Copy other's lod_start_pos_'s content, free to mutate.
    */
   void CopyLOD(const LODTensor &other) {
-    lod_start_pos_ = std::make_shared<LOD>(*other.lod_start_pos_);
+    lod_start_pos_ = other.lod_start_pos_;
   }
   /*
    * Determine whether LODTensor has a valid LOD info.
    */
-  bool HasLOD() const { return bool(lod_start_pos_); }
-  LOD *lod() const { return lod_start_pos_.get(); }
+  const LOD &lod() const { return lod_start_pos_; }
 
   std::shared_ptr<Tensor> &tensor() { return tensor_; }
   Tensor *raw_tensor() { return tensor_.get(); }
 
  private:
-  std::shared_ptr<LOD> lod_start_pos_;
+  LOD lod_start_pos_;
   std::shared_ptr<Tensor> tensor_;
 };
 
