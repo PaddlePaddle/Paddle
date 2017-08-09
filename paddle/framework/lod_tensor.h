@@ -86,24 +86,9 @@ class LODTensor {
   }
 
   /*
-   * Slice of levels[level_begin:level_end], with tensor copied.
-   */
-  template <typename T>
-  LODTensor SliceCopied(size_t level_begin, size_t level_end,
-                        const platform::Place &dst_place) const;
-
-  /*
    * Slice of levels[level_begin:level_end], with tensor shared.
    */
   LODTensor SliceShared(size_t level_begin, size_t level_end) const;
-
-  /*
-   * Slice of elements of a level, [elem_begin: elem_end], with tensor copied.
-   * @note: low performance in slice lod_start_pos_.
-   */
-  template <typename T>
-  LODTensor SliceCopied(size_t level, size_t elem_begin, size_t elem_end,
-                        const platform::Place &dst_place) const;
 
   /*
    * Slice of elements of a level, [elem_begin: elem_end], with tensor shared.
