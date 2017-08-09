@@ -122,8 +122,8 @@ class OperatorBase {
 
 class InferShapeContext {
  public:
-  InferShapeContext(const OperatorBase* op, const Scope& scope)
-      : op_(*op), scope_(scope) {}
+  InferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
 
   size_t InputSize() const { return op_.inputs_.size(); }
 
@@ -251,7 +251,7 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 
 class ExecutionContext : public InferShapeContext {
  public:
-  ExecutionContext(const OperatorBase* op, const Scope& scope,
+  ExecutionContext(const OperatorBase& op, const Scope& scope,
                    const platform::DeviceContext* device_context)
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
@@ -305,13 +305,13 @@ class OperatorWithKernel : public OperatorBase {
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
   void InferShape(const Scope& scope) const override {
-    InferShape(InferShapeContext(this, scope));
+    InferShape(InferShapeContext(*this, scope));
   }
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(this, scope, &dev_ctx));
+    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
