@@ -32,6 +32,7 @@ type optimizer struct {
 	opt         *C.struct_paddle_optimizer
 	elementType ElementType
 	contentLen  int
+	config      []byte
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
@@ -70,6 +71,7 @@ func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer
 		cstate = unsafe.Pointer(&s[0])
 	}
 
+	o.config = c
 	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
 		C.paddle_element_type(p.ElementType), cbuffer, C.int(paramBufferSize), (*C.char)(cstate), C.int(len(s)))
 	return o

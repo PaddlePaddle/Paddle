@@ -1,5 +1,5 @@
-hash: 2a1c0eca5c07a130e3d224f9821f96cfa37a39bf6bce141c855bbc57ef569f1c
-updated: 2017-07-29T07:34:48.722757905+08:00
+hash: 1b9b07408ca7fac27a374dc2ccd2433e4bff090484008a037df967284949a582
+updated: 2017-08-07T23:37:48.867469328Z
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -10,7 +10,7 @@ imports:
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/etcd
-  version: c31bec0f29facff13f7c3e3d948e55dd6689ed42
+  version: d0d1a87aa96ae14914751d42264262cb69eda170
   subpackages:
   - alarm
   - auth
@@ -24,6 +24,7 @@ imports:
   - error
   - etcdserver
   - etcdserver/api
+  - etcdserver/api/etcdhttp
   - etcdserver/api/v2http
   - etcdserver/api/v2http/httptypes
   - etcdserver/api/v3client
@@ -145,6 +146,8 @@ imports:
   version: a1dba9ce8baed984a2495b658c82687f8157b98f
   subpackages:
   - xfs
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/sirupsen/logrus
   version: a3f95b5c423586578a4e099b11a46c2479628cac
 - name: github.com/topicai/candy
@@ -208,11 +211,6 @@ testImports:
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
   - spew
-- name: github.com/docker/docker
-  version: b6d164e6c46d8115b146e4c3ac93784e9ef8b49e
-  subpackages:
-  - pkg/ioutils
-  - pkg/longpath
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:

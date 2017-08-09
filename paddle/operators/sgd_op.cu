@@ -15,4 +15,6 @@
 #define EIGEN_USE_GPU
 #include "paddle/operators/sgd_op.h"
 
-REGISTER_OP_GPU_KERNEL(sgd, ops::SGDOpKernel<ops::GPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(sgd,
+                       ops::SGDOpKernel<paddle::platform::GPUPlace, float>);

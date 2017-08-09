@@ -59,7 +59,7 @@ func initClient() [numPserver]int {
 
 		go func(l net.Listener) {
 			var cp pserver.Checkpoint
-			s, err := pserver.NewService(0, 1, "", nil, cp)
+			s, err := pserver.NewService(0, time.Hour, "", nil, cp)
 			if err != nil {
 				panic(err)
 			}
@@ -124,8 +124,12 @@ func initEtcdClient() {
 
 type selector bool
 
-func (s selector) Select() bool {
-	return bool(s)
+func (s selector) Select() (bool, error) {
+	return bool(s), nil
+}
+
+func (s selector) Done() error {
+	return nil
 }
 
 type lister []client.Server
@@ -135,7 +139,11 @@ func (l lister) List() []client.Server {
 }
 
 func testClient(t *testing.T, c *client.Client) {
-	selected := c.BeginInitParams()
+	selected, err := c.BeginInitParams()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if !selected {
 		t.Fatal("should be selected.")
 	}

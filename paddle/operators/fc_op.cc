@@ -12,10 +12,15 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "type_alias.h"
+#include "paddle/operators/net_op.h"
+
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+using OpRegistry = framework::OpRegistry;
 
 class FullyConnectedOp : public NetOp {
  public:
@@ -39,9 +44,10 @@ class FullyConnectedOp : public NetOp {
   }
 };
 
-class FullyConnectedOpMaker : public OpProtoAndCheckerMaker {
+class FullyConnectedOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FullyConnectedOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  FullyConnectedOpMaker(framework::OpProto *proto,
+                        framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input of fc operator");
     AddInput("W", "the weight of fc operator");
@@ -66,4 +72,5 @@ USE_OP(rowwise_add);
 USE_OP(sigmoid);
 USE_OP(softmax);
 
+namespace ops = paddle::operators;
 REGISTER_OP(fc, ops::FullyConnectedOp, ops::FullyConnectedOpMaker);

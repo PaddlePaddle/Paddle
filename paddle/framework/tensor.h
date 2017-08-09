@@ -18,6 +18,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <vector>
+
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
@@ -129,8 +131,8 @@ class Tensor {
                memory::PODDeleter<T, Place>(place)),
           place_(place),
           size_(size) {
-      PADDLE_ENFORCE(ptr_ != nullptr, "Insufficient %s memory to allocation.",
-                     is_cpu_place(place_) ? "CPU" : "GPU");
+      PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
+                              (is_cpu_place(place_) ? "CPU" : "GPU"));
     }
 
     virtual size_t size() const { return size_; }

@@ -15,18 +15,28 @@
 #pragma once
 
 #include "paddle/operators/math/math_function.h"
-#include "paddle/operators/type_alias.h"
+
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
-class MulKernel : public OpKernel {
+class MulKernel : public framework::OpKernel {
  public:
-  void Compute(const ExecutionContext& context) const override {
-    auto* input0 = context.Input<Tensor>("X");
-    auto* input1 = context.Input<Tensor>("Y");
-    auto* output = context.Output<Tensor>(0);
+  void Compute(const framework::ExecutionContext& context) const override {
+    Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
+        {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
+
+    auto input0 = context.Input<Tensor>("X");
+    auto input1 = context.Input<Tensor>("Y");
+    auto output = context.Output<Tensor>(0);
 
     output->mutable_data<T>(context.GetPlace());
 

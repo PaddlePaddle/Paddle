@@ -7,6 +7,9 @@ cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
+cc_library(lod_tensor SRCS lod_tensor.cc details/lod_tensor.cc DEPS ddim place tensor)
+cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor)
+
 cc_test(variable_test SRCS variable_test.cc)
 
 cc_library(scope SRCS scope.cc)
@@ -35,12 +38,17 @@ add_dependencies(framework_py_proto framework_py_proto_init)
 
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward)
+
+if(WITH_PYTHON)
 cc_library(paddle_pybind SHARED
     SRCS pybind.cc
     DEPS pybind python backward
-	fc_op
-	sgd_op
-	add_op
-	mean_op
-	cross_entropy_op
-	recurrent_op)
+    fc_op
+    sgd_op
+    add_op
+    mean_op
+    cross_entropy_op
+    recurrent_op
+    uniform_random_op
+    fill_zeros_like_op)
+endif(WITH_PYTHON)

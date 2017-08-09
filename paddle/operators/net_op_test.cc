@@ -2,31 +2,27 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-
 namespace paddle {
 namespace operators {
+using Scope = framework::Scope;
+using DeviceContext = platform::DeviceContext;
 
 static int infer_shape_cnt = 0;
 static int run_cnt = 0;
 
-class TestOp : public OperatorBase {
+class TestOp : public framework::OperatorBase {
  public:
-  void InferShape(const framework::Scope& scope) const override {
-    ++infer_shape_cnt;
-  }
-  void Run(const framework::Scope& scope,
-           const paddle::platform::DeviceContext& dev_ctx) const override {
+  void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;
   }
 };
 
-class EmptyOp : public OperatorBase {
+class EmptyOp : public framework::OperatorBase {
  public:
   void InferShape(const Scope& scope) const override {}
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+  void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
 };
 
 template <typename T>
@@ -72,7 +68,7 @@ TEST(OpKernel, all) {
   net->Run(scope, dev_ctx);
   ASSERT_EQ(2, infer_shape_cnt);
   ASSERT_EQ(2, run_cnt);
-  ASSERT_THROW(net->AddOp(op2), paddle::platform::EnforceNotMet);
+  ASSERT_THROW(net->AddOp(op2), platform::EnforceNotMet);
 }
 
 TEST(NetOp, insert_op) {
