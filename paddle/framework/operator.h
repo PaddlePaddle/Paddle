@@ -50,6 +50,8 @@ inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
 
+extern std::unordered_map<std::string, OpProto>& OpProtos();
+
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
@@ -102,6 +104,35 @@ class OperatorBase {
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   const std::vector<std::string>& Outputs(const std::string& name) const;
+
+  virtual std::vector<std::string> OutputVars(bool has_intermediate) const {
+    std::vector<std::string> ret_val;
+    if (has_intermediate) {
+      // push all outputs into ret_val
+      for (auto& o : outputs_) {
+        ret_val.reserve(ret_val.size() + o.second.size());
+        ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
+      }
+      return ret_val;
+    }
+    auto it = OpProtos().find(type_);
+    PADDLE_ENFORCE(
+        it != OpProtos().end(),
+        "Operator %s not registered, cannot figure out intermediate outputs",
+        type_);
+
+    // get all OpProto::Var for outputs
+    for (auto& o : it->second.outputs()) {
+      // ignore all intermediate output
+      if (o.intermediate()) continue;
+      auto out = outputs_.find(o.name());
+      if (out != outputs_.end()) {
+        ret_val.reserve(ret_val.size() + out->second.size());
+        ret_val.insert(ret_val.end(), out->second.begin(), out->second.end());
+      }
+    }
+    return ret_val;
+  }
 
  public:
   std::string type_;
