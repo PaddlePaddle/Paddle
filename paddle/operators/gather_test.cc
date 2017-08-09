@@ -29,7 +29,6 @@ TEST(Gather, GatherData) {
   Tensor* src = new Tensor();
   Tensor* index = new Tensor();
   Tensor* output = new Tensor();
-  // src.Resize(make_ddim({3, 4}));
 
   int* p_src = nullptr;
   int* p_index = nullptr;
@@ -40,7 +39,6 @@ TEST(Gather, GatherData) {
   p_index[0] = 1;
   p_index[1] = 0;
 
-  // gather
   int* p_output = output->mutable_data<int>(make_ddim({2, 4}), CPUPlace());
 
   Gather<int>(CPUPlace(), src, index, output);
