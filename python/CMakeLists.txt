@@ -1,6 +1,8 @@
 set(OUTPUT_DIR
     "${CMAKE_CURRENT_BINARY_DIR}/build")
 
+set(PADDLE_PYTHON_LIB_DIR "${OUTPUT_DIR}/lib")
+
 file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
 file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
 file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
