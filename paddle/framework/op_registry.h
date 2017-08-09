@@ -180,8 +180,8 @@ class OpRegistry {
   static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
     VarNameMap inputs;
     for (auto& input : op_desc.inputs()) {
-      auto& var_names = inputs[input.op_proto_name()];
-      auto& var_names_in_proto = input.var_names();
+      auto& var_names = inputs[input.parameter()];
+      auto& var_names_in_proto = input.arguments();
       var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
       std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
                 std::back_inserter(var_names));
@@ -189,8 +189,8 @@ class OpRegistry {
 
     VarNameMap outputs;
     for (auto& output : op_desc.outputs()) {
-      auto& var_names = outputs[output.op_proto_name()];
-      auto& var_names_in_proto = output.var_names();
+      auto& var_names = outputs[output.parameter()];
+      auto& var_names_in_proto = output.arguments();
       var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
       std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
                 std::back_inserter(var_names));

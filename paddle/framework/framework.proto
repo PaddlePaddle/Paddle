@@ -40,8 +40,8 @@ message OpDesc {
   };
 
   message Var {
-    required string op_proto_name = 1;
-    repeated string var_names = 2;
+    required string parameter = 1;
+    repeated string arguments = 2;
   };
 
   required string type = 3;
