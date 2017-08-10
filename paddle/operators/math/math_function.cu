@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/math_function.h"
-
 namespace paddle {
 namespace operators {
 namespace math {
@@ -124,7 +123,6 @@ void matmul<platform::GPUPlace, double>(const framework::Tensor& in1,
                                    in1.data<double>(), K, in2.data<double>(), N,
                                    beta, out->data<double>(), N, context);
 }
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

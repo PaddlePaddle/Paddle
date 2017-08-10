@@ -37,6 +37,20 @@ extern "C" {
 #include <lapacke.h>
 #endif
 
+#ifndef LAPACK_FOUND
+extern "C" {
+#include <cblas.h>
+int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
+                   int* ipiv);
+int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
+                   int* ipiv);
+int LAPACKE_sgetri(int matrix_layout, int n, float* a, int lda,
+                   const int* ipiv);
+int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
+                   const int* ipiv);
+}
+#endif
+
 #include <cmath>
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -52,7 +66,7 @@ void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
           const int lda, const T* B, const int ldb, const T beta, T* C,
           const int ldc, platform::DeviceContext* context);
 
-// matrix multiply with continous memory
+// matrix multiply with continuous memory
 template <typename Place, typename T>
 void matmul(const framework::Tensor& in1, bool in1_T,
             const framework::Tensor& in2, bool in2_T, float alpha,

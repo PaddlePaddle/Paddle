@@ -31,9 +31,6 @@ template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
-        {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
-
     auto input0 = context.Input<Tensor>("X");
     auto input1 = context.Input<Tensor>("Y");
     auto output = context.Output<Tensor>(0);
