@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "GradientMachine.h"
 
-#include <string.h>
 #include <fstream>
 #include "paddle/utils/Logging.h"
 
@@ -78,48 +77,6 @@ void GradientMachine::loadParameters(const std::string& dir) {
     std::string filename = dir + "/" + para->getName();
     if (para->isFullSize()) {
       para->load(filename);
-    }
-  }
-}
-
-void GradientMachine::loadParameters(const char* buf, uint64_t length) {
-  LOG(INFO) << "Loading parameter from pre-load buffer";
-
-  CHECK_NOTNULL(buf);
-  CHECK_GE(length, static_cast<uint64_t>(sizeof(uint64_t)));
-
-  uint64_t numFiles = 0;
-  memcpy(&numFiles, buf, sizeof(uint64_t));
-  uint64_t position = sizeof(uint64_t);
-  LOG(INFO) << "numFiles: " << numFiles << ", position: " << position;
-
-  std::map<std::string, char*> offsets;
-  std::map<std::string, uint64_t> lengths;
-  for (uint64_t i = 0; i < numFiles; i++) {
-    std::string filename(buf + position);
-    position += filename.size() + 1;
-    LOG(INFO) << "filename: " << filename << ", position: " << position;
-    uint64_t size = 0;
-    memcpy(&size, buf + position, sizeof(uint64_t));
-    position += sizeof(uint64_t);
-    offsets[filename] = const_cast<char*>(buf + position);
-    lengths[filename] = size;
-    position += size;
-    CHECK_GE(length, position);
-  }
-
-  CHECK_GE(offsets.size(), parameters_.size());
-
-  for (auto& para : parameters_) {
-    std::string filename = para->getName();
-    if (para->isFullSize()) {
-      if (offsets.end() == offsets.find(filename)) {
-        para->loadMiss(filename);
-      } else {
-        std::istringstream stream(
-            std::string(offsets[filename], lengths[filename]));
-        para->load(stream);
-      }
     }
   }
 }

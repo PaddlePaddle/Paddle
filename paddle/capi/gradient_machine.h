@@ -58,15 +58,6 @@ PD_API paddle_error paddle_gradient_machine_load_parameter_from_disk(
     paddle_gradient_machine machine, const char* path);
 
 /**
- * @brief Load parameter from buffer.
- * @param machine Gradient Machine.
- * @param buffer containing all parameters.
- * @return paddle_error
- */
-PD_API paddle_error paddle_gradient_machine_load_parameter_from_buffer(
-    paddle_gradient_machine machine, const char* buf, uint64_t length);
-
-/**
  * @brief Forward a gradient machine
  * @param machine Gradient machine
  * @param inArgs input arguments

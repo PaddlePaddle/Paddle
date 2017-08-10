@@ -221,8 +221,6 @@ public:
 
   void loadParameters(const std::string& dir);
 
-  void loadParameters(const char* buf, uint64_t length);
-
   void randParameters();
 
   virtual void getStats(real& cost, int64_t& numProcessed) {
