@@ -98,7 +98,7 @@ TEST(Layer, kmaxSeqScoreLayer) {
 
   std::vector<bool> mode = {false};
 #ifndef PADDLE_ONLY_CPU
-  model.push_back(true);
+  mode.push_back(true);
 #endif
 
   for (auto hasSubseq : {false, true}) {
