@@ -41,7 +41,7 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
 class MeanGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>("X" + framework::kGradVarSuffix)
+    ctx.Output<Tensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
