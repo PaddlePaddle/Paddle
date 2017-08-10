@@ -51,7 +51,8 @@ class GPUUniformRandomKernel : public framework::OpKernel {
     unsigned int seed =
         static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
     if (seed == 0) {
-      seed = std::random_device()();
+      std::random_device rd;
+      seed = rd();
     }
     T min = static_cast<T>(context.op_.GetAttr<float>("min"));
     T max = static_cast<T>(context.op_.GetAttr<float>("max"));

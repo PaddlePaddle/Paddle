@@ -33,7 +33,8 @@ class GaussianRandomKernel : public framework::OpKernel {
 
     int seed = context.op_.GetAttr<int>("seed");
     if (seed == 0) {
-      seed = std::random_device()();
+      std::random_device rd;
+      seed = rd();
     }
     curandGenerator_t g;
     PADDLE_ENFORCE(platform::dynload::curandCreateGenerator(
