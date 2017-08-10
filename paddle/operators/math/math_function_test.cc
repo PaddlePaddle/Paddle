@@ -16,15 +16,14 @@ TEST(math_function, GPU) {
 
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::DeviceContext* context =
-    new paddle::platform::CUDADeviceContext(*gpu_place);
+      new paddle::platform::CUDADeviceContext(*gpu_place);
 
   input1_gpu.CopyFrom<float>(input1, *gpu_place);
   input2_gpu.CopyFrom<float>(input1, *gpu_place);
   out_gpu.CopyFrom<float>(input1, *gpu_place);
 
   paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
-            input1_gpu, false, input2_gpu,
-            false, 1, &out_gpu, 0, context);
+      input1_gpu, false, input2_gpu, false, 1, &out_gpu, 0, context);
 
   out.CopyFrom<float>(out_gpu, *cpu_place);
 
