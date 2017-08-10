@@ -74,7 +74,7 @@ cat <<EOF
 Running unit tests ...
 ========================================
 EOF
-    ctest --output-on-failure
+    ctest --output-on-failure -V
     # make install should also be test when unittest
     make install -j `nproc`
     pip install /usr/local/opt/paddle/share/wheels/*.whl
