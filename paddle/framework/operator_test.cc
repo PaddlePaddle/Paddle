@@ -185,11 +185,11 @@ TEST(OpKernel, all) {
   op_desc.set_type("op_with_kernel");
   auto* ipt = op_desc.mutable_inputs()->Add();
   *ipt->mutable_arguments()->Add() = "IN1";
-  ipt->set_parameter("input");
+  ipt->set_parameter("x");
 
   auto* output = op_desc.mutable_outputs()->Add();
   *output->mutable_arguments()->Add() = "OUT1";
-  output->set_parameter("output");
+  output->set_parameter("y");
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -233,21 +233,6 @@ TEST(OpKernel, multi_inputs) {
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
-
-  auto attr0 = op_desc.mutable_attrs()->Add();
-  attr0->set_name("input_format");
-  attr0->set_type(paddle::framework::AttrType::INTS);
-  auto input_format = attr0->mutable_ints();
-  input_format->Add(0);  // x0
-  input_format->Add(3);  // k
-  input_format->Add(4);  // end
-
-  auto attr1 = op_desc.mutable_attrs()->Add();
-  attr1->set_name("output_format");
-  attr1->set_type(paddle::framework::AttrType::INTS);
-  auto output_format = attr1->mutable_ints();
-  output_format->Add(0);  // y0
-  output_format->Add(2);  // y1
 
   paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::framework::Scope scope;

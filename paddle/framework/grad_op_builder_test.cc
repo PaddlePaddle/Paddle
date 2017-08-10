@@ -51,14 +51,14 @@ TEST(GradOpBuilder, AddTwo) {
       "add_two", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
   std::shared_ptr<f::OperatorBase> grad_add_op =
       f::OpRegistry::CreateGradOp(*add_op);
-  EXPECT_EQ(static_cast<int>(grad_add_op->inputs_.size()), 4);
-  EXPECT_EQ(static_cast<int>(grad_add_op->outputs_.size()), 2);
+  EXPECT_EQ(grad_add_op->inputs_.size(), 4UL);
+  EXPECT_EQ(grad_add_op->outputs_.size(), 2UL);
   EXPECT_EQ(grad_add_op->Input("X"), "x");
   EXPECT_EQ(grad_add_op->Input("Y"), "y");
   EXPECT_EQ(grad_add_op->Input("Out"), "out");
-  EXPECT_EQ(grad_add_op->Input("Out@GRAD"), "out@GRAD");
-  EXPECT_EQ(grad_add_op->Output("X@GRAD"), "x@GRAD");
-  EXPECT_EQ(grad_add_op->Output("Y@GRAD"), "y@GRAD");
+  EXPECT_EQ(grad_add_op->Input(f::GradVarName("Out")), f::GradVarName("out"));
+  EXPECT_EQ(grad_add_op->Output(f::GradVarName("X")), f::GradVarName("x"));
+  EXPECT_EQ(grad_add_op->Output(f::GradVarName("Y")), f::GradVarName("y"));
 }
 
 REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker);
@@ -67,17 +67,16 @@ REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker);
 REGISTER_GRADIENT_OP(io_ignored, io_ignored_grad, f::NOP);
 
 TEST(GradOpBuilder, MutiInOut) {
-  f::AttributeMap attrs{{"input_format", std::vector<int>{0, 1, 4, 5}},
-                        {"output_format", std::vector<int>{0, 1, 3}}};
   std::shared_ptr<f::OperatorBase> test_op(f::OpRegistry::CreateOp(
-      "mult_io", {{"In1", {"in1"}},
-                  {"In2_mult", {"in2_1", "in2_2", "in2_3"}},
-                  {"In3", {"in3"}}},
-      {{"Out1", {"Out2_mult"}}, {"Out2", {"out2_1", "out2_2"}}}, attrs));
+      "mult_io",
+      {{"In1", {"in1"}},
+       {"In2_mult", {"in2_1", "in2_2", "in2_3"}},
+       {"In3", {"in3"}}},
+      {{"Out1", {"out1"}}, {"Out2_mult", {"out2_1", "out2_2"}}}, {}));
   std::shared_ptr<f::OperatorBase> grad_test_op =
       f::OpRegistry::CreateGradOp(*test_op);
 
-  ASSERT_EQ(grad_test_op->inputs_.size(), 5UL + 3UL + 3UL);
+  ASSERT_EQ(grad_test_op->inputs_.size(), 3UL + 2UL + 2UL);
   EXPECT_EQ(grad_test_op->Input("In1"), "in1");
   EXPECT_EQ(grad_test_op->Inputs("In2_mult"),
             std::vector<std::string>({"in2_1", "in2_2", "in2_3"}));
@@ -91,7 +90,7 @@ TEST(GradOpBuilder, MutiInOut) {
             std::vector<std::string>(
                 {f::GradVarName("out2_1"), f::GradVarName("out2_2")}));
 
-  ASSERT_EQ(grad_test_op->outputs_.size(), 5UL);
+  ASSERT_EQ(grad_test_op->outputs_.size(), 3UL);
   EXPECT_EQ(grad_test_op->Output(f::GradVarName("In1")), f::GradVarName("in1"));
   EXPECT_EQ(grad_test_op->Outputs(f::GradVarName("In2_mult")),
             std::vector<std::string>({f::GradVarName("in2_1"),
@@ -101,18 +100,17 @@ TEST(GradOpBuilder, MutiInOut) {
 }
 
 TEST(GradOpBuilder, IOIgnoredInGradient) {
-  f::AttributeMap attrs{{"input_format", std::vector<int>{0, 1, 3, 5}},
-                        {"output_format", std::vector<int>{0, 2, 3}}};
   std::shared_ptr<f::OperatorBase> test_op(f::OpRegistry::CreateOp(
-      "io_ignored", {{"In1", {"in1"}},
-                     {"In2_mult", {"in2_1", "in2_2"}},
-                     {"In3_mult", {"in3_1", "in3_2"}}},
-      {{"Out1_mult", {"out1_1", "out1_2"}}, {"Out2", {"out2"}}}, attrs));
+      "io_ignored",
+      {{"In1", {"in1"}},
+       {"In2_mult", {"in2_1", "in2_2"}},
+       {"In3_mult", {"in3_1", "in3_2"}}},
+      {{"Out1_mult", {"out1_1", "out1_2"}}, {"Out2", {"out2"}}}, {}));
   std::shared_ptr<f::OperatorBase> grad_test_op =
       f::OpRegistry::CreateGradOp(*test_op);
 
   // 'In2' and 'Out2' are ignored in gradient calculating
-  ASSERT_EQ(grad_test_op->inputs_.size(), 5UL + 3UL + 3UL);
+  ASSERT_EQ(grad_test_op->inputs_.size(), 3UL + 2UL + 2UL);
   EXPECT_EQ(grad_test_op->Input("In1"), "in1");
   EXPECT_EQ(grad_test_op->Inputs("In2_mult"),
             std::vector<std::string>({f::kEmptyVarName, f::kEmptyVarName}));
@@ -127,7 +125,7 @@ TEST(GradOpBuilder, IOIgnoredInGradient) {
   EXPECT_EQ(grad_test_op->Input(f::GradVarName("Out2")),
             f::GradVarName("out2"));
 
-  ASSERT_EQ(grad_test_op->outputs_.size(), 5UL);
+  ASSERT_EQ(grad_test_op->outputs_.size(), 3UL);
   EXPECT_EQ(grad_test_op->Output(f::GradVarName("In1")), f::GradVarName("in1"));
   EXPECT_EQ(grad_test_op->Outputs(f::GradVarName("In2_mult")),
             std::vector<std::string>(

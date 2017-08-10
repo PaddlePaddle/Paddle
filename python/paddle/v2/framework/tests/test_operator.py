@@ -74,6 +74,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
         expected1.inputs.extend(['x', 'w', 'b'])
         expected1.outputs.extend(['y'])
         expected1.type = 'fc'
+        # the input_format can be removed after testing
         attr = expected1.attrs.add()
         attr.name = 'input_format'
         attr.type = attribute_pb2.INTS
@@ -86,6 +87,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
         expected2.inputs.extend(['x1', 'x2', 'x3', 'w1', 'w2', 'w3', 'b'])
         expected2.outputs.extend(['y'])
         expected2.type = 'fc'
+        # the input_format can be removed after testing
         attr = expected2.attrs.add()
         attr.name = 'input_format'
         attr.type = attribute_pb2.INTS
