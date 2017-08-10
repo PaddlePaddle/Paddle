@@ -1,5 +1,3 @@
-set(OUTPUT_DIR
-    "${CMAKE_CURRENT_BINARY_DIR}/build")
 
 file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
 file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
@@ -33,13 +31,15 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/python/paddle/v2/framework/core.so
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${PROJ_ROOT}/python/paddle/v2/framework/core.so)
 
 
-add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
+add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-    COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
     DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
 add_custom_target(paddle_python ALL DEPENDS
-    ${OUTPUT_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model python_api_wheel)
+    ${PADDLE_PYTHON_BUILD_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model python_api_wheel)
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
