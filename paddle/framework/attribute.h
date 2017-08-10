@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -24,6 +23,7 @@ limitations under the License. */
 #include "paddle/framework/attribute.pb.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/variant.h"
 
 namespace paddle {
 namespace framework {
