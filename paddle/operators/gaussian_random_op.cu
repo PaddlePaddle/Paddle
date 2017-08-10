@@ -40,8 +40,8 @@ class GaussianRandomKernel : public framework::OpKernel {
         &g, CURAND_RNG_PSEUDO_DEFAULT));
     PADDLE_ENFORCE(
         platform::dynload::curandSetPseudoRandomGeneratorSeed(g, seed));
-    curandGenerateNormal(g, data, framework::product(tensor->dims()), mean,
-                         std);
+    platform::dynload::curandGenerateNormal(
+        g, data, framework::product(tensor->dims()), mean, std);
   }
 };
 
