@@ -12,16 +12,19 @@ TEST(math_function, GPU) {
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* input1_ptr = input1.mutable_data<float>({2, 2}, *cpu_place);
   float arr[4] = {0, 1, 2, 3};
+  memcpy(input1_ptr, arr, 4 * sizeof(int));
 
   auto* gpu_place = new paddle::platform::GPUPlace(0);
-  paddle::platform::DeviceContext* context = new CUDADeviceContext(gpu_place);
+  paddle::platform::DeviceContext* context =
+    new paddle::platform::CUDADeviceContext(*gpu_place);
 
   input1_gpu.CopyFrom<float>(input1, *gpu_place);
   input2_gpu.CopyFrom<float>(input1, *gpu_place);
   out_gpu.CopyFrom<float>(input1, *gpu_place);
 
-  matmul<paddle::platform::GPUPlace, float>(input1_gpu, false, input2_gpu,
-                                            false, 1, &out_gpu, 0, context);
+  paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
+            input1_gpu, false, input2_gpu,
+            false, 1, &out_gpu, 0, context);
 
   out.CopyFrom<float>(out_gpu, *cpu_place);
 

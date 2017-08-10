@@ -62,12 +62,12 @@ extern void *cublas_dso_handle;
   DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
-  __macro(cublasSgemv);                   \
-  __macro(cublasDgemv);                   \
-  __macro(cublasSgemm);                   \
-  __macro(cublasDgemm);                   \
-  __macro(cublasSgeam);                   \
-  __macro(cublasDgeam);                   \
+  __macro(cublasSgemv_v2);                   \
+  __macro(cublasDgemv_v2);                   \
+  __macro(cublasSgemm_v2);                   \
+  __macro(cublasDgemm_v2);                   \
+  __macro(cublasSgeam_v2);                   \
+  __macro(cublasDgeam_v2);                   \
   __macro(cublasCreate_v2);               \
   __macro(cublasDestroy_v2);              \
   __macro(cublasSetStream_v2);            \

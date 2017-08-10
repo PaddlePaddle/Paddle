@@ -13,4 +13,4 @@ else()
 endif()    
 
 
-nv_test(math_function_test SRCS math_function_test.cc DEPS math_function)
+nv_test(math_function_test SRCS math_function_test.cc DEPS math_function tensor)
