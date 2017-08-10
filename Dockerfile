@@ -34,17 +34,6 @@ RUN apt-get update && \
     net-tools && \
     apt-get clean -y
 
-RUN ln -sf gcc-4.8 /usr/bin/gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/gcc-ranlib && \
-    ln -sf gcc-4.8 /usr/bin/x86_64-linux-gnu-gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/x86_64-linux-gnu-gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/x86_64-linux-gnu-gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
-    ln -sf g++-4.8 /usr/bin/g++ && \
-    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++     
-
 # paddle is using numpy.flip, which is introduced since 1.12.0
 RUN pip --no-cache-dir install 'numpy>=1.12.0'
 
@@ -81,6 +70,18 @@ RUN pip install --upgrade pip && \
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
+
+# ln -sf to gcc4.8
+RUN ln -sf gcc-4.8 /usr/bin/gcc && \
+    ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
+    ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
+    ln -sf gcc-ranlib-4.8 /usr/bin/gcc-ranlib && \
+    ln -sf gcc-4.8 /usr/bin/x86_64-linux-gnu-gcc && \
+    ln -sf gcc-ar-4.8 /usr/bin/x86_64-linux-gnu-gcc-ar && \
+    ln -sf gcc-nm-4.8 /usr/bin/x86_64-linux-gnu-gcc-nm && \
+    ln -sf gcc-ranlib-4.8 /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
+    ln -sf g++-4.8 /usr/bin/g++ && \
+    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++ 
 
 # Install woboq_codebrowser to /woboq
 RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
