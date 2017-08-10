@@ -107,6 +107,8 @@ class LODTensor : public Tensor {
   LOD lod_start_pos_;
 };
 
+bool operator==(const LODTensor::LOD &a, const LODTensor::LOD &b);
+
 }  // namespace framework
 }  // namespace paddle
 

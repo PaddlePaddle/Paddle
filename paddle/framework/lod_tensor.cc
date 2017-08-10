@@ -17,5 +17,28 @@
 #include <glog/logging.h>
 
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {
+
+bool operator==(const LODTensor::LOD& a, const LODTensor::LOD& b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < a.size(); i++) {
+    const auto& a_level = a[i];
+    const auto& b_level = b[i];
+    if (a_level.size() != b_level.size()) {
+      return false;
+    }
+    for (size_t j = 0; j < a_level.size(); j++) {
+      if (a_level[j] != b_level[j]) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+}  // namespace framework
 }  // namespace paddle
