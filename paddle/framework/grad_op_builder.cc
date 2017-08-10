@@ -33,12 +33,12 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
 
   auto& dst_inout =
       dst_type == OpArgType::IN ? dst_op->inputs_ : dst_op->outputs_;
-  const OpProto& proto = OpRegistry::protos().at(src_op->type_);
+  const OpProto& proto = OpProtos().at(src_op->type_);
   const auto& src_arg_list =
       src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
 
   for (const auto& arg : src_arg_list) {
-    std::string src_name = arg.name();
+    const std::string& src_name = arg.name();
     std::string dst_name = is_grad ? GradVarName(src_name) : src_name;
     for (auto& var_name : src_inout.at(src_name)) {
       std::string s = is_grad ? GradVarName(var_name)
