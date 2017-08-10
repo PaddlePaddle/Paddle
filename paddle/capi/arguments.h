@@ -116,7 +116,8 @@ PD_API paddle_error paddle_arguments_set_ids(paddle_arguments args,
  *        in array, which index is `ID`.
  * @param [in] args arguments array
  * @param [in] ID array index
- * @param [out] ids integer vector pointer
+ * @param [in] frameHeight maximum height of input images
+ * @param [in] frameWidth maximum width of input images
  * @return paddle_error
  */
 PD_API paddle_error paddle_arguments_set_frame_shape(paddle_arguments args,
