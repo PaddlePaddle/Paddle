@@ -11,3 +11,6 @@ else()
         cc_library(math_function SRCS math_function.cc DEPS cblas device_context)
     endif()
 endif()    
+
+
+nv_test(math_function_test SRCS math_function_test.cc DEPS math_function)
