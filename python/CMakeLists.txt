@@ -23,13 +23,45 @@ if(WITH_GOLANG)
   add_dependencies(copy_paddle_master paddle_master)
 endif(WITH_GOLANG)
 
+
+# add MKLML and MKLDNN shared lib into wheel if enabled them
+set(MKL_SHARED_LIBS "")
+set(MKL_SHARED_LIB_NAMES "")
+set(MKL_DEPENDS "")
+if(WITH_MKLML)
+  get_filename_component(mklml_lib_name ${MKLML_LIB} NAME)
+  get_filename_component(mklml_iomp_name ${MKLML_IOMP_LIB} NAME)
+  list(APPEND MKL_SHARED_LIBS ${MKLML_LIB} ${MKLML_IOMP_LIB})
+  list(APPEND MKL_SHARED_LIB_NAMES ${mklml_lib_name} ${mklml_iomp_name})
+  list(APPEND MKL_DEPENDS mklml)
+endif()
+
+if(WITH_MKLDNN)
+  get_filename_component(mkldnn_lib_name ${MKLDNN_LIB} NAME)
+  list(APPEND MKL_SHARED_LIBS ${MKLDNN_LIB})
+  list(APPEND MKL_SHARED_LIB_NAMES ${mkldnn_lib_name})
+  list(APPEND MKL_DEPENDS mkldnn)
+endif()
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
+if(MKL_SHARED_LIB_NAMES)
+  # Copy the depended shared libraries to framework
+
+  add_custom_command(OUTPUT ${PROJ_ROOT}/python/paddle/v2/framework/.mkllibs.timestamp
+      COMMAND cmake -E copy ${MKL_SHARED_LIBS} ${PROJ_ROOT}/python/paddle/v2/framework
+      COMMAND ${CMAKE_COMMAND} -E touch ${PROJ_ROOT}/python/paddle/v2/framework/.mkllibs.timestamp
+      DEPENDS ${MKL_DEPENDS})
+  add_custom_target(copy_mkl_shared_libs ALL DEPENDS ${PROJ_ROOT}/python/paddle/v2/framework/.mkllibs.timestamp)
+else()
+  # Dummpy target
+  add_custom_target(copy_mkl_shared_libs ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
+endif()
 
 add_custom_command(OUTPUT ${PROJ_ROOT}/python/paddle/v2/framework/core.so
         COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PROJ_ROOT}/python/paddle/v2/framework/core.so
-        DEPENDS paddle_pybind)
+        DEPENDS paddle_pybind copy_mkl_shared_libs)
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${PROJ_ROOT}/python/paddle/v2/framework/core.so)
 
 
