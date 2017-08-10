@@ -26,6 +26,7 @@ void gemm<platform::GPUPlace, float>(
     platform::DeviceContext* context) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
+  /*
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -34,6 +35,8 @@ void gemm<platform::GPUPlace, float>(
   PADDLE_ENFORCE(platform::dynload::cublasSgemm(
       reinterpret_cast<platform::CUDADeviceContext*>(context)->cublas_handle(),
       cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+  */
+  PADDLE_THROW("not implemented now");
 }
 
 template <>
@@ -44,6 +47,7 @@ void gemm<platform::GPUPlace, double>(
     const int ldc, platform::DeviceContext* context) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
+  /*
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -51,6 +55,8 @@ void gemm<platform::GPUPlace, double>(
   PADDLE_ENFORCE(platform::dynload::cublasDgemm(
       reinterpret_cast<platform::CUDADeviceContext*>(context)->cublas_handle(),
       cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+  */
+  PADDLE_THROW("not implemented now");
 }
 
 template <>

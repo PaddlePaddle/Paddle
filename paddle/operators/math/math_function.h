@@ -40,36 +40,23 @@ extern "C" {
 #include <cmath>
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 template <typename Place, typename T>
-void gemm(const CBLAS_TRANSPOSE transA,
-          const CBLAS_TRANSPOSE transB,
-          const int M,
-          const int N,
-          const int K,
-          const T alpha,
-          const T* A,
-          const int lda,
-          const T* B,
-          const int ldb,
-          const T beta,
-          T* C,
-          const int ldc,
-          platform::DeviceContext* context);
+void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
+          const int M, const int N, const int K, const T alpha, const T* A,
+          const int lda, const T* B, const int ldb, const T beta, T* C,
+          const int ldc, platform::DeviceContext* context);
 
 // matrix multiply with continous memory
 template <typename Place, typename T>
-void matmul(const framework::Tensor& in1,
-            bool in1_T,
-            const framework::Tensor& in2,
-            bool in2_T,
-            float alpha,
-            framework::Tensor* out,
-            float beta,
+void matmul(const framework::Tensor& in1, bool in1_T,
+            const framework::Tensor& in2, bool in2_T, float alpha,
+            framework::Tensor* out, float beta,
             platform::DeviceContext* context);
 
 }  // namespace math
