@@ -35,15 +35,15 @@ void gemm<platform::GPUPlace, float>(const CBLAS_TRANSPOSE transA,
 
   PADDLE_ENFORCE(platform::dynload::cublasSgemm(
       reinterpret_cast<platform::CUDADeviceContext*>(context)->cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, N));
 }
 
 template <>
 void gemm<platform::GPUPlace, double>(
     const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB, const int M,
     const int N, const int K, const double alpha, const double* A,
-    const int lda, const double* B, const int ldb, const double beta, double* C,
-    const int ldc, platform::DeviceContext* context) {
+    const double* B, const double beta, double* C,
+    platform::DeviceContext* context) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -54,7 +54,7 @@ void gemm<platform::GPUPlace, double>(
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   PADDLE_ENFORCE(platform::dynload::cublasDgemm(
       reinterpret_cast<platform::CUDADeviceContext*>(context)->cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, N));
 }
 
 template <>
