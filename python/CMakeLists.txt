@@ -47,13 +47,24 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 if(MKL_SHARED_LIB_NAMES)
-  # Copy the depended shared libraries to framework
-
-  add_custom_command(OUTPUT ${PROJ_ROOT}/python/paddle/v2/framework/.mkllibs.timestamp
-      COMMAND cmake -E copy ${MKL_SHARED_LIBS} ${PROJ_ROOT}/python/paddle/v2/framework
-      COMMAND ${CMAKE_COMMAND} -E touch ${PROJ_ROOT}/python/paddle/v2/framework/.mkllibs.timestamp
+  # Copy the depended shared libraries necessary dir
+  set(out_filename ".mkllibs.timestamp")
+  set(out_framework_path "${PROJ_ROOT}/python/paddle/v2/framework")
+  set(out_framework_file "${out_framework_path}/${out_filename}")
+  add_custom_command(OUTPUT ${out_framework_file}
+      COMMAND cmake -E copy ${MKL_SHARED_LIBS} ${out_framework_path}
+      COMMAND ${CMAKE_COMMAND} -E touch ${out_framework_file}
       DEPENDS ${MKL_DEPENDS})
-  add_custom_target(copy_mkl_shared_libs ALL DEPENDS ${PROJ_ROOT}/python/paddle/v2/framework/.mkllibs.timestamp)
+
+  set(out_pypaddle_path "${PROJ_ROOT}/paddle/py_paddle")
+  set(out_pypaddle_file "${out_pypaddle_path}/${out_filename}")
+  if (WITH_SWIG_PY)
+    add_custom_command(OUTPUT ${out_pypaddle_file}
+        COMMAND cmake -E copy ${MKL_SHARED_LIBS} ${out_pypaddle_path}
+        COMMAND ${CMAKE_COMMAND} -E touch ${out_pypaddle_file}
+        DEPENDS ${MKL_DEPENDS})
+  endif()
+  add_custom_target(copy_mkl_shared_libs ALL DEPENDS ${out_framework_file} ${out_pypaddle_file})
 else()
   # Dummpy target
   add_custom_target(copy_mkl_shared_libs ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
@@ -64,11 +75,10 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/python/paddle/v2/framework/core.so
         DEPENDS paddle_pybind copy_mkl_shared_libs)
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${PROJ_ROOT}/python/paddle/v2/framework/core.so)
 
-
 add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp
-    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
+    DEPENDS gen_proto_py copy_paddle_pybind copy_mkl_shared_libs framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
 add_custom_target(paddle_python ALL DEPENDS
     ${OUTPUT_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model python_api_wheel)
