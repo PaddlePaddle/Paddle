@@ -41,7 +41,6 @@ if(WITH_GPU)
     add_simple_unittest(DepthwiseConvOpTest)
 endif()
 
-add_simple_unittest(ConvOpTest)
 add_simple_unittest(Im2ColTest)
 add_simple_unittest(GemmConvOpTest)
 endif()
