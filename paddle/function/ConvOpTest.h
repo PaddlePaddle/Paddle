@@ -80,6 +80,12 @@ void Convolution(const std::string& conv1,
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
                 if (padding >= filterSize) break;
+
+                // NNPACK only supports stride = 1 if batchSize > 1
+                if ((conv1 == "NNPACKConv-CPU" || conv2 == "NNPACKConv-CPU") &&
+                    batchSize > 1 && stride > 1)
+                  break;
+
                 size_t outputSize =
                     (inputSize - filterSize + 2 * padding + stride) / stride;
                 VLOG(3) << " batchSize=" << batchSize
@@ -102,7 +108,7 @@ void Convolution(const std::string& conv1,
                         .set("paddings", paddings)
                         .set("strides", strides)
                         .set("groups", (size_t)1)
-                        .set("algo", "auto"));
+                        .set("algo", (std::string) "auto"));
 
                 TensorShape input{
                     batchSize, inputChannels, inputSize, inputSize};
@@ -163,7 +169,7 @@ void Convolution2(const std::string& conv1,
                         .set("paddings", paddings)
                         .set("strides", strides)
                         .set("groups", (size_t)1)
-                        .set("algo", "auto"));
+                        .set("algo", (std::string) "auto"));
 
                 TensorShape input{
                     batchSize, inputChannels, inputHeight, inputWidth};
@@ -196,6 +202,11 @@ void DepthwiseConvolution(const std::string& conv1,
           for (size_t outputChannels : {32, 64}) {
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
+                // NNPACK only supports stride = 1 if batchSize > 1
+                if ((conv1 == "NNPACKConv-CPU" || conv2 == "NNPACKConv-CPU") &&
+                    batchSize > 1 && stride > 1)
+                  break;
+
                 size_t outputSize =
                     (inputSize - filterSize + 2 * padding + stride) / stride;
                 VLOG(3) << " batchSize=" << batchSize
@@ -219,7 +230,7 @@ void DepthwiseConvolution(const std::string& conv1,
                         .set("paddings", paddings)
                         .set("strides", strides)
                         .set("groups", groups)
-                        .set("algo", "auto"));
+                        .set("algo", (std::string) "auto"));
 
                 TensorShape input{
                     batchSize, inputChannels, inputSize, inputSize};
