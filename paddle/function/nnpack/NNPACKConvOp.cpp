@@ -196,10 +196,13 @@ public:
         CHECK_EQ(status, nnp_status_success);
       }
     } else {
+      // only supports stride = 1
+      CHECK_EQ(strideH(), 1);
+      CHECK_EQ(strideW(), 1);
+
+      // TODO(hedaoyuan): There has some bug when batchSize > 1 and groups_ > 1.
+      CHECK_EQ(groups_, (size_t)1);
       for (size_t g = 0; g < groups_; g++) {
-        // only supports stride = 1
-        CHECK_EQ(strideH(), 1);
-        CHECK_EQ(strideW(), 1);
         nnp_status status =
             nnp_convolution_output(algorithm_,
                                    batchSize,
