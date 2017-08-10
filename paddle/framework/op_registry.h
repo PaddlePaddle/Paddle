@@ -416,7 +416,7 @@ class OpKernelRegistrar : public Registrar {
   static int use_op_itself_##op_type##_ __attribute__((unused)) = \
       TouchOpRegistrar_##op_type()
 
-// TODO(jiayi): Most ops' gradient op have not been compeleted. So we use
+// TODO(fengjiayi): Most ops' gradient op have not been compeleted. So we use
 // `NO_GRAD` to disable micro USE_OP_GRADIENT(op_type). Otherwise the code can't
 // be compiled. `NO_GRAD` should be removed after all gradient ops are
 // compeleted.
@@ -442,7 +442,7 @@ class OpKernelRegistrar : public Registrar {
       __attribute__((unused)) =                                  \
           TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
 
-// TODO(jiayi): The following macros seems ugly, do we have better method?
+// TODO(fengjiayi): The following macros seems ugly, do we have better method?
 
 #ifdef PADDLE_ONLY_CPU
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)

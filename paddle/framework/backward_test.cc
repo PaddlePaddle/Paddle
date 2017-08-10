@@ -171,10 +171,10 @@ TEST(Backward, simple_op_grad) {
   ASSERT_EQ(4UL, gop->inputs_.size());
   ASSERT_EQ(f::kEmptyVarName, gop->inputs_[0]);
   ASSERT_EQ("rowwise_add_grad", gop->type_);
-  ASSERT_EQ("X" + f::kGradVarSuffix, gop->outputs_[0]);
-  ASSERT_EQ("b" + f::kGradVarSuffix, gop->outputs_[1]);
+  ASSERT_EQ(f::GradVarName("X"), gop->outputs_[0]);
+  ASSERT_EQ(f::GradVarName("b"), gop->outputs_[1]);
 
-  ASSERT_EQ("X" + f::kGradVarSuffix, gop->Output("X" + f::kGradVarSuffix));
+  ASSERT_EQ(f::GradVarName("X"), gop->Output(f::GradVarName("X")));
 }
 
 TEST(Backward, simple_op_not_need_grad) {
@@ -182,7 +182,7 @@ TEST(Backward, simple_op_not_need_grad) {
   ASSERT_NE(fwd, nullptr);
   auto gop = f::Backward(*fwd, {"X"});
   ASSERT_EQ(std::find(gop->outputs_.begin(), gop->outputs_.end(),
-                      "X" + f::kGradVarSuffix),
+                      f::GradVarName("X")),
             gop->outputs_.end());
 
   auto no_input_gop = f::Backward(*fwd, {"X", "b"});
@@ -250,18 +250,18 @@ TEST(Backward, net_input_of_network_not_need_grad) {
   all_output.erase(f::kEmptyVarName);
 
   for (auto &out : {"W1", "b1", "hidden0", "W2", "b2"}) {
-    ASSERT_NE(all_output.find(out + f::kGradVarSuffix), all_output.end());
+    ASSERT_NE(all_output.find(f::GradVarName(out)), all_output.end());
   }
 
   // Not Generated X
-  ASSERT_EQ(all_output.find("X" + f::kGradVarSuffix), all_output.end());
+  ASSERT_EQ(all_output.find(f::GradVarName("X")), all_output.end());
 
   ASSERT_EQ(2UL, bwd_net->ops_.size());
   ASSERT_TRUE(bwd_net->ops_[1]->IsNetOp());
   auto first_fc_grad = static_cast<ops::NetOp *>(bwd_net->ops_[1].get());
   ASSERT_EQ(3UL, first_fc_grad->ops_.size());
   ASSERT_EQ(f::kEmptyVarName,
-            first_fc_grad->ops_[2]->Output("A" + f::kGradVarSuffix));
+            first_fc_grad->ops_[2]->Output(f::GradVarName("A")));
 }
 
 TEST(Backward, net_shared_weight) {
@@ -313,15 +313,15 @@ TEST(Backward, op_part_of_output_are_not_need) {
   ASSERT_EQ(1UL, fill_zero.inputs_.size());
   ASSERT_EQ("Z", fill_zero.inputs_[0]);
   ASSERT_EQ(1UL, fill_zero.outputs_.size());
-  ASSERT_EQ("Z" + f::kZeroVarSuffix, fill_zero.outputs_[0]);
+  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.outputs_[0]);
 
   auto &d_many_out = *net->ops_[1];
   ASSERT_EQ("many_output_op_grad", d_many_out.type_);
   ASSERT_EQ(1UL + 2UL + 2UL, d_many_out.inputs_.size());  // I/O/OG
-  ASSERT_EQ("Z" + f::kZeroVarSuffix, d_many_out.Input("z" + f::kGradVarSuffix));
-  ASSERT_EQ("Y" + f::kGradVarSuffix, d_many_out.Input("y" + f::kGradVarSuffix));
-  ASSERT_EQ("X" + f::kGradVarSuffix,
-            d_many_out.Output("x" + f::kGradVarSuffix));
+  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix,
+            d_many_out.Input(f::GradVarName("z")));
+  ASSERT_EQ(f::GradVarName("Y"), d_many_out.Input(f::GradVarName("y")));
+  ASSERT_EQ(f::GradVarName("X"), d_many_out.Output(f::GradVarName("x")));
 }
 
 TEST(Backward, op_part_of_input_are_not_need) {
@@ -331,10 +331,9 @@ TEST(Backward, op_part_of_input_are_not_need) {
   ASSERT_EQ(grad_mul.type_, "mul_grad");
   ASSERT_EQ(grad_mul.inputs_.size(), 2UL + 1UL + 1UL);
   ASSERT_EQ(grad_mul.outputs_.size(), 2UL);
-  ASSERT_EQ(grad_mul.Output("A" + f::kGradVarSuffix), f::kEmptyVarName);
-  ASSERT_EQ(grad_mul.Output("B" + f::kGradVarSuffix), "b" + f::kGradVarSuffix);
-  ASSERT_EQ(grad_mul.Input("Out" + f::kGradVarSuffix),
-            "out" + f::kGradVarSuffix);
+  ASSERT_EQ(grad_mul.Output(f::GradVarName("A")), f::kEmptyVarName);
+  ASSERT_EQ(grad_mul.Output(f::GradVarName("B")), f::GradVarName("b"));
+  ASSERT_EQ(grad_mul.Input(f::GradVarName("Out")), f::GradVarName("out"));
   ASSERT_EQ(grad_mul.Input("A"), "a");
   ASSERT_EQ(grad_mul.Input("B"), "b");
   ASSERT_EQ(grad_mul.Input("Out"), "out");
