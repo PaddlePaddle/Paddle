@@ -46,5 +46,33 @@ class MulKernel : public framework::OpKernel {
   }
 };
 
+template <typename Place, typename T>
+class MulGradKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input0 = ctx.Input<Tensor>("X");
+    auto* input1 = ctx.Input<Tensor>("Y");
+    auto* input2 = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    auto* output0 = ctx.Output<Tensor>(0);
+    auto* output1 = ctx.Output<Tensor>(1);
+    output0->mutable_data<T>(ctx.GetPlace());
+    output1->mutable_data<T>(ctx.GetPlace());
+
+    auto X = EigenMatrix<T>::From(*input0);
+    auto Y = EigenMatrix<T>::From(*input1);
+    auto dOut = EigenMatrix<T>::From(*input2);
+    auto dX = EigenMatrix<T>::From(*output0);
+    auto dY = EigenMatrix<T>::From(*output1);
+
+    // dX = Out@G * Y'
+    // dY = X' * Out@G
+    auto place = ctx.GetEigenDevice<Place>();
+    // TODO(dzh,qijun) : need transpose feature of blas library
+    // Eigen Tensor does not support it very well
+    // dX.device(place) = dOut.contract(dOut, transpose)
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

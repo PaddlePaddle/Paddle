@@ -15,5 +15,7 @@ class TestMulOp(unittest.TestCase):
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
 
+# TODO(dzh,qijun) : mulgrad test case need transpose feature of blas library
+
 if __name__ == '__main__':
     unittest.main()

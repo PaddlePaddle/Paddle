@@ -54,10 +54,27 @@ The equation is: Out = X * Y
 
 class MulOpGrad : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "MulGrad";
-    return "";
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx.InputSize(), 3UL,
+                      "Input of MulOpGrad should be 3, X, Y, Out@GRAD");
+    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 2UL,
+                      "Output of MulOpGrad should be 2, X@GRAD, Y@GRAD");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) should not be null");
+    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto dim0 = ctx.Input<Tensor>(0)->dims();
+    auto dim1 = ctx.Input<Tensor>(1)->dims();
+    auto out_dims = ctx.Input<Tensor>(2)->dims();
+    PADDLE_ENFORCE(dim0[0] * dim1[0] == out_dims[0],
+                   "Out@GRAD[0] must equal to X[0] * Y[0]");
+    PADDLE_ENFORCE(dim0[1] * dim1[1] == out_dims[1],
+                   "Out@GRAD shape must equal to X[1] * Y[1]");
+
+    x_grad->Resize(dim1);
+    y_grad->Resize(dim0);
   }
 };
 
@@ -69,3 +86,5 @@ REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker);
 REGISTER_GRADIENT_OP(mul, mul_grad, ops::MulOpGrad);
 
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(mul_grad,
+                       ops::MulGradKernel<paddle::platform::CPUPlace, float>);
