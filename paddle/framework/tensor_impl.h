@@ -23,9 +23,11 @@ template <typename T>
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tenosr holds no memory. Call Tensor::mutable_data first.");
-  PADDLE_ENFORCE_GE(holder_->size(), product(dims_) * sizeof(T) + offset_,
-                    "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
-                    "first to re-allocate memory.");
+  PADDLE_ENFORCE_GE(
+      holder_->size(), product(dims_) * sizeof(T) + offset_,
+      "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
+      "first to re-allocate memory.\n"
+      "or maybe the required data-type mismatches the data already stored.");
 }
 
 template <typename T>
@@ -78,9 +80,10 @@ inline T* Tensor::mutable_data(platform::Place place) {
 }
 
 template <typename T>
-inline void Tensor::ShareDataWith(const Tensor& src) {
+inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size<T>();
   *this = src;
+  return *this;
 }
 
 template <typename T>
@@ -136,7 +139,10 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   return dst;
 }
 
-inline void Tensor::Resize(const DDim& dims) { dims_ = dims; }
+inline Tensor& Tensor::Resize(const DDim& dims) {
+  dims_ = dims;
+  return *this;
+}
 
 inline const DDim& Tensor::dims() const { return dims_; }
 

@@ -48,13 +48,13 @@ extern void *cublas_dso_handle;
   };                                                                \
   extern DynLoad__##__name __name
 #else
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name) \
-  struct DynLoad__##__name {                     \
-    inline template <typename... Args>           \
-    cublasStatus_t operator()(Args... args) {    \
-      return __name(args...);                    \
-    }                                            \
-  };                                             \
+#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
+  struct DynLoad__##__name {                         \
+    template <typename... Args>                      \
+    inline cublasStatus_t operator()(Args... args) { \
+      return __name(args...);                        \
+    }                                                \
+  };                                                 \
   extern DynLoad__##__name __name
 #endif
 
