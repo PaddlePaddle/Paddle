@@ -73,7 +73,7 @@ void matmul<platform::CPUPlace, float>(const framework::Tensor& in1, bool in1_T,
   int K = in1_dim[1];
 
   CBLAS_TRANSPOSE in1_Trans = (in1_T == false) ? CblasNoTrans : CblasTrans;
-  CBLAS_TRANSPOSE in2_Trans = (in1_T == false) ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE in2_Trans = (in2_T == false) ? CblasNoTrans : CblasTrans;
 
   gemm<platform::CPUPlace, float>(in1_Trans, in2_Trans, M, N, K, alpha,
                                   in1.data<float>(), in2.data<float>(), beta,
@@ -106,7 +106,7 @@ void matmul<platform::CPUPlace, double>(const framework::Tensor& in1,
   int N = out_dim[1];
   int K = in1_dim[1];
   CBLAS_TRANSPOSE in1_Trans = (in1_T == false) ? CblasNoTrans : CblasTrans;
-  CBLAS_TRANSPOSE in2_Trans = (in1_T == false) ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE in2_Trans = (in2_T == false) ? CblasNoTrans : CblasTrans;
 
   gemm<platform::CPUPlace, double>(in1_Trans, in2_Trans, M, N, K, alpha,
                                    in1.data<double>(), in2.data<double>(), beta,

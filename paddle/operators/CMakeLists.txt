@@ -42,26 +42,25 @@ function(op_library TARGET)
 endfunction()
 
 add_subdirectory(math)
+cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 
 cc_library(net_op SRCS net_op.cc DEPS op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 
 op_library(add_op SRCS add_op.cc add_op.cu)
-cc_test(add_op_test SRCS add_op_test.cc DEPS add_op)
 
 op_library(mean_op SRCS mean_op.cc mean_op.cu)
-cc_test(mean_op_test SRCS mean_op_test.cc DEPS mean_op)
 
 op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)
 op_library(rowwise_add_op SRCS rowwise_add_op.cu rowwise_add_op.cc)
 
 op_library(sigmoid_op SRCS sigmoid_op.cc sigmoid_op.cu)
 op_library(softmax_op SRCS softmax_op.cc softmax_op.cu)
+op_library(gaussian_random_op SRCS gaussian_random_op.cc gaussian_random_op.cu)
 op_library(cross_entropy_op SRCS cross_entropy_op.cc cross_entropy_op.cu)
 op_library(fill_zeros_like_op SRCS fill_zeros_like_op.cc fill_zeros_like_op.cu)
 
 op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
-cc_test(sgd_op_test SRCS sgd_op_test.cc DEPS sgd_op)
 
 op_library(fc_op
     SRCS fc_op.cc

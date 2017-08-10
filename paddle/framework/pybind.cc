@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/string/to_string.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -39,7 +40,9 @@ USE_OP(softmax);
 USE_OP(rowwise_add);
 USE_OP(fill_zeros_like);
 USE_OP_WITHOUT_KERNEL(recurrent_op);
+USE_OP(gaussian_random);
 USE_OP(uniform_random);
+
 namespace paddle {
 namespace framework {
 
@@ -205,9 +208,13 @@ All parameter, weight, gradient are variables in Paddle.
                   });
   // clang-format on
 
-  py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
+  py::class_<platform::GPUPlace>(m, "GPUPlace")
+      .def(py::init<int>())
+      .def("__str__", string::to_string<const platform::GPUPlace &>);
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace").def(py::init<>());
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
+      .def(py::init<>())
+      .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<OperatorBase, std::shared_ptr<OperatorBase>> operator_base(
       m, "Operator");

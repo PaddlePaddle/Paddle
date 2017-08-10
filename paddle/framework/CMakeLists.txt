@@ -50,5 +50,6 @@ cc_library(paddle_pybind SHARED
     cross_entropy_op
     recurrent_op
     uniform_random_op
+    gaussian_random_op
     fill_zeros_like_op)
 endif(WITH_PYTHON)
