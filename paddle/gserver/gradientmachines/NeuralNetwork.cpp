@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/gserver/layers/AgentLayer.h"
 #include "paddle/utils/Stat.h"
 
-#include <iostream>
-
 namespace paddle {
 void parameterInitNN(int paramId,
                      Parameter* para,
