@@ -27,9 +27,9 @@ namespace paddle {
  */
 class MKLDNNTester {
   enum {
-    DNN = 0,
-    REF = 1,
-    NUM = 2,
+    DNN = 0,  // MKLDNN layer
+    REF = 1,  // Reference layer
+    NUM = 2,  // Number of total
   };
 
 protected:
@@ -107,7 +107,8 @@ private:
    * Get delta percent
    * if many(>failRate) wrong(abs(dnn-ref)/abs(ref)>thres) points return the
    * max(diff/ref)
-   * else return sum(abs(a-b)) / sum(abs(b)) should smaller than eps
+   * else return sum(abs(a-b)) / sum(abs(b))
+   * The return value should smaller than eps when passing.
    */
   double getDelta(const real* d1,
                   const real* d2,

@@ -29,7 +29,10 @@ protected:
   // input layer size, can not be change after init
   size_t iLayerSize_;  // == ic * ih * iw
 
+  // if has already init the weight
   bool hasInitedWgt_;
+
+  // if input layer has image size info (ih>1 && iw>1)
   bool hasSpatial_;
 
   // fc weight and bias

@@ -123,7 +123,8 @@ void MKLDNNTester::checkForward() {
 }
 
 void MKLDNNTester::checkBackwardData() {
-  const bool isBN = dnnLayer_->getType() == "mkldnn_batch_norm";
+  // TODO(TJ): uncomment me when batch norm ready
+  // const bool isBN = dnnLayer_->getType() == "mkldnn_batch_norm";
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
     const MatrixPtr& dnnDiff = dataLayers_[DNN][i]->getOutputGrad();
     const MatrixPtr& refDiff = dataLayers_[REF][i]->getOutputGrad();
@@ -134,10 +135,11 @@ void MKLDNNTester::checkBackwardData() {
 
     double delta = compareMatrix(dnnDiff, refDiff);
     EXPECT_LE(fabs(delta), eps_);
-    if (isBN) {
-      // the other two inputs in batch norm are for moving mean and var
-      break;
-    }
+    // TODO(TJ): uncomment me when batch norm ready
+    // if (isBN) {
+    //  // the other two inputs in batch norm are for moving mean and var
+    //  break;
+    // }
   }
 }
 
