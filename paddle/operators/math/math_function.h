@@ -60,11 +60,11 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+// support continuous memory now
 template <typename Place, typename T>
 void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
           const int M, const int N, const int K, const T alpha, const T* A,
-          const int lda, const T* B, const int ldb, const T beta, T* C,
-          const int ldc, platform::DeviceContext* context);
+          const T* B, const T beta, T* C, platform::DeviceContext* context);
 
 // matrix multiply with continuous memory
 template <typename Place, typename T>
