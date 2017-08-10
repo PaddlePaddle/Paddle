@@ -164,10 +164,12 @@ if(WITH_GOLANG)
     add_subdirectory(go)
 endif(WITH_GOLANG)
 
+set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 add_subdirectory(paddle)
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
+
 if(WITH_DOC)
     add_subdirectory(doc)
 endif()
