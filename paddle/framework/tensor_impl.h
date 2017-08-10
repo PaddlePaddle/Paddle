@@ -23,9 +23,11 @@ template <typename T>
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tenosr holds no memory. Call Tensor::mutable_data first.");
-  PADDLE_ENFORCE_GE(holder_->size(), product(dims_) * sizeof(T) + offset_,
-                    "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
-                    "first to re-allocate memory.");
+  PADDLE_ENFORCE_GE(
+      holder_->size(), product(dims_) * sizeof(T) + offset_,
+      "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
+      "first to re-allocate memory.\n"
+      "or maybe the required data-type mismatches the data already stored.");
 }
 
 template <typename T>
