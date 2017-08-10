@@ -28,7 +28,13 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
-    ln -sf gcc-4.8 /usr/bin/gcc && \
+    automake locales clang-format swig doxygen cmake  \
+    liblapack-dev liblapacke-dev libboost-dev \
+    clang-3.8 llvm-3.8 libclang-3.8-dev \
+    net-tools && \
+    apt-get clean -y
+
+RUN ln -sf gcc-4.8 /usr/bin/gcc && \
     ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
     ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
     ln -sf gcc-ranlib-4.8 /usr/bin/gcc-ranlib && \
@@ -37,12 +43,7 @@ RUN apt-get update && \
     ln -sf gcc-nm-4.8 /usr/bin/x86_64-linux-gnu-gcc-nm && \
     ln -sf gcc-ranlib-4.8 /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
     ln -sf g++-4.8 /usr/bin/g++ && \
-    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++ && \
-    automake locales clang-format swig doxygen cmake  \
-    liblapack-dev liblapacke-dev libboost-dev \
-    clang-3.8 llvm-3.8 libclang-3.8-dev \
-    net-tools && \
-    apt-get clean -y
+    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++     
 
 # paddle is using numpy.flip, which is introduced since 1.12.0
 RUN pip --no-cache-dir install 'numpy>=1.12.0'
