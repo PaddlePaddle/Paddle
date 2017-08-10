@@ -294,8 +294,11 @@ class OperatorWithKernel : public OperatorBase {
     }
   };
 
-  using OpKernelMap = std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>,
-                                         OpKernelHasher>;
+  typedef std::unordered_map<
+      std::string /*op_type*/,
+      std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>,
+                         OpKernelHasher>>
+      OpDeviceKernelMap;
 
   void InferShape(const Scope& scope) const override {
     InferShape(InferShapeContext(*this, scope));
@@ -303,20 +306,18 @@ class OperatorWithKernel : public OperatorBase {
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
-    auto& opKernel =
-        AllOpKernels().at(type_).at(OpKernelKey(dev_ctx.GetPlace()));
-    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
+    AllOpKernels()[type_][OpKernelKey(dev_ctx.GetPlace())]->Compute(
+        ExecutionContext(*this, scope, &dev_ctx));
   }
 
-  static std::unordered_map<std::string /* op_type */, OpKernelMap>&
-  AllOpKernels() {
-    static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
-    return g_all_op_kernels;
+  static OpDeviceKernelMap AllOpKernels() {
+    static std::unordered_map<std::string, OpKernelMap> _;
+    return _;
   }
 
   static bool HasGPUKernel(const std::string& op_type) {
-    return OperatorWithKernel::AllOpKernels().at(op_type).count(
-               OpKernelKey(platform::GPUPlace())) != 0;
+    return OperatorWithKernel::AllOpKernels()[op_type].count(
+               OpKernelKey(platform::GPUPlace())) > 0;
   }
 
   bool SupportGPU() const override { return HasGPUKernel(type_); }
