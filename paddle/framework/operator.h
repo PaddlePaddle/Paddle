@@ -306,17 +306,19 @@ class OperatorWithKernel : public OperatorBase {
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
-    AllOpKernels()[type_][OpKernelKey(dev_ctx.GetPlace())]->Compute(
-        ExecutionContext(*this, scope, &dev_ctx));
+    AllOpKernels()
+        .at(type_)
+        .at(OpKernelKey(dev_ctx.GetPlace()))
+        ->Compute(ExecutionContext(*this, scope, &dev_ctx));
   }
 
   static OpDeviceKernelMap AllOpKernels() {
-    static std::unordered_map<std::string, OpKernelMap> _;
+    static OpDeviceKernelMap _;
     return _;
   }
 
   static bool HasGPUKernel(const std::string& op_type) {
-    return OperatorWithKernel::AllOpKernels()[op_type].count(
+    return OperatorWithKernel::AllOpKernels().at(op_type).count(
                OpKernelKey(platform::GPUPlace())) > 0;
   }
 
