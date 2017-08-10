@@ -8,11 +8,14 @@ and everything goes to only one branch.
 
 In Caffe2, they have:
   /**
-   * Returns a const raw void* pointer of the underlying storage. mutable_data()
-   * or raw_mutable_data() must have been called prior to this function call.
+   Returns a const raw void* pointer of the underlying storage. mutable_data()
+   or raw_mutable_data() must have been called prior to this function call.
    */
   inline const void* raw_data() const {
+  
+    
     CAFFE_ENFORCE_WITH_CALLER(data_.get() || size_ == 0);
+    
     return data_.get();
   }
 
