@@ -21,8 +21,6 @@ namespace framework {
 
 class OpRegistry;
 
-using VarIndexMap = std::unordered_map<std::string, int>;
-
 enum class OpArgType { IN, OUT };
 
 static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
@@ -30,19 +28,19 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
                        bool is_grad) {
   const auto& src_inout =
       src_type == OpArgType::IN ? src_op->inputs_ : src_op->outputs_;
-
   auto& dst_inout =
       dst_type == OpArgType::IN ? dst_op->inputs_ : dst_op->outputs_;
+
   const OpProto& proto = OpProtos().at(src_op->type_);
   const auto& src_arg_list =
       src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
-
   for (const auto& arg : src_arg_list) {
-    const std::string& src_name = arg.name();
+    if (arg.no_gradient() && !is_grad) continue;
+    const std::string src_name = arg.name();
     std::string dst_name = is_grad ? GradVarName(src_name) : src_name;
+    dst_inout[dst_name].reserve(src_inout.at(src_name).size());
     for (auto& var_name : src_inout.at(src_name)) {
-      std::string s = is_grad ? GradVarName(var_name)
-                              : (arg.no_gradient() ? kEmptyVarName : var_name);
+      std::string s = is_grad ? GradVarName(var_name) : var_name;
       dst_inout[dst_name].emplace_back(s);
     }
   }

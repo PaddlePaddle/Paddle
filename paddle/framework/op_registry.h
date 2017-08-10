@@ -120,7 +120,6 @@ class OpProtoAndCheckerMaker {
 
 class OpRegistry {
   using OpCreator = std::function<OperatorBase*()>;
-  using VarIndexMap = std::unordered_map<std::string, int>;
   using VarNameMap = std::unordered_map<std::string, std::vector<std::string>>;
 
  public:
