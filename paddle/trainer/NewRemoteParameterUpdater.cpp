@@ -53,8 +53,8 @@ void NewRemoteParameterUpdater::init(
 
   // create parameter server client.
   if (useEtcd_) {
-    parameterClient_ =
-        paddle_new_etcd_pserver_client((char *)pserverSpec_.c_str());
+    parameterClient_ = paddle_new_etcd_pserver_client(
+        (char *)pserverSpec_.c_str(), FLAGS_trainer_id == 0);
   } else {
     parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
                                                  FLAGS_trainer_id == 0);
@@ -72,8 +72,8 @@ void NewRemoteParameterUpdater::init(
     if (!optimizerConfigNew_.has_optimizer()) {
       // NOTE: convert V1 OptimizatioinConfig proto to OptimizerConfig if
       // OptimizerConfig not set. This makes golang pserver compatible with
-      // handy V1 demos. Support SGD only.
-      // TODO: Remove these lines when golang pserver is production ready
+      // handy V1 demos.
+      // TODO: Refine or remove these ugly converting lines
       for (int i = 0; i < parameterSize(); ++i) {
         auto paramConfig = parameters_[i]->getConfig();
         LOG(INFO) << "old param config: " << paramConfig.DebugString();
@@ -87,9 +87,29 @@ void NewRemoteParameterUpdater::init(
         } else {
           constlr->set_learning_rate(trainerConfig_.learning_rate());
         }
-        if (trainerConfig_.algorithm() == "sgd") {
+        if (trainerConfig_.learning_method() == "momentum") {
           optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::SGD);
+        } else if (trainerConfig_.learning_method() == "adagrad") {
+          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::Adagrad);
+          optimizerConfigNew_.mutable_adagrad()->set_epsilon(
+              trainerConfig_.ada_epsilon());
+        } else if (trainerConfig_.learning_method() == "adadelta") {
+          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::Adagrad);
+          optimizerConfigNew_.mutable_adadelta()->set_epsilon(
+              trainerConfig_.ada_epsilon());
+          optimizerConfigNew_.mutable_adadelta()->set_rho(
+              trainerConfig_.ada_rou());
+        } else if (trainerConfig_.learning_method() == "adam") {
+          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::Adam);
+          optimizerConfigNew_.mutable_adam()->set_beta_1(
+              trainerConfig_.adam_beta1());
+          optimizerConfigNew_.mutable_adam()->set_beta_2(
+              trainerConfig_.adam_beta2());
+          optimizerConfigNew_.mutable_adam()->set_epsilon(
+              trainerConfig_.adam_epsilon());
         } else {
+          LOG(ERROR) << "got unsupported v1 optimizer config: "
+                     << trainerConfig_.learning_method();
           optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::SGD);
         }
       }

@@ -17,12 +17,10 @@ def main():
     # network config
     x = paddle.layer.data(name='x', type=paddle.data_type.dense_vector(13))
     y_predict = paddle.layer.fc(input=x,
-                                param_attr=paddle.attr.Param(
-                                    name='w', learning_rate=1e-3),
+                                param_attr=paddle.attr.Param(name='w'),
                                 size=1,
                                 act=paddle.activation.Linear(),
-                                bias_attr=paddle.attr.Param(
-                                    name='b', learning_rate=1e-3))
+                                bias_attr=paddle.attr.Param(name='b'))
     y = paddle.layer.data(name='y', type=paddle.data_type.dense_vector(1))
     cost = paddle.layer.mse_cost(input=y_predict, label=y)
 
@@ -31,13 +29,15 @@ def main():
 
     # create optimizer of new remote updater to pserver
     optimizer = paddle.optimizer.Momentum(momentum=0, learning_rate=1e-3)
-    optimizer.set_remote_optimizer_config(
-        optimizer=paddle.optimizer.OptimizerConfig.Optimizer.SGD,
-        sgd={"momentum": 1.0,
-             "decay": 0.0,
-             "nesterov": False},
-        lr_policy=paddle.optimizer.OptimizerConfig.LrPolicy.Const,
-        const_lr={"learning_rate": 1e-3})
+
+    # NOTE: uncomment lines below to use detailed optimizer config for new pserver
+    # optimizer.set_optimizer_config(
+    #     optimizer=paddle.optimizer.OptimizerConfig.Optimizer.SGD,
+    #     sgd={"momentum": 1.0,
+    #          "decay": 0.0,
+    #          "nesterov": False},
+    #     lr_policy=paddle.optimizer.OptimizerConfig.LrPolicy.Const,
+    #     const_lr={"learning_rate": 1e-3})
 
     trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,

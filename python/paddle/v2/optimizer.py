@@ -42,9 +42,10 @@ class Optimizer(object):
             self.__opt_conf_proto__)
         self.__opt_conf_new__ = None
 
-    def set_remote_optimizer_config(self, **kwargs):
+    def set_optimizer_config(self, **kwargs):
         """
             setup new golang pserver optimizer config proto
+            IMPORTANT: do not use this for local or V1 version training
         """
         import py_paddle.swig_paddle as swig_api
 
@@ -96,8 +97,8 @@ class Optimizer(object):
     def __create_new_remote_updater__(self, pserver_spec, use_etcd):
         import py_paddle.swig_paddle as swig_api
         if not self.__opt_conf_new__:
-            raise AttributeError(
-                "must set optimizer config using set_remote_optimizer_config")
+            return swig_api.ParameterUpdater.createNewRemoteUpdater(
+                self.__opt_conf__, pserver_spec, use_etcd, "")
         else:
             return swig_api.ParameterUpdater.createNewRemoteUpdater(
                 self.__opt_conf__, pserver_spec, use_etcd,
