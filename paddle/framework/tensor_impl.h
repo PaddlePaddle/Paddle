@@ -78,9 +78,10 @@ inline T* Tensor::mutable_data(platform::Place place) {
 }
 
 template <typename T>
-inline void Tensor::ShareDataWith(const Tensor& src) {
+inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size<T>();
   *this = src;
+  return *this;
 }
 
 template <typename T>
@@ -136,7 +137,10 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   return dst;
 }
 
-inline void Tensor::Resize(const DDim& dims) { dims_ = dims; }
+inline Tensor& Tensor::Resize(const DDim& dims) {
+  dims_ = dims;
+  return *this;
+}
 
 inline const DDim& Tensor::dims() const { return dims_; }
 
