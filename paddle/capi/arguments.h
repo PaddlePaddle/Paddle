@@ -112,6 +112,19 @@ PD_API paddle_error paddle_arguments_set_ids(paddle_arguments args,
                                              paddle_ivector ids);
 
 /**
+ * @brief paddle_arguments_set_frame_shape Set the fram size of one argument
+ *        in array, which index is `ID`.
+ * @param [in] args arguments array
+ * @param [in] ID array index
+ * @param [out] ids integer vector pointer
+ * @return paddle_error
+ */
+PD_API paddle_error paddle_arguments_set_frame_shape(paddle_arguments args,
+                                                     uint64_t ID,
+                                                     uint64_t frameHeight,
+                                                     uint64_t frameWidth);
+
+/**
  * @brief PDArgsSetSequenceStartPos Set sequence start position vector of one
  *        argument in array, which index is `ID`.
  * @param args arguments array

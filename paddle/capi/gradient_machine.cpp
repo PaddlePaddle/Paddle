@@ -68,6 +68,15 @@ paddle_error paddle_gradient_machine_load_parameter_from_disk(
   return kPD_NO_ERROR;
 }
 
+paddle_error paddle_gradient_machine_load_parameter_from_buffer(
+    paddle_gradient_machine machine, const char* buf, uint64_t length) {
+  auto m = cast(machine);
+  if (m == nullptr || buf == nullptr || m->machine == nullptr)
+    return kPD_NULLPTR;
+  m->machine->loadParameters(buf, length);
+  return kPD_NO_ERROR;
+}
+
 paddle_error paddle_gradient_machine_forward(paddle_gradient_machine machine,
                                              paddle_arguments inArgs,
                                              paddle_arguments outArgs,

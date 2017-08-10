@@ -314,27 +314,31 @@ bool Parameter::save(std::ostream& s) const {
 /**
  * Load parameter value from a file
  */
+bool Parameter::loadMiss(const std::string& filename) {
+  LOG(INFO) << "missing parameters [" << filename << "] while loading model.";
+  if (kMissParameterFail == FLAGS_load_missing_parameter_strategy) {
+    LOG(FATAL) << getName() << " missing, not allowed.";
+    return false;
+  }
+  if (kMissParameterRand == FLAGS_load_missing_parameter_strategy) {
+    LOG(INFO) << getName() << " missing, set to random.";
+    randomize();
+    return true;
+  }
+  if (kMissParameterZero == FLAGS_load_missing_parameter_strategy) {
+    LOG(INFO) << getName() << " missing, set to zero.";
+    zeroMem();
+    return true;
+  }
+  LOG(FATAL) << "unsupported load_missing_parameter_strategy: "
+             << FLAGS_load_missing_parameter_strategy;
+  return false;
+}
+
 bool Parameter::load(const std::string& filename) {
   std::ifstream fs(filename, std::ios_base::binary);
   if (!fs) {
-    LOG(INFO) << "missing parameters [" << filename << "] while loading model.";
-    if (kMissParameterFail == FLAGS_load_missing_parameter_strategy) {
-      LOG(FATAL) << getName() << " missing, not allowed.";
-      return false;
-    }
-    if (kMissParameterRand == FLAGS_load_missing_parameter_strategy) {
-      LOG(INFO) << getName() << " missing, set to random.";
-      randomize();
-      return true;
-    }
-    if (kMissParameterZero == FLAGS_load_missing_parameter_strategy) {
-      LOG(INFO) << getName() << " missing, set to zero.";
-      zeroMem();
-      return true;
-    }
-    LOG(FATAL) << "unsupported load_missing_parameter_strategy: "
-               << FLAGS_load_missing_parameter_strategy;
-    return false;
+    loadMiss(filename);
   }
   return load(fs);
 }

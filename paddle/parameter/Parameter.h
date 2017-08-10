@@ -202,6 +202,11 @@ public:
   bool save(std::ostream& s) const;
 
   /**
+   * Fill parameter when file is missed
+   */
+  bool loadMiss(const std::string& filename);
+
+  /**
    * Load parameter value from a file
    */
   bool load(const std::string& filename);
