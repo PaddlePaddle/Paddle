@@ -19,9 +19,11 @@
 #ifndef PADDLE_ONLY_CPU
 
 // Because boost's variadic templates has bug on nvcc, boost will disable
-// BOOST_NO_CXX11_VARIADIC_TEMPLATES when GPU enabled on nvcc.
-// Disable BOOST_NO_CXX11_VARIADIC_TEMPLATES on gcc/clang to generate same
+// variadic template support when GPU enabled on nvcc.
+// Define BOOST_NO_CXX11_VARIADIC_TEMPLATES on gcc/clang to generate same
 // function symbols.
+//
+// https://github.com/PaddlePaddle/Paddle/issues/3386
 #ifndef BOOST_NO_CXX11_VARIADIC_TEMPLATES
 #define BOOST_NO_CXX11_VARIADIC_TEMPLATES
 #endif
