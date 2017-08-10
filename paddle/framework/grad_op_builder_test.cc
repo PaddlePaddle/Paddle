@@ -110,15 +110,12 @@ TEST(GradOpBuilder, IOIgnoredInGradient) {
       f::OpRegistry::CreateGradOp(*test_op);
 
   // 'In2' and 'Out2' are ignored in gradient calculating
-  ASSERT_EQ(grad_test_op->inputs_.size(), 3UL + 2UL + 2UL);
+  ASSERT_EQ(grad_test_op->inputs_.size(), 2UL + 1UL + 2UL);
   EXPECT_EQ(grad_test_op->Input("In1"), "in1");
-  EXPECT_EQ(grad_test_op->Inputs("In2_mult"),
-            std::vector<std::string>({f::kEmptyVarName, f::kEmptyVarName}));
   EXPECT_EQ(grad_test_op->Inputs("In3_mult"),
             std::vector<std::string>({"in3_1", "in3_2"}));
   EXPECT_EQ(grad_test_op->Inputs("Out1_mult"),
             std::vector<std::string>({"out1_1", "out1_2"}));
-  EXPECT_EQ(grad_test_op->Input("Out2"), f::kEmptyVarName);
   EXPECT_EQ(grad_test_op->Inputs(f::GradVarName("Out1_mult")),
             std::vector<std::string>(
                 {f::GradVarName("out1_1"), f::GradVarName("out1_2")}));

@@ -21,8 +21,6 @@ namespace framework {
 
 class OpRegistry;
 
-using VarIndexMap = std::unordered_map<std::string, int>;
-
 enum class OpArgType { IN, OUT };
 
 static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
@@ -36,10 +34,9 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
   const OpProto& proto = OpProtos().at(src_op->type_);
   const auto& src_arg_list =
       src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
-
   for (const auto& arg : src_arg_list) {
     if (arg.no_gradient() && !is_grad) continue;
-    std::string src_name = arg.name();
+    const std::string src_name = arg.name();
     std::string dst_name = is_grad ? GradVarName(src_name) : src_name;
     dst_inout[dst_name].reserve(src_inout.at(src_name).size());
     for (auto& var_name : src_inout.at(src_name)) {
