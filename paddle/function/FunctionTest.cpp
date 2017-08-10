@@ -93,8 +93,8 @@ TEST(Arguments, Matrix) {
   MatrixPtr matrix = Matrix::create(100, 200);
   CheckBufferArg check = [=](const BufferArg& arg) {
     EXPECT_EQ(arg.shape().ndims(), 2U);
-    EXPECT_EQ(arg.shape()[0], 100);
-    EXPECT_EQ(arg.shape()[1], 200);
+    EXPECT_EQ(arg.shape()[0], 100U);
+    EXPECT_EQ(arg.shape()[1], 200U);
     EXPECT_EQ(arg.data(), matrix->getData());
 
     EXPECT_EQ(arg.matrix<DEVICE_TYPE_CPU>().getHeight(), matrix->getHeight());
@@ -112,8 +112,8 @@ TEST(Arguments, Matrix) {
 TEST(Arguments, Vector) {
   VectorPtr vector = Vector::create(100, false);
   CheckBufferArg check = [=](const BufferArg& arg) {
-    EXPECT_EQ(arg.shape().ndims(), 1);
-    EXPECT_EQ(arg.shape()[0], 100);
+    EXPECT_EQ(arg.shape().ndims(), 1U);
+    EXPECT_EQ(arg.shape()[0], 100U);
     EXPECT_EQ(arg.data(), vector->getData());
 
     CpuVector inVector = arg.vector<real, DEVICE_TYPE_CPU>();
@@ -131,9 +131,9 @@ TEST(Arguments, Vector) {
 TEST(Arguments, CpuSparseMatrix) {
   CpuSparseMatrix sparse(200, 300, 50);
   CheckBufferArg check = [=](const BufferArg& arg) {
-    EXPECT_EQ(arg.shape().ndims(), 2);
-    EXPECT_EQ(arg.shape()[0], 200);
-    EXPECT_EQ(arg.shape()[1], 300);
+    EXPECT_EQ(arg.shape().ndims(), 2U);
+    EXPECT_EQ(arg.shape()[0], 200U);
+    EXPECT_EQ(arg.shape()[1], 300U);
     EXPECT_EQ(arg.data(), sparse.getData());
     // CHECK_EQ(arg.sparse().nnz(), 50);
     // CHECK_EQ(arg.sparse().dataFormat(), SPARSE_CSR_FORMAT);
@@ -152,10 +152,10 @@ TEST(Arguments, CpuSparseMatrix) {
 TEST(Arguments, BufferArg) {
   BufferArg arg(nullptr, VALUE_TYPE_FLOAT, {1, 2, 3});
   CheckBufferArg check = [=](const BufferArg& arg) {
-    EXPECT_EQ(arg.shape().ndims(), 3);
-    EXPECT_EQ(arg.shape()[0], 1);
-    EXPECT_EQ(arg.shape()[1], 2);
-    EXPECT_EQ(arg.shape()[2], 3);
+    EXPECT_EQ(arg.shape().ndims(), 3U);
+    EXPECT_EQ(arg.shape()[0], 1U);
+    EXPECT_EQ(arg.shape()[1], 2U);
+    EXPECT_EQ(arg.shape()[2], 3U);
   };
 
   BufferArgs argments;

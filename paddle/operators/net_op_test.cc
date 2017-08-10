@@ -54,22 +54,13 @@ TEST(OpKernel, all) {
 
   net->CompleteAddOp();
   AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
-                               net->inputs_.at("__all__"));
-  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_.at("__all__"));
-  auto tmp_idx_iter = net->attrs_.find("temporary_index");
-  ASSERT_NE(net->attrs_.end(), tmp_idx_iter);
-  auto& tmp_idx = boost::get<std::vector<int>>(tmp_idx_iter->second);
-  ASSERT_EQ(1UL, tmp_idx.size());
-  ASSERT_EQ("y", net->outputs_.at("__all__")[tmp_idx[0]]);
+                               net->inputs_.at(NetOp::kAll));
+  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_.at(NetOp::kAll));
 
-  Scope scope;
-  platform::CPUDeviceContext dev_ctx;
+  auto final_outs = net->OutputVars(false);
 
-  net->InferShape(scope);
-  net->Run(scope, dev_ctx);
-  ASSERT_EQ(2, infer_shape_cnt);
-  ASSERT_EQ(2, run_cnt);
-  ASSERT_THROW(net->AddOp(op2), platform::EnforceNotMet);
+  ASSERT_EQ(final_outs.size(), 1UL);
+  ASSERT_EQ(final_outs[0], "z");
 }
 
 TEST(NetOp, insert_op) {

@@ -92,15 +92,27 @@ def get_numeric_gradient(op,
 
 
 class GradientChecker(unittest.TestCase):
-    def __is_close(self, numeric_grads, scope, max_relative_error):
+    def assert_is_close(self, numeric_grads, scope, max_relative_error,
+                        msg_prefix):
         for name in numeric_grads:
-            op_grad = numpy.array(
-                scope.find_var(grad_var_name(name)).get_tensor())
-            is_close = numpy.allclose(
-                numeric_grads[name], op_grad, rtol=max_relative_error, atol=100)
-            if not is_close:
-                return False
-        return True
+            b = numpy.array(scope.find_var(grad_var_name(name)).get_tensor())
+            a = numeric_grads[name]
+
+            abs_a = numpy.abs(a)
+            # if abs_a is nearly zero, then use abs error for a, not relative
+            # error.
+            abs_a[abs_a < 1e-3] = 1
+
+            diff_mat = numpy.abs(a - b) / abs_a
+            max_diff = numpy.max(diff_mat)
+
+            def err_msg():
+                offset = numpy.argmax(diff_mat > max_relative_error)
+                return "%s Variable %s max gradient diff %f over limit %f, the first " \
+                       "error element is %d" % (
+                       msg_prefix, name, max_diff, max_relative_error, offset)
+
+            self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def check_grad(self,
                    forward_op,
@@ -145,7 +157,8 @@ class GradientChecker(unittest.TestCase):
         # get numeric gradient
         for check_name in inputs_to_check:
             numeric_grad[check_name] = \
-                get_numeric_gradient(forward_op, input_vars, output_name, check_name)
+                get_numeric_gradient(forward_op, input_vars, output_name,
+                                     check_name)
 
         # get operator gradient according to different device
         for place in places:
@@ -187,15 +200,8 @@ class GradientChecker(unittest.TestCase):
             backward_op.infer_shape(scope)
             backward_op.run(scope, ctx)
 
-            if isinstance(place, core.CPUPlace):
-                msg = "CPU kernel gradient is not close to numeric gradient"
-            else:
-                if isinstance(place, core.GPUPlace):
-                    msg = "GPU kernel gradient is not close to numeric gradient"
-                else:
-                    raise ValueError("unknown place " + type(place))
-            self.assertTrue(
-                self.__is_close(numeric_grad, scope, max_relative_error), msg)
+            self.assert_is_close(numeric_grad, scope, max_relative_error,
+                                 "Gradient Check On %s" % str(place))
 
 
 if __name__ == '__main__':

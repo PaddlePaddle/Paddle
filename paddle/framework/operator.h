@@ -32,23 +32,25 @@ namespace paddle {
 namespace framework {
 
 /// If a variable is a empty variable, that name will be used.
-const std::string kEmptyVarName = "@EMPTY@";
+constexpr char kEmptyVarName[] = "@EMPTY@";
 
 /// If a variable is a temporary variable, that name will be set in Python,
 /// but it will be convert to a unique name in scope after OpCreator.
-const std::string kTempVarName = "@TEMP@";
+constexpr char kTempVarName[] = "@TEMP@";
 
 /// If a variable's name has a certain suffix, it means that the
 /// variable is the gradient of another varibale.
 /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
-const std::string kGradVarSuffix = "@GRAD";
+constexpr char kGradVarSuffix[] = "@GRAD";
 
 /// Variables with this suffix are supposed to be filled up with zeros.
-const std::string kZeroVarSuffix = "@ZERO";
+constexpr char kZeroVarSuffix[] = "@ZERO";
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
+
+extern std::unordered_map<std::string, OpProto>& OpProtos();
 
 class OperatorBase;
 class InferShapeContext;
@@ -103,6 +105,35 @@ class OperatorBase {
   //! TODO add a vector_view to prevent memory copy.
   const std::vector<std::string>& Outputs(const std::string& name) const;
 
+  virtual std::vector<std::string> OutputVars(bool has_intermediate) const {
+    std::vector<std::string> ret_val;
+    if (has_intermediate) {
+      // push all outputs into ret_val
+      for (auto& o : outputs_) {
+        ret_val.reserve(ret_val.size() + o.second.size());
+        ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
+      }
+      return ret_val;
+    }
+    auto it = OpProtos().find(type_);
+    PADDLE_ENFORCE(
+        it != OpProtos().end(),
+        "Operator %s not registered, cannot figure out intermediate outputs",
+        type_);
+
+    // get all OpProto::Var for outputs
+    for (auto& o : it->second.outputs()) {
+      // ignore all intermediate output
+      if (o.intermediate()) continue;
+      auto out = outputs_.find(o.name());
+      if (out != outputs_.end()) {
+        ret_val.reserve(ret_val.size() + out->second.size());
+        ret_val.insert(ret_val.end(), out->second.begin(), out->second.end());
+      }
+    }
+    return ret_val;
+  }
+
  public:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -117,10 +148,10 @@ class OperatorBase {
   AttributeMap attrs_;
 };
 
-class OperatorContext {
+class InferShapeContext {
  public:
-  OperatorContext(const OperatorBase* op, const Scope& scope)
-      : op_(*op), scope_(scope) {}
+  InferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
 
   size_t InputSize(const std::string& name) const {
     return op_.inputs_.at(name).size();
@@ -209,12 +240,6 @@ class OperatorContext {
   const Scope& scope_;
 };
 
-class InferShapeContext : public OperatorContext {
- public:
-  InferShapeContext(const OperatorBase* op, const Scope& scope)
-      : OperatorContext(op, scope) {}
-};
-
 template <typename T>
 struct EigenDeviceConverter;
 
@@ -230,11 +255,11 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 };
 #endif
 
-class ExecutionContext : public OperatorContext {
+class ExecutionContext : public InferShapeContext {
  public:
-  ExecutionContext(const OperatorBase* op, const Scope& scope,
+  ExecutionContext(const OperatorBase& op, const Scope& scope,
                    const platform::DeviceContext* device_context)
-      : OperatorContext(op, scope), device_context_(device_context) {}
+      : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
             typename DeviceType =
@@ -286,13 +311,13 @@ class OperatorWithKernel : public OperatorBase {
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
   void InferShape(const Scope& scope) const override {
-    InferShape(InferShapeContext(this, scope));
+    InferShape(InferShapeContext(*this, scope));
   }
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(this, scope, &dev_ctx));
+    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&

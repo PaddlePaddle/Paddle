@@ -21,19 +21,20 @@
 namespace paddle {
 namespace operators {
 
+const char NetOp::kAll[] = "all";
+
 void NetOp::CompleteAddOp(bool calc) {
   add_op_done_ = true;
   if (!calc) return;
   std::set<std::string> input_set;
   std::set<std::string> output_set;
-  std::set<std::string> temp_output;
   for (auto& op : ops_) {
     for (auto& ipt : op->inputs_) {
       for (auto& var_name : ipt.second) {
         if (!Contains(output_set, var_name)) {  // Not other op's output
           input_set.insert(var_name);
         } else {
-          temp_output.insert(var_name);
+          intermediate_outputs_.insert(var_name);
         }
       }
     }
@@ -44,24 +45,12 @@ void NetOp::CompleteAddOp(bool calc) {
       }
     }
   }
-  auto& inputs = inputs_["all"];
+  auto& inputs = inputs_[kAll];
   inputs.reserve(input_set.size());
   std::copy(input_set.begin(), input_set.end(), std::back_inserter(inputs));
-  auto& outputs = outputs_["all"];
+  auto& outputs = outputs_[kAll];
   outputs.reserve(output_set.size());
   std::copy(output_set.begin(), output_set.end(), std::back_inserter(outputs));
-
-  //! TODO figure out how to generate temporary_index in Network.
-  std::vector<int> tmp_index;
-  tmp_index.reserve(temp_output.size());
-  int output_len = static_cast<int>(outputs.size());
-  for (int i = 0; i < output_len; ++i) {
-    if (Contains(temp_output, outputs[i])) {
-      tmp_index.push_back(i);
-    }
-  }
-
-  attrs_["temporary_index"] = tmp_index;
 }
 
 std::string NetOp::DebugString() const {
@@ -77,6 +66,20 @@ std::string NetOp::DebugString() const {
 }
 
 bool NetOp::IsNetOp() const { return true; }
+
+std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
+  if (has_intermediate) {
+    return this->outputs_.at(kAll);
+  }
+  auto& all = this->outputs_.at(kAll);
+  std::vector<std::string> ret_val;
+  for (auto& each : all) {
+    if (!Contains(intermediate_outputs_, each)) {
+      ret_val.push_back(each);
+    }
+  }
+  return ret_val;
+}
 
 }  // namespace operators
 }  // namespace paddle

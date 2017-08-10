@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-
 #include "paddle/framework/operator.h"
+#include <algorithm>
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -32,6 +32,14 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
   return *device_context_->get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
+
+static std::unordered_map<std::string, OpProto>* g_op_protos = nullptr;
+std::unordered_map<std::string, OpProto>& OpProtos() {
+  if (g_op_protos == nullptr) {
+    g_op_protos = new std::unordered_map<std::string, OpProto>();
+  }
+  return *g_op_protos;
+}
 
 const std::string& OperatorBase::Input(const std::string& name) const {
   auto it = inputs_.find(name);

@@ -61,12 +61,12 @@ TEST(OperatorBase, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("test_operator");
   auto* ipt = op_desc.mutable_inputs()->Add();
-  *ipt->mutable_var_names()->Add() = "IN1";
-  ipt->set_op_proto_name("input");
+  *ipt->mutable_arguments()->Add() = "IN1";
+  ipt->set_parameter("input");
 
   auto* output = op_desc.mutable_outputs()->Add();
-  *output->mutable_var_names()->Add() = "OUT1";
-  output->set_op_proto_name("output");
+  *output->mutable_arguments()->Add() = "OUT1";
+  output->set_parameter("output");
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
@@ -184,12 +184,12 @@ TEST(OpKernel, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   auto* ipt = op_desc.mutable_inputs()->Add();
-  *ipt->mutable_var_names()->Add() = "IN1";
-  ipt->set_op_proto_name("x");
+  *ipt->mutable_arguments()->Add() = "IN1";
+  ipt->set_parameter("x");
 
   auto* output = op_desc.mutable_outputs()->Add();
-  *output->mutable_var_names()->Add() = "OUT1";
-  output->set_op_proto_name("y");
+  *output->mutable_arguments()->Add() = "OUT1";
+  output->set_parameter("y");
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -217,17 +217,17 @@ TEST(OpKernel, multi_inputs) {
   OpDesc op_desc;
   op_desc.set_type("op_multi_inputs_with_kernel");
   auto x = op_desc.mutable_inputs()->Add();
-  x->set_op_proto_name("xs");
-  *x->mutable_var_names()->Add() = "x0";
-  *x->mutable_var_names()->Add() = "x1";
-  *x->mutable_var_names()->Add() = "x2";
+  x->set_parameter("xs");
+  *x->mutable_arguments()->Add() = "x0";
+  *x->mutable_arguments()->Add() = "x1";
+  *x->mutable_arguments()->Add() = "x2";
   auto k = op_desc.mutable_inputs()->Add();
-  k->set_op_proto_name("k");
-  *k->mutable_var_names()->Add() = "k0";
+  k->set_parameter("k");
+  *k->mutable_arguments()->Add() = "k0";
   auto y = op_desc.mutable_outputs()->Add();
-  y->set_op_proto_name("ys");
-  *y->mutable_var_names()->Add() = "y0";
-  *y->mutable_var_names()->Add() = "y1";
+  y->set_parameter("ys");
+  *y->mutable_arguments()->Add() = "y0";
+  *y->mutable_arguments()->Add() = "y1";
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
