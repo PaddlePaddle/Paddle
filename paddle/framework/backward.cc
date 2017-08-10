@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/framework/backward.h"
+
 #include <list>
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
@@ -132,8 +133,9 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     std::shared_ptr<OperatorBase> grad_op = OpRegistry::CreateGradOp(forwardOp);
     for (std::string& grad_input : grad_op->inputs_) {
       if (no_grad_names.count(grad_input)) {
-        std::string prefix =
-            grad_input.substr(0, grad_input.size() - kGradVarSuffix.size());
+        // +1 for \0
+        std::string prefix = grad_input.substr(
+            0, grad_input.size() - sizeof(kGradVarSuffix) / sizeof(char) + 1);
         grad_input = prefix + kZeroVarSuffix;
 
         // If part of input gradient of that operator is not calculated, fill
@@ -166,7 +168,7 @@ std::shared_ptr<OperatorBase> Backward(
   std::unordered_set<std::string> no_grad_names;
   no_grad_names.reserve(no_grad_vars.size());
 
-  no_grad_names.insert(kEmptyVarName + kGradVarSuffix);
+  no_grad_names.insert(std::string(kEmptyVarName) + kGradVarSuffix);
 
   for (auto& name : no_grad_vars) {
     no_grad_names.insert(name + kGradVarSuffix);

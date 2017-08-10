@@ -28,7 +28,7 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
-    automake locales clang-format-3.8 swig doxygen cmake  \
+    automake locales clang-format swig doxygen cmake  \
     liblapack-dev liblapacke-dev libboost-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools && \
@@ -38,17 +38,16 @@ RUN apt-get update && \
 RUN pip --no-cache-dir install 'numpy>=1.12.0'
 
 # Install Go and glide
-RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go.tgz && \
+RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
+    tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
-    mkdir /root/gopath/src && \
-    rm go.tgz
+    mkdir /root/gopath/src
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
 ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 # install glide
-RUN curl -q https://glide.sh/get | sh
+RUN curl -s -q https://glide.sh/get | sh
 
 # git credential to skip password typing
 RUN git config --global credential.helper store

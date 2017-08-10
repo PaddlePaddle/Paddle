@@ -17,23 +17,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SGDOp : public OperatorWithKernel {
+class SGDOp : public framework::OperatorWithKernel {
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of SGDOp must be two");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of SGDOp must be one");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr, "inputs[0] mast be set");
-    PADDLE_ENFORCE(ctx.InputVar(1) != nullptr, "inputs[1] mast be set");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr, "outputs[0] mast be set");
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx.InputSize(), 2, "Input size of SGDOp must be two");
+    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1, "Output size of SGDOp must be one");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0), "inputs[0] mast be set");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(1), "inputs[1] mast be set");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(0), "outputs[0] mast be set");
     PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
                    "Two input of SGD Op's dimension must be same.");
     ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
-class SGDOpMaker : public OpProtoAndCheckerMaker {
+class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
@@ -51,5 +51,7 @@ param_out = param - learning_rate * grad;
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP(sgd, ops::SGDOp, ops::SGDOpMaker);
-REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sgd,
+                       ops::SGDOpKernel<paddle::platform::CPUPlace, float>);

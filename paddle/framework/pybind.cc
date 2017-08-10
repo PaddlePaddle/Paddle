@@ -18,13 +18,11 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
 #include "paddle/framework/tensor_py.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/type_alias.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/string/to_string.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -42,8 +40,14 @@ USE_OP(softmax);
 USE_OP(rowwise_add);
 USE_OP(fill_zeros_like);
 USE_OP_WITHOUT_KERNEL(recurrent_op);
+USE_OP(gaussian_random);
+USE_OP(uniform_random);
+
 namespace paddle {
 namespace framework {
+
+using Tensor = framework::Tensor;
+
 template <typename ClassType>
 void ExposeOperator(ClassType &m) {
   m.def("infer_shape", &ClassType::type::InferShape)
@@ -55,6 +59,26 @@ void ExposeOperator(ClassType &m) {
       .def("outputs",
            [](const typename ClassType::type &op) -> std::vector<std::string> {
              return op.outputs_;
+           })
+      .def("inputs",
+           [](const typename ClassType::type &op) -> std::vector<std::string> {
+             return op.inputs_;
+           })
+      .def("support_gpu", &ClassType::type::SupportGPU)
+      .def("temp_outputs",
+           [](const typename ClassType::type &op) -> std::vector<std::string> {
+             auto iter = op.attrs_.find("temporary_index");
+             std::vector<std::string> ret;
+             if (iter == op.attrs_.end()) {
+               return ret;
+             } else {
+               auto tmp_idx = boost::get<std::vector<int>>(iter->second);
+               ret.reserve(tmp_idx.size());
+               for (auto &index : tmp_idx) {
+                 ret.push_back(op.outputs_.at(index));
+               }
+               return ret;
+             }
            })
       .def("__str__", &ClassType::type::DebugString);
 }
@@ -129,8 +153,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
            py::return_value_policy::reference)
       .def("get_net",
-           [](Variable &self) -> ops::NetOp * {
-             return self.GetMutable<ops::NetOp>();
+           [](Variable &self) -> operators::NetOp * {
+             return self.GetMutable<operators::NetOp>();
            },
            py::return_value_policy::reference);
 
@@ -184,9 +208,13 @@ All parameter, weight, gradient are variables in Paddle.
                   });
   // clang-format on
 
-  py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
+  py::class_<platform::GPUPlace>(m, "GPUPlace")
+      .def(py::init<int>())
+      .def("__str__", string::to_string<const platform::GPUPlace &>);
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace").def(py::init<>());
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
+      .def(py::init<>())
+      .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<OperatorBase, std::shared_ptr<OperatorBase>> operator_base(
       m, "Operator");
@@ -201,8 +229,6 @@ All parameter, weight, gradient are variables in Paddle.
     return OpRegistry::CreateOp(desc);
   });
 
-  operator_base.def_static("support_gpu", &OpRegistry::SupportGPU);
-
   operator_base.def("backward",
                     [](const OperatorBase &forwardOp,
                        const std::unordered_set<std::string> &no_grad_vars) {
@@ -211,23 +237,24 @@ All parameter, weight, gradient are variables in Paddle.
 
   ExposeOperator(operator_base);
 
-  py::class_<ops::NetOp, std::shared_ptr<ops::NetOp>> net(m, "Net");
+  py::class_<operators::NetOp, std::shared_ptr<operators::NetOp>> net(m, "Net");
 
   net.def_static("create",
-                 []() -> std::shared_ptr<ops::NetOp> {
-                   auto retv = std::make_shared<ops::NetOp>();
+                 []() -> std::shared_ptr<operators::NetOp> {
+                   auto retv = std::make_shared<operators::NetOp>();
                    retv->type_ = "plain_net";
                    return retv;
                  })
-      .def("add_op", &ops::NetOp::AddOp)
-      .def(
-          "add_op",
-          [](ops::NetOp &self, const std::shared_ptr<ops::NetOp> &net) -> void {
-            self.AddOp(std::static_pointer_cast<OperatorBase>(net));
-          })
-      .def("complete_add_op", &ops::NetOp::CompleteAddOp)
-      .def("complete_add_op",
-           [](std::shared_ptr<ops::NetOp> &self) { self->CompleteAddOp(); });
+      .def("add_op", &operators::NetOp::AddOp)
+      .def("add_op",
+           [](operators::NetOp &self,
+              const std::shared_ptr<operators::NetOp> &net) -> void {
+             self.AddOp(std::static_pointer_cast<OperatorBase>(net));
+           })
+      .def("complete_add_op", &operators::NetOp::CompleteAddOp)
+      .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
+        self->CompleteAddOp();
+      });
 
   ExposeOperator(net);
 

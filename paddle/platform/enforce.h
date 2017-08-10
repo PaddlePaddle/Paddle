@@ -15,11 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <execinfo.h>
-#include <paddle/string/printf.h>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include "paddle/string/printf.h"
+#include "paddle/string/to_string.h"
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -187,25 +188,16 @@ inline void throw_on_error(T e) {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
-
-// if two values have different data types, choose a compatible type for them.
-template <typename T1, typename T2>
-struct CompatibleType {
-  static const bool t1_to_t2 = std::is_convertible<T1, T2>::value;
-  typedef typename std::conditional<t1_to_t2, T2, T1>::type type;
-};
-
-#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)        \
-  PADDLE_ENFORCE(__COMPATIBLE_TYPE(__VAL0, __VAL1, __VAL0)                    \
-                     __CMP __COMPATIBLE_TYPE(__VAL0, __VAL1, __VAL1),         \
-                 "enforce %s " #__CMP " %s failed, %s " #__INV_CMP " %s\n%s", \
-                 #__VAL0, #__VAL1, std::to_string(__VAL0),                    \
-                 std::to_string(__VAL1),                                      \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                            \
+  PADDLE_ENFORCE(nullptr != (__VAL), #__VAL " should not be null\n%s", \
                  paddle::string::Sprintf("" __VA_ARGS__));
 
-#define __COMPATIBLE_TYPE(__VAL0, __VAL1, __VAL)              \
-  typename paddle::platform::CompatibleType<decltype(__VAL0), \
-                                            decltype(__VAL1)>::type(__VAL)
+#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)        \
+  PADDLE_ENFORCE(__VAL0 __CMP __VAL1,                                         \
+                 "enforce %s " #__CMP " %s failed, %s " #__INV_CMP " %s\n%s", \
+                 #__VAL0, #__VAL1, paddle::string::to_string(__VAL0),         \
+                 paddle::string::to_string(__VAL1),                           \
+                 paddle::string::Sprintf("" __VA_ARGS__));
 
 }  // namespace platform
 }  // namespace paddle
