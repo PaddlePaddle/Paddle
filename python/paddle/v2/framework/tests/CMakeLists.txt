@@ -21,5 +21,7 @@ py_test(gradient_checker SRCS gradient_checker.py)
 py_test(test_rowwise_add_op SRCS test_rowwise_add_op.py)
 
 py_test(test_default_scope_funcs SRCS test_default_scope_funcs.py)
+
 py_test(test_operator SRCS test_operator.py)
+# py_test(test_gaussian_random_op SRCS test_gaussian_random_op.py)
 py_test(test_uniform_random_op SRCS test_uniform_random_op.py)
