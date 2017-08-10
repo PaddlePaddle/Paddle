@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
-#include "paddle/utils/Logging.h"
 #include "hl_base.h"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 
@@ -103,7 +103,10 @@ inline void TensorGpuApply(LeftType& lhs, const RightType& rhs) {
 }
 #else
 template <class T, typename LeftType, typename RightType>
-inline void TensorGpuApply(LeftType& lhs, RightType& rhs) {}
+inline void TensorGpuApply(LeftType& lhs, RightType& rhs) {
+  LOG(FATAL) << "Since it is gcc compiled, "
+                "this calculation does not support GPU implementation.";
+}
 #endif
 
 }  // namespace paddle

@@ -14,45 +14,80 @@
 
 from paddle.trainer.config_parser import *
 __all__ = [
-    'ParamAttr', 'ExtraAttr', 'ParameterAttribute', 'ExtraLayerAttribute'
+    'HookAttr', 'ParamAttr', 'ExtraAttr', 'ParameterAttribute',
+    'ExtraLayerAttribute'
 ]
 
 
 def convert_and_compare(x, Type):
-    """                                                                                                                                                                                                
-    Convert x to be the same type as Type and then convert back to                                                                                                                                      
-    check whether there is a loss of information                                                                                                                                                        
-    :param x: object to be checked                                                                                                                                                                      
-    :param Type: target type to check x over                                                                                                                                                           
-    
+    """
+    Convert x to be the same type as Type and then convert back to
+    check whether there is a loss of information
+    :param x: object to be checked
+    :param Type: target type to check x over
+
     """
     return type(x)(Type(x)) == x
 
 
 def is_compatible_with(x, Type):
-    """                                                                                                                                                                                                
-    Check if x has a type compatible with Type                                                                                                                                                         
-    :param x: object to be checked                                                                                                                                                                     
-    :param Type: target type to check x over                                                                                                                                                           
-    
+    """
+    Check if x has a type compatible with Type
+    :param x: object to be checked
+    :param Type: target type to check x over
+
     """
     if type(x) == Type:
         return True
     try:
         if float == Type or int == Type:
-            # avoid those types that can be converted to float/int but not very                                                                                                                            
-            # meaningful and  could potentially lead to error                                                                                                                                              
-            # i.e., str and bool typed value should not be used for initializing float/int variable                                                                                                        
+            # avoid those types that can be converted to float/int but not very
+            # meaningful and  could potentially lead to error
+            # i.e., str and bool typed value should not be used for initializing float/int variable
             if not isinstance(x, str) and not isinstance(x, bool):
                 return convert_and_compare(x, Type)
         elif bool == Type:
-            # should not use string type to initialize bool variable                                                                                                                                   
+            # should not use string type to initialize bool variable
             if not isinstance(x, str):
                 return convert_and_compare(x, Type)
         else:
             return False
     except:
         return False
+
+
+class HookAttribute(object):
+    """
+    Hook Attribute object. As a member of ParameterAttribute class, the hook is an auxiliary operation that occurs 
+    during training process of a layer with parameters, such as img_conv layer, fc layer.
+
+    :param  type: Hook type, currently supported types: 
+                        'pruning' :  user specify a sparsity_ratio before training started, and the
+                            network will prune the parameters based on the sparsity_ratio. 
+                            eg: The definition of Hook object can be hk = HookAttribute('pruning', 0.6)
+                            The specific usage can be paddle.layer.img_conv(input=img, filter_size=3,
+                                                                       num_channels=3, num_filters=64,
+                                                                       param_attr=ParameterAttribute(update_hooks=hk) )
+                            The pruning details can be found https://arxiv.org/pdf/1506.02626.pdf
+    :type type: string
+
+    :param sparsity_ratio: Must be specified if hook type is 'pruning', 
+                        it represents the ratio of the zero elements to be set by the Parameter.
+    :type sparsity_ratio: float or None
+	
+    """
+
+    def __init__(self, type, sparsity_ratio=None):
+        self.type = type
+        self.sparsity_ratio = sparsity_ratio
+        if self.sparsity_ratio is not None:
+            assert is_compatible_with(
+                self.sparsity_ratio,
+                float), 'sparisity_ratio must be float type'
+            assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparsity_ratio must be a float between [0, 1] '
+
+    def __call__(self):
+        return ParameterHook(self.type, sparsity_ratio=self.sparsity_ratio)
 
 
 class ParameterAttribute(object):
@@ -88,9 +123,17 @@ class ParameterAttribute(object):
     :type learning_rate: float or None
     :param momentum: The parameter momentum. None means use global value.
     :type momentum: float or None
+    :param gradient_clipping_threshold: gradient clipping threshold. If gradient
+                                        value larger than some value, will be
+                                        clipped.
+    :type gradient_clipping_threshold: float
     :param sparse_update: Enable sparse update for this parameter. It will
                           enable both local and remote sparse update.
     :type sparse_update: bool
+    :param initializer: If not None, it should be a callable object which accepts
+                        a parameter name and returns numpy array for the initial
+                        value of the parameter
+    :param initializer: callable object
     """
 
     def __init__(self,
@@ -104,16 +147,20 @@ class ParameterAttribute(object):
                  l2_rate=None,
                  learning_rate=None,
                  momentum=None,
-                 sparse_update=False):
-        # initialize strategy.
+                 gradient_clipping_threshold=None,
+                 sparse_update=False,
+                 update_hooks=None,
+                 initializer=None):
+        self.attr = {}
+
         if is_static:
-            self.attr = {'is_static': True}
-        elif initial_std is None and initial_mean is None and initial_max \
+            self.attr['is_static'] = True
+
+        if initial_std is None and initial_mean is None and initial_max \
                 is None and initial_min is None:
-            self.attr = {'initial_smart': True}
+            self.attr['initial_smart'] = True
         elif is_compatible_with(initial_std, float) or \
              is_compatible_with(initial_mean, float):
-            self.attr = dict()
             if initial_std is not None:
                 self.attr['initial_std'] = initial_std
             if initial_mean is not None:
@@ -126,7 +173,6 @@ class ParameterAttribute(object):
             assert initial_min < initial_max
             initial_mean = (initial_max + initial_min) / 2
             initial_std = initial_mean - initial_min
-            self.attr = dict()
             self.attr['initial_mean'] = initial_mean
             self.attr['initial_std'] = initial_std
             self.attr['initial_strategy'] = 1  # Uniform Random
@@ -151,6 +197,16 @@ class ParameterAttribute(object):
         if sparse_update:
             self.attr['sparse_update'] = True
             self.attr['sparse_remote_update'] = True
+
+        if gradient_clipping_threshold is not None and \
+                is_compatible_with(gradient_clipping_threshold, float):
+            self.attr['gradient_clipping_threshold'] = \
+                gradient_clipping_threshold
+        if initializer is not None:
+            self.attr['initializer'] = initializer
+
+        if update_hooks:
+            self.attr['update_hooks'] = update_hooks
 
     def set_default_parameter_name(self, name):
         """
@@ -186,7 +242,7 @@ class ExtraLayerAttribute(object):
                       <https://www.cs.toronto.edu/~hinton/absps/
                       JMLRdropout.pdf>`_.
     :type drop_rate: float
-    :param device: device ID of layer. device=-1, use CPU. device>0, use GPU.
+    :param device: device ID of layer. device=-1, use CPU. device>=0, use GPU.
                    The details allocation in parallel_nn please refer to `here
                    <http://www.paddlepaddle.org/doc/ui/cmd_argument/
                    use_case.html#case-2-specify-layers-in-different-devices>`_.
@@ -198,12 +254,15 @@ class ExtraLayerAttribute(object):
                  drop_rate=None,
                  device=None):
         self.attr = dict()
-        if isinstance(error_clipping_threshold, float):
-            assert error_clipping_threshold > 0
-            self.attr["error_clipping_threshold"] = error_clipping_threshold
-
-        if isinstance(drop_rate, float):
-            assert drop_rate > 0
+        if error_clipping_threshold is not None:
+            error_clipping_threshold = float(error_clipping_threshold)
+            if error_clipping_threshold < 0:
+                raise ValueError("Error clipping must > 0")
+            self.attr['error_clipping_threshold'] = error_clipping_threshold
+        if drop_rate is not None:
+            drop_rate = float(drop_rate)
+            if drop_rate < 0:
+                raise ValueError("Dropout rate must > 0")
             self.attr["drop_rate"] = drop_rate
 
         if isinstance(device, int):
@@ -213,7 +272,7 @@ class ExtraLayerAttribute(object):
         for key in self.attr:
             if not hasattr(self, 'can_%s' % key) or \
                     not getattr(self, 'can_%s' % key):
-                raise NotImplementedError("Layer %s cannot support %s" %
+                raise NotImplementedError("Layer %s does not support %s" %
                                           (layer_name, key))
 
     @staticmethod
@@ -224,5 +283,6 @@ class ExtraLayerAttribute(object):
             return attr.attr
 
 
+HookAttr = HookAttribute
 ParamAttr = ParameterAttribute
 ExtraAttr = ExtraLayerAttribute

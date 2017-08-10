@@ -70,19 +70,6 @@ extern void hl_sequence_softmax_forward(real* A_d,
                                         int numSequence);
 
 /**
- * @brief   Matrix classification error.
- *
- * @param[in]   A_d     input matrix (M x N).
- * @param[in]   B_d     input vector (M x 1).
- * @param[out]  C_d     output vector (M x 1).
- * @param[in]   dimM    matrix height.
- * @param[in]   dimN    matrix width.
- *
- */
-extern void hl_matrix_classification_error(
-    real* A_d, int* B_d, real* C_d, int dimM, int dimN);
-
-/**
  * @brief   Matrix cross entropy.
  *
  * @param[in]   A_d     input matrix (M x N).
@@ -188,48 +175,6 @@ extern void hl_param_relu_backward_diff(real* grad_o,
                                         int width,
                                         int height,
                                         int partial_sum);
-/**
- * @brief cos sim forward
- *
- * @param[out]    output         output data
- * @param[in]     input1         input1 data(matrix)
- * @param[in]     input2         input2 data(matrix or vector)
- * @param[in]     width          matrix width
- * @param[in]     input1_height  input1_height
- * @param[in]     input2_height  input2_height
- * @param[in]     scale          scale factor
- */
-extern void hl_cossim(real* output,
-                      real* input1,
-                      real* input2,
-                      int width,
-                      int input1_height,
-                      int input2_height,
-                      real scale);
-/**
- * @brief cos sim derivate
- *
- * @param[in]     grad             output grad
- * @param[in]     output           output data
- * @param[in]     prevOutX         input1 data
- * @param[in]     prevOutY         input2 data
- * @param[out]    prevGradX        input1 grad
- * @param[out]    prevGradY        input2 grad
- * @param[in]     width            matrix width
- * @param[in]     input1_height    input1 height
- * @param[in]     input2_height    input2 height
- * @param[in]     scale            scale factor
- */
-extern void hl_cossim_derivative(real* grad,
-                                 real* output,
-                                 real* prevOutX,
-                                 real* prevOutY,
-                                 real* prevGradX,
-                                 real* prevGradY,
-                                 int width,
-                                 int input1_height,
-                                 int input2_height,
-                                 real scale);
 
 /**
  * @brief   Matrix addition: A_d[i][j] += scale * B_d[j/channel].
@@ -266,5 +211,17 @@ extern void hl_matrix_collect_shared_bias(real* B_d,
                                           const int dimM,
                                           const int dimN,
                                           real scale);
+
+/**
+ * @brief  Matrix rotation in 90 degrees
+ *
+ * @param[in]   mat       input matrix (M x N).
+ * @param[out]  matRot    output matrix (N x M).
+ * @param[in]   dimM      input matrix height.
+ * @param[in]   dimN      input matrix width.
+ * @param[in]   clockWise rotation direction
+ */
+extern void hl_matrix_rotate(
+    real* mat, real* matRot, int dimM, int dimN, bool clockWise);
 
 #endif /* HL_MATRIX_H_ */

@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/parameter/Parameter.h"
 #include "ModelConfig.pb.h"
+#include "paddle/parameter/Parameter.h"
 
-#include "paddle/parameter/Argument.h"
 #include "Layer.h"
+#include "paddle/parameter/Argument.h"
 
 namespace paddle {
 

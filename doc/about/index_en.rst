@@ -11,4 +11,4 @@ We hope to build an active open source community both by providing feedback and 
 Credits
 --------
 
-We owe many thanks to `all contributors and developers <https://github.com/PaddlePaddle/Paddle/blob/develop/authors>`_ of PaddlePaddle!
+We owe many thanks to `all contributors and developers <https://github.com/PaddlePaddle/Paddle/graphs/contributors>`_ of PaddlePaddle!

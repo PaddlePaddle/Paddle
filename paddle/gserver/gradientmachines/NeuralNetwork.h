@@ -14,18 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-#include <map>
 #include <functional>
+#include <map>
+#include <memory>
 
-#include "paddle/utils/ClassRegistrar.h"
-#include "paddle/parameter/Parameter.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/gserver/layers/CostLayer.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/layers/Layer.h"
+#include "paddle/parameter/Parameter.h"
+#include "paddle/utils/ClassRegistrar.h"
 
 namespace paddle {
 /*
@@ -57,14 +57,13 @@ void parameterInitNN(int paramId,
 
 class NeuralNetwork : public GradientMachine {
 public:
-  virtual void init(
-      const ModelConfig& config,
-      ParamInitCallback callback = nullptr,
-      const std::vector<ParameterType>&
-          parameterTypes = std::vector<ParameterType>{PARAMETER_VALUE,
-                                                      PARAMETER_GRADIENT,
-                                                      PARAMETER_MOMENTUM},
-      bool useGpu = FLAGS_use_gpu);
+  virtual void init(const ModelConfig& config,
+                    ParamInitCallback callback = nullptr,
+                    const std::vector<ParameterType>& parameterTypes =
+                        std::vector<ParameterType>{PARAMETER_VALUE,
+                                                   PARAMETER_GRADIENT,
+                                                   PARAMETER_MOMENTUM},
+                    bool useGpu = FLAGS_use_gpu);
 
   /**
    * Connect two submodels and
@@ -88,7 +87,8 @@ public:
 
   virtual void backward(const UpdateCallback& callback = nullptr);
 
-  MatrixPtr getLayerOutput(const std::string& layerName);
+  virtual Argument getLayerOutput(const std::string& layerName);
+
   const LayerPtr& getLayer(const std::string& layerName) const {
     auto it = layerMap_.find(layerName);
     CHECK(it != layerMap_.end()) << "Unknown layer " << layerName;
@@ -97,9 +97,9 @@ public:
 
   virtual void onPassEnd();
 
-  virtual Evaluator* makeEvaluator();
+  virtual Evaluator* makeEvaluator() const;
 
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
   virtual void resetState();
   virtual void setOutputGrad(const std::vector<Argument>& args);
 
@@ -128,6 +128,8 @@ public:
 
   static NeuralNetwork* newNeuralNetwork(const std::string& name = "",
                                          NeuralNetwork* rootNetwork = nullptr);
+
+  const std::string& getName() const { return subModelName_; }
 
 protected:
   /**

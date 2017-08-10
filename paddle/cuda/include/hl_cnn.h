@@ -18,73 +18,6 @@ limitations under the License. */
 #include "hl_base.h"
 
 /**
- * @brief   Shrink column to feature.
- *
- * @param[in]   dataCol     expand data.
- * @param[in]   channels    number of channel.
- * @param[in]   height      image height.
- * @param[in]   width       image width.
- * @param[in]   blockH      filter height.
- * @param[in]   blockW      filter width.
- * @param[in]   strideH     stride height.
- * @param[in]   strideW     stride width.
- * @param[in]   paddingH    padding height.
- * @param[in]   paddingW    padding width.
- * @param[in]   outputH     output height.
- * @param[in]   outputW     output width.
- * @param[out]  dataIm      output image data.
- * @param[in]   alpha
- * @param[in]   beta
- */
-extern void hl_shrink_col2feature(const real* dataCol,
-                                  size_t channels,
-                                  size_t height,
-                                  size_t width,
-                                  size_t blockH,
-                                  size_t blockW,
-                                  size_t strideH,
-                                  size_t strideW,
-                                  size_t paddingH,
-                                  size_t paddingW,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real* dataIm,
-                                  real alpha = 1.0f,
-                                  real beta = 0.0f);
-
-/**
- * @brief   Expand feature to column.
- *
- * @param[in]   dataIm      input image data.
- * @param[in]   channels    number of channel.
- * @param[in]   height      image height.
- * @param[in]   width       image width.
- * @param[in]   blockH      filter height.
- * @param[in]   blockW      filter width.
- * @param[in]   strideH     stride height.
- * @param[in]   strideW     stride width.
- * @param[in]   paddingH    padding height.
- * @param[in]   paddingW    padding width.
- * @param[in]   outputH     output height.
- * @param[in]   outputW     output width.
- * @param[out]  dataCol     expand data.
- *
- */
-extern void hl_expand_feature2col(const real* dataIm,
-                                  size_t channels,
-                                  size_t height,
-                                  size_t width,
-                                  size_t blockH,
-                                  size_t blockW,
-                                  size_t strideH,
-                                  size_t strideW,
-                                  size_t paddingH,
-                                  size_t paddingW,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real* dataCol);
-
-/**
  * @brief   Maximum pool forward.
  *
  * @param[in]   frameCnt    batch size of input image.
@@ -241,62 +174,6 @@ extern void hl_avgpool_backward(const int frameCnt,
                                 const int outStride);
 
 /**
- * @brief   Cross-map-respose normalize forward.
- *
- * @param[in]   frameCnt    batch size of input image.
- * @param[in]   in          input data.
- * @param[in]   scale       buffer.
- * @param[out]  out         output data.
- * @param[in]   channels    number of channel.
- * @param[in]   height      image height.
- * @param[in]   width       image width.
- * @param[in]   sizeX       size.
- * @param[in]   alpha       scale.
- * @param[in]   beta        scale.
- *
- */
-extern void hl_CMRNorm_forward(size_t frameCnt,
-                               const real* in,
-                               real* scale,
-                               real* out,
-                               size_t channels,
-                               size_t height,
-                               size_t width,
-                               size_t sizeX,
-                               real alpha,
-                               real beta);
-
-/**
- * @brief   Cross-map-respose normalize backward.
- *
- * @param[in]   frameCnt    batch size of input image.
- * @param[in]   inV         input data.
- * @param[in]   scale       buffer.
- * @param[out]  outV        output value.
- * @param[out]  outDiff     output grad.
- * @param[out]  inDiff      input grad.
- * @param[in]   channels    number of channel.
- * @param[in]   height      image height.
- * @param[in]   width       image width.
- * @param[in]   sizeX       size.
- * @param[in]   alpha       scale.
- * @param[in]   beta        scale.
- *
- */
-extern void hl_CMRNorm_backward(size_t frameCnt,
-                                const real* inV,
-                                const real* scale,
-                                const real* outV,
-                                const real* outDiff,
-                                real* inDiff,
-                                size_t channels,
-                                size_t height,
-                                size_t width,
-                                size_t sizeX,
-                                real alpha,
-                                real beta);
-
-/**
  * @brief   Bilinear interpolation forward.
  *
  * @param[in]   inData      input value.
@@ -329,23 +206,23 @@ extern void hl_bilinear_forward(const real* inData,
                                 const real ratioW);
 
 /**
-* @brief   Bilinear interpolation backward.
-*
-* @param[out]  inGrad      input gradient.
-* @param[in]   inImgH      input image height.
-* @param[in]   inImgW      input image width.
-* @param[in]   inputH      input batchSize.
-* @param[in]   inputW      input image data dim.
-* @param[in]   outGrad     output gradient.
-* @param[in]   outImgH     output image height.
-* @param[in]   outImgW     output image width.
-* @param[in]   outputH     output batchSize.
-* @param[in]   outputW     output image data dim.
-* @param[in]   numChannels number of channels.
-* @param[in]   ratioH      inImgH / outImgH.
-* @param[in]   ratioW      inImgW / outImgW.
-*
-*/
+ * @brief   Bilinear interpolation backward.
+ *
+ * @param[out]  inGrad      input gradient.
+ * @param[in]   inImgH      input image height.
+ * @param[in]   inImgW      input image width.
+ * @param[in]   inputH      input batchSize.
+ * @param[in]   inputW      input image data dim.
+ * @param[in]   outGrad     output gradient.
+ * @param[in]   outImgH     output image height.
+ * @param[in]   outImgW     output image width.
+ * @param[in]   outputH     output batchSize.
+ * @param[in]   outputW     output image data dim.
+ * @param[in]   numChannels number of channels.
+ * @param[in]   ratioH      inImgH / outImgH.
+ * @param[in]   ratioW      inImgW / outImgW.
+ *
+ */
 extern void hl_bilinear_backward(real* inGrad,
                                  const size_t inImgH,
                                  const size_t inImgW,

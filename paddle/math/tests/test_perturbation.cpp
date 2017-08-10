@@ -14,10 +14,10 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 
-#include <cmath>
-#include <gtest/gtest.h>
-#include <vector>
 #include <cuda_runtime.h>
+#include <gtest/gtest.h>
+#include <cmath>
+#include <vector>
 #include "hl_cuda.h"
 #include "hl_perturbation_util.cuh"
 

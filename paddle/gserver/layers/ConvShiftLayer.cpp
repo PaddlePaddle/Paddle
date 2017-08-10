@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -47,10 +47,11 @@ public:
 
   ~ConvShiftLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(conv_shift, ConvShiftLayer);

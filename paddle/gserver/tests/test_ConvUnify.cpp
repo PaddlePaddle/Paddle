@@ -13,49 +13,66 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/math/MathUtils.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/utils/GlobalConstants.h"
-#include "paddle/gserver/layers/ExpandConvTransLayer.h"
-#include "paddle/math/MathUtils.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
-P_DECLARE_bool(prev_batch_state);
+DECLARE_bool(use_gpu);
+DECLARE_int32(gpu_id);
+DECLARE_double(checkgrad_eps);
+DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(prev_batch_state);
 
-// Do one forward pass of convTrans layer and check to see if its output
-// matches the given result
-MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
-                    size_t padding, size_t filter_size, size_t channel,
-                    size_t numfilters, size_t groups, MatrixPtr& inputData,
-                    real* param, bool useGpu) {
+// Do one forward pass of ConvLayer using either exconv or cudnn_conv
+MatrixPtr doOneConvTest(size_t imgSize,
+                        size_t output_x,
+                        size_t stride,
+                        size_t padding,
+                        size_t filter_size,
+                        size_t channel,
+                        size_t numfilters,
+                        size_t groups,
+                        MatrixPtr& inputData,
+                        real* param,
+                        bool useGpu,
+                        bool isDeconv = false) {
   TestConfig config;
   config.biasSize = numfilters;
+  string layerType;
   if (useGpu) {
-    config.layerConfig.set_type("cudnn_conv");
+    layerType = (isDeconv) ? "cudnn_convt" : "cudnn_conv";
   } else {
-    config.layerConfig.set_type("exconv");
+    layerType = (isDeconv) ? "exconvt" : "exconv";
   }
+  config.layerConfig.set_type(layerType);
   config.layerConfig.set_num_filters(numfilters);
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  size_t weightSize = channel* filter_size * filter_size *
-      config.layerConfig.num_filters() / groups;
-  config.inputDefs.push_back({INPUT_DATA, "layer_0",
-                              imgSize * imgSize * channel,
-                              weightSize});
+  size_t weightSize = channel * filter_size * filter_size *
+                      config.layerConfig.num_filters() / groups;
+  if (isDeconv) {
+    config.inputDefs.push_back(
+        {INPUT_DATA, "layer_0", output_x * output_x * channel, weightSize});
+    config.layerConfig.set_size(imgSize * imgSize *
+                                config.layerConfig.num_filters());
+  } else {
+    config.inputDefs.push_back(
+        {INPUT_DATA, "layer_0", imgSize * imgSize * channel, weightSize});
+    config.layerConfig.set_size(output_x * output_x *
+                                config.layerConfig.num_filters());
+  }
+
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(filter_size);
@@ -66,19 +83,22 @@ MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
   conv->set_stride(stride);
   conv->set_stride_y(stride);
   conv->set_groups(groups);
-  conv->set_filter_channels(channel/groups);
   conv->set_img_size(imgSize);
   conv->set_output_x(output_x);
 
-  config.layerConfig.set_size(conv->output_x() * conv->output_x() *
-                              config.layerConfig.num_filters());
+  if (isDeconv) {
+    conv->set_filter_channels(numfilters / groups);
+  } else {
+    conv->set_filter_channels(channel / groups);
+  }
+
   config.layerConfig.set_name("conv");
 
   std::vector<DataLayerPtr> dataLayers;
   LayerMap layerMap;
   vector<Argument> datas;
-  initDataLayer(config, &dataLayers, &datas, &layerMap, "conv",
-                1, false, useGpu);
+  initDataLayer(
+      config, &dataLayers, &datas, &layerMap, "conv", 1, false, useGpu);
   dataLayers[0]->getOutputValue()->zeroMem();
   dataLayers[0]->getOutputValue()->copyFrom(*inputData);
 
@@ -88,106 +108,203 @@ MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
   initTestLayer(config, &layerMap, &parameters, &convLayer);
   convLayer->getBiasParameter()->zeroMem();
   convLayer->getParameters()[0]->zeroMem();
-  convLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->copyFrom(param,
-      weightSize);
+  convLayer->getParameters()[0]
+      ->getBuf(PARAMETER_VALUE)
+      ->copyFrom(param, weightSize);
   convLayer->forward(PASS_GC);
 
   return convLayer->getOutputValue();
 }
 
 TEST(Layer, convParaUnified) {
-  #ifndef PADDLE_ONLY_CPU
-    MatrixPtr input, resultCpu, resultGpu;
-    input = Matrix::create(1, 4 * 4, false, false);
-    float inputData[] = {1, 2, 3, 4,
-                         5, 6, 7, 8,
-                         9, 10, 11, 12,
-                         13, 14, 15, 16};
-    float param[] = {1, 2, 3, 4, 5, 6, 7, 8, 9,
-                     9, 8, 7, 6, 5, 4, 3, 2, 1};
+#ifndef PADDLE_ONLY_CPU
+  MatrixPtr input, resultCpu, resultGpu;
 
-    input->setData(inputData);
+  /// TEST1 for conv ///
+  input = Matrix::create(1, 4 * 4, false, false);
+  real inputData[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  real param[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 8, 7, 6, 5, 4, 3, 2, 1};
 
-    resultCpu = doOneConvTest(/* imgSize */ 4,
-                   /* output_x */ 2,
-                   /* stride */ 1,
-                   /* padding */ 0,
-                   /* filter_size */ 3,
-                   /*channel*/ 1,
-                   /*numfilters*/ 2,
-                   /*groups*/ 1,
-                   input, param, false);
+  input->setData(inputData);
 
-    resultGpu = doOneConvTest(/* imgSize */ 4,
-                       /* output_x */ 2,
-                       /* stride */ 1,
-                       /* padding */ 0,
-                       /* filter_size */ 3,
-                       /*channel*/ 1,
-                       /*numfilters*/ 2,
-                       /*groups*/ 1,
-                       input, param, true);
-    checkMatrixEqual(resultCpu, resultGpu);
+  resultCpu = doOneConvTest(/* imgSize */ 4,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 3,
+                            /*channel*/ 1,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param,
+                            /*useGpu*/ false);
 
-    input = Matrix::create(1, 3 * 3 * 2, false, false);
-    float inputData2[] = {1, 2, 3,
-                          4, 5, 6,
-                          7, 8, 9,
+  resultGpu = doOneConvTest(/* imgSize */ 4,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 3,
+                            /*channel*/ 1,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param,
+                            /*useGpu*/ true);
+  checkMatrixEqual(resultCpu, resultGpu);
 
-                          10, 11, 12,
-                          13, 14, 15,
-                          16, 17, 18};
-    float param2[] = {1, 2, 3, 4, 5, 6, 7, 8,
-                      8, 7, 6, 5, 4, 3, 2, 1};
+  /// TEST1 for deconv ///
+  input = Matrix::create(1, 2 * 2, false, false);
+  real inputDataT[] = {1, 2, 3, 4};
+  input->setData(inputDataT);
 
-    input->setData(inputData2);
+  resultCpu = doOneConvTest(/* imgSize */ 4,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 3,
+                            /*channel*/ 1,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param,
+                            /*useGpu*/ false,
+                            /*isDeconv*/ true);
 
-    resultCpu = doOneConvTest(/* imgSize */ 3,
-                   /* output_x */ 2,
-                   /* stride */ 1,
-                   /* padding */ 0,
-                   /* filter_size */ 2,
-                   /*channel*/ 2,
-                   /*numfilters*/ 2,
-                   /*groups*/ 1,
-                   input, param2, false);
+  resultGpu = doOneConvTest(/* imgSize */ 4,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 3,
+                            /*channel*/ 1,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param,
+                            /*useGpu*/ true,
+                            /*isDeconv*/ true);
+  checkMatrixEqual(resultCpu, resultGpu);
 
-    resultGpu = doOneConvTest(/* imgSize */ 3,
-                       /* output_x */ 2,
-                       /* stride */ 1,
-                       /* padding */ 0,
-                       /* filter_size */ 2,
-                       /*channel*/ 2,
-                       /*numfilters*/ 2,
-                       /*groups*/ 1,
-                       input, param2, true);
-    checkMatrixEqual(resultCpu, resultGpu);
+  /// TEST2 for conv ///
+  input = Matrix::create(1, 3 * 3 * 2, false, false);
+  real inputData2[] = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
+  real param2[] = {1, 2, 3, 4, 5, 6, 7, 8, 8, 7, 6, 5, 4, 3, 2, 1};
 
+  input->setData(inputData2);
 
-    float param3[] = {1, 2, 3, 4,
-                      4, 3, 2, 1};
+  resultCpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param2,
+                            /*useGpu*/ false);
 
-    resultCpu = doOneConvTest(/* imgSize */ 3,
-                   /* output_x */ 2,
-                   /* stride */ 1,
-                   /* padding */ 0,
-                   /* filter_size */ 2,
-                   /*channel*/ 2,
-                   /*numfilters*/ 2,
-                   /*groups*/ 2,
-                   input, param3, false);
+  resultGpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param2,
+                            /*useGpu*/ true);
+  checkMatrixEqual(resultCpu, resultGpu);
 
-    resultGpu = doOneConvTest(/* imgSize */ 3,
-                       /* output_x */ 2,
-                       /* stride */ 1,
-                       /* padding */ 0,
-                       /* filter_size */ 2,
-                       /*channel*/ 2,
-                       /*numfilters*/ 2,
-                       /*groups*/ 2,
-                       input, param3, true);
-    checkMatrixEqual(resultCpu, resultGpu);
-  #endif
+  /// TEST3 for conv ///
+  real param3[] = {1, 2, 3, 4, 4, 3, 2, 1};
+
+  resultCpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 2,
+                            input,
+                            param3,
+                            /*useGpu*/ false);
+
+  resultGpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 2,
+                            input,
+                            param3,
+                            /*useGpu*/ true);
+  checkMatrixEqual(resultCpu, resultGpu);
+
+  /// TEST2 for deconv ///
+  input = Matrix::create(1, 2 * 2 * 2, false, false);
+  real inputData2T[] = {1, 2, 3, 4, 5, 6, 7, 8};
+  input->setData(inputData2T);
+
+  resultCpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param2,
+                            /*useGpu*/ false,
+                            /*isDeconv*/ true);
+
+  resultGpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 1,
+                            input,
+                            param2,
+                            /*useGpu*/ true,
+                            /*isDeconv*/ true);
+  checkMatrixEqual(resultCpu, resultGpu);
+
+  /// TEST3 for deconv ///
+  resultCpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 2,
+                            input,
+                            param3,
+                            /*useGpu*/ false,
+                            /*isDeconv*/ true);
+
+  resultGpu = doOneConvTest(/* imgSize */ 3,
+                            /* output_x */ 2,
+                            /* stride */ 1,
+                            /* padding */ 0,
+                            /* filter_size */ 2,
+                            /*channel*/ 2,
+                            /*numfilters*/ 2,
+                            /*groups*/ 2,
+                            input,
+                            param3,
+                            /*useGpu*/ true,
+                            /*isDeconv*/ true);
+  checkMatrixEqual(resultCpu, resultGpu);
+#endif
 }
 
 int main(int argc, char** argv) {

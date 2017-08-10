@@ -14,24 +14,22 @@ limitations under the License. */
 
 #pragma once
 
-#include <algorithm>
-#include <cmath>
-#include <string>
-#include <vector>
-#include <memory>
-#include <thread>
-#include <unordered_map>
-#include <mutex>
-#include <functional>
 #include <sys/syscall.h>  // for syscall()
 #include <sys/types.h>
+#include <algorithm>
+#include <cmath>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
-#include "CommandLineParser.h"
+#include "Common.h"
 #include "Logging.h"
 #include "TrainerConfig.pb.h"
-#include "DisableCopy.h"
 
-#include "TypeDefs.h"
 #include "Flags.h"
 #include "hl_gpu.h"
 

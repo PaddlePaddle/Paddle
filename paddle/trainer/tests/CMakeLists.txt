@@ -1,11 +1,3 @@
-################# test_Prediction ######################
-add_unittest_without_exec(test_Prediction
-    test_Prediction.cpp)
-add_test(NAME test_Prediction
-  COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python
-        ${CMAKE_CURRENT_BINARY_DIR}/test_Prediction --merger=${CMAKE_CURRENT_BINARY_DIR}/../paddle_merge_model
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
-
 ################# test_Compare ############################
 add_unittest_without_exec(test_Compare
     test_Compare.cpp)
@@ -17,20 +9,25 @@ add_test(NAME test_Compare
 ################# test_Trainer ###########################
 add_unittest_without_exec(test_Trainer
     test_Trainer.cpp)
-set(diy_dll_dir ${CMAKE_CURRENT_BINARY_DIR}/../../gserver/tests)
 add_test(NAME test_Trainer
   COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
+        ${PYTHON_EXECUTABLE} ${PROJ_ROOT}/paddle/trainer/tests/gen_proto_data.py &&
+        ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
         ${CMAKE_CURRENT_BINARY_DIR}/test_Trainer
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
 
 ############### test_TrainerOnePass ##########################
-add_unittest_without_exec(test_TrainerOnePass
-    test_TrainerOnePass.cpp)
-add_test(NAME test_TrainerOnePass
-  COMMAND  ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
-        ${PROJ_ROOT}/paddle/.set_port.sh -p port ${CMAKE_CURRENT_BINARY_DIR}/test_TrainerOnePass
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
-
+if(WITH_PYTHON)
+  # only run test_TrainerOnePass when PYTHON is enabled, because train one pass
+  # is using PyDataProvider2.
+  add_unittest_without_exec(test_TrainerOnePass
+      test_TrainerOnePass.cpp)
+  add_test(NAME test_TrainerOnePass
+    COMMAND  ${PROJ_ROOT}/paddle/.set_python_path.sh -d
+          ${PROJ_ROOT}/python/:${PROJ_ROOT}/paddle/trainer/tests
+          ${PROJ_ROOT}/paddle/.set_port.sh -p port ${CMAKE_CURRENT_BINARY_DIR}/test_TrainerOnePass
+      WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
+endif()
 ################ test_CompareTwoNets ######################
 add_unittest_without_exec(test_CompareTwoNets
     test_CompareTwoNets.cpp)
@@ -81,5 +78,5 @@ add_test(NAME test_PyDataProviderWrapper
 #################### test_config_parser #########################
 add_test(NAME test_config_parser
   COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
-        python ${PROJ_ROOT}/paddle/trainer/tests/config_parser_test.py
+        ${PYTHON_EXECUTABLE} ${PROJ_ROOT}/paddle/trainer/tests/config_parser_test.py
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)

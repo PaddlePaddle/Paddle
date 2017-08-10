@@ -16,7 +16,31 @@ limitations under the License. */
 #define HL_BASE_H_
 
 #include <cstddef>
-#include "paddle/utils/TypeDefs.h"
+
+#ifdef PADDLE_TYPE_DOUBLE
+#define HL_FLOAT_MAX 3.40282347e+38F
+#define HL_FLOAT_MIN 1.17549435e-38F
+using real = double;
+#else
+#define HL_FLOAT_MAX 1.7976931348623157e+308
+#define HL_FLOAT_MIN 2.2250738585072014e-308
+using real = float;
+#endif
+
+/**
+ * The maximum input value for exp, used to avoid overflow problem.
+ * currently only used for tanh function.
+ */
+#define EXP_MAX_INPUT 40.0
+
+/**
+ * @brief DIVUP(x, y) is similar to ceil(x / y).
+ * @note  For CUDA, DIVUP will be used to specify
+ *        the size of blockDim.
+ */
+#ifndef DIVUP
+#define DIVUP(x, y) (((x) + (y)-1) / (y))
+#endif
 
 /**
  * HPPL is an internal high performance parallel computing library
@@ -181,51 +205,11 @@ typedef struct {
   size_t nnz;
 } _hl_sparse_matrix_s, *hl_sparse_matrix_s;
 
-#ifndef PADDLE_TYPE_DOUBLE
-/**
- * HPPL data type: real (float or double)
- *
- * if real == float
- *
- * HL_FLOAT_MAX: 3.40282347e+38F
- *
- * HL_FLOAT_MIN: 1.17549435e-38F
- */
-#define HL_FLOAT_MAX 3.40282347e+38F
-/**
- * if real == double
- *
- * HL_FLOAT_MAX: 1.7976931348623157e+308
- *
- * HL_FLOAT_MIN: 2.2250738585072014e-308
- */
-#define HL_FLOAT_MIN 1.17549435e-38F
-#else
-#define HL_FLOAT_MAX 1.7976931348623157e+308
-#define HL_FLOAT_MIN 2.2250738585072014e-308
-#endif
-
-/**
- * The maximum input value for exp, used to avoid overflow problem.
- *
- * Currently only used for tanh function.
- */
-#define EXP_MAX_INPUT 40.0
-
-/**
- * @brief DIVUP(x, y) is similar to ceil(x / y).
- * @note  For CUDA, DIVUP will be used to specify
- *        the size of blockDim.
- */
-#ifndef DIVUP
-#define DIVUP(x, y) (((x) + (y)-1) / (y))
-#endif
-
 #ifdef __NVCC__
 
-#include "paddle/utils/Logging.h"
-#include "hl_cuda.h"
 #include "cuda_runtime.h"
+#include "hl_cuda.h"
+#include "paddle/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
 extern __thread cudaStream_t default_stream;

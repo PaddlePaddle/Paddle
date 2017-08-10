@@ -49,78 +49,6 @@ extern void hl_max_sequence_backward(
     real* outputGrad, int* index, real* inputGrad, int numSequences, int dim);
 
 /**
- * @brief   Context projection forward.
- *
- * @param[in]   input           input sequence.
- * @param[in]   sequence        sequence index.
- * @param[in]   weightData      padding data.
- * @param[out]  output          output sequence.
- * @param[in]   numSequences    number of sequences.
- * @param[in]   inputDim        input sequence dimension.
- * @param[in]   contextLength   context length.
- * @param[in]   contextStart    context start.
- * @param[in]   beginPad        number of extra timesteps added at the
- * beginning.
- * @param[in]   isPadding       trainable padding.
- *
- */
-extern void hl_context_projection_forward(real* input,
-                                          const int* sequence,
-                                          real* weightData,
-                                          real* output,
-                                          int numSequences,
-                                          int inputDim,
-                                          int contextLength,
-                                          int contextStart,
-                                          int beginPad,
-                                          bool isPadding);
-
-/**
- * @brief   Context projection backward data.
- *
- * @param[in]   outputGrad      output gradient.
- * @param[in]   sequence        sequence index.
- * @param[out]  inputGrad       input gradient.
- * @param[in]   numSequences    number of sequences.
- * @param[in]   inputDim        input sequence dimension.
- * @param[in]   contextLength   context length.
- * @param[in]   contextStart    context start.
- *
- */
-extern void hl_context_projection_backward_data(real* outputGrad,
-                                                const int* sequence,
-                                                real* inputGrad,
-                                                int numSequences,
-                                                int inputDim,
-                                                int contextLength,
-                                                int contextStart);
-
-/**
- * @brief   Context projection backward weight.
- *
- * @param[in]   outputGrad      output gradient.
- * @param[in]   sequence        sequence index.
- * @param[out]  weightGrad      weight gradient.
- * @param[in]   numSequences    number of sequences.
- * @param[in]   weightDim       input sequence dimension.
- * @param[in]   totalPad        number of extra timesteps.
- * @param[in]   contextLength   context length.
- * @param[in]   contextStart    context start.
- * @param[in]   beginPad        number of extra timesteps added at the
- * beginning.
- *
- */
-extern void hl_context_projection_backward_weight(real* outputGrad,
-                                                  const int* sequence,
-                                                  real* weightGrad,
-                                                  int numSequences,
-                                                  int weightDim,
-                                                  int totalPad,
-                                                  int contextLength,
-                                                  int contextStart,
-                                                  int beginPad);
-
-/**
  * @brief   Memory copy from sequence to batch.
  *
  * if seq2batch == true
@@ -231,4 +159,10 @@ extern void hl_sequence_avg_forward(real* dst,
                                     int width,
                                     const int mode);
 
+extern void hl_sequence_avg_backward(real* dst,
+                                     real* src,
+                                     const int* starts,
+                                     int height,
+                                     int width,
+                                     const int mode);
 #endif /* HL_SEQUENCE_H_ */

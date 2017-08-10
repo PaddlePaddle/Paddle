@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "LayerGradUtil.h"
 
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 namespace paddle {
 real getCostSum(LayerPtr& testLayer, MatrixPtr weights) {
@@ -24,7 +24,7 @@ real getCostSum(LayerPtr& testLayer, MatrixPtr weights) {
   if (weights) {
     outArgs[0].value->dotMul(*outArgs[0].value, *weights);
   }
-  return Argument::sumCosts(outArgs);
+  return Argument::sum(outArgs);
 }
 
 real getDiffAndPrint(real newCost1,
@@ -241,7 +241,7 @@ void testBatchState(LayerPtr testLayer,
 
     std::vector<Argument> args;
     args.push_back(out);
-    EXPECT_EQ(0, Argument::sumCosts(args)) << "testBatchState failed";
+    ASSERT_NEAR(0, Argument::sum(args), 1e-5) << "testBatchState failed";
     for (size_t seqId = 0; seqId < numSequences; ++seqId) {
       start[seqId] += seqLens[seqId];
     }
@@ -303,13 +303,31 @@ void initDataLayer(TestConfig testConf,
   ICpuGpuVectorPtr sequenceStartPositions;
   ICpuGpuVectorPtr subSequenceStartPositions;
   IVectorPtr cpuSequenceDims;
-  for (size_t i = 0; i < testConf.inputDefs.size(); i++) {
+  for (size_t i = 0; i < testConf.inputDefs.size(); ++i) {
+    if (testConf.inputDefs[i].inputType != INPUT_SEQUENCE_LABEL) continue;
+
+    const std::vector<int>& labelSeqStartPositions =
+        testConf.inputDefs[i].labelSeqStartPositions;
+    if (labelSeqStartPositions.size() != 0) {
+      CHECK(!sequenceStartPositions);
+      CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
+
+      sequenceStartPositions =
+          ICpuGpuVector::create(labelSeqStartPositions.size(), useGpu);
+      sequenceStartPositions->copyFrom(
+          labelSeqStartPositions.data(), labelSeqStartPositions.size(), useGpu);
+    }
+  }
+
+  for (size_t i = 0; i < testConf.inputDefs.size(); ++i) {
     LayerConfig config;
     config.set_name(testConf.inputDefs[i].name);
     config.set_type("data");
     config.set_size(testConf.inputDefs[i].dim);
     LayerPtr layer = LayerPtr(new DataLayer(config));
-    size_t numSequence = batchSize / 10 + 1;
+    size_t numSequence = sequenceStartPositions
+                             ? sequenceStartPositions->getSize() - 1
+                             : batchSize / 10 + 1;
 
     Argument data;
     auto fillData = [&](bool trans, int height, int width) {
@@ -336,9 +354,17 @@ void initDataLayer(TestConfig testConf,
         break;
       case INPUT_LABEL:
       case INPUT_SEQUENCE_LABEL:
-        data.ids = VectorT<int>::create(batchSize, useGpu);
-        // now rand number can be 0 to inputDefs[i].dim
-        data.ids->rand(testConf.inputDefs[i].dim);
+        if (testConf.inputDefs[i].labelInitValue.size() != 0) {
+          const std::vector<int>& labelInitValue =
+              testConf.inputDefs[i].labelInitValue;
+          CHECK_EQ(labelInitValue.size(), batchSize);
+          data.ids = VectorT<int>::create(batchSize, useGpu);
+          data.ids->copyFrom(labelInitValue.data(), batchSize);
+        } else {
+          data.ids = VectorT<int>::create(batchSize, useGpu);
+          // now rand number can be 0 to inputDefs[i].dim
+          data.ids->rand(testConf.inputDefs[i].dim);
+        }
         break;
       case INPUT_SPARSE_NON_VALUE_DATA:
         data.value = makeRandomSparseMatrix(
@@ -361,6 +387,43 @@ void initDataLayer(TestConfig testConf,
         data.value->sigmoid(*data.value);
         data.grad->zeroMem();
         break;
+      case INPUT_SELF_DEFINE_DATA: {
+        size_t height = testConf.inputDefs[i].selfDefinedData->getHeight();
+        size_t width = testConf.inputDefs[i].selfDefinedData->getWidth();
+        CHECK_GT(static_cast<int>(height), 0);
+        CHECK_GT(static_cast<int>(width), 0);
+        data.value = Matrix::create(height, width, false, useGpu);
+        data.grad = Matrix::create(height, width, false, useGpu);
+        data.value->copyFrom(*testConf.inputDefs[i].selfDefinedData);
+        data.grad->zeroMem();
+
+        const std::vector<int>& labelSeqStartPositions =
+            testConf.inputDefs[i].labelSeqStartPositions;
+        if (labelSeqStartPositions.size() != 0) {
+          CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
+
+          sequenceStartPositions =
+              ICpuGpuVector::create(labelSeqStartPositions.size(), useGpu);
+          sequenceStartPositions->copyFrom(labelSeqStartPositions.data(),
+                                           labelSeqStartPositions.size(),
+                                           useGpu);
+          data.sequenceStartPositions = sequenceStartPositions;
+        }
+
+        const std::vector<int>& labelSubSeqStartPositions =
+            testConf.inputDefs[i].labelSubSeqStartPositions;
+        if (labelSubSeqStartPositions.size() != 0) {
+          CHECK_GE(static_cast<int>(labelSubSeqStartPositions.size()), 2);
+
+          subSequenceStartPositions =
+              ICpuGpuVector::create(labelSubSeqStartPositions.size(), useGpu);
+          subSequenceStartPositions->copyFrom(labelSubSeqStartPositions.data(),
+                                              labelSubSeqStartPositions.size(),
+                                              useGpu);
+          data.subSequenceStartPositions = subSequenceStartPositions;
+        }
+        break;
+      }
       default:
         LOG(FATAL) << " unknown inputType ";
         return;
@@ -414,7 +477,6 @@ void initTestLayer(TestConfig testConf,
                            ParameterConfig paraConfig) {
     paraConfig.set_name(paraName);
     paraConfig.set_size(paraSize);
-    paraConfig.set_initial_std(1);
     paraConfig.set_is_static(isStatic);
     auto para =
         std::make_shared<Parameter>(paraConfig, FLAGS_use_gpu, initialize);
@@ -448,6 +510,9 @@ void initTestLayer(TestConfig testConf,
         paraConfig.add_dims((*layerMap)[input.input_layer_name()]->getSize());
         paraConfig.add_dims(testConf.layerConfig.size());
       }
+      CHECK_GE(testConf.paramInitialStd, 0);
+      paraConfig.set_initial_mean(testConf.paramInitialMean);
+      paraConfig.set_initial_std(testConf.paramInitialStd);
       initParameter(paraName, paraSize, inputDef.isStatic, false, paraConfig);
     }
   }
@@ -646,7 +711,7 @@ void testLayerGradKernel(TestConfig testConf,
     outArgs[0].value->dotMul(*testLayer->getOutput().value, *weights);
   }
 
-  real cost = Argument::sumCosts(outArgs);
+  real cost = Argument::sum(outArgs);
   LOG(INFO) << " cost " << cost;
   EXPECT_FALSE(std::isnan(cost));
 
@@ -752,8 +817,10 @@ void testProjectionGrad(ProjectionConfig conf,
   config.biasSize = biasSize == 0 ? config.layerConfig.size() : biasSize;
   config.layerConfig.set_bias_size(config.biasSize);
   config.layerConfig.set_shared_biases(sharedBias);
-  config.inputDefs.push_back(
-      {inputType, "layer_0", conf.input_size(), parameterSize});
+  config.inputDefs.push_back({inputType,
+                              "layer_0",
+                              static_cast<size_t>(conf.input_size()),
+                              parameterSize});
   *config.layerConfig.add_inputs()->mutable_proj_conf() = conf;
   config.testState = testState;
   testLayerGrad(config, "mixed", batchSize, false, useGpu);

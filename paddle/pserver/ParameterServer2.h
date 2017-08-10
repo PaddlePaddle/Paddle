@@ -15,30 +15,30 @@ limitations under the License. */
 #pragma once
 
 #include <atomic>
+#include <limits>
 #include <mutex>
 #include <string>
-#include <vector>
-#include <unordered_map>
 #include <type_traits>
-#include <limits>
+#include <unordered_map>
+#include <vector>
 
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "paddle/utils/Locks.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterOptimizer.h"
-#include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
-#include "paddle/math/Vector.h"
+#include "paddle/utils/Common.h"
+#include "paddle/utils/Locks.h"
 #include "paddle/utils/Stat.h"
+#include "paddle/utils/ThreadLocal.h"
 
 #include "ParameterService.pb.h"
 
 #include "ProtoServer.h"
 
-P_DECLARE_int32(port);
+DECLARE_int32(port);
 
 namespace paddle {
 
@@ -298,24 +298,6 @@ protected:
   /// barrier performance tuning sync-sgd required
   std::atomic<int64_t> batchId_;
 
-  /// the beginning of addGradient without network overhead
-  ThreadLocal<struct timeval> addGradBegin_;
-
-  /**
-   * tuning barrier performance
-   * to better control log for sparse and dense parameter,
-   * we use different log entities for different parameterServer
-   * objects.
-   * it will output lots of performance stats to perceive the
-   * overhead of network, fluctuation of computation from
-   * forwardbackward and network, computation from optimization
-   * at pserver end, barrier overhead, etc. to understand tuning
-   * data, focus on the synchronization between addGradient and
-   * doOperation which indirectly call op_SGD operation controlled
-   * by remote updater controller
-   */
-  std::unique_ptr<StatSet> statSet_;
-
 public:
   struct Buffer {
     real* base;
@@ -325,7 +307,6 @@ public:
 protected:
   /// async gradient commit control
   bool asyncGrdientCommitCheckAndStat(const SendParameterRequest& request);
-  void printAsyncGradientCommitStatAndReset();
 
 public:
   /// disable default parameter for overloading
@@ -710,36 +691,6 @@ public:
 
   void op_load(const Operation& operation, OperationResult* result);
   void op_save(const Operation& operation, OperationResult* result);
-
-  /**
-   * @brief output log in at the middle stage of training
-   *
-   * @note  flush log histroy and state at the end for sgd
-   */
-  void tuningSgdMidOutput();
-
-  /**
-   * @brief output log in at the end stage of training
-   *
-   * @note  flush log histroy and state at the end for sgd. it will also
-   *        flush some stateful stat for next pass.
-   */
-  void tuningSgdFinished();
-
-  /**
-   * @brief output log in at the middle stage of training
-   *
-   * @note  flush log histroy and state at the end for async-sgd.
-   *        it will log some performance log if some lagged node are found
-   */
-  void tuningAsyncsgdMidOutput();
-
-  /**
-   * @brief output log in at the end stage of training
-   *
-   * @note  flush log histroy and state at the end for async-sgd.
-   */
-  void tuningAsyncsgdFinished();
 };
 
 }  // namespace paddle

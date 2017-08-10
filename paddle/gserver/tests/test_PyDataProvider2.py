@@ -17,7 +17,7 @@ import random
 from paddle.trainer.PyDataProvider2 import *
 
 
-@provider(input_types=[dense_vector(200, seq_type=SequenceType.NO_SEQUENCE)])
+@provider(slots=[dense_vector(200, seq_type=SequenceType.NO_SEQUENCE)])
 def test_dense_no_seq(setting, filename):
     for i in xrange(200):
         yield [(float(j - 100) * float(i + 1)) / 200.0 for j in xrange(200)]

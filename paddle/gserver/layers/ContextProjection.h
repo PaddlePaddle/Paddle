@@ -61,6 +61,8 @@ public:
 
   virtual LayerStatePtr getState();
 
+  virtual bool init();
+
 protected:
   std::unique_ptr<Weight> weight_;
   /// number of extra timesteps added at the beginning

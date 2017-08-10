@@ -15,28 +15,28 @@ limitations under the License. */
 #ifndef HL_GPU_H_
 #define HL_GPU_H_
 
+#include "hl_aggregate.h"
 #include "hl_base.h"
+#include "hl_cnn.h"
 #include "hl_cuda.h"
 #include "hl_cuda_cublas.h"
 #include "hl_cuda_cudnn.h"
-#include "hl_matrix.h"
-#include "hl_aggregate.h"
-#include "hl_cnn.h"
-#include "hl_sparse.h"
 #include "hl_lstm.h"
+#include "hl_matrix.h"
 #include "hl_sequence.h"
+#include "hl_sparse.h"
 #include "hl_warpctc_wrap.h"
 
 #ifdef HPPL_STUB_FUNC
-#include "stub/hl_cuda_stub.h"
-#include "stub/hl_cuda_cublas_stub.h"
-#include "stub/hl_cuda_cudnn_stub.h"
-#include "stub/hl_matrix_stub.h"
 #include "stub/hl_aggregate_stub.h"
 #include "stub/hl_cnn_stub.h"
-#include "stub/hl_sparse_stub.h"
+#include "stub/hl_cuda_cublas_stub.h"
+#include "stub/hl_cuda_cudnn_stub.h"
+#include "stub/hl_cuda_stub.h"
 #include "stub/hl_lstm_stub.h"
+#include "stub/hl_matrix_stub.h"
 #include "stub/hl_sequence_stub.h"
+#include "stub/hl_sparse_stub.h"
 #endif
 
 #endif /* HL_GPU_H_ */

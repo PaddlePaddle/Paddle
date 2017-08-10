@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifndef HL_TIME_H_
 #define HL_TIME_H_
-
+#include <cstdint>
 /**
  * @brief   High resolution timer.
  *

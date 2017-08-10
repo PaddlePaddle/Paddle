@@ -36,13 +36,14 @@ public:
   explicit FullyConnectedLayer(const LayerConfig& config) : Layer(config) {}
   ~FullyConnectedLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
 
-  void prefetch();
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void prefetch() override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/utils/PythonUtil.h>
 #include <gtest/gtest.h>
-#include <vector>
+#include <paddle/utils/PythonUtil.h>
 #include <paddle/utils/Util.h>
+#include <vector>
 #include "paddle/math/SparseMatrix.h"
 
 using namespace paddle;  // NOLINT
@@ -114,9 +114,3 @@ TEST(ExecViaCpu, test1) {
   testWrapper(functor);
 }
 #endif
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

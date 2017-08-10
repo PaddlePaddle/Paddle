@@ -13,22 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #undef PADDLE_DISABLE_TIMER
-#include <paddle/utils/PythonUtil.h>
-#include <cstdlib>
-#include <algorithm>
 #include <gtest/gtest.h>
+#include <paddle/utils/PythonUtil.h>
+#include <algorithm>
+#include <cstdlib>
 
+#include "paddle/testing/TestUtil.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/utils/Stat.h"
-#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DEFINE_bool(use_label, true, "input label or sequence label");
-P_DEFINE_bool(static_para, false, "static parameter");
+DECLARE_int32(gpu_id);
+DECLARE_double(checkgrad_eps);
+DEFINE_bool(use_label, true, "input label or sequence label");
+DEFINE_bool(static_para, false, "static parameter");
 
 struct DataIn {
   std::vector<Argument> inArgs;
@@ -114,7 +114,7 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
       parameters[i]->getBuf(PARAMETER_VALUE)->copyFrom(*in.paraValues[i]);
     }
   }
-  gradientMachine->start(trainer.getConfig(), nullptr);
+  gradientMachine->start();
   gradientMachine->forward(in.inArgs, &outArgs, PASS_TRAIN);
   for (size_t i = 0; i < in.outGrads.size(); i++) {
     // If the all the layers in the config have no parameters, also
@@ -237,6 +237,12 @@ TEST(Compare, concat_table) {
   compareNetwork(config_file_a, config_file_b);
 }
 
+TEST(Compare, concat_slice) {
+  std::string config_file_a = "./gserver/tests/concat_slice_a.conf";
+  std::string config_file_b = "./gserver/tests/concat_slice_b.conf";
+  compareNetwork(config_file_a, config_file_b);
+}
+
 #ifndef PADDLE_ONLY_CPU
 TEST(Compare, img_pool) {
   std::string config_file_a = "./gserver/tests/img_pool_a.conf";
@@ -258,17 +264,20 @@ TEST(Compare, img_conv) {
 
 // Test cudnn_conv and exconv give the same result
 TEST(Compare, img_conv2) {
-  std::string config_file_a = "./gserver/tests/img_conv_a.conf";
-  std::string config_file_b = "./gserver/tests/img_conv_c.conf";
+  std::string config_file_a = "./gserver/tests/img_conv_cudnn.py";
+  std::string config_file_b = "./gserver/tests/img_conv_exconv.py";
   bool useGpu = FLAGS_use_gpu;
+  double eps = FLAGS_checkgrad_eps;
   FLAGS_use_gpu = true;
+  FLAGS_checkgrad_eps = 1e-2;
   compareNetwork(config_file_a, config_file_b);
   FLAGS_use_gpu = useGpu;
+  FLAGS_checkgrad_eps = eps;
 }
 #endif
 
-P_DEFINE_string(config_file_a, "", "config of one network to compare");
-P_DEFINE_string(config_file_b, "", "config of another network to compare");
+DEFINE_string(config_file_a, "", "config of one network to compare");
+DEFINE_string(config_file_b, "", "config of another network to compare");
 TEST(Compare, network) {
   if (FLAGS_config_file_a != "" && FLAGS_config_file_b != "") {
     compareNetwork(FLAGS_config_file_a, FLAGS_config_file_b);

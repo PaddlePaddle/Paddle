@@ -24,7 +24,7 @@ function(target_circle_link_libraries TARGET_NAME)
                 list(APPEND libsInArgn ${arg})
             endif()
         endforeach()
-        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
             list(APPEND LIBS "-undefined dynamic_lookup")
         endif()
         list(REVERSE libsInArgn)
@@ -65,38 +65,16 @@ endmacro()
 # link_paddle_exe
 # add paddle library for a paddle executable, such as trainer, pserver.
 #
-# It will handle WITH_PYTHON/WITH_GLOG etc.
+# It will handle WITH_PYTHON etc.
 function(link_paddle_exe TARGET_NAME)
     if(WITH_RDMA)
         generate_rdma_links()
     endif()
 
-    if(WITH_METRIC)
-        if(WITH_GPU)
-            set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric metric_cpu)
-        else()
-            set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric_cpu)
-        endif()
-    else()
-        set(METRIC_LIBS "")
-    endif()
-
-    if(PADDLE_WITH_INTERNAL)
-        set(INTERAL_LIBS paddle_internal_gserver paddle_internal_parameter)
-        target_circle_link_libraries(${TARGET_NAME}
-            ARCHIVE_START
-            paddle_internal_gserver
-            paddle_internal_owlqn
-            ARCHIVE_END
-            paddle_internal_parameter)
-    else()
-        set(INTERAL_LIBS "")
-    endif()
-
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver
-        ${METRIC_LIBS}
+        paddle_function
         ARCHIVE_END
         paddle_pserver
         paddle_trainer_lib
@@ -106,53 +84,18 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
-        ${METRIC_LIBS}
-        ${PROTOBUF_LIBRARY}
+        paddle_optimizer
+        ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
-        ${CBLAS_LIBS}
-        ${ZLIB_LIBRARIES}
-        ${INTERAL_LIBS}
-        ${CMAKE_DL_LIBS})
+        ${CMAKE_DL_LIBS}
+        ${RDMA_LD_FLAGS}
+        ${RDMA_LIBS})
 
-    if(WITH_RDMA)
-        target_link_libraries(${TARGET_NAME}
-            ${RDMA_LD_FLAGS}
-            ${RDMA_LIBS})
-    endif()
-    
-    if(WITH_PYTHON)
-        target_link_libraries(${TARGET_NAME}
-            ${PYTHON_LIBRARIES})
-    endif()
+    if(ANDROID)
+        target_link_libraries(${TARGET_NAME} log)
+    endif(ANDROID)
 
-    if(WITH_GLOG)
-        target_link_libraries(${TARGET_NAME}
-            ${LIBGLOG_LIBRARY})
-    endif()
-
-    if(WITH_GFLAGS)
-        target_link_libraries(${TARGET_NAME}
-            ${GFLAGS_LIBRARIES})
-    endif()
-
-    if(WITH_GPU)
-        if(NOT WITH_DSO OR WITH_METRIC) 
-            target_link_libraries(${TARGET_NAME}
-                ${CUDNN_LIBRARY}
-                ${CUDA_curand_LIBRARY}) 
-            CUDA_ADD_CUBLAS_TO_TARGET(${TARGET_NAME})
-        endif()
-
-        check_library_exists(rt clock_gettime "time.h" HAVE_CLOCK_GETTIME )
-        if(HAVE_CLOCK_GETTIME)
-            target_link_libraries(${TARGET_NAME} rt)
-        endif()
-    endif()
-
-    if(NOT WITH_DSO)
-        target_link_libraries(${TARGET_NAME}
-            ${WARPCTC_LIBRARY})
-    endif()
+    add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
 
 # link_paddle_test
@@ -161,8 +104,10 @@ endfunction()
 # Rest Arguemnts: not used.
 function(link_paddle_test TARGET_NAME)
     link_paddle_exe(${TARGET_NAME})
-    target_link_libraries(${TARGET_NAME} ${GTEST_MAIN_LIBRARIES}
-        ${GTEST_LIBRARIES})
+    target_link_libraries(${TARGET_NAME}
+                          paddle_test_main
+                          paddle_test_util
+                          ${GTEST_LIBRARIES})
 endfunction()
 
 # add_unittest_without_exec
@@ -173,7 +118,6 @@ endfunction()
 macro(add_unittest_without_exec TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
     link_paddle_test(${TARGET_NAME})
-    add_style_check_target(${TARGET_NAME} ${ARGN})
 endmacro()
 
 # add_unittest
@@ -194,17 +138,23 @@ macro(add_simple_unittest TARGET_NAME)
 endmacro()
 
 # Creates C resources file from files in given resource file
-function(create_resources res_file output)
-    # Create empty output file
-    file(WRITE ${output} "")
-    # Get short filename
-    string(REGEX MATCH "([^/]+)$" filename ${res_file})
-    # Replace filename spaces & extension separator for C compatibility
-    string(REGEX REPLACE "\\.| |-" "_" filename ${filename})
-    # Read hex data from file
-    file(READ ${res_file} filedata HEX)
-    # Convert hex data for C compatibility
-    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
-    # Append data to output file
-    file(APPEND ${output} "const unsigned char ${filename}[] = {${filedata}};\nconst unsigned ${filename}_size = sizeof(${filename});\n")
+function(create_resources res_file output_file)
+  add_custom_command(
+    OUTPUT ${output_file}
+    COMMAND python ARGS ${PROJ_ROOT}/cmake/make_resource.py ${res_file} ${output_file}
+    DEPENDS ${res_file} ${PROJ_ROOT}/cmake/make_resource.py)
+endfunction()
+
+
+# Create a python unittest using run_python_tests.sh,
+# which takes care of making correct running environment
+function(add_python_test TEST_NAME)
+    foreach(arg ${ARGN})
+        get_filename_component(py_fn ${arg} NAME_WE)
+        set(TRG_NAME ${TEST_NAME}_${py_fn})
+        add_test(NAME ${TRG_NAME}
+                COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
+                python2 ${arg}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endforeach()
 endfunction()

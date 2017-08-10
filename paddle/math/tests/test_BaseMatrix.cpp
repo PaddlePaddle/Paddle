@@ -20,8 +20,8 @@ limitations under the License. */
  */
 
 #include <gtest/gtest.h>
-#include "paddle/math/BaseMatrix.h"
 #include "TestUtils.h"
+#include "paddle/math/BaseMatrix.h"
 
 using paddle::BaseMatrix;
 using paddle::Matrix;
@@ -110,6 +110,8 @@ TEST(BaseMatrix, BaseMatrix) {
       compare(&BaseMatrix::addRowVector);
       compare(&BaseMatrix::mulRowVector);
       compare(&BaseMatrix::divRowVector);
+      compare(&BaseMatrix::mulColVector);
+      compare(&BaseMatrix::divColVector);
       compare(&BaseMatrix::addP2P);
       compare(&BaseMatrix::invSqrt);
     }
@@ -240,12 +242,6 @@ TEST(BaseMatrix, Other) {
       TestAggregateToCol(height, width);
     }
   }
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  paddle::initMain(argc, argv);
-  return RUN_ALL_TESTS();
 }
 
 #endif

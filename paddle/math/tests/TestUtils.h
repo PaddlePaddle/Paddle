@@ -37,12 +37,12 @@ limitations under the License. */
  *
  *  AutoCompare test;
  *  test.cmpWithoutArg<I...>(function, height, width)
-*/
+ */
 
 #include <gtest/gtest.h>
+#include "TensorCheck.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
-#include "TensorCheck.h"
 
 namespace autotest {
 

@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <paddle/pserver/ParameterClient2.h>
 #include <paddle/pserver/ParameterServer2.h>
-#include <gtest/gtest.h>
 #include <paddle/utils/Flags.h>
 #include <paddle/utils/Util.h>
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_int32(num_gradient_servers);
-P_DEFINE_string(server_addr, "127.0.0.1", "assign server address");
-P_DEFINE_int32(server_cpu, 0, "assign server cpu");
+DECLARE_int32(num_gradient_servers);
+DEFINE_string(server_addr, "127.0.0.1", "assign server address");
+DEFINE_int32(server_cpu, 0, "assign server cpu");
 
 class ParameterServer2Tester : public ParameterServer2 {
 public:

@@ -1,6 +1,5 @@
 ```eval_rst
-..  _demo_ml_dataset_en:
-
+..  _demo_ml_dataset:
 ```
 
 # MovieLens Dataset

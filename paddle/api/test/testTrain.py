@@ -89,9 +89,14 @@ def main():
             except Exception as e:
                 print e
 
+        ev = m.makeEvaluator()
+        ev.start()
         m.forwardBackward(inArgs, outArgs, swig_paddle.PASS_TRAIN,
                           update_callback)
-
+        m.eval(ev)
+        ev.finish()
+        for name in ev.getNames():
+            print name, ev.getValue(name)
         for optimizer in optimizers:
             optimizer.finishBatch()
 

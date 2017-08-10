@@ -7,9 +7,10 @@ Usage
 ..  toctree::
   :maxdepth: 1
 
-  cmd_parameter/index_en.md
-  deep_model/index_en.rst
-  cluster/cluster_train_en.md
+  usage/cmd_parameter/index_en.rst
+  usage/cluster/cluster_train_en.md
+  usage/k8s/k8s_en.md
+  usage/k8s/k8s_aws_en.md
 
 Development
 ------------
@@ -17,8 +18,16 @@ Development
 ..  toctree::
   :maxdepth: 1
 
-  new_layer/index_en.rst
-  contribute_to_paddle_en.md
+  dev/new_layer_en.rst
+  dev/contribute_to_paddle_en.md
+
+Configuration
+-------------
+
+..  toctree::
+  :maxdepth: 1
+
+  deep_model/rnn/index_en.rst
 
 Optimization
 -------------
@@ -26,4 +35,4 @@ Optimization
 ..  toctree::
   :maxdepth: 1
 
-  optimization/index_en.rst
+  optimization/gpu_profiling_en.rst

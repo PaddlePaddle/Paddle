@@ -14,13 +14,13 @@
 import unittest
 from paddle.trainer.config_parser import parse_config
 
-class TestParse(unittest.TestCase):
 
+class TestParse(unittest.TestCase):
     def test_parse(self):
-        a = parse_config(
-            'trainer_config_helpers/tests/layers_test_config.py', '')
-        b = parse_config(
-            'trainer_config_helpers/tests/layers_test_config.py', '')
+        a = parse_config('trainer_config_helpers/tests/layers_test_config.py',
+                         '')
+        b = parse_config('trainer_config_helpers/tests/layers_test_config.py',
+                         '')
         self.assertEqual(a, b)
 
 

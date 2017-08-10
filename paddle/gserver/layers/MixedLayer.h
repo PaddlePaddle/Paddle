@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "Layer.h"
-#include "Projection.h"
 #include "Operator.h"
+#include "Projection.h"
 
 namespace paddle {
 
@@ -35,21 +35,22 @@ public:
 
   ~MixedLayer() {}
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  virtual void prefetch();
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
-  virtual void resetState();
+  void prefetch() override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
+  void resetState() override;
   /**
    * setState() should be called after getState().
    * Argument state consists of all projections states.
    */
-  virtual void setState(LayerStatePtr state);
+  void setState(LayerStatePtr state) override;
   /**
    * Return state which consists of all projections states.
    */
-  virtual LayerStatePtr getState();
+  LayerStatePtr getState() override;
 
 protected:
   std::vector<std::unique_ptr<Projection>> projections_;

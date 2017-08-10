@@ -24,7 +24,7 @@ bool CRFDecodingLayer::init(const LayerMap& layerMap,
     return false;
   }
   crf_.reset(new LinearChainCRF(
-      numClasses_, parameter_->getBuf(PARAMETER_VALUE)->getData(), nullptr));
+      numClasses_, parameter_->getBuf(PARAMETER_VALUE)->getData()));
   return true;
 }
 

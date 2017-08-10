@@ -14,12 +14,12 @@ limitations under the License. */
 
 #include "DataProvider.h"
 
-#include "paddle/utils/Util.h"
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Logging.h"
-#include <algorithm>
 #include <unistd.h>
+#include <algorithm>
 #include "ProtoDataProvider.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 

@@ -24,10 +24,6 @@ limitations under the License. */
 #include "paddle/utils/Thread.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_bool(allow_inefficient_sparse_update,
-              false,
-              "Whether to allow inefficient sparse update");
-
 namespace paddle {
 
 const unsigned int SparseRowCpuMatrix::kUnusedId_ = -1U;
@@ -58,7 +54,7 @@ void SparseRowCpuMatrix::zeroMem() {
   clearRows();
 }
 
-void SparseRowCpuMatrix::applyL1Decay(real learningRate, real decayRate) {
+void SparseRowCpuMatrix::applyL1(real learningRate, real decayRate) {
   apply([=](real* buf, size_t len) {
     CpuVector value(0, nullptr);
     value.subVecFrom(buf, 0, len);

@@ -20,7 +20,7 @@ namespace paddle {
 /**
  * calculate sequence-to-sequence edit distance
  */
-class CTCErrorEvaluator : public Evaluator {
+class CTCErrorEvaluator : public NotGetableEvaluator {
 private:
   MatrixPtr outActivations_;
   int numTimes_, numClasses_, numSequences_, blank_;

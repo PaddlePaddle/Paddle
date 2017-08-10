@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gflags/gflags.h>
 #include "Layer.h"
-#include "paddle/utils/Stat.h"
 #include "SequenceToBatch.h"
-#include "paddle/utils/CommandLineParser.h"
+#include "paddle/utils/Stat.h"
 
-P_DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");
+DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");
 
 namespace paddle {
 
@@ -45,17 +45,18 @@ class RecurrentLayer : public Layer {
 public:
   explicit RecurrentLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
+  void forward(PassType passType) override;
 
-  void backward(const UpdateCallback& callback);
+  void backward(const UpdateCallback& callback) override;
 
-  void resetState();
+  void resetState() override;
 
-  void setState(LayerStatePtr state);
+  void setState(LayerStatePtr state) override;
 
-  LayerStatePtr getState();
+  LayerStatePtr getState() override;
 
 protected:
   /**
@@ -215,23 +216,24 @@ void RecurrentLayer::forwardSequence(int batchSize,
 void RecurrentLayer::forwardOneSequence(int start, int length) {
   if (!reversed_) {
     if (prevOutput_) {
-      frameOutput_[start].value->mul(prevOutput_, weight_->getW(), 1, 1);
+      frameOutput_[start].value->mul(*prevOutput_, *weight_->getW(), 1, 1);
     }
-    activation_->forward(frameOutput_[start]);
+    activation_->forward(frameOutput_[start]).check();
+
     for (int i = 1; i < length; ++i) {
       frameOutput_[start + i].value->mul(
-          frameOutput_[start + i - 1].value, weight_->getW(), 1, 1);
-      activation_->forward(frameOutput_[start + i]);
+          *frameOutput_[start + i - 1].value, *weight_->getW(), 1, 1);
+      activation_->forward(frameOutput_[start + i]).check();
     }
     if (prevOutput_) {
       prevOutput_->assign(*frameOutput_[start + length - 1].value);
     }
   } else {
-    activation_->forward(frameOutput_[start + length - 1]);
+    activation_->forward(frameOutput_[start + length - 1]).check();
     for (int i = length - 2; i >= 0; --i) {
       frameOutput_[start + i].value->mul(
-          frameOutput_[start + i + 1].value, weight_->getW(), 1, 1);
-      activation_->forward(frameOutput_[start + i]);
+          *frameOutput_[start + i + 1].value, *weight_->getW(), 1, 1);
+      activation_->forward(frameOutput_[start + i]).check();
     }
   }
 }
@@ -280,29 +282,29 @@ void RecurrentLayer::backwardOneSequence(int start, int length) {
   MatrixPtr weightT = weight_->getW()->getTranspose();
   if (!reversed_) {
     for (int i = length - 1; i > 0; --i) {
-      activation_->backward(frameOutput_[start + i]);
+      activation_->backward(frameOutput_[start + i]).check();
       frameOutput_[start + i - 1].grad->mul(
-          frameOutput_[start + i].grad, weightT, 1, 1);
+          *frameOutput_[start + i].grad, *weightT, 1, 1);
     }
-    activation_->backward(frameOutput_[start]);
+    activation_->backward(frameOutput_[start]).check();
     if (weight_->getWGrad()) {
       weight_->getWGrad()->mul(
-          output_.value->subMatrix(start, length - 1)->getTranspose(),
-          output_.grad->subMatrix(start + 1, length - 1),
+          *output_.value->subMatrix(start, length - 1)->getTranspose(),
+          *output_.grad->subMatrix(start + 1, length - 1),
           1,
           1);
     }
   } else {
     for (int i = 0; i < length - 1; ++i) {
-      activation_->backward(frameOutput_[start + i]);
+      activation_->backward(frameOutput_[start + i]).check();
       frameOutput_[start + i + 1].grad->mul(
-          frameOutput_[start + i].grad, weightT, 1, 1);
+          *frameOutput_[start + i].grad, *weightT, 1, 1);
     }
-    activation_->backward(frameOutput_[start + length - 1]);
+    activation_->backward(frameOutput_[start + length - 1]).check();
     if (weight_->getWGrad()) {
       weight_->getWGrad()->mul(
-          output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
-          output_.grad->subMatrix(start, length - 1),
+          *output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
+          *output_.grad->subMatrix(start, length - 1),
           1,
           1);
     }
@@ -329,11 +331,11 @@ void RecurrentLayer::forwardBatch(int batchSize,
       if (n != 0) {
         MatrixPtr batch1 =
             batchValue_->getBatchValue(n - 1, batch2->getHeight());
-        batch2->mul(batch1, weight_->getW(), 1, 1);
+        batch2->mul(*batch1, *weight_->getW(), 1, 1);
       }
       Argument arg;
       arg.value = batch2;
-      activation_->forward(arg);
+      activation_->forward(arg).check();
     }
   }
   batchValue_->copyBackSeq(*output_.value);
@@ -363,18 +365,18 @@ void RecurrentLayer::backwardBatch(int batchSize,
       Argument arg;
       arg.value = batch1;
       arg.grad = batch2;
-      activation_->backward(arg);
+      activation_->backward(arg).check();
 
       if (n != 0) {
         batch1 = batchGrad_->getBatchValue(n - 1, batch2->getHeight());
-        batch1->mul(batch2, weightT, 1, 1);
+        batch1->mul(*batch2, *weightT, 1, 1);
       }
 
       if (backwardByBatch && weight_->getWGrad()) {
         if (n != 0) {
           /* backward weight */
           batch1 = batchValue_->getBatchValue(n - 1, batch2->getHeight());
-          weight_->getWGrad()->mul(batch1->getTranspose(), batch2, 1, 1);
+          weight_->getWGrad()->mul(*batch1->getTranspose(), *batch2, 1, 1);
         }
       }
     }
@@ -389,14 +391,14 @@ void RecurrentLayer::backwardBatch(int batchSize,
       int len = starts[seq + 1] - starts[seq];
       if (!reversed_) {
         weight_->getWGrad()->mul(
-            output_.value->subMatrix(starts[seq], len - 1)->getTranspose(),
-            output_.grad->subMatrix(starts[seq] + 1, len - 1),
+            *output_.value->subMatrix(starts[seq], len - 1)->getTranspose(),
+            *output_.grad->subMatrix(starts[seq] + 1, len - 1),
             1,
             1);
       } else {
         weight_->getWGrad()->mul(
-            output_.value->subMatrix(starts[seq] + 1, len - 1)->getTranspose(),
-            output_.grad->subMatrix(starts[seq], len - 1),
+            *output_.value->subMatrix(starts[seq] + 1, len - 1)->getTranspose(),
+            *output_.grad->subMatrix(starts[seq], len - 1),
             1,
             1);
       }

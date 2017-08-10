@@ -15,32 +15,25 @@ limitations under the License. */
 #include <unistd.h>
 
 #include "ParameterClient2.h"
-#include "paddle/utils/StringUtil.h"
+#include "paddle/math/SparseRowMatrix.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/SparseRowMatrix.h"
+#include "paddle/utils/StringUtil.h"
 
-P_DEFINE_string(pservers, "127.0.0.1", "Comma separated addresses of pservers");
-P_DEFINE_int32(parallel_thread_num, 1, "Thread number for parameter send");
+DEFINE_string(pservers, "127.0.0.1", "Comma separated addresses of pservers");
+DEFINE_int32(parallel_thread_num, 1, "Thread number for parameter send");
 
 namespace paddle {
 
-template <class T>
-void copyToRepeatedField(google::protobuf::RepeatedField<T>* dest,
-                         const T* src,
+template <typename T1, typename T2>
+void copyToRepeatedField(google::protobuf::RepeatedField<T1>* dest,
+                         const T2* src,
                          size_t size) {
   dest->Clear();
   dest->Reserve(size);
-
   for (size_t i = 0; i < size; ++i) {
     dest->AddAlreadyReserved(src[i]);
   }
-}
-
-template <class T>
-void copyToRepeatedField(const std::vector<T>& src,
-                         google::protobuf::RepeatedField<T>* dest) {
-  copyToRepeatedField(dest, &src[0], src.size());
 }
 
 ParameterClient2::ParameterClient2(bool separate, int port, int numPorts)
@@ -250,7 +243,8 @@ void ParameterClient2::prepareSendData(
     CHECK_GE(blockSize, 1LU) << "blockSize should > 0 " << blockSize;
     const auto paraSize = parameter->getSize();
     if (sparseUpdate) {
-      const auto prefetchMat = parameter->getPrefetchMatrix();
+      auto prefetchMat = std::dynamic_pointer_cast<SparsePrefetchRowCpuMatrix>(
+          parameter->getMat(PARAMETER_VALUE));
       CHECK(prefetchMat != nullptr) << "prefetchMat is nullptr";
       auto sendMat = dynamic_cast<SparseRowCpuMatrix*>(
           parameter->getMat(parameterType).get());
@@ -618,6 +612,8 @@ void PreparedOperations::addOperationHelper(Operation* op, CpuMatrixPtr mat) {
       pmat.mutable_values(), mat->getData(), pmat.num_cols() * pmat.num_rows());
 }
 
+static inline real addTwo(real a, double b) { return a + b; }
+
 void ParameterClient2::doOperation(PreparedOperations& ops,
                                    bool waitForGradient,
                                    bool sendBackGradient,
@@ -682,8 +678,11 @@ void ParameterClient2::doOperation(PreparedOperations& ops,
         CpuVectorPtr rvec = resultVectors[i];
         if (!rvec) continue;
         CHECK_EQ(rvec->getSize(), (size_t)vec.dim());
-        CpuVector avec(rvec->getSize(), const_cast<real*>(vec.values().data()));
-        rvec->add(avec);
+        std::transform(rvec->getData(),
+                       rvec->getData() + rvec->getSize(),
+                       vec.values().data(),
+                       rvec->getData(),
+                       addTwo);
       }
 
       CHECK_EQ(resultMatrices.size(), (size_t)result.matrices_size());
@@ -693,11 +692,12 @@ void ParameterClient2::doOperation(PreparedOperations& ops,
         if (!rmat) continue;
         CHECK_EQ(rmat->getHeight(), (size_t)mat.num_rows());
         CHECK_EQ(rmat->getWidth(), (size_t)mat.num_cols());
-        CpuMatrixPtr amat =
-            std::make_shared<CpuMatrix>(const_cast<real*>(mat.values().data()),
-                                        rmat->getHeight(),
-                                        rmat->getWidth());
-        rmat->add(*amat);
+
+        std::transform(rmat->getData(),
+                       rmat->getData() + rmat->getElementCnt(),
+                       mat.values().data(),
+                       rmat->getData(),
+                       addTwo);
       }
     }
   }

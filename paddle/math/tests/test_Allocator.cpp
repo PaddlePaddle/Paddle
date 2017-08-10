@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/utils/Util.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/Util.h"
 #define private public
-#include "paddle/math/MemoryHandle.h"
 #include "paddle/math/Allocator.h"
+#include "paddle/math/MemoryHandle.h"
 #include "paddle/math/PoolAllocator.h"
 
 using namespace paddle;  // NOLINT
@@ -120,9 +120,3 @@ TEST(MemoryHandle, Gpu) {
   }
 }
 #endif
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  return RUN_ALL_TESTS();
-}

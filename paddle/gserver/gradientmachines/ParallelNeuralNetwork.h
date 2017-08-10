@@ -37,14 +37,13 @@ public:
                         NeuralNetwork *rootNetwork = nullptr)
       : NeuralNetwork(subModelName, rootNetwork) {}
 
-  virtual void init(
-      const ModelConfig &config,
-      ParamInitCallback callback = nullptr,
-      const std::vector<ParameterType>
-          &parameterTypes = std::vector<ParameterType>{PARAMETER_VALUE,
-                                                       PARAMETER_GRADIENT,
-                                                       PARAMETER_MOMENTUM},
-      bool useGpu = FLAGS_use_gpu);
+  virtual void init(const ModelConfig &config,
+                    ParamInitCallback callback = nullptr,
+                    const std::vector<ParameterType> &parameterTypes =
+                        std::vector<ParameterType>{PARAMETER_VALUE,
+                                                   PARAMETER_GRADIENT,
+                                                   PARAMETER_MOMENTUM},
+                    bool useGpu = FLAGS_use_gpu);
 
   virtual void forward(const std::vector<Argument> &inArgs,
                        std::vector<Argument> *outArgs,
@@ -57,7 +56,7 @@ public:
                        PassType passType,
                        const UpdateCallback &callback = NULL);
 
-  virtual void start(const TrainerConfig &config, DataProviderPtr dataProvider);
+  virtual void start();
 
   void addComputeThread(int deviceId);
 

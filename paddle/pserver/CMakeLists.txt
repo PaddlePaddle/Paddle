@@ -17,20 +17,22 @@ add_library(paddle_network STATIC
 add_style_check_target(paddle_network ${NETWORK_SOURCES})
 add_style_check_target(paddle_network ${NETWORK_HEADERS})
 
-add_dependencies(paddle_network gen_proto_cpp)
+add_dependencies(paddle_network paddle_proto ${external_project_dependencies})
 
 ################### paddle_pserver ######################
 set(PSERVER_SOURCES
     BaseClient.cpp
     ParameterClient2.cpp
     ParameterServer2.cpp
-    SparseParameterDistribution.cpp)
+    SparseParameterDistribution.cpp
+    ParameterServerController.cpp)
 
 set(PSERVER_HEADERS
     BaseClient.h
     ParameterClient2.h
     ParameterServer2.h
-    SparseParameterDistribution.h)
+    SparseParameterDistribution.h
+    ParameterServerController.h)
 
 add_library(paddle_pserver STATIC
     ${PSERVER_SOURCES})
@@ -38,7 +40,7 @@ add_library(paddle_pserver STATIC
 add_style_check_target(paddle_pserver ${PSERVER_SOURCES})
 add_style_check_target(paddle_pserver ${PSERVER_HEADERS})
 
-add_dependencies(paddle_pserver gen_proto_cpp)
+add_dependencies(paddle_pserver paddle_proto ${external_project_dependencies})
 
 set(PSERVER_MAIN_SOURCES
     ParameterServer2Main.cpp)

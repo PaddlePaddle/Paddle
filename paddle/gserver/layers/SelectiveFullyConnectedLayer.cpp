@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "SelectiveFullyConnectedLayer.h"
+#include <algorithm>
+#include <vector>
+#include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/SparseMatrix.h"
-#include <vector>
-#include <algorithm>
 
 namespace paddle {
 
@@ -155,20 +155,20 @@ void SelectiveFullyConnectedLayer::forward(PassType passType) {
       // manully compute the multiplication of
       // the input vector and the selected rows.
       REGISTER_TIMER("selective.plain");
-      interOutput_->mul(input, weight->getTranspose(), 1, scaleT);
+      interOutput_->mul(*input, *weight->getTranspose(), 1, scaleT);
     } else {
       // if the indecies is not sparse enough,
       // use full mul instead
       REGISTER_TIMER("selective.mul");
       if (fullOutput_) {
-        interOutput_->mul(input, weight->getTranspose(), 1, scaleT);
+        interOutput_->mul(*input, *weight->getTranspose(), 1, scaleT);
       } else {
         Matrix::resizeOrCreate(mmat_,
                                hsize,
                                wsize,
                                /*trans=*/false,
                                /*useGpu=*/useGpu_);
-        mmat_->mul(input, weight->getTranspose());
+        mmat_->mul(*input, *weight->getTranspose());
         interOutput_->add3(mmat_);
       }
     }
@@ -192,7 +192,8 @@ void SelectiveFullyConnectedLayer::forward(PassType passType) {
                                nnz,
                                /*trans=*/false,
                                /*useGpu=*/useGpu_);
-    activation_->forward(arg);
+    //! TODO(yuyang18): Why we cannot invoke forwardActivation here?
+    activation_->forward(arg).check();
   } else /* train and test in train, not generating */ {
     // during training, this layer output value is *Matrix*, which is input of
     // eg. multi-class-cross-entropy
@@ -242,14 +243,14 @@ void SelectiveFullyConnectedLayer::backward(const UpdateCallback& callback) {
     MatrixPtr preGrad = getInputGrad(i);
     if (preGrad) {
       REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-      preGrad->mul(interOutGrad_, weights_[i]->getW(), 1, 1);
+      preGrad->mul(*interOutGrad_, *weights_[i]->getW(), 1, 1);
     }
 
     MatrixPtr wGrad = weights_[i]->getWGrad();
     if (wGrad) {
       REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
       MatrixPtr input = getInputValue(i);
-      wGrad->mul(interOutGrad_->getTranspose(), input, 1, 1);
+      wGrad->mul(*interOutGrad_->getTranspose(), *input, 1, 1);
     }
 
     {

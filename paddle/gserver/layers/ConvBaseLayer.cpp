@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "ConvBaseLayer.h"
 #include "paddle/math/MathUtils.h"
+#include "paddle/utils/Logging.h"
 namespace paddle {
 
 bool ConvBaseLayer::init(const LayerMap& layerMap,
@@ -118,11 +118,7 @@ size_t ConvBaseLayer::calOutputSize() {
     layerSize = outH[0] * outW[0] * size_t(numFilters_);
   };
 
-  if (isDeconv_) {
-    setLayerSize(outputH_, outputW_, imgSizeH_, imgSizeW_);
-  } else {
-    setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
-  }
+  setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
 
   return layerSize;
 }

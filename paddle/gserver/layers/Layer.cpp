@@ -14,15 +14,16 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/utils/Error.h"
+#include "paddle/utils/Logging.h"
 
 #include "AddtoLayer.h"
+#include "CRFLayer.h"
 #include "CosSimLayer.h"
 #include "CostLayer.h"
-#include "ExpandConvLayer.h"
-#include "CRFLayer.h"
 #include "DataLayer.h"
+#include "ExpandConvLayer.h"
 #include "FullyConnectedLayer.h"
 #include "HierarchicalSigmoidLayer.h"
 #include "MaxLayer.h"
@@ -33,7 +34,7 @@ limitations under the License. */
 #include "TransLayer.h"
 #include "ValidationLayer.h"
 
-P_DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
+DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
 namespace paddle {
 
@@ -190,6 +191,11 @@ void Layer::addOutputArgument(int deviceId) {
 void Layer::copyOutputToOtherDevice() {
   for (size_t i = 0; i != outputOtherDevice_.size(); i++) {
     SetDevice device(outputOtherDevice_[i].deviceId);
+    // If outputOtherDevice_[i].value is a CpuMatrix,
+    // the copyFrom is a synchronous interface.
+    // If outputOtherDevice_[i].value is a GpuMatrix, since subsequent
+    // calculations are all on HPPL_STREAM_DEFAULT,
+    // copyFrom can be an asynchronous interface.
     outputOtherDevice_[i].value->copyFrom(*getOutputValue(),
                                           HPPL_STREAM_DEFAULT);
     outputOtherDevice_[i].sequenceStartPositions =
@@ -334,7 +340,8 @@ void Layer::showOutputStats() {
 
 void Layer::forwardActivation() {
   /* activation */
-  activation_->forward(output_);
+  auto status = activation_->forward(output_);
+  status.check();
 
   /* dropout */
   if (config_.drop_rate() > 0) {
@@ -352,12 +359,11 @@ void Layer::backwardActivation() {
   /* Do error clipping */
   if (config_.error_clipping_threshold() > 0.0f) {
     if (FLAGS_log_error_clipping) {
-      CpuVector outGradVec(0, nullptr);
-      outGradVec.subVecFrom(
-          output_.grad->getData(), 0, output_.grad->getElementCnt());
-      real maxAbsGrad = outGradVec.getAbsMax();
+      VectorPtr outGradVec = Vector::create(
+          output_.grad->getData(), output_.grad->getElementCnt(), useGpu_);
+      real maxAbsGrad = outGradVec->getAbsMax();
       if (maxAbsGrad > config_.error_clipping_threshold()) {
-        real avgAbsGrad = outGradVec.getAbsSum() / outGradVec.getSize();
+        real avgAbsGrad = outGradVec->getAbsSum() / outGradVec->getSize();
         LOG(INFO) << " layer=" << config_.name() << " need clipping,"
                   << " max error=" << maxAbsGrad << " avg error=" << avgAbsGrad;
       }
@@ -372,14 +378,14 @@ void Layer::backwardActivation() {
     oGrad->dotMul(*oGrad, *dropOutMask_);
   }
 
-  activation_->backward(output_);
+  auto status = activation_->backward(output_);
+  status.check();
 }
 
 void Layer::forwardDropOut() {
   auto& outV = getOutputValue();
 
-  if (passType_ == PASS_TRAIN || passType_ == PASS_METRIC_TRAIN ||
-      passType_ == PASS_METRIC_TRAIN_WITH_NOERROR) {
+  if (passType_ == PASS_TRAIN) {
     // new dropOutMask_ if dropOutMask_ is null ptr
     Matrix::resizeOrCreate(dropOutMask_,
                            outV->getHeight(),

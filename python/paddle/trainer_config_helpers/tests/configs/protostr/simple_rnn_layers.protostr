@@ -138,64 +138,70 @@ layers {
   name: "__last_seq_0__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__recurrent_layer_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__first_seq_0__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__recurrent_layer_1__"
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__last_seq_1__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__lstmemory_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__first_seq_1__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__lstmemory_1__"
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__last_seq_2__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__gru_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__first_seq_2__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__gru_1__"
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 parameters {
   name: "___fc_layer_0__.w0"

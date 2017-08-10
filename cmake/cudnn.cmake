@@ -1,3 +1,7 @@
+if(NOT WITH_GPU)
+    return()
+endif()
+
 set(CUDNN_ROOT "" CACHE PATH "CUDNN ROOT")
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
@@ -7,10 +11,16 @@ find_path(CUDNN_INCLUDE_DIR cudnn.h
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
 
+set(TARGET_ARCH "x86_64")
+if(NOT ${CMAKE_SYSTEM_PROCESSOR})
+    set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
 list(APPEND CUDNN_CHECK_LIBRARY_DIRS
     ${CUDNN_ROOT}
     ${CUDNN_ROOT}/lib64
     ${CUDNN_ROOT}/lib
+    ${CUDNN_ROOT}/lib/${TARGET_ARCH}-linux-gnu
     $ENV{CUDNN_ROOT}
     $ENV{CUDNN_ROOT}/lib64
     $ENV{CUDNN_ROOT}/lib

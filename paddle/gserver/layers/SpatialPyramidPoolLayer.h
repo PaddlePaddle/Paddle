@@ -43,9 +43,8 @@ protected:
 public:
   explicit SpatialPyramidPoolLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~SpatialPyramidPoolLayer() {}
-
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   ProjectionConfig getConfig(size_t sizeX_,
                              size_t sizeY_,
@@ -54,7 +53,7 @@ public:
                              std::string& poolType_);
   size_t getSize();
 
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 }  // namespace paddle

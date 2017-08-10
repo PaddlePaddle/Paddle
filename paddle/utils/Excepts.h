@@ -15,6 +15,8 @@ limitations under the License. */
 #ifndef EXCEPTS_H_
 #define EXCEPTS_H_
 
+#include <fenv.h>
+
 #if defined(__APPLE__) || defined(__OSX__)
 
 int fegetexcept(void);

@@ -147,7 +147,7 @@ for classification. A description of VGG network can be found here [http://www.r
 # small_vgg is predined in trainer_config_helpers.network
 predict = small_vgg(input_image=img, num_channels=3)
 ```
-After writing the config, we can train the model by running the script train.sh. Notice that the following script assumes the you run the script in the `./demo/image_classification` folder. If you run the script in a different folder, you need to change the paths of the scripts and the configuration files accordingly.
+After writing the config, we can train the model by running the script train.sh.
 
 ```bash
 config=vgg_16_cifar.py

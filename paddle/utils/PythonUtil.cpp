@@ -13,15 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "PythonUtil.h"
-#include <sstream>
 #include <signal.h>
+#include <sstream>
 
 namespace paddle {
 
 #ifdef PADDLE_NO_PYTHON
 
-P_DEFINE_string(python_path, "", "python path");
-P_DEFINE_string(python_bin, "python2.7", "python bin");
+DEFINE_string(python_path, "", "python path");
+DEFINE_string(python_bin, "python2.7", "python bin");
 
 constexpr int kExecuteCMDBufLength = 204800;
 

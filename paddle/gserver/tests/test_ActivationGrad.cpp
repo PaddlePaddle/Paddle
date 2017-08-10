@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(use_gpu);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 void testActivation(const string& act) {
   LOG(INFO) << "test activation: " << act;
@@ -54,6 +54,39 @@ TEST(Activation, activation) {
   for (auto type : types) {
     if (excluded.count(type)) continue;
     testActivation(type);
+  }
+}
+
+void testSequenceSoftmaxAct(bool hasSubseq) {
+  LOG(INFO) << "test activation: sequence softmax";
+
+  const size_t size = 1;
+  TestConfig config;
+  config.biasSize = 0;
+  config.layerConfig.set_type("addto");
+  config.layerConfig.set_size(size);
+  config.layerConfig.set_active_type("sequence_softmax");
+  config.inputDefs.push_back(
+      {hasSubseq ? INPUT_HASSUB_SEQUENCE_DATA : INPUT_SEQUENCE_DATA,
+       "layer_0",
+       1,
+       0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "sequence_softmax",
+                  100,
+                  /* trans= */ false,
+                  useGpu,
+                  /* useWeight */ true);
+  }
+}
+
+TEST(SequenceSoftmaxActivation, activation) {
+  for (auto hasSubseq : {false, true}) {
+    LOG(INFO) << "hasSubseq = " << hasSubseq;
+    testSequenceSoftmaxAct(hasSubseq);
   }
 }
 

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/math/Vector.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 
 namespace paddle {
 

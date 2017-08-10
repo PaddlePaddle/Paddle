@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "TransLayer.h"
+#include "paddle/utils/Logging.h"
 namespace paddle {
 
 REGISTER_LAYER(trans, TransLayer);
@@ -56,7 +56,14 @@ void TransLayer::backward(const UpdateCallback& callback) {
     return;
   }
   MatrixPtr preGrad = getInputGrad(0);
-  outputGrad->transpose(preGrad, false);
+  if (preGrad) {
+    MatrixPtr transGrad = Matrix::create(preGrad->getHeight(),
+                                         preGrad->getWidth(),
+                                         /* trans= */ false,
+                                         preGrad->useGpu());
+    outputGrad->transpose(transGrad, false);
+    preGrad->add(*transGrad);
+  }
 }
 
 }  // namespace paddle

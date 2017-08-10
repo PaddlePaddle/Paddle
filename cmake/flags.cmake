@@ -2,17 +2,17 @@
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
-        "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-        FORCE)
-endif()
+include(CheckTypeSize)
 
 function(CheckCompilerCXX11Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)
             message(FATAL_ERROR "Unsupported GCC version. GCC >= 4.8 required.")
+        endif()
+        # TODO(qijun) gcc 4.9 or later versions raise SEGV due to the optimization problem.
+        # Use Debug mode instead for now.
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9) 
+            set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
         endif()
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
@@ -31,7 +31,7 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
-LIST(APPEND CMAKE_CXX_FLAGS -std=c++11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # safe_set_flag
 #
@@ -89,6 +89,17 @@ if(NOT UINT64_MAX_EXISTS)
   endif()
 endif()
 
+SET(CMAKE_EXTRA_INCLUDE_FILES "pthread.h")
+CHECK_TYPE_SIZE(pthread_spinlock_t SPINLOCK_FOUND)
+CHECK_TYPE_SIZE(pthread_barrier_t BARRIER_FOUND)
+if(SPINLOCK_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_SPINLOCK)
+endif(SPINLOCK_FOUND)
+if(BARRIER_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_BARRIER)
+endif(BARRIER_FOUND)
+SET(CMAKE_EXTRA_INCLUDE_FILES "")
+
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
 # Do not care if this flag is support for gcc.
 set(COMMON_FLAGS
@@ -102,7 +113,10 @@ set(COMMON_FLAGS
     -Wno-unused-parameter
     -Wno-unused-function
     -Wno-error=literal-suffix
-    -Wno-error=unused-local-typedefs)
+    -Wno-error=sign-compare
+    -Wno-error=unused-local-typedefs
+    -Wno-error=parentheses-equality # Warnings in pybind11
+)
 
 set(GPU_COMMON_FLAGS
     -fPIC
@@ -111,9 +125,11 @@ set(GPU_COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
+    -Wno-error=sign-compare
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
+    -Wno-error=array-bounds # Warnings in Eigen::array
 )
 
 if (APPLE)
@@ -142,7 +158,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
+LIST(APPEND CUDA_NVCC_FLAGS -std=c++11 --default-stream per-thread)
 LIST(APPEND CUDA_NVCC_FLAGS --use_fast_math)
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
@@ -179,6 +195,7 @@ endif()
 # Modern gpu architectures: Pascal
 if (CUDA_VERSION VERSION_GREATER "8.0" OR CUDA_VERSION VERSION_EQUAL "8.0")
       list(APPEND __arch_flags " -gencode arch=compute_60,code=sm_60")
+      list(APPEND CUDA_NVCC_FLAGS --expt-relaxed-constexpr)
 endif()
 
 # Custom gpu architecture
@@ -189,3 +206,4 @@ if(CUDA_ARCH)
 endif()
 
 set(CUDA_NVCC_FLAGS ${__arch_flags} ${CUDA_NVCC_FLAGS})
+

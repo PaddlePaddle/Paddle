@@ -30,10 +30,10 @@
 #define picojson_h
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cstddef>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -1059,14 +1059,14 @@ inline bool operator==(const value& x, const value& y) {
 }
 
 inline bool operator!=(const value& x, const value& y) { return !(x == y); }
-}
+}  // namespace picojson
 
 namespace std {
 template <>
 inline void swap(picojson::value& x, picojson::value& y) {
   x.swap(y);
 }
-}
+}  // namespace std
 
 inline std::istream& operator>>(std::istream& is, picojson::value& x) {
   picojson::set_last_error(std::string());

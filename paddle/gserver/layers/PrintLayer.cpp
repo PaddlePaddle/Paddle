@@ -19,38 +19,40 @@ namespace paddle {
 class PrintLayer : public Layer {
 public:
   explicit PrintLayer(const LayerConfig& config) : Layer(config) {}
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback) {}
-};
 
-void PrintLayer::forward(PassType passType) {
-  Layer::forward(passType);
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    const auto& argu = getInput(i);
-    const std::string& name = inputLayers_[i]->getName();
-    if (argu.value) {
-      std::ostringstream os;
-      argu.value->print(os);
-      LOG(INFO) << "layer=" << name << " value matrix:\n" << os.str();
+  void forward(PassType passType) override {
+    Layer::forward(passType);
+    std::vector<std::string> vals;
+    for (size_t i = 0; i != inputLayers_.size(); ++i) {
+      std::ostringstream s;
+      getInput(i).printValueString(s, "");
+      vals.push_back(s.str());
     }
-    if (argu.ids) {
-      std::ostringstream os;
-      argu.ids->print(os, argu.ids->getSize());
-      LOG(INFO) << "layer=" << name << " ids vector:\n" << os.str();
+    size_t pos = 0;
+    size_t i = 0;
+    std::ostringstream s;
+    const std::string& format = config_.user_arg();
+    while (true) {
+      size_t pos1 = format.find("%s", pos);
+      if (pos1 == std::string::npos) break;
+      if (i >= vals.size()) {
+        break;
+      }
+      s << format.substr(pos, pos1 - pos) << vals[i];
+      pos = pos1 + 2;
+      ++i;
     }
-    if (auto startPos = argu.sequenceStartPositions) {
-      std::ostringstream os;
-      startPos->getVector(false)->print(os, startPos->getSize());
-      LOG(INFO) << "layer=" << name << " sequence pos vector:\n" << os.str();
+    if (i != inputLayers_.size()) {
+      LOG(ERROR) << "Number of value in the format (" << format
+                 << ") is not same as the number of inputs ("
+                 << inputLayers_.size() << ") at " << getName();
     }
-    if (auto subStartPos = argu.subSequenceStartPositions) {
-      std::ostringstream os;
-      subStartPos->getVector(false)->print(os, subStartPos->getSize());
-      LOG(INFO) << "layer=" << name << " sub-sequence pos vector:\n"
-                << os.str();
-    }
+    s << format.substr(pos);
+    LOG(INFO) << s.str();
   }
-}
+
+  void backward(const UpdateCallback& callback) override {}
+};
 
 REGISTER_LAYER(print, PrintLayer);
 

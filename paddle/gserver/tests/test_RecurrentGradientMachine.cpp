@@ -14,13 +14,14 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/parameter/ParameterUpdateFunctions.h>
 #include <paddle/trainer/Trainer.h>
 #include <paddle/trainer/TrainerInternal.h>
 #include <paddle/utils/PythonUtil.h>
 #include <paddle/utils/Util.h>
 #include <paddle/utils/Version.h>
 
-P_DECLARE_int32(seed);
+DECLARE_int32(seed);
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -28,7 +29,7 @@ class TrainerForTest : public paddle::Trainer {
 public:
   void startTrain() {
     GradientMachine& gm = *this->trainerInternal_.getGradientMachine();
-    gm.start(this->getConfig(), dataProvider_);
+    gm.start();
   }
 
   void finishTrain() {
@@ -154,14 +155,24 @@ TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
   }
 }
 
+TEST(RecurrentGradientMachine, rnn_mixed_input) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn_mixed_inputs.py",
+         "gserver/tests/sequence_rnn_matched_inputs.py",
+         1e-6,
+         useGpu);
+  }
+}
+
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+
   if (paddle::version::isWithPyDataProvider()) {
     if (!paddle::version::isWithGpu()) {
       FLAGS_use_gpu = false;
     }
     initMain(argc, argv);
     initPython(argc, argv);
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
   } else {
     return 0;

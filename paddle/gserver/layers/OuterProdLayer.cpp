@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -38,10 +38,11 @@ public:
 
   ~OuterProdLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(out_prod, OuterProdLayer);
@@ -96,7 +97,7 @@ void OuterProdLayer::forward(PassType passType) {
       tmpRow0->setData(inV0->getData() + i * dim0);
       tmpRow1->setData(inV1->getData() + i * dim1);
 
-      tmpMtx0->mul(tmpRow0->getTranspose(), tmpRow1);
+      tmpMtx0->mul(*tmpRow0->getTranspose(), *tmpRow1);
     }
   }
 }
@@ -121,7 +122,7 @@ void OuterProdLayer::backward(const UpdateCallback& callback) {
         tmpRow0->setData(inG0->getData() + i * dim0);
         tmpRow1->setData(inV1->getData() + i * dim1);
 
-        tmpRow0->mul(tmpRow1, tmpMtx0->getTranspose(), 1, 1);
+        tmpRow0->mul(*tmpRow1, *tmpMtx0->getTranspose(), 1, 1);
       }
     }
 
@@ -131,7 +132,7 @@ void OuterProdLayer::backward(const UpdateCallback& callback) {
         tmpRow0->setData(inV0->getData() + i * dim0);
         tmpRow1->setData(inG1->getData() + i * dim1);
 
-        tmpRow1->mul(tmpRow0, tmpMtx0, 1, 1);
+        tmpRow1->mul(*tmpRow0, *tmpMtx0, 1, 1);
       }
     }
   }

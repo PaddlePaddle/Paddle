@@ -33,8 +33,8 @@ TEST(Matrix, CopyCpuMatrixToSparseMatrix) {
       ret2(new CpuMatrix(HEIGHT, WIDTH_TEST));
   ret1->zeroMem();
   ret2->zeroMem();
-  ret1->mul(testMatrix, mulCpuMatrix, 1.0, 1.0);
-  ret2->mul(testCpuMatrix, mulCpuMatrix, 1.0, 1.0);
+  ret1->mul(*testMatrix, *mulCpuMatrix, 1.0, 1.0);
+  ret2->mul(*testCpuMatrix, *mulCpuMatrix, 1.0, 1.0);
   checkMatrixEqual(ret1, ret2);
 }
 
@@ -147,9 +147,9 @@ void test_sparse_matrix_mul(MatrixPara paraA,
   hl_stream_synchronize(stream);
 
   /*matrix mul*/
-  cpuMatrixC->mul(cpuMatrixA, cpuMatrixB, 1.0, 1.0);
-  gpuMatrixC->mul(gpuMatrixA, gpuMatrixB, 1.0, 1.0);
-  cpuDenseC->mul(cpuDenseA, cpuDenseB, 1.0, 1.0);
+  cpuMatrixC->mul(*cpuMatrixA, *cpuMatrixB, 1.0, 1.0);
+  gpuMatrixC->mul(*gpuMatrixA, *gpuMatrixB, 1.0, 1.0);
+  cpuDenseC->mul(*cpuDenseA, *cpuDenseB, 1.0, 1.0);
 
   gpuMatrixC_d2h->copyFrom(*gpuMatrixC, stream);
   hl_stream_synchronize(stream);
@@ -224,8 +224,8 @@ TEST(Matrix, CopySparseMatrixToGpuSparseMatrix) {
   MatrixPtr ret2(new GpuMatrix(HEIGHT, WIDTH_TEST));
   ret1->zeroMem();
   ret2->zeroMem();
-  ret1->mul(testMatrix, mulCpuMatrix, 1.0, 1.0);
-  ret2->mul(testGpuMatrix, mulGpuMatrix, 1.0, 1.0);
+  ret1->mul(*testMatrix, *mulCpuMatrix, 1.0, 1.0);
+  ret2->mul(*testGpuMatrix, *mulGpuMatrix, 1.0, 1.0);
   checkMatrixEqual(ret1, ret2);
 }
 
@@ -248,11 +248,13 @@ TEST(Matrix, SparseMatrixTranspose) {
             /*dense matrix transpose*/
             CpuMatrixPtr matC(new CpuMatrix(height, width));
             matC->copyFrom(*matA);
-            CpuMatrixPtr matD(new CpuMatrix(width, height));
+            MatrixPtr matD(new CpuMatrix(width, height));
             matC->transpose(matD, false);
+
             /*check result*/
             checkSMatrixEqual2Dense(
-                std::dynamic_pointer_cast<CpuSparseMatrix>(matB), matD);
+                std::dynamic_pointer_cast<CpuSparseMatrix>(matB),
+                std::dynamic_pointer_cast<CpuMatrix>(matD));
           }
         }
       }
@@ -560,10 +562,4 @@ TEST(Matrix, SparseMatrixCSCFormatTrimFrom) {
   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   checkSMatrixEqual2(matA, matD);
 #endif
-}
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

@@ -12,19 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
-
 #include <gtest/gtest.h>
-
-#include "paddle/utils/Stat.h"
+#include <memory>
+#include "ParameterService.pb.h"
 #include "paddle/math/Vector.h"
 #include "paddle/pserver/ProtoServer.h"
-#include "ParameterService.pb.h"
+#include "paddle/utils/Stat.h"
+#include "paddle/utils/Util.h"
 
-P_DEFINE_string(server_addr, "127.0.0.1", "Server address");
-P_DEFINE_int64(dim, 50000000, "Data size");
-P_DEFINE_bool(test_proto_server, true, "whether to test ProtoServer");
-P_DEFINE_bool(benchmark, false, "Do benchmark. Skip some tests");
+DEFINE_string(server_addr, "127.0.0.1", "Server address");
+DEFINE_int64(dim, 50000000, "Data size");
+DEFINE_bool(test_proto_server, true, "whether to test ProtoServer");
+DEFINE_bool(benchmark, false, "Do benchmark. Skip some tests");
 
 using namespace paddle;  // NOLINT
 
@@ -162,18 +161,9 @@ TEST(ProtoServer, extended) {
 int main(int argc, char** argv) {
   paddle::initMain(argc, argv);
   testing::InitGoogleTest(&argc, argv);
-
-  MyServer* server;
-  if (FLAGS_rdma_tcp == "rdma") {
-    server = new MyServer(FLAGS_port, 0);
-  } else {
-    server = new MyServer(FLAGS_port);
-  }
-
-  server->start();
+  MyServer server(FLAGS_port, FLAGS_rdma_tcp == "rdma" ? 0 : -1);
+  server.start();
   usleep(10000);
 
-  int ret = RUN_ALL_TESTS();
-
-  exit(ret);
+  return RUN_ALL_TESTS();
 }

@@ -17,10 +17,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/utils/Util.h"
 #include "paddle/gserver/dataproviders/ProtoDataProvider.h"
+#include "paddle/utils/Util.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace std;  // NOLINT
 
@@ -729,10 +729,4 @@ TEST(ProtoSequenceDataProvider, test) {
       }      // end for (int numDenseVecSlots : numSlotsArray)
     }        // end for (int numIdSlots : numSlotsArray)
   }          // end for (int numSparseNonValueVecSlots : numSlotsArray)
-}
-
-int main(int argc, char** argv) {
-  initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

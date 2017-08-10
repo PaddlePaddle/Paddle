@@ -1,17 +1,24 @@
 add_subdirectory(cuda)
+add_subdirectory(function)
 add_subdirectory(utils)
+add_subdirectory(testing)
 add_subdirectory(math)
 add_subdirectory(parameter)
 add_subdirectory(gserver)
 add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
+add_subdirectory(string)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
+if(Boost_FOUND)
+  add_subdirectory(memory)
+  add_subdirectory(platform)
+  add_subdirectory(framework)
+  add_subdirectory(operators)
+endif()
 
-if(WITH_PREDICT_SDK)
-    add_subdirectory(predict)
+if(WITH_C_API)
+    add_subdirectory(capi)
 endif()
 
 if(WITH_SWIG_PY)

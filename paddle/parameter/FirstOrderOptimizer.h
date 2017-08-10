@@ -126,7 +126,7 @@ protected:
 /*
  * AdaDelta Optimization.
  * http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf
-*/
+ */
 class AdaDeltaParameterOptimizer : public ParameterOptimizer {
 public:
   explicit AdaDeltaParameterOptimizer(const OptimizationConfig& optConfig)

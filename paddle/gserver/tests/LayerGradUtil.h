@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/layers/DataLayer.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 using namespace std;  // NOLINT
 
 namespace paddle {
@@ -31,7 +31,8 @@ enum InputType {
   INPUT_SEQUENCE_LABEL,
   INPUT_SPARSE_NON_VALUE_DATA,
   INPUT_SPARSE_FLOAT_VALUE_DATA,
-  INPUT_DENSE_DIM_DATA,  // using sequence length to init dense data
+  INPUT_DENSE_DIM_DATA,    // using sequence length to init dense data
+  INPUT_SELF_DEFINE_DATA,  // support customizing for input value
 };
 
 struct ParaSparse {
@@ -64,6 +65,11 @@ struct InputDef {
   size_t paraSize;
   ParaSparse sparse;
   bool isStatic;
+  std::vector<int> labelInitValue;
+  std::vector<int> labelSeqStartPositions;
+  std::vector<int> labelSubSeqStartPositions;
+  MatrixPtr selfDefinedData;
+
   InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn) {
     inputType = type;
     name = nameIn;
@@ -72,6 +78,39 @@ struct InputDef {
     sparse = {""};
     isStatic = false;
   }
+
+  InputDef(InputType type,
+           string nameIn,
+           MatrixPtr selfDefinedData,
+           std::vector<int> selfDefinedSeqStartPos = {},
+           std::vector<int> selfDefinedSubSeqStartPos = {})
+      : labelSeqStartPositions(selfDefinedSeqStartPos),
+        labelSubSeqStartPositions(selfDefinedSubSeqStartPos),
+        selfDefinedData(selfDefinedData) {
+    inputType = type;
+    name = nameIn;
+    dim = 0;
+    sparse = {""};
+    paraSize = 0;
+    isStatic = false;
+  }
+
+  InputDef(InputType type,
+           string nameIn,
+           size_t dimIn,
+           size_t sizeIn,
+           const std::vector<int>& labelInitValue,
+           const std::vector<int>& labelSeqStartPositions)
+      : labelInitValue(labelInitValue),
+        labelSeqStartPositions(labelSeqStartPositions) {
+    inputType = type;
+    name = nameIn;
+    dim = dimIn;
+    paraSize = sizeIn;
+    sparse = {""};
+    isStatic = false;
+  }
+
   InputDef(InputType type,
            string nameIn,
            size_t dimIn,
@@ -89,12 +128,16 @@ struct TestConfig {
   LayerConfig layerConfig;
   std::vector<InputDef> inputDefs;
   size_t biasSize;
+  real paramInitialMean;
+  real paramInitialStd;
   bool testAccumulate;
   bool testState;
   bool staticBias;
   bool testBatchState;
   TestConfig()
       : biasSize(0),
+        paramInitialMean(0.0),
+        paramInitialStd(1.0),
         testAccumulate(true),
         testState(false),
         staticBias(false),

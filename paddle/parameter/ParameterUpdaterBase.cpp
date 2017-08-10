@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <fstream>
-#include "paddle/utils/Logging.h"
 #include "ParameterUpdaterBase.h"
+#include <fstream>
 #include "hl_gpu.h"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 
-void ParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void ParameterUpdater::init(const std::vector<ParameterPtr>& parameters) {
   parameters_ = parameters;
   for (ParameterType type : getParameterTypes()) {
     for (auto& para : parameters) {

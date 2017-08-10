@@ -20,6 +20,7 @@ __all__ = []
 
 if __name__ == '__main__':
     whole_conf = False
+    binary = False
     if len(sys.argv) == 2:
         conf = parse_config(sys.argv[1], '')
     elif len(sys.argv) == 3:
@@ -28,6 +29,8 @@ if __name__ == '__main__':
         conf = parse_config(sys.argv[1], sys.argv[2])
         if sys.argv[3] == '--whole':
             whole_conf = True
+        elif sys.argv[3] == '--binary':
+            binary = True
     else:
         raise RuntimeError()
 
@@ -36,4 +39,7 @@ if __name__ == '__main__':
     if whole_conf:
         print conf
     else:
-        print conf.model_config
+        if binary:
+            sys.stdout.write(conf.model_config.SerializeToString())
+        else:
+            print conf.model_config

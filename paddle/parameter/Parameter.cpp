@@ -12,25 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "Parameter.h"
+#include <gflags/gflags.h>
 #include <fstream>
-#include "paddle/math/MathUtils.h"
 #include "AverageOptimizer.h"
 #include "FirstOrderOptimizer.h"
-#include "Parameter.h"
-#include "paddle/utils/Logging.h"
 #include "OptimizerFunctions.h"
 #include "OptimizerWithRegularizer.h"
 #include "ParameterUpdateFunctions.h"
-#include "paddle/math/SparseRowMatrix.h"
-#include "paddle/math/CpuSparseMatrix.h"
+#include "ThreadLocalBuffer.h"
 #include "hl_gpu.h"
-#include "paddle/utils/CommandLineParser.h"
+#include "paddle/math/CpuSparseMatrix.h"
+#include "paddle/math/MathUtils.h"
+#include "paddle/math/SparseRowMatrix.h"
+#include "paddle/utils/Logging.h"
 
-P_DEFINE_int32(enable_grad_share,
-               (100 * 1024 * 1024),
-               "threshold for enable gradient parameter share for batch "
-               "multi-cpu training");
-P_DEFINE_int32(
+DEFINE_int32(enable_grad_share,
+             (100 * 1024 * 1024),
+             "threshold for enable gradient parameter share for batch "
+             "multi-cpu training");
+DEFINE_int32(
     grad_share_block_num,
     64,
     "block number of gradient parameter share for batch multi-cpu training");
@@ -262,64 +263,6 @@ void Parameter::setMat(ParameterType pType, int matType) {
   }
 }
 
-SparsePrefetchRowCpuMatrix* Parameter::getPrefetchMatrix() {
-  MatrixPtr mat = mats_[PARAMETER_VALUE];
-  if (mat) {
-    return dynamic_cast<SparsePrefetchRowCpuMatrix*>(mat.get());
-  }
-
-  return nullptr;
-}
-
-void Parameter::updateWithGradient(real learningRate) {
-  sgdUpdate(learningRate * config_.learning_rate(),
-            config_.momentum(),
-            config_.decay_rate(),
-            bufs_[PARAMETER_VALUE].get(),
-            bufs_[PARAMETER_GRADIENT].get(),
-            bufs_[PARAMETER_MOMENTUM].get());
-}
-
-void Parameter::updateWithGradient(real learningRate,
-                                   MatrixPtr gradMat,
-                                   IVectorPtr t0,
-                                   int currentTime,
-                                   bool fini) {
-  SparseRowCpuMatrix* sparseMat =
-      dynamic_cast<SparseRowCpuMatrix*>(gradMat.get());
-  CHECK(sparseMat);
-  CHECK_EQ(config_.momentum(), 0.0f)
-      << "not support momentum in sparse input sgd";
-  bool useL1 = (config_.decay_rate_l1() != 0.0f);
-  sparseMat->sgdUpdate(*bufs_[PARAMETER_VALUE],
-                       *t0,
-                       learningRate * config_.learning_rate(),
-                       currentTime,
-                       useL1 ? config_.decay_rate_l1() : config_.decay_rate(),
-                       useL1,
-                       fini);
-}
-
-void Parameter::updateWithGradient(real learningRate,
-                                   VectorPtr gradVec,
-                                   bool normalUpdate) {
-  if (normalUpdate) {
-    sgdUpdate(learningRate * config_.learning_rate(),
-              config_.momentum(),
-              config_.decay_rate(),
-              bufs_[PARAMETER_VALUE].get(),
-              gradVec.get(),
-              bufs_[PARAMETER_MOMENTUM].get());
-  } else {
-    size_t size = gradVec->getSize();
-    real* mom = bufs_[PARAMETER_MOMENTUM]->getData();
-    real* grad = gradVec->getData();
-    real* value = bufs_[PARAMETER_VALUE]->getData();
-    hl_matrix_add(mom, grad, mom, 1, size, 1.0f, learningRate);
-    hl_matrix_add(value, grad, value, 1, size, 1.0f, learningRate);
-  }
-}
-
 void Parameter::incUpdate(const UpdateCallback& callback) {
   // Static parameter is fixed, and does not need to be updated
   if (isStatic()) {
@@ -375,10 +318,6 @@ bool Parameter::load(const std::string& filename) {
   std::ifstream fs(filename, std::ios_base::binary);
   if (!fs) {
     LOG(INFO) << "missing parameters [" << filename << "] while loading model.";
-    if (isStatic()) {
-      LOG(FATAL) << getName() << " is static but missing, not allowed.";
-      return false;
-    }
     if (kMissParameterFail == FLAGS_load_missing_parameter_strategy) {
       LOG(FATAL) << getName() << " missing, not allowed.";
       return false;
@@ -473,39 +412,6 @@ bool Parameter::load(std::istream& s) {
   setValueUpdated();
 
   return true;
-}
-
-ThreadLocal<std::vector<VectorPtr>> Parameter::tlsTempBufs_;
-
-VectorPtr* Parameter::getTlsTempBufs() {
-  std::vector<VectorPtr>& bufs = *tlsTempBufs_;
-  if (bufs.empty()) {
-    bufs.resize(NUM_PARAMETER_TYPES);
-    for (auto& vec : bufs) {
-      vec.reset(new CpuVector(0, nullptr));
-    }
-  }
-  return bufs.data();
-}
-
-void Parameter::exec(ExecFunc func) {
-  auto execFunc = [this, func](int tid, size_t numThreads) {
-    if (numThreads == 1) {  // single thread
-      func(this->getBufs());
-    } else {  // multi thread
-      VectorPtr* vecs = Parameter::getTlsTempBufs();
-      auto interval = calcSplitArrayInterval(
-          this->getSize(), (size_t)tid, numThreads, 8LU /*for avx*/);
-      for (size_t i = 0; i < (size_t)NUM_PARAMETER_TYPES; ++i) {
-        if (bufs_[i]) {
-          vecs[i]->subVecFrom(*bufs_[i], interval);
-        }
-      }
-      func(vecs);
-    }
-  };
-
-  getBuf(PARAMETER_VALUE)->exec(execFunc);
 }
 
 }  // namespace paddle

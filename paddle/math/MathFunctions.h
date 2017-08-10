@@ -15,20 +15,41 @@ limitations under the License. */
 #ifndef MATHFUNCTIONS_H_
 #define MATHFUNCTIONS_H_
 
+#ifdef PADDLE_USE_MKLML
+#include <mkl_cblas.h>
+#include <mkl_lapacke.h>
+#include <mkl_vml_functions.h>
+#endif
+
 #ifdef PADDLE_USE_MKL
 #include <mkl.h>
 #include <mkl_lapacke.h>
-#else
-extern "C" {
-#include <cblas.h>
-}
+#endif
+
 #ifdef PADDLE_USE_ATLAS
 extern "C" {
+#include <cblas.h>
 #include <clapack.h>
 }
-#else
+#endif
+
+#ifdef PADDLE_USE_OPENBLAS
+#include <cblas.h>
 #include <lapacke.h>
 #endif
+
+#ifndef LAPACK_FOUND
+extern "C" {
+#include <cblas.h>
+int LAPACKE_sgetrf(
+    int matrix_layout, int m, int n, float* a, int lda, int* ipiv);
+int LAPACKE_dgetrf(
+    int matrix_layout, int m, int n, double* a, int lda, int* ipiv);
+int LAPACKE_sgetri(
+    int matrix_layout, int n, float* a, int lda, const int* ipiv);
+int LAPACKE_dgetri(
+    int matrix_layout, int n, double* a, int lda, const int* ipiv);
+}
 #endif
 
 #include <cmath>

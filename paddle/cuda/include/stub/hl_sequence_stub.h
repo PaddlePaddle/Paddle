@@ -27,35 +27,6 @@ inline void hl_max_sequence_forward(real* input,
 inline void hl_max_sequence_backward(
     real* outputGrad, int* index, real* inputGrad, int numSequences, int dim) {}
 
-inline void hl_context_projection_forward(real* input,
-                                          const int* sequence,
-                                          real* weightData,
-                                          real* output,
-                                          int numSequences,
-                                          int inputDim,
-                                          int contextLength,
-                                          int contextStart,
-                                          int beginPad,
-                                          bool isPadding) {}
-
-inline void hl_context_projection_backward_data(real* outputGrad,
-                                                const int* sequence,
-                                                real* inputGrad,
-                                                int numSequences,
-                                                int inputDim,
-                                                int contextLength,
-                                                int contextStart) {}
-
-inline void hl_context_projection_backward_weight(real* outputGrad,
-                                                  const int* sequence,
-                                                  real* weightGrad,
-                                                  int numSequences,
-                                                  int weightDim,
-                                                  int totalPad,
-                                                  int contextLength,
-                                                  int contextStart,
-                                                  int beginPad) {}
-
 inline void hl_sequence2batch_copy(real* batch,
                                    real* sequence,
                                    const int* batchIndex,
@@ -86,4 +57,10 @@ inline void hl_sequence_avg_forward(real* dst,
                                     int width,
                                     const int mode) {}
 
+inline void hl_sequence_avg_backward(real* dst,
+                                     real* src,
+                                     const int* starts,
+                                     int height,
+                                     int width,
+                                     const int mode) {}
 #endif  // HL_SEQUENCE_STUB_H_

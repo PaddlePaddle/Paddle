@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <iterator>
+#include <sstream>
+#include <vector>
 #include "PaddleAPI.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/Flags.h"
-#include <vector>
-#include <sstream>
-#include <algorithm>
-#include <iterator>
 
 // used to represent partial sequence
 struct Path {

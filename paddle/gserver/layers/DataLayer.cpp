@@ -54,7 +54,7 @@ void DataLayer::copyDataToOutput(Argument& output) {
     output.setFrameWidth(config_.width());
   } else {
     output.setFrameHeight(data_.getFrameHeight());
-    output.setFrameHeight(data_.getFrameHeight());
+    output.setFrameWidth(data_.getFrameWidth());
   }
   output.cpuSequenceDims = data_.cpuSequenceDims;
   output.sequenceStartPositions = data_.sequenceStartPositions;

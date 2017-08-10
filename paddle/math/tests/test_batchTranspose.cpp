@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "test_matrixUtil.h"
 #include "hl_batch_transpose.h"
+#include "test_matrixUtil.h"
 
 using namespace paddle;  // NOLINT
 
@@ -53,9 +53,3 @@ TEST(MatrixBatchTransTest, test_batch_matrix_transpose) {
   checkMatrixEqual(cBatchTransMat, cMat_d2h);
 }
 #endif
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

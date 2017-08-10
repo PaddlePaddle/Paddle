@@ -23,7 +23,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "BarrierStat.h"
 #include "Locks.h"
 #include "Logging.h"
 #include "ThreadLocal.h"
@@ -60,12 +59,6 @@ public:
 
 class Stat;
 typedef std::shared_ptr<Stat> StatPtr;
-typedef std::shared_ptr<BarrierStatBase> BarrierStatPtr;
-
-enum BarrierStatType {
-  BARRIER_END = 0,
-  BARRIER_DELTA = 1,
-};
 
 class StatSet {
 public:
@@ -74,10 +67,7 @@ public:
 
   // print to LOG(INFO)
   void printSegTimerStatus();
-  void printBarrierTimerStatus();
   void printAllStatus();
-
-  void printStatus(const std::string& name);
 
   StatPtr getStat(const std::string& name) {
     {
@@ -92,12 +82,6 @@ public:
     auto ret = statSet_.insert(std::make_pair(name, stat));
     return ret.first->second;
   }
-
-  BarrierStatPtr getStat(uint16_t numConnThreads,
-                         const std::string& name,
-                         BarrierStatType bType);
-
-  void deleteStat(const std::string& name);
 
   // true for showing stats for each thread
   // false for showing stats aggragated over threads
@@ -120,7 +104,6 @@ public:
 
 private:
   std::unordered_map<std::string, StatPtr> statSet_;
-  std::unordered_map<std::string, BarrierStatPtr> barrierStatSet_;
   const std::string name_;
   RWLock lock_;
 };
@@ -258,28 +241,41 @@ inline StatSet& registerTimerArg2(uint64_t threshold = -1,
 // The default arguments are shown in the following line:
 // REGISTER_TIMER(statName, threshold = -1, statSet = globalStat)
 // TODO(yuyang18,wangyanfei01): if UNIQUE_NAME is needed
-#define REGISTER_TIMER(statName, ...)                                       \
-  static StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  TimerOnce __timerOnce(__stat.get(), "", registerTimerArg1(__VA_ARGS__));
+#define REGISTER_TIMER(statName, ...)                             \
+  static ::paddle::StatPtr __stat =                               \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                \
+      __stat.get(), "", ::paddle::registerTimerArg1(__VA_ARGS__));
 
 #define REGISTER_TIMER_SET(statName, start, ...)                            \
-  static StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  TimerOnce __timerOnce(                                                    \
-      __stat.get(), "", registerTimerArg1(__VA_ARGS__), false, start);
+  static ::paddle::StatPtr __stat =                                         \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName);           \
+  ::paddle::TimerOnce __timerOnce(__stat.get(),                             \
+                                  "",                                       \
+                                  ::paddle::registerTimerArg1(__VA_ARGS__), \
+                                  false,                                    \
+                                  start);
 
 // dynmaic timer, support to discriminate runtime entity, used in pserver
-#define REGISTER_TIMER_DYNAMIC(statName, ...)                        \
-  StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  TimerOnce __timerOnce(__stat.get(), "", registerTimerArg1(__VA_ARGS__));
+#define REGISTER_TIMER_DYNAMIC(statName, ...)                     \
+  ::paddle::StatPtr __stat =                                      \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                \
+      __stat.get(), "", ::paddle::registerTimerArg1(__VA_ARGS__));
 
-#define REGISTER_TIMER_DYNAMIC_SET(statName, start, ...)             \
-  StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  TimerOnce __timerOnce(                                             \
-      __stat.get(), "", registerTimerArg1(__VA_ARGS__), false, start);
+#define REGISTER_TIMER_DYNAMIC_SET(statName, start, ...)                    \
+  ::paddle::StatPtr __stat =                                                \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName);           \
+  ::paddle::TimerOnce __timerOnce(__stat.get(),                             \
+                                  "",                                       \
+                                  ::paddle::registerTimerArg1(__VA_ARGS__), \
+                                  false,                                    \
+                                  start);
 
-#define REGISTER_TIMER_INFO(statName, info)             \
-  static StatPtr __stat = globalStat.getStat(statName); \
-  TimerOnce __timerOnce(__stat.get(), info, 10 * 1000000LU /*threshold*/);
+#define REGISTER_TIMER_INFO(statName, info)                                 \
+  static ::paddle::StatPtr __stat = ::paddle::globalStat.getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                          \
+      __stat.get(), info, 10 * 1000000LU /*threshold*/);
 
 #endif  // DISABLE_TIMER
 

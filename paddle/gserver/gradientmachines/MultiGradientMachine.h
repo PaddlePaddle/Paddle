@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include "GradientMachine.h"
 
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/Locks.h"
 #include "hl_gpu.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Queue.h"
 
 namespace paddle {
 
@@ -176,6 +176,10 @@ public:
 
   explicit MultiGradientMachine(const ModelConfig& config, bool useGpu);
 
+  virtual void start();
+
+  virtual void finish();
+
   virtual void prefetch(const std::vector<Argument>& inArgs);
 
   virtual void forward(const std::vector<Argument>& inArgs,
@@ -189,13 +193,13 @@ public:
                        PassType passType,
                        const UpdateCallback& callback);
 
+  virtual Argument getLayerOutput(const std::string& layerName);
+
   virtual void onPassEnd();
 
-  virtual void finish();
+  virtual Evaluator* makeEvaluator() const;
 
-  virtual Evaluator* makeEvaluator();
-
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
 
   bool useGpu() const { return useGpu_; }
 
@@ -314,6 +318,8 @@ protected:
   std::vector<Argument> outArgs_;
   hl_stream_t outArgStream_;
 
+  Argument outLayerArgs_;
+
   /// ParameterType which needs to be merged from each GPU
   std::vector<ParameterType> mergeTypes_;
   int numDevices_;         /* number of gpu devices */
@@ -383,6 +389,9 @@ public:
   /// copy the output gradient from the main GradientMachine.
   void copyOutputGrad();
 
+  /// Whether the thread has input data.
+  bool hasInputData() { return batchSize_ != 0; }
+
 protected:
   void mergeCpuGradients();
 
@@ -403,7 +412,7 @@ protected:
   void copyGradToBufferThread();
   void gradCollectThread();
 
-  void copyInArgs();
+  int copyInArgs();
   void forward();
   void backward();
   void backwardCallback(Parameter* para);
@@ -463,6 +472,7 @@ protected:
 
   /// indicate whether inArgs is copied before forward()
   bool inArgsCopied_;
+  int batchSize_;
 };
 
 }  // namespace paddle

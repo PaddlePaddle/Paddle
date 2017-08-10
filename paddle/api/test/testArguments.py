@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from py_paddle import swig_paddle
+import numpy as np
 import unittest
 
 
@@ -21,6 +22,8 @@ class TestArguments(unittest.TestCase):
         m = swig_paddle.Matrix.createDense([4, 2, 4, 3, 9, 5], 2, 3)
         args = swig_paddle.Arguments.createArguments(1)
         args.setSlotValue(0, m)
+
+        self.assertAlmostEqual(27.0, args.sum())
 
         mat = args.getSlotValue(0)
         assert isinstance(mat, swig_paddle.Matrix)
@@ -33,6 +36,17 @@ class TestArguments(unittest.TestCase):
         assert isinstance(iv, swig_paddle.IVector)
         np_arr = iv.toNumpyArrayInplace()
         self.assertEqual(np_arr.shape, (6, ))
+
+    def test_arguments_shape(self):
+        h, w = 4, 6
+        v = np.random.rand(2, h * w)
+        m = swig_paddle.Matrix.createDense(v.flatten(), 2, h * w)
+        args = swig_paddle.Arguments.createArguments(1)
+        args.setSlotValue(0, m)
+        args.setSlotFrameHeight(0, h)
+        args.setSlotFrameWidth(0, w)
+        self.assertEqual(args.getSlotFrameHeight(), h)
+        self.assertEqual(args.getSlotFrameWidth(), w)
 
 
 if __name__ == '__main__':

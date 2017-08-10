@@ -12,6 +12,7 @@ layers {
   inputs {
     input_layer_name: "input"
   }
+  user_arg: "layer=input %s"
 }
 input_layer_names: "input"
 output_layer_names: "input"

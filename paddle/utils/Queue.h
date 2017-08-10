@@ -142,9 +142,9 @@ public:
    */
   bool waitNotEmptyFor(int seconds) {
     std::unique_lock<std::mutex> lock(queueLock_);
-    return queueCV_.wait_for(lock,
-                             std::chrono::seconds(seconds),
-                             [this] { return numElements_ != 0; });
+    return queueCV_.wait_for(lock, std::chrono::seconds(seconds), [this] {
+      return numElements_ != 0;
+    });
   }
 
 private:

@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "Layer.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/math/BaseMatrix.h"
-#include "SequenceToBatch.h"
 #include "LstmCompute.h"
+#include "SequenceToBatch.h"
+#include "paddle/math/BaseMatrix.h"
+#include "paddle/math/Matrix.h"
 namespace paddle {
 
 /**
@@ -74,17 +74,18 @@ class LstmLayer : public Layer, public LstmCompute {
 public:
   explicit LstmLayer(const LayerConfig &config) : Layer(config) {}
 
-  bool init(const LayerMap &layerMap, const ParameterMap &parameterMap);
+  bool init(const LayerMap &layerMap,
+            const ParameterMap &parameterMap) override;
 
-  void forward(PassType passType);
+  void forward(PassType passType) override;
 
-  void backward(const UpdateCallback &callback);
+  void backward(const UpdateCallback &callback) override;
 
-  void resetState();
+  void resetState() override;
 
-  void setState(LayerStatePtr state);
+  void setState(LayerStatePtr state) override;
 
-  LayerStatePtr getState();
+  LayerStatePtr getState() override;
 
 protected:
   /**

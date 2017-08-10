@@ -171,11 +171,7 @@ struct VectorPrivate {
 
 Vector::Vector() : m(new VectorPrivate()) {}
 
-Vector::~Vector() {
-  if (m) {
-    delete m;
-  }
-}
+Vector::~Vector() { delete m; }
 
 Vector* Vector::createZero(size_t sz, bool useGpu) {
   auto retVec = new Vector();
@@ -253,7 +249,7 @@ void Vector::copyToNumpyArray(float** view_m_data, int* dim1) {
   *view_m_data = new float[*dim1];
   if (auto cpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
     std::memcpy(*view_m_data, cpuVec->getData(), sizeof(float) * (*dim1));
-  } else if (auto gpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
+  } else if (auto gpuVec = dynamic_cast<paddle::GpuVector*>(m->vec.get())) {
     hl_memcpy_device2host(
         *view_m_data, gpuVec->getData(), sizeof(float) * (*dim1));
   } else {
@@ -282,7 +278,7 @@ FloatArray Vector::getData() const {
 }
 
 void Vector::copyFrom(Vector* src) throw(RangeError) {
-  if (src->m->vec->getSize() !=  m->vec->getSize()) {
+  if (src->m->vec->getSize() != m->vec->getSize()) {
     throw RangeError();
   }
   m->vec->copyFrom(*src->m->vec);

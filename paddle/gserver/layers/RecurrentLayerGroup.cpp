@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/gserver/layers/Layer.h"
 #include <functional>
+#include "paddle/gserver/layers/Layer.h"
 
 #include "paddle/gserver/gradientmachines/RecurrentGradientMachine.h"
 #include "paddle/utils/Stat.h"
@@ -33,15 +33,15 @@ public:
   void initSubNetwork(NeuralNetwork* rootNetwork,
                       const ModelConfig& config,
                       const std::vector<ParameterType>& parameterTypes,
-                      bool useGpu);
+                      bool useGpu) override;
 
-  void forward(PassType passType) {
+  void forward(PassType passType) override {
     REGISTER_TIMER_INFO("RecurrentGroupFwTime", getName().c_str());
     const std::vector<Argument> inArgs;
     std::vector<Argument> outArgs;
     network_->forward(inArgs, &outArgs, passType);
   }
-  void backward(const UpdateCallback& callback) {
+  void backward(const UpdateCallback& callback) override {
     REGISTER_TIMER_INFO("RecurrentGroupBwTime", getName().c_str());
     network_->backward(nullptr);
 
@@ -53,7 +53,8 @@ public:
   /**
    * @see Layer.accessSubNetwork
    */
-  void accessSubNetwork(const std::function<void(NeuralNetwork&)>& callback) {
+  void accessSubNetwork(
+      const std::function<void(NeuralNetwork&)>& callback) override {
     callback(*network_);
   }
 

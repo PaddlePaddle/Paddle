@@ -6,9 +6,10 @@ We thank @lipeng for the pull request that defined the model schemas and pretrai
 
 ## Introduction ###
 ### Chinese Word Dictionary ###
-Our Chinese-word dictionary is created on Baidu ZhiDao and Baidu Baike by using in-house word segmentor. For example, the participle of "《红楼梦》" is "《"，"红楼梦"，"》"，and "《红楼梦》". Our dictionary (using UTF-8 format) has has two columns: word and its frequency. The total word count is 3206325, including 3 special token:
+Our Chinese-word dictionary is created on Baidu ZhiDao and Baidu Baike by using in-house word segmentor. For example, the participle of "《红楼梦》" is "《"，"红楼梦"，"》"，and "《红楼梦》". Our dictionary (using UTF-8 format) has has two columns: word and its frequency. The total word count is 3206326, including 4 special token:
   - `<s>`: the start of a sequence
   - `<e>`: the end of a sequence
+  - `PALCEHOLDER_JUST_IGNORE_THE_EMBEDDING`: a placeholder, just ignore it and its embedding
   - `<unk>`: a word not included in dictionary
 
 ### Pretrained Chinese Word Embedding Model ###
@@ -93,7 +94,7 @@ where `train.sh` is almost the same as `demo/seqToseq/translation/train.sh`, the
 - `--init_model_path`: path of the initialization model, here is `data/paraphrase_model`
 - `--load_missing_parameter_strategy`: operations when model file is missing, here use a normal distibution to initialize the other parameters except for the embedding layer
 
-For users who want to understand the dataset format, model architecture and training procedure in detail, please refer to [Text generation Tutorial](../text_generation/text_generation.md).
+For users who want to understand the dataset format, model architecture and training procedure in detail, please refer to [Text generation Tutorial](../text_generation/index_en.md).
 
 ## Optional Function ##
 ###  Embedding Parameters Observation

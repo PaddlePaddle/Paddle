@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -39,12 +39,11 @@ class SlopeInterceptLayer : public Layer {
 public:
   explicit SlopeInterceptLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~SlopeInterceptLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(slope_intercept, SlopeInterceptLayer);

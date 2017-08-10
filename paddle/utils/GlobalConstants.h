@@ -23,11 +23,6 @@ enum PassType {
   PASS_TEST,    // Test pass
   PASS_GC,      // Gradient Check pass
   PASS_METRIC,  // pass for generate template output with no drop rate.
-  // pass for metric learning training with metric learning error, only used
-  // when we are doing KNN evaluation.
-  PASS_METRIC_TRAIN,
-  PASS_METRIC_TRAIN_WITH_NOERROR,  // Pass for metric learning training
-                                   // with no evaluation.
 };
 
 enum ParameterType {

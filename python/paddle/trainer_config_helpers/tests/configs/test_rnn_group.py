@@ -16,6 +16,16 @@ def generate_rnn_simple(name):
     return rnn_simple
 
 
+def generate_rnn_simple_no_name():
+    def rnn_simple(s):
+        m = memory(name=None, size=200)
+        fc = fc_layer(input=[s, m], size=200)
+        m.set_input(fc)
+        return fc
+
+    return rnn_simple
+
+
 with mixed_layer() as lstm_param:  # test lstm unit, rnn group
     lstm_param += full_matrix_projection(input=seq, size=100 * 4)
 
@@ -33,4 +43,6 @@ outputs(
     last_seq(input=lstmemory_group(
         input=lstm_param, size=100)),
     last_seq(input=gru_group(
-        input=gru_param, size=100)))
+        input=gru_param, size=100)),
+    last_seq(input=recurrent_group(
+        step=generate_rnn_simple_no_name(), input=seq)), )

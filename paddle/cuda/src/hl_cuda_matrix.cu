@@ -12,22 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "hl_base.h"
+#include "hl_device_functions.cuh"
+#include "hl_gpu_matrix_kernel.cuh"
 #include "hl_matrix.h"
-#include "hl_matrix_ops.cuh"
 #include "hl_matrix_apply.cuh"
+#include "hl_matrix_ops.cuh"
 #include "hl_sequence.h"
 #include "hl_sparse.ph"
 #include "paddle/utils/Logging.h"
-#include "hl_device_functions.cuh"
-#include "hl_gpu_matrix_kernel.cuh"
 
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
-DEFINE_MATRIX_TERNARY_PARAMETER_OP(_add, TWO_PARAMETER, c = p1*a + p2*b);
-void hl_matrix_add(real *A_d,
-                   real *B_d,
-                   real *C_d,
+DEFINE_MATRIX_TERNARY_PARAMETER_OP(_add, TWO_PARAMETER, c = p1 * a + p2 * b);
+void hl_matrix_add(real* A_d,
+                   real* B_d,
+                   real* C_d,
                    int dimM,
                    int dimN,
                    real alpha,
@@ -36,33 +35,32 @@ void hl_matrix_add(real *A_d,
   CHECK_NOTNULL(B_d);
   CHECK_NOTNULL(C_d);
 
-  hl_gpu_apply_ternary_op
-    <real, ternary::_add<real>, 0, 0>(ternary::_add<real>(alpha, beta),
-                                      A_d,
-                                      B_d,
-                                      C_d,
-                                      dimM,
-                                      dimN,
-                                      dimN,
-                                      dimN,
-                                      dimN);
+  hl_gpu_apply_ternary_op<real, ternary::_add<real>, 0, 0>(
+      ternary::_add<real>(alpha, beta),
+      A_d,
+      B_d,
+      C_d,
+      dimM,
+      dimN,
+      dimN,
+      dimN,
+      dimN);
   CHECK_SYNC("hl_matrix_add failed");
 }
 
 #ifdef PADDLE_TYPE_DOUBLE
-    #define THRESHOLD   128
+#define THRESHOLD 128
 #else
-    #define THRESHOLD   64
+#define THRESHOLD 64
 #endif
-__device__ __forceinline__
-void findMax(real* I,
-             real* dfMax_s,
-             int blockSize,
-             int base,
-             int curIdx,
-             int nextIdx,
-             int dimN,
-             real* max) {
+__device__ __forceinline__ void findMax(real* I,
+                                        real* dfMax_s,
+                                        int blockSize,
+                                        int base,
+                                        int curIdx,
+                                        int nextIdx,
+                                        int dimN,
+                                        real* max) {
   dfMax_s[base] = -1.0e20;
   while (curIdx < dimN) {
     if (dfMax_s[base] < I[nextIdx]) {
@@ -78,25 +76,24 @@ void findMax(real* I,
     if (base < stride) {
       nextIdx = base + stride;
       if (dfMax_s[base] < dfMax_s[nextIdx]) {
-          dfMax_s[base] = dfMax_s[nextIdx];
+        dfMax_s[base] = dfMax_s[nextIdx];
       }
     }
   }
 
-  if (0 == base)  {
+  if (0 == base) {
     max[0] = dfMax_s[0];
   }
   __syncthreads();
 }
 
-__device__ __forceinline__
-void subMaxAndExp(real* I,
-                  real* O,
-                  int curIdx,
-                  int nextIdx,
-                  int blockSize,
-                  int dimN,
-                  real max) {
+__device__ __forceinline__ void subMaxAndExp(real* I,
+                                             real* O,
+                                             int curIdx,
+                                             int nextIdx,
+                                             int blockSize,
+                                             int dimN,
+                                             real max) {
   real val;
   while (curIdx < dimN) {
     val = I[nextIdx] - max;
@@ -115,14 +112,13 @@ void subMaxAndExp(real* I,
   __syncthreads();
 }
 
-__device__ __forceinline__
-void valueSum(real* O,
-              real* dfMax_s,
-              int blockSize,
-              int base,
-              int curIdx,
-              int nextIdx,
-              int dimN) {
+__device__ __forceinline__ void valueSum(real* O,
+                                         real* dfMax_s,
+                                         int blockSize,
+                                         int base,
+                                         int curIdx,
+                                         int nextIdx,
+                                         int dimN) {
   dfMax_s[base] = 0;
   while (curIdx < dimN) {
     dfMax_s[base] += O[nextIdx];
@@ -141,13 +137,8 @@ void valueSum(real* O,
   __syncthreads();
 }
 
-__device__ __forceinline__
-void divSum(real* O,
-            real sum,
-            int curIdx,
-            int nextIdx,
-            int blockSize,
-            int dimN) {
+__device__ __forceinline__ void divSum(
+    real* O, real sum, int curIdx, int nextIdx, int blockSize, int dimN) {
   while (curIdx < dimN) {
     O[nextIdx] /= sum;
     nextIdx += blockSize;
@@ -155,20 +146,18 @@ void divSum(real* O,
   }
 }
 
-__device__ __forceinline__
-void softmax(real* I,
-             real* O,
-             real* dfMax_s,
-             int blockSize,
-             int base,
-             int curIdx,
-             int nextIdx,
-             int dimN) {
+__device__ __forceinline__ void softmax(real* I,
+                                        real* O,
+                                        real* dfMax_s,
+                                        int blockSize,
+                                        int base,
+                                        int curIdx,
+                                        int nextIdx,
+                                        int dimN) {
   __shared__ real max;
 
   // find the max number
-  findMax(I, dfMax_s, blockSize, base, curIdx,
-          nextIdx, dimN, &max);
+  findMax(I, dfMax_s, blockSize, base, curIdx, nextIdx, dimN, &max);
 
   // sub max Value and do Exp operation
   subMaxAndExp(I, O, base, nextIdx, blockSize, dimN, max);
@@ -181,8 +170,8 @@ void softmax(real* I,
   divSum(O, dfMax_s[0], curIdx, nextIdx, blockSize, dimN);
 }
 
-template<int blockSize>
-__global__ void KeMatrixSoftMax(real *O, real *I, int dimN) {
+template <int blockSize>
+__global__ void KeMatrixSoftMax(real* O, real* I, int dimN) {
   int base = threadIdx.x;
   __shared__ real dfMax_s[blockSize];
   int nextIdx = blockIdx.x * dimN + base;
@@ -191,19 +180,18 @@ __global__ void KeMatrixSoftMax(real *O, real *I, int dimN) {
   softmax(I, O, dfMax_s, blockSize, base, curIdx, nextIdx, dimN);
 }
 
-void hl_matrix_softmax(real *A_d, real *C_d, int dimM, int dimN) {
+void hl_matrix_softmax(real* A_d, real* C_d, int dimM, int dimN) {
   CHECK_NOTNULL(A_d);
   CHECK_NOTNULL(C_d);
 
   dim3 block(512, 1);
   dim3 grid(dimM, 1);
-  KeMatrixSoftMax<512>
-           <<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, dimN);
+  KeMatrixSoftMax<512><<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, dimN);
   CHECK_SYNC("hl_matrix_softmax failed");
 }
 
-template<int blockSize>
-__global__ void KeSequenceSoftMax(real *O, real *I, const int* index) {
+template <int blockSize>
+__global__ void KeSequenceSoftMax(real* O, real* I, const int* index) {
   int base = threadIdx.x;
   int bid = blockIdx.x;
   __shared__ real dfMax_s[blockSize];
@@ -217,8 +205,8 @@ __global__ void KeSequenceSoftMax(real *O, real *I, const int* index) {
   softmax(I, O, dfMax_s, blockSize, base, curIdx, nextIdx, dimN);
 }
 
-void hl_sequence_softmax_forward(real *A_d,
-                                 real *C_d,
+void hl_sequence_softmax_forward(real* A_d,
+                                 real* C_d,
                                  const int* index,
                                  int numSequence) {
   CHECK_NOTNULL(A_d);
@@ -226,112 +214,48 @@ void hl_sequence_softmax_forward(real *A_d,
 
   dim3 block(512, 1);
   dim3 grid(numSequence, 1);
-  KeSequenceSoftMax<512>
-           <<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, index);
+  KeSequenceSoftMax<512><<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, index);
   CHECK_SYNC("hl_sequence_softmax_forward failed");
 }
 
-__global__ void KeMatrixDerivative(real *grad_d,
-                                   real *output_d,
-                                   real *sftmaxSum_d,
-                                   int dimM,
-                                   int dimN) {
-  int rowIdx = blockIdx.x*blockDim.x + threadIdx.x;
-  int colIdx = blockIdx.y*blockDim.y + threadIdx.y;
+__global__ void KeMatrixDerivative(
+    real* grad_d, real* output_d, real* sftmaxSum_d, int dimM, int dimN) {
+  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  int colIdx = blockIdx.y * blockDim.y + threadIdx.y;
   int index;
 
   if (rowIdx < dimM && colIdx < dimN) {
-    index = rowIdx*dimN + colIdx;
+    index = rowIdx * dimN + colIdx;
     grad_d[index] = output_d[index] * (grad_d[index] - sftmaxSum_d[rowIdx]);
   }
 }
 
-void hl_matrix_softmax_derivative(real *grad_d,
-                                  real *output_d,
-                                  real *sftmaxSum_d,
-                                  int dimM,
-                                  int dimN) {
+void hl_matrix_softmax_derivative(
+    real* grad_d, real* output_d, real* sftmaxSum_d, int dimM, int dimN) {
   CHECK_NOTNULL(grad_d);
   CHECK_NOTNULL(output_d);
   CHECK_NOTNULL(sftmaxSum_d);
 
   int blocksX = (dimM + 0) / 1;
-  int blocksY = (dimN + 1024 -1) / 1024;
+  int blocksY = (dimN + 1024 - 1) / 1024;
   dim3 threads(1, 1024);
   dim3 grid(blocksX, blocksY);
 
-  KeMatrixDerivative<<< grid, threads, 0, STREAM_DEFAULT >>>
-           (grad_d, output_d, sftmaxSum_d, dimM, dimN);
+  KeMatrixDerivative<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      grad_d, output_d, sftmaxSum_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_softmax_derivative failed");
 }
 
-template<int blockSize>
-__global__ void KeMatrixClassificationError(real* in_A,
-                                            int* in_B,
-                                            real* out_C,
-                                            int dimN) {
-  __shared__ real max_s[blockSize];
-  __shared__ int max_l[blockSize];
-  const int tid = threadIdx.x;
-  const int rowId = blockIdx.x;
-
-  max_s[tid] = -1e30f;
-  in_A += rowId * dimN;
-  real tmp;
-  for (int colId = tid; colId < dimN; colId += blockSize) {
-    tmp = in_A[colId];
-    if (max_s[tid] < tmp) {
-      max_s[tid] = tmp;
-      max_l[tid] = colId;
-    }
-  }
-  __syncthreads();
-
-  for (int stride = blockSize/2; stride > 0; stride = stride/2) {
-    if (tid < stride) {
-      if (max_s[tid] < max_s[tid + stride]) {
-        max_s[tid] = max_s[tid + stride];
-        max_l[tid] = max_l[tid + stride];
-      }
-    }
-    __syncthreads();
-  }
-  __syncthreads();
-
-  if (tid == 0) {
-    out_C[rowId] = (max_l[0] == in_B[rowId] ? 0 : 1.0f);
-  }
-}
-
-void hl_matrix_classification_error(real* A_d,
-                                    int* B_d,
-                                    real* C_d,
-                                    int dimM,
-                                    int dimN) {
-  CHECK_NOTNULL(A_d);
-  CHECK_NOTNULL(B_d);
-  CHECK_NOTNULL(C_d);
-
-  // each sample is calculated by one block
-  KeMatrixClassificationError<1024><<< dimM, 1024, 0, STREAM_DEFAULT >>>
-    (A_d, B_d, C_d, dimN);
-  CHECK_SYNC("hl_matrix_classification_error");
-}
-
-__global__ void KeMatrixMultiBinaryCrossEntropy(real* output,
-                                                real* entropy,
-                                                int* row,
-                                                int* col,
-                                                int dimM,
-                                                int dimN) {
+__global__ void KeMatrixMultiBinaryCrossEntropy(
+    real* output, real* entropy, int* row, int* col, int dimM, int dimN) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < dimM) {
-    for (int i = 0; i < dimN; i ++) {
+    for (int i = 0; i < dimN; i++) {
       entropy[index] -= log(1 - output[index * dimN + i]);
     }
-    int *row_col = col + row[index];
+    int* row_col = col + row[index];
     int col_num = row[index + 1] - row[index];
-    for (int i = 0; i < col_num; i ++) {
+    for (int i = 0; i < col_num; i++) {
       real o = output[index * dimN + row_col[i]];
       entropy[index] -= log(o / (1 - o));
     }
@@ -352,37 +276,30 @@ void hl_matrix_multi_binary_cross_entropy(real* output,
   dim3 threads(n_threads);
   dim3 grid(blocks);
   hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
-  KeMatrixMultiBinaryCrossEntropy<<< grid, threads, 0, STREAM_DEFAULT >>>
-          (output, entropy, mat->csr_row, mat->csr_col, dimM, dimN);
+  KeMatrixMultiBinaryCrossEntropy<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      output, entropy, mat->csr_row, mat->csr_col, dimM, dimN);
   CHECK_SYNC("hl_matrix_multi_binary_cross_entropy failed");
 }
 
-__global__ void KeMatrixMultiBinaryCrossEntropyBp(real* output,
-                                                  real* grad,
-                                                  int* row,
-                                                  int* col,
-                                                  int dimM,
-                                                  int dimN) {
+__global__ void KeMatrixMultiBinaryCrossEntropyBp(
+    real* output, real* grad, int* row, int* col, int dimM, int dimN) {
   int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (row_idx < dimM) {
-    for (int i = 0; i < dimN; i ++) {
+    for (int i = 0; i < dimN; i++) {
       int index = row_idx * dimN + i;
       grad[index] += 1.0 / (1 - output[index]);
     }
     int col_num = row[row_idx + 1] - row[row_idx];
-    int *row_col = col + row[row_idx];
-    for (int i = 0; i < col_num; i ++) {
+    int* row_col = col + row[row_idx];
+    for (int i = 0; i < col_num; i++) {
       int index = row_idx * dimN + row_col[i];
       grad[index] -= 1.0 / (output[index] * (1 - output[index]));
     }
   }
 }
 
-void hl_matrix_multi_binary_cross_entropy_bp(real* output,
-                                             real* grad,
-                                             hl_sparse_matrix_s csr_mat,
-                                             int dimM,
-                                             int dimN) {
+void hl_matrix_multi_binary_cross_entropy_bp(
+    real* output, real* grad, hl_sparse_matrix_s csr_mat, int dimM, int dimN) {
   CHECK_NOTNULL(output);
   CHECK_NOTNULL(grad);
   CHECK_NOTNULL(csr_mat);
@@ -392,16 +309,13 @@ void hl_matrix_multi_binary_cross_entropy_bp(real* output,
   dim3 threads(n_threads);
   dim3 grid(blocks);
   hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
-  KeMatrixMultiBinaryCrossEntropyBp<<< grid, threads, 0, STREAM_DEFAULT >>>
-          (output, grad, mat->csr_row, mat->csr_col, dimM, dimN);
+  KeMatrixMultiBinaryCrossEntropyBp<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      output, grad, mat->csr_row, mat->csr_col, dimM, dimN);
   CHECK_SYNC("hl_matrix_multi_binary_cross_entropy_bp failed");
 }
 
-__global__ void KeMatrixCrossEntropy(real* O,
-                                     real* E,
-                                     int* label,
-                                     int dimM,
-                                     int dimN) {
+__global__ void KeMatrixCrossEntropy(
+    real* O, real* E, int* label, int dimM, int dimN) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int newBase;
   if (index < dimM) {
@@ -411,59 +325,49 @@ __global__ void KeMatrixCrossEntropy(real* O,
   }
 }
 
-void hl_matrix_cross_entropy(real* A_d,
-                             real* C_d,
-                             int* label_d,
-                             int dimM,
-                             int dimN) {
+void hl_matrix_cross_entropy(
+    real* A_d, real* C_d, int* label_d, int dimM, int dimN) {
   CHECK_NOTNULL(A_d);
   CHECK_NOTNULL(C_d);
 
   int blocks = (dimM + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
-  KeMatrixCrossEntropy<<< grid, threads, 0, STREAM_DEFAULT >>>
-           (A_d, C_d, label_d, dimM, dimN);
+  KeMatrixCrossEntropy<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      A_d, C_d, label_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_cross_entropy failed");
 }
 
-__global__ void KeMatrixCrossEntropyBp(real* grad_d,
-                                       real* output_d,
-                                       int* label_d,
-                                       int dimM,
-                                       int dimN) {
-  int rowIdx = blockIdx.x*blockDim.x + threadIdx.x;
-  int colIdx = blockIdx.y*blockDim.y + threadIdx.y;
+__global__ void KeMatrixCrossEntropyBp(
+    real* grad_d, real* output_d, int* label_d, int dimM, int dimN) {
+  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  int colIdx = blockIdx.y * blockDim.y + threadIdx.y;
   int index;
   if (rowIdx < dimM && colIdx < dimN) {
-    index = rowIdx*dimN + colIdx;
+    index = rowIdx * dimN + colIdx;
     if (label_d[rowIdx] == colIdx) {
       grad_d[index] -= 1.0f / output_d[index];
     }
   }
 }
 
-void hl_matrix_cross_entropy_bp(real* grad_d,
-                                real* output_d,
-                                int* label_d,
-                                int dimM,
-                                int dimN) {
+void hl_matrix_cross_entropy_bp(
+    real* grad_d, real* output_d, int* label_d, int dimM, int dimN) {
   CHECK_NOTNULL(grad_d);
   CHECK_NOTNULL(output_d);
   CHECK_NOTNULL(label_d);
 
-  int blocksX = (dimM + 0)/1;
-  int blocksY = (dimN + 1024 -1) / 1024;
+  int blocksX = (dimM + 0) / 1;
+  int blocksY = (dimN + 1024 - 1) / 1024;
   dim3 threads(1, 1024);
   dim3 grid(blocksX, blocksY);
-  KeMatrixCrossEntropyBp<<< grid, threads, 0, STREAM_DEFAULT >>>
-           (grad_d, output_d, label_d, dimM, dimN);
+  KeMatrixCrossEntropyBp<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      grad_d, output_d, label_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_cross_entropy_bp failed");
 }
 
 void hl_matrix_zero_mem(real* data, int num) {
-  hl_gpu_apply_unary_op(
-        unary::Zero<real>(), data, 1, num, num);
+  hl_gpu_apply_unary_op(unary::Zero<real>(), data, 1, num, num);
 }
 
 __global__ void KeParamReluForward(real* output,
@@ -476,8 +380,8 @@ __global__ void KeParamReluForward(real* output,
   int ty = blockIdx.y * blockDim.y + threadIdx.y;
   if (tx < width && ty < height) {
     int index = ty * width + tx;
-    output[index] = input[index] > 0 ? input[index] :
-        input[index] * w[tx / partial_sum];
+    output[index] =
+        input[index] > 0 ? input[index] : input[index] * w[tx / partial_sum];
   }
 }
 
@@ -492,14 +396,14 @@ void hl_param_relu_forward(real* output,
   CHECK_NOTNULL(w);
   dim3 threads(16, 16);
   int blockX = (width + 16 - 1) / 16;
-  int blockY = (height + 16 -1) / 16;
+  int blockY = (height + 16 - 1) / 16;
   dim3 grid(blockX, blockY);
-  KeParamReluForward<<<grid, threads, 0, STREAM_DEFAULT>>>
-    (output, input, w, width, height, partial_sum);
+  KeParamReluForward<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      output, input, w, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_forward failed");
 }
 
-template<int blockSize>
+template <int blockSize>
 __global__ void KeParamReluBackWardW(real* grad_w,
                                      real* grad_o,
                                      real* input,
@@ -544,8 +448,8 @@ void hl_param_relu_backward_w(real* grad_w,
   int grid_num = width / partial_sum;
   dim3 threads(blockSize, 1);
   dim3 grid(grid_num, 1);
-  KeParamReluBackWardW<blockSize><<<grid, threads, 0, STREAM_DEFAULT>>>
-    (grad_w, grad_o, input, width, height, partial_sum);
+  KeParamReluBackWardW<blockSize><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      grad_w, grad_o, input, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_backward_w failed");
 }
 
@@ -577,190 +481,15 @@ void hl_param_relu_backward_diff(real* grad_o,
   CHECK_NOTNULL(diff);
   dim3 threads(16, 16);
   int blockX = (width + 16 - 1) / 16;
-  int blockY = (height + 16 -1) / 16;
+  int blockY = (height + 16 - 1) / 16;
   dim3 grid(blockX, blockY);
-  KeParamReluBackwardDiff<<<grid, threads, 0, STREAM_DEFAULT>>>
-      (grad_o, data, w, diff, width, height, partial_sum);
+  KeParamReluBackwardDiff<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      grad_o, data, w, diff, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_backward_diff failed");
 }
 
-template<int blockSize>
-__global__ void KeCosSim(real* output,
-                         real* input1,
-                         real* input2,
-                         int width,
-                         int input1_height,
-                         int input2_height,
-                         real scale) {
-  const int ty = blockIdx.y;
-  int tid = threadIdx.x;
-
-  __shared__ real xx[blockSize];
-  __shared__ real yy[blockSize];
-  __shared__ real xy[blockSize];
-
-  xx[tid] = 0.0;
-  yy[tid] = 0.0;
-  xy[tid] = 0.0;
-  __syncthreads();
-
-  input1 += ty * width;
-  if (input2_height > 1) {
-    input2 += ty * width;
-  }
-  for (int index = tid; index < width; index += blockSize) {
-    real x = input1[index];
-    real y = input2[index];
-    xx[tid] += x * x;
-    yy[tid] += y * y;
-    xy[tid] += x * y;
-  }
-  __syncthreads();
-
-  for (int s = blockSize / 2; s > 0; s >>= 1) {
-    if (tid < s) {
-      xx[tid] += xx[tid + s];
-      yy[tid] += yy[tid + s];
-      xy[tid] += xy[tid + s];
-    }
-    __syncthreads();
-  }
-  if (tid == 0) {
-    output[ty] = scale * xy[0] / (sqrt(xx[0]) * sqrt(yy[0]));
-  }
-}
-
-void hl_cossim(real* output,
-               real* input1,
-               real* input2,
-               int width,
-               int input1_height,
-               int input2_height,
-               real scale) {
-  CHECK_NOTNULL(output);
-  CHECK_NOTNULL(input1);
-  CHECK_NOTNULL(input2);
-  const int blockSize = 256;
-  dim3 threads(blockSize, 1);
-  dim3 grid(1, input1_height);
-
-  KeCosSim<blockSize><<<grid, threads, 0, STREAM_DEFAULT>>>
-    (output, input1, input2, width, input1_height, input2_height, scale);
-  CHECK_SYNC("hl_cossim failed");
-}
-
-template<int blockSize>
-__global__ void KeCosSimDerivative(real* grad,
-                                   real* output,
-                                   real* prevOutX,
-                                   real* prevOutY,
-                                   real* prevGradX,
-                                   real* prevGradY,
-                                   int width,
-                                   int input1_height,
-                                   int input2_height,
-                                   real scale) {
-  const int ty = blockIdx.y;
-  int tid = threadIdx.x;
-
-  __shared__ real xx[blockSize];
-  __shared__ real yy[blockSize];
-  __shared__ real xy[blockSize];
-
-  xx[tid] = 0.0;
-  yy[tid] = 0.0;
-  xy[tid] = 0.0;
-  __syncthreads();
-
-  prevOutX += ty * width;
-  prevGradX += ty * width;
-  if (input2_height > 1) {
-    prevOutY += ty * width;
-    prevGradY += ty * width;
-  }
-  for (int index = tid; index < width; index += blockSize) {
-    real x = prevOutX[index];
-    real y = prevOutY[index];
-    xx[tid] += x * x;
-    yy[tid] += y * y;
-    xy[tid] += x * y;
-  }
-  __syncthreads();
-
-  for (int s = blockSize / 2; s > 0; s >>= 1) {
-    if (tid < s) {
-      xx[tid] += xx[tid + s];
-      yy[tid] += yy[tid + s];
-      xy[tid] += xy[tid + s];
-    }
-    __syncthreads();
-  }
-  if (xy[0] == 0) {
-    real reciprocal = 1.0 / (sqrt(xx[0]) * sqrt(yy[0]));
-    for (int index = tid; index < width; index += blockSize) {
-      prevGradX[index] +=
-        scale * grad[ty] * prevOutY[index] * reciprocal;
-      if (input2_height > 1) {
-        prevGradY[index] +=
-          scale * grad[ty] * prevOutX[index] * reciprocal;
-      } else {
-        paddle::paddleAtomicAdd(prevGradY + index,
-          scale * grad[ty] * prevOutX[index] * reciprocal);
-      }
-    }
-  } else {
-    real reciprocalXY = 1.0 / xy[0];
-    real reciprocalSquareSumX = 1.0 / xx[0];
-    real reciprocalSquareSumY = 1.0 / yy[0];
-    for (int index = tid; index < width; index += blockSize) {
-      prevGradX[index] += output[ty] * grad[ty] *
-        (prevOutY[index] * reciprocalXY -
-         prevOutX[index] * reciprocalSquareSumX);
-      if (input2_height > 1) {
-        prevGradY[index] += output[ty] * grad[ty] *
-          (prevOutX[index] * reciprocalXY -
-           prevOutY[index] * reciprocalSquareSumY);
-      } else {
-        paddle::paddleAtomicAdd(prevGradY + index, output[ty] * grad[ty] *
-          (prevOutX[index] * reciprocalXY -
-           prevOutY[index] * reciprocalSquareSumY));
-      }
-    }
-  }
-}
-
-
-void hl_cossim_derivative(real* grad,
-                          real* output,
-                          real* prevOutX,
-                          real* prevOutY,
-                          real* prevGradX,
-                          real* prevGradY,
-                          int width,
-                          int input1_height,
-                          int input2_height,
-                          real scale) {
-  CHECK_NOTNULL(grad);
-  CHECK_NOTNULL(output);
-  CHECK_NOTNULL(prevOutX);
-  CHECK_NOTNULL(prevOutY);
-  CHECK_NOTNULL(prevGradX);
-  CHECK_NOTNULL(prevGradY);
-  const int blockSize = 256;
-  dim3 threads(blockSize, 1);
-  dim3 grid(1, input1_height);
-  KeCosSimDerivative<blockSize><<<grid, threads, 0, STREAM_DEFAULT>>>
-    (grad, output, prevOutX, prevOutY, prevGradX, prevGradY, width,
-        input1_height, input2_height, scale);
-  CHECK_SYNC("hl_cossim_derivate failed");
-}
-
-__global__ void KeMatrixAddSharedBias(real* A,
-                                      real* B,
-                                      const int channel,
-                                      const int M,
-                                      const int N,
-                                      real scale) {
+__global__ void KeMatrixAddSharedBias(
+    real* A, real* B, const int channel, const int M, const int N, real scale) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int dim = N / channel;
   if (index < M * N) {
@@ -778,15 +507,14 @@ void hl_matrix_add_shared_bias(real* A_d,
                                real scale) {
   const int blocks = 512;
   const int grids = DIVUP(dimM * dimN, blocks);
-  KeMatrixAddSharedBias<<<grids, blocks, 0, STREAM_DEFAULT>>>
-    (A_d, B_d, channel, dimM, dimN, scale);
+  KeMatrixAddSharedBias<<<grids, blocks, 0, STREAM_DEFAULT>>>(
+      A_d, B_d, channel, dimM, dimN, scale);
   CHECK_SYNC("hl_matrix_add_shared_bias failed");
 }
 
-
 template <int blockSize>
-__global__ void KeMatrixCollectSharedBias(real *B,
-                                          real *A,
+__global__ void KeMatrixCollectSharedBias(real* B,
+                                          real* A,
                                           const int channel,
                                           const int M,
                                           const int N,
@@ -813,7 +541,7 @@ __global__ void KeMatrixCollectSharedBias(real *B,
       int n = j * blockSize + tid;
       int m = n / dim;
       int w = n % dim;
-      smem[tid] =  (m < M && w < dim) ? A[m * N + bid * dim + w] : 0.0;
+      smem[tid] = (m < M && w < dim) ? A[m * N + bid * dim + w] : 0.0;
       __syncthreads();
       simpleReduce(smem, tid, blockSize);
       sum += smem[0];
@@ -835,8 +563,32 @@ void hl_matrix_collect_shared_bias(real* B_d,
   const int limit = 64;
   int grids = (dimM * dim) < limit ? DIVUP(channel, blocks) : channel;
 
-  KeMatrixCollectSharedBias<blocks>
-      <<< grids, blocks, 0, STREAM_DEFAULT>>>
-      (B_d, A_d, channel, dimM, dimN, dim, limit, scale);
+  KeMatrixCollectSharedBias<blocks><<<grids, blocks, 0, STREAM_DEFAULT>>>(
+      B_d, A_d, channel, dimM, dimN, dim, limit, scale);
   CHECK_SYNC("hl_matrix_collect_shared_bias failed");
+}
+
+__global__ void keMatrixRotate(
+    real* mat, real* matRot, int dimM, int dimN, bool clockWise) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < dimM * dimN) {
+    int i = idx / dimN;
+    int j = idx % dimN;
+    if (clockWise) {
+      matRot[j * dimM + i] = mat[(dimM - i - 1) * dimN + j];
+    } else {
+      matRot[j * dimM + i] = mat[i * dimN + (dimN - j - 1)];
+    }
+  }
+}
+
+void hl_matrix_rotate(
+    real* mat, real* matRot, int dimM, int dimN, bool clockWise) {
+  CHECK_NOTNULL(mat);
+  CHECK_NOTNULL(matRot);
+  const int threads = 512;
+  const int blocks = DIVUP(dimM * dimN, threads);
+  keMatrixRotate<<<blocks, threads, 0, STREAM_DEFAULT>>>(
+      mat, matRot, dimM, dimN, clockWise);
+  CHECK_SYNC("hl_matrix_rotate failed");
 }

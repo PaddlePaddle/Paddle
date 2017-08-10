@@ -14,28 +14,28 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <mutex>
-#include <iostream>
-#include <fstream>
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <vector>
 
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
+#include "DataConfig.pb.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
-#include "paddle/utils/Util.h"
 #include "paddle/math/Vector.h"
-#include "DataConfig.pb.h"
-#include "paddle/utils/ClassRegistrar.h"
 #include "paddle/parameter/Argument.h"
+#include "paddle/utils/ClassRegistrar.h"
+#include "paddle/utils/Common.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/Queue.h"
+#include "paddle/utils/ThreadLocal.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 /**
@@ -164,15 +164,6 @@ public:
     argu.value = value;
     data_.push_back(argu);
   }
-  /**
-   * @brief Append user defined data
-   * @param[in]  ptr     user defined data
-   */
-  void appendUserDefinedPtr(UserDefinedVectorPtr ptr) {
-    Argument argu;
-    argu.udp = ptr;
-    data_.push_back(argu);
-  }
 
   /*
    * @brief Append argument
@@ -214,10 +205,8 @@ public:
       hl_destroy_event(hlEvent_);
       hlEvent_ = NULL;
     }
-    if (batchData_) {
-      delete batchData_;
-      batchData_ = NULL;
-    }
+    delete batchData_;
+    batchData_ = NULL;
   }
 
   void setDataBatch(DataBatch* batchData) { batchData_ = batchData; }

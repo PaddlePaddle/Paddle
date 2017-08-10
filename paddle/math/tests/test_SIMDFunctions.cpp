@@ -17,10 +17,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include <random>
-#include <functional>
 #include <algorithm>
+#include <functional>
 #include <memory>
+#include <random>
 
 #include <stdlib.h>
 #include <time.h>
@@ -168,10 +168,4 @@ TEST(SIMDFunction, decayL1_WithoutLR) {
   for (size_t i = 0; i < VECTOR_LEN; ++i) {
     ASSERT_NEAR(dest[i], simd_dest[i], EPSILON);
   }
-}
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

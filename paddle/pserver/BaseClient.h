@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pserver/ProtoServer.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/TypeDefs.h"
 #include "ParameterService.pb.h"
+#include "paddle/math/Matrix.h"
+#include "paddle/pserver/ProtoServer.h"
+#include "paddle/utils/Common.h"
+#include "paddle/utils/Queue.h"
 
 namespace paddle {
 
@@ -30,9 +30,6 @@ namespace paddle {
  * the first solution arms with sendThreads_/recvThreads_ and sendJobQueue_/
  * recvJobQueue_. the second solution use some shared thread pool to manage
  * connections.
- * In addition to pserver, metric learning also uses network to exchange
- * features within multi-machines, so this class just abstracts some basic
- * threads and queue buffer creation for them
  */
 class BaseClient {
 protected:

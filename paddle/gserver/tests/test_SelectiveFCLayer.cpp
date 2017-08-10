@@ -12,28 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
+#include <math.h>
 #include <paddle/utils/PythonUtil.h>
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
-#include <math.h>
-#include <gtest/gtest.h>
-#include <algorithm>
-#include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/gserver/layers/Layer.h"
-#include "paddle/gserver/layers/FullyConnectedLayer.h"
-#include "paddle/gserver/layers/SelectiveFullyConnectedLayer.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/gserver/layers/FullyConnectedLayer.h"
+#include "paddle/gserver/layers/Layer.h"
+#include "paddle/gserver/layers/SelectiveFullyConnectedLayer.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/trainer/Trainer.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(num_passes);
-P_DECLARE_string(config);
-P_DECLARE_string(init_model_path);
-P_DECLARE_string(config_args);
+DECLARE_bool(use_gpu);
+DECLARE_int32(num_passes);
+DECLARE_string(config);
+DECLARE_string(init_model_path);
+DECLARE_string(config_args);
 
 size_t fcLayerWidth = 1024;
 

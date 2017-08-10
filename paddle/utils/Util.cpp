@@ -18,22 +18,28 @@ limitations under the License. */
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef __SSE__
 #include <xmmintrin.h>
+#endif
+#ifdef __SSE3__
 #include <pmmintrin.h>
+#endif
 
 #include <fstream>
 #include <mutex>
 
-#include "paddle/utils/Logging.h"
+#include <gflags/gflags.h>
 
-#include "CommandLineParser.h"
+#include "CpuId.h"
 #include "CustomStackTrace.h"
+#include "Logging.h"
+#include "StringUtil.h"
 #include "Thread.h"
 #include "ThreadLocal.h"
 #include "Version.h"
-#include "StringUtil.h"
 
-P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
+DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 
 #ifdef WITH_GOOGLE_PERFTOOLS
 /*
@@ -52,10 +58,8 @@ P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 
 #include <gperftools/profiler.h>
 
-P_DEFINE_int32(profile_signal, 12, "signal for switch google profiler");
-P_DEFINE_string(profile_data_file,
-                "gperf.prof",
-                "file for storing profile data");
+DEFINE_int32(profile_signal, 12, "signal for switch google profiler");
+DEFINE_string(profile_data_file, "gperf.prof", "file for storing profile data");
 
 static void profilerSwitch(int signalNumber) {
   bool static started = false;
@@ -126,43 +130,50 @@ void registerInitFunction(std::function<void()> func, int priority) {
 }
 
 void runInitFunctions() {
-  std::call_once(
-      g_onceFlag,
-      []() {
-        LOG(INFO) << "Calling runInitFunctions";
-        if (g_initFuncs) {
-          std::sort(g_initFuncs->begin(),
-                    g_initFuncs->end(),
-                    [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
-                      return x.first > y.first;
-                    });
-          for (auto& f : *g_initFuncs) {
-            f.second();
-          }
-          delete g_initFuncs;
-          g_initFuncs = nullptr;
-        }
-        g_initialized = true;
-        LOG(INFO) << "Call runInitFunctions done.";
-      });
+  std::call_once(g_onceFlag, []() {
+    VLOG(3) << "Calling runInitFunctions";
+    if (g_initFuncs) {
+      std::sort(g_initFuncs->begin(),
+                g_initFuncs->end(),
+                [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
+                  return x.first > y.first;
+                });
+      for (auto& f : *g_initFuncs) {
+        f.second();
+      }
+      delete g_initFuncs;
+      g_initFuncs = nullptr;
+    }
+    g_initialized = true;
+    VLOG(3) << "Call runInitFunctions done.";
+  });
 }
 
 void initMain(int argc, char** argv) {
-  initializeLogging(argc, argv);
   installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];
     line += ' ';
   }
+
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  initializeLogging(argc, argv);
   LOG(INFO) << "commandline: " << line;
-  ParseCommandLineFlags(&argc, argv, true);
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();
 
+#ifdef __SSE__
   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+#endif
+#ifdef __SSE3__
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+#endif
 
   if (FLAGS_seed == 0) {
     unsigned int t = time(NULL);
@@ -184,6 +195,7 @@ void initMain(int argc, char** argv) {
   }
 
   version::printVersion();
+  checkCPUFeature().check();
   runInitFunctions();
 }
 
@@ -230,7 +242,7 @@ std::string join(const std::string& part1, const std::string& part2) {
 }  // namespace path
 
 void copyFileToPath(const std::string& file, const std::string& dir) {
-  LOG(INFO) << "copy " << file << " to " << dir;
+  VLOG(3) << "copy " << file << " to " << dir;
   std::string fileName = path::basename(file);
   std::string dst = path::join(dir, fileName);
   std::ifstream source(file, std::ios_base::binary);
@@ -288,6 +300,7 @@ void mkDir(const char* filename) {
 void mkDirRecursively(const char* dir) {
   struct stat sb;
 
+  if (*dir == 0) return;  // empty string
   if (!stat(dir, &sb)) return;
 
   mkDirRecursively(path::dirname(dir).c_str());

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <mutex>
 #include <stdlib.h>
+#include <mutex>
 #include "hl_gpu.h"
 #include "paddle/utils/Logging.h"
 

@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "RemoteParameterUpdater.h"
 #include "Trainer.h"
-#include "paddle/utils/Stat.h"
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/Stat.h"
 
-P_DECLARE_int32(trainer_id);
-P_DECLARE_string(save_dir);
+DECLARE_int32(trainer_id);
+DECLARE_string(save_dir);
 
 namespace paddle {
 
@@ -44,7 +44,7 @@ RemoteParameterUpdater::RemoteParameterUpdater(
   addParameterType(PARAMETER_MOMENTUM);
 }
 
-void RemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void RemoteParameterUpdater::init(const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   if (localUpdater_) {
@@ -309,7 +309,7 @@ void RemoteParameterUpdater::startPass() {
   }
 }
 
-bool RemoteParameterUpdater::finishPass(real cost) {
+bool RemoteParameterUpdater::finishPass() {
   if (localUpdater_) {
     localUpdater_->finishPass();
   }
@@ -595,7 +595,8 @@ SparseRemoteParameterUpdater::SparseRemoteParameterUpdater(
       testing_(testing),
       useApplyInPserver_(false) {}
 
-void SparseRemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void SparseRemoteParameterUpdater::init(
+    const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   parameterClient_.reset(new ParameterClient2(
@@ -711,7 +712,7 @@ void SparseRemoteParameterUpdater::startPass() {
   }
 }
 
-bool SparseRemoteParameterUpdater::finishPass(real cost) {
+bool SparseRemoteParameterUpdater::finishPass() {
   if (config_.algorithm() == TrainAlgorithm::SGD) {
     parameterClient_->waitPassFinish();
   } else {
@@ -746,28 +747,32 @@ void SparseRemoteParameterUpdater::getParametersRemote(bool fullSize,
                                                        bool apply) {
   ParameterType sendBackParameterType =
       (useApplyInPserver_ && apply) ? PARAMETER_APPLY : PARAMETER_VALUE;
+  std::function<void()> getParams;
+  std::function<void(Parameter&, real)> applyL1;
   if (fullSize) {
-    parameterClient_->getParameter(
-        /* recvParameterType= */ PARAMETER_VALUE, sendBackParameterType);
-    if (config_.shrink_parameter_value() > 0) {
-      for (auto& para : parameters_) {
-        if (para->getConfig().decay_rate_l1() > 0) {
-          para->getBuf(PARAMETER_VALUE)
-              ->applyL1(1.0f,                               // learningRate
-                        config_.shrink_parameter_value());  // decayRate
-        }
-      }
-    }
+    getParams = [&] {
+      parameterClient_->getParameter(
+          /* recvParameterType= */ PARAMETER_VALUE, sendBackParameterType);
+    };
+    applyL1 = [](Parameter& para, real decayRate) {
+      para.getBuf(PARAMETER_VALUE)->applyL1(/*lr=*/1.0f, decayRate);
+    };
   } else {
-    REGISTER_TIMER("getParamSparse");
-    parameterClient_->getParameterSparse(
-        /* recvParameterType= */ PARAMETER_VALUE, sendBackParameterType);
+    getParams = [&] {
+      parameterClient_->getParameterSparse(
+          /* recvParameterType= */ PARAMETER_VALUE, sendBackParameterType);
+    };
+    applyL1 = [](Parameter& para, real decayRate) {
+      para.getMat(PARAMETER_VALUE)->applyL1(/*lr=*/1.0f, decayRate);
+    };
+  }
+  {
+    REGISTER_TIMER("getParamDenseAndSparse");
+    getParams();
     if (config_.shrink_parameter_value() > 0) {
       for (auto& para : parameters_) {
         if (para->getConfig().decay_rate_l1() > 0) {
-          para->getPrefetchMatrix()->applyL1Decay(
-              1.0f,                               // learningRate
-              config_.shrink_parameter_value());  // decayRate
+          applyL1(*para, config_.shrink_parameter_value());
         }
       }
     }
@@ -809,7 +814,7 @@ void SparseRemoteParameterUpdater::saveParametersRemote(
 }
 
 void SparseRemoteParameterUpdaterComposite::init(
-    std::vector<ParameterPtr>& parameters) {
+    const std::vector<ParameterPtr>& parameters) {
   parameters_ = parameters;
 
   std::vector<ParameterPtr> parametersArray[NUMBER_UPDATERS];

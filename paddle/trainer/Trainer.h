@@ -22,19 +22,15 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 
-#include "TrainerConfigHelper.h"
-#include "ParameterUpdater.h"
-#include "TrainerInternal.h"
-#include "Tester.h"
-#include "ParamUtil.h"
-#include <fstream>
 #include <stdlib.h>
+#include <fstream>
+#include "ParamUtil.h"
+#include "ParameterUpdater.h"
+#include "Tester.h"
+#include "TrainerConfigHelper.h"
+#include "TrainerInternal.h"
 
-#ifdef PADDLE_METRIC_LEARNING
-#include "paddle/internals/metric_learning/MetricTrainer.h"
-#endif
-
-P_DECLARE_int32(num_passes);
+DECLARE_int32(num_passes);
 
 namespace paddle {
 
@@ -70,11 +66,6 @@ public:
       const std::shared_ptr<GradientMachine>& gradientMachine = nullptr,
       const std::shared_ptr<DataProvider>& dataProvider = nullptr,
       const std::shared_ptr<DataProvider>& testDataProvider = nullptr);
-
-  /**
-   * Initialize Trainer from command line flags.
-   */
-  void init(int argc, char** argv);
 
   /**
    * Train until num_passes reached.
@@ -206,12 +197,8 @@ protected:
   // parameter util
   std::unique_ptr<ParameterUtil> paramUtil_;
 
-#ifdef PADDLE_METRIC_LEARNING
-  MetricTrainer trainerInternal_;
-#else
   // trainer Internal
   TrainerInternal trainerInternal_;
-#endif
 };
 
 }  // namespace paddle

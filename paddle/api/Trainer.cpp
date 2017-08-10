@@ -16,20 +16,20 @@ limitations under the License. */
 #include "PaddleAPIPrivate.h"
 
 #include <stdlib.h>
-#include <memory>
 #include <atomic>
+#include <memory>
 
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/ParamUtil.h"
 #include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/TrainerInternal.h"
 #include "paddle/utils/Flags.h"
 
 using paddle::real;
 
-P_DECLARE_string(config);
-P_DECLARE_string(init_model_path);
-P_DECLARE_int32(start_pass);
+DECLARE_string(config);
+DECLARE_string(init_model_path);
+DECLARE_int32(start_pass);
 
 struct TrainerPrivate : public paddle::Trainer {
   bool _trainOneBatch(size_t batchSize);
@@ -131,12 +131,11 @@ void Trainer::testOneDataBatch(size_t batchSize, const Arguments& args) {
 void TrainerPrivate::finishTestPeriod() { tester_->finishTestPeriod(); }
 void Trainer::finishTestPeriod() { m->finishTestPeriod(); }
 
-Matrix* Trainer::getLayerOutput(const std::string& layerName) {
-  auto nn = std::dynamic_pointer_cast<paddle::NeuralNetwork>(
-      this->m->getGradientMachine());
+Arguments* Trainer::getLayerOutput(const std::string& layerName) const {
+  auto nn = this->m->getGradientMachine();
   CHECK(nn) << "trainerInternal_.getGradientMachine() is not NeuralNetwork";
-  auto m = nn->getLayerOutput(layerName);
-  return Matrix::createByPaddleMatrixPtr(&m);
+  auto arg = nn->getLayerOutput(layerName);
+  return Arguments::createByPaddleArgument(&arg);
 }
 
 void Trainer::forwardOneBatch(size_t batchSize) {

@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
 #include "Vector.h"
+#include "paddle/utils/Util.h"
 
 #include <memory>
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/Thread.h"
-#include "paddle/utils/Flags.h"
 #include "Matrix.h"
 #include "hl_gpu.h"
 #include "hl_table_apply.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/Thread.h"
+#include "paddle/utils/ThreadLocal.h"
 
 namespace paddle {
 
@@ -657,6 +657,8 @@ void CpuVectorT<T>::copyFrom(const VectorT<T>& src, hl_stream_t stream) {
                     (void*)src.getData(),
                     sizeof(T) * this->getSize(),
                     stream);
+    // There is a need to add synchronization to ensure that the data is copied.
+    hl_stream_synchronize(stream);
   } else {
     src.copyTo(this);
   }
@@ -754,8 +756,7 @@ void ParallelCpuVectorT<real>::exec(SyncThreadPool::JobFunc func) {
 }
 
 template <class T>
-CpuGpuVectorT<T>::CpuGpuVectorT(size_t size, bool useGpu)
-    : sync_(nullptr) {
+CpuGpuVectorT<T>::CpuGpuVectorT(size_t size, bool useGpu) : sync_(nullptr) {
   if (!useGpu) {
     cpuVectorT_ = std::make_shared<CpuVectorT<T>>(size);
   } else {
@@ -909,12 +910,13 @@ const T* CpuGpuVectorT<T>::getData(bool useGpu) const {
 // Operation will change data and need to reset sync_ & syncFlag_.
 #define MUTABLE_VECTOR_OP(OP, useGpu, args...) \
   do {                                         \
-    setSync(useGpu);                           \
     if (useGpu) {                              \
       copyToGpu();                             \
+      setSync(useGpu);                         \
       return gpuVectorT_->OP(args);            \
     } else {                                   \
       copyToCpu();                             \
+      setSync(useGpu);                         \
       return cpuVectorT_->OP(args);            \
     }                                          \
   } while (0)
@@ -1031,7 +1033,7 @@ void CpuGpuVectorT<T>::copyToCpu() {
     case DATA_AT_GPU:
       CHECK(gpuVectorT_);
       this->resizeOrCreate(gpuVectorT_->getSize(), false);
-      cpuVectorT_->copyFrom(*gpuVectorT_, HPPL_STREAM_DEFAULT);
+      cpuVectorT_->copyFrom(*gpuVectorT_);
       setSync(SYNCED);
       break;
     case DATA_AT_CPU:
@@ -1050,7 +1052,7 @@ void CpuGpuVectorT<T>::copyToGpu() {
     case DATA_AT_CPU:
       CHECK(cpuVectorT_);
       this->resizeOrCreate(cpuVectorT_->getSize(), true);
-      gpuVectorT_->copyFrom(*cpuVectorT_, HPPL_STREAM_DEFAULT);
+      gpuVectorT_->copyFrom(*cpuVectorT_);
       setSync(SYNCED);
       break;
     case DATA_AT_GPU:

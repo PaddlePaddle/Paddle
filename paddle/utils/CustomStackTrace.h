@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include <stack>
 #include <thread>
 #include <unordered_map>
-#include <functional>
 
 #include "ThreadLocal.h"
 
@@ -55,12 +55,16 @@ public:
    *        Else, just set status to popping.
    */
   void pop(const T& item) {
-    pushing() = false;
     auto& s = this->stack();
     if (item == s.top()) {
       s.pop();
     }
   }
+
+  /**
+   * @brief Indicate whether we are at forward or backward stage of computation
+   */
+  void set_stage(bool isForward) { pushing() = isForward; }
 
   /**
    * @brief clear current thread stack.
@@ -96,7 +100,8 @@ public:
    */
   typedef std::function<void(const std::thread::id& /*threadId*/,
                              bool* /*isPushing*/,
-                             const T& /*item*/)> DumpCallback;
+                             const T& /*item*/)>
+      DumpCallback;
 
   /**
    * Dump all thread stack, and all stack will be cleared.

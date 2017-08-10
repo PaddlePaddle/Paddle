@@ -1,5 +1,6 @@
 *.DS_Store
 build/
+build_doc/
 *.user
 
 .vscode
@@ -7,5 +8,21 @@ build/
 .project
 .cproject
 .pydevproject
+.settings/
 Makefile
 .test_env/
+third_party/
+
+*~
+bazel-*
+third_party/
+
+# clion workspace.
+cmake-build-*
+
+# generated while compiling
+python/paddle/v2/framework/core.so
+CMakeFiles
+cmake_install.cmake
+paddle/.timestamp
+python/paddlepaddle.egg-info/

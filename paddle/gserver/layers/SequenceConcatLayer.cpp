@@ -12,18 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
 
 /**
  * A layer for concatenating the first sequence with the second sequence
- * following the first
- * Input: two sequences each containing some instances
+ * Input: two sequences each containing the same number of instances
+ *        seq1 = [a1, a2, ..., an]
+ *        seq2 = [b1, b2, ..., bn]
  * Output: a concatenated sequence of the two input sequences
+ *        out = [a1, b1, a2, b2, ..., an, bn]
  */
 
 class SequenceConcatLayer : public Layer {
@@ -35,10 +37,11 @@ public:
 
   ~SequenceConcatLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(seqconcat, SequenceConcatLayer);
@@ -167,13 +170,17 @@ void SequenceConcatLayer::backward(const UpdateCallback& callback) {
     size_t rightNumIns = 0;
     for (size_t seqId = 0; seqId < numSequences1; ++seqId) {
       leftNumIns = starts1[seqId + 1] - starts1[seqId];
-      inputGrad1->subMatrix(starts1[seqId], leftNumIns)
-          ->add(*(outputGrad->subMatrix(offset, leftNumIns)));
+      if (inputGrad1) {
+        inputGrad1->subMatrix(starts1[seqId], leftNumIns)
+            ->add(*(outputGrad->subMatrix(offset, leftNumIns)));
+      }
       offset += leftNumIns;
 
       rightNumIns = starts2[seqId + 1] - starts2[seqId];
-      inputGrad2->subMatrix(starts2[seqId], rightNumIns)
-          ->add(*(outputGrad->subMatrix(offset, rightNumIns)));
+      if (inputGrad2) {
+        inputGrad2->subMatrix(starts2[seqId], rightNumIns)
+            ->add(*(outputGrad->subMatrix(offset, rightNumIns)));
+      }
       offset += rightNumIns;
     }
   }

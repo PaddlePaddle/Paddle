@@ -83,13 +83,17 @@ def __arguments_to_numpy__(i, arg):
     assert isinstance(arg, swig_paddle.Arguments)
     value = arg.getSlotValue(i)
     ids = arg.getSlotIds(i)
+    prob = arg.getSlotIn(i)
     if value is not None:
         assert isinstance(value, swig_paddle.Matrix)
         value = value.copyToNumpyMat()
     if ids is not None:
         assert isinstance(ids, swig_paddle.IVector)
         ids = ids.copyToNumpyArray()
-    return {"value": value, "id": ids}
+    if prob is not None:
+        assert isinstance(prob, swig_paddle.Matrix)
+        prob = prob.copyToNumpyMat()
+    return {"value": value, "id": ids, "prob": prob}
 
 
 def __monkeypatch_gradient_machine__():
@@ -195,6 +199,12 @@ def __monkeypatch_gradient_machine__():
 
     swig_paddle.GradientMachine.getParameters = getParameters
 
+    def getNonStaticParameters(self):
+        return (self.getNonStaticParameter(i)
+                for i in xrange(self.getNonStaticParameterSize()))
+
+    swig_paddle.GradientMachine.getNonStaticParameters = getNonStaticParameters
+
     def getLayerOutputs(self, layerNames):
         """
         getLayerOutputs. get outputs of layers and return a numpy matrix dict.
@@ -208,7 +218,7 @@ def __monkeypatch_gradient_machine__():
 
         output = dict()
         for name in layerNames:
-            output[name] = __matrix_to_numpy__(self.getLayerOutput(name))
+            output[name] = __arguments_to_numpy__(0, self.getLayerOutput(name))
         return output
 
     swig_paddle.GradientMachine.getLayerOutputs = getLayerOutputs
@@ -559,10 +569,10 @@ def __monkey_patch_trainer__():
 
 
 def monkeypatches():
-    patches = [__monkeypatch_init_paddle__,
-               __monkeypatch_gradient_machine__,
-               __monkey_patch_protobuf_objects__,
-               __monkey_patch_parameter__,
-               __monkey_patch_trainer__]
+    patches = [
+        __monkeypatch_init_paddle__, __monkeypatch_gradient_machine__,
+        __monkey_patch_protobuf_objects__, __monkey_patch_parameter__,
+        __monkey_patch_trainer__
+    ]
     for patch in patches:
         patch()

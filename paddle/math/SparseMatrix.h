@@ -104,15 +104,12 @@ public:
                  size_t newNnz,
                  SparseValueType valueType);
 
-  void mul(const GpuMatrixPtr a,
-           const GpuMatrixPtr b,
-           real scaleAB,
-           real scaleT);
+  void mul(const GpuMatrix& a, const GpuMatrix& b, real scaleAB, real scaleT);
   /// B = A , B.trans = !A.trans
   MatrixPtr getTranspose();
 
   /// B = A'
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
 
   void copyFrom(const Matrix& src);
   void copyFrom(const Matrix& src, hl_stream_t stream);
@@ -218,7 +215,7 @@ protected:
   void copyRow(int offsets, size_t colNum, const sparse_float_value_t* row);
 
 public:
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
 
   void copyFrom(CpuSparseMatrix& src, hl_stream_t stream);
   void copyFrom(GpuSparseMatrix& src, hl_stream_t stream);

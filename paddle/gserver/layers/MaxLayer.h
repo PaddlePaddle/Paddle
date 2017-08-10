@@ -26,6 +26,10 @@ namespace paddle {
  * If SequenceLevel = kNonSeq:
  *    Output: output size is the number of input sequences (NOT input instances)
  *    output[i] = max_{for each instance in this sequence}{input[i]}
+ *    If stride_ > 0:
+ *      Output: a shorten sequence. Stride is the step size by which we slide a
+ *              window upon the input sequence, and the max pooling operation is
+ *              then applied to each interval independently.
  * If SequenceLevel = kSeq:
  *    Check input sequence must has sub-sequence
  *    Output: output size is the number of input sub-sequences
@@ -42,14 +46,13 @@ protected:
 public:
   explicit MaxLayer(const LayerConfig& config) : SequencePoolLayer(config) {}
 
-  ~MaxLayer() {}
-
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     return SequencePoolLayer::init(layerMap, parameterMap);
   }
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

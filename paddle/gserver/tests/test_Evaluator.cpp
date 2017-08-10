@@ -15,15 +15,15 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <vector>
 #include "ModelConfig.pb.h"
+#include "paddle/testing/TestUtil.h"
 #include "paddle/trainer/Trainer.h"
-#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(use_gpu);
+DECLARE_int32(gpu_id);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 enum InputType {
   INPUT_DATA,         // dense vector
@@ -110,6 +110,18 @@ void testEvaluator(TestConfig testConf,
   testEvaluator->finish();
   LOG(INFO) << *testEvaluator;
 
+  std::vector<std::string> names;
+  testEvaluator->getNames(&names);
+  paddle::Error err;
+  for (auto& name : names) {
+    auto value = testEvaluator->getValue(name, &err);
+    ASSERT_TRUE(err.isOK());
+    LOG(INFO) << name << " " << value;
+    auto tp = testEvaluator->getType(name, &err);
+    ASSERT_TRUE(err.isOK());
+    ASSERT_EQ(testConf.evaluatorConfig.type(), tp);
+  }
+
   double totalScore2 = 0.0;
   if (testConf.testAccumulate) {
     testEvaluator->start();
@@ -126,9 +138,27 @@ void testEvaluatorAll(TestConfig testConf,
   testEvaluator(testConf, testEvaluatorName, batchSize, false);
 }
 
+TEST(Evaluator, detection_map) {
+  TestConfig config;
+  config.evaluatorConfig.set_type("detection_map");
+  config.evaluatorConfig.set_overlap_threshold(0.5);
+  config.evaluatorConfig.set_background_id(0);
+  config.evaluatorConfig.set_ap_type("Integral");
+  config.evaluatorConfig.set_evaluate_difficult(0);
+
+  config.inputDefs.push_back({INPUT_DATA, "output", 7});
+  config.inputDefs.push_back({INPUT_SEQUENCE_DATA, "label", 6});
+  config.evaluatorConfig.set_evaluate_difficult(false);
+  testEvaluatorAll(config, "detection_map", 100);
+
+  config.evaluatorConfig.set_evaluate_difficult(true);
+  testEvaluatorAll(config, "detection_map", 100);
+}
+
 TEST(Evaluator, classification_error) {
   TestConfig config;
   config.evaluatorConfig.set_type("classification_error");
+  config.evaluatorConfig.set_top_k(5);
 
   config.inputDefs.push_back({INPUT_DATA, "output", 50});
   config.inputDefs.push_back({INPUT_LABEL, "label", 50});
