@@ -70,9 +70,8 @@ void SequenceSliceLayer::checkInputs() {
   const Argument& inputSeq = getInput(0);
   CHECK(inputSeq.hasSeq()) << "The first input of sequence slic layer "
                            << "must be a sequence.";
-  // Check inputs
   const MatrixPtr indices1 = getInputValue(1);
-  CHECK_EQ(indices1->getHeight(),
+  CHECK_EQ(static_cast<size_t>(indices1->getHeight()),
            inputSeq.hasSubseq() ? inputSeq.getNumSubSequences()
                                 : inputSeq.getNumSequences())
       << "Height of the second input should be equal to number of sequence "

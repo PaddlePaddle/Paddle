@@ -6242,6 +6242,7 @@ def seq_slice_layer(input, starts, ends, name=None):
         name, LayerType.SEQ_SLICE, parents=[input], size=input.size)
 
 
+@wrap_name_default()
 @layer_support()
 def kmax_sequence_score_layer(input, name=None, beam_size=1):
     """
