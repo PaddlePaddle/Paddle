@@ -9,7 +9,7 @@ add_unittest_without_exec(test_ProtoDataProvider
 # mkdir will get error.
 add_test(NAME test_ProtoDataProvider
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 
 ################# test_LayerGrad #######################
 add_unittest_without_exec(test_LayerGrad
@@ -92,8 +92,8 @@ if(WITH_PYTHON)
         test_PyDataProvider.cpp)
 
     add_test(NAME test_PyDataProvider
-        COMMAND .set_python_path.sh -d ./gserver/tests:${PROJ_ROOT}/python/ ${CMAKE_CURRENT_BINARY_DIR}/test_PyDataProvider
-        WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
+        COMMAND .set_python_path.sh -d ./gserver/tests:${PADDLE_SOURCE_DIR}/python/ ${CMAKE_CURRENT_BINARY_DIR}/test_PyDataProvider
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 endif()
 
 ############### test_RecurrentLayer #######################
@@ -106,7 +106,7 @@ if(NOT WITH_DOUBLE)
 
     add_test(NAME test_WarpCTCLayer
         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_WarpCTCLayer --warpctc_dir=${WARPCTC_LIB_DIR}
-        WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 endif()
 
 ############### test_RecurrentGradientMachine ###############
@@ -116,20 +116,20 @@ add_unittest_without_exec(test_RecurrentGradientMachine
     test_RecurrentGradientMachine.cpp)
 add_test(NAME test_RecurrentGradientMachine
     COMMAND .set_python_path.sh -d
-            ${PROJ_ROOT}/python:${PROJ_ROOT}/paddle/gserver/tests
+            ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
             ${CMAKE_CURRENT_BINARY_DIR}/test_RecurrentGradientMachine
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 
 add_unittest_without_exec(test_NetworkCompare
     test_NetworkCompare.cpp)
 if(WITH_GPU)
     add_test(NAME test_NetworkCompare
-        COMMAND .set_python_path.sh -d ${PROJ_ROOT}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=true
-        WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
+        COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=true
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 else()
     add_test(NAME test_NetworkCompare
-        COMMAND .set_python_path.sh -d ${PROJ_ROOT}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=false
-        WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
+        COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=false
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 endif()
 
 
@@ -137,6 +137,6 @@ add_unittest_without_exec(test_PyDataProvider2
         test_PyDataProvider2.cpp)
 
 add_test(NAME test_PyDataProvider2
-   COMMAND .set_python_path.sh -d ${PROJ_ROOT}/paddle/gserver/tests:${PROJ_ROOT}/python ${CMAKE_CURRENT_BINARY_DIR}/test_PyDataProvider2
-        WORKING_DIRECTORY ${PROJ_ROOT}/paddle
+   COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/paddle/gserver/tests:${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_PyDataProvider2
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle
 )
