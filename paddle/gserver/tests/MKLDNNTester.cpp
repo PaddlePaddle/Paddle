@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "MkldnnTester.h"
-#include "paddle/gserver/layers/MkldnnBase.h"
-#include "paddle/gserver/layers/MkldnnLayer.h"
+#include "MKLDNNTester.h"
+#include "paddle/gserver/layers/MKLDNNBase.h"
+#include "paddle/gserver/layers/MKLDNNLayer.h"
 
 namespace paddle {
 
 // init data layer and test layer of both dnn and reference
-void MkldnnTester::reset(const TestConfig& dnn,
+void MKLDNNTester::reset(const TestConfig& dnn,
                          const TestConfig& ref,
                          size_t batchSize) {
   const bool trans = false;
@@ -71,7 +71,7 @@ void MkldnnTester::reset(const TestConfig& dnn,
   setInputImgSize();
 }
 
-void MkldnnTester::setInputImgSize() {
+void MKLDNNTester::setInputImgSize() {
   for (size_t n = 0; n < dataLayers_.size(); ++n) {
     for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
       // TODO(TJ): fix me when concat and elewise ready
@@ -82,7 +82,7 @@ void MkldnnTester::setInputImgSize() {
 }
 
 // init randome parameters of ref, and copy to mkldnn
-void MkldnnTester::randomWgtDatas() {
+void MKLDNNTester::randomWgtDatas() {
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
   for (size_t i = 0; i < parameters_[REF].size(); ++i) {
     const VectorPtr& dnnValue = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
@@ -96,7 +96,7 @@ void MkldnnTester::randomWgtDatas() {
 }
 
 // random botdata of ref layer and copy same to mkldnn
-void MkldnnTester::randomBotDatas() {
+void MKLDNNTester::randomBotDatas() {
   CHECK_EQ(dataLayers_.size(), NUM);
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
     dataLayers_[REF][i]->getOutputValue()->randomizeUniform();
@@ -107,14 +107,14 @@ void MkldnnTester::randomBotDatas() {
   }
 }
 
-void MkldnnTester::randomTopDiffs() {
+void MKLDNNTester::randomTopDiffs() {
   refLayer_->getOutputGrad()->randomizeUniform();
   dnnLayer_->getOutputGrad()->copyFrom(*(refLayer_->getOutputGrad()));
   VLOG(lvl_) << "Random dom Backward Input, TopDiff: ";
   printMatrix(refLayer_->getOutputGrad());
 }
 
-void MkldnnTester::checkForward() {
+void MKLDNNTester::checkForward() {
   printTopDatas();
   double delta = compareMatrix(testLayers_[DNN]->getOutputValue(),
                                testLayers_[REF]->getOutputValue());
@@ -122,7 +122,7 @@ void MkldnnTester::checkForward() {
   EXPECT_LE(fabs(delta), eps_);
 }
 
-void MkldnnTester::checkBackwardData() {
+void MKLDNNTester::checkBackwardData() {
   const bool isBN = dnnLayer_->getType() == "mkldnn_batch_norm";
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
     const MatrixPtr& dnnDiff = dataLayers_[DNN][i]->getOutputGrad();
@@ -141,13 +141,13 @@ void MkldnnTester::checkBackwardData() {
   }
 }
 
-void MkldnnTester::checkBackwardWgts() {
+void MKLDNNTester::checkBackwardWgts() {
   CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
   vector<VectorPtr> dnnWgts;  // used to temply save mkldnn weights
   saveWgt(parameters_[DNN], dnnWgts);
 
-  const MkldnnLayerPtr dnnlayer =
-      std::dynamic_pointer_cast<MkldnnLayer>(dnnLayer_);
+  const MKLDNNLayerPtr dnnlayer =
+      std::dynamic_pointer_cast<MKLDNNLayer>(dnnLayer_);
   CHECK(dnnlayer);
   dnnlayer->convertWeightsToPaddle();
   for (size_t i = 0; i < parameters_[DNN].size(); ++i) {
@@ -166,7 +166,7 @@ void MkldnnTester::checkBackwardWgts() {
   restoreWgt(dnnWgts, parameters_[DNN]);
 }
 
-void MkldnnTester::saveWgt(const vector<ParameterPtr>& from,
+void MKLDNNTester::saveWgt(const vector<ParameterPtr>& from,
                            vector<VectorPtr>& to) {
   const bool useGpu = false;
   to.resize(from.size());
@@ -177,7 +177,7 @@ void MkldnnTester::saveWgt(const vector<ParameterPtr>& from,
   }
 }
 
-void MkldnnTester::restoreWgt(const vector<VectorPtr>& from,
+void MKLDNNTester::restoreWgt(const vector<VectorPtr>& from,
                               vector<ParameterPtr>& to) {
   CHECK_EQ(from.size(), to.size());
   for (size_t i = 0; i < from.size(); ++i) {
@@ -187,7 +187,7 @@ void MkldnnTester::restoreWgt(const vector<VectorPtr>& from,
 }
 
 // clear parameters grad
-void MkldnnTester::clearWgtDiffs() {
+void MKLDNNTester::clearWgtDiffs() {
   for (size_t n = 0; n < parameters_.size(); ++n) {
     for (size_t i = 0; i < parameters_[n].size(); ++i) {
       const VectorPtr& grad = parameters_[n][i]->getBuf(PARAMETER_GRADIENT);
@@ -198,7 +198,7 @@ void MkldnnTester::clearWgtDiffs() {
   }
 }
 
-void MkldnnTester::clearBotDiffs() {
+void MKLDNNTester::clearBotDiffs() {
   // dnn and ref
   for (size_t n = 0; n < dataLayers_.size(); ++n) {
     // all inputs layers
@@ -208,7 +208,7 @@ void MkldnnTester::clearBotDiffs() {
   }
 }
 
-void MkldnnTester::clearBotDiffs(int n) {
+void MKLDNNTester::clearBotDiffs(int n) {
   CHECK_LT(n, NUM);
   // all inputs layers
   for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
@@ -216,13 +216,13 @@ void MkldnnTester::clearBotDiffs(int n) {
   }
 }
 
-void MkldnnTester::clearTopDatas() {
+void MKLDNNTester::clearTopDatas() {
   for (size_t i = 0; i < testLayers_.size(); ++i) {
     testLayers_[i]->getOutputValue()->zeroMem();
   }
 }
 
-void MkldnnTester::printTopDatas() {
+void MKLDNNTester::printTopDatas() {
   if (!log_) {
     return;
   }
@@ -233,7 +233,7 @@ void MkldnnTester::printTopDatas() {
   }
 }
 
-void MkldnnTester::printMatrix(const MatrixPtr& m) {
+void MKLDNNTester::printMatrix(const MatrixPtr& m) {
   if (!log_) {
     return;
   }
@@ -243,7 +243,7 @@ void MkldnnTester::printMatrix(const MatrixPtr& m) {
   VLOG(lvl_) << std::endl << ostr.str();
 }
 
-void MkldnnTester::printVector(const VectorPtr& v) {
+void MKLDNNTester::printVector(const VectorPtr& v) {
   if (!log_) {
     return;
   }
@@ -253,7 +253,7 @@ void MkldnnTester::printVector(const VectorPtr& v) {
   VLOG(lvl_) << std::endl << ostr.str();
 }
 
-double MkldnnTester::getDelta(const real* d1,
+double MKLDNNTester::getDelta(const real* d1,
                               const real* d2,
                               size_t len,
                               const float failRate,
@@ -280,17 +280,17 @@ double MkldnnTester::getDelta(const real* d1,
   return (failCnt / (float)len) > failRate ? maxOut : delta / sum;
 }
 
-double MkldnnTester::compareMatrix(const MatrixPtr& m1, const MatrixPtr& m2) {
+double MKLDNNTester::compareMatrix(const MatrixPtr& m1, const MatrixPtr& m2) {
   CHECK_EQ(m1->getElementCnt(), m2->getElementCnt());
   return getDelta(m1->getData(), m2->getData(), m1->getElementCnt());
 }
 
-double MkldnnTester::compareVector(const VectorPtr& v1, const VectorPtr& v2) {
+double MKLDNNTester::compareVector(const VectorPtr& v1, const VectorPtr& v2) {
   CHECK_EQ(v1->getSize(), v2->getSize());
   return getDelta(v1->getData(), v2->getData(), v1->getSize());
 }
 
-void MkldnnTester::runOnce() {
+void MKLDNNTester::runOnce() {
   // test forward
   randomBotDatas();
   dnnLayer_->forward(PASS_TRAIN);
@@ -310,7 +310,7 @@ void MkldnnTester::runOnce() {
   clearBotDiffs(REF);
 }
 
-void MkldnnTester::run(const TestConfig& dnn,
+void MKLDNNTester::run(const TestConfig& dnn,
                        const TestConfig& ref,
                        size_t batchSize,
                        size_t inputImgH,

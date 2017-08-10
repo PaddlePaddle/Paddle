@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include "MkldnnLayer.h"
+#include "MKLDNNLayer.h"
 #include "mkldnn.hpp"
 
 namespace paddle {
 
 /**
- * @brief A subclass of MkldnnLayer fc layer.
+ * @brief A subclass of MKLDNNLayer fc layer.
  *
  * The config file api is mkldnn_fc
  */
-class MkldnnFcLayer : public MkldnnLayer {
+class MKLDNNFcLayer : public MKLDNNLayer {
 protected:
   // input layer size, can not be change after init
   size_t iLayerSize_;  // == ic * ih * iw
@@ -37,10 +37,10 @@ protected:
   std::unique_ptr<Weight> biases_;
 
 public:
-  explicit MkldnnFcLayer(const LayerConfig& config)
-      : MkldnnLayer(config), hasInitedWgt_(false), hasSpatial_(true) {}
+  explicit MKLDNNFcLayer(const LayerConfig& config)
+      : MKLDNNLayer(config), hasInitedWgt_(false), hasSpatial_(true) {}
 
-  ~MkldnnFcLayer() {}
+  ~MKLDNNFcLayer() {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;

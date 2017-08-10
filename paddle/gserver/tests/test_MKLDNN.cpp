@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
-#include "MkldnnTester.h"
+#include "MKLDNNTester.h"
 #include "ModelConfig.pb.h"
 
 using namespace paddle;  // NOLINT
@@ -43,7 +43,7 @@ void testFcLayer(const testFCDesc& pm) {
        /* size of weight= */ size_t(pm.oc * pm.ic * pm.ih * pm.iw)});
   cfg.layerConfig.add_inputs();
 
-  MkldnnTester tester;
+  MKLDNNTester tester;
   for (auto biasSize : {pm.oc, 0}) {
     cfg.biasSize = biasSize;
     TestConfig ref = cfg;
@@ -54,7 +54,7 @@ void testFcLayer(const testFCDesc& pm) {
   }
 }
 
-TEST(MkldnnLayer, fcLayer) {
+TEST(MKLDNNLayer, FcLayer) {
   testFcLayer({/*bs*/ 2, /*ic*/ 2, /*oc*/ 3, /*ih*/ 1, /*iw*/ 1});
   testFcLayer({/*bs*/ 3, /*ic*/ 7, /*oc*/ 19, /*ih*/ 1, /*iw*/ 1});
   testFcLayer({/*bs*/ 8, /*ic*/ 16, /*oc*/ 32, /*ih*/ 13, /*iw*/ 13});

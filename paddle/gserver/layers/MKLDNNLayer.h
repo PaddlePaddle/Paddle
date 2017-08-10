@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "Layer.h"
-#include "MkldnnBase.h"
+#include "MKLDNNBase.h"
 #include "mkldnn.hpp"
 
 DECLARE_bool(use_mkldnn);
@@ -24,14 +24,14 @@ DECLARE_bool(use_mkldnn_wgt);
 
 namespace paddle {
 
-class MkldnnLayer;
-typedef std::shared_ptr<MkldnnLayer> MkldnnLayerPtr;
+class MKLDNNLayer;
+typedef std::shared_ptr<MKLDNNLayer> MKLDNNLayerPtr;
 
 /**
- * @brief Base class of Mkldnnlayer.
+ * @brief Base class of MKLDNNlayer.
  *
  */
-class MkldnnLayer : public Layer {
+class MKLDNNLayer : public Layer {
 protected:
   // batch size
   int bs_;
@@ -45,14 +45,14 @@ protected:
 
   // mkldnn engine, stream and primivtives
   mkldnn::engine engine_;
-  std::shared_ptr<MkldnnStream> stream_;
+  std::shared_ptr<MKLDNNStream> stream_;
   std::shared_ptr<mkldnn::primitive> fwd_;
   std::shared_ptr<mkldnn::primitive> bwdWgt_;
   std::shared_ptr<mkldnn::primitive> bwdData_;
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-  // TODO(TJ): change below memory as MkldnnMatrixPtr type
+  // TODO(TJ): change below memory as MKLDNNMatrixPtr type
   std::shared_ptr<mkldnn::memory> inVal_;
   std::shared_ptr<mkldnn::memory> inGrad_;
   std::shared_ptr<mkldnn::memory> outVal_;
@@ -63,7 +63,7 @@ protected:
   std::shared_ptr<mkldnn::memory> biasGrad_;
 
 public:
-  explicit MkldnnLayer(const LayerConfig& config)
+  explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
         bs_(0),
         ic_(0),
@@ -79,7 +79,7 @@ public:
         bwdWgt_(nullptr),
         bwdData_(nullptr) {}
 
-  ~MkldnnLayer() {}
+  ~MKLDNNLayer() {}
 
   virtual bool init(const LayerMap& layerMap,
                     const ParameterMap& parameterMap) {
@@ -90,8 +90,8 @@ public:
     CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
                             << "Please set WITH_MKLDNN=ON "
                             << "and set use_mkldnn=True";
-    stream_.reset(new MkldnnStream());
-    engine_ = CpuEngine::Instance().getEngine();
+    stream_.reset(new MKLDNNStream());
+    engine_ = CPUEngine::Instance().getEngine();
 
     // TODO(TJ): deivecId
     return true;

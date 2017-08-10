@@ -30,26 +30,26 @@ typedef enum {
  * @brief MKLDNN CPU engine.
  *
  */
-class CpuEngine {
+class CPUEngine {
 public:
-  static CpuEngine& Instance() {
+  static CPUEngine& Instance() {
     // Thread-safe in C++11.
-    static CpuEngine myInstance;
+    static CPUEngine myInstance;
     return myInstance;
   }
 
   // Disallow copy or move
-  CpuEngine(const CpuEngine&) = delete;             // Copy constructor
-  CpuEngine(CpuEngine&&) = delete;                  // Move constructor
-  CpuEngine& operator=(const CpuEngine&) = delete;  // Copy assignment
-  CpuEngine& operator=(CpuEngine&&) = delete;       // Move assignment
+  CPUEngine(const CPUEngine&) = delete;             // Copy constructor
+  CPUEngine(CPUEngine&&) = delete;                  // Move constructor
+  CPUEngine& operator=(const CPUEngine&) = delete;  // Copy assignment
+  CPUEngine& operator=(CPUEngine&&) = delete;       // Move assignment
 
   mkldnn::engine& getEngine() { return cpuEngine_; }
 
 protected:
-  CpuEngine() : cpuEngine_(mkldnn::engine::cpu, 0) {}
-  //    CpuEngine() : cpuEngine_(mkldnn::engine::cpu_lazy, 0) {}
-  ~CpuEngine() {}
+  CPUEngine() : cpuEngine_(mkldnn::engine::cpu, 0) {}
+  //    CPUEngine() : cpuEngine_(mkldnn::engine::cpu_lazy, 0) {}
+  ~CPUEngine() {}
 
 private:
   mkldnn::engine cpuEngine_;
@@ -59,11 +59,11 @@ private:
  * @brief MKLDNN Stream.
  *
  */
-class MkldnnStream {
+class MKLDNNStream {
 public:
-  MkldnnStream() : ready_(false) { resetState(); }
+  MKLDNNStream() : ready_(false) { resetState(); }
 
-  virtual ~MkldnnStream() {}
+  virtual ~MKLDNNStream() {}
 
   /**
    * @brief Submit stream

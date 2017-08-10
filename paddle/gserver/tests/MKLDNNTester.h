@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "LayerGradUtil.h"
-#include "paddle/gserver/layers/MkldnnBase.h"
+#include "paddle/gserver/layers/MKLDNNBase.h"
 
 namespace paddle {
 
@@ -25,7 +25,7 @@ namespace paddle {
  * @brief test the functionality of Mkldnnlayers
  * refer to paddle original function
  */
-class MkldnnTester {
+class MKLDNNTester {
   enum {
     DNN = 0,
     REF = 1,
@@ -54,14 +54,14 @@ protected:
   size_t ih_, iw_;
 
 public:
-  explicit MkldnnTester(size_t iter = 3, float epsilon = 1e-4) {
+  explicit MKLDNNTester(size_t iter = 3, float epsilon = 1e-4) {
     iter_ = iter;
     eps_ = epsilon;
     log_ = false;
     lvl_ = MKLDNN_ALL;
   }
 
-  ~MkldnnTester() {}
+  ~MKLDNNTester() {}
 
 public:
   void run(const TestConfig& dnn,

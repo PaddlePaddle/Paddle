@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "MkldnnFcLayer.h"
+#include "MKLDNNFcLayer.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
@@ -24,11 +24,11 @@ typedef inner_product_backward_data fc_bwdData;
 
 namespace paddle {
 
-REGISTER_LAYER(mkldnn_fc, MkldnnFcLayer);
+REGISTER_LAYER(mkldnn_fc, MKLDNNFcLayer);
 
-bool MkldnnFcLayer::init(const LayerMap& layerMap,
+bool MKLDNNFcLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
-  if (!MkldnnLayer::init(layerMap, parameterMap)) {
+  if (!MKLDNNLayer::init(layerMap, parameterMap)) {
     return false;
   }
 
@@ -56,7 +56,7 @@ bool MkldnnFcLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void MkldnnFcLayer::convertWeightsFromPaddle() {
+void MKLDNNFcLayer::convertWeightsFromPaddle() {
   if (FLAGS_use_mkldnn_wgt) {
     return;
   }
@@ -81,7 +81,7 @@ void MkldnnFcLayer::convertWeightsFromPaddle() {
   hasInitedWgt_ = true;
 }
 
-void MkldnnFcLayer::convertWeightsToPaddle() {
+void MKLDNNFcLayer::convertWeightsToPaddle() {
   MatrixPtr dnnWgt = weight_->getW();
   MatrixPtr paddleWgt;
   dnnWgt->transpose(paddleWgt, true);
@@ -92,7 +92,7 @@ void MkldnnFcLayer::convertWeightsToPaddle() {
   dnnWgtT->copyFrom(*paddleWgt);
 }
 
-void MkldnnFcLayer::reshape() {
+void MKLDNNFcLayer::reshape() {
   const Argument& input = getInput(0);
   int batchSize = input.getBatchSize();
   if (bs_ == batchSize) {
@@ -129,7 +129,7 @@ void MkldnnFcLayer::reshape() {
   convertWeightsFromPaddle();
 }
 
-void MkldnnFcLayer::resetFwd() {
+void MKLDNNFcLayer::resetFwd() {
   bool hasBias = biases_ && biases_->getW();
   real* iData = getInputValue(0)->getData();
   real* oData = getOutputValue()->getData();
@@ -166,7 +166,7 @@ void MkldnnFcLayer::resetFwd() {
   pipelineFwd_.push_back(*fwd_);
 }
 
-void MkldnnFcLayer::resetBwd() {
+void MKLDNNFcLayer::resetBwd() {
   if (!needResetBwd_) {
     return;
   }
@@ -231,7 +231,7 @@ void MkldnnFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdData_);
 }
 
-void MkldnnFcLayer::forward(PassType passType) {
+void MKLDNNFcLayer::forward(PassType passType) {
   Layer::forward(passType);
   reshape();
 
@@ -253,7 +253,7 @@ void MkldnnFcLayer::forward(PassType passType) {
   }
 }
 
-void MkldnnFcLayer::backward(const UpdateCallback& callback) {
+void MKLDNNFcLayer::backward(const UpdateCallback& callback) {
   /* Do derivation */ {
     REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
     backwardActivation();
