@@ -57,8 +57,8 @@ void ExposeOperator(ClassType &m) {
       .def("outputs",
            [](const typename ClassType::type &op)
                -> std::unordered_map<std::string, std::vector<std::string>> {
-                 return op.outputs_;
-               })
+             return op.outputs_;
+           })
       .def("__str__", &ClassType::type::DebugString);
 }
 
@@ -152,7 +152,7 @@ All parameter, weight, gradient are variables in Paddle.
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &protos = OpRegistry::protos();
+    auto &protos = OpProtos();
     std::vector<py::bytes> ret_values;
     for (auto it = protos.begin(); it != protos.end(); ++it) {
       PADDLE_ENFORCE(it->second.IsInitialized(),
