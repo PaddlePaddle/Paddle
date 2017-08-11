@@ -74,7 +74,8 @@ const std::vector<std::string>& OperatorBase::Outputs(
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
-  for (auto& input : inputs_) {
+  for (auto it = inputs_.begin(); it != inputs_.end();) {
+    auto& input = *it;
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
@@ -83,9 +84,14 @@ std::string OperatorBase::DebugString() const {
       }
     }
     ss << "]";
+    ++it;
+    if (it != inputs_.end()) {
+      ss << ", ";
+    }
   }
   ss << "}, outputs:{";
-  for (auto& output : outputs_) {
+  for (auto it = outputs_.begin(); it != outputs_.end();) {
+    auto& output = *it;
     ss << output.first << "[";
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
@@ -94,6 +100,10 @@ std::string OperatorBase::DebugString() const {
       }
     }
     ss << "]";
+    ++it;
+    if (it != outputs_.end()) {
+      ss << ", ";
+    }
   }
   ss << "}.";
   return ss.str();

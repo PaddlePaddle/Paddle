@@ -27,7 +27,7 @@ template <typename T>
 class CPUUniformRandomKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>(0);
+    auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed =
         static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
@@ -50,7 +50,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE(GetAttr<float>("min") < GetAttr<float>("max"),
                    "uniform_random's min must less then max");
-    auto* tensor = ctx.Output<framework::Tensor>(0);
+    auto* tensor = ctx.Output<framework::Tensor>("Out");
     auto dims = GetAttr<std::vector<int>>("dims");
     tensor->Resize(framework::make_ddim(dims));
   }
