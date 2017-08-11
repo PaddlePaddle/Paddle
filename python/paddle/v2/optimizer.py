@@ -23,7 +23,7 @@ from paddle.proto.OptimizerConfig_pb2 import OptimizerConfig
 
 __all__ = [
     'Momentum', 'Adam', 'Adamax', 'AdaGrad', 'DecayedAdaGrad', 'AdaDelta',
-    'RMSProp', 'ModelAverage', 'L2Regularization', 'OptimizerConfig'
+    'RMSProp', 'ModelAverage', 'L2Regularization'
 ]
 
 
@@ -40,7 +40,6 @@ class Optimizer(object):
             __impl__)
         self.__opt_conf__ = swig_api.OptimizationConfig.createFromProto(
             self.__opt_conf_proto__)
-        self.__opt_conf_new__ = None
 
     def enable_types(self):
         """
@@ -65,9 +64,8 @@ class Optimizer(object):
 
     def __create_new_remote_updater__(self, pserver_spec, use_etcd):
         import py_paddle.swig_paddle as swig_api
-        if not self.__opt_conf_new__:
-            return swig_api.ParameterUpdater.createNewRemoteUpdater(
-                self.__opt_conf__, pserver_spec, use_etcd)
+        return swig_api.ParameterUpdater.createNewRemoteUpdater(
+            self.__opt_conf__, pserver_spec, use_etcd)
 
     def create_updater(self, is_local, num_passes, use_sparse_updater,
                        pserver_spec, use_etcd):
