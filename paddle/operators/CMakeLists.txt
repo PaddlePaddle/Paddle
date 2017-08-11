@@ -41,6 +41,8 @@ function(op_library TARGET)
     endif()
 endfunction()
 
+cc_test(gather_test SRCS gather_test.cc DEPS tensor)
+
 cc_library(net_op SRCS net_op.cc DEPS op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 
