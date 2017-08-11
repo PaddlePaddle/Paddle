@@ -76,8 +76,16 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
 }
 
 OperatorBase* BuildGradOp(const OperatorBase* op) {
-  std::string grad_op_type = OpRegistry::grad_ops().at(op->type_);
-  OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)();
+  auto it = op_info_map().find(op->type_);
+  PADDLE_ENFORCE(it != OpRegistry::op_info_map().end(),
+                 "'%s' has not been registered.", op->type);
+  std::string grad_op_type = it->second.grad_op_type_;
+  PADDLE_ENFORCE(!grad_op_type.empty(), "'%s' has no gradient operator.",
+                 op->type);
+  it = op_info_map().find(grad_op_type);
+  PADDLE_ENFORCE(it != OpRegistry::op_info_map().end(),
+                 "'%s' has not been registered.", grad_op_type);
+  OperatorBase* grad_op = it->second.creator_();
   grad_op->type_ = grad_op_type;
   grad_op->attrs_ = op->attrs_;
   grad_op->attrs_.erase("input_format");
