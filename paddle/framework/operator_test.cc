@@ -23,12 +23,7 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
-  OpWithoutKernelTest(const std::string& type,
-                      const std::vector<std::string>& inputs,
-                      const std::vector<std::string>& outputs,
-                      const AttributeMap& attrs,
-                      std::unordered_map<std::string, int>* in_out_idxs)
-      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+  DEFINE_OPERATOR_CTOR(OpWithoutKernelTest, OperatorBase)
 
   void Init() override { x = 1; }
   void InferShape(const Scope& scope) const override {}
@@ -104,6 +99,8 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
+ public:
+  DEFINE_OPERATOR_CTOR(OpWithKernelTest, OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {}
 };
@@ -123,12 +120,7 @@ class CPUKernelTest : public OpKernel {
 // multiple inputs test
 class OperatorMultiInputsTest : public OperatorBase {
  public:
-  OperatorMultiInputsTest(const std::string& type,
-                          const std::vector<std::string>& inputs,
-                          const std::vector<std::string>& outputs,
-                          const AttributeMap& attrs,
-                          std::unordered_map<std::string, int>* in_out_idxs)
-      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+  DEFINE_OPERATOR_CTOR(OperatorMultiInputsTest, OperatorBase)
 
   void Init() override { x = 1; }
   void InferShape(const Scope& scope) const override {}

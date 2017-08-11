@@ -300,6 +300,7 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  OperatorWithKernel() {}  // TODO(yi): This constructor is to be removed.
   OperatorWithKernel(const std::string& type,
                      const std::vector<std::string>& inputs,
                      const std::vector<std::string>& outputs,
@@ -355,6 +356,16 @@ class OperatorWithKernel : public OperatorBase {
  protected:
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
+
+#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                         \
+ public:                                                                 \
+  Class() { /* TODO(yi): This constructor is to be removed. */           \
+  }                                                                      \
+  Class(const std::string& type, const std::vector<std::string>& inputs, \
+        const std::vector<std::string>& outputs,                         \
+        const ::paddle::framework::AttributeMap& attrs,                  \
+        std::unordered_map<std::string, int>* in_out_idxs)               \
+      : ParentClass(type, inputs, outputs, attrs, in_out_idxs) {}
 
 }  // namespace framework
 }  // namespace paddle
