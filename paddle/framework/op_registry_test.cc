@@ -49,10 +49,10 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(cos_sim, paddle::framework::CosineOp,
-            paddle::framework::CosineOpProtoAndCheckerMaker);
-REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
-            paddle::framework::MyTestOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(cos_sim, paddle::framework::CosineOp,
+                             paddle::framework::CosineOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(my_test_op, paddle::framework::MyTestOp,
+                             paddle::framework::MyTestOpProtoAndCheckerMaker);
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;

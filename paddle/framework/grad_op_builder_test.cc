@@ -61,10 +61,10 @@ TEST(GradOpBuilder, AddTwo) {
   EXPECT_EQ(grad_add_op->Output("Y@GRAD"), "y@GRAD");
 }
 
-REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker);
-REGISTER_GRADIENT_OP(mult_io, mult_io_grad, f::NOP);
-REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker);
-REGISTER_GRADIENT_OP(io_ignored, io_ignored_grad, f::NOP);
+REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, mult_io_grad);
+REGISTER_GRADIENT_OP(mult_io_grad, f::NOP);
+REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker, io_ignored_grad);
+REGISTER_GRADIENT_OP(io_ignored_grad, f::NOP);
 
 TEST(GradOpBuilder, MutiInOut) {
   f::AttributeMap attrs{{"input_format", std::vector<int>{0, 1, 4, 5}},

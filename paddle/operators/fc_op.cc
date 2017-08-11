@@ -73,4 +73,5 @@ USE_OP(sigmoid);
 USE_OP(softmax);
 
 namespace ops = paddle::operators;
-REGISTER_OP(fc, ops::FullyConnectedOp, ops::FullyConnectedOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(fc, ops::FullyConnectedOp,
+                             ops::FullyConnectedOpMaker);
