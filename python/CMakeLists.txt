@@ -47,14 +47,14 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
 if(MKL_SHARED_LIB_NAMES)
   # Copy the depended shared libraries necessary dir
   set(out_filename ".mkllibs.timestamp")
-  set(out_framework_path "${PROJ_ROOT}/python/paddle/v2/framework")
+  set(out_framework_path "${PADDLE_SOURCE_DIR}/python/paddle/v2/framework")
   set(out_framework_file "${out_framework_path}/${out_filename}")
   add_custom_command(OUTPUT ${out_framework_file}
       COMMAND cmake -E copy ${MKL_SHARED_LIBS} ${out_framework_path}
       COMMAND ${CMAKE_COMMAND} -E touch ${out_framework_file}
       DEPENDS ${MKL_DEPENDS})
 
-  set(out_pypaddle_path "${PROJ_ROOT}/paddle/py_paddle")
+  set(out_pypaddle_path "${PADDLE_SOURCE_DIR}/paddle/py_paddle")
   set(out_pypaddle_file "${out_pypaddle_path}/${out_filename}")
   if (WITH_SWIG_PY)
     add_custom_command(OUTPUT ${out_pypaddle_file}
