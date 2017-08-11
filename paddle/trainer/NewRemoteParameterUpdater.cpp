@@ -102,8 +102,8 @@ void NewRemoteParameterUpdater::init(
     } else if (trainerConfig_.learning_rate_schedule() == "linear") {
       optimizerConfigV2
           .set_lr_policy(paddle::OptimizerConfig::Linear)
-              optimizerConfigV2.mutable_linear_lr()
-          ->set_learning_rate(trainerConfig_.learning_rate());
+              optimizerConfigV2.mutable_linear_lr();
+      ->set_learning_rate(trainerConfig_.learning_rate());
       optimizerConfigV2.mutable_linear_lr()->set_lr_decay_a(
           trainerConfig_.learning_rate_decay_a());
       optimizerConfigV2.mutable_linear_lr()->set_lr_decay_b(
@@ -111,7 +111,7 @@ void NewRemoteParameterUpdater::init(
     } else {
       LOG(ERROR) << "got unsupported v1 learning_rate_schedule config: "
                  << trainerConfig_.learning_rate_schedule() << ", set to const";
-      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Const)
+      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Const);
     }
 
     // overwrite optimizerConfigV2 for per-parameter(layer) configs
@@ -123,11 +123,11 @@ void NewRemoteParameterUpdater::init(
       }
       if (paramConfig.has_learning_rate()) {
         switch (optimizerConfigV2.lr_policy()) {
-          case 1:
+          case 0:
             optimizerConfigV2.mutable_const_lr()->set_learning_rate(
                 paramConfig.learning_rate());
             break;
-          case 2:
+          case 1:
             optimizerConfigV2.mutable_linear_lr()->set_learning_rate(
                 paramConfig.learning_rate());
             break;
