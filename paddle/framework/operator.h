@@ -63,6 +63,7 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
+  OperatorBase() {}  // TODO(yi): This constructor is to be removed.
   OperatorBase(const std::string& type, const std::vector<std::string>& inputs,
                const std::vector<std::string>& outputs,
                const AttributeMap& attrs,
