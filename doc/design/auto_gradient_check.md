@@ -1,16 +1,16 @@
-## auto gradient check Design
+## Auto Gradient Checker Design
 
 ## Backgraound：
 - Operator forward computing is easy to check if the result is right because it has a clear definition. **But** backpropagation is a notoriously difficult algorithm to debug and get right:
-  - **Firstly** you should get the right backpropagation formula according to the forward computation.
-  - **Secondly** you should implement it right in CPP.
-  - **Thirdly** it's difficult to prepare test data.
+  - 1. you should get the right backpropagation formula according to the forward computation.
+  - 2. you should implement it right in CPP.
+  - 3. it's difficult to prepare test data.
 
 - Auto gradient check gets a numeric gradient by forward Operator and use it as a reference of the backward Operator's result. It has several advantages:
-  - **Firstly** numeric gradient checker only need forward operator.
-  - **Secondly** user only need to prepare the input data for forward Operator.
+  - 1. numeric gradient checker only need forward operator.
+  - 2. user only need to prepare the input data for forward Operator.
 
-## mathematical theory
+## Mathematical Theory
 The following two document from stanford has a detailed explanation of how to get numeric gradient and why it's useful.
 
 - [Gradient checking and advanced optimization(en)](http://deeplearning.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization)
@@ -18,7 +18,7 @@ The following two document from stanford has a detailed explanation of how to ge
 
 
 ## Numeric Gradient Implementation
-### Interface
+### Python Interface
 ```python
 def get_numeric_gradient(op,
                          input_values,
@@ -44,14 +44,14 @@ def get_numeric_gradient(op,
 
 ### Explaination:
 
-1. Why need `output_name`
+- Why need `output_name`
   - One Operator may have multiple Output, you can get independent gradient from each Output. So user should set one output to calculate.
 
-1. Why need `input_to_check`
+- Why need `input_to_check`
   - One operator may have multiple inputs. Gradient Op can calculate the gradient of these Inputs at the same time. But Numeric Gradient needs to calculate them one by one. So `get_numeric_gradient` is designed to calculate the gradient for one input. If you need to compute multiple inputs, you can call `get_numeric_gradient` multiple times.
 
 
-### Core algorithm implement
+### Core Algorithm Implementation
 
 
 ```python
@@ -81,7 +81,7 @@ def get_numeric_gradient(op,
     return gradient_flat.reshape(tensor_to_check.get_dims())
 ```
 
-## auto check framework design
+## Auto Graident Checker Framework
 
 Each Operator Kernel has three kinds of Gradient:
 
@@ -91,11 +91,11 @@ Each Operator Kernel has three kinds of Gradient:
 
 Numeric Gradient Only relies on forward Operator. So we use Numeric Gradient as the reference value.
 
-- **Firstly** calculate the numeric gradient.
-- **Secondly** calculate CPU kernel Gradient with the backward Operator and compare it with the numeric gradient.
-- **Thirdly** calculate GPU kernel Gradient with the backward Operator and compare it with the numeric gradient.(if support GPU)
+- 1. calculate the numeric gradient.
+- 2. calculate CPU kernel Gradient with the backward Operator and compare it with the numeric gradient.
+- 3. calculate GPU kernel Gradient with the backward Operator and compare it with the numeric gradient.(if support GPU)
 
-#### auto check python Interface
+#### Python Interface
 
 ```python
     def check_grad(self,
@@ -119,7 +119,7 @@ Numeric Gradient Only relies on forward Operator. So we use Numeric Gradient as 
         """
 ```
 
-### How two check two numpy array is close enough?
+### How to check if two numpy array is close enough?
 if `abs_numeric_grad` is nearly zero, then use abs error for numeric_grad, not relative
 
 ```python
@@ -140,7 +140,7 @@ max_diff = numpy.max(diff_mat)
 1，The Input data for auto gradient checker should be reasonable to avoid numeric problem.
 
 
-#### refs:
+#### Refs:
 
 - [Gradient checking and advanced optimization(en)](http://deeplearning.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization)
 - [Gradient checking and advanced optimization(cn)](http://ufldl.stanford.edu/wiki/index.php/%E6%A2%AF%E5%BA%A6%E6%A3%80%E9%AA%8C%E4%B8%8E%E9%AB%98%E7%BA%A7%E4%BC%98%E5%8C%96)
