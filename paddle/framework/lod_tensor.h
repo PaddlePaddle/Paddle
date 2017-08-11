@@ -48,7 +48,7 @@ class LODTensor : public Tensor {
    public:
     LOD SliceLevels(size_t level_begin, size_t level_end);
     LOD SliceInLevel(size_t level, size_t elem_begin, size_t elem_end);
-    friend bool operator==(const LOD &other) const;
+    friend bool operator==(const LOD &b) const;
   };
 
   LODTensor() {}
