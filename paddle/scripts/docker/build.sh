@@ -31,7 +31,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_DOC=OFF
       -DWITH_GPU=${WITH_GPU:-OFF}
       -DWITH_AVX=${WITH_AVX:-OFF}
-      -DWITH_GOLANG=${WITH_GOLANG:-OFF}
+      -DWITH_GOLANG=${WITH_GOLANG:-ON}
       -DWITH_SWIG_PY=ON
       -DWITH_C_API=${WITH_C_API:-OFF}
       -DWITH_PYTHON=${WITH_PYTHON:-ON}
@@ -51,7 +51,7 @@ cmake .. \
       -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
-      -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
+      -DWITH_GOLANG=${WITH_GOLANG:-ON} \
       -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
       -DWITH_C_API=${WITH_C_API:-OFF} \
       -DWITH_PYTHON=${WITH_PYTHON:-ON} \
@@ -130,7 +130,7 @@ fi
 
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-if [[ ${WITH_DEB:-OFF} == "ON" ]]; then
+if [[ ${WITH_DEB:-ON} == "ON" ]]; then
     cat <<EOF
 ========================================
 Generating .deb package ...
