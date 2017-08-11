@@ -31,8 +31,7 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
 NewRemoteParameterUpdater::NewRemoteParameterUpdater(
     const OptimizationConfig &config,
     const std::string pserverSpec,
-    const bool useEtcd,
-    const std::string &optconfigstr)
+    const bool useEtcd)
     : trainerConfig_(config),
       parameterClient_(-1),
       newParameters_(nullptr),
@@ -95,15 +94,13 @@ void NewRemoteParameterUpdater::init(
     }
 
     if (trainerConfig_.learning_rate_schedule() == "constant") {
-      optimizerConfigV2
-          .set_lr_policy(paddle::OptimizerConfig::Const)
-              optimizerConfigV2.mutable_const_lr()
-          ->set_learning_rate(trainerConfig_.learning_rate());
+      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Const);
+      optimizerConfigV2.mutable_const_lr()->set_learning_rate(
+          trainerConfig_.learning_rate());
     } else if (trainerConfig_.learning_rate_schedule() == "linear") {
-      optimizerConfigV2
-          .set_lr_policy(paddle::OptimizerConfig::Linear)
-              optimizerConfigV2.mutable_linear_lr();
-      ->set_learning_rate(trainerConfig_.learning_rate());
+      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Linear);
+      optimizerConfigV2.mutable_linear_lr()->set_learning_rate(
+          trainerConfig_.learning_rate());
       optimizerConfigV2.mutable_linear_lr()->set_lr_decay_a(
           trainerConfig_.learning_rate_decay_a());
       optimizerConfigV2.mutable_linear_lr()->set_lr_decay_b(
