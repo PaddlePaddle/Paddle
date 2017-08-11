@@ -45,14 +45,14 @@ setup(name='paddlepaddle',
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
           # The paddle.v2.framework.proto will be generated while compiling.
           # So that package points to other directory.
-          'paddle.v2.framework.proto': '${PROJ_BINARY_ROOT}/paddle/framework',
-          'py_paddle': '${PROJ_ROOT}/paddle/py_paddle'
+          'paddle.v2.framework.proto': '${PADDLE_BINARY_DIR}/paddle/framework',
+          'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
-      scripts=['${PROJ_BINARY_ROOT}/paddle/scripts/paddle'],
+      scripts=['${PADDLE_BINARY_DIR}/paddle/scripts/paddle'],
       distclass=BinaryDistribution,
       data_files=[('/usr/local/opt/paddle/bin',
-                       ['${PROJ_BINARY_ROOT}/paddle/scripts/paddle_usage',
-                        '${PROJ_BINARY_ROOT}/paddle/trainer/paddle_trainer',
-                        '${PROJ_BINARY_ROOT}/paddle/trainer/paddle_merge_model',
-                        '${PROJ_BINARY_ROOT}/paddle/pserver/paddle_pserver_main'])]
+                       ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle_usage',
+                        '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
+                        '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_merge_model',
+                        '${PADDLE_BINARY_DIR}/paddle/pserver/paddle_pserver_main'])]
 )

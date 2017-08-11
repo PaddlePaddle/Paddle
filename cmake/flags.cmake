@@ -9,10 +9,12 @@ function(CheckCompilerCXX11Flag)
         if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)
             message(FATAL_ERROR "Unsupported GCC version. GCC >= 4.8 required.")
         endif()
-        # TODO(qijun) gcc 4.9 or later versions raise SEGV due to the optimization problem.
-        # Use Debug mode instead for now.
-        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9) 
-            set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
+        if(NOT ANDROID)
+            # TODO(qijun) gcc 4.9 or later versions raise SEGV due to the optimization problem.
+            # Use Debug mode instead for now.
+            if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9)
+                set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
+            endif()
         endif()
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"

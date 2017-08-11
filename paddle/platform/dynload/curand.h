@@ -55,6 +55,7 @@ extern void *curand_dso_handle;
   __macro(curandSetPseudoRandomGeneratorSeed); \
   __macro(curandGenerateUniform);              \
   __macro(curandGenerateUniformDouble);        \
+  __macro(curandGenerateNormal);               \
   __macro(curandDestroyGenerator);
 
 CURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
