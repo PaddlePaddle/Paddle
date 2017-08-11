@@ -252,12 +252,11 @@ class Parameters(object):
         param = param.astype(np.float32)
         s = param.tostring()
         wrote_size = 0
-        while True:
-            buf = buffer(s, wrote_size, 65535)
-            if not buf:
-                break
+        buf = buffer(s, wrote_size, 65535)
+        while buf:
             f.write(buf)
             wrote_size += 65535
+            buf = buffer(s, wrote_size, 65535)
 
     def deserialize(self, name, f):
         """
