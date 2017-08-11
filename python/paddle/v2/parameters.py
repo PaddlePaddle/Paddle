@@ -253,7 +253,7 @@ class Parameters(object):
         s = param.tostring()
         wrote_size = 0
         buf = buffer(s, wrote_size, 65535)
-        while buf:
+        while buf:  # f.write crashes with big data blog.
             f.write(buf)
             wrote_size += 65535
             buf = buffer(s, wrote_size, 65535)
