@@ -16,7 +16,7 @@ SET(COPY_PADDLE_MASTER "")
 if(WITH_GOLANG)
   SET(COPY_PADDLE_MASTER "copy_paddle_master")
   add_custom_command(TARGET ${COPY_PADDLE_MASTER}
-    COMMAND cp ${paddle_master_LIB_PATH} ${PROJ_ROOT}/python/paddle/v2/master/
+    COMMAND cp ${paddle_master_LIB_PATH} ${PADDLE_SOURCE_DIR}/python/paddle/v2/master/
     )
   add_dependencies(copy_paddle_master paddle_master)
 endif(WITH_GOLANG)
@@ -25,10 +25,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 
-add_custom_command(OUTPUT ${PROJ_ROOT}/python/paddle/v2/framework/core.so
-        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PROJ_ROOT}/python/paddle/v2/framework/core.so
+add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/core.so
+        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/core.so
         DEPENDS paddle_pybind)
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${PROJ_ROOT}/python/paddle/v2/framework/core.so)
+add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/core.so)
 
 
 add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
