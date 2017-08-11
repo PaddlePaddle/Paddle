@@ -35,14 +35,21 @@ class LODTensor : public Tensor {
  public:
 // Level save offsets of each unit.
 #ifdef PADDLE_ONLY_CPU
-  using Level = std::vector<size_t>;
+  template <typename T>
+  using Vector = std::vector<T>;
 #else
-  using Level = thrust::device_vector<size_t>;
+  template <typename T>
+  using Vector = thrust::device_vector<T>;
 #endif
-  // LOD stores offsets of each level of units, the largest units level first,
+  // LoD stores offsets of each level of units, the largest units level first,
   // then the smaller units level. Each Level stores the offsets of units in
   // Tesor.
-  typedef std::vector<Level> LOD;
+  class LOD : public Vector<Vector<size_t>> {
+   public:
+    LOD SliceLevels(size_t level_begin, size_t level_end);
+    LOD SliceInLevel(size_t level, size_t elem_begin, size_t elem_end);
+    friend bool operator==(const LOD &other) const;
+  };
 
   LODTensor() {}
   explicit LODTensor(const LOD &lod) : lod_start_pos_(lod) {}
@@ -100,6 +107,7 @@ class LODTensor : public Tensor {
    * Determine whether LODTensor has a valid LOD info.
    */
   const LOD &lod() const { return lod_start_pos_; }
+  LOD *mutable_lod() { return &lod_start_pos_; }
 
   virtual ~LODTensor() {}
 
