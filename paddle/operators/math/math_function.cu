@@ -71,9 +71,15 @@ void matmul<platform::GPUPlace, float>(const framework::Tensor& in1, bool in1_T,
   PADDLE_ENFORCE(
       in1_dim.size() == 2 && in2_dim.size() == 2 && out_dim.size() == 2,
       "The input and output of matmul be matrix");
-  PADDLE_ENFORCE(
-      in1_dim[1] == in2_dim[0],
-      "First matrix's width must be equal with second matrix's height.");
+  if (!in1_T && !in2_T) {
+    PADDLE_ENFORCE(in1_dim[1] == in2_dim[0]);
+  } else if (in1_T && !in2_T) {
+    PADDLE_ENFORCE(in1_dim[0] == in2_dim[0]);
+  } else if (!in1_T && in2_T) {
+    PADDLE_ENFORCE(in1_dim[1] == in2_dim[0]);
+  } else {
+    PADDLE_ENFORCE(in1_dim[0] == in2_dim[1]);
+  }
 
   PADDLE_ENFORCE(platform::is_gpu_place(in1.place()) &&
                      platform::is_gpu_place(in2.place()) &&
@@ -105,9 +111,15 @@ void matmul<platform::GPUPlace, double>(const framework::Tensor& in1,
   PADDLE_ENFORCE(
       in1_dim.size() == 2 && in2_dim.size() == 2 && out_dim.size() == 2,
       "The input and output of matmul be matrix");
-  PADDLE_ENFORCE(
-      in1_dim[1] == in2_dim[0],
-      "First matrix's width must be equal with second matrix's height.");
+  if (!in1_T && !in2_T) {
+    PADDLE_ENFORCE(in1_dim[1] == in2_dim[0]);
+  } else if (in1_T && !in2_T) {
+    PADDLE_ENFORCE(in1_dim[0] == in2_dim[0]);
+  } else if (!in1_T && in2_T) {
+    PADDLE_ENFORCE(in1_dim[1] == in2_dim[0]);
+  } else {
+    PADDLE_ENFORCE(in1_dim[0] == in2_dim[1]);
+  }
 
   PADDLE_ENFORCE(platform::is_gpu_place(in1.place()) &&
                      platform::is_gpu_place(in2.place()) &&
