@@ -49,7 +49,7 @@ class OpDescCreationMethod(object):
                 input_arguments = [input_arguments]
 
             if not input_parameter.duplicable and len(input_arguments) > 1:
-                raise ValueError("Input %s only accept one output, but give %d"
+                raise ValueError("Input %s only accepts one input, but give %d"
                                  % (input_parameter.name, len(input_arguments)))
 
             ipt = op_desc.inputs.add()
@@ -63,7 +63,7 @@ class OpDescCreationMethod(object):
 
             if not output_parameter.duplicable and len(output_arguments) > 1:
                 raise ValueError(
-                    "Output %s only accept one output, but give %d" %
+                    "Output %s only accepts one output, but give %d" %
                     (output_parameter.name, len(output_arguments)))
 
             out = op_desc.outputs.add()
