@@ -192,7 +192,7 @@ class InferShapeContext {
 
   template <typename T>
   const T* Input(const std::string& name) const {
-    auto var = InputVar(name);
+    auto* var = InputVar(name);
     PADDLE_ENFORCE_NOT_NULL(var, "Input(%s) should not be nullptr", name);
     return &var->Get<T>();
   }

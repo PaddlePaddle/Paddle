@@ -19,14 +19,13 @@ class TestAddOp(unittest.TestCase):
         self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
 
 
-class TestAddGradOp(unittest.TestCase):
-    def test_add_grad(self):
-        op = Operator('add_two', X="X", Y="Y", Out="Out")
-        backward_op = core.Operator.backward(op, set())
-        self.assertEqual(backward_op.type(), "add_two_grad")
-        expected = '''Op(add_two_grad), inputs:(X, Y, Out, Out@GRAD), outputs:(X@GRAD, Y@GRAD).'''
-        self.assertEqual(expected, str(backward_op))
-
+#class TestAddGradOp(unittest.TestCase):
+#    def test_add_grad(self):
+#        op = Operator('add_two', X="X", Y="Y", Out="Out")
+#        backward_op = core.Operator.backward(op, set())
+#        self.assertEqual(backward_op.type(), "add_two_grad")
+#        expected = '''Op(add_two_grad), inputs:(X, Y, Out, Out@GRAD), outputs:(X@GRAD, Y@GRAD).'''
+#        self.assertEqual(expected, str(backward_op))
 
 if __name__ == '__main__':
     unittest.main()

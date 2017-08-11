@@ -31,7 +31,7 @@ template <typename Place, typename T>
 class RowWiseAddKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto out = context.Output<Tensor>(0);
+    auto out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
     auto input = EigenMatrix<T>::From(*context.Input<Tensor>("X"));
