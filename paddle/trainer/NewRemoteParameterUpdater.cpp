@@ -38,9 +38,7 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
       newParameters_(nullptr),
       newGradients_(nullptr),
       pserverSpec_(pserverSpec),
-      useEtcd_(useEtcd) {
-  optimizerConfigNew_.ParseFromString(optconfigstr);
-}
+      useEtcd_(useEtcd) {}
 
 void NewRemoteParameterUpdater::init(
     const std::vector<ParameterPtr> &parameters) {
@@ -69,88 +67,94 @@ void NewRemoteParameterUpdater::init(
   // from parameter server
   if (paddle_begin_init_params(parameterClient_)) {
     LOG(INFO) << "paddle_begin_init_params start";
-    if (!optimizerConfigNew_.has_optimizer()) {
-      // NOTE: convert V1 OptimizatioinConfig proto to OptimizerConfig if
-      // OptimizerConfig not set. This makes golang pserver compatible with
-      // handy V1 demos.
-      // TODO: Refine or remove these ugly converting lines
-      for (int i = 0; i < parameterSize(); ++i) {
-        auto paramConfig = parameters_[i]->getConfig();
-        LOG(INFO) << "old param config: " << paramConfig.DebugString();
-        auto sgdConfigV2 = optimizerConfigNew_.mutable_sgd();
-        sgdConfigV2->set_momentum(paramConfig.momentum());
-        sgdConfigV2->set_decay(paramConfig.decay_rate());
-        optimizerConfigNew_.set_lr_policy(paddle::OptimizerConfig::Const);
-        auto constlr = optimizerConfigNew_.mutable_const_lr();
-        if (paramConfig.has_learning_rate()) {
-          constlr->set_learning_rate(paramConfig.learning_rate());
-        } else {
-          constlr->set_learning_rate(trainerConfig_.learning_rate());
-        }
-        if (trainerConfig_.learning_method() == "momentum") {
-          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::SGD);
-        } else if (trainerConfig_.learning_method() == "adagrad") {
-          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::Adagrad);
-          optimizerConfigNew_.mutable_adagrad()->set_epsilon(
-              trainerConfig_.ada_epsilon());
-        } else if (trainerConfig_.learning_method() == "adadelta") {
-          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::Adagrad);
-          optimizerConfigNew_.mutable_adadelta()->set_epsilon(
-              trainerConfig_.ada_epsilon());
-          optimizerConfigNew_.mutable_adadelta()->set_rho(
-              trainerConfig_.ada_rou());
-        } else if (trainerConfig_.learning_method() == "adam") {
-          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::Adam);
-          optimizerConfigNew_.mutable_adam()->set_beta_1(
-              trainerConfig_.adam_beta1());
-          optimizerConfigNew_.mutable_adam()->set_beta_2(
-              trainerConfig_.adam_beta2());
-          optimizerConfigNew_.mutable_adam()->set_epsilon(
-              trainerConfig_.adam_epsilon());
-        } else {
-          LOG(ERROR) << "got unsupported v1 optimizer config: "
-                     << trainerConfig_.learning_method();
-          optimizerConfigNew_.set_optimizer(paddle::OptimizerConfig::SGD);
-        }
-      }
+    // NOTE: convert V1 OptimizatioinConfig proto to V2 OptimizerConfig.
+    // This makes golang pserver compatible with handy V1 demos.
+    // TODO: Refine or remove these ugly converting lines
+    OptimizerConfig optimizerConfigV2;
+    if (trainerConfig_.learning_method() == "momentum") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::SGD);
+    } else if (trainerConfig_.learning_method() == "adagrad") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::Adagrad);
+      optimizerConfigV2.mutable_adagrad()->set_epsilon(
+          trainerConfig_.ada_epsilon());
+    } else if (trainerConfig_.learning_method() == "adadelta") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::Adagrad);
+      optimizerConfigV2.mutable_adadelta()->set_epsilon(
+          trainerConfig_.ada_epsilon());
+      optimizerConfigV2.mutable_adadelta()->set_rho(trainerConfig_.ada_rou());
+    } else if (trainerConfig_.learning_method() == "adam") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::Adam);
+      optimizerConfigV2.mutable_adam()->set_beta_1(trainerConfig_.adam_beta1());
+      optimizerConfigV2.mutable_adam()->set_beta_2(trainerConfig_.adam_beta2());
+      optimizerConfigV2.mutable_adam()->set_epsilon(
+          trainerConfig_.adam_epsilon());
+    } else {
+      LOG(ERROR) << "got unsupported v1 optimizer config: "
+                 << trainerConfig_.learning_method();
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::SGD);
     }
+
+    if (trainerConfig_.learning_rate_schedule() == "constant") {
+      optimizerConfigV2
+          .set_lr_policy(paddle::OptimizerConfig::Const)
+              optimizerConfigV2.mutable_const_lr()
+          ->set_learning_rate(trainerConfig_.learning_rate());
+    } else if (trainerConfig_.learning_rate_schedule() == "linear") {
+      optimizerConfigV2
+          .set_lr_policy(paddle::OptimizerConfig::Linear)
+              optimizerConfigV2.mutable_linear_lr()
+          ->set_learning_rate(trainerConfig_.learning_rate());
+      optimizerConfigV2.mutable_linear_lr()->set_lr_decay_a(
+          trainerConfig_.learning_rate_decay_a());
+      optimizerConfigV2.mutable_linear_lr()->set_lr_decay_b(
+          trainerConfig_.learning_rate_decay_b());
+    } else {
+      LOG(ERROR) << "got unsupported v1 learning_rate_schedule config: "
+                 << trainerConfig_.learning_rate_schedule() << ", set to const";
+      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Const)
+    }
+
+    // overwrite optimizerConfigV2 for per-parameter(layer) configs
     for (int i = 0; i < parameterSize(); ++i) {
-      OptimizerConfig optConfigPerParameter;
-      optConfigPerParameter.CopyFrom(optimizerConfigNew_);
-      // overwrite config for each parameter
       auto paramConfig = parameters_[i]->getConfig();
-      // FIXME: overwrite only when lr_policy is const
-      if (paramConfig.has_learning_rate() &&
-          optConfigPerParameter.lr_policy() == paddle::OptimizerConfig::Const) {
-        optConfigPerParameter.mutable_const_lr()->set_learning_rate(
-            paramConfig.learning_rate());
+      if (paramConfig.has_momentum() &&
+          trainerConfig_.learning_method() == "momentum") {
+        optimizerConfigV2.mutable_sgd()->set_momentum(paramConfig.momentum());
+      }
+      if (paramConfig.has_learning_rate()) {
+        switch (optimizerConfigV2.lr_policy()) {
+          case 1:
+            optimizerConfigV2.mutable_const_lr()->set_learning_rate(
+                paramConfig.learning_rate());
+            break;
+          case 2:
+            optimizerConfigV2.mutable_linear_lr()->set_learning_rate(
+                paramConfig.learning_rate());
+            break;
+        }
       }
       if (paramConfig.has_decay_rate()) {
-        switch (optConfigPerParameter.optimizer()) {
+        switch (optimizerConfigV2.optimizer()) {
           case 1:  // SGD
-            optConfigPerParameter.mutable_sgd()->set_decay(
+            optimizerConfigV2.mutable_sgd()->set_decay(
                 paramConfig.decay_rate());
             break;
           case 2:  // Adadelta
-            optConfigPerParameter.mutable_adadelta()->set_decay(
+            optimizerConfigV2.mutable_adadelta()->set_decay(
                 paramConfig.decay_rate());
             break;
           case 3:  // Adagrad
-            optConfigPerParameter.mutable_adagrad()->set_decay(
+            optimizerConfigV2.mutable_adagrad()->set_decay(
                 paramConfig.decay_rate());
             break;
           case 4:  // Adam
-            optConfigPerParameter.mutable_adam()->set_decay(
+            optimizerConfigV2.mutable_adam()->set_decay(
                 paramConfig.decay_rate());
             break;
         }
       }
-      if (paramConfig.has_momentum() &&
-          optConfigPerParameter.optimizer() == 1) {
-        optConfigPerParameter.mutable_sgd()->set_momentum(
-            paramConfig.momentum());
-      }
-      std::string bytes = optConfigPerParameter.SerializeAsString();
+      // send param and config to pserver
+      std::string bytes = optimizerConfigV2.SerializeAsString();
       const char *array = bytes.data();
       int size = (int)bytes.size();
       paddle_init_param(

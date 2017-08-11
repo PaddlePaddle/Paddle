@@ -30,15 +30,6 @@ def main():
     # create optimizer of new remote updater to pserver
     optimizer = paddle.optimizer.Momentum(momentum=0, learning_rate=1e-3)
 
-    # NOTE: uncomment lines below to use detailed optimizer config for new pserver
-    # optimizer.set_optimizer_config(
-    #     optimizer=paddle.optimizer.OptimizerConfig.Optimizer.SGD,
-    #     sgd={"momentum": 1.0,
-    #          "decay": 0.0,
-    #          "nesterov": False},
-    #     lr_policy=paddle.optimizer.OptimizerConfig.LrPolicy.Const,
-    #     const_lr={"learning_rate": 1e-3})
-
     trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,
                                  update_equation=optimizer,

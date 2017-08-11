@@ -42,37 +42,6 @@ class Optimizer(object):
             self.__opt_conf_proto__)
         self.__opt_conf_new__ = None
 
-    def set_optimizer_config(self, **kwargs):
-        """
-            setup new golang pserver optimizer config proto
-            IMPORTANT: do not use this for local or V1 version training
-        """
-        import py_paddle.swig_paddle as swig_api
-
-        def parse_list(values, message):
-            if isinstance(values[0], dict):
-                for v in values:
-                    cmd = message.add()
-                    parse_dict(v, cmd)
-            else:
-                message.extend(values)
-
-        def parse_dict(values, message):
-            for k, v in values.iteritems():
-                if isinstance(v, dict):
-                    parse_dict(v, getattr(message, k))
-                elif isinstance(v, list):
-                    parse_list(v, getattr(message, k))
-                else:
-                    setattr(message, k, v)
-
-        def dict_to_protobuf(value, message):
-            parse_dict(value, message)
-
-        # create new optimizer with proto config, add new optimizer here
-        self.__opt_conf_new__ = OptimizerConfig()
-        dict_to_protobuf(kwargs, self.__opt_conf_new__)
-
     def enable_types(self):
         """
         get enable_types for each optimizer.
@@ -98,11 +67,7 @@ class Optimizer(object):
         import py_paddle.swig_paddle as swig_api
         if not self.__opt_conf_new__:
             return swig_api.ParameterUpdater.createNewRemoteUpdater(
-                self.__opt_conf__, pserver_spec, use_etcd, "")
-        else:
-            return swig_api.ParameterUpdater.createNewRemoteUpdater(
-                self.__opt_conf__, pserver_spec, use_etcd,
-                self.__opt_conf_new__.SerializeToString())
+                self.__opt_conf__, pserver_spec, use_etcd)
 
     def create_updater(self, is_local, num_passes, use_sparse_updater,
                        pserver_spec, use_etcd):
