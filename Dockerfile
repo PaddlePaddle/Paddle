@@ -71,7 +71,10 @@ RUN pip install --upgrade pip && \
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
 
-# ln -sf to gcc4.8
+# TODO(qijun) The template library Eigen doesn't work well with GCC 5 
+# coming with the default Docker image, so we switch to use GCC 4.8 
+# by default. And I will check Eigen library later.
+
 RUN ln -sf gcc-4.8 /usr/bin/gcc && \
     ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
     ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
