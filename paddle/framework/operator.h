@@ -68,8 +68,8 @@ class OperatorBase {
                const AttributeMap& attrs,
                std::unordered_map<std::string, int>* in_out_idxs)
       : type_(type),
-        inputs_(input),
-        outputs_(output),
+        inputs_(inputs),
+        outputs_(outputs),
         attrs_(attrs),
         in_out_idxs_(in_out_idxs) {}
 
