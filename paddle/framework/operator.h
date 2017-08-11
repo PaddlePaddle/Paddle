@@ -63,6 +63,16 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
+  OperatorBase(const std::string& type, const std::vector<std::string>& inputs,
+               const std::vector<std::string>& outputs,
+               const AttributeMap& attrs,
+               std::unordered_map<std::string, int>* in_out_idxs)
+      : type_(type),
+        inputs_(input),
+        outputs_(output),
+        attrs_(attrs),
+        in_out_idxs_(in_out_idxs) {}
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -109,6 +119,9 @@ class OperatorBase {
   const std::vector<std::string> Inputs() const { return inputs_; }
   const std::vector<std::string> Outputs() const { return outputs_; }
   const AttributeMap& Attrs() const { return attrs_; }
+  const std::unordered_map<std::string, int>* InOutIdx() const {
+    return in_out_idxs_.get();
+  }
 
  public:
   std::string type_;
@@ -286,6 +299,13 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  OperatorWithKernel(const std::string& type,
+                     const std::vector<std::string>& inputs,
+                     const std::vector<std::string>& outputs,
+                     const AttributeMap& attrs,
+                     std::unordered_map<std::string, int>* in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   struct OpKernelKey {
     platform::Place place_;
 

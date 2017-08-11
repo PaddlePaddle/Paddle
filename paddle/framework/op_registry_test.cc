@@ -7,6 +7,11 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
  public:
+  CosineOp(const std::string& type, const std::vector<std::string>& inputs,
+           const std::vector<std::string>& outputs, const AttributeMap& attrs,
+           std::unordered_map<std::string, int>* in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
   void InferShape(const Scope& scope) const override {}
@@ -27,6 +32,11 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class MyTestOp : public OperatorBase {
  public:
+  MyTestOp(const std::string& type, const std::vector<std::string>& inputs,
+           const std::vector<std::string>& outputs, const AttributeMap& attrs,
+           std::unordered_map<std::string, int>* in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}

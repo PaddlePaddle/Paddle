@@ -23,6 +23,13 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
+  OpWithoutKernelTest(const std::string& type,
+                      const std::vector<std::string>& inputs,
+                      const std::vector<std::string>& outputs,
+                      const AttributeMap& attrs,
+                      std::unordered_map<std::string, int>* in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   void Init() override { x = 1; }
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
@@ -116,6 +123,13 @@ class CPUKernelTest : public OpKernel {
 // multiple inputs test
 class OperatorMultiInputsTest : public OperatorBase {
  public:
+  OperatorMultiInputsTest(const std::string& type,
+                          const std::vector<std::string>& inputs,
+                          const std::vector<std::string>& outputs,
+                          const AttributeMap& attrs,
+                          std::unordered_map<std::string, int>* in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   void Init() override { x = 1; }
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,

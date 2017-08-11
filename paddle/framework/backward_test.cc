@@ -30,6 +30,11 @@ using DeviceContext = platform::DeviceContext;
 
 class EmptyOp : public OperatorBase {
  public:
+  EmptyOp(const std::string &type, const std::vector<std::string> &inputs,
+          const std::vector<std::string> &outputs, const AttributeMap &attrs,
+          std::unordered_map<std::string, int> *in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   void InferShape(const Scope &scope) const override {}
   void Run(const Scope &scope, const DeviceContext &dev_ctx) const override {}
 };
