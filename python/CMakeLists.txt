@@ -71,7 +71,7 @@ endif()
 
 add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/core.so
         COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/core.so
-        DEPENDS paddle_pybind)
+        DEPENDS paddle_pybind copy_mkl_shared_libs)
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/core.so)
 
 add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
