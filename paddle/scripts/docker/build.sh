@@ -31,7 +31,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_DOC=OFF
       -DWITH_GPU=${WITH_GPU:-OFF}
       -DWITH_AVX=${WITH_AVX:-OFF}
-      -DWITH_GOLANG=${WITH_GOLANG:-OFF}
+      -DWITH_GOLANG=${WITH_GOLANG:-ON}
       -DWITH_SWIG_PY=ON
       -DWITH_C_API=${WITH_C_API:-OFF}
       -DWITH_PYTHON=${WITH_PYTHON:-ON}
@@ -51,7 +51,7 @@ cmake .. \
       -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
-      -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
+      -DWITH_GOLANG=${WITH_GOLANG:-ON} \
       -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
       -DWITH_C_API=${WITH_C_API:-OFF} \
       -DWITH_PYTHON=${WITH_PYTHON:-ON} \
@@ -74,11 +74,11 @@ cat <<EOF
 Running unit tests ...
 ========================================
 EOF
+    ctest --output-on-failure
     # make install should also be test when unittest
     make install -j `nproc`
     pip install /usr/local/opt/paddle/share/wheels/*.whl
     paddle version
-    ctest --output-on-failure
 fi
 
 
@@ -130,7 +130,7 @@ fi
 
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-if [[ ${WITH_DEB:-OFF} == "ON" ]]; then
+if [[ ${WITH_DEB:-ON} == "ON" ]]; then
     cat <<EOF
 ========================================
 Generating .deb package ...

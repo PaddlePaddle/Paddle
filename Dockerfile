@@ -64,12 +64,27 @@ RUN pip install --upgrade pip && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
     pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip install rarfile
+    pip install opencv-python rarfile 'scipy>=0.19.0' 'nltk>=3.2.2'
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
+
+# TODO(qijun) The template library Eigen doesn't work well with GCC 5 
+# coming with the default Docker image, so we switch to use GCC 4.8 
+# by default. And I will check Eigen library later.
+
+RUN ln -sf gcc-4.8 /usr/bin/gcc && \
+    ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
+    ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
+    ln -sf gcc-ranlib-4.8 /usr/bin/gcc-ranlib && \
+    ln -sf gcc-4.8 /usr/bin/x86_64-linux-gnu-gcc && \
+    ln -sf gcc-ar-4.8 /usr/bin/x86_64-linux-gnu-gcc-ar && \
+    ln -sf gcc-nm-4.8 /usr/bin/x86_64-linux-gnu-gcc-nm && \
+    ln -sf gcc-ranlib-4.8 /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
+    ln -sf g++-4.8 /usr/bin/g++ && \
+    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++ 
 
 # Install woboq_codebrowser to /woboq
 RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
