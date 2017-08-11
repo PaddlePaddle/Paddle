@@ -88,8 +88,6 @@ class OperatorBase {
 
   virtual bool IsNetOp() const { return false; }
 
-  virtual bool SupportGPU() const { return false; }
-
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
@@ -104,6 +102,8 @@ class OperatorBase {
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
+
+  virtual bool SupportGPU() const { return false; }
 
  public:
   std::string type_;
@@ -281,28 +281,24 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
-  struct OpKernelKey {
-    platform::Place place_;
-
-    OpKernelKey() = default;
-    explicit OpKernelKey(const platform::DeviceContext& dev_ctx) {
-      place_ = dev_ctx.GetPlace();
-    }
-
+  struct OpKernelKey : public platform::Place {
+    explicit OpKernelKey(platform::Place p) : platform::Place(p) {}
     bool operator==(const OpKernelKey& o) const {
-      return platform::places_are_same_class(place_, o.place_);
+      return platform::places_are_same_class(*this, o);
     }
   };
 
-  struct OpKernelHash {
-    std::hash<bool> hash_;
+  struct OpKernelHasher {
     size_t operator()(const OpKernelKey& key) const {
-      return hash_(platform::is_gpu_place(key.place_));
+      return static_cast<size_t>(platform::is_gpu_place(key));
     }
   };
 
-  using OpKernelMap =
-      std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
+  typedef std::unordered_map<
+      std::string /*op_type*/,
+      std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>,
+                         OpKernelHasher>>
+      OpDeviceKernelMap;
 
   void InferShape(const Scope& scope) const override {
     InferShape(InferShapeContext(*this, scope));
@@ -310,21 +306,23 @@ class OperatorWithKernel : public OperatorBase {
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
-    auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
+    AllOpKernels()
+        .at(type_)
+        .at(OpKernelKey(dev_ctx.GetPlace()))
+        ->Compute(ExecutionContext(*this, scope, &dev_ctx));
   }
 
-  static std::unordered_map<std::string /* op_type */, OpKernelMap>&
-  AllOpKernels() {
-    static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
-    return g_all_op_kernels;
+  static OpDeviceKernelMap AllOpKernels() {
+    static OpDeviceKernelMap _;
+    return _;
   }
 
-  bool SupportGPU() const override {
-    OperatorWithKernel::OpKernelKey key;
-    key.place_ = platform::GPUPlace();
-    return OperatorWithKernel::AllOpKernels().at(type_).count(key) != 0;
+  static bool HasGPUKernel(const std::string& op_type) {
+    return OperatorWithKernel::AllOpKernels().at(op_type).count(
+               OpKernelKey(platform::GPUPlace())) > 0;
   }
+
+  bool SupportGPU() const override { return HasGPUKernel(type_); }
 
  protected:
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
