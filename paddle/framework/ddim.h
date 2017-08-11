@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <initializer_list>
 #include <stdexcept>
 #include <vector>
 #include "paddle/framework/dim.h"
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/variant.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {

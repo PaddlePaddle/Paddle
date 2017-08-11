@@ -19,9 +19,9 @@ add_library(paddle_api STATIC ${API_SOURCES})
 add_dependencies(paddle_api paddle_proto paddle_trainer_lib)
 
 INCLUDE(${SWIG_USE_FILE})
-INCLUDE_DIRECTORIES(${PROJ_ROOT}/paddle)
+INCLUDE_DIRECTORIES(${PADDLE_SOURCE_DIR}/paddle)
 
-FILE(GLOB PY_PADDLE_PYTHON_FILES ${PROJ_ROOT}/paddle/py_paddle/*.py)
+FILE(GLOB PY_PADDLE_PYTHON_FILES ${PADDLE_SOURCE_DIR}/paddle/py_paddle/*.py)
 
 SET_SOURCE_FILES_PROPERTIES(Paddle.i PROPERTIES CPLUSPLUS ON)
 
@@ -79,16 +79,16 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${START_END}
 )
 
-add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PROJ_ROOT}/paddle/py_paddle
+add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/paddle/py_paddle/_swig_paddle.so
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PADDLE_SOURCE_DIR}/paddle/py_paddle
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PADDLE_SOURCE_DIR}/paddle/py_paddle
     COMMAND ${CMAKE_COMMAND} -E touch .timestamp
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle
     DEPENDS _swig_paddle
 )
 
 # TODO(yuyang18) : make wheel name calculated by cmake
-add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so)
+add_custom_target(python_api_wheel ALL DEPENDS ${PADDLE_SOURCE_DIR}/paddle/py_paddle/_swig_paddle.so)
 
 if(WITH_TESTING)
     IF(NOT PY_PIP_FOUND)

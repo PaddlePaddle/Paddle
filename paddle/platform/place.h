@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <iostream>
+#include "paddle/platform/variant.h"
 
 namespace paddle {
 namespace platform {
