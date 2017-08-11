@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(OnehotCrossEntropyOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.InputSize(), 2,
@@ -38,6 +39,8 @@ class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
 };
 
 class OnehotCrossEntropyGradientOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(OnehotCrossEntropyGradientOp,
+                       framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto X_grad = ctx.Output<Tensor>(framework::GradVarName("X"));

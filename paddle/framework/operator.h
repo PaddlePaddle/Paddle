@@ -63,6 +63,17 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
+  OperatorBase() {}  // TODO(yi): This constructor is to be removed.
+  OperatorBase(const std::string& type, const std::vector<std::string>& inputs,
+               const std::vector<std::string>& outputs,
+               const AttributeMap& attrs,
+               std::unordered_map<std::string, int>* in_out_idxs)
+      : type_(type),
+        inputs_(inputs),
+        outputs_(outputs),
+        attrs_(attrs),
+        in_out_idxs_(in_out_idxs) {}
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -109,6 +120,9 @@ class OperatorBase {
   const std::vector<std::string> Inputs() const { return inputs_; }
   const std::vector<std::string> Outputs() const { return outputs_; }
   const AttributeMap& Attrs() const { return attrs_; }
+  const std::unordered_map<std::string, int>* InOutIdx() const {
+    return in_out_idxs_.get();
+  }
 
  public:
   std::string type_;
@@ -286,6 +300,14 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  OperatorWithKernel() {}  // TODO(yi): This constructor is to be removed.
+  OperatorWithKernel(const std::string& type,
+                     const std::vector<std::string>& inputs,
+                     const std::vector<std::string>& outputs,
+                     const AttributeMap& attrs,
+                     std::unordered_map<std::string, int>* in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   struct OpKernelKey {
     platform::Place place_;
 
@@ -334,6 +356,16 @@ class OperatorWithKernel : public OperatorBase {
  protected:
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
+
+#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                         \
+ public:                                                                 \
+  Class() { /* TODO(yi): This constructor is to be removed. */           \
+  }                                                                      \
+  Class(const std::string& type, const std::vector<std::string>& inputs, \
+        const std::vector<std::string>& outputs,                         \
+        const ::paddle::framework::AttributeMap& attrs,                  \
+        std::unordered_map<std::string, int>* in_out_idxs)               \
+      : ParentClass(type, inputs, outputs, attrs, in_out_idxs) {}
 
 }  // namespace framework
 }  // namespace paddle
