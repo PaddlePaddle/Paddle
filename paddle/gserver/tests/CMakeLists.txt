@@ -18,6 +18,15 @@ add_unittest_without_exec(test_LayerGrad
 add_test(NAME test_LayerGrad
     COMMAND test_LayerGrad)
 
+########## test_Mkldnn layers and activations ##########
+if(WITH_MKLDNN)
+    add_unittest_without_exec(test_MKLDNN
+        test_MKLDNN.cpp
+        MKLDNNTester.cpp
+        LayerGradUtil.cpp)
+    add_test(NAME test_MKLDNN COMMAND test_MKLDNN)
+endif()
+
 ################ test_CRFLayerGrad ####################
 add_unittest_without_exec(test_CRFLayerGrad
     test_CRFLayerGrad.cpp
