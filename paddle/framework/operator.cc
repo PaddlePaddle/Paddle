@@ -43,7 +43,7 @@ std::unordered_map<std::string, OpProto>& OpProtos() {
 
 const std::string& OperatorBase::Input(const std::string& name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Op %s does not have output %s", type_,
+  PADDLE_ENFORCE(it != inputs_.end(), "Op %s does not have input %s", type_,
                  name);
   PADDLE_ENFORCE_EQ(it->second.size(), 1UL,
                     "Op %s input %s should contain only one variable", type_,

@@ -25,7 +25,7 @@ template <typename Map, typename T>
 static void ForEachVarName(Map& names, T callback) {
   for (auto& name : names) {
     for (auto& n : name.second) {
-      if (callback(n)) break;
+      if (callback(n)) return;
     }
   }
 }
@@ -33,12 +33,12 @@ static void ForEachVarName(Map& names, T callback) {
 static bool AllInSet(
     const std::unordered_map<std::string, std::vector<std::string>>& names,
     const std::string& suffix, const std::unordered_set<std::string>& set) {
-  bool ret_val = true;
-  ForEachVarName(names, [&ret_val, &set, &suffix](const std::string& n) {
-    ret_val = set.find(n + suffix) == set.end();
-    return !ret_val;
+  bool all_in_set = true;
+  ForEachVarName(names, [&all_in_set, &set, &suffix](const std::string& n) {
+    all_in_set = set.find(n + suffix) != set.end();
+    return !all_in_set;
   });
-  return ret_val;
+  return all_in_set;
 }
 
 static std::shared_ptr<OperatorBase> NOP() {
