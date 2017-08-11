@@ -188,8 +188,9 @@ class CPUKernalMultiInputsTest : public OpKernel {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(op_with_kernel, paddle::framework::OpWithKernelTest,
-            paddle::framework::OpKernelTestProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_with_kernel, paddle::framework::OpWithKernelTest,
+    paddle::framework::OpKernelTestProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(op_with_kernel,
                        paddle::framework::CPUKernelTest<float, float>);
 
