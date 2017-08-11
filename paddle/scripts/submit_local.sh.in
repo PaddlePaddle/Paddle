@@ -100,7 +100,7 @@ import setuptools
 print str(packaging.version.Version("@PADDLE_VERSION@"))
 ' 2>/dev/null)
     BASEDIR=$(dirname "$0")
-    pip install ${BASEDIR}/../opt/paddle/share/wheels/*-${PYTHON_PADDLE_VERSION}-*.whl
+    pip install ${BASEDIR}/../../opt/paddle/share/wheels/*-${PYTHON_PADDLE_VERSION}-*.whl
     if [ $? -ne 0 ]; then
 	echo "pip install wheels failed. "
 	echo "Please use 'sudo paddle' at the first time you use PaddlePaddle"
@@ -112,13 +112,13 @@ fi
 
 case "$1" in
     "train")
-        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_trainer ${@:2}
+        ${DEBUGGER} $MYDIR/../../opt/paddle/bin/paddle_trainer ${@:2}
         ;;
     "merge_model")
-        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_merge_model ${@:2}
+        ${DEBUGGER} $MYDIR/../../opt/paddle/bin/paddle_merge_model ${@:2}
         ;;
     "pserver")
-        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_pserver_main ${@:2}
+        ${DEBUGGER} $MYDIR/../../opt/paddle/bin/paddle_pserver_main ${@:2}
         ;;
     "dump_config")
         python -m paddle.utils.dump_config ${@:2}
