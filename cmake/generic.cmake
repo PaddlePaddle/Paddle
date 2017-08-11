@@ -306,11 +306,14 @@ function(go_library TARGET_NAME)
 
   set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
 
+  file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
+  set(TOUCH_CMD ${PROJ_ROOT}/paddle/scripts/build/if_newer_then_touch.sh)
   # This custom command will always run since it depends on a not
   # existing file.
   add_custom_command(
     OUTPUT dummy_rebulid_${TARGET_NAME}
-    COMMAND cmake -E touch ${dummyfile}
+    COMMAND ${TOUCH_CMD} ${dummyfile} ${GO_SOURCE}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
   # Create a custom target that depends on the custom command output
   # file, so the custom command can be referenced as a dependency by
@@ -338,7 +341,7 @@ function(go_library TARGET_NAME)
 
   set(${TARGET_NAME}_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/${${TARGET_NAME}_LIB_NAME}" CACHE STRING "output library path for target ${TARGET_NAME}")
 
-  file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
+
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
