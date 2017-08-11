@@ -161,14 +161,14 @@ class SGD(object):
                     self.__parameter_updater__.update(each_param)
                 cost_sum = out_args.sum()
                 cost = cost_sum / len(data_batch)
-                self.__parameter_updater__.finishBatch(cost)
-                batch_evaluator.finish()
                 event_handler(
                     v2_event.EndIteration(
                         pass_id=pass_id,
                         batch_id=batch_id,
                         cost=cost,
                         evaluator=batch_evaluator))
+                self.__parameter_updater__.finishBatch(cost)
+                batch_evaluator.finish()
 
             self.__parameter_updater__.finishPass()
             pass_evaluator.finish()

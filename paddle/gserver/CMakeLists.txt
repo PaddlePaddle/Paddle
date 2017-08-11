@@ -23,6 +23,17 @@ endmacro()
 
 filter_test(GSERVER_HEADER)
 filter_test(GSERVER_SOURCES)
+
+if(NOT WITH_MKLDNN)
+    file(GLOB_RECURSE DNN_HEADER RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLDNN*.h")
+    file(GLOB_RECURSE DNN_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLDNN*.cpp")
+    list(REMOVE_ITEM GSERVER_HEADER ${DNN_HEADER})
+    list(REMOVE_ITEM GSERVER_SOURCES ${DNN_SOURCES})
+    message(STATUS "Skip compiling with MKLDNNLayers and MKLDNNActivations")
+else()
+    message(STATUS "Compile with MKLDNNLayers and MKLDNNActivations")
+endif()
+
 if(NOT WITH_GPU)
     list(REMOVE_ITEM GSERVER_HEADER
         layers/CudnnConvBaseLayer.h
