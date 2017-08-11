@@ -23,6 +23,8 @@ class GatherOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0),
+                            "Inputs of GatherOp must all be set");
     int batch_size = ctx.Input<Tensor>(1)->dims()[0];
     PADDLE_ENFORCE(batch_size > 0);
   }
