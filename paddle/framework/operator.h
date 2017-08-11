@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
-#include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -27,6 +26,7 @@ limitations under the License. */
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
+#include "paddle/platform/variant.h"
 #include "paddle/utils/Error.h"
 
 namespace paddle {
@@ -95,15 +95,20 @@ class OperatorBase {
 
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
-
   //! Get a input which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
+
   //! Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
+
+  const std::string Type() const { return type_; }
+  const std::vector<std::string> Inputs() const { return inputs_; }
+  const std::vector<std::string> Outputs() const { return outputs_; }
+  const AttributeMap& Attrs() const { return attrs_; }
 
  public:
   std::string type_;

@@ -10,5 +10,5 @@ target_include_directories(capi_test_gradientMachine PUBLIC
   ${PADDLE_CAPI_INC_PATH})
 target_link_libraries(capi_test_gradientMachine paddle_capi)
 add_test(NAME capi_test_gradientMachine
-  COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python ${CMAKE_CURRENT_BINARY_DIR}/capi_test_gradientMachine
-  WORKING_DIRECTORY ${PROJ_ROOT}/paddle/capi/tests)
+  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/capi_test_gradientMachine
+  WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/capi/tests)
