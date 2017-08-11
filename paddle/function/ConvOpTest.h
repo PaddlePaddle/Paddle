@@ -202,9 +202,10 @@ void DepthwiseConvolution(const std::string& conv1,
           for (size_t outputChannels : {32, 64}) {
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
-                // NNPACK only supports stride = 1 if batchSize > 1
+                // NNPACK only supports stride = 1 if batchSize > 1,
+                // and there has some bug when batchSize > 1 and groups != 1
                 if ((conv1 == "NNPACKConv-CPU" || conv2 == "NNPACKConv-CPU") &&
-                    batchSize > 1 && stride > 1)
+                    batchSize > 1)
                   break;
 
                 size_t outputSize =

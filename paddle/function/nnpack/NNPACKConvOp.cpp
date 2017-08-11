@@ -201,28 +201,25 @@ public:
       CHECK_EQ(strideW(), 1);
 
       // TODO(hedaoyuan): There has some bug when batchSize > 1 and groups_ > 1.
-      CHECK_EQ(groups_, (size_t)1);
-      for (size_t g = 0; g < groups_; g++) {
-        nnp_status status =
-            nnp_convolution_output(algorithm_,
-                                   batchSize,
-                                   inputChannels / groups_,
-                                   outputChannels / groups_,
-                                   inputSize,
-                                   padding,
-                                   kernelSize,
-                                   inputData + inputOffset * g,
-                                   filterData + filterOffset * g,
-                                   nullptr, /* bias */
-                                   outputData + outputOffset * g,
-                                   bufferPtr,
-                                   sizePtr,
-                                   nnp_activation_identity,
-                                   nullptr,
-                                   threadpool_, /* threadpool */
-                                   nullptr);
-        CHECK_EQ(status, nnp_status_success);
-      }
+      CHECK_EQ(groups_, static_cast<size_t>(1));
+      nnp_status status = nnp_convolution_output(algorithm_,
+                                                 batchSize,
+                                                 inputChannels,
+                                                 outputChannels,
+                                                 inputSize,
+                                                 padding,
+                                                 kernelSize,
+                                                 inputData,
+                                                 filterData,
+                                                 nullptr, /* bias */
+                                                 outputData,
+                                                 bufferPtr,
+                                                 sizePtr,
+                                                 nnp_activation_identity,
+                                                 nullptr,
+                                                 threadpool_, /* threadpool */
+                                                 nullptr);
+      CHECK_EQ(status, nnp_status_success);
     }
   }
 
