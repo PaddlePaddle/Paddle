@@ -13,13 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+#include "ConvOpTest.h"
 
-#include <paddle/framework/op_registry.h>
+namespace paddle {
 
-USE_OP(mean);
-
-TEST(MeanOp, GetOpProto) {
-  auto& protos = paddle::framework::OpRegistry::protos();
-  auto it = protos.find("mean");
-  ASSERT_NE(it, protos.end());
+#ifndef PADDLE_ONLY_CPU
+TEST(DepthwiseConv, Forward) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConv-CPU", "DepthwiseConv-GPU", forward);
 }
+
+TEST(DepthwiseConv, BackwardInput) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConvGradInput-CPU", "DepthwiseConvGradInput-GPU", backward_input);
+}
+
+TEST(DepthwiseConv, BackwardFilter) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConvGradFilter-CPU", "DepthwiseConvGradFilter-GPU", backward_filter);
+}
+#endif
+
+}  // namespace paddle

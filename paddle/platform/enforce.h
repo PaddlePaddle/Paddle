@@ -15,11 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <execinfo.h>
-#include <paddle/string/printf.h>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include "paddle/string/printf.h"
+#include "paddle/string/to_string.h"
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -194,8 +195,8 @@ inline void throw_on_error(T e) {
 #define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)        \
   PADDLE_ENFORCE(__VAL0 __CMP __VAL1,                                         \
                  "enforce %s " #__CMP " %s failed, %s " #__INV_CMP " %s\n%s", \
-                 #__VAL0, #__VAL1, std::to_string(__VAL0),                    \
-                 std::to_string(__VAL1),                                      \
+                 #__VAL0, #__VAL1, paddle::string::to_string(__VAL0),         \
+                 paddle::string::to_string(__VAL1),                           \
                  paddle::string::Sprintf("" __VA_ARGS__));
 
 }  // namespace platform

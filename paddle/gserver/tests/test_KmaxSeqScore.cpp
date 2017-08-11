@@ -88,13 +88,18 @@ void checkLayerOut(vector<vector<int>> groundTruth,
 
 TEST(Layer, kmaxSeqScoreLayer) {
   const size_t maxBeamSize = 100;
-  int beamSize = 1 + (rand() % maxBeamSize);
+  size_t beamSize = 1 + (rand() % maxBeamSize);
 
   vector<int> seqStartPosition;
   vector<int> subSeqStartPosition;
   genRandomSeqInfo(seqStartPosition, subSeqStartPosition);
   MatrixPtr inValue =
       Matrix::create(subSeqStartPosition.back(), 1, false, false);
+
+  std::vector<bool> mode = {false};
+#ifndef PADDLE_ONLY_CPU
+  mode.push_back(true);
+#endif
 
   for (auto hasSubseq : {false, true}) {
     vector<vector<int>> groundTruth;
@@ -104,7 +109,7 @@ TEST(Layer, kmaxSeqScoreLayer) {
                          hasSubseq ? subSeqStartPosition : seqStartPosition,
                          beamSize);
 
-    for (auto useGpu : {false, true}) {
+    for (auto useGpu : mode) {
       TestConfig config;
       config.layerConfig.set_type("kmax_seq_score");
       config.layerConfig.set_beam_size(beamSize);

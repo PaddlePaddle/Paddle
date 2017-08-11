@@ -17,12 +17,10 @@ def main():
     # network config
     x = paddle.layer.data(name='x', type=paddle.data_type.dense_vector(13))
     y_predict = paddle.layer.fc(input=x,
-                                param_attr=paddle.attr.Param(
-                                    name='w', learning_rate=1e-3),
+                                param_attr=paddle.attr.Param(name='w'),
                                 size=1,
                                 act=paddle.activation.Linear(),
-                                bias_attr=paddle.attr.Param(
-                                    name='b', learning_rate=1e-3))
+                                bias_attr=paddle.attr.Param(name='b'))
     y = paddle.layer.data(name='y', type=paddle.data_type.dense_vector(1))
     cost = paddle.layer.mse_cost(input=y_predict, label=y)
 
