@@ -120,5 +120,21 @@ void OperatorBase::Rename(const std::string& old_name,
   }
 }
 
+OperatorBase::OperatorBase(const std::string& type,
+                           const OperatorBase::VarNameMap& inputs,
+                           const OperatorBase::VarNameMap& outputs,
+                           const AttributeMap& attrs)
+    : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
+  static std::atomic<size_t> gUniqId(0UL);
+  for (auto& output : outputs_) {
+    for (auto& output_name : output.second) {
+      if (output_name == kTempVarName) {
+        output_name += type_;
+        output_name += "@";
+        output_name += std::to_string(gUniqId.fetch_add(1));
+      }
+    }
+  }
+}
 }  // namespace framework
 }  // namespace paddle

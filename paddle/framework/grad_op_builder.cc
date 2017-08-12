@@ -23,13 +23,12 @@ class OpRegistry;
 
 enum class OpArgType { IN, OUT };
 
-static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
-                       const OpArgType& src_type, const OpArgType& dst_type,
-                       bool is_grad) {
+static void TransOpArg(const OperatorBase* src_op,
+                       OperatorBase::VarNameMap* vars,
+                       const OpArgType& src_type, bool is_grad) {
   const auto& src_inout =
       src_type == OpArgType::IN ? src_op->inputs_ : src_op->outputs_;
-  auto& dst_inout =
-      dst_type == OpArgType::IN ? dst_op->inputs_ : dst_op->outputs_;
+  auto& dst_inout = *vars;
 
   const OpProto& proto = OpProtos().at(src_op->type_);
   const auto& src_arg_list =
@@ -47,15 +46,22 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
 }
 
 OperatorBase* BuildGradOp(const OperatorBase* op) {
-  std::string grad_op_type = OpRegistry::grad_ops().at(op->type_);
-  OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)();
-  grad_op->type_ = grad_op_type;
-  grad_op->attrs_ = op->attrs_;
-  TransOpArg(op, grad_op, OpArgType::IN, OpArgType::IN, false);   // I
-  TransOpArg(op, grad_op, OpArgType::OUT, OpArgType::IN, false);  // O
-  TransOpArg(op, grad_op, OpArgType::OUT, OpArgType::IN, true);   // OG
-  TransOpArg(op, grad_op, OpArgType::IN, OpArgType::OUT, true);   // IG
-  return grad_op;
+  auto gop_type_it = OpRegistry::grad_ops().find(op->type_);
+  PADDLE_ENFORCE(gop_type_it != OpRegistry::grad_ops().end(),
+                 "Operator %s do not register gradient type", op->type_);
+  auto& grad_op_type = gop_type_it->second;
+  OperatorBase::VarNameMap inputs;
+  OperatorBase::VarNameMap outputs;
+  TransOpArg(op, &inputs, OpArgType::IN, false);   // I
+  TransOpArg(op, &inputs, OpArgType::OUT, false);  // O
+  TransOpArg(op, &inputs, OpArgType::OUT, true);   // OG
+  TransOpArg(op, &outputs, OpArgType::IN, true);   // IG
+  auto gop_it = OpRegistry::op_creators().find(grad_op_type);
+  PADDLE_ENFORCE(gop_it != OpRegistry::op_creators().end(),
+                 "Operator %s 's Gradient %s's creator cannot be found",
+                 op->type_, grad_op_type);
+
+  return gop_it->second(grad_op_type, inputs, outputs, op->attrs_);
 }
 
 }  // namespace framework

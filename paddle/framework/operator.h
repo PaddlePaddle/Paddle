@@ -66,10 +66,8 @@ class OperatorBase {
  public:
   using VarNameMap = std::map<std::string, std::vector<std::string>>;
 
-  OperatorBase() = default;
   OperatorBase(const std::string& type, const VarNameMap& inputs,
-               const VarNameMap& outputs, const AttributeMap& attrs)
-      : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
+               const VarNameMap& outputs, const AttributeMap& attrs);
 
   OperatorBase(const OperatorBase& o) = delete;
   OperatorBase& operator=(const OperatorBase& o) = delete;
@@ -85,10 +83,6 @@ class OperatorBase {
   }
 
   virtual std::string DebugString() const;
-
-  /// Init will be called after CreateOperator, you can put some initialization
-  /// logic here.
-  virtual void Init() {}
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
@@ -154,22 +148,13 @@ class OperatorBase {
   // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
-  std::map<std::string, std::vector<std::string>> inputs_;
+  VarNameMap inputs_;
 
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  std::map<std::string, std::vector<std::string>> outputs_;
+  VarNameMap outputs_;
   AttributeMap attrs_;
 };
-
-#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                               \
- public:                                                                       \
-  Class() : ParentClass() { /* TODO(yi): This constructor is to be removed. */ \
-  }                                                                            \
-  Class(const std::string& type, const VarNameMap& inputs,                     \
-        const VarNameMap& outputs,                                             \
-        const paddle::framework::AttributeMap& attrs)                          \
-      : ParentClass(type, inputs, outputs, attrs) {}
 
 class InferShapeContext {
  public:
@@ -310,8 +295,6 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(OperatorWithKernel, OperatorBase)
-
   struct OpKernelKey {
     platform::Place place_;
 
@@ -334,6 +317,10 @@ class OperatorWithKernel : public OperatorBase {
 
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
+
+  OperatorWithKernel(const std::string& type, const VarNameMap& inputs,
+                     const VarNameMap& outputs, const AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(const Scope& scope) const override {
     InferShape(InferShapeContext(*this, scope));

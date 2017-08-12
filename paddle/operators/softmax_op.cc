@@ -18,7 +18,9 @@ namespace paddle {
 namespace operators {
 
 class SoftmaxOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(SoftmaxOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
@@ -39,7 +41,9 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 class SoftmaxOpGrad : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(SoftmaxOpGrad, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(Y) should not be null");

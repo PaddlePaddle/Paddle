@@ -18,7 +18,8 @@ namespace paddle {
 namespace operators {
 
 class AddOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(AddOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
@@ -45,7 +46,9 @@ The equation is: Out = X + Y
 };
 
 class AddOpGrad : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(AddOpGrad, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {}
 };
