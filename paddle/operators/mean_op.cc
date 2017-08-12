@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class MeanOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MeanOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.InputSize(), 1, "Input size of AddOp must be one");
@@ -39,9 +40,10 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 class MeanGradOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MeanGradOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>("X" + framework::kGradVarSuffix)
+    ctx.Output<Tensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };

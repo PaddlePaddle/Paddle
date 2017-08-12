@@ -73,34 +73,60 @@ def get_numeric_gradient(op,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
+    # get the input tensor that we want to get it's numeric gradient.
     tensor_to_check = local_scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
+    # prepare a numpy array to store the gradient.
     gradient_flat = numpy.zeros(shape=(tensor_size, ), dtype='float32')
+
+    # we only compute gradient of one element each time.
+    # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
+        # get one input element throw it's index i.
         origin = tensor_to_check.get_float_element(i)
+
+        # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
         tensor_to_check.set_float_element(i, x_pos)
         y_pos = get_output()
 
+        # plus delta to this element, run op and get the sum of the result tensor.
         x_neg = origin - delta
         tensor_to_check.set_float_element(i, x_neg)
         y_neg = get_output()
 
-        tensor_to_check.set_float_element(i, origin)  # restore old value
+        # restore old value
+        tensor_to_check.set_float_element(i, origin)
+
+        # compute the gradient of this element and store it into a numpy array.
         gradient_flat[i] = (y_pos - y_neg) / delta / 2
+
+    # reshape the gradient result to the shape of the source tensor.
     return gradient_flat.reshape(tensor_to_check.get_dims())
 
 
 class GradientChecker(unittest.TestCase):
-    def __is_close(self, numeric_grads, scope, max_relative_error):
+    def assert_is_close(self, numeric_grads, scope, max_relative_error,
+                        msg_prefix):
         for name in numeric_grads:
-            op_grad = numpy.array(
-                scope.find_var(grad_var_name(name)).get_tensor())
-            is_close = numpy.allclose(
-                numeric_grads[name], op_grad, rtol=max_relative_error, atol=100)
-            if not is_close:
-                return False
-        return True
+            b = numpy.array(scope.find_var(grad_var_name(name)).get_tensor())
+            a = numeric_grads[name]
+
+            abs_a = numpy.abs(a)
+            # if abs_a is nearly zero, then use abs error for a, not relative
+            # error.
+            abs_a[abs_a < 1e-3] = 1
+
+            diff_mat = numpy.abs(a - b) / abs_a
+            max_diff = numpy.max(diff_mat)
+
+            def err_msg():
+                offset = numpy.argmax(diff_mat > max_relative_error)
+                return "%s Variable %s max gradient diff %f over limit %f, the first " \
+                       "error element is %d" % (
+                       msg_prefix, name, max_diff, max_relative_error, offset)
+
+            self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def check_grad(self,
                    forward_op,
@@ -145,7 +171,8 @@ class GradientChecker(unittest.TestCase):
         # get numeric gradient
         for check_name in inputs_to_check:
             numeric_grad[check_name] = \
-                get_numeric_gradient(forward_op, input_vars, output_name, check_name)
+                get_numeric_gradient(forward_op, input_vars, output_name,
+                                     check_name)
 
         # get operator gradient according to different device
         for place in places:
@@ -187,15 +214,8 @@ class GradientChecker(unittest.TestCase):
             backward_op.infer_shape(scope)
             backward_op.run(scope, ctx)
 
-            if isinstance(place, core.CPUPlace):
-                msg = "CPU kernel gradient is not close to numeric gradient"
-            else:
-                if isinstance(place, core.GPUPlace):
-                    msg = "GPU kernel gradient is not close to numeric gradient"
-                else:
-                    raise ValueError("unknown place " + type(place))
-            self.assertTrue(
-                self.__is_close(numeric_grad, scope, max_relative_error), msg)
+            self.assert_is_close(numeric_grad, scope, max_relative_error,
+                                 "Gradient Check On %s" % str(place))
 
 
 if __name__ == '__main__':

@@ -141,8 +141,8 @@ endmacro()
 function(create_resources res_file output_file)
   add_custom_command(
     OUTPUT ${output_file}
-    COMMAND python ARGS ${PROJ_ROOT}/cmake/make_resource.py ${res_file} ${output_file}
-    DEPENDS ${res_file} ${PROJ_ROOT}/cmake/make_resource.py)
+    COMMAND python ARGS ${PADDLE_SOURCE_DIR}/cmake/make_resource.py ${res_file} ${output_file}
+    DEPENDS ${res_file} ${PADDLE_SOURCE_DIR}/cmake/make_resource.py)
 endfunction()
 
 

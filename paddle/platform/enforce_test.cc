@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <array>
+#include <iostream>
 #include <memory>
 
 #include "gtest/gtest.h"
@@ -83,7 +85,7 @@ TEST(ENFORCE_NE, FAIL) {
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
-                          "enforce 1.0 != 1UL failed, 1.000000 == 1"))
+                          "enforce 1.0 != 1UL failed, 1 == 1"))
         << error.what() << " does not have expected prefix";
   }
   EXPECT_TRUE(caught_exception);
@@ -175,4 +177,40 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
     EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "a should not be null"));
   }
   EXPECT_TRUE(caught_exception);
+}
+
+struct Dims {
+  size_t dims_[4];
+
+  bool operator==(const Dims& o) const {
+    for (size_t i = 0; i < 4; ++i) {
+      if (dims_[i] != o.dims_[i]) return false;
+    }
+    return true;
+  }
+};
+
+std::ostream& operator<<(std::ostream& os, const Dims& d) {
+  for (size_t i = 0; i < 4; ++i) {
+    if (i == 0) {
+      os << "[";
+    }
+    os << d.dims_[i];
+    if (i == 4 - 1) {
+      os << "]";
+    } else {
+      os << ", ";
+    }
+  }
+  return os;
+}
+
+TEST(ENFORCE_USER_DEFINED_CLASS, EQ) {
+  Dims a{{1, 2, 3, 4}}, b{{1, 2, 3, 4}};
+  PADDLE_ENFORCE_EQ(a, b);
+}
+
+TEST(ENFORCE_USER_DEFINED_CLASS, NE) {
+  Dims a{{1, 2, 3, 4}}, b{{5, 6, 7, 8}};
+  ASSERT_THROW(PADDLE_ENFORCE_EQ(a, b), paddle::platform::EnforceNotMet);
 }
