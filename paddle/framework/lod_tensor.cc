@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 
 LODTensor::LOD LODTensor::LOD::SliceLevels(size_t level_begin,
-                                           size_t level_end) {
+                                           size_t level_end) const {
   LOD new_lod;
   new_lod.reserve(level_end - level_begin);
   for (size_t i = level_begin; i < level_end; i++) {
@@ -30,7 +30,7 @@ LODTensor::LOD LODTensor::LOD::SliceLevels(size_t level_begin,
 }
 
 LODTensor::LOD LODTensor::LOD::SliceInLevel(size_t level, size_t elem_begin,
-                                            size_t elem_end) {
+                                            size_t elem_end) const {
   // slice the lod.
   LOD new_lod;
   new_lod.reserve(size() - level);
@@ -51,27 +51,6 @@ LODTensor::LOD LODTensor::LOD::SliceInLevel(size_t level, size_t elem_begin,
   }
   PADDLE_ENFORCE_LE(new_lod.size(), this->size());
   return new_lod;
-}
-
-bool LODTensor::LOD::operator==(const LODTensor::LOD& other) const {
-  if (this->size() != other.size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < a.size(); i++) {
-    const auto& a_level = a[i];
-    const auto& b_level = b[i];
-    if (a_level.size() != b_level.size()) {
-      return false;
-    }
-    for (size_t j = 0; j < a_level.size(); j++) {
-      if (a_level[j] != b_level[j]) {
-        return false;
-      }
-    }
-  }
-
-  return true;
 }
 
 bool operator==(const LODTensor::LOD& a, const LODTensor::LOD& b) {

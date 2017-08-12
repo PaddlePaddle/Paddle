@@ -46,15 +46,14 @@ class LODTensor : public Tensor {
   // Tesor.
   class LOD : public Vector<Vector<size_t>> {
    public:
-    LOD SliceLevels(size_t level_begin, size_t level_end);
-    LOD SliceInLevel(size_t level, size_t elem_begin, size_t elem_end);
-    friend bool operator==(const LOD &b) const;
+    LOD SliceLevels(size_t level_begin, size_t level_end) const;
+    LOD SliceInLevel(size_t level, size_t elem_begin, size_t elem_end) const;
   };
 
   LODTensor() {}
-  explicit LODTensor(const LOD &lod) : lod_start_pos_(lod) {}
+  explicit LODTensor(const LOD &lod) : lod_(lod) {}
 
-  virtual Tensor *Clone() const { return new LODTensor(lod_start_pos_); }
+  virtual Tensor *Clone() const { return new LODTensor(lod_); }
 
   /*
    * Get a element from LOD.
@@ -65,14 +64,14 @@ class LODTensor : public Tensor {
     PADDLE_ENFORCE(elem < NumElements(level),
                    "element begin [%d] out of range [%d]", elem,
                    NumElements(level));
-    return (lod_start_pos_)[level][elem];
+    return (lod_)[level][elem];
   }
 
   /*
    * Number of LODTensor's levels, each level has units of data, for example,
    * in the sentence's view, article, paragraph, sentence are 3 levels.
    */
-  size_t NumLevels() const { return lod_start_pos_.size(); }
+  size_t NumLevels() const { return lod_.size(); }
   /*
    * Number of elements in a level.
    */
@@ -80,7 +79,7 @@ class LODTensor : public Tensor {
     PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
                    NumLevels());
     // the last offset is the end of last element
-    return lod_start_pos_[level].size() - 1;
+    return lod_[level].size() - 1;
   }
 
   /*
@@ -91,33 +90,60 @@ class LODTensor : public Tensor {
 
   /*
    * Slice of elements of a level, [elem_begin: elem_end], with tensor shared.
-   * @note: low performance in slice lod_start_pos_.
+   * @note: low performance in slice lod_.
    */
   template <typename T>
   LODTensor SliceInLevel(size_t level, size_t elem_begin,
                          size_t elem_end) const;
 
   /*
-   * Copy other's lod_start_pos_'s content, free to mutate.
+   * Copy other's lod_'s content, free to mutate.
    */
-  void CopyLOD(const LODTensor &other) {
-    lod_start_pos_ = other.lod_start_pos_;
-  }
+  void CopyLOD(const LODTensor &other) { lod_ = other.lod_; }
   /*
    * Determine whether LODTensor has a valid LOD info.
    */
-  const LOD &lod() const { return lod_start_pos_; }
-  LOD *mutable_lod() { return &lod_start_pos_; }
+  const LOD &lod() const { return lod_; }
+  LOD *mutable_lod() { return &lod_; }
 
   virtual ~LODTensor() {}
 
  private:
-  LOD lod_start_pos_;
+  LOD lod_;
 };
 
 bool operator==(const LODTensor::LOD &a, const LODTensor::LOD &b);
 
+template <typename T>
+LODTensor LODTensor::SliceLevels(size_t level_begin, size_t level_end) const {
+  auto new_lod = lod_.SliceLevels(level_begin, level_end);
+  // slice levels just need to update LOD info, each level will contains the
+  // whole tensor_, so no need to modify tensor_.
+  LODTensor new_tensor(new_lod);
+  new_tensor.ShareDataWith<T>(*this);
+  return new_tensor;
+}
+
+template <typename T>
+LODTensor LODTensor::SliceInLevel(size_t level, size_t elem_begin,
+                                  size_t elem_end) const {
+  PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
+                 NumLevels());
+  PADDLE_ENFORCE(elem_begin < NumElements(level),
+                 "element begin [%d] out of range [%d]", elem_begin,
+                 NumElements(level));
+  PADDLE_ENFORCE(elem_end < NumElements(level) + 1,
+                 "element end [%d] out of range [%d]", elem_end,
+                 NumElements(level));
+
+  auto new_lod = lod_.SliceInLevel(level, elem_begin, elem_end);
+
+  // slice elements just need to update LOD info, because offsets are not
+  // changed, so the original tensor_ can be reused.
+  LODTensor new_tensor(new_lod);
+  new_tensor.ShareDataWith<T>(*this);
+  return new_tensor;
+}
+
 }  // namespace framework
 }  // namespace paddle
-
-#include "paddle/framework/lod_tensor_impl.h"
