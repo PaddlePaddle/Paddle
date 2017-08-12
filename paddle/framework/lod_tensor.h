@@ -39,12 +39,12 @@ class LODTensor : public Tensor {
   using Vector = std::vector<T>;
 #else
   template <typename T>
-  using Vector = thrust::device_vector<T>;
+  using Vector = thrust::host_vector<T>;
 #endif
   // LoD stores offsets of each level of units, the largest units level first,
   // then the smaller units level. Each Level stores the offsets of units in
   // Tesor.
-  class LOD : public Vector<Vector<size_t>> {
+  class LOD : public std::vector<Vector<size_t>> {
    public:
     LOD SliceLevels(size_t level_begin, size_t level_end) const;
     LOD SliceInLevel(size_t level, size_t elem_begin, size_t elem_end) const;

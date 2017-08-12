@@ -112,15 +112,5 @@ TEST_F(LODTensorTester, CopyLOD) {
   ASSERT_TRUE(equals);
 }
 
-TEST(LODTensor, Clone) {
-  LODTensor::LOD lod;
-  lod.push_back(std::vector<size_t>{1, 5, 10});
-  LODTensor lodtensor(lod);
-
-  Tensor* new_tensor = lodtensor.Clone();
-  LODTensor* new_lod_tensor = dynamic_cast<LODTensor*>(new_tensor);
-  ASSERT_EQ(new_lod_tensor->lod(), lodtensor.lod());
-}
-
 }  // namespace framework
 }  // namespace paddle
