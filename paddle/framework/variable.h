@@ -16,7 +16,6 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
@@ -36,12 +35,6 @@ class Variable {
       holder_.reset(new PlaceholderImpl<T>(new T()));
     }
     return static_cast<T*>(holder_->Ptr());
-  }
-
-  void CloneTensorType(const Variable& other) {
-    PADDLE_ENFORCE(holder_ == nullptr,
-                   "data type is specified before cloning type.");
-    holder_.reset(new PlaceholderImpl<Tensor>(other.Get<Tensor>().Clone()));
   }
 
   template <typename T>

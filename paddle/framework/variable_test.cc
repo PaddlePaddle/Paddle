@@ -15,7 +15,6 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/variable.h"
 
 TEST(Variable, GetMutable) {
@@ -38,24 +37,4 @@ TEST(Variable, GetMutable) {
 
   const std::string& ss = v->Get<std::string>();
   EXPECT_EQ("hello", ss);
-}
-
-TEST(Variable, CloneTensorType) {
-  namespace f = paddle::framework;
-  using f::Variable;
-  using f::Tensor;
-  using f::LODTensor;
-
-  std::unique_ptr<Variable> v0(new Variable());
-  std::unique_ptr<Variable> v1(new Variable());
-
-  // create a LODTensor
-  auto t0 = v0->GetMutable<LODTensor>();
-  EXPECT_TRUE(v0->IsType<Tensor>());
-  EXPECT_TRUE(v0->IsType<LODTensor>());
-  t0->mutable_lod()->push_back(std::vector<size_t>{0, 5, 10});
-  // let v1 clone it
-  v1->CloneTensorType(*v0);
-  EXPECT_TRUE(v1->IsType<Tensor>());
-  EXPECT_TRUE(v1->IsType<LODTensor>());
 }
