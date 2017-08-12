@@ -65,7 +65,5 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad);
-REGISTER_GRADIENT_OP(mul_grad, ops::MulOpGrad);
-
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);

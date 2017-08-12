@@ -125,6 +125,13 @@ class OperatorBase {
   std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
+class NOP : public OperatorBase {
+ public:
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
+};
+
 class InferShapeContext {
  public:
   InferShapeContext(const OperatorBase& op, const Scope& scope)
