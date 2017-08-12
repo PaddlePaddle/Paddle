@@ -73,21 +73,35 @@ def get_numeric_gradient(op,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
+    # get the input tensor that we want to get it's numeric gradient.
     tensor_to_check = local_scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
+    # prepare a numpy array to store the gradient.
     gradient_flat = numpy.zeros(shape=(tensor_size, ), dtype='float32')
+
+    # we only compute gradient of one element each time.
+    # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
+        # get one input element throw it's index i.
         origin = tensor_to_check.get_float_element(i)
+
+        # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
         tensor_to_check.set_float_element(i, x_pos)
         y_pos = get_output()
 
+        # plus delta to this element, run op and get the sum of the result tensor.
         x_neg = origin - delta
         tensor_to_check.set_float_element(i, x_neg)
         y_neg = get_output()
 
-        tensor_to_check.set_float_element(i, origin)  # restore old value
+        # restore old value
+        tensor_to_check.set_float_element(i, origin)
+
+        # compute the gradient of this element and store it into a numpy array.
         gradient_flat[i] = (y_pos - y_neg) / delta / 2
+
+    # reshape the gradient result to the shape of the source tensor.
     return gradient_flat.reshape(tensor_to_check.get_dims())
 
 

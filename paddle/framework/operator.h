@@ -96,9 +96,9 @@ class OperatorBase {
 
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
-
   //! Get a input which has multiple variables.
   const std::vector<std::string>& Inputs(const std::string& name) const;
+
   //! Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
   //! Get an output which has multiple variables.
@@ -133,6 +133,9 @@ class OperatorBase {
     }
     return ret_val;
   }
+
+  std::string Type() const { return type_; }
+  const AttributeMap& Attrs() const { return attrs_; }
 
  public:
   std::string type_;

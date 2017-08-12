@@ -65,17 +65,17 @@ class OpProtoAndCheckerMaker {
 
   VariableBuilder AddInput(const std::string& name,
                            const std::string& comment) {
-    auto input = proto_->mutable_inputs()->Add();
-    *input->mutable_name() = name;
-    *input->mutable_comment() = comment;
+    auto* input = proto_->add_inputs();
+    input->set_name(name);
+    input->set_comment(comment);
     return VariableBuilder{input};
   }
 
   VariableBuilder AddOutput(const std::string& name,
                             const std::string& comment) {
-    auto output = proto_->mutable_outputs()->Add();
-    *output->mutable_name() = name;
-    *output->mutable_comment() = comment;
+    auto* output = proto_->add_outputs();
+    output->set_name(name);
+    output->set_comment(comment);
     return VariableBuilder{output};
   }
 
@@ -83,17 +83,15 @@ class OpProtoAndCheckerMaker {
   TypedAttrChecker<T>& AddAttr(const std::string& name,
                                const std::string& comment,
                                bool generated = false) {
-    auto attr = proto_->mutable_attrs()->Add();
-    *attr->mutable_name() = name;
-    *attr->mutable_comment() = comment;
+    auto* attr = proto_->add_attrs();
+    attr->set_name(name);
+    attr->set_comment(comment);
     attr->set_generated(generated);
     attr->set_type(AttrTypeID<T>());
     return op_checker_->AddAttrChecker<T>(name);
   }
 
-  void AddComment(const std::string& comment) {
-    *(proto_->mutable_comment()) = comment;
-  }
+  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
 
  private:
   void CheckNoDuplicatedInOutAttrs() {
@@ -130,7 +128,7 @@ class OpRegistry {
     OpProto& op_proto = OpProtos()[op_type];
     auto maker = ProtoMakerType(&op_proto, &op_checker);
     maker.Validate();
-    *op_proto.mutable_type() = op_type;
+    op_proto.set_type(op_type);
     PADDLE_ENFORCE(
         op_proto.IsInitialized(),
         "Fail to initialize %s's OpProto, because %s is not initialized",
@@ -231,19 +229,42 @@ class OpRegistry {
   }
 };
 
-template <typename OpType, typename ProtoMakerType>
-class OpRegisterHelper {
+class Registrar {
  public:
-  explicit OpRegisterHelper(const char* op_type) {
+  // In our design, various kinds of classes, e.g., operators and kernels, have
+  // their corresponding registry and registrar. The action of registration is
+  // in the constructor of a global registrar variable, which, however, are not
+  // used in the code that calls package framework, and would be removed from
+  // the generated binary file by the linker. To avoid such removal, we add
+  // Touch to all registrar classes and make USE_OP macros to call this
+  // method. So, as long as the callee code calls USE_OP, the global
+  // registrar variable won't be removed by the linker.
+  void Touch() {}
+};
+
+template <typename OpType, typename ProtoMakerType>
+class OpRegistrar : public Registrar {
+ public:
+  explicit OpRegistrar(const char* op_type) {
     OpRegistry::RegisterOp<OpType, ProtoMakerType>(op_type);
   }
 };
 
 template <typename GradOpType>
-class GradOpRegisterHelper {
+class GradOpRegistrar : public Registrar {
  public:
-  GradOpRegisterHelper(const char* op_type, const char* grad_op_type) {
+  GradOpRegistrar(const char* op_type, const char* grad_op_type) {
     OpRegistry::RegisterGradOp<GradOpType>(op_type, grad_op_type);
+  }
+};
+
+template <typename PlaceType, typename KernelType>
+class OpKernelRegistrar : public Registrar {
+ public:
+  explicit OpKernelRegistrar(const char* op_type) {
+    OperatorWithKernel::OpKernelKey key;
+    key.place_ = PlaceType();
+    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KernelType);
   }
 };
 
@@ -257,97 +278,121 @@ class GradOpRegisterHelper {
                 msg)
 
 /**
- * Macro to Register Operator.
+ * Macro to register Operator.
  */
-#define REGISTER_OP(__op_type, __op_class, __op_maker_class)                 \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(__reg_op__##__op_type,                      \
-                                 "REGISTER_OP must be in global namespace"); \
-  static ::paddle::framework::OpRegisterHelper<__op_class, __op_maker_class> \
-      __op_register_##__op_type##__(#__op_type);                             \
-  int __op_register_##__op_type##_handle__() { return 0; }
+#define REGISTER_OP(op_type, op_class, op_maker_class)                        \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
+      __reg_op__##op_type, "REGISTER_OP must be called in global namespace"); \
+  static ::paddle::framework::OpRegistrar<op_class, op_maker_class>           \
+      __op_registrar_##op_type##__(#op_type);                                 \
+  int TouchOpRegistrar_##op_type() {                                          \
+    __op_registrar_##op_type##__.Touch();                                     \
+    return 0;                                                                 \
+  }
 
 /**
- * Macro to Register Gradient Operator.
+ * Macro to register Gradient Operator.
  */
-#define REGISTER_GRADIENT_OP(__op_type, __grad_op_type, __grad_op_class)       \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
-      __reg_gradient_op__##__op_type##__grad_op_type,                          \
-      "REGISTER_GRADIENT_OP must be in global namespace");                     \
-  static ::paddle::framework::GradOpRegisterHelper<__grad_op_class>            \
-      __op_gradient_register_##__op_type##__grad_op_type##__(#__op_type,       \
-                                                             #__grad_op_type); \
-  int __op_gradient_register_##__op_type##__grad_op_type##_handle__() {        \
-    return 0;                                                                  \
+#define REGISTER_GRADIENT_OP(op_type, grad_op_type, grad_op_class)           \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                            \
+      __reg_gradient_op__##op_type##_##grad_op_type,                         \
+      "REGISTER_GRADIENT_OP must be called in global namespace");            \
+  static ::paddle::framework::GradOpRegistrar<grad_op_class>                 \
+      __op_gradient_registrar_##op_type##_##grad_op_type##__(#op_type,       \
+                                                             #grad_op_type); \
+  int TouchOpGradientRegistrar_##op_type() {                                 \
+    __op_gradient_registrar_##op_type##_##grad_op_type##__.Touch();          \
+    return 0;                                                                \
+  }
+
+/**
+ * Macro to register OperatorKernel.
+ */
+#define REGISTER_OP_KERNEL(op_type, DEVICE_TYPE, place_class, ...)        \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      __reg_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
+      "REGISTER_OP_KERNEL must be called in global namespace");           \
+  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__> \
+      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type);      \
+  int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE() {                \
+    __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
+    return 0;                                                             \
   }
 
 /**
  * Macro to Forbid user register Gradient Operator.
  */
-#define NO_GRADIENT(__op_type)                          \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                       \
-      __reg_gradient_op__##__op_type##__op_type##_grad, \
-      "NO_GRADIENT must be in global namespace")
+#define NO_GRADIENT(op_type)                           \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                      \
+      __reg_gradient_op__##op_type##_##op_type##_grad, \
+      "NO_GRADIENT must be called in global namespace")
 
-/**
- * Macro to Register OperatorKernel.
- */
-#define REGISTER_OP_KERNEL(type, DEVICE_TYPE, PlaceType, ...)             \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      __reg_op_kernel_##type##_##DEVICE_TYPE##__,                         \
-      "REGISTER_OP_KERNEL must be in global namespace");                  \
-  struct __op_kernel_register__##type##__##DEVICE_TYPE##__ {              \
-    __op_kernel_register__##type##__##DEVICE_TYPE##__() {                 \
-      ::paddle::framework::OperatorWithKernel::OpKernelKey key;           \
-      key.place_ = PlaceType();                                           \
-      ::paddle::framework::OperatorWithKernel::AllOpKernels()[#type][key] \
-          .reset(new __VA_ARGS__());                                      \
-    }                                                                     \
-  };                                                                      \
-  static __op_kernel_register__##type##__##DEVICE_TYPE##__                \
-      __reg_kernel_##type##__##DEVICE_TYPE##__;                           \
-  int __op_kernel_register_##type##_handle_##DEVICE_TYPE##__() { return 0; }
+#define REGISTER_OP_GPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
 
-// (type, KernelType)
-#define REGISTER_OP_GPU_KERNEL(type, ...) \
-  REGISTER_OP_KERNEL(type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
-
-// (type, KernelType)
-#define REGISTER_OP_CPU_KERNEL(type, ...) \
-  REGISTER_OP_KERNEL(type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
+#define REGISTER_OP_CPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
 /**
  * Macro to mark what Operator and Kernel we will use and tell the compiler to
  * link them into target.
  */
-#define USE_OP_WITHOUT_KERNEL(op_type)                      \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                           \
-      __use_op_without_kernel_##op_type,                    \
-      "USE_OP_WITHOUT_KERNEL must be in global namespace"); \
-  extern int __op_register_##op_type##_handle__();          \
-  static int __use_op_ptr_##op_type##_without_kernel__      \
-      __attribute__((unused)) = __op_register_##op_type##_handle__()
+#define USE_OP_ITSELF(op_type)                                    \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                 \
+      __use_op_itself_##op_type,                                  \
+      "USE_OP_ITSELF must be called in global namespace");        \
+  extern int TouchOpRegistrar_##op_type();                        \
+  static int use_op_itself_##op_type##_ __attribute__((unused)) = \
+      TouchOpRegistrar_##op_type()
 
-#define USE_OP_KERNEL(op_type, DEVICE_TYPE)                               \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      __use_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
-      "USE_OP_KERNEL must be in global namespace");                       \
-  extern int __op_kernel_register_##op_type##_handle_##DEVICE_TYPE##__(); \
-  static int __use_op_ptr_##op_type##_##DEVICE_TYPE##_kernel__            \
-      __attribute__((unused)) =                                           \
-          __op_kernel_register_##op_type##_handle_##DEVICE_TYPE##__()
+// TODO(fengjiayi): Most ops' gradient op have not been compeleted. So we use
+// `NO_GRAD` to disable micro USE_OP_GRADIENT(op_type). Otherwise the code can't
+// be compiled. `NO_GRAD` should be removed after all gradient ops are
+// compeleted.
+#define NO_GRAD
+#ifndef NO_GRAD
+#define USE_OP_GRADIENT(op_type)                                    \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                   \
+      __use_op_gradient_##op_type,                                  \
+      "USE_OP_GRADIENT must be called in global namespace");        \
+  extern int TouchOpGradientRegistrar_##op_type();                  \
+  static int use_op_gradient_##op_type##_ __attribute__((unused)) = \
+      TouchOpGradientRegistrar_##op_type()
+#else
+#define USE_OP_GRADIENT(op_type)
+#endif
 
-// use Operator with only cpu kernel.
-#define USE_OP_CPU(op_type)       \
-  USE_OP_WITHOUT_KERNEL(op_type); \
-  USE_OP_KERNEL(op_type, CPU)
+#define USE_OP_DEVICE_KERNEL(op_type, DEVICE_TYPE)               \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
+      __use_op_kernel_##op_type##_##DEVICE_TYPE##__,             \
+      "USE_OP_DEVICE_KERNEL must be in global namespace");       \
+  extern int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE(); \
+  static int use_op_kernel_##op_type##_##DEVICE_TYPE##_          \
+      __attribute__((unused)) =                                  \
+          TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
+
+// TODO(fengjiayi): The following macros seems ugly, do we have better method?
 
 #ifdef PADDLE_ONLY_CPU
-#define USE_OP(op_type) USE_OP_CPU(op_type)
+#define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
 #else
-#define USE_OP(op_type) \
-  USE_OP_CPU(op_type);  \
-  USE_OP_KERNEL(op_type, GPU)
+#define USE_OP_KERNEL(op_type)        \
+  USE_OP_DEVICE_KERNEL(op_type, CPU); \
+  USE_OP_DEVICE_KERNEL(op_type, GPU)
 #endif
+
+#define USE_NO_GRAD_OP(op_type) \
+  USE_OP_ITSELF(op_type);       \
+  USE_OP_KERNEL(op_type)
+
+#define USE_CPU_OP(op_type)           \
+  USE_OP_ITSELF(op_type);             \
+  USE_OP_DEVICE_KERNEL(op_type, CPU); \
+  USE_OP_GRADIENT(op_type)
+
+#define USE_OP(op_type)    \
+  USE_NO_GRAD_OP(op_type); \
+  USE_OP_GRADIENT(op_type)
 
 }  // namespace framework
 }  // namespace paddle

@@ -13,18 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/function/ConvOpTest.h"
+#include "ConvOpTest.h"
 
 namespace paddle {
 
-TEST(NNPACK, Forward) {
-  Convolution<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>(
-      "GemmConv-CPU", "NNPACKConv-CPU", forward);
+#ifndef PADDLE_ONLY_CPU
+TEST(DepthwiseConv, Forward) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConv-CPU", "DepthwiseConv-GPU", forward);
 }
 
-TEST(NNPACK, Depthwise) {
-  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>(
-      "GemmConv-CPU", "NNPACKConv-CPU", forward);
+TEST(DepthwiseConv, BackwardInput) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConvGradInput-CPU", "DepthwiseConvGradInput-GPU", backward_input);
 }
+
+TEST(DepthwiseConv, BackwardFilter) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConvGradFilter-CPU", "DepthwiseConvGradFilter-GPU", backward_filter);
+}
+#endif
 
 }  // namespace paddle
