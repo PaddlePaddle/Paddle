@@ -24,11 +24,12 @@ class TestSoftmaxOp(unittest.TestCase):
         }
 
 
-# class SoftmaxGradOpTest(GradientChecker):
-#     def test_softmax(self):
-#         op = create_op("softmax")
-#         inputs = {"X": np.random.uniform(0.1, 1, [10, 10]).astype("float32")}
-#         self.check_grad(op, inputs, set("X"), "Y")
+class SoftmaxGradOpTest(GradientChecker):
+    def test_softmax(self):
+        op = create_op("softmax")
+        inputs = {"X": np.random.uniform(0.1, 1, [10, 10]).astype("float32")}
+        self.check_grad(op, inputs, set("X"), "Y")
+
 
 if __name__ == '__main__':
     unittest.main()

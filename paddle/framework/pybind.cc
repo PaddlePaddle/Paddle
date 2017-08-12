@@ -60,7 +60,12 @@ void ExposeOperator(ClassType &m) {
                -> std::unordered_map<std::string, std::vector<std::string>> {
                  return op.outputs_;
                })
-      .def("__str__", &ClassType::type::DebugString);
+      .def("inputs",
+           [](const typename ClassType::type &op) { return op.inputs_; })
+      .def("__str__", &ClassType::type::DebugString)
+      .def("no_intermediate_outputs", [](const typename ClassType::type &op) {
+        return op.OutputVars(false);
+      });
 }
 
 static size_t UniqueIntegerGenerator() {
