@@ -12,6 +12,7 @@ static int run_cnt = 0;
 
 class TestOp : public framework::OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(TestOp, framework::OperatorBase);
   void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -21,6 +22,7 @@ class TestOp : public framework::OperatorBase {
 
 class EmptyOp : public framework::OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(EmptyOp, framework::OperatorBase);
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
 };

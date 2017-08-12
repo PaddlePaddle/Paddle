@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class RowWiseAddOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(RowWiseAddOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto dim0 = ctx.Input<Tensor>("X")->dims();

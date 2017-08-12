@@ -46,6 +46,7 @@ class CPUUniformRandomKernel : public framework::OpKernel {
 };
 
 class UniformRandomOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(UniformRandomOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE(GetAttr<float>("min") < GetAttr<float>("max"),

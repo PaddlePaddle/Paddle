@@ -10,6 +10,7 @@ namespace framework {
 
 class NOP : public OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(NOP, OperatorBase);
   void InferShape(const Scope &scope) const override {}
   void Run(const Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {}

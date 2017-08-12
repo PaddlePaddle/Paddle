@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class MeanOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MeanOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
@@ -37,6 +38,7 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 class MeanGradOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MeanGradOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     ctx.Output<Tensor>(framework::GradVarName("X"))

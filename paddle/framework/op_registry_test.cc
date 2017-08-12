@@ -7,6 +7,7 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(CosineOp, OperatorBase);
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
   void InferShape(const Scope& scope) const override {}
@@ -27,6 +28,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class MyTestOp : public OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(MyTestOp, OperatorBase);
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}

@@ -22,6 +22,8 @@ namespace framework {
 static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
+  DEFINE_OPERATOR_CTOR(OpWithoutKernelTest, framework::OperatorBase)
+
  public:
   void Init() override { x = 1; }
   void InferShape(const Scope& scope) const override {}
@@ -102,6 +104,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(OpWithKernelTest, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {}
 };

@@ -18,6 +18,8 @@ namespace paddle {
 namespace operators {
 
 class MulOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MulOp, framework::OperatorWithKernel);
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto dim0 = ctx.Input<Tensor>("X")->dims();
@@ -51,6 +53,7 @@ The equation is: Out = X * Y
 };
 
 class MulOpGrad : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MulOpGrad, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
