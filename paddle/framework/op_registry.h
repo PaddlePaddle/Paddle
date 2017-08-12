@@ -118,7 +118,7 @@ class OpProtoAndCheckerMaker {
 
 class OpRegistry {
   using OpCreator = std::function<OperatorBase*()>;
-  using VarNameMap = std::unordered_map<std::string, std::vector<std::string>>;
+  using VarNameMap = std::map<std::string, std::vector<std::string>>;
 
  public:
   template <typename OpType, typename ProtoMakerType>

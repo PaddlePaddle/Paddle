@@ -143,11 +143,11 @@ class OperatorBase {
   // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
-  std::unordered_map<std::string, std::vector<std::string>> inputs_;
+  std::map<std::string, std::vector<std::string>> inputs_;
 
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  std::unordered_map<std::string, std::vector<std::string>> outputs_;
+  std::map<std::string, std::vector<std::string>> outputs_;
   AttributeMap attrs_;
 };
 

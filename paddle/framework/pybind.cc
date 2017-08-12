@@ -57,15 +57,17 @@ void ExposeOperator(ClassType &m) {
            })
       .def("outputs",
            [](const typename ClassType::type &op)
-               -> std::unordered_map<std::string, std::vector<std::string>> {
+               -> std::map<std::string, std::vector<std::string>> {
                  return op.outputs_;
                })
       .def("inputs",
            [](const typename ClassType::type &op) { return op.inputs_; })
       .def("__str__", &ClassType::type::DebugString)
-      .def("no_intermediate_outputs", [](const typename ClassType::type &op) {
-        return op.OutputVars(false);
-      });
+      .def("no_intermediate_outputs",
+           [](const typename ClassType::type &op) {
+             return op.OutputVars(false);
+           })
+      .def("support_gpu", &ClassType::type::SupportGPU);
 }
 
 static size_t UniqueIntegerGenerator() {
