@@ -21,9 +21,11 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
-  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
-                  ? false
-                  : true;
+  isDeconv_ = (config_.type() == "exconv" ||
+          config_.type() == "cudnn_conv" ||
+          config_.type() == "conv3d" ||
+          config_.type() == "deconv3d"   )
+                  ? false : true;
 
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
@@ -36,7 +38,6 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     paddingY_.push_back(conf.padding_y());
     strideY_.push_back(conf.stride_y());
     filterSizeY_.push_back(conf.filter_size_y());
-    filterPixels_.push_back(filterSize_.back() * filterSizeY_.back());
     channels_.push_back(conf.channels());
     imgSizeH_.push_back(conf.has_img_size_y() ? conf.img_size_y()
                                               : conf.img_size());
@@ -45,6 +46,14 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     filterChannels_.push_back(conf.filter_channels());
     outputH_.push_back(conf.has_output_y() ? conf.output_y() : conf.output_x());
     outputW_.push_back(conf.output_x());
+
+    paddingZ_.push_back(conf.padding_z());
+    strideZ_.push_back(conf.stride_z());
+    filterSizeZ_.push_back(conf.filter_size_z());
+    imgSizeD_.push_back(conf.img_size_z());
+    outputD_.push_back(conf.output_z());
+    filterPixels_.push_back(
+            filterSize_.back() * filterSizeY_.back() * filterSizeZ_.back());
   }
 
   CHECK(inputLayers_.size() == parameters_.size());
