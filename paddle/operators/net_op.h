@@ -89,9 +89,9 @@ class NetOp : public framework::OperatorBase {
 
   void CompleteAddOp(bool calculate = true);
 
-  std::string DebugString() const override;
-
   bool IsNetOp() const override;
+
+  void DebugPrint(std::ostream* os) const override;
 
   std::vector<std::shared_ptr<OperatorBase>> ops_;
 

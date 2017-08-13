@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/tensor_py.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
@@ -79,7 +80,7 @@ void ExposeOperator(ClassType &m) {
                return ret;
              }
            })
-      .def("__str__", &ClassType::type::DebugString);
+      .def("__str__", string::to_string<const typename ClassType::type &>);
 }
 
 static size_t UniqueIntegerGenerator() {

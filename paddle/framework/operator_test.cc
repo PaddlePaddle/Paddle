@@ -110,7 +110,8 @@ class CPUKernelTest : public OpKernel {
  public:
   void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
-    std::cout << ctx.op_.DebugString() << std::endl;
+    ctx.op_.DebugPrint(&std::cout);
+    std::cout << std::endl;
     cpu_kernel_run_num++;
     ASSERT_EQ(ctx.op_.Input("x"), "IN1");
     ASSERT_EQ(ctx.op_.Output("y"), "OUT1");

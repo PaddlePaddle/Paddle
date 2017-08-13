@@ -83,7 +83,7 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  virtual std::string DebugString() const;
+  virtual void DebugPrint(std::ostream* os) const;
 
   /// Init will be called after CreateOperator, you can put some initialization
   /// logic here.
@@ -138,6 +138,11 @@ class OperatorBase {
   // store the arguments' offset described in op_desc.
   std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
+
+inline std::ostream& operator<<(std::ostream& os, const OperatorBase& op) {
+  op.DebugPrint(&os);
+  return os;
+}
 
 class InferShapeContext {
  public:

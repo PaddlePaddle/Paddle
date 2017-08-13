@@ -54,13 +54,13 @@ The equation is: Out = X * Y
 };
 
 class MulOpGrad : public framework::OperatorWithKernel {
+ public:
   DEFINE_OPERATOR_CTOR(MulOpGrad, framework::OperatorWithKernel)
+
+  void DebugPrint(std::ostream *os) const override { *os << "Mul Grad OP"; }
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "MulGrad";
-    return "";
-  }
 };
 
 }  // namespace operators

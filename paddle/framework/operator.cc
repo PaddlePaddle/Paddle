@@ -87,30 +87,28 @@ std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
       outputs_.begin() + output_format.at(offset + 1)};
 }
 
-std::string OperatorBase::DebugString() const {
-  std::stringstream ss;
-  ss << "Op(" << type_ << "), inputs:(";
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    ss << inputs_[i];
-    if (i != inputs_.size() - 1) {
-      ss << ", ";
-    }
-  }
-  ss << "), outputs:(";
-  for (size_t i = 0; i < outputs_.size(); ++i) {
-    ss << outputs_[i];
-    if (i != outputs_.size() - 1) {
-      ss << ", ";
-    }
-  }
-  ss << ").";
-  return ss.str();
-}
-
 void OperatorBase::Rename(const std::string& old_name,
                           const std::string& new_name) {
   std::replace(inputs_.begin(), inputs_.end(), old_name, new_name);
   std::replace(outputs_.begin(), outputs_.end(), old_name, new_name);
+}
+
+void OperatorBase::DebugPrint(std::ostream* os) const {
+  *os << "Op(" << type_ << "), inputs:(";
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    *os << inputs_[i];
+    if (i != inputs_.size() - 1) {
+      *os << ", ";
+    }
+  }
+  *os << "), outputs:(";
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    *os << outputs_[i];
+    if (i != outputs_.size() - 1) {
+      *os << ", ";
+    }
+  }
+  *os << ").";
 }
 
 }  // namespace framework

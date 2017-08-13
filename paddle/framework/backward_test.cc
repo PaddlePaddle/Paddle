@@ -202,7 +202,7 @@ TEST(Backward, net_fc_backward_normal) {
   ASSERT_TRUE(gop->IsNetOp());
   auto net = static_cast<ops::NetOp *>(gop.get());
 
-  ASSERT_NO_THROW(net->DebugString());
+  ASSERT_NO_THROW(net->DebugPrint(&std::cout));
 
   ASSERT_EQ(3UL, net->ops_.size());
 
@@ -225,7 +225,7 @@ TEST(Backward, net_fc_backward_not_have_b) {
   ASSERT_TRUE(gop->IsNetOp());
   auto net = static_cast<ops::NetOp *>(gop.get());
 
-  ASSERT_NO_THROW(net->DebugString());
+  ASSERT_NO_THROW(net->DebugPrint(&std::cout));
 
   ASSERT_EQ(2UL, net->ops_.size());
 

@@ -59,19 +59,20 @@ void NetOp::CompleteAddOp(bool calc) {
   attrs_["temporary_index"] = tmp_index;
 }
 
-std::string NetOp::DebugString() const {
-  std::ostringstream os;
-  os << OperatorBase::DebugString() << std::endl;
+bool NetOp::IsNetOp() const { return true; }
+
+void NetOp::DebugPrint(std::ostream* os) const {
+  OperatorBase::DebugPrint(os);
+  *os << std::endl;
   for (auto& op : ops_) {
-    std::istringstream is(op->DebugString());
-    for (std::string line; std::getline(is, line);) {
-      os << "    " << line << std::endl;
+    std::stringstream ios;
+    op->DebugPrint(&ios);
+    ios.seekg(0);
+    for (std::string line; std::getline(ios, line);) {
+      *os << "    " << line << std::endl;
     }
   }
-  return os.str();
 }
-
-bool NetOp::IsNetOp() const { return true; }
 
 }  // namespace operators
 }  // namespace paddle
