@@ -55,6 +55,16 @@ class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
 
+#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                         \
+ public:                                                                 \
+  Class() { /* TODO(yi): This constructor is to be removed. */           \
+  }                                                                      \
+  Class(const std::string& type, const std::vector<std::string>& inputs, \
+        const std::vector<std::string>& outputs,                         \
+        const ::paddle::framework::AttributeMap& attrs,                  \
+        std::unordered_map<std::string, int>* in_out_idxs)               \
+      : ParentClass(type, inputs, outputs, attrs, in_out_idxs) {}
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -365,16 +375,6 @@ class OperatorWithKernel : public OperatorBase {
  protected:
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
-
-#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                         \
- public:                                                                 \
-  Class() { /* TODO(yi): This constructor is to be removed. */           \
-  }                                                                      \
-  Class(const std::string& type, const std::vector<std::string>& inputs, \
-        const std::vector<std::string>& outputs,                         \
-        const ::paddle::framework::AttributeMap& attrs,                  \
-        std::unordered_map<std::string, int>* in_out_idxs)               \
-      : ParentClass(type, inputs, outputs, attrs, in_out_idxs) {}
 
 }  // namespace framework
 }  // namespace paddle
