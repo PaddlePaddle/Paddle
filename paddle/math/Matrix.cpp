@@ -1389,6 +1389,52 @@ void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label) {
       output_d, grad_d, mat_d, height_, width_);
 }
 
+void GpuMatrix::vol2Col(real* data,
+                int channels,
+                int depth,
+                int height,
+                int width,
+                int filterD,
+                int filterH,
+                int filterW,
+                int strideD,
+                int strideH,
+                int strideW,
+                int paddingD,
+                int paddingH,
+                int paddingW) {
+  hl_matrix_vol2Col(data,
+          channels, depth, height, width,
+          filterD, filterH, filterW,
+          strideD, strideH, strideW,
+          paddingD, paddingH, paddingW, getData());
+}
+
+void GpuMatrix::col2Vol(real* trg,
+                int channels,
+                int depth,
+                int height,
+                int width,
+                int filterD,
+                int filterH,
+                int filterW,
+                int strideD,
+                int strideH,
+                int strideW,
+                int paddingD,
+                int paddingH,
+                int paddingW,
+                real alpha,
+                real beta) {
+  hl_matrix_col2Vol(trg,
+                    channels, depth, height, width,
+                    filterD, filterH, filterW,
+                    strideD, strideH, strideW,
+                    paddingD, paddingH, paddingW,
+                    getData(),
+                    alpha, beta);
+   }
+
 /**
  * CpuMatrix
  */
@@ -3969,6 +4015,95 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
             inPos += inPosOffset;
             outPos += outPosOffset;
           }
+        }
+      }
+    }
+  }
+}
+
+void CpuMatrix::vol2Col(real* data,
+                        int channels,
+                        int depth,
+                        int height,
+                        int width,
+                        int filterD,
+                        int filterH,
+                        int filterW,
+                        int strideD,
+                        int strideH,
+                        int strideW,
+                        int paddingD,
+                        int paddingH,
+                        int paddingW) {
+  real* outData = getData();
+  int outHeight = (height + 2 * paddingH - filterH) / strideH + 1;
+  int outWidth = (width + 2 * paddingW - filterW) / strideW + 1;
+  int outDepth = (depth + 2 * paddingD - filterD) / strideD + 1;
+
+  int channelsCol = channels * filterD * filterH * filterW;
+  for (int c = 0; c < channelsCol; ++c) {
+    int wOffset = c % filterW;
+    int hOffset = (c / filterW) % filterH;
+    int dOffset = (c / filterW / filterH) % filterD;
+    int cIn = c / filterW / filterH / filterD;
+    for (int d = 0; d < outDepth; ++d) {
+      for (int h = 0; h < outHeight; ++h) {
+        for (int w = 0; w < outWidth; ++w) {
+          int dPad = d * strideD - paddingD + dOffset;
+          int hPad = h * strideH - paddingH + hOffset;
+          int wPad = w * strideW - paddingW + wOffset;
+
+          if (hPad >= 0 && hPad < height && wPad >= 0 && wPad < width &&
+              dPad >= 0 && dPad < depth)
+            outData[((c * outDepth + d) * outHeight + h) * outWidth + w] =
+                data[((cIn * depth + dPad) * height + hPad) * width + wPad];
+          else
+            outData[((c * outDepth + d) * outHeight + h) * outWidth + w] = 0;
+        }
+      }
+    }
+  }
+}
+
+void CpuMatrix::col2Vol(real* trg,
+                        int channels,
+                        int depth,
+                        int height,
+                        int width,
+                        int filterD,
+                        int filterH,
+                        int filterW,
+                        int strideD,
+                        int strideH,
+                        int strideW,
+                        int paddingD,
+                        int paddingH,
+                        int paddingW,
+                        real alpha,
+                        real beta) {
+  real* src = getData();
+  int outDepth =  (depth + 2 * paddingH - filterD) / strideD + 1;
+  int outHeight = (height + 2 * paddingH - filterH) / strideH + 1;
+  int outWidth = (width + 2 * paddingW - filterW) / strideW + 1;
+  int channelsCol = channels * filterD * filterH * filterW;
+  for (int c = 0; c < channelsCol; ++c) {
+    int wOffset = c % filterW;
+    int hOffset = (c / filterW) % filterH;
+    int dOffset = (c / filterW / filterH) % filterD;
+    int cIm = c / filterW / filterH / filterD;
+    for (int d = 0; d < outDepth; ++d) {
+      for (int h = 0; h < outHeight; ++h) {
+        for (int w = 0; w < outWidth; ++w) {
+          int dPad = d * strideD - paddingD + dOffset;
+          int hPad = h * strideH - paddingH + hOffset;
+          int wPad = w * strideW - paddingW + wOffset;
+          if (hPad >= 0 && hPad < height && wPad >= 0 && wPad < width &&
+              dPad >= 0 && dPad < depth)
+            trg[((cIm * depth + dPad) * height + hPad) * width + wPad] =
+                alpha *
+                    src[((c * outDepth + d) * outHeight + h) * outWidth + w] +
+                beta *
+                    trg[((cIm * depth + dPad) * height + hPad) * width + wPad];
         }
       }
     }

@@ -1039,6 +1039,42 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void vol2Col(real* data,
+                 int channels,
+                 int depth,
+                 int height,
+                 int width,
+                 int filterD,
+                 int filterH,
+                 int filterW,
+                 int strideD,
+                 int strideH,
+                 int strideW,
+                 int paddingD,
+                 int paddingH,
+                 int paddingW) {
+      LOG(FATAL) << "Not implemeted";
+    }
+
+    virtual void col2Vol(real* trg,
+                 int channels,
+                 int depth,
+                 int height,
+                 int width,
+                 int filterD,
+                 int filterH,
+                 int filterW,
+                 int strideD,
+                 int strideH,
+                 int strideW,
+                 int paddingD,
+                 int paddingH,
+                 int paddingW,
+                 real alpha,
+                 real beta) {
+      LOG(FATAL) << "Not implemeted";
+    }
+
   virtual void bilinearForward(const Matrix& in,
                                const size_t inImgH,
                                const size_t inImgW,
@@ -1373,6 +1409,20 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  void vol2Col(real* data,
+                 int channels,
+                 int depth, int height, int width,
+                 int filterD, int filterH, int filterW,
+                 int strideD, int strideH, int strideW,
+                 int paddingD, int paddingH, int paddingW);
+
+  void col2Vol(real* trg,
+               int channels, int depth, int height, int width,
+               int filterD, int filterH, int filterW,
+               int strideD, int strideH, int strideW,
+               int paddingD, int paddingH, int paddingW,
+               real alpha, real beta);
 
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
 
@@ -1714,6 +1764,20 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  void vol2Col(real* data,
+               int channels,
+               int depth, int height, int width,
+               int filterD, int filterH, int filterW,
+               int strideD, int strideH, int strideW,
+               int paddingD, int paddingH, int paddingW);
+
+  void col2Vol(real* trg,
+               int channels, int depth, int height, int width,
+               int filterD, int filterH, int filterW,
+               int strideD, int strideH, int strideW,
+               int paddingD, int paddingH, int paddingW,
+               real alpha, real beta);
 
   template <typename ExpressionType>
   void operator=(const ExpressionType& expr) {
