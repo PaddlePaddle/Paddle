@@ -176,6 +176,9 @@ All parameter, weight, gradient are variables in Paddle.
     std::vector<py::bytes> ret_values;
     for (auto it = op_info_map.begin(); it != op_info_map.end(); ++it) {
       const OpProto *proto = it->second.proto_;
+      if (proto == nullptr) {
+        continue;
+      }
       PADDLE_ENFORCE(proto->IsInitialized(), "OpProto must all be initialized");
       std::string str;
       PADDLE_ENFORCE(proto->SerializeToString(&str),

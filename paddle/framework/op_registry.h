@@ -222,6 +222,9 @@ class OpRegistry {
         varmap[var.name()] = idx++;
       }
       // ================================================ //
+    } else {
+      op_info.proto_ = nullptr;
+      op_info.checker_ = nullptr;
     }
     op_info_map().insert(std::make_pair(op_type, op_info));
     // register gradient op
