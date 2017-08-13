@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class SigmoidOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(SigmoidOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
@@ -38,6 +39,7 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 class SigmoidOpGrad : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(SigmoidOpGrad, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());

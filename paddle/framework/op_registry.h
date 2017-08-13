@@ -70,18 +70,18 @@ class OpProtoAndCheckerMaker {
 
   VariableBuilder AddInput(const std::string& name,
                            const std::string& comment) {
-    auto input = proto_->mutable_inputs()->Add();
-    *input->mutable_name() = name;
-    *input->mutable_comment() = comment;
+    VarProto* input = proto_->add_inputs();
+    input->set_name(name);
+    input->set_comment(comment);
     return VariableBuilder{input, [=] { this->SetHasMultipleInput(); },
                            nullptr};
   }
 
   VariableBuilder AddOutput(const std::string& name,
                             const std::string& comment) {
-    auto output = proto_->mutable_outputs()->Add();
-    *output->mutable_name() = name;
-    *output->mutable_comment() = comment;
+    VarProto* output = proto_->add_outputs();
+    output->set_name(name);
+    output->set_comment(comment);
     return VariableBuilder{output, [=] { this->SetHasMultipleOutput(); },
                            [=] { this->SetHasTemporaryOutput(); }};
   }
@@ -90,17 +90,15 @@ class OpProtoAndCheckerMaker {
   TypedAttrChecker<T>& AddAttr(const std::string& name,
                                const std::string& comment,
                                bool generated = false) {
-    auto attr = proto_->mutable_attrs()->Add();
-    *attr->mutable_name() = name;
-    *attr->mutable_comment() = comment;
+    AttrProto* attr = proto_->add_attrs();
+    attr->set_name(name);
+    attr->set_comment(comment);
     attr->set_generated(generated);
     attr->set_type(AttrTypeID<T>());
     return op_checker_->AddAttrChecker<T>(name);
   }
 
-  void AddComment(const std::string& comment) {
-    *(proto_->mutable_comment()) = comment;
-  }
+  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
 
  private:
   void SetHasMultiple(const std::string& in_out, bool* flag) {
@@ -207,7 +205,7 @@ class OpRegistry {
       op_info.checker_ = new OpAttrChecker;
       auto maker = ProtoMakerType(op_info.proto_, op_info.checker_);
       maker.Validate();
-      *op_info.proto_->mutable_type() = op_type;
+      op_info.proto_->set_type(op_type);
       PADDLE_ENFORCE(
           op_info.proto_->IsInitialized(),
           "Fail to initialize %s's OpProto, because %s is not initialized",

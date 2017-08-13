@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class MulOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MulOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
@@ -53,6 +54,7 @@ The equation is: Out = X * Y
 };
 
 class MulOpGrad : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MulOpGrad, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
