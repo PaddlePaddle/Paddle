@@ -17,9 +17,10 @@
 namespace paddle {
 namespace operators {
 
-class MulOp : public OperatorWithKernel {
+class MulOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MulOp, framework::OperatorWithKernel)
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
     auto dim0 = ctx.Input<Tensor>(0)->dims();
     auto dim1 = ctx.Input<Tensor>(1)->dims();
@@ -37,9 +38,9 @@ class MulOp : public OperatorWithKernel {
   }
 };
 
-class MulOpMaker : public OpProtoAndCheckerMaker {
+class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");
@@ -52,9 +53,10 @@ The equation is: Out = X * Y
   }
 };
 
-class MulOpGrad : public OperatorWithKernel {
+class MulOpGrad : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(MulOpGrad, framework::OperatorWithKernel)
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {}
+  void InferShape(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "MulGrad";
     return "";
@@ -64,7 +66,8 @@ class MulOpGrad : public OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker);
 REGISTER_GRADIENT_OP(mul, mul_grad, ops::MulOpGrad);
 
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);

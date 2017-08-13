@@ -18,6 +18,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <vector>
+
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
@@ -77,11 +79,11 @@ class Tensor {
   inline const DDim& dims() const;
 
   /*! Resize the dimensions of the memory block. */
-  inline void Resize(const DDim& dims);
+  inline Tensor& Resize(const DDim& dims);
 
   /*! The internal of two tensors share the same memory block. */
   template <typename T>
-  inline void ShareDataWith(const Tensor& src);
+  inline Tensor& ShareDataWith(const Tensor& src);
 
   /**
    * @brief   Copy the content of external tensor to a new place.

@@ -14,13 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/op_desc.pb.h"
-#include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
-#include "paddle/operators/type_alias.h"
-#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -41,6 +35,8 @@ namespace operators {
  */
 class NetOp : public framework::OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(NetOp, framework::OperatorBase)
+
   /**
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
@@ -63,6 +59,15 @@ class NetOp : public framework::OperatorBase {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
     }
+  }
+
+  bool SupportGPU() const override {
+    for (auto& op : ops_) {
+      if (!op->SupportGPU()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

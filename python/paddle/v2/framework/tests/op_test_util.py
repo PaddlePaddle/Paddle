@@ -1,6 +1,5 @@
-import paddle.v2.framework.core as core
-import unittest
 import numpy
+import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
 
 
@@ -24,7 +23,7 @@ class OpTestMeta(type):
             scope = core.Scope()
             kwargs = dict()
             places = [core.CPUPlace()]
-            if core.is_compile_gpu() and core.Operator.support_gpu(self.type):
+            if core.is_compile_gpu():
                 places.append(core.GPUPlace(0))
 
             for place in places:
@@ -53,6 +52,8 @@ class OpTestMeta(type):
                         kwargs[attr_name] = self.attrs[attr_name]
 
                 op = Operator(self.type, **kwargs)
+                if isinstance(place, core.GPUPlace) and not op.support_gpu():
+                    return
 
                 op.infer_shape(scope)
 

@@ -27,6 +27,10 @@ namespace operators {
 
 using framework::make_ddim;
 using framework::DDim;
+using framework::Tensor;
+using framework::Variable;
+using framework::Scope;
+using framework::OpRegistry;
 
 class RecurrentOpTest : public ::testing::Test {
  protected:
@@ -164,7 +168,7 @@ class RecurrentOpTest : public ::testing::Test {
 
   // father scope
   Scope scope_;
-  std::shared_ptr<OperatorBase> rnn_op_;
+  std::shared_ptr<framework::OperatorBase> rnn_op_;
 };
 
 TEST_F(RecurrentOpTest, Run) {
@@ -391,4 +395,4 @@ TEST(RecurrentOp, LinkMemories) {
 
 USE_OP(add_two);
 USE_OP(mul);
-USE_OP_WITHOUT_KERNEL(recurrent_op);
+USE_OP_ITSELF(recurrent_op);

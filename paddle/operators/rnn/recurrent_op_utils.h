@@ -17,11 +17,12 @@
 #include <string>
 
 #include "paddle/framework/operator.h"
-#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 namespace rnn {
+
+using Scope = framework::Scope;
 
 /**
  * Memory of a RNN (same as the role of `Momory` in PaddlePaddle).
@@ -86,7 +87,7 @@ void LinkMemories(const std::vector<Scope*>& step_scopes,
                   const int offset, bool infer_shape_mode);
 
 void InitArgument(const ArgumentName& name, Argument* arg,
-                  const OperatorBase& op);
+                  const framework::OperatorBase& op);
 
 }  // namespace rnn
 }  // namespace operators

@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class FillZerosLikeOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(FillZerosLikeOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.InputSize(), 1UL,
@@ -50,8 +51,8 @@ The output will have the same size with input.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(fill_zeros_like, paddle::operators::FillZerosLikeOp,
-            paddle::operators::FillZerosLikeOpMaker);
+namespace ops = paddle::operators;
+REGISTER_OP(fill_zeros_like, ops::FillZerosLikeOp, ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
-    paddle::operators::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);
+    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);

@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
-#include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -27,25 +26,26 @@ limitations under the License. */
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
+#include "paddle/platform/variant.h"
 #include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
 
 /// If a variable is a empty variable, that name will be used.
-const std::string kEmptyVarName = "@EMPTY@";
+constexpr char kEmptyVarName[] = "@EMPTY@";
 
 /// If a variable is a temporary variable, that name will be set in Python,
 /// but it will be convert to a unique name in scope after OpCreator.
-const std::string kTempVarName = "@TEMP@";
+constexpr char kTempVarName[] = "@TEMP@";
 
 /// If a variable's name has a certain suffix, it means that the
 /// variable is the gradient of another varibale.
 /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
-const std::string kGradVarSuffix = "@GRAD";
+constexpr char kGradVarSuffix[] = "@GRAD";
 
 /// Variables with this suffix are supposed to be filled up with zeros.
-const std::string kZeroVarSuffix = "@ZERO";
+constexpr char kZeroVarSuffix[] = "@ZERO";
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
@@ -63,6 +63,17 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
+  OperatorBase() {}  // TODO(yi): This constructor is to be removed.
+  OperatorBase(const std::string& type, const std::vector<std::string>& inputs,
+               const std::vector<std::string>& outputs,
+               const AttributeMap& attrs,
+               std::unordered_map<std::string, int>* in_out_idxs)
+      : type_(type),
+        inputs_(inputs),
+        outputs_(outputs),
+        attrs_(attrs),
+        in_out_idxs_(in_out_idxs) {}
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -88,20 +99,30 @@ class OperatorBase {
 
   virtual bool IsNetOp() const { return false; }
 
+  virtual bool SupportGPU() const { return false; }
+
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
-
   //! Get a input which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
+
   //! Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
+
+  const std::string Type() const { return type_; }
+  const std::vector<std::string> Inputs() const { return inputs_; }
+  const std::vector<std::string> Outputs() const { return outputs_; }
+  const AttributeMap& Attrs() const { return attrs_; }
+  const std::unordered_map<std::string, int>* InOutIdx() const {
+    return in_out_idxs_.get();
+  }
 
  public:
   std::string type_;
@@ -118,10 +139,10 @@ class OperatorBase {
   std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
-class OperatorContext {
+class InferShapeContext {
  public:
-  OperatorContext(const OperatorBase* op, const Scope& scope)
-      : op_(*op), scope_(scope) {}
+  InferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
 
   size_t InputSize() const { return op_.inputs_.size(); }
 
@@ -232,12 +253,6 @@ class OperatorContext {
   const Scope& scope_;
 };
 
-class InferShapeContext : public OperatorContext {
- public:
-  InferShapeContext(const OperatorBase* op, const Scope& scope)
-      : OperatorContext(op, scope) {}
-};
-
 template <typename T>
 struct EigenDeviceConverter;
 
@@ -253,11 +268,11 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 };
 #endif
 
-class ExecutionContext : public OperatorContext {
+class ExecutionContext : public InferShapeContext {
  public:
-  ExecutionContext(const OperatorBase* op, const Scope& scope,
+  ExecutionContext(const OperatorBase& op, const Scope& scope,
                    const platform::DeviceContext* device_context)
-      : OperatorContext(op, scope), device_context_(device_context) {}
+      : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
             typename DeviceType =
@@ -285,6 +300,14 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  OperatorWithKernel() {}  // TODO(yi): This constructor is to be removed.
+  OperatorWithKernel(const std::string& type,
+                     const std::vector<std::string>& inputs,
+                     const std::vector<std::string>& outputs,
+                     const AttributeMap& attrs,
+                     std::unordered_map<std::string, int>* in_out_idxs)
+      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
+
   struct OpKernelKey {
     platform::Place place_;
 
@@ -308,14 +331,14 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void InferShape(const Scope& scope) const {
-    InferShape(InferShapeContext(this, scope));
+  void InferShape(const Scope& scope) const override {
+    InferShape(InferShapeContext(*this, scope));
   }
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(this, scope, &dev_ctx));
+    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -324,9 +347,25 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
+  bool SupportGPU() const override {
+    OperatorWithKernel::OpKernelKey key;
+    key.place_ = platform::GPUPlace();
+    return OperatorWithKernel::AllOpKernels().at(type_).count(key) != 0;
+  }
+
  protected:
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
+
+#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                         \
+ public:                                                                 \
+  Class() { /* TODO(yi): This constructor is to be removed. */           \
+  }                                                                      \
+  Class(const std::string& type, const std::vector<std::string>& inputs, \
+        const std::vector<std::string>& outputs,                         \
+        const ::paddle::framework::AttributeMap& attrs,                  \
+        std::unordered_map<std::string, int>* in_out_idxs)               \
+      : ParentClass(type, inputs, outputs, attrs, in_out_idxs) {}
 
 }  // namespace framework
 }  // namespace paddle

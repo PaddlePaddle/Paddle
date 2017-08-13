@@ -8,6 +8,6 @@ test_spp_layer test_bilinear_interp test_maxout test_bi_grumemory math_ops
 test_seq_concat_reshape test_pad test_smooth_l1 test_multiplex_layer
 test_prelu_layer test_row_conv test_detection_output_layer test_multibox_loss_layer
 test_recursive_topology test_gated_unit_layer test_clip_layer test_row_l2_norm_layer
-test_seq_select_layers)
+test_kmax_seq_socre_layer test_seq_select_layers)
 
 export whole_configs=(test_split_datasource)

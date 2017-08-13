@@ -40,7 +40,5 @@ class TestFc(unittest.TestCase):
         self.assertTrue(np.allclose(py_data, op_data))
 
 
-
-
 if __name__ == '__main__':
     unittest.main()

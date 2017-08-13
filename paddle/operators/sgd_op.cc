@@ -17,9 +17,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SGDOp : public OperatorWithKernel {
+class SGDOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(SGDOp, framework::OperatorWithKernel)
  protected:
-  void InferShape(const InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.InputSize(), 2, "Input size of SGDOp must be two");
     PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1, "Output size of SGDOp must be one");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0), "inputs[0] mast be set");
@@ -31,9 +32,9 @@ class SGDOp : public OperatorWithKernel {
   }
 };
 
-class SGDOpMaker : public OpProtoAndCheckerMaker {
+class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
@@ -51,5 +52,7 @@ param_out = param - learning_rate * grad;
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP(sgd, ops::SGDOp, ops::SGDOpMaker);
-REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<ops::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sgd,
+                       ops::SGDOpKernel<paddle::platform::CPUPlace, float>);
