@@ -23,7 +23,7 @@ static void TransOpArg(const OperatorBase* src_op,
                        OperatorBase::VarNameMap* vars,
                        const OpArgType& src_type, bool is_grad) {
   const auto& src_inout =
-      src_type == OpArgType::IN ? src_op->inputs_ : src_op->outputs_;
+      src_type == OpArgType::IN ? src_op->Inputs() : src_op->Outputs();
   auto& dst_inout = *vars;
 
   const OpProto& proto = OpProtos().at(src_op->Type());
@@ -39,13 +39,12 @@ static void TransOpArg(const OperatorBase* src_op,
       dst_inout[dst_name].emplace_back(s);
     }
   }
-  return dst_inout;
 }
 
 OperatorBase* BuildGradOp(const OperatorBase* op) {
-  auto gop_type_it = OpRegistry::grad_ops().find(op->type_);
+  auto gop_type_it = OpRegistry::grad_ops().find(op->Type());
   PADDLE_ENFORCE(gop_type_it != OpRegistry::grad_ops().end(),
-                 "Operator %s do not register gradient type", op->type_);
+                 "Operator %s do not register gradient type", op->Type());
   auto& grad_op_type = gop_type_it->second;
   OperatorBase::VarNameMap inputs;
   OperatorBase::VarNameMap outputs;
@@ -56,9 +55,9 @@ OperatorBase* BuildGradOp(const OperatorBase* op) {
   auto gop_it = OpRegistry::op_creators().find(grad_op_type);
   PADDLE_ENFORCE(gop_it != OpRegistry::op_creators().end(),
                  "Operator %s 's Gradient %s's creator cannot be found",
-                 op->type_, grad_op_type);
+                 op->Type(), grad_op_type);
 
-  return gop_it->second(grad_op_type, inputs, outputs, op->attrs_);
+  return gop_it->second(grad_op_type, inputs, outputs, op->Attrs());
 }
 
 }  // namespace framework

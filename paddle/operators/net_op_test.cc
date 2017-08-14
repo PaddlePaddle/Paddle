@@ -56,8 +56,8 @@ TEST(OpKernel, all) {
 
   net->CompleteAddOp();
   AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
-                               net->inputs_.at(NetOp::kAll));
-  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_.at(NetOp::kAll));
+                               net->Inputs(NetOp::kAll));
+  AssertSameVectorWithoutOrder({"y", "z"}, net->Outputs(NetOp::kAll));
 
   auto final_outs = net->OutputVars(false);
 
