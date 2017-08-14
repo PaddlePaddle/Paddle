@@ -51,19 +51,20 @@ template <typename Place, typename T>
 class RowwiseAddGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* XGrad = context.Output<Tensor>(0);
-    auto* bGrad = context.Output<Tensor>(1);
-    XGrad->mutable_data<T>(context.GetPlace());
-    bGrad->mutable_data<T>(context.GetPlace());
+    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* db = context.Output<Tensor>(framework::GradVarName("b"));
+    auto* dOut = context.Output<Tensor>(framework::GradVarName("Out"));
+    dX->mutable_data<T>(context.GetPlace());
+    db->mutable_data<T>(context.GetPlace());
 
-    // I, O, OG  => [X, b], [Out], [OutGrad]
-    auto OutGrad = EigenMatrix<T>::From(*context.Input<Tensor>(3));
-    EigenMatrix<T>::From(*XGrad).device(context.GetEigenDevice<Place>()) =
-        OutGrad;
+    auto OutGrad = EigenMatrix<T>::From(*dOut);
+    auto place = context.GetEigenDevice<Place>();
+    EigenMatrix<T>::From(*dX).device(place) = OutGrad;
 
     // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
-    EigenVector<T>::Flatten(*bGrad).device(context.GetEigenDevice<Place>()) =
-        OutGrad.cumsum(1);  // colwise add
+    // colwise add
+    Eigen::array<int, 1> dims{{1}}; /* dimension to reduce */
+    EigenVector<T>::Flatten(*db).device(place) = OutGrad.sum(dims);
   }
 };
 }  // namespace operators
