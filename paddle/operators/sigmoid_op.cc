@@ -18,7 +18,9 @@ namespace paddle {
 namespace operators {
 
 class SigmoidOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(SigmoidOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
@@ -37,7 +39,9 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 class SigmoidOpGrad : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(SigmoidOpGrad, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());

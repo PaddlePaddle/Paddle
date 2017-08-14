@@ -12,7 +12,7 @@ static int run_cnt = 0;
 
 class TestOp : public framework::OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(TestOp, framework::OperatorBase);
+  using framework::OperatorBase::OperatorBase;
   void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -22,7 +22,7 @@ class TestOp : public framework::OperatorBase {
 
 class EmptyOp : public framework::OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(EmptyOp, framework::OperatorBase);
+  using framework::OperatorBase::OperatorBase;
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
 };
@@ -44,14 +44,14 @@ TEST(OpKernel, all) {
   auto net = std::make_shared<NetOp>();
   ASSERT_NE(net, nullptr);
 
-  auto op1 = std::make_shared<TestOp>();
-  op1->inputs_ = {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}};
-  op1->outputs_ = {{"Out", {"y"}}};
+  auto op1 = std::shared_ptr<TestOp>(
+      new TestOp("test", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
+                 {{"Out", {"y"}}}, {}));
   net->AddOp(op1);
 
-  auto op2 = std::make_shared<TestOp>();
-  op2->inputs_ = {{"X", {"y"}}, {"W", {"w2"}}, {"b", {"b2"}}};
-  op2->outputs_ = {{"Out", {"z"}}};
+  auto op2 = std::shared_ptr<TestOp>(
+      new TestOp("test", {{"X", {"y"}}, {"W", {"w2"}}, {"b", {"b2"}}},
+                 {{"Out", {"z"}}}, {}));
   net->AddOp(op2);
 
   net->CompleteAddOp();
@@ -67,9 +67,9 @@ TEST(OpKernel, all) {
 
 TEST(NetOp, insert_op) {
   NetOp net;
-  auto op1 = std::make_shared<EmptyOp>();
-  op1->inputs_ = {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}};
-  op1->outputs_ = {{"Out", {"y"}}};
+  auto op1 = std::shared_ptr<EmptyOp>(
+      new EmptyOp("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
+                  {{"Out", {"y"}}}, {}));
   net.AddOp(op1);
   net.InsertOp(0, op1);
   ASSERT_EQ(2UL, net.ops_.size());

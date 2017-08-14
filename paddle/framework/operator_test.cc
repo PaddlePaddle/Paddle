@@ -22,10 +22,10 @@ namespace framework {
 static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
-  DEFINE_OPERATOR_CTOR(OpWithoutKernelTest, framework::OperatorBase)
-
  public:
-  void Init() override { x = 1; }
+  OpWithoutKernelTest(const std::string& type, const VarNameMap& inputs,
+                      const VarNameMap& outputs, const AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs), x(1) {}
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -38,7 +38,7 @@ class OpWithoutKernelTest : public OperatorBase {
   }
 
  public:
-  float x = 0;
+  int x{0};
 };
 
 class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -109,7 +109,9 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(OpWithKernelTest, framework::OperatorWithKernel)
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {}
 };
