@@ -70,7 +70,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     std::unordered_set<std::string>& no_grad_names, size_t& uniq_id) {
   //  If all input gradients of forwarding operator do not need to calculate,
   //  just return an NOP. Not return null ptr because NOP does not take
-  // too  much time for calculation, but it is useful for simplifying logic.
+  //  too much time for calculation, but it is useful for simplifying logic.
   if (AllInSet(forwardOp.Inputs() /*names*/, kGradVarSuffix /*suffix*/,
                no_grad_names /*set*/)) {
     return NOP();
