@@ -41,6 +41,7 @@ function(op_library TARGET)
     endif()
 endfunction()
 
+add_subdirectory(math)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 
 cc_library(net_op SRCS net_op.cc DEPS op_registry)
@@ -50,7 +51,7 @@ op_library(add_op SRCS add_op.cc add_op.cu)
 
 op_library(mean_op SRCS mean_op.cc mean_op.cu)
 
-op_library(mul_op SRCS mul_op.cc mul_op.cu)
+op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)
 op_library(rowwise_add_op SRCS rowwise_add_op.cu rowwise_add_op.cc)
 
 op_library(sigmoid_op SRCS sigmoid_op.cc sigmoid_op.cu)
@@ -62,7 +63,7 @@ op_library(fill_zeros_like_op SRCS fill_zeros_like_op.cc fill_zeros_like_op.cu)
 op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
-    DEPS op_desc tensor op_registry operator net_op)
+    DEPS framework_proto tensor op_registry operator net_op)
 cc_test(recurrent_op_test SRCS recurrent_op_test.cc DEPS recurrent_op gtest mul_op add_op)
 op_library(uniform_random_op
         SRCS uniform_random_op.cc uniform_random_op.cu)

@@ -46,7 +46,7 @@ template <typename T>
 class GPUUniformRandomKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>(0);
+    auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed =
         static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));

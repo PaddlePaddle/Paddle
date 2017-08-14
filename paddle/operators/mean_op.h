@@ -31,14 +31,14 @@ template <typename Place, typename T>
 class MeanKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>(0);
-    auto output = context.Output<Tensor>(0);
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
 
     output->mutable_data<T>(context.GetPlace());
 
     auto X = EigenVector<T>::Flatten(*input);
     auto y = EigenScalar<T>::From(*output);
-    auto place = context.GetEigenDevice<Place>();
+    auto& place = context.GetEigenDevice<Place>();
 
     y.device(place) = X.mean();
   }

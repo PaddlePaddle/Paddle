@@ -21,8 +21,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/grad_op_builder.h"
-#include "paddle/framework/op_desc.pb.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
 namespace paddle {
@@ -45,52 +46,48 @@ class OpProtoAndCheckerMaker {
 
  protected:
   struct VariableBuilder {
-    VarProto* var_;
-    std::function<void()> on_multiple_;
-    std::function<void()> on_temporary_;
+    OpProto::Var* var_;
 
-    VariableBuilder& SetMultiple() {
-      var_->set_multiple(true);
-      on_multiple_();
+    VariableBuilder& AsDuplicable() {
+      var_->set_duplicable(true);
       return *this;
     }
 
-    VariableBuilder& SetTemporary() {
-      PADDLE_ENFORCE(bool(on_temporary_), "Cannot set temporary");
-      var_->set_temporary(true);
-      on_temporary_();
+    VariableBuilder& AsIntermediate() {
+      var_->set_intermediate(true);
       return *this;
     }
 
-    VariableBuilder& IgnoreGradient() {
-      var_->set_ignore_gradient(true);
+    // TODO(FengJiayi, yuyang18): `AsNoGradient` is a very bad name, because it
+    // means that input/output is not needed when calculate gradient. It does
+    // not mean no gradient when backward. It should be changed soon.
+    VariableBuilder& AsNoGradient() {
+      var_->set_no_gradient(true);
       return *this;
     }
   };
 
   VariableBuilder AddInput(const std::string& name,
                            const std::string& comment) {
-    VarProto* input = proto_->add_inputs();
+    auto* input = proto_->add_inputs();
     input->set_name(name);
     input->set_comment(comment);
-    return VariableBuilder{input, [=] { this->SetHasMultipleInput(); },
-                           nullptr};
+    return VariableBuilder{input};
   }
 
   VariableBuilder AddOutput(const std::string& name,
                             const std::string& comment) {
-    VarProto* output = proto_->add_outputs();
+    auto* output = proto_->add_outputs();
     output->set_name(name);
     output->set_comment(comment);
-    return VariableBuilder{output, [=] { this->SetHasMultipleOutput(); },
-                           [=] { this->SetHasTemporaryOutput(); }};
+    return VariableBuilder{output};
   }
 
   template <typename T>
   TypedAttrChecker<T>& AddAttr(const std::string& name,
                                const std::string& comment,
                                bool generated = false) {
-    AttrProto* attr = proto_->add_attrs();
+    auto* attr = proto_->add_attrs();
     attr->set_name(name);
     attr->set_comment(comment);
     attr->set_generated(generated);
@@ -101,53 +98,6 @@ class OpProtoAndCheckerMaker {
   void AddComment(const std::string& comment) { proto_->set_comment(comment); }
 
  private:
-  void SetHasMultiple(const std::string& in_out, bool* flag) {
-    if (!*flag) {
-      AddAttr<std::vector<int>>(in_out + "_format",
-                                "The multiple index of " + in_out +
-                                    "\n"
-                                    R"DOC(
-This attribute is used by Paddle core framework. Paddle's Op support each input
-or output could be a list of variable. This attribute is used to show how that
-list organized.
-
-e.g.
-  input = ["a", "b", "c", "d", "e", "f"]
-  input_format = [0, 4, 5, 6]
-
-means
-  The number of all input variables this op is six, and they are segmented into
-  three inputs.
-
-  The first input is input[0:4], second is input[4:5], third is input[5:6].
-)DOC",
-                                /*generated*/ true);
-      *flag = true;
-    }
-  }
-
-  void SetHasMultipleInput() { SetHasMultiple("input", &has_multiple_input_); }
-  void SetHasMultipleOutput() {
-    SetHasMultiple("output", &has_multiple_output_);
-  }
-
-  void SetHasTemporaryOutput() {
-    if (!has_temporary_output_) {
-      AddAttr<std::vector<int>>("temporary_index",
-                                R"DOC(The temporary index of output.
-
-Not all output of Paddle Op is used by user. For faster computation, each op
-could output some its internal state to other op, other op could take that
-output to make compute faster.
-
-Add a mark to which output is temporary is helpful for future optimization.
-)DOC",
-                                /*generated*/ true)
-          .SetDefault(std::vector<int>());
-      has_temporary_output_ = true;
-    }
-  }
-
   void CheckNoDuplicatedInOutAttrs() {
     std::unordered_set<std::string> names;
     auto checker = [&](const std::string& name) {
@@ -168,9 +118,6 @@ Add a mark to which output is temporary is helpful for future optimization.
   OpProto* proto_;
   OpAttrChecker* op_checker_;
   bool validated_{false};
-  bool has_multiple_input_{false};
-  bool has_multiple_output_{false};
-  bool has_temporary_output_{false};
 };
 
 class NOPMaker : public OpProtoAndCheckerMaker {
@@ -187,8 +134,10 @@ struct OpInfo {
 };
 
 class OpRegistry {
-  using VarIndexMap = std::unordered_map<std::string, int>;
-  using VarNameList = std::vector<std::string>;
+  using VarNameMap = OperatorBase::VarNameMap;
+  using OpCreator = std::function<OperatorBase*(
+      const std::string& /*type*/, const VarNameMap& /*inputs*/,
+      const VarNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
  public:
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
@@ -197,7 +146,11 @@ class OpRegistry {
     PADDLE_ENFORCE(op_info_map().count(op_type) == 0,
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;
-    op_info.creator_ = [] { return new OpType; };
+    op_info.creator_ = [](const std::string& type, const VarNameMap& inputs,
+                          const VarNameMap& outputs,
+                          const AttributeMap& attrs) {
+      return new OpType(type, inputs, outputs, attrs);
+    };
     op_info.grad_op_type_ = grad_op_type;
     if (std::type_index(typeid(ProtoMakerType)) !=
         std::type_index(typeid(NOPMaker))) {
@@ -210,18 +163,6 @@ class OpRegistry {
           op_info.proto_->IsInitialized(),
           "Fail to initialize %s's OpProto, because %s is not initialized",
           op_type, op_info.proto_->InitializationErrorString());
-      // ======will be refactored in following PRs============ //
-      VarIndexMaps()[op_type].reset(new VarIndexMap());
-      auto& varmap = *VarIndexMaps()[op_type];
-      int idx = 0;
-      for (auto& var : op_info.proto_->inputs()) {
-        varmap[var.name()] = idx++;
-      }
-      idx = 0;
-      for (auto& var : op_info.proto_->outputs()) {
-        varmap[var.name()] = idx++;
-      }
-      // ================================================ //
     } else {
       op_info.proto_ = nullptr;
       op_info.checker_ = nullptr;
@@ -238,41 +179,29 @@ class OpRegistry {
                                                 const VarNameList& outputs,
                                                 const AttributeMap& attrs) {
     auto it = op_info_map().find(type);
-    PADDLE_ENFORCE(it != op_info_map().end(), "'%s' has not been registered.",
-                   type);
-
-    auto op = it->second.creator_();
-    op->type_ = type;
-    op->inputs_ = inputs;
-    op->outputs_ = outputs;
-
-    op->attrs_ = attrs;
-    it->second.checker_->Check(op->attrs_);
-
-    GenerateTempVariableName(op);
-
-    {
-      auto var_index_it = VarIndexMaps().find(type);
-      if (var_index_it != VarIndexMaps().end()) {
-        op->in_out_idxs_ = var_index_it->second;
-      }
-    }
-
-    op->Init();
+    PADDLE_ENFORCE(it != op_info_map().end(),
+                   "Operator '%s' has not been registered.", type);
+    it->second.checker_->Check(attrs);
+    auto op = it->second.creator_(type, inputs, outputs, attrs);
     return std::shared_ptr<OperatorBase>(op);
   }
 
+  static VarNameMap ConvertOpDescVarsToVarNameMap(
+      const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars) {
+    VarNameMap ret_val;
+    for (auto& var : op_desc_vars) {
+      auto& var_names = ret_val[var.parameter()];
+      auto& var_names_in_proto = var.arguments();
+      var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
+      std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
+                std::back_inserter(var_names));
+    }
+    return ret_val;
+  }
+
   static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
-    std::vector<std::string> inputs;
-    inputs.reserve((size_t)op_desc.inputs_size());
-    std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
-              std::back_inserter(inputs));
-
-    std::vector<std::string> outputs;
-    outputs.reserve((size_t)op_desc.outputs_size());
-    std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
-              std::back_inserter(outputs));
-
+    VarNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
+    VarNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
     AttributeMap attrs;
     for (auto& attr : op_desc.attrs()) {
       attrs[attr.name()] = GetAttrValue(attr);
@@ -285,7 +214,6 @@ class OpRegistry {
     PADDLE_ENFORCE(!op.IsNetOp(),
                    "Use framework::Backward to get backward ops");
     std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
-    grad_op->Init();
     return grad_op;
   }
 
@@ -293,35 +221,17 @@ class OpRegistry {
     static std::unordered_map<std::string, const OpInfo> op_info_map_;
     return op_info_map_;
   }
-
-  static std::unordered_map<std::string, std::shared_ptr<VarIndexMap>>&
-  VarIndexMaps() {
-    static std::unordered_map<std::string, std::shared_ptr<VarIndexMap>> maps_;
-    return maps_;
-  }
-
- private:
-  static void GenerateTempVariableName(OperatorBase* op) {
-    static std::atomic<size_t> gUniqId(0UL);
-    for (auto& outname : op->outputs_) {
-      if (outname == kTempVarName) {
-        outname += op->type_;
-        outname += "@";
-        outname += std::to_string(gUniqId.fetch_add(1));
-      }
-    }
-  }
 };
 
 class Registrar {
  public:
-  // In our design, various kinds of classes, e.g., operators and kernels, have
-  // their corresponding registry and registrar. The action of registration is
-  // in the constructor of a global registrar variable, which, however, are not
-  // used in the code that calls package framework, and would be removed from
-  // the generated binary file by the linker. To avoid such removal, we add
-  // Touch to all registrar classes and make USE_OP macros to call this
-  // method. So, as long as the callee code calls USE_OP, the global
+  // In our design, various kinds of classes, e.g., operators and kernels,
+  // have their corresponding registry and registrar. The action of
+  // registration is in the constructor of a global registrar variable, which,
+  // however, are not used in the code that calls package framework, and would
+  // be removed from the generated binary file by the linker. To avoid such
+  // removal, we add Touch to all registrar classes and make USE_OP macros to
+  // call this method. So, as long as the callee code calls USE_OP, the global
   // registrar variable won't be removed by the linker.
   void Touch() {}
 };
@@ -386,16 +296,6 @@ class OpKernelRegistrar : public Registrar {
     __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
     return 0;                                                             \
   }
-
-/**
- * Macro to Forbid user register Gradient Operator.
- */
-/*
-#define NO_GRADIENT(op_type)                           \
- STATIC_ASSERT_GLOBAL_NAMESPACE(                      \
-     __reg_gradient_op__##op_type##_##op_type##_grad, \
-     "NO_GRADIENT must be called in global namespace")
-*/
 
 #define REGISTER_OP_GPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
