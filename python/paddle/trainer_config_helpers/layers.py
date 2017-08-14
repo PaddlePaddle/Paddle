@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import functools
 import collections
 import inspect
@@ -104,6 +103,7 @@ __all__ = [
     'nce_layer',
     'cross_entropy_with_selfnorm',
     'cross_entropy',
+    'cross_entropy_over_beam',
     'multi_binary_label_cross_entropy',
     'sum_cost',
     'rank_cost',
@@ -219,6 +219,7 @@ class LayerType(object):
     HUBER = 'huber'
     CROSS_ENTROPY = 'multi-class-cross-entropy'
     CROSS_ENTROPY_WITH_SELFNORM = 'multi_class_cross_entropy_with_selfnorm'
+    CROSS_ENTROPY_OVER_BEAM = 'cross_entropy_over_beam'
     SOFT_BIN_CLASS_CROSS_ENTROPY = 'soft_binary_class_cross_entropy'
     MULTI_BIN_LABEL_CROSS_ENTROPY = 'multi_binary_label_cross_entropy'
     SUM_COST = 'sum_cost'
@@ -4028,8 +4029,12 @@ def __cost_input__(input, label, weight=None):
     """
     inputs and parents for cost layers.
     """
-    ipts = [Input(input.name), Input(label.name)]
-    parents = [input, label]
+    if isinstance(input, LayerOutput):
+        input = [input]
+    if isinstance(label, LayerOutput):
+        label = [label]
+    ipts = [Input(ipt.name) for ipt in (input + label)]
+    parents = [ipt for ipt in (input + label)]
     if weight is not None:
         assert weight.size == 1
         ipts.append(Input(weight.name))
@@ -5690,6 +5695,29 @@ def multi_binary_label_cross_entropy(input,
         LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,
         parents=[input, label],
         size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def cross_entropy_over_beam(input, label, name=None, coeff=1.0, weight=None):
+    """
+    TODO(caoying) add comments.
+    """
+
+    assert len(input) / 2 == len(label), "Error input numbers."
+    for i in range(0, len(input), 2):
+        assert (input[i].size == 1), (
+            "Inputs for this layer are made up of "
+            "several pairs and the first one in a pair is scores for "
+            "all the candidates, so its size should be equal to 1.")
+
+    ipts, parents = __cost_input__(input, label, weight)
+    Layer(
+        name=name,
+        type=LayerType.CROSS_ENTROPY_OVER_BEAM,
+        inputs=ipts,
+        coeff=coeff)
+    return LayerOutput(name, LayerType.CROSS_ENTROPY, parents=parents, size=1)
 
 
 @wrap_name_default()

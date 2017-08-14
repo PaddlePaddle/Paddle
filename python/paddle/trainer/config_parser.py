@@ -1602,6 +1602,21 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
         self.config.softmax_selfnorm_alpha = softmax_selfnorm_alpha
 
 
+@config_layer('cross_entropy_over_beam')
+class CrossEntropyOverBeamLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        config_assert(len(inputs) % 3 == 0, "Error input numbers.")
+        super(CrossEntropyOverBeamLayer, self).__init__(
+            name, 'cross_entropy_over_beam', 0, inputs, **xargs)
+        input_num = len(inputs) / 3
+        for i in range(input_num):
+            input_layer = self.get_input_layer(i * 2)
+            config_assert(
+                input_layer.size == 1, "Inputs for this layer are made up of "
+                "several pairs and the first one in a pair is scores for "
+                "all the candidates, so its size should be equal to 1.")
+
+
 @config_layer('fc')
 class FCLayer(LayerBase):
     layer_type = 'fc'
@@ -2249,6 +2264,7 @@ def define_cost(class_name, cost_type):
 
 
 define_cost('MultiClassCrossEntropy', 'multi-class-cross-entropy')
+define_cost('CrossEntropyOverBeamCostLayer', 'cross_entropy_over_beam')
 define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')
