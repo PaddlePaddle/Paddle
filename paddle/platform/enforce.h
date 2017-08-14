@@ -17,6 +17,7 @@ limitations under the License. */
 #include <dlfcn.h>     // for dladdr
 #include <execinfo.h>  // for backtrace
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
