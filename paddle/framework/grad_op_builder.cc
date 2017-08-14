@@ -19,14 +19,12 @@ namespace paddle {
 namespace framework {
 enum class OpArgType { IN, OUT };
 
-using VarNameMap = OperatorBase::VarNameMap;
-
-static VarNameMap TransOpArg(const OperatorBase* src_op,
-                             const OpArgType& src_type,
-                             const OpArgType& dst_type, bool is_grad) {
+static void TransOpArg(const OperatorBase* src_op,
+                       OperatorBase::VarNameMap* vars,
+                       const OpArgType& src_type, bool is_grad) {
   const auto& src_inout =
-      src_type == OpArgType::IN ? src_op->Inputs() : src_op->Outputs();
-  VarNameMap dst_inout;
+      src_type == OpArgType::IN ? src_op->inputs_ : src_op->outputs_;
+  auto& dst_inout = *vars;
 
   const OpProto& proto = OpProtos().at(src_op->Type());
   const auto& src_arg_list =
@@ -45,20 +43,22 @@ static VarNameMap TransOpArg(const OperatorBase* src_op,
 }
 
 OperatorBase* BuildGradOp(const OperatorBase* op) {
-  std::string grad_op_type = OpRegistry::grad_ops().at(op->Type());
-  auto I = TransOpArg(op, OpArgType::IN, OpArgType::IN, false);   // I
-  auto O = TransOpArg(op, OpArgType::OUT, OpArgType::IN, false);  // O
-  auto OG = TransOpArg(op, OpArgType::OUT, OpArgType::IN, true);  // OG
-  auto IG = TransOpArg(op, OpArgType::IN, OpArgType::OUT, true);  // IG
-  // TODO(merge I/O/OG)
-  VarNameMap GradIn;
-  GradIn.insert(I.begin(), I.end());
-  GradIn.insert(O.begin(), O.end());
-  GradIn.insert(OG.begin(), OG.end());
+  auto gop_type_it = OpRegistry::grad_ops().find(op->type_);
+  PADDLE_ENFORCE(gop_type_it != OpRegistry::grad_ops().end(),
+                 "Operator %s do not register gradient type", op->type_);
+  auto& grad_op_type = gop_type_it->second;
+  OperatorBase::VarNameMap inputs;
+  OperatorBase::VarNameMap outputs;
+  TransOpArg(op, &inputs, OpArgType::IN, false);   // I
+  TransOpArg(op, &inputs, OpArgType::OUT, false);  // O
+  TransOpArg(op, &inputs, OpArgType::OUT, true);   // OG
+  TransOpArg(op, &outputs, OpArgType::IN, true);   // IG
+  auto gop_it = OpRegistry::op_creators().find(grad_op_type);
+  PADDLE_ENFORCE(gop_it != OpRegistry::op_creators().end(),
+                 "Operator %s 's Gradient %s's creator cannot be found",
+                 op->type_, grad_op_type);
 
-  OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)(
-      grad_op_type, GradIn, IG, op->Attrs());
-  return grad_op;
+  return gop_it->second(grad_op_type, inputs, outputs, op->attrs_);
 }
 
 }  // namespace framework

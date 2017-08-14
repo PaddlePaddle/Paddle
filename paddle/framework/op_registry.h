@@ -122,8 +122,8 @@ class OpProtoAndCheckerMaker {
 class OpRegistry {
   using VarNameMap = OperatorBase::VarNameMap;
   using OpCreator = std::function<OperatorBase*(
-      const std::string& type, const VarNameMap& inputs,
-      const VarNameMap& outputs, const AttributeMap& attrs)>;
+      const std::string& /*type*/, const VarNameMap& /*inputs*/,
+      const VarNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
  public:
   template <typename OpType, typename ProtoMakerType>
@@ -158,7 +158,7 @@ class OpRegistry {
   static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VarNameMap& inputs,
                                                 const VarNameMap& outputs,
-                                                const AttributeMap& attrs) {
+                                                AttributeMap attrs) {
     auto op_create_it = op_creators().find(type);
     PADDLE_ENFORCE(op_create_it != op_creators().end(),
                    "Operator %s cannot be found.", type);
@@ -168,7 +168,6 @@ class OpRegistry {
     auto op = op_create_it->second(type, inputs, outputs, attrMap);
     GenerateTempVariableName(op);
 
-    op->Init();
     return std::shared_ptr<OperatorBase>(op);
   }
 
@@ -200,7 +199,6 @@ class OpRegistry {
     PADDLE_ENFORCE(!op.IsNetOp(),
                    "Use framework::Backward to get backward ops");
     std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
-    grad_op->Init();
     return grad_op;
   }
 

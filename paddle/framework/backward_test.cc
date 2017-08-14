@@ -30,7 +30,7 @@ using DeviceContext = platform::DeviceContext;
 
 class EmptyOp : public OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(EmptyOp, OperatorBase);
+  using OperatorBase::OperatorBase;
   void InferShape(const Scope &scope) const override {}
   void Run(const Scope &scope, const DeviceContext &dev_ctx) const override {}
 };
@@ -79,8 +79,9 @@ class NoGradOpMaker : public OpProtoAndCheckerMaker {
 
 class FcOp : public operators::NetOp {
  public:
-  DEFINE_OPERATOR_CTOR(FcOp, operators::NetOp)
-  void Init() override {
+  FcOp(const std::string &type, const VarNameMap &inputs,
+       const VarNameMap &outputs, const AttributeMap &attrs)
+      : NetOp(type, inputs, outputs, attrs) {
     AddOp(OpRegistry::CreateOp("mul",
                                {{"X", {Input("X")}}, {"Y", {Input("W")}}},
                                {{"Out", {Output("mul_result")}}}, {}));

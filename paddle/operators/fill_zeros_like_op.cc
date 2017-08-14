@@ -18,7 +18,8 @@ namespace paddle {
 namespace operators {
 
 class FillZerosLikeOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(FillZerosLikeOp, framework::OperatorWithKernel);
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
