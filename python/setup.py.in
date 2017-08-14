@@ -31,12 +31,7 @@ paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle_usage',
                '${PADDLE_BINARY_DIR}/paddle/pserver/paddle_pserver_main']
 
 paddle_rt_lib_dir = 'local/lib'
-paddle_rt_libs = []
-
-mkl_shared_libs='${MKL_SHARED_LIBS}'
-if mkl_shared_libs != '':
-    paddle_rt_libs += mkl_shared_libs.split(';')
-print paddle_rt_libs
+paddle_rt_libs = [] if '${MKL_SHARED_LIBS}'== '' else '${MKL_SHARED_LIBS}'.split(';')
 
 setup(name='paddlepaddle',
       version='${PADDLE_VERSION}',
