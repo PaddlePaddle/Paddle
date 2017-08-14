@@ -18,6 +18,8 @@
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 class MulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -60,19 +62,19 @@ class MulOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 3UL,
-                      "Input of MulOpGrad should be 3, X, Y, Out@GRAD");
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 2UL,
-                      "Output of MulOpGrad should be 2, X@GRAD, Y@GRAD");
+    // PADDLE_ENFORCE_EQ(ctx.InputSize(), 3UL,
+    //                   "Input of MulOpGrad should be 3, X, Y, Out@GRAD");
+    // PADDLE_ENFORCE_EQ(ctx.OutputSize(), 2UL,
+    //                   "Output of MulOpGrad should be 2, X@GRAD, Y@GRAD");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto *y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
-    auto dim0 = ctx.Input<Tensor>(0)->dims();
-    auto dim1 = ctx.Input<Tensor>(1)->dims();
-    auto out_dims = ctx.Input<Tensor>(2)->dims();
+    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto dim0 = ctx.Input<Tensor>(framework::GradVarName("X"))->dims();
+    auto dim1 = ctx.Input<Tensor>(framework::GradVarName("Y"))->dims();
+    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
     PADDLE_ENFORCE(dim0[0] * dim1[0] == out_dims[0],
                    "Out@GRAD[0] must equal to X[0] * Y[0]");
     PADDLE_ENFORCE(dim0[1] * dim1[1] == out_dims[1],

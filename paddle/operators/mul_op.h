@@ -31,18 +31,22 @@ template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
-        {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
-    auto* input0 = context.Input<Tensor>("X");
-    auto* input1 = context.Input<Tensor>("Y");
-    auto* output = context.Output<Tensor>("Out");
-    output->mutable_data<T>(context.GetPlace());
-    auto X = EigenMatrix<T>::From(*input0);
-    auto Y = EigenMatrix<T>::From(*input1);
-    auto Z = EigenMatrix<T>::From(*output);
-    auto& place = context.GetEigenDevice<Place>();
+    // Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
+    //     {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
+    auto* X = context.Input<Tensor>("X");
+    auto* Y = context.Input<Tensor>("Y");
+    auto* Z = context.Output<Tensor>("Out");
+    Z->mutable_data<T>(context.GetPlace());
+    auto* device_context =
+        const_cast<platform::DeviceContext*>(context.device_context_);
+    math::matmul<Place, T>(*X, false, *Y, false, 1, Z, 0, device_context);
 
-    Z.device(place) = X.contract(Y, dim_pair);
+    // auto X = EigenMatrix<T>::From(*input0);
+    // auto Y = EigenMatrix<T>::From(*input1);
+    // auto Z = EigenMatrix<T>::From(*output);
+    // auto& place = context.GetEigenDevice<Place>();
+
+    // Z.device(place) = X.contract(Y, dim_pair);
   }
 };
 
@@ -50,27 +54,31 @@ template <typename Place, typename T>
 class MulGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input0 = ctx.Input<Tensor>("X");
-    auto* input1 = ctx.Input<Tensor>("Y");
-    auto* input2 = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* X = ctx.Input<Tensor>("X");
+    auto* Y = ctx.Input<Tensor>("Y");
+    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-    auto* output0 = ctx.Output<Tensor>(0);
-    auto* output1 = ctx.Output<Tensor>(1);
-    output0->mutable_data<T>(ctx.GetPlace());
-    output1->mutable_data<T>(ctx.GetPlace());
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    // auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());
+    // auto* dYdata = dY->template mutable_data<T>(ctx.GetPlace());
+    auto* device_context =
+        const_cast<platform::DeviceContext*>(ctx.device_context_);
+    math::matmul<Place, T>(*dOut, false, *Y, true, 1, dX, 0, device_context);
+    math::matmul<Place, T>(*X, true, *dOut, false, 1, dY, 0, device_context);
 
-    auto X = EigenMatrix<T>::From(*input0);
-    auto Y = EigenMatrix<T>::From(*input1);
-    auto dOut = EigenMatrix<T>::From(*input2);
-    auto dX = EigenMatrix<T>::From(*output0);
-    auto dY = EigenMatrix<T>::From(*output1);
+    // auto X = EigenMatrix<T>::From(*input0);
+    // auto Y = EigenMatrix<T>::From(*input1);
+    // auto dOut = EigenMatrix<T>::From(*input2);
+    // auto dX = EigenMatrix<T>::From(*output0);
+    // auto dY = EigenMatrix<T>::From(*output1);
 
     // dX = Out@G * Y'
     // dY = X' * Out@G
-    auto place = ctx.GetEigenDevice<Place>();
+    // auto place = ctx.GetEigenDevice<Place>();
     // TODO(dzh,qijun) : need transpose feature of blas library
     // Eigen Tensor does not support it very well
-    // dX.device(place) = dOut.contract(dOut, transpose)
+    // dX.device(place) = matmul(input2, )
   }
 };
 

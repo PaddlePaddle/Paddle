@@ -1,6 +1,7 @@
 import unittest
-from op_test_util import OpTestMeta
 import numpy as np
+from gradient_checker import GradientChecker, create_op
+from op_test_util import OpTestMeta
 
 
 class TestMulOp(unittest.TestCase):
@@ -13,6 +14,16 @@ class TestMulOp(unittest.TestCase):
             'Y': np.random.random((84, 100)).astype("float32")
         }
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
+
+
+class MulGradOpTest(GradientChecker):
+    def test_mul(self):
+        op = create_op("mul")
+        inputs = {
+            'X': np.random.random((32, 84)).astype("float32"),
+            'Y': np.random.random((84, 100)).astype("float32")
+        }
+        self.check_grad(op, inputs, set(["X", "Y"]), "Out")
 
 
 # TODO(dzh,qijun) : mulgrad test case need transpose feature of blas library

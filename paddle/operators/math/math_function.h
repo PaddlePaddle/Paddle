@@ -77,6 +77,15 @@ void matmul(const framework::Tensor& matrix_a, bool trans_a,
             framework::Tensor* matrix_out, T beta,
             platform::DeviceContext* context);
 
+// // matrix multiply with continuous memory
+// template <typename Place, typename T>
+// void matmul(const framework::Tensor& matrix_a, bool trans_a,
+//             const framework::Tensor& matrix_b, bool trans_b,
+//             framework::Tensor* matrix_out,
+//             platform::DeviceContext* context) {
+//   matmul(matrix_a, matrix_b, trans_a, trans_b, 1, matrix_out, 0, context);
+// }
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
