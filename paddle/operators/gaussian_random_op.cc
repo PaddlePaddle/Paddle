@@ -43,7 +43,9 @@ class GaussianRandomKernel : public framework::OpKernel {
 };
 
 class GaussianRandomOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(GaussianRandomOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>(0);
