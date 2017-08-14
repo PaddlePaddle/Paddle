@@ -191,8 +191,8 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 TEST(OpKernel, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
-  BuildVar("IN1", {"x"}, op_desc.add_inputs());
-  BuildVar("OUT1", {"y"}, op_desc.add_outputs());
+  BuildVar("x", {"IN1"}, op_desc.add_inputs());
+  BuildVar("y", {"OUT1"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
