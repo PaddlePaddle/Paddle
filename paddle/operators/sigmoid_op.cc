@@ -52,9 +52,8 @@ class SigmoidOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sigmoid, ops::SigmoidOp, ops::SigmoidOpMaker);
-REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, ops::SigmoidOpGrad);
-
+REGISTER_OP(sigmoid, ops::SigmoidOp, ops::SigmoidOpMaker, sigmoid_grad,
+            ops::SigmoidOpGrad);
 REGISTER_OP_CPU_KERNEL(sigmoid,
                        ops::SigmoidKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(

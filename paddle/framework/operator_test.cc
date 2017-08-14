@@ -65,8 +65,9 @@ static void BuildVar(const std::string& param_name,
   }
 }
 
-REGISTER_OP(test_operator, paddle::framework::OpWithoutKernelTest,
-            paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    test_operator, paddle::framework::OpWithoutKernelTest,
+    paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
 
 TEST(OperatorBase, all) {
   paddle::framework::OpDesc op_desc;
@@ -184,8 +185,9 @@ class CPUKernalMultiInputsTest : public OpKernel {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(op_with_kernel, paddle::framework::OpWithKernelTest,
-            paddle::framework::OpKernelTestProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_with_kernel, paddle::framework::OpWithKernelTest,
+    paddle::framework::OpKernelTestProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(op_with_kernel,
                        paddle::framework::CPUKernelTest<float, float>);
 
@@ -210,8 +212,9 @@ TEST(OpKernel, all) {
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
 }
 
-REGISTER_OP(op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,
-            paddle::framework::OpKernelTestMultiInputsProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,
+    paddle::framework::OpKernelTestMultiInputsProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
                        paddle::framework::CPUKernalMultiInputsTest);
 

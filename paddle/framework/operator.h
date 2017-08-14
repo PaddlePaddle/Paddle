@@ -50,8 +50,6 @@ inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
 
-extern std::unordered_map<std::string, OpProto>& OpProtos();
-
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
@@ -127,6 +125,14 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VarNameMap outputs_;
   AttributeMap attrs_;
+};
+
+class NOP : public OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
 };
 
 class InferShapeContext {
@@ -210,7 +216,7 @@ class InferShapeContext {
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
                      PADDLE_ENFORCE_NOT_NULL(
-                         var, "MultiOutput(%s:%s) should not be nullptr", name,
+                         var, "MultiOutput(%s:%s) should not be nullptr.", name,
                          sub_name);
                      return var->GetMutable<T>();
                    });
