@@ -44,6 +44,8 @@ endfunction()
 add_subdirectory(math)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 
+cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
+
 cc_library(net_op SRCS net_op.cc DEPS op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 
