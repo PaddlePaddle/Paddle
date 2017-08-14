@@ -36,8 +36,8 @@ class RecurrentOpTest : public ::testing::Test {
  protected:
   virtual void SetUp() override {
     CreateGlobalVariables();
-    CreateStepNet();
     CreateRNNOp();
+    CreateStepNet();
   }
 
   virtual void TearDown() override {}
@@ -89,8 +89,6 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.add_inputs("x1");
     // boot_memories 3
     op_desc.add_inputs("h_boot");
-    // step net 5
-    op_desc.add_inputs("step_net");
     // outlinks 6
     op_desc.add_outputs("h");
     // step scopes 7
@@ -150,14 +148,13 @@ class RecurrentOpTest : public ::testing::Test {
     }
 
     rnn_op_ = OpRegistry::CreateOp(op_desc);
-
-    LOG(INFO) << "rnn_op finish init";
   }
 
   void CreateStepNet() {
-    LOG(INFO) << "create variable step_net";
-    Variable* var = scope_.NewVar("step_net");
-    auto net = var->GetMutable<NetOp>();
+    LOG(INFO) << "create step_net";
+    ASSERT_NE(rnn_op_, nullptr);
+    auto net =
+        dynamic_cast<operators::RecurrentOp*>(rnn_op_.get())->mutable_stepnet();
     net->AddOp(
         OpRegistry::CreateOp("mul", {"rnn/h@pre", "rnn/w"}, {"rnn/s"}, {}));
 
@@ -218,9 +215,6 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
     // inputs: step_scopes
     LOG(INFO) << "create variable step_scopes";
     scope_.NewVar("step_scopes");
-    // inputs: step_net
-    LOG(INFO) << "create variable step_net";
-    scope_.NewVar("step_net");
     // outputs: w_grad
     LOG(INFO) << "create global variable w_grad";
     scope_.NewVar("rnn/w_grad");
@@ -256,7 +250,6 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
 
   void CreateRNNGradientAlgorithm() {
     std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
-    arg->step_net = "step_net";
     arg->step_scopes = "step_scopes";
     rnn::Link inlink;
     inlink.external = "h_grad";
@@ -274,19 +267,16 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
     mem_attr.boot_var = "h_boot_grad";
     arg->memories = std::vector<rnn::MemoryAttr>{mem_attr};
 
-    rnn_grad_algo_.Init(std::move(arg));
+    rnn_grad_algo_.Init(std::move(arg), &net_);
   }
 
   void CreateStepNet() {
-    LOG(INFO) << "create variable step_net";
-    Variable* var = scope_.NewVar("step_net");
-    auto net = var->GetMutable<NetOp>();
-    net->AddOp(OpRegistry::CreateOp("mul", {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
+    net_.AddOp(OpRegistry::CreateOp("mul", {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
                                     {"rnn/h_pre_grad", "rnn/w_grad"}, {}));
 
-    net->AddOp(OpRegistry::CreateOp("add_two", {"rnn/h_grad"},
+    net_.AddOp(OpRegistry::CreateOp("add_two", {"rnn/h_grad"},
                                     {"rnn/x_grad", "rnn/s_grad"}, {}));
-    net->CompleteAddOp();
+    net_.CompleteAddOp();
   }
 
   void SegmentInputs() {
@@ -321,6 +311,7 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
 
   Scope scope_;
   RecurrentGradientAlgorithm rnn_grad_algo_;
+  NetOp net_;
 };
 
 // TEST_F(RecurrentGradientAlgorithmTest, Run) {

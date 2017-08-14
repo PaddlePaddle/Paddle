@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/framework/operator.h"
+#include "paddle/operators/net_op.h"
 #include "paddle/operators/rnn/recurrent_op_utils.h"
 
 namespace paddle {
@@ -33,7 +34,11 @@ class RecurrentAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
+  void Init(std::unique_ptr<rnn::Argument> arg, NetOp* stepnet) {
+    PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
+    arg_ = std::move(arg);
+    stepnet_ = stepnet;
+  }
 
   /**
    * InferShape must be called before Run.
@@ -58,6 +63,7 @@ class RecurrentAlgorithm {
   void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
 
  private:
+  NetOp* stepnet_;
   std::unique_ptr<rnn::Argument> arg_;
   mutable size_t seq_len_;
 };
@@ -74,7 +80,11 @@ class RecurrentGradientAlgorithm {
    * operator.
    */
  public:
-  void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
+  void Init(std::unique_ptr<rnn::Argument> arg, NetOp* stepnet) {
+    PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
+    arg_ = std::move(arg);
+    stepnet_ = stepnet;
+  }
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
@@ -97,10 +107,10 @@ class RecurrentGradientAlgorithm {
  private:
   std::unique_ptr<rnn::Argument> arg_;
   mutable size_t seq_len_;
+  NetOp* stepnet_;
 };
 
 class RecurrentOp final : public framework::OperatorBase {
-  DEFINE_OPERATOR_CTOR(RecurrentOp, framework::OperatorBase)
  public:
   void Init() override;
 
@@ -116,10 +126,14 @@ class RecurrentOp final : public framework::OperatorBase {
     alg_.Run(scope, dev_ctx);
   }
 
+  NetOp* mutable_stepnet() { return &stepnet_; }
+  const NetOp* stepnet() const { return &stepnet_; }
+
   static const rnn::ArgumentName kArgName;
 
  private:
   RecurrentAlgorithm alg_;
+  NetOp stepnet_;
 };
 
 class RecurrentGradientOp final : public framework::OperatorBase {
@@ -140,8 +154,12 @@ class RecurrentGradientOp final : public framework::OperatorBase {
 
   static const rnn::ArgumentName kArgName;
 
+  NetOp* mutable_stepnet() { return &stepnet_; }
+  const NetOp* stepnet() const { return &stepnet_; }
+
  private:
   RecurrentGradientAlgorithm alg_;
+  NetOp stepnet_;
 };
 
 }  // namespace operators
