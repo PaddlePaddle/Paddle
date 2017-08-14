@@ -56,19 +56,24 @@ class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 }  // namespace framework
 }  // namespace paddle
 
+static void BuildVar(const std::string& param_name,
+                     std::initializer_list<const char*> arguments,
+                     paddle::framework::OpDesc::Var* var) {
+  var->set_parameter(param_name);
+  for (auto& arg_name : arguments) {
+    *var->mutable_arguments()->Add() = arg_name;
+  }
+}
+
 REGISTER_OP(test_operator, paddle::framework::OpWithoutKernelTest,
             paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
 
 TEST(OperatorBase, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("test_operator");
-  auto* ipt = op_desc.mutable_inputs()->Add();
-  *ipt->mutable_arguments()->Add() = "IN1";
-  ipt->set_parameter("input");
+  BuildVar("input", {"IN1"}, op_desc.add_inputs());
+  BuildVar("output", {"OUT1"}, op_desc.add_outputs());
 
-  auto* output = op_desc.mutable_outputs()->Add();
-  *output->mutable_arguments()->Add() = "OUT1";
-  output->set_parameter("output");
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
@@ -129,9 +134,9 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
   OpKernelTestMultiInputsProtoAndCheckerMaker(OpProto* proto,
                                               OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("xs", "inputs of test op").SetMultiple();
+    AddInput("xs", "inputs of test op").AsDuplicable();
     AddInput("k", "input of test op");
-    AddOutput("ys", "outputs of test op").SetMultiple();
+    AddOutput("ys", "outputs of test op").AsDuplicable();
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
@@ -188,13 +193,8 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 TEST(OpKernel, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
-  auto* ipt = op_desc.mutable_inputs()->Add();
-  *ipt->mutable_arguments()->Add() = "IN1";
-  ipt->set_parameter("x");
-
-  auto* output = op_desc.mutable_outputs()->Add();
-  *output->mutable_arguments()->Add() = "OUT1";
-  output->set_parameter("y");
+  BuildVar("x", {"IN1"}, op_desc.add_inputs());
+  BuildVar("y", {"OUT1"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -221,18 +221,9 @@ TEST(OpKernel, multi_inputs) {
 
   OpDesc op_desc;
   op_desc.set_type("op_multi_inputs_with_kernel");
-  auto x = op_desc.mutable_inputs()->Add();
-  x->set_parameter("xs");
-  *x->mutable_arguments()->Add() = "x0";
-  *x->mutable_arguments()->Add() = "x1";
-  *x->mutable_arguments()->Add() = "x2";
-  auto k = op_desc.mutable_inputs()->Add();
-  k->set_parameter("k");
-  *k->mutable_arguments()->Add() = "k0";
-  auto y = op_desc.mutable_outputs()->Add();
-  y->set_parameter("ys");
-  *y->mutable_arguments()->Add() = "y0";
-  *y->mutable_arguments()->Add() = "y1";
+  BuildVar("xs", {"x0", "x1", "x2"}, op_desc.add_inputs());
+  BuildVar("k", {"k0"}, op_desc.add_inputs());
+  BuildVar("ys", {"y0", "y1"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");

@@ -18,9 +18,6 @@ permissions and limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-class OpRegistry;
-
 enum class OpArgType { IN, OUT };
 
 static void TransOpArg(const OperatorBase* src_op,

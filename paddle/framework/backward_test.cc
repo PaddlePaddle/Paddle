@@ -39,9 +39,9 @@ class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").IgnoreGradient();
-    AddInput("b", "Bias of Add").IgnoreGradient();
-    AddOutput("Out", "Out of Add").IgnoreGradient();
+    AddInput("X", "Input X of Add").AsNoGradient();
+    AddInput("b", "Bias of Add").AsNoGradient();
+    AddOutput("Out", "Out of Add").AsNoGradient();
     AddComment("Add Op");
   }
 };
@@ -112,8 +112,8 @@ class FcOpMaker : public OpProtoAndCheckerMaker {
     AddInput("X", "x");
     AddInput("W", "w");
     AddInput("b", "b");
-    AddOutput("mul_result", "").SetTemporary();
-    AddOutput("add_result", "").SetTemporary();
+    AddOutput("mul_result", "").AsIntermediate();
+    AddOutput("add_result", "").AsIntermediate();
     AddOutput("Out", "");
     AddComment("");
   }
@@ -144,7 +144,7 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
  public:
   AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "x").SetMultiple();
+    AddInput("X", "x").AsDuplicable();
     AddOutput("Y", "y");
     AddComment("");
   }
@@ -393,18 +393,20 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
   auto bwd_net = static_cast<ops::NetOp *>(backward.get());
   ASSERT_EQ(bwd_net->ops_.size(), 3UL);
   auto &grad_fc = *bwd_net->ops_[0];
-  EXPECT_EQ(grad_fc.inputs_["all"].size(),
+
+  const char *all = paddle::operators::NetOp::kAll;
+  EXPECT_EQ(grad_fc.inputs_[all].size(),
             2UL       /* external input number */
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
                 + 2U /* internal variable number*/);
-  EXPECT_EQ(grad_fc.outputs_["all"].size(),
+  EXPECT_EQ(grad_fc.outputs_[all].size(),
             2UL       /* input number of mul*/
                 + 2UL /* input number of rowwise_add
                        */
                 + 1UL /* input number of sigmod */);
-  EXPECT_EQ(bwd_net->ops_[1]->inputs_["all"].size(), 0UL);
-  EXPECT_EQ(bwd_net->ops_[1]->outputs_["all"].size(), 0UL);
-  EXPECT_EQ(bwd_net->ops_[2]->inputs_["all"].size(), 0UL);
-  EXPECT_EQ(bwd_net->ops_[2]->outputs_["all"].size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[1]->inputs_[all].size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[1]->outputs_[all].size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[2]->inputs_[all].size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[2]->outputs_[all].size(), 0UL);
 }

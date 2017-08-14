@@ -26,8 +26,6 @@ namespace paddle {
 namespace operators {
 
 using namespace paddle::framework;
-// using framework::make_ddim;
-// using framework::DDim;
 
 class RecurrentGradientAlgorithmTest : public ::testing::Test {
  protected:
