@@ -57,15 +57,15 @@ In `trainer/RemoteParameterUpdater.cpp`: `parameterUpdater_->getParametersRemote
 ```c++
 if (fullSize) {
     ...
-  } else {
-    getParams = [&] {
-      parameterClient_->getParameterSparse(
-          /* recvParameterType= */ PARAMETER_VALUE, sendBackParameterType);
-    };
-    applyL1 = [](Parameter& para, real decayRate) {
-      para.getMat(PARAMETER_VALUE)->applyL1(/*lr=*/1.0f, decayRate);
-    };
-  }
+} else {
+getParams = [&] {
+    parameterClient_->getParameterSparse(
+        /* recvParameterType= */ PARAMETER_VALUE, sendBackParameterType);
+};
+applyL1 = [](Parameter& para, real decayRate) {
+    para.getMat(PARAMETER_VALUE)->applyL1(/*lr=*/1.0f, decayRate);
+};
+}
 ```
 
 Calling `parameterClient_->getParameterSparse` will do remote call to pserver's `getParameterSparse`:
