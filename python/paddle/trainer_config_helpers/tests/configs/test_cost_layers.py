@@ -33,7 +33,7 @@ outputs(
         input=probs, label=xe_label),
     cross_entropy_with_selfnorm(
         input=probs, label=xe_label),
-    huber_cost(
+    huber_classification_cost(
         input=data_layer(
             name='huber_probs', size=1),
         label=data_layer(

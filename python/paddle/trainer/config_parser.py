@@ -2255,7 +2255,7 @@ define_cost('PnpairValidation', 'pnpair-validation')
 define_cost('SumOfSquaresCostLayer', 'square_error')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
-define_cost('HuberTwoClass', 'huber')
+define_cost('HuberTwoClassification', 'huber_classification')
 define_cost('SumCost', 'sum_cost')
 define_cost('SmoothL1Cost', 'smooth_l1')
 

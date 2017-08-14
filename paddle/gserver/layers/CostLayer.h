@@ -307,21 +307,17 @@ public:
 /**
  * Huber loss for robust 2-classes classification.
  *
- * For label={0, 1}, let y=2*label-1. Given output f, the loss is:
- * \f[
- * Loss =
- * \left\{\begin{matrix}
- *  4 * y * f     &   \textit{if}  \ \  y* f < -1 \\
- *  (1 - y * f)^2 &  \textit{if}   \ \  -1 < y * f < 1  \\
- *  0             &                    \textit{otherwise}
- * \end{matrix}\right.
- * \f]
+ * For label={0, 1}, let y=2*label-1. Given output f(x), the loss is:
+ * Loss = 4 * y * f, if y* f < -1 \\
+ * Loss = (1 - y * f)^2, if -1 < y * f < 1  \\
+ * Loss = 0, otherwise
  */
-class HuberTwoClass : public CostLayer {
+class HuberTwoClassification : public CostLayer {
   std::vector<Argument> tmpCpuInput_;
 
 public:
-  explicit HuberTwoClass(const LayerConfig& config) : CostLayer(config) {}
+  explicit HuberTwoClassification(const LayerConfig& config)
+      : CostLayer(config) {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;

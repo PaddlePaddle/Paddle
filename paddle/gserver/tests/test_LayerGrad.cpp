@@ -830,7 +830,7 @@ TEST(Layer, square_error_weighted) {
 
 TEST(Layer, huber_two_class) {
   TestConfig config;
-  config.layerConfig.set_type("huber");
+  config.layerConfig.set_type("huber_classification");
   config.biasSize = 0;
 
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
