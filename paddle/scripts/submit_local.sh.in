@@ -54,6 +54,8 @@ if [ -z "${PADDLE_NO_STAT+x}" ]; then
     fi
 fi
 
+MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 if [ ! -z "${DEBUGGER}" ]; then
     echo "Using debug command ${DEBUGGER}"
 fi
@@ -89,17 +91,13 @@ else:
 EOF
 
 # find the paddle executable module path
-PYTHON_SITEPACKAGES_PATHES=$(python -c "import site; print ';'.join(site.getsitepackages())")
-IFS=';' items=($PYTHON_SITEPACKAGES_PATHES)
-for item in ${items[@]}; do
-    if [ -f $item/usr/local/opt/paddle/bin/paddle_trainer ]; then
-        PADDLE_BIN_PATH=$item/usr/local/opt/paddle/bin
-        break
-    fi
-done
+
+if [ -f $MYDIR/../opt/paddle/bin/paddle_trainer ]; then
+    PADDLE_BIN_PATH=$MYDIR/../opt/paddle/bin/paddle_trainer
+fi
 
 if [ -z $PADDLE_BIN_PATH ]; then
-    echo "can not find paddle executable file."
+    echo "can not find paddle executable file under: "$PADDLE_BIN_PATH
     exit 1
 fi
 
