@@ -34,9 +34,6 @@ RUN apt-get update && \
     net-tools && \
     apt-get clean -y
 
-# paddle is using numpy.flip, which is introduced since 1.12.0
-RUN pip --no-cache-dir install 'numpy>=1.12.0'
-
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
@@ -58,13 +55,16 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
 # version util jupyter fixes this issue.
 RUN pip install --upgrade pip && \
-    pip install -U 'protobuf==3.1.0' && \
-    pip install -U wheel pillow BeautifulSoup && \
+    pip install -U wheel && \
     pip install -U docopt PyYAML sphinx && \
-    pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
+    pip install -U sphinx-rtd-theme==0.1.9 recommonmark
+
+RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip install opencv-python rarfile 'scipy>=0.19.0' 'nltk>=3.2.2'
+    pip install opencv-python
+
+COPY ./python/requirements.txt /root/
+RUN pip install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
