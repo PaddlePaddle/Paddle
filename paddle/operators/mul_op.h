@@ -31,15 +31,18 @@ template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto input0 = context.Input<Tensor>("X");
-    auto input1 = context.Input<Tensor>("Y");
-    auto output = context.Output<Tensor>(0);
-
+    Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
+        {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
+    auto* input0 = context.Input<Tensor>("X");
+    auto* input1 = context.Input<Tensor>("Y");
+    auto* output = context.Output<Tensor>("Out");
     output->mutable_data<T>(context.GetPlace());
+    auto X = EigenMatrix<T>::From(*input0);
+    auto Y = EigenMatrix<T>::From(*input1);
+    auto Z = EigenMatrix<T>::From(*output);
+    auto& place = context.GetEigenDevice<Place>();
 
-    paddle::operators::math::template matmul<Place, T>(
-        *input0, false, *input1, false, 1, output, 0,
-        const_cast<platform::DeviceContext*>(context.device_context()));
+    Z.device(place) = X.contract(Y, dim_pair);
   }
 };
 

@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 
 #ifndef PADDLE_ONLY_CPU
-TEST(math_function, N_T) {
+TEST(math_function, notrans_mul_trans) {
   paddle::framework::Tensor input1;
   paddle::framework::Tensor input1_gpu;
   paddle::framework::Tensor input2_gpu;
@@ -35,7 +35,7 @@ TEST(math_function, N_T) {
   EXPECT_EQ(out_ptr[3], 50);
 }
 
-TEST(math_function, T_N) {
+TEST(math_function, trans_mul_notrans) {
   paddle::framework::Tensor input1;
   paddle::framework::Tensor input1_gpu;
   paddle::framework::Tensor input2_gpu;
