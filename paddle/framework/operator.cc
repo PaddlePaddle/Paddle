@@ -33,14 +33,6 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 }
 #endif
 
-static std::unordered_map<std::string, OpProto>* g_op_protos = nullptr;
-std::unordered_map<std::string, OpProto>& OpProtos() {
-  if (g_op_protos == nullptr) {
-    g_op_protos = new std::unordered_map<std::string, OpProto>();
-  }
-  return *g_op_protos;
-}
-
 const std::string& OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_EQ(ins.size(), 1UL,
@@ -149,14 +141,18 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto it = OpProtos().find(type_);
+  auto it = OpRegistry::op_info_map().find(type_);
   PADDLE_ENFORCE(
-      it != OpProtos().end(),
+      it != OpRegistry::op_info_map().end(),
       "Operator %s not registered, cannot figure out intermediate outputs",
+      type_);
+  PADDLE_ENFORCE(
+      it->second.proto_ != nullptr,
+      "Operator %s has no OpProto, cannot figure out intermediate outputs",
       type_);
 
   // get all OpProto::Var for outputs
-  for (auto& o : it->second.outputs()) {
+  for (auto& o : it->second.proto_->outputs()) {
     // ignore all intermediate output
     if (o.intermediate()) continue;
     auto out = outputs_.find(o.name());

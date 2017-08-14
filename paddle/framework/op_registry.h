@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <type_traits>
+#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/framework/attribute.h"
@@ -119,6 +120,12 @@ class OpProtoAndCheckerMaker {
   bool validated_{false};
 };
 
+class NOPMaker : public OpProtoAndCheckerMaker {
+ public:
+  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {}
+};
+
 class OpRegistry {
   using VarNameMap = OperatorBase::VarNameMap;
   using OpCreator = std::function<OperatorBase*(
@@ -126,46 +133,56 @@ class OpRegistry {
       const VarNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
  public:
-  template <typename OpType, typename ProtoMakerType>
-  static void RegisterOp(const std::string& op_type) {
-    op_creators()[op_type] = [](
-        const std::string& type, const VarNameMap& inputs,
-        const VarNameMap& outputs, const AttributeMap& attrs) {
+  struct OpInfo {
+    OpCreator creator_;
+    std::string grad_op_type_;
+    OpProto* proto_;
+    OpAttrChecker* checker_;
+  };
+
+  template <typename OpType, typename ProtoMakerType, typename GradOpType>
+  static void RegisterOp(const std::string& op_type,
+                         const std::string& grad_op_type) {
+    PADDLE_ENFORCE(op_info_map().count(op_type) == 0,
+                   "'%s' is registered more than once.", op_type);
+    OpInfo op_info;
+    op_info.creator_ = [](const std::string& type, const VarNameMap& inputs,
+                          const VarNameMap& outputs,
+                          const AttributeMap& attrs) {
       return new OpType(type, inputs, outputs, attrs);
     };
-    OpAttrChecker& op_checker = op_checkers()[op_type];
-    OpProto& op_proto = OpProtos()[op_type];
-    auto maker = ProtoMakerType(&op_proto, &op_checker);
-    maker.Validate();
-    op_proto.set_type(op_type);
-    PADDLE_ENFORCE(
-        op_proto.IsInitialized(),
-        "Fail to initialize %s's OpProto, because %s is not initialized",
-        op_type, op_proto.InitializationErrorString());
-  }
-
-  template <typename GradOpType>
-  static void RegisterGradOp(const std::string& op_type,
-                             const std::string& grad_op_type) {
-    op_creators()[grad_op_type] = [](
-        const std::string& type, const VarNameMap& inputs,
-        const VarNameMap& outputs, const AttributeMap& attrs) {
-      return new GradOpType(type, inputs, outputs, attrs);
-    };
-    grad_ops()[op_type] = grad_op_type;
+    op_info.grad_op_type_ = grad_op_type;
+    if (std::type_index(typeid(ProtoMakerType)) !=
+        std::type_index(typeid(NOPMaker))) {
+      op_info.proto_ = new OpProto;
+      op_info.checker_ = new OpAttrChecker;
+      auto maker = ProtoMakerType(op_info.proto_, op_info.checker_);
+      maker.Validate();
+      op_info.proto_->set_type(op_type);
+      PADDLE_ENFORCE(
+          op_info.proto_->IsInitialized(),
+          "Fail to initialize %s's OpProto, because %s is not initialized",
+          op_type, op_info.proto_->InitializationErrorString());
+    } else {
+      op_info.proto_ = nullptr;
+      op_info.checker_ = nullptr;
+    }
+    op_info_map().insert(std::make_pair(op_type, op_info));
+    // register gradient op
+    if (!grad_op_type.empty()) {
+      RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "");
+    }
   }
 
   static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VarNameMap& inputs,
                                                 const VarNameMap& outputs,
                                                 AttributeMap attrs) {
-    auto op_create_it = op_creators().find(type);
-    PADDLE_ENFORCE(op_create_it != op_creators().end(),
-                   "Operator %s cannot be found.", type);
-    op_checkers().at(type).Check(attrs);
-
-    auto op = op_create_it->second(type, inputs, outputs, attrs);
-
+    auto it = op_info_map().find(type);
+    PADDLE_ENFORCE(it != op_info_map().end(),
+                   "Operator '%s' has not been registered.", type);
+    it->second.checker_->Check(attrs);
+    auto op = it->second.creator_(type, inputs, outputs, attrs);
     return std::shared_ptr<OperatorBase>(op);
   }
 
@@ -200,49 +217,32 @@ class OpRegistry {
     return grad_op;
   }
 
-  static std::unordered_map<std::string, std::string>& grad_ops() {
-    static std::unordered_map<std::string, std::string> grad_ops_;
-    return grad_ops_;
-  }
-
-  static std::unordered_map<std::string, OpCreator>& op_creators() {
-    static std::unordered_map<std::string, OpCreator> op_creators_;
-    return op_creators_;
-  }
-
- private:
-  static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
-    static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
-    return op_checkers_;
+  static std::unordered_map<std::string, const OpInfo>& op_info_map() {
+    static std::unordered_map<std::string, const OpInfo> op_info_map_;
+    return op_info_map_;
   }
 };
 
 class Registrar {
  public:
-  // In our design, various kinds of classes, e.g., operators and kernels, have
-  // their corresponding registry and registrar. The action of registration is
-  // in the constructor of a global registrar variable, which, however, are not
-  // used in the code that calls package framework, and would be removed from
-  // the generated binary file by the linker. To avoid such removal, we add
-  // Touch to all registrar classes and make USE_OP macros to call this
-  // method. So, as long as the callee code calls USE_OP, the global
+  // In our design, various kinds of classes, e.g., operators and kernels,
+  // have their corresponding registry and registrar. The action of
+  // registration is in the constructor of a global registrar variable, which,
+  // however, are not used in the code that calls package framework, and would
+  // be removed from the generated binary file by the linker. To avoid such
+  // removal, we add Touch to all registrar classes and make USE_OP macros to
+  // call this method. So, as long as the callee code calls USE_OP, the global
   // registrar variable won't be removed by the linker.
   void Touch() {}
 };
 
-template <typename OpType, typename ProtoMakerType>
+template <typename OpType, typename ProtoMakerType, typename GradOpType>
 class OpRegistrar : public Registrar {
  public:
-  explicit OpRegistrar(const char* op_type) {
-    OpRegistry::RegisterOp<OpType, ProtoMakerType>(op_type);
-  }
-};
-
-template <typename GradOpType>
-class GradOpRegistrar : public Registrar {
- public:
-  GradOpRegistrar(const char* op_type, const char* grad_op_type) {
-    OpRegistry::RegisterGradOp<GradOpType>(op_type, grad_op_type);
+  explicit OpRegistrar(const char* op_type) { OpRegistrar(op_type, ""); }
+  OpRegistrar(const char* op_type, const char* grad_op_type) {
+    OpRegistry::RegisterOp<OpType, ProtoMakerType, GradOpType>(op_type,
+                                                               grad_op_type);
   }
 };
 
@@ -268,30 +268,20 @@ class OpKernelRegistrar : public Registrar {
 /**
  * Macro to register Operator.
  */
-#define REGISTER_OP(op_type, op_class, op_maker_class)                        \
+#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type,          \
+                    grad_op_class)                                            \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
       __reg_op__##op_type, "REGISTER_OP must be called in global namespace"); \
-  static ::paddle::framework::OpRegistrar<op_class, op_maker_class>           \
-      __op_registrar_##op_type##__(#op_type);                                 \
+  static ::paddle::framework::OpRegistrar<op_class, op_maker_class,           \
+                                          grad_op_class>                      \
+      __op_registrar_##op_type##__(#op_type, #grad_op_type);                  \
   int TouchOpRegistrar_##op_type() {                                          \
     __op_registrar_##op_type##__.Touch();                                     \
     return 0;                                                                 \
   }
 
-/**
- * Macro to register Gradient Operator.
- */
-#define REGISTER_GRADIENT_OP(op_type, grad_op_type, grad_op_class)           \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                            \
-      __reg_gradient_op__##op_type##_##grad_op_type,                         \
-      "REGISTER_GRADIENT_OP must be called in global namespace");            \
-  static ::paddle::framework::GradOpRegistrar<grad_op_class>                 \
-      __op_gradient_registrar_##op_type##_##grad_op_type##__(#op_type,       \
-                                                             #grad_op_type); \
-  int TouchOpGradientRegistrar_##op_type() {                                 \
-    __op_gradient_registrar_##op_type##_##grad_op_type##__.Touch();          \
-    return 0;                                                                \
-  }
+#define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
+  REGISTER_OP(op_type, op_class, op_maker_class, , ::paddle::framework::NOP)
 
 /**
  * Macro to register OperatorKernel.
@@ -306,14 +296,6 @@ class OpKernelRegistrar : public Registrar {
     __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
     return 0;                                                             \
   }
-
-/**
- * Macro to Forbid user register Gradient Operator.
- */
-#define NO_GRADIENT(op_type)                           \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                      \
-      __reg_gradient_op__##op_type##_##op_type##_grad, \
-      "NO_GRADIENT must be called in global namespace")
 
 #define REGISTER_OP_GPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
@@ -332,23 +314,6 @@ class OpKernelRegistrar : public Registrar {
   extern int TouchOpRegistrar_##op_type();                        \
   static int use_op_itself_##op_type##_ __attribute__((unused)) = \
       TouchOpRegistrar_##op_type()
-
-// TODO(fengjiayi): Most ops' gradient op have not been compeleted. So we use
-// `NO_GRAD` to disable micro USE_OP_GRADIENT(op_type). Otherwise the code can't
-// be compiled. `NO_GRAD` should be removed after all gradient ops are
-// compeleted.
-#define NO_GRAD
-#ifndef NO_GRAD
-#define USE_OP_GRADIENT(op_type)                                    \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                   \
-      __use_op_gradient_##op_type,                                  \
-      "USE_OP_GRADIENT must be called in global namespace");        \
-  extern int TouchOpGradientRegistrar_##op_type();                  \
-  static int use_op_gradient_##op_type##_ __attribute__((unused)) = \
-      TouchOpGradientRegistrar_##op_type()
-#else
-#define USE_OP_GRADIENT(op_type)
-#endif
 
 #define USE_OP_DEVICE_KERNEL(op_type, DEVICE_TYPE)               \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
@@ -369,18 +334,13 @@ class OpKernelRegistrar : public Registrar {
   USE_OP_DEVICE_KERNEL(op_type, GPU)
 #endif
 
-#define USE_NO_GRAD_OP(op_type) \
-  USE_OP_ITSELF(op_type);       \
+#define USE_CPU_ONLY_OP(op_type) \
+  USE_OP_ITSELF(op_type);        \
+  USE_OP_DEVICE_KERNEL(op_type, CPU);
+
+#define USE_OP(op_type)   \
+  USE_OP_ITSELF(op_type); \
   USE_OP_KERNEL(op_type)
-
-#define USE_CPU_OP(op_type)           \
-  USE_OP_ITSELF(op_type);             \
-  USE_OP_DEVICE_KERNEL(op_type, CPU); \
-  USE_OP_GRADIENT(op_type)
-
-#define USE_OP(op_type)    \
-  USE_NO_GRAD_OP(op_type); \
-  USE_OP_GRADIENT(op_type)
 
 }  // namespace framework
 }  // namespace paddle
