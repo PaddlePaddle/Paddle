@@ -28,13 +28,6 @@ using OpAttrChecker = framework::OpAttrChecker;
 using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
 
-class EmptyOp : public OperatorBase {
- public:
-  using OperatorBase::OperatorBase;
-  void InferShape(const Scope &scope) const override {}
-  void Run(const Scope &scope, const DeviceContext &dev_ctx) const override {}
-};
-
 class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
@@ -155,16 +148,16 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
-REGISTER_OP(rowwise_add, f::EmptyOp, f::RowWiseAddOpMaker, rowwise_add_grad,
-            f::EmptyOp);
-REGISTER_OP(mul, f::EmptyOp, f::MulOpMaker, mul_grad, f::EmptyOp);
-REGISTER_OP(sigmoid, f::EmptyOp, f::SigmoidOpMaker, sigmoid_grad, f::EmptyOp);
-REGISTER_OP_WITHOUT_GRADIENT(nograd, f::EmptyOp, f::NoGradOpMaker);
-REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, f::EmptyOp, f::FillZeroOpMaker);
-REGISTER_OP(add, f::EmptyOp, f::AddOpMaker, add_grad, f::EmptyOp);
+REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, rowwise_add_grad,
+            f::NOP);
+REGISTER_OP(mul, f::NOP, f::MulOpMaker, mul_grad, f::NOP);
+REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, sigmoid_grad, f::NOP);
+REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, f::NOP, f::FillZeroOpMaker);
+REGISTER_OP(add, f::NOP, f::AddOpMaker, add_grad, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
-REGISTER_OP(many_output_op, f::EmptyOp, f::ManyOutputOpMaker,
-            many_output_op_grad, f::EmptyOp);
+REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
+            f::NOP);
 
 TEST(Backward, simple_op_grad) {
   auto fwd = f::OpRegistry::CreateOp(
