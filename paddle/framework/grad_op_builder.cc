@@ -108,7 +108,7 @@ OperatorBase* BuildGradOp(const OperatorBase* op) {
   grad_op->type_ = grad_op_type;
   grad_op->inputs_ = grad_inputs;
   grad_op->outputs_ = grad_outputs;
-  grad_op->attrs_ = grad_attrs;
+  grad_op->SetAttrs(grad_attrs);
   grad_op->in_out_idxs_.reset(grad_idxs);
 
   return grad_op;

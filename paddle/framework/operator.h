@@ -120,8 +120,12 @@ class OperatorBase {
   const std::vector<std::string> Inputs() const { return inputs_; }
   const std::vector<std::string> Outputs() const { return outputs_; }
   const AttributeMap& Attrs() const { return attrs_; }
+  void SetAttrs(const AttributeMap& attrs) { attrs_ = attrs; }
   const std::unordered_map<std::string, int>* InOutIdx() const {
     return in_out_idxs_.get();
+  }
+  void SetAttr(const std::string& name, const framework::Attribute& val) {
+    attrs_[name] = val;
   }
 
  public:

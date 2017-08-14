@@ -222,9 +222,9 @@ class OpRegistry {
     op->type_ = type;
     op->inputs_ = inputs;
     op->outputs_ = outputs;
-
-    op->attrs_ = attrs;
-    op_checkers().at(type).Check(op->attrs_);
+    auto attrMap = attrs;
+    op_checkers().at(type).Check(attrMap);
+    op->SetAttrs(attrMap);
 
     GenerateTempVariableName(op);
 
