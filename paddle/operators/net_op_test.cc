@@ -20,13 +20,6 @@ class TestOp : public framework::OperatorBase {
   }
 };
 
-class EmptyOp : public framework::OperatorBase {
- public:
-  using framework::OperatorBase::OperatorBase;
-  void InferShape(const Scope& scope) const override {}
-  void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
-};
-
 template <typename T>
 void AssertSameVectorWithoutOrder(const std::vector<T>& expected,
                                   const std::vector<T>& actual) {
@@ -67,9 +60,9 @@ TEST(OpKernel, all) {
 
 TEST(NetOp, insert_op) {
   NetOp net;
-  auto op1 = std::shared_ptr<EmptyOp>(
-      new EmptyOp("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
-                  {{"Out", {"y"}}}, {}));
+  auto op1 = std::shared_ptr<framework::NOP>(
+      new framework::NOP("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
+                         {{"Out", {"y"}}}, {}));
   net.AddOp(op1);
   net.InsertOp(0, op1);
   ASSERT_EQ(2UL, net.ops_.size());

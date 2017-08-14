@@ -46,7 +46,8 @@ The output will have the same size with input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(fill_zeros_like, ops::FillZerosLikeOp, ops::FillZerosLikeOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
+                             ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
     ops::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);

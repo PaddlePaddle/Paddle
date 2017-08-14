@@ -54,6 +54,7 @@ for i in xrange(X.shape[0]):
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(rowwise_add, ops::RowWiseAddOp, ops::RowWiseAddOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(rowwise_add, ops::RowWiseAddOp,
+                             ops::RowWiseAddOpMaker);
 REGISTER_OP_CPU_KERNEL(
     rowwise_add, ops::RowWiseAddKernel<paddle::platform::CPUPlace, float>);

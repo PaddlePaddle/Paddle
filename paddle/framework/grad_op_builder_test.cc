@@ -8,14 +8,6 @@ USE_OP(add_two);
 namespace paddle {
 namespace framework {
 
-class NOP : public OperatorBase {
- public:
-  using OperatorBase::OperatorBase;
-  void InferShape(const Scope &scope) const override {}
-  void Run(const Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
-};
-
 class MutiInOutOpMaker : public OpProtoAndCheckerMaker {
  public:
   MutiInOutOpMaker(OpProto *proto, OpAttrChecker *op_checker)
@@ -62,10 +54,8 @@ TEST(GradOpBuilder, AddTwo) {
   EXPECT_EQ(grad_add_op->Output(f::GradVarName("Y")), f::GradVarName("y"));
 }
 
-REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker);
-REGISTER_GRADIENT_OP(mult_io, mult_io_grad, f::NOP);
-REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker);
-REGISTER_GRADIENT_OP(io_ignored, io_ignored_grad, f::NOP);
+REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, mult_io_grad, f::NOP);
+REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker, io_ignored_grad, f::NOP);
 
 TEST(GradOpBuilder, MutiInOut) {
   std::shared_ptr<f::OperatorBase> test_op(f::OpRegistry::CreateOp(
