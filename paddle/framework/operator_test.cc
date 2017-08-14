@@ -23,6 +23,8 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(OpWithoutKernelTest, OperatorBase)
+
   void Init() override { x = 1; }
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
@@ -97,6 +99,8 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
+ public:
+  DEFINE_OPERATOR_CTOR(OpWithKernelTest, OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {}
 };
@@ -116,6 +120,8 @@ class CPUKernelTest : public OpKernel {
 // multiple inputs test
 class OperatorMultiInputsTest : public OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(OperatorMultiInputsTest, OperatorBase)
+
   void Init() override { x = 1; }
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,

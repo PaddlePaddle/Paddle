@@ -1,5 +1,4 @@
 from setuptools import setup, Distribution
-
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
@@ -18,15 +17,8 @@ packages=['paddle',
           'paddle.v2.framework.proto',
           'py_paddle']
 
-setup_requires=["requests",
-                "numpy>=1.12",
-                "protobuf==3.1",
-                "recordio",
-                "matplotlib",
-                "rarfile",
-                "scipy>=0.19.0",
-                "Pillow",
-                "nltk>=3.2.2"]
+with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
+    setup_requires = f.read().splitlines()
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
     setup_requires+=["opencv-python"]
@@ -45,14 +37,14 @@ setup(name='paddlepaddle',
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
           # The paddle.v2.framework.proto will be generated while compiling.
           # So that package points to other directory.
-          'paddle.v2.framework.proto': '${PROJ_BINARY_ROOT}/paddle/framework',
-          'py_paddle': '${PROJ_ROOT}/paddle/py_paddle'
+          'paddle.v2.framework.proto': '${PADDLE_BINARY_DIR}/paddle/framework',
+          'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
-      scripts=['${PROJ_BINARY_ROOT}/paddle/scripts/paddle'],
+      scripts=['${PADDLE_BINARY_DIR}/paddle/scripts/paddle'],
       distclass=BinaryDistribution,
       data_files=[('/usr/local/opt/paddle/bin',
-                       ['${PROJ_BINARY_ROOT}/paddle/scripts/paddle_usage',
-                        '${PROJ_BINARY_ROOT}/paddle/trainer/paddle_trainer',
-                        '${PROJ_BINARY_ROOT}/paddle/trainer/paddle_merge_model',
-                        '${PROJ_BINARY_ROOT}/paddle/pserver/paddle_pserver_main'])]
+                       ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle_usage',
+                        '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
+                        '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_merge_model',
+                        '${PADDLE_BINARY_DIR}/paddle/pserver/paddle_pserver_main'])]
 )
