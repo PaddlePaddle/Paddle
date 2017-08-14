@@ -34,6 +34,12 @@ add_unittest_without_exec(test_CRFLayerGrad
 add_test(NAME test_CRFLayerGrad
     COMMAND test_CRFLayerGrad)
 
+################ test_CrossEntropyOverBeam ####################
+add_unittest_without_exec(test_CrossEntropyOverBeam
+    test_CrossEntropyOverBeamGrad.cpp
+    LayerGradUtil.cpp)
+add_test(NAME test_CrossEntropyOverBeam
+    COMMAND test_CrossEntropyOverBeam)
 
 add_unittest_without_exec(test_ActivationGrad
     test_ActivationGrad.cpp

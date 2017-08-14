@@ -1,0 +1,94 @@
+/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include <sstream>
+
+#include <gtest/gtest.h>
+#include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/trainer/Trainer.h"
+
+#include "LayerGradUtil.h"
+#include "paddle/testing/TestUtil.h"
+
+using namespace paddle;  // NOLINT
+
+DECLARE_int32(gpu_id);
+DECLARE_bool(thread_local_rand_use_global_seed);
+
+struct SingleBeamExpansion {
+  vector<int> seqStartPos;
+  vector<int> subSeqStartPos;
+
+  vector<real> candidateScores;
+  // TODO(caoying): store this into Argument.ids
+  vector<real> selectedIndices;
+  vector<int> groundTruth;
+};
+
+void genRandomBeamExpansion(size_t expansionCount,
+                            vector<SingleBeamExpansion>& beamExpansions) {
+  beamExpansions.clear();
+}
+
+void testCrossEntropyOverBeam() {
+  const size_t expansionCount = 3;
+  vector<SingleBeamExpansion> beams;
+  genRandomBeamExpansion(expansionCount, beams);
+
+  for (size_t i = 0; i < beams.size(); ++i) {
+    const SingleBeamExpansion& beam = beams[i];
+    // create scores for all the candidates
+    MatrixPtr candidateScorePtr =
+        Matrix::create(beam.candidateScores.size(), 1, false, false);
+    candidateScorePtr->copyFrom(candidateScores.data(), candidateScores.size());
+
+    ostringstream paramName;
+    paramName << "candidate_scores_" << i;
+    beam.subSeqStartPos.size()
+        ? config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                                      ostr.str(),
+                                      candidateScorePtr,
+                                      beam.seqStartPos,
+                                      beam.subSeqStartPos})
+        : config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                                      ostr.str(),
+                                      candidateScorePtr,
+                                      beam.seqStartPos});
+    // create indices for the selected candidates
+
+    // create the ground truth
+  }
+}
+
+TestConfig config;
+config.layerConfig.set_type("cross_entropy_over_beam");
+
+// testLayerGrad(
+//     config, "cross_entropy_over_beam", seqNum, false, useGpu, false);
+}
+
+TEST(Layer, CrossEntropyOverBeam) {
+  for (bool useGpu : {false, true}) testCrossEntropyOverBeam(useGpu);
+}
+
+int main(int argc, char** argv) {
+  initMain(argc, argv);
+  hl_start();
+  hl_init(FLAGS_gpu_id);
+  FLAGS_thread_local_rand_use_global_seed = true;
+  srand(1);
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
