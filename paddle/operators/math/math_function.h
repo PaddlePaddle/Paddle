@@ -13,6 +13,44 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_USE_MKLML
+#include <mkl_cblas.h>
+#include <mkl_lapacke.h>
+#include <mkl_vml_functions.h>
+#endif
+
+#ifdef PADDLE_USE_MKL
+#include <mkl.h>
+#include <mkl_lapacke.h>
+#endif
+
+#ifdef PADDLE_USE_ATLAS
+extern "C" {
+#include <cblas.h>
+#include <clapack.h>
+}
+#endif
+
+#ifdef PADDLE_USE_OPENBLAS
+#include <cblas.h>
+#include <lapacke.h>
+#endif
+
+#ifndef LAPACK_FOUND
+extern "C" {
+#include <cblas.h>
+int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
+                   int* ipiv);
+int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
+                   int* ipiv);
+int LAPACKE_sgetri(int matrix_layout, int n, float* a, int lda,
+                   const int* ipiv);
+int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
+                   const int* ipiv);
+}
+#endif
+
+#include <cmath>
 
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -27,6 +65,7 @@ namespace math {
 // Then matrixA: M * K, matrixB: K * N matrixC : M * N
 // For more detailed info, please refer to
 // http://www.netlib.org/lapack/explore-html/d4/de2/sgemm_8f.html
+template <typename Place, typename T>
 void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
           const int M, const int N, const int K, const T alpha, const T* A,
           const T* B, const T beta, T* C, platform::DeviceContext* context);
@@ -34,8 +73,8 @@ void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
 // matrix multiply with continuous memory
 template <typename Place, typename T>
 void matmul(const framework::Tensor& matrix_a, bool trans_a,
-            const framework::Tensor& matrix_b, bool trans_b, float alpha,
-            framework::Tensor* matrix_out, float beta,
+            const framework::Tensor& matrix_b, bool trans_b, T alpha,
+            framework::Tensor* matrix_out, T beta,
             platform::DeviceContext* context);
 
 }  // namespace math
