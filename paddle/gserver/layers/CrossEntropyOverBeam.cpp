@@ -22,6 +22,7 @@ bool CrossEntropyOverBeam::init(const LayerMap& layerMap,
                                 const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
+  CHECK_EQ(0U, inputLayers_.size() % 3) << "Error input number.";
 
   setNeedSequenceInfo(false);
 
