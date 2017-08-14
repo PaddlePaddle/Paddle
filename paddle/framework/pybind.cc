@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/tensor_py.h"
 #include "paddle/operators/net_op.h"
+#include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/to_string.h"
@@ -238,12 +239,40 @@ All parameter, weight, gradient are variables in Paddle.
               const std::shared_ptr<operators::NetOp> &net) -> void {
              self.AddOp(std::static_pointer_cast<OperatorBase>(net));
            })
+      .def("add_op",
+           [](operators::NetOp &self,
+              const std::shared_ptr<operators::RecurrentOp> &rnn) -> void {
+             self.AddOp(std::static_pointer_cast<OperatorBase>(rnn));
+           })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
       });
 
   ExposeOperator(net);
+
+  // recurrent_op
+  py::class_<operators::RecurrentOp, std::shared_ptr<operators::RecurrentOp>>
+      rnn(m, "RecurrentOp");
+
+  rnn.def_static(
+         "create",
+         [](py::bytes protobin) -> std::shared_ptr<operators::RecurrentOp> {
+           OpDesc desc;
+           PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                          "Cannot parse user input to OpDesc");
+           PADDLE_ENFORCE(desc.IsInitialized(),
+                          "User OpDesc is not initialized, reason %s",
+                          desc.InitializationErrorString());
+           auto rnn_op = OpRegistry::CreateOp(desc);
+           return std::dynamic_pointer_cast<operators::RecurrentOp>(rnn_op);
+         })
+      .def("set_stepnet",
+           [](operators::RecurrentOp &self,
+              const std::shared_ptr<operators::NetOp> &net) -> void {
+             self.set_stepnet(net);
+           });
+  ExposeOperator(rnn);
 
   m.def("unique_integer", UniqueIntegerGenerator);
 
