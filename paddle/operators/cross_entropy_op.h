@@ -45,7 +45,7 @@ class OnehotCrossEntropyOpKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
-    const int* label_data = ctx.Input<Tensor>(1)->data<int>();
+    const int* label_data = ctx.Input<Tensor>("label")->data<int>();
     auto Y = ctx.Output<Tensor>("Y");
 
     Y->mutable_data<T>(ctx.GetPlace());
