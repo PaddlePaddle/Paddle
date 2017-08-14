@@ -30,16 +30,15 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_OP_CPU(onehot_cross_entropy);
-USE_OP_WITHOUT_KERNEL(fc);
-USE_OP(sgd);
+USE_CPU_OP(onehot_cross_entropy);
+USE_NO_GRAD_OP(sgd);
 USE_OP(mul);
 USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
 USE_OP(fill_zeros_like);
-USE_OP_WITHOUT_KERNEL(recurrent_op);
+USE_OP_ITSELF(recurrent_op);
 USE_OP(gaussian_random);
 USE_OP(uniform_random);
 
@@ -57,30 +56,18 @@ void ExposeOperator(ClassType &m) {
              return op.type_;
            })
       .def("outputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             return op.outputs_;
-           })
+           [](const typename ClassType::type &op)
+               -> std::map<std::string, std::vector<std::string>> {
+                 return op.outputs_;
+               })
       .def("inputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             return op.inputs_;
+           [](const typename ClassType::type &op) { return op.inputs_; })
+      .def("__str__", &ClassType::type::DebugString)
+      .def("no_intermediate_outputs",
+           [](const typename ClassType::type &op) {
+             return op.OutputVars(false);
            })
-      .def("support_gpu", &ClassType::type::SupportGPU)
-      .def("temp_outputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             auto iter = op.attrs_.find("temporary_index");
-             std::vector<std::string> ret;
-             if (iter == op.attrs_.end()) {
-               return ret;
-             } else {
-               auto tmp_idx = boost::get<std::vector<int>>(iter->second);
-               ret.reserve(tmp_idx.size());
-               for (auto &index : tmp_idx) {
-                 ret.push_back(op.outputs_.at(index));
-               }
-               return ret;
-             }
-           })
-      .def("__str__", &ClassType::type::DebugString);
+      .def("support_gpu", &ClassType::type::SupportGPU);
 }
 
 static size_t UniqueIntegerGenerator() {
@@ -173,7 +160,7 @@ All parameter, weight, gradient are variables in Paddle.
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &protos = OpRegistry::protos();
+    auto &protos = OpProtos();
     std::vector<py::bytes> ret_values;
     for (auto it = protos.begin(); it != protos.end(); ++it) {
       PADDLE_ENFORCE(it->second.IsInitialized(),

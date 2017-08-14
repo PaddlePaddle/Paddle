@@ -52,7 +52,7 @@ macro(add_style_check_target TARGET_NAME)
 
         if(SOURCES_LIST)
             add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                COMMAND "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"
+                COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/scripts/cpplint.py"
                         "--filter=${STYLE_FILTER}"
                         ${SOURCES_LIST}
                 COMMENT "cpplint: Checking source code style"

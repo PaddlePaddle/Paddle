@@ -79,11 +79,11 @@ class Tensor {
   inline const DDim& dims() const;
 
   /*! Resize the dimensions of the memory block. */
-  inline void Resize(const DDim& dims);
+  inline Tensor& Resize(const DDim& dims);
 
   /*! The internal of two tensors share the same memory block. */
   template <typename T>
-  inline void ShareDataWith(const Tensor& src);
+  inline Tensor& ShareDataWith(const Tensor& src);
 
   /**
    * @brief   Copy the content of external tensor to a new place.
@@ -104,6 +104,8 @@ class Tensor {
    */
   template <typename T>
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+
+  platform::Place place() const { return holder_->place(); }
 
  private:
   template <typename T>
