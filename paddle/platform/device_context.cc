@@ -55,7 +55,11 @@ CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
   //
   // So, we decide to use default stream and add –default-stream per-thread nvcc
   // flag. Than, two threads with two CUDADeviceContexts will run parallelly.
-  eigen_stream_.reset(new Eigen::CudaStreamDevice());
+
+  cudaStreamCreate(&stream_);
+  auto* sd = new EigenCudaStreamDevice(place_.device);
+  sd->set_stream(&stream_);
+  eigen_stream_.reset(sd);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
