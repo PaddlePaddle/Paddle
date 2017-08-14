@@ -12,6 +12,44 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_USE_MKLML
+#include <mkl_cblas.h>
+#include <mkl_lapacke.h>
+#include <mkl_vml_functions.h>
+#endif
+
+#ifdef PADDLE_USE_MKL
+#include <mkl.h>
+#include <mkl_lapacke.h>
+#endif
+
+#ifdef PADDLE_USE_ATLAS
+extern "C" {
+#include <cblas.h>
+#include <clapack.h>
+}
+#endif
+
+#ifdef PADDLE_USE_OPENBLAS
+#include <cblas.h>
+#include <lapacke.h>
+#endif
+
+#ifndef LAPACK_FOUND
+extern "C" {
+#include <cblas.h>
+int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
+                   int* ipiv);
+int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
+                   int* ipiv);
+int LAPACKE_sgetri(int matrix_layout, int n, float* a, int lda,
+                   const int* ipiv);
+int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
+                   const int* ipiv);
+}
+#endif
+
+#include <cmath>
 #include "paddle/operators/math/math_function.h"
 
 namespace paddle {
@@ -48,62 +86,65 @@ void gemm<platform::CPUPlace, double>(const CBLAS_TRANSPOSE transA,
 }
 
 template <>
-void matmul<platform::CPUPlace, float>(const framework::Tensor& in1, bool in1_T,
-                                       const framework::Tensor& in2, bool in2_T,
-                                       float alpha, framework::Tensor* out,
+void matmul<platform::CPUPlace, float>(const framework::Tensor& matrix_a,
+                                       bool trans_a,
+                                       const framework::Tensor& matrix_b,
+                                       bool trans_b, float alpha,
+                                       framework::Tensor* matrix_out,
                                        float beta,
                                        platform::DeviceContext* context) {
-  auto in1_dim = in1.dims();
-  auto in2_dim = in2.dims();
-  auto out_dim = out->dims();
-  PADDLE_ENFORCE(
-      in1_dim.size() == 2 && in2_dim.size() == 2 && out_dim.size() == 2,
-      "The input and output of matmul be matrix");
+  auto dim_a = matrix_a.dims();
+  auto dim_b = matrix_b.dims();
+  auto dim_out = matrix_out->dims();
+  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
+                 "The input and output of matmul be matrix");
 
-  PADDLE_ENFORCE(platform::is_cpu_place(in1.place()) &&
-                     platform::is_cpu_place(in2.place()) &&
-                     platform::is_cpu_place(out->place()),
+  PADDLE_ENFORCE(platform::is_cpu_place(matrix_a.place()) &&
+                     platform::is_cpu_place(matrix_b.place()) &&
+                     platform::is_cpu_place(matrix_out->place()),
                  "Matrix must all be in CPUPlace");
 
-  int M = out_dim[0];
-  int N = out_dim[1];
-  int K = (in1_T == false) ? in1_dim[1] : in1_dim[0];
+  int M = dim_out[0];
+  int N = dim_out[1];
+  int K = (trans_a == false) ? dim_a[1] : dim_a[0];
 
-  CBLAS_TRANSPOSE in1_Trans = (in1_T == false) ? CblasNoTrans : CblasTrans;
-  CBLAS_TRANSPOSE in2_Trans = (in2_T == false) ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CPUPlace, float>(in1_Trans, in2_Trans, M, N, K, alpha,
-                                  in1.data<float>(), in2.data<float>(), beta,
-                                  out->data<float>(), context);
+  gemm<platform::CPUPlace, float>(
+      transA, transB, M, N, K, alpha, matrix_a.data<float>(),
+      matrix_b.data<float>(), beta, matrix_out->data<float>(), context);
 }
 
 template <>
-void matmul<platform::CPUPlace, double>(const framework::Tensor& in1,
-                                        bool in1_T,
-                                        const framework::Tensor& in2,
-                                        bool in2_T, float alpha,
-                                        framework::Tensor* out, float beta,
+void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
+                                        bool trans_a,
+                                        const framework::Tensor& matrix_b,
+                                        bool trans_b, double alpha,
+                                        framework::Tensor* matrix_out,
+                                        double beta,
                                         platform::DeviceContext* context) {
-  auto in1_dim = in1.dims();
-  auto in2_dim = in2.dims();
-  auto out_dim = out->dims();
-  PADDLE_ENFORCE(
-      in1_dim.size() == 2 && in2_dim.size() == 2 && out_dim.size() == 2,
-      "The input and output of matmul be matrix");
-  PADDLE_ENFORCE(platform::is_cpu_place(in1.place()) &&
-                     platform::is_cpu_place(in2.place()) &&
-                     platform::is_cpu_place(out->place()),
+  auto dim_a = matrix_a.dims();
+  auto dim_b = matrix_b.dims();
+  auto dim_out = matrix_out->dims();
+  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
+                 "The input and output of matmul be matrix");
+
+  PADDLE_ENFORCE(platform::is_cpu_place(matrix_a.place()) &&
+                     platform::is_cpu_place(matrix_b.place()) &&
+                     platform::is_cpu_place(matrix_out->place()),
                  "Matrix must all be in CPUPlace");
 
-  int M = out_dim[0];
-  int N = out_dim[1];
-  int K = (in1_T == false) ? in1_dim[1] : in1_dim[0];
-  CBLAS_TRANSPOSE in1_Trans = (in1_T == false) ? CblasNoTrans : CblasTrans;
-  CBLAS_TRANSPOSE in2_Trans = (in2_T == false) ? CblasNoTrans : CblasTrans;
+  int M = dim_out[0];
+  int N = dim_out[1];
+  int K = (trans_a == false) ? dim_a[1] : dim_a[0];
 
-  gemm<platform::CPUPlace, double>(in1_Trans, in2_Trans, M, N, K, alpha,
-                                   in1.data<double>(), in2.data<double>(), beta,
-                                   out->data<double>(), context);
+  CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
+
+  gemm<platform::CPUPlace, double>(
+      transA, transB, M, N, K, alpha, matrix_a.data<double>(),
+      matrix_b.data<double>(), beta, matrix_out->data<double>(), context);
 }
 
 }  // namespace math

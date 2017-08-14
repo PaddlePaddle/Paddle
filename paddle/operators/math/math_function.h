@@ -14,44 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_USE_MKLML
-#include <mkl_cblas.h>
-#include <mkl_lapacke.h>
-#include <mkl_vml_functions.h>
-#endif
-
-#ifdef PADDLE_USE_MKL
-#include <mkl.h>
-#include <mkl_lapacke.h>
-#endif
-
-#ifdef PADDLE_USE_ATLAS
-extern "C" {
-#include <cblas.h>
-#include <clapack.h>
-}
-#endif
-
-#ifdef PADDLE_USE_OPENBLAS
-#include <cblas.h>
-#include <lapacke.h>
-#endif
-
-#ifndef LAPACK_FOUND
-extern "C" {
-#include <cblas.h>
-int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
-                   int* ipiv);
-int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
-                   int* ipiv);
-int LAPACKE_sgetri(int matrix_layout, int n, float* a, int lda,
-                   const int* ipiv);
-int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
-                   const int* ipiv);
-}
-#endif
-
-#include <cmath>
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
@@ -60,17 +22,20 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-// support continuous memory now
-template <typename Place, typename T>
+// Support continuous memory now
+// If transA = N, and transB = N
+// Then matrixA: M * K, matrixB: K * N matrixC : M * N
+// For more detailed info, please refer to
+// http://www.netlib.org/lapack/explore-html/d4/de2/sgemm_8f.html
 void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
           const int M, const int N, const int K, const T alpha, const T* A,
           const T* B, const T beta, T* C, platform::DeviceContext* context);
 
 // matrix multiply with continuous memory
 template <typename Place, typename T>
-void matmul(const framework::Tensor& in1, bool in1_T,
-            const framework::Tensor& in2, bool in2_T, float alpha,
-            framework::Tensor* out, float beta,
+void matmul(const framework::Tensor& matrix_a, bool trans_a,
+            const framework::Tensor& matrix_b, bool trans_b, float alpha,
+            framework::Tensor* matrix_out, float beta,
             platform::DeviceContext* context);
 
 }  // namespace math
