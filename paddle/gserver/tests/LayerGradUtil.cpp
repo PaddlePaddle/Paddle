@@ -388,14 +388,23 @@ void initDataLayer(TestConfig testConf,
         data.grad->zeroMem();
         break;
       case INPUT_SELF_DEFINE_DATA: {
-        size_t height = testConf.inputDefs[i].selfDefinedData->getHeight();
-        size_t width = testConf.inputDefs[i].selfDefinedData->getWidth();
-        CHECK_GT(static_cast<int>(height), 0);
-        CHECK_GT(static_cast<int>(width), 0);
-        data.value = Matrix::create(height, width, false, useGpu);
-        data.grad = Matrix::create(height, width, false, useGpu);
-        data.value->copyFrom(*testConf.inputDefs[i].selfDefinedData);
-        data.grad->zeroMem();
+        if (testConf.inputDefs[i].ids.size()) {
+          data.ids = IVector::create(testConf.inputDefs[i].ids.size(), useGpu);
+          data.ids->copyFrom(testConf.inputDefs[i].ids.data(),
+                             testConf.inputDefs[i].ids.size());
+        } else if (testConf.inputDefs[i].selfDefinedData) {
+          size_t height = testConf.inputDefs[i].selfDefinedData->getHeight();
+          size_t width = testConf.inputDefs[i].selfDefinedData->getWidth();
+          CHECK_GT(static_cast<int>(height), 0);
+          CHECK_GT(static_cast<int>(width), 0);
+          data.value = Matrix::create(height, width, false, useGpu);
+          data.grad = Matrix::create(height, width, false, useGpu);
+          data.value->copyFrom(*testConf.inputDefs[i].selfDefinedData);
+          data.grad->zeroMem();
+        } else {
+          LOG(FATAL) << "No self-defined data are given.";
+          return;
+        }
 
         const std::vector<int>& labelSeqStartPositions =
             testConf.inputDefs[i].labelSeqStartPositions;

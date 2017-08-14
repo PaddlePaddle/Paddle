@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-
 #include "paddle/framework/operator.h"
+#include <algorithm>
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -33,82 +33,120 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 }
 #endif
 
-const std::string& OperatorBase::Input(const std::string& name) const {
-  PADDLE_ENFORCE_NOT_NULL(in_out_idxs_,
-                          "Input Output Indices could not be nullptr");
-  auto it = in_out_idxs_->find(name);
-  PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
-                 name);
-  if (attrs_.count("input_format") == 0) {
-    return inputs_.at((size_t)it->second);
-  } else {
-    const auto& input_format = GetAttr<std::vector<int>>("input_format");
-    int idx = input_format[it->second];
-    return inputs_.at((size_t)idx);
+static std::unordered_map<std::string, OpProto>* g_op_protos = nullptr;
+std::unordered_map<std::string, OpProto>& OpProtos() {
+  if (g_op_protos == nullptr) {
+    g_op_protos = new std::unordered_map<std::string, OpProto>();
   }
+  return *g_op_protos;
 }
 
-std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
-  PADDLE_ENFORCE_NOT_NULL(in_out_idxs_, "IO Idx could not be nullptr");
-  auto input_format = GetAttr<std::vector<int>>("input_format");
-  auto offset = in_out_idxs_->at(name);
-  PADDLE_ENFORCE(input_format.at(static_cast<size_t>(offset) + 1) <=
-                     static_cast<int>(inputs_.size()),
-                 "Input Out Of Range");
+const std::string& OperatorBase::Input(const std::string& name) const {
+  auto& ins = Inputs(name);
+  PADDLE_ENFORCE_EQ(ins.size(), 1UL,
+                    "Op %s input %s should contain only one variable", type_,
+                    name);
+  return ins[0];
+}
 
-  return std::vector<std::string>{
-      inputs_.begin() + input_format.at(offset),
-      inputs_.begin() + input_format.at(offset + 1)};
+const std::vector<std::string>& OperatorBase::Inputs(
+    const std::string& name) const {
+  auto it = inputs_.find(name);
+  PADDLE_ENFORCE(it != inputs_.end(), "Op %s do not have input %s", type_,
+                 name);
+  return it->second;
 }
 
 const std::string& OperatorBase::Output(const std::string& name) const {
-  PADDLE_ENFORCE_NOT_NULL(in_out_idxs_, "InOut Indice could not be nullptr");
-  auto it = in_out_idxs_->find(name);
-  PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
-                 name);
-  if (attrs_.count("output_format") == 0) {
-    return outputs_.at((size_t)it->second);
-  } else {
-    const auto& output_format = GetAttr<std::vector<int>>("output_format");
-    int idx = output_format[it->second];
-    return outputs_.at((size_t)idx);
-  }
+  auto& outs = Outputs(name);
+  PADDLE_ENFORCE_EQ(outs.size(), 1UL,
+                    "Op %s output %s should contain only one variable", type_,
+                    name);
+  return outs[0];
 }
 
-std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
-  PADDLE_ENFORCE_NOT_NULL(in_out_idxs_, "InOut Indice could not be nullptr");
-  auto output_format = GetAttr<std::vector<int>>("output_format");
-  auto offset = in_out_idxs_->at(name);
-  PADDLE_ENFORCE(output_format.at(static_cast<size_t>(offset) + 1) <=
-                     static_cast<int>(outputs_.size()),
-                 "Output Out of Range");
-  return std::vector<std::string>{
-      outputs_.begin() + output_format.at(offset),
-      outputs_.begin() + output_format.at(offset + 1)};
+const std::vector<std::string>& OperatorBase::Outputs(
+    const std::string& name) const {
+  auto it = outputs_.find(name);
+  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output %s", type_,
+                 name);
+  return it->second;
+}
+
+void OperatorBase::DebugPrint(std::ostream* os) const {
+  *os << "Op(" << type_ << "), inputs:{";
+  for (auto it = inputs_.begin(); it != inputs_.end();) {
+    auto& input = *it;
+    *os << input.first << "[";
+    for (size_t i = 0; i < input.second.size(); ++i) {
+      *os << input.second[i];
+      if (i != input.second.size() - 1) {
+        *os << ", ";
+      }
+    }
+    *os << "]";
+    ++it;
+    if (it != inputs_.end()) {
+      *os << ", ";
+    }
+  }
+  *os << "}, outputs:{";
+  for (auto it = outputs_.begin(); it != outputs_.end();) {
+    auto& output = *it;
+    *os << output.first << "[";
+    for (size_t i = 0; i < output.second.size(); ++i) {
+      *os << output.second[i];
+      if (i != output.second.size() - 1) {
+        *os << ", ";
+      }
+    }
+    *os << "]";
+    ++it;
+    if (it != outputs_.end()) {
+      *os << ", ";
+    }
+  }
+  *os << "}.";
 }
 
 void OperatorBase::Rename(const std::string& old_name,
                           const std::string& new_name) {
-  std::replace(inputs_.begin(), inputs_.end(), old_name, new_name);
-  std::replace(outputs_.begin(), outputs_.end(), old_name, new_name);
+  for (auto& input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  for (auto& output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
 }
 
-void OperatorBase::DebugPrint(std::ostream* os) const {
-  *os << "Op(" << type_ << "), inputs:(";
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    *os << inputs_[i];
-    if (i != inputs_.size() - 1) {
-      *os << ", ";
+std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
+  std::vector<std::string> ret_val;
+  if (has_intermediate) {
+    // push all outputs into ret_val
+    for (auto& o : outputs_) {
+      ret_val.reserve(ret_val.size() + o.second.size());
+      ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
+    }
+    return ret_val;
+  }
+  auto it = OpProtos().find(type_);
+  PADDLE_ENFORCE(
+      it != OpProtos().end(),
+      "Operator %s not registered, cannot figure out intermediate outputs",
+      type_);
+
+  // get all OpProto::Var for outputs
+  for (auto& o : it->second.outputs()) {
+    // ignore all intermediate output
+    if (o.intermediate()) continue;
+    auto out = outputs_.find(o.name());
+    if (out != outputs_.end()) {
+      ret_val.reserve(ret_val.size() + out->second.size());
+      ret_val.insert(ret_val.end(), out->second.begin(), out->second.end());
     }
   }
-  *os << "), outputs:(";
-  for (size_t i = 0; i < outputs_.size(); ++i) {
-    *os << outputs_[i];
-    if (i != outputs_.size() - 1) {
-      *os << ", ";
-    }
-  }
-  *os << ").";
+  return ret_val;
 }
 
 }  // namespace framework

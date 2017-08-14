@@ -91,12 +91,17 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
       // create step net's temp inputs
       for (auto& input : net_op->inputs_) {
         // the weight are located in parent scope
-        if (!step_scope.FindVar(input))
-          step_scope.NewVar(input)->GetMutable<Tensor>();
+        for (auto& var_name : input.second) {
+          if (!step_scope.FindVar(var_name)) {
+            step_scope.NewVar(var_name)->GetMutable<Tensor>();
+          }
+        }
       }
       // create stepnet's outputs
       for (const auto& output : net_op->outputs_) {
-        step_scope.NewVar(output);
+        for (auto& var_name : output.second) {
+          step_scope.NewVar(var_name);
+        }
       }
       step_scopes->emplace_back(&step_scope);
     }
@@ -147,13 +152,13 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     // inputs and outputs stored in proto
     AddInput(name.inlinks,
              "the inputs that need to be segmented for each step.")
-        .SetMultiple();
+        .AsDuplicable();
     AddInput(name.boot_memories, "variables to initialize memories.")
-        .SetMultiple();
+        .AsDuplicable();
     AddInput(name.step_net, "network shared by all steps.");
 
     AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
-        .SetMultiple();
+        .AsDuplicable();
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
