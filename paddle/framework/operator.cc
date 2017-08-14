@@ -42,33 +42,35 @@ std::unordered_map<std::string, OpProto>& OpProtos() {
 }
 
 const std::string& OperatorBase::Input(const std::string& name) const {
-  auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Op %s does not have input %s", type_,
-                 name);
-  PADDLE_ENFORCE_EQ(it->second.size(), 1UL,
+  auto& ins = Inputs(name);
+  PADDLE_ENFORCE_EQ(ins.size(), 1UL,
                     "Op %s input %s should contain only one variable", type_,
                     name);
-  return it->second[0];
+  return ins[0];
 }
 
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
-  return inputs_.at(name);
+  auto it = inputs_.find(name);
+  PADDLE_ENFORCE(it != inputs_.end(), "Op %s do not have input %s", type_,
+                 name);
+  return it->second;
 }
 
 const std::string& OperatorBase::Output(const std::string& name) const {
-  auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output %s", type_,
-                 name);
-  PADDLE_ENFORCE_EQ(it->second.size(), 1UL,
-                    "Op %s input %s should contain only one variable", type_,
+  auto& outs = Outputs(name);
+  PADDLE_ENFORCE_EQ(outs.size(), 1UL,
+                    "Op %s output %s should contain only one variable", type_,
                     name);
-  return it->second[0];
+  return outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
-  return outputs_.at(name);
+  auto it = outputs_.find(name);
+  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output %s", type_,
+                 name);
+  return it->second;
 }
 
 std::string OperatorBase::DebugString() const {
@@ -118,6 +120,35 @@ void OperatorBase::Rename(const std::string& old_name,
     std::replace(output.second.begin(), output.second.end(), old_name,
                  new_name);
   }
+}
+
+std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
+  std::vector<std::string> ret_val;
+  if (has_intermediate) {
+    // push all outputs into ret_val
+    for (auto& o : outputs_) {
+      ret_val.reserve(ret_val.size() + o.second.size());
+      ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
+    }
+    return ret_val;
+  }
+  auto it = OpProtos().find(type_);
+  PADDLE_ENFORCE(
+      it != OpProtos().end(),
+      "Operator %s not registered, cannot figure out intermediate outputs",
+      type_);
+
+  // get all OpProto::Var for outputs
+  for (auto& o : it->second.outputs()) {
+    // ignore all intermediate output
+    if (o.intermediate()) continue;
+    auto out = outputs_.find(o.name());
+    if (out != outputs_.end()) {
+      ret_val.reserve(ret_val.size() + out->second.size());
+      ret_val.insert(ret_val.end(), out->second.begin(), out->second.end());
+    }
+  }
+  return ret_val;
 }
 
 }  // namespace framework

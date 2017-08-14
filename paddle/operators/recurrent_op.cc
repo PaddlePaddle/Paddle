@@ -152,13 +152,13 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     // inputs and outputs stored in proto
     AddInput(name.inlinks,
              "the inputs that need to be segmented for each step.")
-        .SetMultiple();
+        .SetDuplicable();
     AddInput(name.boot_memories, "variables to initialize memories.")
-        .SetMultiple();
+        .SetDuplicable();
     AddInput(name.step_net, "network shared by all steps.");
 
     AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
-        .SetMultiple();
+        .SetDuplicable();
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap

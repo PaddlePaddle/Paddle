@@ -21,10 +21,10 @@ class MutiInOutOpMaker : public OpProtoAndCheckerMaker {
   MutiInOutOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("In1", "a single input");
-    AddInput("In2_mult", "a multiple input").SetMultiple();
+    AddInput("In2_mult", "a multiple input").SetDuplicable();
     AddInput("In3", "another single input");
     AddOutput("Out1", "a single output");
-    AddOutput("Out2_mult", "a multiple output").SetMultiple();
+    AddOutput("Out2_mult", "a multiple output").SetDuplicable();
     AddComment("test op with multiple inputs and outputs");
   }
 };
@@ -34,10 +34,10 @@ class IOIgnoredOpMaker : public OpProtoAndCheckerMaker {
   IOIgnoredOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("In1", "a single input");
-    AddInput("In2_mult", "a multiple input").SetMultiple().IgnoreGradient();
-    AddInput("In3_mult", "another multiple input").SetMultiple();
-    AddOutput("Out1_mult", "a multiple output").SetMultiple();
-    AddOutput("Out2", "a single output").IgnoreGradient();
+    AddInput("In2_mult", "a multiple input").SetDuplicable().NoGradient();
+    AddInput("In3_mult", "another multiple input").SetDuplicable();
+    AddOutput("Out1_mult", "a multiple output").SetDuplicable();
+    AddOutput("Out2", "a single output").NoGradient();
     AddComment("op with inputs and outputs ignored in gradient calculating");
   }
 };

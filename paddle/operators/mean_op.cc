@@ -32,7 +32,7 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
   MeanOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
-    AddOutput("Out", "The output of mean op").IgnoreGradient();
+    AddOutput("Out", "The output of mean op").NoGradient();
     AddComment("Mean Operator");
   }
 };

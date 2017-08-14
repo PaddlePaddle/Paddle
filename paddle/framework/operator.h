@@ -116,34 +116,7 @@ class OperatorBase {
   //! TODO add a vector_view to prevent memory copy.
   const std::vector<std::string>& Outputs(const std::string& name) const;
 
-  virtual std::vector<std::string> OutputVars(bool has_intermediate) const {
-    std::vector<std::string> ret_val;
-    if (has_intermediate) {
-      // push all outputs into ret_val
-      for (auto& o : outputs_) {
-        ret_val.reserve(ret_val.size() + o.second.size());
-        ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
-      }
-      return ret_val;
-    }
-    auto it = OpProtos().find(type_);
-    PADDLE_ENFORCE(
-        it != OpProtos().end(),
-        "Operator %s not registered, cannot figure out intermediate outputs",
-        type_);
-
-    // get all OpProto::Var for outputs
-    for (auto& o : it->second.outputs()) {
-      // ignore all intermediate output
-      if (o.intermediate()) continue;
-      auto out = outputs_.find(o.name());
-      if (out != outputs_.end()) {
-        ret_val.reserve(ret_val.size() + out->second.size());
-        ret_val.insert(ret_val.end(), out->second.begin(), out->second.end());
-      }
-    }
-    return ret_val;
-  }
+  virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
   std::string Type() const { return type_; }
   const AttributeMap& Attrs() const { return attrs_; }
@@ -154,11 +127,11 @@ class OperatorBase {
   // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
-  std::map<std::string, std::vector<std::string>> inputs_;
+  VarNameMap inputs_;
 
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  std::map<std::string, std::vector<std::string>> outputs_;
+  VarNameMap outputs_;
   AttributeMap attrs_;
 };
 
@@ -177,11 +150,11 @@ class InferShapeContext {
       : op_(op), scope_(scope) {}
 
   size_t InputSize(const std::string& name) const {
-    return op_.inputs_.at(name).size();
+    return op_.Inputs(name).size();
   }
 
   size_t OutputSize(const std::string& name) const {
-    return op_.outputs_.at(name).size();
+    return op_.Outputs(name).size();
   }
 
   const Variable* InputVar(const std::string& name) const {
