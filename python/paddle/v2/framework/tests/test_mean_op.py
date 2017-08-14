@@ -8,7 +8,7 @@ class TestMeanOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "mean"
-        self.inputs = {'X': np.random.random((32, 784)).astype("float32")}
+        self.inputs = {'X': np.random.random((32, 84)).astype("float32")}
         self.outputs = {'Out': np.mean(self.inputs['X'])}
 
 

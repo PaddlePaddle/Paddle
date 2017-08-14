@@ -8,7 +8,7 @@ class TestSigmoidOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "sigmoid"
-        self.inputs = {'X': np.random.random((32, 100)).astype("float32")}
+        self.inputs = {'X': np.random.random((32, 18)).astype("float32")}
         self.outputs = {'Y': 1 / (1 + np.exp(-self.inputs['X']))}
 
 

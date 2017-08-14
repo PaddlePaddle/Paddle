@@ -19,7 +19,7 @@ class GaussianRandomTest(unittest.TestCase):
         op = Operator(
             "gaussian_random",
             Out="Out",
-            dims=[1000, 784],
+            dims=[10, 24],
             mean=.0,
             std=1.,
             seed=10)

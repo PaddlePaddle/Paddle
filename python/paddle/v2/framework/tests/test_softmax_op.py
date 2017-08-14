@@ -18,7 +18,7 @@ class TestSoftmaxOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "softmax"
-        self.inputs = {'X': np.random.random((32, 100)).astype("float32")}
+        self.inputs = {'X': np.random.random((32, 22)).astype("float32")}
         self.outputs = {
             'Y': np.apply_along_axis(stable_softmax, 1, self.inputs['X'])
         }

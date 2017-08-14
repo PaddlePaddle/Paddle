@@ -8,8 +8,8 @@ class TestSGD(unittest.TestCase):
 
     def setUp(self):
         self.type = "sgd"
-        w = numpy.random.random((102, 105)).astype("float32")
-        g = numpy.random.random((102, 105)).astype("float32")
+        w = numpy.random.random((12, 15)).astype("float32")
+        g = numpy.random.random((12, 15)).astype("float32")
         lr = 0.1
 
         self.inputs = {'param': w, 'grad': g}

@@ -11,10 +11,10 @@ class TestScope(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
+        tensor.set_dims([100, 84])
         tensor.alloc_int(place)
         tensor_array = numpy.array(tensor)
-        self.assertEqual((1000, 784), tensor_array.shape)
+        self.assertEqual((100, 84), tensor_array.shape)
         tensor_array[3, 9] = 1
         tensor_array[19, 11] = 2
         tensor.set(tensor_array, place)
@@ -30,11 +30,11 @@ class TestScope(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
+        tensor.set_dims([100, 84])
         tensor.alloc_float(place)
 
         tensor_array = numpy.array(tensor)
-        self.assertEqual((1000, 784), tensor_array.shape)
+        self.assertEqual((100, 84), tensor_array.shape)
         tensor_array[3, 9] = 1.0
         tensor_array[19, 11] = 2.0
         tensor.set(tensor_array, place)

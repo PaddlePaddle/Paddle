@@ -10,7 +10,7 @@ class TestCrossEntropy(unittest.TestCase):
     def setUp(self):
         # TODO this unit test is not passed
         self.type = "onehot_cross_entropy"
-        batch_size = 100
+        batch_size = 32
         class_num = 10
         X = numpy.random.random((batch_size, class_num)).astype("float32")
         label = 5 * numpy.ones(batch_size).astype("int32")
@@ -24,7 +24,7 @@ class TestCrossEntropy(unittest.TestCase):
 class CrossEntropyGradOpTest(GradientChecker):
     def test_softmax_grad(self):
         op = create_op("onehot_cross_entropy")
-        batch_size = 100
+        batch_size = 32
         class_num = 10
         inputs = {
             "X": numpy.random.uniform(

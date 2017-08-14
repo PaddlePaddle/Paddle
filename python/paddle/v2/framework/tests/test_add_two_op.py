@@ -13,8 +13,8 @@ class TestAddOp(unittest.TestCase):
     def setUp(self):
         self.type = "add_two"
         self.inputs = {
-            'X': numpy.random.random((102, 105)).astype("float32"),
-            'Y': numpy.random.random((102, 105)).astype("float32")
+            'X': numpy.random.random((12, 15)).astype("float32"),
+            'Y': numpy.random.random((12, 15)).astype("float32")
         }
         self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
 
