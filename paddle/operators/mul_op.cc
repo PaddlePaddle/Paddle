@@ -62,10 +62,6 @@ class MulOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    // PADDLE_ENFORCE_EQ(ctx.InputSize(), 3UL,
-    //                   "Input of MulOpGrad should be 3, X, Y, Out@GRAD");
-    // PADDLE_ENFORCE_EQ(ctx.OutputSize(), 2UL,
-    //                   "Output of MulOpGrad should be 2, X@GRAD, Y@GRAD");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
