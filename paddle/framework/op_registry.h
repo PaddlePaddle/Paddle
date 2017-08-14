@@ -128,7 +128,11 @@ class OpRegistry {
  public:
   template <typename OpType, typename ProtoMakerType>
   static void RegisterOp(const std::string& op_type) {
-    op_creators()[op_type] = [] { return new OpType; };
+    op_creators()[op_type] = [](
+        const std::string& type, const VarNameMap& inputs,
+        const VarNameMap& outputs, const AttributeMap& attrs) {
+      return new OpType(type, inputs, outputs, attrs);
+    };
     OpAttrChecker& op_checker = op_checkers()[op_type];
     OpProto& op_proto = OpProtos()[op_type];
     auto maker = ProtoMakerType(&op_proto, &op_checker);
@@ -143,7 +147,11 @@ class OpRegistry {
   template <typename GradOpType>
   static void RegisterGradOp(const std::string& op_type,
                              const std::string& grad_op_type) {
-    op_creators()[grad_op_type] = [] { return new GradOpType; };
+    op_creators()[grad_op_type] = [](
+        const std::string& type, const VarNameMap& inputs,
+        const VarNameMap& outputs, const AttributeMap& attrs) {
+      return new GradOpType(type, inputs, outputs, attrs);
+    };
     grad_ops()[op_type] = grad_op_type;
   }
 

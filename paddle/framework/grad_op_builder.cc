@@ -13,22 +13,22 @@ express or implied. See the License for the specific language governing
 permissions and limitations under the License. */
 
 #include "paddle/framework/grad_op_builder.h"
-#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
 enum class OpArgType { IN, OUT };
 
-static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
-                       const OpArgType& src_type, const OpArgType& dst_type,
-                       bool is_grad) {
-  const auto& src_inout =
-      src_type == OpArgType::IN ? src_op->inputs_ : src_op->outputs_;
-  auto& dst_inout =
-      dst_type == OpArgType::IN ? dst_op->inputs_ : dst_op->outputs_;
+using VarNameMap = OperatorBase::VarNameMap;
 
-  const OpProto& proto = OpProtos().at(src_op->type_);
+static VarNameMap TransOpArg(const OperatorBase* src_op,
+                             const OpArgType& src_type,
+                             const OpArgType& dst_type, bool is_grad) {
+  const auto& src_inout =
+      src_type == OpArgType::IN ? src_op->Inputs() : src_op->Outputs();
+  VarNameMap dst_inout;
+
+  const OpProto& proto = OpProtos().at(src_op->Type());
   const auto& src_arg_list =
       src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
   for (const auto& arg : src_arg_list) {
@@ -41,17 +41,23 @@ static void TransOpArg(const OperatorBase* src_op, OperatorBase* dst_op,
       dst_inout[dst_name].emplace_back(s);
     }
   }
+  return dst_inout;
 }
 
 OperatorBase* BuildGradOp(const OperatorBase* op) {
-  std::string grad_op_type = OpRegistry::grad_ops().at(op->type_);
-  OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)();
-  grad_op->type_ = grad_op_type;
-  grad_op->attrs_ = op->attrs_;
-  TransOpArg(op, grad_op, OpArgType::IN, OpArgType::IN, false);   // I
-  TransOpArg(op, grad_op, OpArgType::OUT, OpArgType::IN, false);  // O
-  TransOpArg(op, grad_op, OpArgType::OUT, OpArgType::IN, true);   // OG
-  TransOpArg(op, grad_op, OpArgType::IN, OpArgType::OUT, true);   // IG
+  std::string grad_op_type = OpRegistry::grad_ops().at(op->Type());
+  auto I = TransOpArg(op, OpArgType::IN, OpArgType::IN, false);   // I
+  auto O = TransOpArg(op, OpArgType::OUT, OpArgType::IN, false);  // O
+  auto OG = TransOpArg(op, OpArgType::OUT, OpArgType::IN, true);  // OG
+  auto IG = TransOpArg(op, OpArgType::IN, OpArgType::OUT, true);  // IG
+  // TODO(merge I/O/OG)
+  VarNameMap GradIn;
+  GradIn.insert(I.begin(), I.end());
+  GradIn.insert(O.begin(), O.end());
+  GradIn.insert(OG.begin(), OG.end());
+
+  OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)(
+      grad_op_type, GradIn, IG, op->Attrs());
   return grad_op;
 }
 
