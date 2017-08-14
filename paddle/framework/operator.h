@@ -216,7 +216,7 @@ class InferShapeContext {
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
                      PADDLE_ENFORCE_NOT_NULL(
-                         var, "MultiOutput(%s:%s) should not be nullptr", name,
+                         var, "MultiOutput(%s:%s) should not be nullptr.", name,
                          sub_name);
                      return var->GetMutable<T>();
                    });
