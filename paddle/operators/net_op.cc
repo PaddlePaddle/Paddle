@@ -56,7 +56,7 @@ void NetOp::CompleteAddOp(bool calc) {
     }
   }
 
-  attrs_["temporary_index"] = tmp_index;
+  SetAttr("temporary_index", tmp_index);
 }
 
 std::string NetOp::DebugString() const {

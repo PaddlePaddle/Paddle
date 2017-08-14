@@ -59,8 +59,8 @@ TEST(OpKernel, all) {
   net->CompleteAddOp();
   AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"}, net->inputs_);
   AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_);
-  auto tmp_idx_iter = net->attrs_.find("temporary_index");
-  ASSERT_NE(net->attrs_.end(), tmp_idx_iter);
+  auto tmp_idx_iter = net->Attrs().find("temporary_index");
+  ASSERT_NE(net->Attrs().end(), tmp_idx_iter);
   auto& tmp_idx = boost::get<std::vector<int>>(tmp_idx_iter->second);
   ASSERT_EQ(1UL, tmp_idx.size());
   ASSERT_EQ("y", net->outputs_[tmp_idx[0]]);
