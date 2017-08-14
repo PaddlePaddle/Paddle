@@ -29,7 +29,7 @@ void NetOp::CompleteAddOp(bool calc) {
   std::set<std::string> input_set;
   std::set<std::string> output_set;
   for (auto& op : ops_) {
-    for (auto& ipt : op->inputs_) {
+    for (auto& ipt : op->Inputs()) {
       for (auto& var_name : ipt.second) {
         if (!Contains(output_set, var_name)) {  // Not other op's output
           input_set.insert(var_name);
@@ -39,7 +39,7 @@ void NetOp::CompleteAddOp(bool calc) {
       }
     }
 
-    for (auto& opt : op->outputs_) {
+    for (auto& opt : op->Outputs()) {
       for (auto& var_name : opt.second) {
         output_set.insert(var_name);
       }
