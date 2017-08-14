@@ -34,9 +34,6 @@ RUN apt-get update && \
     net-tools && \
     apt-get clean -y
 
-# paddle is using numpy.flip, which is introduced since 1.12.0
-# RUN pip --no-cache-dir install 'numpy>=1.12.0'
-
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
@@ -67,7 +64,7 @@ RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install opencv-python
 
 # paddle is using numpy.flip, which is introduced since 1.12.0
-RUN pip --no-cache-dir install 'numpy>=1.12.0'
+# RUN pip --no-cache-dir install 'numpy>=1.12.0'
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt
 
