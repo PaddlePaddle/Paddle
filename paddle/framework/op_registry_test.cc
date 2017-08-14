@@ -68,11 +68,8 @@ REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  auto* input = op_desc.add_inputs();
-  ConstructVars("input", {"aa"}, input);
-
-  auto* output = op_desc.add_outputs();
-  ConstructVars("output", {"bb"}, output);
+  ConstructVars("input", {"aa"}, op_desc.add_inputs());
+  ConstructVars("output", {"bb"}, op_desc.add_outputs());
 
   float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
@@ -92,11 +89,8 @@ TEST(OpRegistry, CreateOp) {
 TEST(OpRegistry, IllegalAttr) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  auto* input = op_desc.add_inputs();
-  ConstructVars("input", {"aa"}, input);
-
-  auto* output = op_desc.add_outputs();
-  ConstructVars("output", {"bb"}, output);
+  ConstructVars("input", {"aa"}, op_desc.add_inputs());
+  ConstructVars("output", {"bb"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -120,11 +114,8 @@ TEST(OpRegistry, IllegalAttr) {
 TEST(OpRegistry, DefaultValue) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  auto* input = op_desc.add_inputs();
-  ConstructVars("input", {"aa"}, input);
-
-  auto* output = op_desc.add_outputs();
-  ConstructVars("output", {"bb"}, output);
+  ConstructVars("input", {"aa"}, op_desc.add_inputs());
+  ConstructVars("output", {"bb"}, op_desc.add_outputs());
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
@@ -139,11 +130,8 @@ TEST(OpRegistry, DefaultValue) {
 TEST(OpRegistry, CustomChecker) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
-  auto* input = op_desc.add_inputs();
-  ConstructVars("input", {"ii"}, input);
-
-  auto* output = op_desc.add_outputs();
-  ConstructVars("output", {"oo"}, output);
+  ConstructVars("input", {"ii"}, op_desc.add_inputs());
+  ConstructVars("output", {"oo"}, op_desc.add_outputs());
 
   // attr 'test_attr' is not set
   bool caught = false;

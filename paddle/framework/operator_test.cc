@@ -71,12 +71,8 @@ REGISTER_OP(test_operator, paddle::framework::OpWithoutKernelTest,
 TEST(OperatorBase, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("test_operator");
-
-  auto* ipt = op_desc.mutable_inputs()->Add();
-  ConstructVars("IN1", {"input"}, ipt);
-
-  auto* output = op_desc.mutable_outputs()->Add();
-  ConstructVars("OUT1", {"output"}, output);
+  ConstructVars("IN1", {"input"}, op_desc.add_inputs());
+  ConstructVars("OUT1", {"output"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -195,11 +191,8 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 TEST(OpKernel, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
-  auto* ipt = op_desc.mutable_inputs()->Add();
-  ConstructVars("IN1", {"x"}, ipt);
-
-  auto* output = op_desc.mutable_outputs()->Add();
-  ConstructVars("OUT1", {"y"}, output);
+  ConstructVars("IN1", {"x"}, op_desc.add_inputs());
+  ConstructVars("OUT1", {"y"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -226,12 +219,9 @@ TEST(OpKernel, multi_inputs) {
 
   OpDesc op_desc;
   op_desc.set_type("op_multi_inputs_with_kernel");
-  auto* x = op_desc.mutable_inputs()->Add();
-  ConstructVars("xs", {"x0", "x1", "x2"}, x);
-  auto* k = op_desc.mutable_inputs()->Add();
-  ConstructVars("k", {"k0"}, k);
-  auto* y = op_desc.mutable_outputs()->Add();
-  ConstructVars("ys", {"y0", "y1"}, y);
+  ConstructVars("xs", {"x0", "x1", "x2"}, op_desc.add_inputs());
+  ConstructVars("k", {"k0"}, op_desc.add_inputs());
+  ConstructVars("ys", {"y0", "y1"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
