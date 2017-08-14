@@ -230,9 +230,8 @@ def auc_evaluator(
 def pnpair_evaluator(
         input,
         label,
-        info,
-        name=None,
-        weight=None, ):
+        weight,
+        name=None, ):
     """
     Positive-negative pair rate Evaluator which adapts to rank task like
     learning to rank. This evaluator must contain at least three layers.
@@ -241,27 +240,24 @@ def pnpair_evaluator(
 
     .. code-block:: python
 
-       eval = pnpair_evaluator(input, info, label)
+       eval = pnpair_evaluator(input, label, weight)
 
-    :param name: Evaluator name.
-    :type name: None|basestring
     :param input: Input Layer name. The output prediction of network.
     :type input: LayerOutput
     :param label: Label layer name.
     :type label: LayerOutput
-    :param info: Label layer name. (TODO, explaination)
-    :type info: LayerOutput
     :param weight: Weight Layer name. It should be a matrix with size
                   [sample_num, 1]. (TODO, explaination)
     :type weight: LayerOutput
+    :param name: Evaluator name.
+    :type name: None|basestring
     """
     evaluator_base(
-        name=name,
-        type="pnpair",
         input=input,
+        type="pnpair",
         label=label,
-        info=info,
-        weight=weight)
+        weight=weight,
+        name=name, )
 
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
