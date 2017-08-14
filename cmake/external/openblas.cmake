@@ -21,27 +21,38 @@ IF(NOT ${CBLAS_FOUND})
     SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
 
-    SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/${LIBRARY_PREFIX}openblas${STATIC_LIBRARY_SUFFIX}"
+    SET(CBLAS_LIBRARIES
+        "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
-    SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_SHARED=1 NO_LAPACK=1)
+    SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_SHARED=1 NO_LAPACK=1 libs)
 
-    IF(ANDROID)
-        # arm_soft_fp_abi branch of OpenBLAS to support softfp
-        #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
-        SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
-        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0 libs)
-    ELSEIF(RPI)
-        # use hardfp
-        SET(OPENBLAS_COMMIT "v0.2.19")
-        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0 libs)
+    IF(CMAKE_CROSSCOMPILING)
+        IF(ANDROID)
+            # arm_soft_fp_abi branch of OpenBLAS to support softfp
+            #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
+            SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
+            IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
+                SET(TARGET "ARMV7")
+            ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
+                SET(TARGET "ARMV8")
+            ENDIF()
+            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=${TARGET} ARM_SOFTFP_ABI=1 USE_THREAD=0)
+        ELSEIF(RPI)
+            # use hardfp
+            SET(OPENBLAS_COMMIT "v0.2.19")
+            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0)
+        ENDIF()
     ELSE()
         SET(OPENBLAS_COMMIT "v0.2.19")
-        SET(OPENBLAS_ARGS DYNAMIC_ARCH=1 libs)
+        SET(OPTIONAL_ARGS "")
+        IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
+            SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
+        ENDIF()
     ENDIF()
 
     ExternalProject_Add(
-        openblas
+        extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
         GIT_TAG             ${OPENBLAS_COMMIT}
@@ -53,8 +64,19 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-    LIST(APPEND external_project_dependencies openblas)
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
+
+# FIXME(gangliao): generate cblas target to track all high performance
+# linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
+SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
+FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+ADD_LIBRARY(cblas STATIC ${dummyfile})
+TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+
+IF(NOT ${CBLAS_FOUND})
+    ADD_DEPENDENCIES(cblas extern_openblas)
+    LIST(APPEND external_project_dependencies cblas)
+ENDIF(NOT ${CBLAS_FOUND})

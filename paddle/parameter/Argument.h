@@ -149,6 +149,7 @@ struct Argument {
                                      : getBatchSize();
   }
 
+  bool hasSeq() const { return sequenceStartPositions != nullptr; }
   bool hasSubseq() const { return subSequenceStartPositions != nullptr; }
 
   const int* getCpuStartPositions() const {
@@ -298,7 +299,7 @@ struct Argument {
    */
   void poolSequenceWithStride(const Argument& input,
                               size_t stride,
-                              IVectorPtr* stridePositions,
+                              ICpuGpuVectorPtr* stridePositions,
                               bool reversed = false);
   /**
    * @brief getValueString will return the argument's output in string. There
@@ -316,6 +317,30 @@ struct Argument {
    */
   void printValueString(std::ostream& stream,
                         const std::string& prefix = "") const;
+
+  /**
+   * @brief reorganizeSeqInfo will reorganize sequenceStartPositions and
+   * subSequenceStartPositions into a 2 dimensional arrary: reorganizedSeqInfo.
+   *
+   * @param seqStartPos: sequenceStartPositions of an Argument.
+   * @param subSeqStartPos: subSequenceStartPositions of an Argument.
+   * @param the reorganized sequence start position information.
+   *
+   * Examples:
+   * seqStartPos: [0, 4, 15, 20, 28]
+   * subSeqStartPos: [0, 3, 4, 5, 7, 10, 15, 20, 22, 23, 25, 28]
+   * reorganizedSeqInfo:
+   *   [
+   *     [0,3,4],
+   *     [4,5,7,10,15],
+   *     [15,20],
+   *     [20,22,23,25,28]
+   *   ]
+   */
+  static void reorganizeSeqInfo(
+      const ICpuGpuVectorPtr seqStartPos,
+      const ICpuGpuVectorPtr subSeqStartPos,
+      std::vector<std::vector<int>>& reorganizedSeqInfo);
 };
 
 }  // namespace paddle

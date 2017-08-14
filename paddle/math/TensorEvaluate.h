@@ -103,7 +103,10 @@ inline void TensorGpuApply(LeftType& lhs, const RightType& rhs) {
 }
 #else
 template <class T, typename LeftType, typename RightType>
-inline void TensorGpuApply(LeftType& lhs, RightType& rhs) {}
+inline void TensorGpuApply(LeftType& lhs, RightType& rhs) {
+  LOG(FATAL) << "Since it is gcc compiled, "
+                "this calculation does not support GPU implementation.";
+}
 #endif
 
 }  // namespace paddle

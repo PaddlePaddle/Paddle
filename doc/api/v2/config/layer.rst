@@ -59,6 +59,11 @@ context_projection
 ..  autoclass:: paddle.v2.layer.context_projection
     :noindex:
 
+row_conv
+--------
+..  autoclass:: paddle.v2.layer.row_conv
+    :noindex:
+
 Image Pooling Layer
 ===================
 
@@ -99,6 +104,11 @@ cross_channel_norm
 ------------------
 ..  autoclass:: paddle.v2.layer.cross_channel_norm
     :noindex:
+
+row_l2_norm
+-----------
+..  autoclass:: paddle.v2.layer.row_l2_norm
+    :noindex:
     
 Recurrent Layers
 ================
@@ -130,7 +140,7 @@ recurrent_group
 ---------------
 ..  autoclass:: paddle.v2.layer.recurrent_group
     :noindex:
-    
+
 lstm_step
 ---------
 ..  autoclass:: paddle.v2.layer.lstm_step
@@ -145,12 +155,12 @@ beam_search
 ------------
 ..  autoclass:: paddle.v2.layer.beam_search
     :noindex:
-    
+
 get_output
 ----------
 ..  autoclass:: paddle.v2.layer.get_output
     :noindex:
-    
+
 Mixed Layer
 ===========
 
@@ -193,6 +203,10 @@ identity_projection
 ..  autoclass:: paddle.v2.layer.identity_projection
     :noindex:
 
+slice_projection
+-------------------
+..  autoclass:: paddle.v2.layer.slice_projection
+    :noindex:
 
 table_projection
 ----------------
@@ -203,7 +217,7 @@ trans_full_matrix_projection
 ----------------------------
 ..  autoclass:: paddle.v2.layer.trans_full_matrix_projection
     :noindex:
-    
+
 Aggregate Layers
 ================
 
@@ -241,6 +255,16 @@ concat
 seq_concat
 ----------
 ..  autoclass:: paddle.v2.layer.seq_concat
+    :noindex:
+
+kmax_sequence_score
+-------------------
+..  autoclass:: paddle.v2.layer.kmax_sequence_score
+    :noindex:
+
+sub_nested_seq
+--------------
+..  autoclass:: paddle.v2.layer.sub_nested_seq
     :noindex:
 
 Reshaping Layers
@@ -311,6 +335,11 @@ scaling
 ..  autoclass:: paddle.v2.layer.scaling
     :noindex:
 
+clip
+----
+..  autoclass:: paddle.v2.layer.clip
+    :noindex:
+
 slope_intercept
 ---------------
 ..  autoclass:: paddle.v2.layer.slope_intercept
@@ -345,6 +374,12 @@ sampling_id
 -----------
 ..  autoclass:: paddle.v2.layer.sampling_id
     :noindex:
+
+multiplex
+---------
+..  autoclass:: paddle.v2.layer.multiplex
+    :noindex:
+
 
 Slicing and Joining Layers
 ==========================
@@ -434,10 +469,44 @@ smooth_l1_cost
 ..  autoclass:: paddle.v2.layer.smooth_l1_cost
     :noindex:
 
-Check Layer 
+multibox_loss
+--------------
+..  autoclass:: paddle.v2.layer.multibox_loss
+    :noindex:
+
+Check Layer
 ============
 
 eos
 ---
 ..  autoclass:: paddle.v2.layer.eos
+    :noindex:
+
+Miscs
+=====
+
+dropout
+--------------
+..  autoclass:: paddle.v2.layer.dropout
+    :noindex:
+
+Activation with learnable parameter
+===================================
+
+prelu
+--------
+..  autoclass:: paddle.v2.layer.prelu
+    :noindex:
+
+gated_unit
+-----------
+..  autoclass:: paddle.v2.layer.gated_unit
+    :noindex:
+
+Detection output Layer
+======================
+
+detection_output
+----------------
+..  autoclass:: paddle.v2.layer.detection_output
     :noindex:

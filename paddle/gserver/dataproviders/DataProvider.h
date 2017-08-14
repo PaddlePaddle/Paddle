@@ -205,10 +205,8 @@ public:
       hl_destroy_event(hlEvent_);
       hlEvent_ = NULL;
     }
-    if (batchData_) {
-      delete batchData_;
-      batchData_ = NULL;
-    }
+    delete batchData_;
+    batchData_ = NULL;
   }
 
   void setDataBatch(DataBatch* batchData) { batchData_ = batchData; }

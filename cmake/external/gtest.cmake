@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,9 +34,15 @@ IF(WITH_TESTING)
             "${GTEST_INSTALL_DIR}/lib/libgtest_main.a" CACHE FILEPATH "gtest main libraries." FORCE)
     ENDIF(WIN32)
 
+    IF(WITH_MKLML)
+        # wait for mklml downloading completed
+        SET(GTEST_DEPENDS   ${MKLML_PROJECT})
+    ENDIF()
+
     ExternalProject_Add(
-        gtest
+        extern_gtest
         ${EXTERNAL_PROJECT_LOG_ARGS}
+        DEPENDS         ${GTEST_DEPENDS}
         GIT_REPOSITORY  "https://github.com/google/googletest.git"
         GIT_TAG         "release-1.8.0"
         PREFIX          ${GTEST_SOURCES_DIR}
@@ -55,5 +61,14 @@ IF(WITH_TESTING)
                          -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                          -DCMAKE_BUILD_TYPE:STRING=Release
     )
-    LIST(APPEND external_project_dependencies gtest)
+
+    ADD_LIBRARY(gtest STATIC IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET gtest PROPERTY IMPORTED_LOCATION ${GTEST_LIBRARIES})
+    ADD_DEPENDENCIES(gtest extern_gtest)
+
+    ADD_LIBRARY(gtest_main STATIC IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${GTEST_MAIN_LIBRARIES})
+    ADD_DEPENDENCIES(gtest_main extern_gtest)
+
+    LIST(APPEND external_project_dependencies gtest gtest_main)
 ENDIF(WITH_TESTING)
