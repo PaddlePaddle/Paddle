@@ -25,12 +25,12 @@ class TestNet(unittest.TestCase):
         net.complete_add_op(True)
 
         expected = '''
-Op(plain_net), inputs:(W, X, Y), outputs:(Out, fc.out, pre_activation).
-    Op(add_two), inputs:(X, Y), outputs:(Out).
-    Op(plain_net), inputs:(W, X), outputs:(fc.out, pre_activation).
-        Op(plain_net), inputs:(W, X), outputs:(fc.out, pre_activation).
-            Op(mul), inputs:(X, W), outputs:(pre_activation).
-            Op(sigmoid), inputs:(pre_activation), outputs:(fc.out).
+Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}.
+    Op(add_two), inputs:{X[X], Y[Y]}, outputs:{Out[Out]}.
+    Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
+        Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
+            Op(mul), inputs:{X[X], Y[W]}, outputs:{Out[pre_activation]}.
+            Op(sigmoid), inputs:{X[pre_activation]}, outputs:{Y[fc.out]}.
 '''
         self.assertEqual(expected, "\n" + str(net))
 
