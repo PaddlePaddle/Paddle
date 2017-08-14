@@ -156,6 +156,7 @@ class GradientChecker(unittest.TestCase):
 
     def compare_grad(self, forward_op, inputs):
         backward_op = core.Operator.backward(forward_op, set())
+        # return if not compile with GPU or not implementing GPU kernel
         if not (core.is_compile_gpu() and backward_op.support_gpu()):
             return
 
@@ -239,7 +240,7 @@ class GradientChecker(unittest.TestCase):
         for place in places:
             # get analytical gradients according to different device
             analytic_grads = self.get_grad(forward_op, backward_op, input_vars,
-                                           check_grad_names, place)
+                                           check_names, place)
             self.assert_is_close(numeric_grads, analytic_grads, check_names,
                                  max_relative_error,
                                  "Gradient Check On %s" % str(place))
