@@ -117,8 +117,8 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
   virtual unsigned int* semaphore() const {
     if (semaphore_ == NULL) {
-      char* scratch = static_cast<char*>(scratchpad()) +
-        Eigen::kCudaScratchSize;
+      char* scratch =
+          static_cast<char*>(scratchpad()) + Eigen::kCudaScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
       cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_);
     }
