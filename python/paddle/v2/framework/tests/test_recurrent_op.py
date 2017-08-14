@@ -8,22 +8,22 @@ from paddle.v2.framework.op import Operator
 def py_sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
+
 class PySimpleRNN(object):
     '''
     A simple implementation of RNN based on numpy, to futhur test RecurrentOp's alogorithm
     '''
-    def __init__(self,
-                 input_dim = 30,
-                 batch_size = 50,
-                 weight_dim = 15,
-                 sent_len = 11):
+
+    def __init__(self, input_dim=30, batch_size=50, weight_dim=15, sent_len=11):
         self.x = np.random.normal(size=(sent_len, batch_size, input_dim))
         self.W = np.random.normal(size=(input_dim, input_dim))
         self.U = np.random.normal(size=(input_dim, input_dim))
         self.h_boot = np.random.normal(size=(batch_size, input_dim))
 
         # memories
-        self.mems = [np.zeros(shape=(batch_size, input_dim)) for i in range(sent_len)]
+        self.mems = [
+            np.zeros(shape=(batch_size, input_dim)) for i in range(sent_len)
+        ]
 
     def forward(self):
         xs = self.segment_inputs()
@@ -43,7 +43,7 @@ class PySimpleRNN(object):
         '''
         mem = self.mems[step_id]
         if step_id > 0:
-            pre_mem = self.mems[step_id-1]
+            pre_mem = self.mems[step_id - 1]
         else:
             pre_mem = self.h_boot
         xW = np.matmul(x, self.W)
@@ -51,6 +51,7 @@ class PySimpleRNN(object):
 
         sum = xW + hU
         self.mems[step_id] = py_sigmoid(sum)
+
 
 class PySimpleRNNTest(unittest.TestCase):
     def setUp(self):
@@ -91,11 +92,8 @@ class TestRecurrentOp(unittest.TestCase):
     sent_len = 11
 
     def setUp(self):
-        self.py_rnn = PySimpleRNN(self.input_dim,
-                                  self.batch_size,
-                                  self.weight_dim,
-                                  self.sent_len)
-
+        self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
+                                  self.weight_dim, self.sent_len)
 
     def forward(self):
         self.scope = core.Scope()
@@ -111,22 +109,27 @@ class TestRecurrentOp(unittest.TestCase):
         # create inlink
         x_np_data = self.py_rnn.x
         create_tensor(self.scope, "x",
-                      [self.sent_len, self.batch_size, self.input_dim], x_np_data)
+                      [self.sent_len, self.batch_size, self.input_dim],
+                      x_np_data)
         W_np_data = self.py_rnn.W
-        create_tensor(self.scope, "W", [self.input_dim, self.input_dim], W_np_data)
+        create_tensor(self.scope, "W", [self.input_dim, self.input_dim],
+                      W_np_data)
 
         U_np_data = self.py_rnn.U
-        create_tensor(self.scope, "U", [self.input_dim, self.input_dim], U_np_data)
+        create_tensor(self.scope, "U", [self.input_dim, self.input_dim],
+                      U_np_data)
 
         h_boot_np_data = self.py_rnn.h_boot
-        create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim], h_boot_np_data)
+        create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim],
+                      h_boot_np_data)
         self.scope.new_var("step_scopes")
         self.scope.new_var("h@alias")
         self.scope.new_var("h")
 
     def create_rnn_op(self):
         # create RNNOp
-        rnnop = Operator("recurrent_op",
+        rnnop = Operator(
+            "recurrent_op",
             # inputs
             inlinks=["x"],
             boot_memories=["h_boot"],
@@ -145,8 +148,10 @@ class TestRecurrentOp(unittest.TestCase):
         var = self.scope.new_var("stepnet")
         stepnet = var.get_net()
 
-        x_fc_op = Operator("fc", X="x@alias", W="W", Y="Wx")
-        h_fc_op = Operator("fc", X="h@pre", W="U", Y="Uh")
+        # x_fc_op = Operator("fc", X="x@alias", W="W", Y="Wx")
+        # h_fc_op = Operator("fc", X="h@pre", W="U", Y="Uh")
+        x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
+        h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
         sum_op = Operator("add_two", X="Wx", Y="Uh", Out="sum")
         sig_op = Operator("sigmoid", X="sum", Y="h@alias")
 
@@ -162,6 +167,7 @@ class TestRecurrentOp(unittest.TestCase):
         print
         print 'py_output', py_output
         self.assertEqual(pd_output.shape, py_output.shape)
+
 
 if __name__ == '__main__':
     unittest.main()
