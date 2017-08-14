@@ -71,8 +71,8 @@ REGISTER_OP(test_operator, paddle::framework::OpWithoutKernelTest,
 TEST(OperatorBase, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("test_operator");
-  BuildVar("IN1", {"input"}, op_desc.add_inputs());
-  BuildVar("OUT1", {"output"}, op_desc.add_outputs());
+  BuildVar("input", {"IN1"}, op_desc.add_inputs());
+  BuildVar("output", {"OUT1"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
