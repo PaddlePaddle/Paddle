@@ -1,0 +1,16 @@
+if (WITH_GPU)
+    if (WITH_MKLML)
+        nv_library(math_function SRCS math_function.cc math_function.cu DEPS mklml device_context)
+    else()
+        nv_library(math_function SRCS math_function.cc math_function.cu DEPS cblas device_context)
+    endif()
+else()
+    if (WITH_MKLML)
+        cc_library(math_function SRCS math_function.cc DEPS mklml device_context)
+    else()
+        cc_library(math_function SRCS math_function.cc DEPS cblas device_context)
+    endif()
+endif()    
+
+
+nv_test(math_function_test SRCS math_function_test.cc DEPS math_function tensor)

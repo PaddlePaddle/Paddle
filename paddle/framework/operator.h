@@ -281,6 +281,10 @@ class ExecutionContext : public InferShapeContext {
 
   platform::Place GetPlace() const { return device_context_->GetPlace(); }
 
+  const platform::DeviceContext* device_context() const {
+    return device_context_;
+  }
+
   const platform::DeviceContext* device_context_;
 };
 
