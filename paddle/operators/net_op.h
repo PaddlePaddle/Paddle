@@ -37,6 +37,7 @@ namespace operators {
 class NetOp : public framework::OperatorBase {
  public:
   static const char kAll[];
+  DEFINE_OPERATOR_CTOR(NetOp, framework::OperatorBase);
 
   /**
    * Infer all the operators' input and output variables' shapes, will be called

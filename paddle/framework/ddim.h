@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/framework/dim.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/variant.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace framework {

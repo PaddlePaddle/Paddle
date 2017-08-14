@@ -21,17 +21,18 @@ class TestCrossEntropy(unittest.TestCase):
         self.outputs = {'Y': numpy.array(Y).astype("float32")}
 
 
-# class CrossEntropyGradOpTest(GradientChecker):
-#     def test_softmax_grad(self):
-#         op = create_op("onehot_cross_entropy")
-#         batch_size = 100
-#         class_num = 10
-#         inputs = {
-#             "X": numpy.random.uniform(
-#                 0.1, 1.0, [batch_size, class_num]).astype("float32"),
-#             "label": (class_num / 2) * numpy.ones(batch_size).astype("int32")
-#         }
-#         self.check_grad(op, inputs, set("X"), "Y")
+class CrossEntropyGradOpTest(GradientChecker):
+    def test_softmax_grad(self):
+        op = create_op("onehot_cross_entropy")
+        batch_size = 100
+        class_num = 10
+        inputs = {
+            "X": numpy.random.uniform(
+                0.1, 1.0, [batch_size, class_num]).astype("float32"),
+            "label": (class_num / 2) * numpy.ones(batch_size).astype("int32")
+        }
+        self.check_grad(op, inputs, set("X"), "Y")
+
 
 if __name__ == "__main__":
     unittest.main()

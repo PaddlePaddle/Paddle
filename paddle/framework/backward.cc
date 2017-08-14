@@ -31,7 +31,7 @@ static void ForEachVarName(Map& names, T callback) {
 }
 
 static bool AllInSet(
-    const std::unordered_map<std::string, std::vector<std::string>>& names,
+    const std::map<std::string, std::vector<std::string>>& names,
     const std::string& suffix, const std::unordered_set<std::string>& set) {
   bool all_in_set = true;
   ForEachVarName(names, [&all_in_set, &set, &suffix](const std::string& n) {

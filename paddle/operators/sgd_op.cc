@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 class SGDOp : public framework::OperatorWithKernel {
+  DEFINE_OPERATOR_CTOR(SGDOp, framework::OperatorWithKernel)
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(

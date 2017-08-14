@@ -64,6 +64,17 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
+  using VarNameMap = std::map<std::string, std::vector<std::string>>;
+
+  OperatorBase() = default;
+  OperatorBase(const std::string& type, const VarNameMap& inputs,
+               const VarNameMap& outputs, const AttributeMap& attrs)
+      : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
+
+  OperatorBase(const OperatorBase& o) = delete;
+  OperatorBase& operator=(const OperatorBase& o) = delete;
+  OperatorBase(OperatorBase&& o) = delete;
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -96,9 +107,9 @@ class OperatorBase {
 
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
-
   //! Get a input which has multiple variables.
   const std::vector<std::string>& Inputs(const std::string& name) const;
+
   //! Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
   //! Get an output which has multiple variables.
@@ -134,19 +145,31 @@ class OperatorBase {
     return ret_val;
   }
 
+  std::string Type() const { return type_; }
+  const AttributeMap& Attrs() const { return attrs_; }
+
  public:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
   // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
-  std::unordered_map<std::string, std::vector<std::string>> inputs_;
+  std::map<std::string, std::vector<std::string>> inputs_;
 
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  std::unordered_map<std::string, std::vector<std::string>> outputs_;
+  std::map<std::string, std::vector<std::string>> outputs_;
   AttributeMap attrs_;
 };
+
+#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                               \
+ public:                                                                       \
+  Class() : ParentClass() { /* TODO(yi): This constructor is to be removed. */ \
+  }                                                                            \
+  Class(const std::string& type, const VarNameMap& inputs,                     \
+        const VarNameMap& outputs,                                             \
+        const paddle::framework::AttributeMap& attrs)                          \
+      : ParentClass(type, inputs, outputs, attrs) {}
 
 class InferShapeContext {
  public:
@@ -287,6 +310,8 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(OperatorWithKernel, OperatorBase)
+
   struct OpKernelKey {
     platform::Place place_;
 

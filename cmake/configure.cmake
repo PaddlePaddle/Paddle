@@ -129,7 +129,7 @@ if(WITH_GOLANG)
     add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/glide
       COMMAND env GOPATH=${GOPATH} ${GLIDE} install
       COMMAND touch ${CMAKE_BINARY_DIR}/glide
-      DEPENDS ${PROJ_ROOT}/go/glide.lock
+      DEPENDS ${PADDLE_SOURCE_DIR}/go/glide.lock
       WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go"
       )
 
