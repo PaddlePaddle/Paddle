@@ -27,7 +27,7 @@ LODDenseTensor 会直接沿用目前的实现，即直接继承 `DenseTensor`，
 
 ## 现有代码迁移
 ### Tensor替换为 DenseTensor
-现有所有类似以 `Tensor` 作为模板参数的操作，比如 `GetMutable<Tensor>` 全部替换为 `DenseTensor`
+现有所有类似以 `Tensor` 作为模板参数的操作，比如 `GetMutable<Tensor>` 全部替换为 `GetMutable<DenseTensor>`
 ### LODTensor 替换为 LODDenseTensor
 ### 在Variable中添加Clone接口
 
@@ -68,8 +68,15 @@ void InferShape() {
 
 ```c++
 template <typename T>
-T* VarGetMutable(Variable* var, bool enable_inherience) {
-  if (enable_inherience && IsInherience(T, var.type())) {
+bool IsInherienceOf(const Variable& child_type_var) {
+  // several if-else
+  if (xxxx) return true;
+  return false;
+}
+
+template <typename T>
+T* VarGetMutable(Variable* var, bool enable_inherience = true) {
+  if (enable_inherience && IsInherienceOf<T>(var)) {
     return var.Get<T>();
   }
   return var.GetMutable<T>();
