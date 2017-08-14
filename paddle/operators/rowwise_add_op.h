@@ -31,11 +31,11 @@ template <typename Place, typename T>
 class RowwiseAddKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto out = context.Output<Tensor>(0);
+    auto out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    auto input = EigenMatrix<T>::From(*context.Input<Tensor>(0));
-    auto bias = EigenVector<T>::From(*context.Input<Tensor>(1));
+    auto input = EigenMatrix<T>::From(*context.Input<Tensor>("X"));
+    auto bias = EigenVector<T>::From(*context.Input<Tensor>("b"));
     auto output = EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);

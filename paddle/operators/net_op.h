@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -35,6 +36,11 @@ namespace operators {
  */
 class NetOp : public framework::OperatorBase {
  public:
+  static const char kAll[];
+  NetOp() : framework::OperatorBase("plain_net", {}, {}, {}) {}
+  NetOp(const std::string& type, const VarNameMap& inputs,
+        const VarNameMap& outputs, const framework::AttributeMap& attrs);
+
   /**
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
@@ -90,11 +96,13 @@ class NetOp : public framework::OperatorBase {
   std::string DebugString() const override;
 
   bool IsNetOp() const override;
+  std::vector<std::string> OutputVars(bool has_intermediate) const override;
 
   std::vector<std::shared_ptr<OperatorBase>> ops_;
 
  private:
   bool add_op_done_{false};
+  std::set<std::string> intermediate_outputs_;
 
   template <typename T, typename KeyType>
   static bool Contains(T container, KeyType key) {

@@ -48,13 +48,13 @@ extern void *cublas_dso_handle;
   };                                                                \
   extern DynLoad__##__name __name
 #else
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name) \
-  struct DynLoad__##__name {                     \
-    inline template <typename... Args>           \
-    cublasStatus_t operator()(Args... args) {    \
-      return __name(args...);                    \
-    }                                            \
-  };                                             \
+#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
+  struct DynLoad__##__name {                         \
+    template <typename... Args>                      \
+    inline cublasStatus_t operator()(Args... args) { \
+      return __name(args...);                        \
+    }                                                \
+  };                                                 \
   extern DynLoad__##__name __name
 #endif
 
@@ -62,12 +62,12 @@ extern void *cublas_dso_handle;
   DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
-  __macro(cublasSgemv);                   \
-  __macro(cublasDgemv);                   \
-  __macro(cublasSgemm);                   \
-  __macro(cublasDgemm);                   \
-  __macro(cublasSgeam);                   \
-  __macro(cublasDgeam);                   \
+  __macro(cublasSgemv_v2);                \
+  __macro(cublasDgemv_v2);                \
+  __macro(cublasSgemm_v2);                \
+  __macro(cublasDgemm_v2);                \
+  __macro(cublasSgeam_v2);                \
+  __macro(cublasDgeam_v2);                \
   __macro(cublasCreate_v2);               \
   __macro(cublasDestroy_v2);              \
   __macro(cublasSetStream_v2);            \
