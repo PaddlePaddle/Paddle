@@ -112,6 +112,8 @@ class RecurrentGradientAlgorithm {
 
 class RecurrentOp final : public framework::OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(RecurrentOp, framework::OperatorBase);
+
   void Init() override;
 
   /**
@@ -138,6 +140,7 @@ class RecurrentOp final : public framework::OperatorBase {
 
 class RecurrentGradientOp final : public framework::OperatorBase {
  public:
+  DEFINE_OPERATOR_CTOR(RecurrentGradientOp, framework::OperatorBase)
   void Init() override;
 
   /**

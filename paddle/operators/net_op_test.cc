@@ -12,8 +12,7 @@ static int run_cnt = 0;
 
 class TestOp : public framework::OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(TestOp, framework::OperatorBase)
-
+  DEFINE_OPERATOR_CTOR(TestOp, framework::OperatorBase);
   void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -23,8 +22,7 @@ class TestOp : public framework::OperatorBase {
 
 class EmptyOp : public framework::OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(EmptyOp, framework::OperatorBase)
-
+  DEFINE_OPERATOR_CTOR(EmptyOp, framework::OperatorBase);
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
 };
@@ -47,39 +45,31 @@ TEST(OpKernel, all) {
   ASSERT_NE(net, nullptr);
 
   auto op1 = std::make_shared<TestOp>();
-  op1->inputs_ = {"x", "w1", "b1"};
-  op1->outputs_ = {"y"};
+  op1->inputs_ = {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}};
+  op1->outputs_ = {{"Out", {"y"}}};
   net->AddOp(op1);
 
   auto op2 = std::make_shared<TestOp>();
-  op2->inputs_ = {"y", "w2", "b2"};
-  op2->outputs_ = {"z"};
+  op2->inputs_ = {{"X", {"y"}}, {"W", {"w2"}}, {"b", {"b2"}}};
+  op2->outputs_ = {{"Out", {"z"}}};
   net->AddOp(op2);
 
   net->CompleteAddOp();
-  AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"}, net->inputs_);
-  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_);
-  auto tmp_idx_iter = net->attrs_.find("temporary_index");
-  ASSERT_NE(net->attrs_.end(), tmp_idx_iter);
-  auto& tmp_idx = boost::get<std::vector<int>>(tmp_idx_iter->second);
-  ASSERT_EQ(1UL, tmp_idx.size());
-  ASSERT_EQ("y", net->outputs_[tmp_idx[0]]);
+  AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
+                               net->inputs_.at(NetOp::kAll));
+  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_.at(NetOp::kAll));
 
-  Scope scope;
-  platform::CPUDeviceContext dev_ctx;
+  auto final_outs = net->OutputVars(false);
 
-  net->InferShape(scope);
-  net->Run(scope, dev_ctx);
-  ASSERT_EQ(2, infer_shape_cnt);
-  ASSERT_EQ(2, run_cnt);
-  ASSERT_THROW(net->AddOp(op2), platform::EnforceNotMet);
+  ASSERT_EQ(final_outs.size(), 1UL);
+  ASSERT_EQ(final_outs[0], "z");
 }
 
 TEST(NetOp, insert_op) {
   NetOp net;
   auto op1 = std::make_shared<EmptyOp>();
-  op1->inputs_ = {"x", "w1", "b1"};
-  op1->outputs_ = {"y"};
+  op1->inputs_ = {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}};
+  op1->outputs_ = {{"Out", {"y"}}};
   net.AddOp(op1);
   net.InsertOp(0, op1);
   ASSERT_EQ(2UL, net.ops_.size());

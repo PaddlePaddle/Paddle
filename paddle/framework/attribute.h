@@ -20,8 +20,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/framework/attribute.pb.h"
-#include "paddle/framework/op_desc.pb.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/variant.h"
 
@@ -37,7 +36,7 @@ typedef std::unordered_map<std::string, Attribute> AttributeMap;
 template <typename T>
 AttrType AttrTypeID();
 
-Attribute GetAttrValue(const AttrDesc& attr_desc);
+Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
 
 // check whether a value(attribute) fit a certain limit
 template <typename T>
