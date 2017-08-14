@@ -98,9 +98,9 @@ struct InputDef {
 
   InputDef(InputType type,
            string nameIn,
-           std::vector<int> ids,
-           std::vector<int> selfDefinedSeqStartPos = {},
-           std::vector<int> selfDefinedSubSeqStartPos = {})
+           const std::vector<int>& ids,
+           const std::vector<int>& selfDefinedSeqStartPos = {},
+           const std::vector<int>& selfDefinedSubSeqStartPos = {})
       : labelSeqStartPositions(selfDefinedSeqStartPos),
         labelSubSeqStartPositions(selfDefinedSubSeqStartPos),
         ids(ids) {

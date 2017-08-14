@@ -30,53 +30,102 @@ DECLARE_bool(thread_local_rand_use_global_seed);
 struct SingleBeamExpansion {
   vector<int> seqStartPos;
   vector<int> subSeqStartPos;
-
   vector<real> candidateScores;
+
   // TODO(caoying): store this into Argument.ids
   vector<real> selectedIndices;
   vector<int> groundTruth;
+  vector<int> labelSeqStartPos;
 };
 
-void genRandomBeamExpansion(size_t expansionCount,
-                            vector<SingleBeamExpansion>& beamExpansions) {
-  beamExpansions.clear();
+void genCandidateScores(bool hasSubSeq,
+                        vector<real>& scores,
+                        vector<int>& seqStartPos,
+                        vector<int>& subSeqStartPos) {}
+
+void genSelectedIndicesAndGroundtruth(size_t beamSize,
+                                      vector<int>& seqStartPos,
+                                      vector<real>& selectedIndices) {}
+
+SingleBeamExpansion genOneBeam(size_t beamSize, bool hasSubSeq) {
+  SingleBeamExpansion beam;
+  genCandidateScores(
+      hasSubSeq, beam.candidateScores, beam.seqStartPos, beam.subSeqStartPos);
+  genSelectedIndicesAndGroundtruth(
+      beamSize,
+      hasSubSeq ? beam.subSeqStartPos : beam.seqStartPos,
+      beam.selectedIndices);
+  return beam;
 }
 
-void testCrossEntropyOverBeam() {
-  const size_t expansionCount = 3;
-  vector<SingleBeamExpansion> beams;
-  genRandomBeamExpansion(expansionCount, beams);
+void genRandomBeamExpansion(size_t expansionCount,
+                            size_t beamSize,
+                            vector<SingleBeamExpansion>& beamExpansions) {
+  beamExpansions.clear();
+  for (size_t i = 0; i < expansionCount; ++i) {
+    beamExpansions.emplace_back(genOneBeam(beamSize, i));
+  }
+}
 
+void testCrossEntropyOverBeam(bool useGpu) {
+  TestConfig config;
+  config.layerConfig.set_type("cross_entropy_over_beam");
+
+  const size_t expansionCount = 3;
+  const size_t beamSize = 3;
+  vector<SingleBeamExpansion> beams;
+  genRandomBeamExpansion(expansionCount, beamSize, beams);
+
+  size_t seqNum = 0;
   for (size_t i = 0; i < beams.size(); ++i) {
     const SingleBeamExpansion& beam = beams[i];
     // create scores for all the candidates
     MatrixPtr candidateScorePtr =
         Matrix::create(beam.candidateScores.size(), 1, false, false);
-    candidateScorePtr->copyFrom(candidateScores.data(), candidateScores.size());
+    candidateScorePtr->copyFrom(beam.candidateScores.data(),
+                                beam.candidateScores.size());
 
     ostringstream paramName;
     paramName << "candidate_scores_" << i;
-    beam.subSeqStartPos.size()
-        ? config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
-                                      ostr.str(),
-                                      candidateScorePtr,
-                                      beam.seqStartPos,
-                                      beam.subSeqStartPos})
-        : config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
-                                      ostr.str(),
-                                      candidateScorePtr,
-                                      beam.seqStartPos});
+
+    if (beam.subSeqStartPos.size()) {
+      seqNum = beam.subSeqStartPos.size() - 1;
+      config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                                  paramName.str(),
+                                  candidateScorePtr,
+                                  beam.seqStartPos,
+                                  beam.subSeqStartPos});
+    } else {
+      seqNum = beam.seqStartPos.size() - 1;
+      config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                                  paramName.str(),
+                                  candidateScorePtr,
+                                  beam.seqStartPos});
+    }
+    config.layerConfig.add_inputs();
+
     // create indices for the selected candidates
+    MatrixPtr selectedCandidates =
+        Matrix::create(seqNum, beamSize, false, false);
+    selectedCandidates->copyFrom(beam.selectedIndices.data(),
+                                 beam.selectedIndices.size());
+    paramName.clear();
+    paramName << "selected_candidates_" << i;
+    config.inputDefs.push_back(
+        {INPUT_SELF_DEFINE_DATA, paramName.str(), selectedCandidates});
+    config.layerConfig.add_inputs();
 
     // create the ground truth
+    paramName.clear();
+    paramName << "label_" << i;
+    config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                                paramName.str(),
+                                beam.groundTruth,
+                                beam.labelSeqStartPos});
   }
-}
 
-TestConfig config;
-config.layerConfig.set_type("cross_entropy_over_beam");
-
-// testLayerGrad(
-//     config, "cross_entropy_over_beam", seqNum, false, useGpu, false);
+  testLayerGrad(
+      config, "cross_entropy_over_beam", seqNum, false, useGpu, false);
 }
 
 TEST(Layer, CrossEntropyOverBeam) {
