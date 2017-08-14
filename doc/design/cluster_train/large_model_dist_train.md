@@ -96,3 +96,6 @@ void ParameterServer2::getParameterSparse(const SendParameterRequest& request,
   }
 }
 ```
+
+`getParameterConfig(block).dims(1)` returns the width of the current "parameter block"(a shard of parameter object),
+then `getParameterSparse` remote call returns only one row of data to the client.
