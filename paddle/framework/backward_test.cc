@@ -39,9 +39,9 @@ class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").NoGradient();
-    AddInput("b", "Bias of Add").NoGradient();
-    AddOutput("Out", "Out of Add").NoGradient();
+    AddInput("X", "Input X of Add").AsNoGradient();
+    AddInput("b", "Bias of Add").AsNoGradient();
+    AddOutput("Out", "Out of Add").AsNoGradient();
     AddComment("Add Op");
   }
 };
@@ -111,8 +111,8 @@ class FcOpMaker : public OpProtoAndCheckerMaker {
     AddInput("X", "x");
     AddInput("W", "w");
     AddInput("b", "b");
-    AddOutput("mul_result", "").SetIntermediate();
-    AddOutput("add_result", "").SetIntermediate();
+    AddOutput("mul_result", "").AsIntermediate();
+    AddOutput("add_result", "").AsIntermediate();
     AddOutput("Out", "");
     AddComment("");
   }
@@ -143,7 +143,7 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
  public:
   AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "x").SetDuplicable();
+    AddInput("X", "x").AsDuplicable();
     AddOutput("Y", "y");
     AddComment("");
   }

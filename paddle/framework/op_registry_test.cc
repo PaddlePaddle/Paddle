@@ -38,8 +38,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of cosine op").SetDuplicable();
-    AddOutput("output", "output of cosine op").SetIntermediate();
+    AddInput("input", "input of cosine op").AsDuplicable();
+    AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };
@@ -51,12 +51,12 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 }  // namespace framework
 }  // namespace paddle
 
-static void ConstructVars(const std::string& param_name,
-                          std::initializer_list<const char*> arguments,
-                          paddle::framework::OpDesc::Var* var) {
+static void BuildVar(const std::string& param_name,
+                     std::initializer_list<const char*> arguments,
+                     paddle::framework::OpDesc::Var* var) {
   var->set_parameter(param_name);
   for (auto& arg_name : arguments) {
-    *var->mutable_arguments()->Add() = arg_name;
+    var->add_arguments(arg_name);
   }
 }
 
@@ -68,8 +68,8 @@ REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  ConstructVars("input", {"aa"}, op_desc.add_inputs());
-  ConstructVars("output", {"bb"}, op_desc.add_outputs());
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
@@ -89,8 +89,8 @@ TEST(OpRegistry, CreateOp) {
 TEST(OpRegistry, IllegalAttr) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  ConstructVars("input", {"aa"}, op_desc.add_inputs());
-  ConstructVars("output", {"bb"}, op_desc.add_outputs());
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -114,8 +114,8 @@ TEST(OpRegistry, IllegalAttr) {
 TEST(OpRegistry, DefaultValue) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  ConstructVars("input", {"aa"}, op_desc.add_inputs());
-  ConstructVars("output", {"bb"}, op_desc.add_outputs());
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
@@ -130,8 +130,8 @@ TEST(OpRegistry, DefaultValue) {
 TEST(OpRegistry, CustomChecker) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
-  ConstructVars("input", {"ii"}, op_desc.add_inputs());
-  ConstructVars("output", {"oo"}, op_desc.add_outputs());
+  BuildVar("input", {"ii"}, op_desc.add_inputs());
+  BuildVar("output", {"oo"}, op_desc.add_outputs());
 
   // attr 'test_attr' is not set
   bool caught = false;

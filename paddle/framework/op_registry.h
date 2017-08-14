@@ -47,17 +47,20 @@ class OpProtoAndCheckerMaker {
   struct VariableBuilder {
     OpProto::Var* var_;
 
-    VariableBuilder& SetDuplicable() {
+    VariableBuilder& AsDuplicable() {
       var_->set_duplicable(true);
       return *this;
     }
 
-    VariableBuilder& SetIntermediate() {
+    VariableBuilder& AsIntermediate() {
       var_->set_intermediate(true);
       return *this;
     }
 
-    VariableBuilder& NoGradient() {
+    // TODO(FengJiayi, yuyang18): `AsNoGradient` is a very bad name, because it
+    // means that input/output is not needed when calculate gradient. It does
+    // not mean no gradient when backward. It should be changed soon.
+    VariableBuilder& AsNoGradient() {
       var_->set_no_gradient(true);
       return *this;
     }
