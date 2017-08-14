@@ -13,12 +13,14 @@
    limitations under the License. */
 
 #include "paddle/operators/mul_op.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 class MulOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(MulOp, framework::OperatorWithKernel);
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
@@ -54,9 +56,7 @@ The equation is: Out = X * Y
 
 class MulOpGrad : public framework::OperatorWithKernel {
  public:
-  DEFINE_OPERATOR_CTOR(MulOpGrad, framework::OperatorWithKernel)
-
-  void DebugPrint(std::ostream *os) const override { *os << "Mul Grad OP"; }
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {}

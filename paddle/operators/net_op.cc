@@ -81,5 +81,11 @@ std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
   }
   return ret_val;
 }
+
+NetOp::NetOp(const std::string& type,
+             const framework::OperatorBase::VarNameMap& inputs,
+             const framework::OperatorBase::VarNameMap& outputs,
+             const framework::AttributeMap& attrs)
+    : OperatorBase(type, inputs, outputs, attrs) {}
 }  // namespace operators
 }  // namespace paddle
