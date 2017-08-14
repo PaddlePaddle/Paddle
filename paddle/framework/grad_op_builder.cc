@@ -25,8 +25,9 @@ static void TransOpArg(const OperatorBase* src_op, const OpArgType& src_type,
   const auto& src_inout =
       src_type == OpArgType::IN ? src_op->inputs_ : src_op->outputs_;
   auto& dst_inout = *vars;
+  const OpProto* proto = OpRegistry::op_info_map().at(src_op->type_).proto_;
   const auto& src_arg_list =
-      src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
+      src_type == OpArgType::IN ? proto->inputs() : proto->outputs();
   for (const auto& arg : src_arg_list) {
     if (arg.no_gradient() && !is_grad) continue;
     const std::string src_name = arg.name();
@@ -43,6 +44,8 @@ OperatorBase* BuildGradOp(const OperatorBase* op) {
   auto it = OpRegistry::op_info_map().find(op->type_);
   PADDLE_ENFORCE(it != OpRegistry::op_info_map().end(),
                  "'%s' has not been registered.", op->type_);
+  PADDLE_ENFORCE(it->second.proto_ != nullptr, "'%s' has no OpProto.",
+                 op->type_);
   std::string grad_op_type = it->second.grad_op_type_;
   PADDLE_ENFORCE(!grad_op_type.empty(), "'%s' has no gradient operator.",
                  op->type_);

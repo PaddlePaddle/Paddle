@@ -152,7 +152,7 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
       type_);
 
   // get all OpProto::Var for outputs
-  for (auto& o : it->second.proto_.outputs()) {
+  for (auto& o : it->second.proto_->outputs()) {
     // ignore all intermediate output
     if (o.intermediate()) continue;
     auto out = outputs_.find(o.name());
