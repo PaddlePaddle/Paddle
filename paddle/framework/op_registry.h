@@ -47,17 +47,20 @@ class OpProtoAndCheckerMaker {
   struct VariableBuilder {
     OpProto::Var* var_;
 
-    VariableBuilder& SetMultiple() {
+    VariableBuilder& AsDuplicable() {
       var_->set_duplicable(true);
       return *this;
     }
 
-    VariableBuilder& SetTemporary() {
+    VariableBuilder& AsIntermediate() {
       var_->set_intermediate(true);
       return *this;
     }
 
-    VariableBuilder& IgnoreGradient() {
+    // TODO(FengJiayi, yuyang18): `AsNoGradient` is a very bad name, because it
+    // means that input/output is not needed when calculate gradient. It does
+    // not mean no gradient when backward. It should be changed soon.
+    VariableBuilder& AsNoGradient() {
       var_->set_no_gradient(true);
       return *this;
     }
@@ -118,7 +121,7 @@ class OpProtoAndCheckerMaker {
 
 class OpRegistry {
   using OpCreator = std::function<OperatorBase*()>;
-  using VarNameMap = std::map<std::string, std::vector<std::string>>;
+  using VarNameMap = OperatorBase::VarNameMap;
 
  public:
   template <typename OpType, typename ProtoMakerType>
@@ -164,25 +167,22 @@ class OpRegistry {
     return std::shared_ptr<OperatorBase>(op);
   }
 
+  static VarNameMap ConvertOpDescVarsToVarNameMap(
+      const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars) {
+    VarNameMap ret_val;
+    for (auto& var : op_desc_vars) {
+      auto& var_names = ret_val[var.parameter()];
+      auto& var_names_in_proto = var.arguments();
+      var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
+      std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
+                std::back_inserter(var_names));
+    }
+    return ret_val;
+  }
+
   static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
-    VarNameMap inputs;
-    for (auto& input : op_desc.inputs()) {
-      auto& var_names = inputs[input.parameter()];
-      auto& var_names_in_proto = input.arguments();
-      var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
-      std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
-                std::back_inserter(var_names));
-    }
-
-    VarNameMap outputs;
-    for (auto& output : op_desc.outputs()) {
-      auto& var_names = outputs[output.parameter()];
-      auto& var_names_in_proto = output.arguments();
-      var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
-      std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
-                std::back_inserter(var_names));
-    }
-
+    VarNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
+    VarNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
     AttributeMap attrs;
     for (auto& attr : op_desc.attrs()) {
       attrs[attr.name()] = GetAttrValue(attr);
