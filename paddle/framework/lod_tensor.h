@@ -15,7 +15,7 @@
 #pragma once
 
 #include <memory>
-#if (!PADDLE_ONLY_CPU)
+#if !defined(PADDLE_ONLY_CPU)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #endif
