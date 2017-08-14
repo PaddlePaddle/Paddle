@@ -58,8 +58,8 @@ void ExposeOperator(ClassType &m) {
       .def("outputs",
            [](const typename ClassType::type &op)
                -> std::map<std::string, std::vector<std::string>> {
-             return op.outputs_;
-           })
+                 return op.outputs_;
+               })
       .def("inputs",
            [](const typename ClassType::type &op) { return op.inputs_; })
       .def("__str__", &ClassType::type::DebugString)
