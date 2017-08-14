@@ -79,9 +79,11 @@ struct EnforceNotMet : public std::exception {
       for (int i = 0; i < size; ++i) {
         if (dladdr(call_stack[i], &info)) {
           auto demangled = demangle(info.dli_sname);
-          sout << string::Sprintf(
-              "%-3d %*0p %s + %zd\n", i, 2 + sizeof(void*) * 2, call_stack[i],
-              demangled, (char*)call_stack[i] - (char*)info.dli_saddr);
+          auto addr_offset = static_cast<char*>(call_stack[i]) -
+                             static_cast<char*>(info.dli_saddr);
+          sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
+                                  2 + sizeof(void*) * 2, call_stack[i],
+                                  demangled, addr_offset);
         } else {
           sout << string::Sprintf("%-3d %*0p %s\n", i, 2 + sizeof(void*) * 2,
                                   call_stack[i]);
