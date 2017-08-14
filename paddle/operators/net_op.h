@@ -59,7 +59,7 @@ class NetOp : public framework::OperatorBase {
    * will be used.
    */
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           platform::DeviceContext* dev_ctx) const override {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
     }

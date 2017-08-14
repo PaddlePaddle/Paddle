@@ -30,7 +30,13 @@ namespace platform {
 
 class DeviceContext {
  public:
-  virtual ~DeviceContext() {}
+  DeviceContext() = default;
+  DeviceContext(const DeviceContext& o) = delete;
+  DeviceContext(DeviceContext&& o) = delete;
+  DeviceContext& operator=(const DeviceContext& o) = delete;
+  DeviceContext& operator=(DeviceContext&&) = delete;
+
+  virtual ~DeviceContext() = default;
   virtual Place GetPlace() const = 0;
 
   template <typename DeviceType>
@@ -89,9 +95,9 @@ class CUDADeviceContext : public DeviceContext {
   uint64_t seed_;
 
   // clang-format off
-  cudnnHandle_t     cudnn_handle_     = nullptr;
-  cublasHandle_t    cublas_handle_    = nullptr;
-  curandGenerator_t curand_generator_ = nullptr;
+  cudnnHandle_t     cudnn_handle_{nullptr};
+  cublasHandle_t    cublas_handle_{nullptr};
+  curandGenerator_t curand_generator_{nullptr};
   // clang-format on
 };
 

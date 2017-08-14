@@ -9,7 +9,7 @@ class CosineOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
   void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+           platform::DeviceContext* dev_ctx) const override {}
   void InferShape(const Scope& scope) const override {}
 };
 
@@ -31,7 +31,7 @@ class MyTestOp : public OperatorBase {
   using OperatorBase::OperatorBase;
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+           platform::DeviceContext* dev_ctx) const override {}
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -81,7 +81,7 @@ TEST(OpRegistry, CreateOp) {
       paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
-  op->Run(scope, dev_ctx);
+  op->Run(scope, &dev_ctx);
   float scale_get = op->GetAttr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
@@ -123,7 +123,7 @@ TEST(OpRegistry, DefaultValue) {
       paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
-  op->Run(scope, dev_ctx);
+  op->Run(scope, &dev_ctx);
   ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
@@ -174,7 +174,7 @@ TEST(OpRegistry, CustomChecker) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
   paddle::framework::Scope scope;
-  op->Run(scope, dev_ctx);
+  op->Run(scope, &dev_ctx);
   int test_attr = op->GetAttr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }

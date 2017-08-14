@@ -27,7 +27,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class SigmoidKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     auto input = context.Input<Tensor>("X");
     auto output = context.Output<Tensor>("Y");
     output->mutable_data<T>(context.GetPlace());
@@ -44,7 +44,7 @@ class SigmoidKernel : public framework::OpKernel {
 template <typename Place, typename T>
 class SigmoidGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     auto Y_t = context.Input<Tensor>("Y");
     auto dY_t = context.Input<Tensor>(framework::GradVarName("Y"));
     auto dX_t = context.Output<Tensor>(framework::GradVarName("X"));

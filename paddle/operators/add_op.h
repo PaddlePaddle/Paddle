@@ -27,7 +27,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class AddKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     auto* input0 = context.Input<Tensor>("X");
     auto* input1 = context.Input<Tensor>("Y");
     auto* output = context.Output<Tensor>("Out");

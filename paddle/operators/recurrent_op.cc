@@ -51,7 +51,7 @@ void RecurrentAlgorithm::InferShape(const Scope& scope) const {
 }
 
 void RecurrentAlgorithm::Run(const Scope& scope,
-                             const platform::DeviceContext& dev_ctx) const {
+                             platform::DeviceContext* dev_ctx) const {
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
                      false /*infer_shape_mode*/);
@@ -175,8 +175,8 @@ class RecurrentAlgorithmProtoAndCheckerMaker
   }
 };
 
-void RecurrentGradientAlgorithm::Run(
-    const Scope& scope, const platform::DeviceContext& dev_ctx) const {
+void RecurrentGradientAlgorithm::Run(const Scope& scope,
+                                     platform::DeviceContext* dev_ctx) const {
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
                      false /*infer_shape_mode*/);

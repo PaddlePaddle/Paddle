@@ -42,7 +42,7 @@ T tolerable_value(T x) {
 template <typename Place, typename T>
 class OnehotCrossEntropyOpKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(framework::ExecutionContext ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
     const int* label_data = ctx.Input<Tensor>("label")->data<int>();
@@ -65,7 +65,7 @@ class OnehotCrossEntropyOpKernel : public framework::OpKernel {
 template <typename Place, typename T>
 class OnehotCrossEntropyGradientOpKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(framework::ExecutionContext ctx) const override {
     auto X = ctx.Input<Tensor>("X");
     auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
