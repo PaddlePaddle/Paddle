@@ -14,8 +14,7 @@ class TestOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
   void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+  void Run(const Scope& scope, DeviceContext* dev_ctx) const override {
     ++run_cnt;
   }
 };
@@ -24,7 +23,7 @@ class EmptyOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
   void InferShape(const Scope& scope) const override {}
-  void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
+  void Run(const Scope& scope, DeviceContext* dev_ctx) const override {}
 };
 
 template <typename T>

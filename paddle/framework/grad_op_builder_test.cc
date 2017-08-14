@@ -13,7 +13,7 @@ class NOP : public OperatorBase {
   using OperatorBase::OperatorBase;
   void InferShape(const Scope &scope) const override {}
   void Run(const Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
+           platform::DeviceContext *dev_ctx) const override {}
 };
 
 class MutiInOutOpMaker : public OpProtoAndCheckerMaker {

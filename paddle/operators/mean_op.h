@@ -30,7 +30,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class MeanKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
 
@@ -47,7 +47,7 @@ class MeanKernel : public framework::OpKernel {
 template <typename Place, typename T>
 class MeanGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE(framework::product(OG->dims()) == 1,
                    "Mean Gradient should be scalar");

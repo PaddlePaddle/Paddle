@@ -25,7 +25,7 @@ namespace operators {
 template <typename T>
 class GaussianRandomKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     float mean = context.op_.GetAttr<float>("mean");
     float std = context.op_.GetAttr<float>("std");
     auto* tensor = context.Output<framework::Tensor>(0);

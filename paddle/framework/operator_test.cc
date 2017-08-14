@@ -28,7 +28,7 @@ class OpWithoutKernelTest : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           platform::DeviceContext* dev_ctx) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
@@ -86,7 +86,7 @@ TEST(OperatorBase, all) {
   scope.NewVar("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->InferShape(scope);
-  op->Run(scope, device_context);
+  op->Run(scope, &device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
 
@@ -119,7 +119,7 @@ class OpWithKernelTest : public OperatorWithKernel {
 template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel {
  public:
-  void Compute(const ExecutionContext& ctx) const {
+  void Compute(ExecutionContext ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
     std::cout << ctx.op_.DebugString() << std::endl;
     cpu_kernel_run_num++;
@@ -146,7 +146,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 
 class CPUKernalMultiInputsTest : public OpKernel {
  public:
-  void Compute(const ExecutionContext& ctx) const {
+  void Compute(ExecutionContext ctx) const {
     auto xs = ctx.op_.Inputs("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
@@ -206,7 +206,7 @@ TEST(OpKernel, all) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
-  op->Run(scope, cpu_device_context);
+  op->Run(scope, &cpu_device_context);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
 }
 
@@ -240,5 +240,5 @@ TEST(OpKernel, multi_inputs) {
   scope.NewVar("y1")->GetMutable<Tensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  op->Run(scope, cpu_device_context);
+  op->Run(scope, &cpu_device_context);
 }

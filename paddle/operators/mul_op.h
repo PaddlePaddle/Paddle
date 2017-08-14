@@ -30,7 +30,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
     auto* input0 = context.Input<Tensor>("X");
@@ -41,7 +41,6 @@ class MulKernel : public framework::OpKernel {
     auto Y = EigenMatrix<T>::From(*input1);
     auto Z = EigenMatrix<T>::From(*output);
     auto& place = context.GetEigenDevice<Place>();
-
     Z.device(place) = X.contract(Y, dim_pair);
   }
 };

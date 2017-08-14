@@ -27,7 +27,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class SoftmaxKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     auto input = context.Input<Tensor>("X");
     auto output = context.Output<Tensor>("Y");
     output->mutable_data<T>(context.GetPlace());
@@ -66,7 +66,7 @@ class SoftmaxKernel : public framework::OpKernel {
 template <typename Place, typename T>
 class SoftmaxGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
 
     auto Y = context.Input<Tensor>("Y");

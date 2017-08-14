@@ -90,7 +90,7 @@ class OperatorBase {
 
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const = 0;
+                   platform::DeviceContext* dev_ctx) const = 0;
 
   virtual bool IsNetOp() const { return false; }
 
@@ -239,7 +239,7 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext* device_context)
+                   platform::DeviceContext* device_context)
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
@@ -249,11 +249,9 @@ class ExecutionContext : public InferShapeContext {
 
   platform::Place GetPlace() const { return device_context_->GetPlace(); }
 
-  const platform::DeviceContext* device_context() const {
-    return device_context_;
-  }
+  platform::DeviceContext& device_context() { return *device_context_; }
 
-  const platform::DeviceContext* device_context_;
+  platform::DeviceContext* device_context_;
 };
 
 class OpKernel {
@@ -263,9 +261,11 @@ class OpKernel {
    * Run will get input/output variables, state such as momentum and
    * device resource such as CUDA stream, cublas handle, etc. from
    * ExecutionContext. User should construct it before run the Operator.
+   *
+   * NOTE: Because ExecutionContext is construct as RValue. It will be optimized
+   * by compiler. And do not cost time in runtime.
    */
-
-  virtual void Compute(const ExecutionContext& context) const = 0;
+  virtual void Compute(ExecutionContext context) const = 0;
 
   virtual ~OpKernel() {}
 };
@@ -303,10 +303,9 @@ class OperatorWithKernel : public OperatorBase {
     InferShape(InferShapeContext(*this, scope));
   }
 
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const final {
-    auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
+  void Run(const Scope& scope, platform::DeviceContext* dev_ctx) const final {
+    auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(*dev_ctx));
+    opKernel->Compute(ExecutionContext(*this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&

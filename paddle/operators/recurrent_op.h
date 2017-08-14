@@ -31,7 +31,7 @@ namespace operators {
 class RecurrentAlgorithm {
  public:
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const;
+           platform::DeviceContext* dev_ctx) const;
 
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
@@ -77,7 +77,7 @@ class RecurrentGradientAlgorithm {
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const;
+           platform::DeviceContext* dev_ctx) const;
 
   void LinkBootMemoryGradients(framework::Scope* step_scopes,
                                bool infer_shape_mode) const;
@@ -111,7 +111,7 @@ class RecurrentOp final : public framework::OperatorBase {
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           platform::DeviceContext* dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 
@@ -135,7 +135,7 @@ class RecurrentGradientOp final : public framework::OperatorBase {
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           platform::DeviceContext* dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
 

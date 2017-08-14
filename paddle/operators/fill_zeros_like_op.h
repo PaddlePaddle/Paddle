@@ -22,7 +22,7 @@ namespace operators {
 template <typename Place, typename T>
 class FillZerosLikeKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(framework::ExecutionContext context) const override {
     auto* output = context.Output<framework::Tensor>("Dst");
     output->mutable_data<T>(context.GetPlace());
     auto t = framework::EigenVector<T>::Flatten(*output);

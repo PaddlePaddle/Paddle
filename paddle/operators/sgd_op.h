@@ -27,10 +27,10 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class SGDOpKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(framework::ExecutionContext ctx) const override {
     auto param = ctx.Input<Tensor>("param");
     auto grad = ctx.Input<Tensor>("grad");
-    auto param_out = ctx.Output<Tensor>(0);
+    auto param_out = ctx.Output<Tensor>("param_out");
     float lr = ctx.op_.GetAttr<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());
