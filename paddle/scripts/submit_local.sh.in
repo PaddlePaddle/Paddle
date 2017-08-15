@@ -56,7 +56,7 @@ if [ -z "${PADDLE_NO_STAT+x}" ]; then
     fi
 fi
 
-MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PADDLE_BIN_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ ! -z "${DEBUGGER}" ]; then
     echo "Using debug command ${DEBUGGER}"
@@ -92,16 +92,6 @@ else:
   sys.exit(0)
 EOF
 
-# find the paddle executable module path
-
-if [ -f $MYDIR/../opt/paddle/bin/paddle_trainer ]; then
-    PADDLE_BIN_PATH=$MYDIR/../opt/paddle/bin/paddle_trainer
-fi
-
-if [ -z $PADDLE_BIN_PATH ]; then
-    echo "can not find paddle executable file under: "$PADDLE_BIN_PATH
-    exit 1
-fi
 
 case "$1" in
     "train")
