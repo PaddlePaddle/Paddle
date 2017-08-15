@@ -57,7 +57,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    paddle::memory::Alloc(place_, num_bytes);
+    return paddle::memory::Alloc(place_, num_bytes);
   }
 
   void deallocate(void* buffer) const override {
@@ -86,7 +86,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   GPUPlace place_;
   const cudaStream_t* stream_;         // not owned;
   const cudaDeviceProp* device_prop_;  // not owned;
-  mutable char* scratch_;
+  mutable void* scratch_;
   mutable unsigned int* semaphore_;
 };
 
@@ -145,7 +145,7 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() {
   if (!cudnn_handle_) {
     SetDeviceId(place_.device);
     PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnnHandle_t, stream_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
   }
   return cudnn_handle_;
 }
@@ -160,7 +160,7 @@ curandGenerator_t CUDADeviceContext::curand_generator() {
     PADDLE_ENFORCE(
         dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
 
-    PADDLE_ENFORCE(dynload::curandSetStream(curandGenerator_t, stream_));
+    PADDLE_ENFORCE(dynload::curandSetStream(curand_generator_, stream_));
   }
   return curand_generator_;
 }

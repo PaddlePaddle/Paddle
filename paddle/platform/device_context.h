@@ -52,6 +52,7 @@ class CPUDeviceContext : public DeviceContext {
 };
 
 #ifndef PADDLE_ONLY_CPU
+class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -92,7 +93,7 @@ class CUDADeviceContext : public DeviceContext {
   uint64_t seed_;
 
   // clang-format off
-  cudaStream_t       stream_{nullptr}
+  cudaStream_t       stream_{nullptr};
   cudnnHandle_t      cudnn_handle_{nullptr};
   cublasHandle_t     cublas_handle_{nullptr};
   curandGenerator_t  curand_generator_{nullptr};
