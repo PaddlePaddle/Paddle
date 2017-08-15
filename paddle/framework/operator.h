@@ -50,8 +50,6 @@ inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
 
-extern std::unordered_map<std::string, OpProto>& OpProtos();
-
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
@@ -99,6 +97,8 @@ class OperatorBase {
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
+  const VarNameMap& Inputs() const { return inputs_; }
+  const VarNameMap& Outputs() const { return outputs_; }
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
   //! Get a input which has multiple variables.
@@ -112,10 +112,11 @@ class OperatorBase {
 
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
-  std::string Type() const { return type_; }
+  const std::string& Type() const { return type_; }
+  void SetType(const std::string& type) { type_ = type; }
   const AttributeMap& Attrs() const { return attrs_; }
 
- public:
+ protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
   // I (Inputs)
@@ -127,6 +128,14 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VarNameMap outputs_;
   AttributeMap attrs_;
+};
+
+class NOP : public OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
 };
 
 class InferShapeContext {
@@ -210,7 +219,7 @@ class InferShapeContext {
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
                      PADDLE_ENFORCE_NOT_NULL(
-                         var, "MultiOutput(%s:%s) should not be nullptr", name,
+                         var, "MultiOutput(%s:%s) should not be nullptr.", name,
                          sub_name);
                      return var->GetMutable<T>();
                    });
