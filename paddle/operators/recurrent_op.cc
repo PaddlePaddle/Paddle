@@ -135,9 +135,8 @@ RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::OperatorBase::VarNameMap& outputs,
                          const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
-  std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
-  rnn::InitArgument(kArgName, arg.get(), *this);
-  alg_.Init(std::move(arg), &stepnet_);
+  rnn::InitArgument(kArgName, &arg_, *this);
+  alg_.Init(&arg_, &stepnet_);
 }
 
 class RecurrentAlgorithmProtoAndCheckerMaker
@@ -228,9 +227,8 @@ RecurrentGradientOp::RecurrentGradientOp(
     const framework::OperatorBase::VarNameMap& outputs,
     const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
-  std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
-  rnn::InitArgument(kArgName, arg.get(), *this);
-  alg_.Init(std::move(arg), &stepnet_);
+  rnn::InitArgument(kArgName, &arg_, *this);
+  alg_.Init(&arg_, &stepnet_);
 }
 
 }  // namespace operators

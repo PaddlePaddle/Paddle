@@ -34,10 +34,9 @@ class RecurrentAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void Init(std::unique_ptr<rnn::Argument> arg,
-            std::shared_ptr<NetOp>* stepnet) {
+  void Init(rnn::Argument* arg, std::shared_ptr<NetOp>* stepnet) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
-    arg_ = std::move(arg);
+    arg_ = arg;
     stepnet_ = stepnet;
   }
 
@@ -65,7 +64,7 @@ class RecurrentAlgorithm {
 
  private:
   std::shared_ptr<NetOp>* stepnet_;
-  std::unique_ptr<rnn::Argument> arg_;
+  rnn::Argument* arg_;
   mutable size_t seq_len_;
 };
 
@@ -81,8 +80,7 @@ class RecurrentGradientAlgorithm {
    * operator.
    */
  public:
-  void Init(std::unique_ptr<rnn::Argument> arg,
-            std::shared_ptr<NetOp>* stepnet) {
+  void Init(rnn::Argument* arg, std::shared_ptr<NetOp>* stepnet) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = std::move(arg);
     stepnet_ = stepnet;
@@ -107,7 +105,7 @@ class RecurrentGradientAlgorithm {
   }
 
  private:
-  std::unique_ptr<rnn::Argument> arg_;
+  rnn::Argument* arg_;
   mutable size_t seq_len_;
   std::shared_ptr<NetOp>* stepnet_;
 };
@@ -135,6 +133,7 @@ class RecurrentOp final : public framework::OperatorBase {
 
  private:
   RecurrentAlgorithm alg_;
+  rnn::Argument arg_;
   std::shared_ptr<NetOp> stepnet_;
 };
 
@@ -164,6 +163,7 @@ class RecurrentGradientOp final : public framework::OperatorBase {
  private:
   RecurrentGradientAlgorithm alg_;
   std::shared_ptr<NetOp> stepnet_;
+  rnn::Argument arg_;
 };
 
 }  // namespace operators
