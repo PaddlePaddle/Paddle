@@ -43,7 +43,8 @@ endfunction()
 
 add_subdirectory(math)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
-cc_library(gather_op SRCS gather_op.cc DEPS op_registry)
+op_library(gather_op SRCS gather_op.cc gather_op.cu)
+# DEPS op_registry)
 # cc_test(gather_op_test SRCS gather_op_test.cc DEPS gather_op)
 
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)

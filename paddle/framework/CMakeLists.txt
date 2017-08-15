@@ -47,6 +47,7 @@ cc_library(paddle_pybind SHARED
     SRCS pybind.cc
     DEPS pybind python backward
     sgd_op
+    gather_op
     add_op
     mul_op
     rowwise_add_op
