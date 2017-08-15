@@ -1,0 +1,58 @@
+type: "nn"
+layers {
+  name: "input_loc"
+  type: "data"
+  size: 84
+  active_type: ""
+}
+layers {
+  name: "input_conf"
+  type: "data"
+  size: 21
+  active_type: ""
+}
+layers {
+  name: "rois"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "test_rcnn_detection"
+  type: "rcnn_detection"
+  active_type: ""
+  inputs {
+    input_layer_name: "rois"
+    rcnn_detection_conf {
+      num_classes: 21
+      nms_threshold: 0.6
+      nms_top_k: 400
+      background_id: 0
+      keep_top_k: 200
+      confidence_threshold: 0.3
+    }
+  }
+  inputs {
+    input_layer_name: "input_loc"
+  }
+  inputs {
+    input_layer_name: "input_conf"
+  }
+}
+input_layer_names: "rois"
+input_layer_names: "input_loc"
+input_layer_names: "input_conf"
+output_layer_names: "test_rcnn_detection"
+sub_models {
+  name: "root"
+  layer_names: "input_loc"
+  layer_names: "input_conf"
+  layer_names: "rois"
+  layer_names: "test_rcnn_detection"
+  input_layer_names: "rois"
+  input_layer_names: "input_loc"
+  input_layer_names: "input_conf"
+  output_layer_names: "test_rcnn_detection"
+  is_recurrent_layer_group: false
+}
+

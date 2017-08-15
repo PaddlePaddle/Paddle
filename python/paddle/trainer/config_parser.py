@@ -1781,6 +1781,39 @@ class DetectionOutputLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('rcnn_loss')
+class RCNNLossLayer(LayerBase):
+    def __init__(self, name, inputs, loss_ratio, num_classes, background_id=0):
+        super(RCNNLossLayer, self).__init__(name, 'rcnn_loss', 0, inputs)
+        config_assert(len(inputs) == 3, 'RCNNLossLayer must have 3 inputs')
+        self.config.inputs[0].rcnn_loss_conf.loss_ratio = loss_ratio
+        self.config.inputs[0].rcnn_loss_conf.num_classes = num_classes
+        self.config.inputs[0].rcnn_loss_conf.background_id = background_id
+
+
+@config_layer('rcnn_detection')
+class RCNNDetectionLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 inputs,
+                 num_classes,
+                 nms_threshold,
+                 nms_top_k,
+                 keep_top_k,
+                 confidence_threshold,
+                 background_id=0):
+        super(RCNNDetectionLayer, self).__init__(name, 'rcnn_detection', 0,
+                                                 inputs)
+        config_assert(len(inputs) == 3, 'RCNNDetectionLayer must have 3 inputs')
+        self.config.inputs[0].rcnn_detection_conf.num_classes = num_classes
+        self.config.inputs[0].rcnn_detection_conf.nms_threshold = nms_threshold
+        self.config.inputs[0].rcnn_detection_conf.nms_top_k = nms_top_k
+        self.config.inputs[0].rcnn_detection_conf.keep_top_k = keep_top_k
+        self.config.inputs[
+            0].rcnn_detection_conf.confidence_threshold = confidence_threshold
+        self.config.inputs[0].rcnn_detection_conf.background_id = background_id
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):

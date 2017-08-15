@@ -61,6 +61,13 @@ add_unittest_without_exec(test_DetectionOutput
 
 add_test(NAME test_DetectionOutput
     COMMAND test_DetectionOutput)
+################# test_RCNNDetection #######################
+add_unittest_without_exec(test_RCNNDetection
+    test_RCNNDetection.cpp
+    LayerGradUtil.cpp)
+
+add_test(NAME test_RCNNDetection
+    COMMAND test_RCNNDetection)
 ################# test_ConvUnify #######################
 add_unittest_without_exec(test_ConvUnify
     test_ConvUnify.cpp

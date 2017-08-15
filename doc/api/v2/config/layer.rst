@@ -474,6 +474,11 @@ multibox_loss
 ..  autoclass:: paddle.v2.layer.multibox_loss
     :noindex:
 
+rcnn_loss
+--------------
+..  autoclass:: paddle.v2.layer.rcnn_loss
+    :noindex:
+
 Check Layer
 ============
 
@@ -509,4 +514,9 @@ Detection output Layer
 detection_output
 ----------------
 ..  autoclass:: paddle.v2.layer.detection_output
+    :noindex:
+
+rcnn_detection
+----------------
+..  autoclass:: paddle.v2.layer.rcnn_detection
     :noindex:

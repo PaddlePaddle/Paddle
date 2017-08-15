@@ -304,4 +304,66 @@ void getDetectionOutput(const real* confData,
 
 NormalizedBBox clipBBox(const NormalizedBBox& bbox);
 
+/**
+ * @brief Do NMS for bboxes to remove duplicated bboxes
+ * @param bboxes BBoxes to apply NMS
+ * @param topK Number to keep
+ * @param confThreshold Low boundary of confidence score
+ * @param nmsThreshold Threshold of overlap
+ * @param indices Indices of high quality bboxes
+ */
+void applyNMSFast(const vector<NormalizedBBox>& bboxes,
+                  size_t topK,
+                  real confThreshold,
+                  real nmsThreshold,
+                  vector<size_t>* indices);
+
+/**
+ * @brief Get detection results which satify requirements
+ * @param backgroundId Background class
+ * @param confThreshold Threshold of class confidence
+ * @param nmsTopK Used in NMS operation to keep top k bbox
+ * @param nmsThreshold Used in NMS, threshold of overlap
+ * @param keepTopK How many bboxes keeped in an image
+ * @param allDecodedBBoxes Decoded bboxes for all images
+ * @param allDetectionIndices Save detection bbox indices
+ */
+size_t getDetectionIndices(
+    const size_t backgroundId,
+    const size_t confThreshold,
+    const size_t nmsTopK,
+    const real nmsThreshold,
+    const size_t keepTopK,
+    const map<size_t, map<size_t, vector<pair<real, NormalizedBBox>>>>&
+        allDecodedBBoxes,
+    map<size_t, map<size_t, vector<size_t>>>* allDetectionIndices);
+
+/**
+ * @brief Get detection results
+ * @param confData Confidence scores
+ * @param numPriorBBoxes Prior bbox number
+ * @param numClasses Class number
+ * @param batchSize Image number
+ * @param allIndices Indices of predicted bboxes
+ * @param allDecodedBBoxes BBoxes decoded
+ * @param out Output matrix
+ * image number | label | confidence score | xMin | yMin | xMax | yMax
+ */
+void getDetectionOutput(
+    const size_t numKept,
+    const map<size_t, map<size_t, vector<size_t>>>& allIndices,
+    const map<size_t, map<size_t, vector<pair<real, NormalizedBBox>>>>&
+        allDecodedBBoxes,
+    Matrix& out);
+
+/**
+ * @brief Decode prior bbox with offset parameters
+ * and variances of prior bbox are considered
+ * @param priorBBox Prior bbox to be decoded
+ * @param priorBBoxVar Variance parameters of prior bbox
+ * @param locPredData Offset parameters
+ */
+NormalizedBBox decodeBBox(const vector<real>& priorBBoxData,
+                          const vector<real>& locPredData);
+
 }  // namespace paddle

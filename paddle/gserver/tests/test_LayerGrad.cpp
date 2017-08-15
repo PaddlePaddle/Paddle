@@ -1835,6 +1835,50 @@ TEST(Layer, multibox_loss) {
   }
 }
 
+TEST(Layer, rcnn_loss) {
+  TestConfig config;
+  config.layerConfig.set_type("rcnn_loss");
+  config.biasSize = 0;
+
+  const float lossRatio = 10.;
+  const size_t numClasses = 3;
+  const size_t backgroundId = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  RCNNLossConfig* layerConf = input->mutable_rcnn_loss_conf();
+  layerConf->set_loss_ratio(lossRatio);
+  layerConf->set_num_classes(numClasses);
+  layerConf->set_background_id(backgroundId);
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  const size_t roiNum = 5;
+  const size_t roiDim = 10;
+  MatrixPtr roiValue = Matrix::create(roiNum, roiDim, false, false);
+  real* roiData = roiValue->getData();
+  for (size_t i = 0; i < roiNum; ++i) {
+    *roiData++ = std::rand() % 5;
+    *roiData++ = std::rand() % 224;
+    *roiData++ = std::rand() % 224;
+    size_t xMin = static_cast<size_t>(*(roiData - 2));
+    size_t yMin = static_cast<size_t>(*(roiData - 1));
+    *roiData++ = xMin + std::rand() % (224 - xMin);
+    *roiData++ = yMin + std::rand() % (224 - yMin);
+    *roiData++ = std::rand() % numClasses;
+    *roiData++ = std::rand() % 224;
+    *roiData++ = std::rand() % 224;
+    *roiData++ = std::rand() % 224;
+    *roiData++ = std::rand() % 224;
+  }
+
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "rois", roiValue, {}});
+  config.inputDefs.push_back({INPUT_DATA, "locPred", numClasses * 4, 0});
+  config.inputDefs.push_back({INPUT_DATA, "confPred", numClasses, 0});
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "rcnn_loss", roiNum, false, useGpu, false);
+  }
+}
+
 TEST(Layer, TransLayer) {
   TestConfig config;
   const int height = 128;

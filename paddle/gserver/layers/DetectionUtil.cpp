@@ -573,4 +573,147 @@ NormalizedBBox clipBBox(const NormalizedBBox& bbox) {
   return clippedBBox;
 }
 
+void applyNMSFast(const vector<pair<real, NormalizedBBox>>& bboxes,
+                  size_t topK,
+                  real confThreshold,
+                  real nmsThreshold,
+                  vector<size_t>* indices) {
+  vector<pair<real, size_t>> scores;
+  for (size_t i = 0; i < bboxes.size(); ++i) {
+    scores.push_back(std::make_pair(bboxes[i].first, i));
+  }
+  std::stable_sort(scores.begin(), scores.end(), sortScorePairDescend<size_t>);
+  if (topK > 0 && topK < scores.size()) scores.resize(topK);
+  while (scores.size() > 0) {
+    const size_t idx = scores.front().second;
+    bool keep = true;
+    for (size_t i = 0; i < indices->size(); ++i) {
+      if (keep) {
+        const size_t savedIdx = (*indices)[i];
+        real overlap =
+            jaccardOverlap(bboxes[idx].second, bboxes[savedIdx].second);
+        keep = overlap <= nmsThreshold;
+      } else {
+        break;
+      }
+    }
+    if (keep) indices->push_back(idx);
+    scores.erase(scores.begin());
+  }
+}
+
+size_t getDetectionIndices(
+    const size_t backgroundId,
+    const size_t confThreshold,
+    const size_t nmsTopK,
+    const real nmsThreshold,
+    const size_t keepTopK,
+    const map<size_t, map<size_t, vector<pair<real, NormalizedBBox>>>>&
+        allDecodedBBoxes,
+    map<size_t, map<size_t, vector<size_t>>>* allDetectionIndices) {
+  size_t totalKeepNum = 0;
+  for (const auto& batchIdxBBoxesPair : allDecodedBBoxes) {
+    size_t batchIdx = batchIdxBBoxesPair.first;
+    std::map<size_t, std::vector<size_t>>& indices =
+        (*allDetectionIndices)[batchIdx];
+    size_t numDetected = 0;
+    for (const auto& classDecodedBBoxesPair : batchIdxBBoxesPair.second) {
+      size_t classId = classDecodedBBoxesPair.first;
+      if (classId == backgroundId) {
+        continue;
+      } else {
+        applyNMSFast(classDecodedBBoxesPair.second,
+                     nmsTopK,
+                     confThreshold,
+                     nmsThreshold,
+                     &(indices[classId]));
+        numDetected += indices[classId].size();
+      }
+    }
+    if (keepTopK > 0 && numDetected > keepTopK) {
+      vector<pair<real, pair<size_t, size_t>>> scoreIndexPairs;
+      for (const auto& classDecodedBBoxesPair : batchIdxBBoxesPair.second) {
+        size_t classId = classDecodedBBoxesPair.first;
+        const vector<size_t>& labelIndices = indices[classId];
+        for (size_t i = 0; i < labelIndices.size(); ++i) {
+          real score = classDecodedBBoxesPair.second[labelIndices[i]].first;
+          scoreIndexPairs.push_back(
+              std::make_pair(score, std::make_pair(classId, labelIndices[i])));
+        }
+      }
+      std::sort(scoreIndexPairs.begin(),
+                scoreIndexPairs.end(),
+                sortScorePairDescend<pair<size_t, size_t>>);
+      scoreIndexPairs.resize(keepTopK);
+      indices.clear();
+      for (size_t i = 0; i < scoreIndexPairs.size(); ++i) {
+        size_t label = scoreIndexPairs[i].second.first;
+        size_t idx = scoreIndexPairs[i].second.second;
+        indices[label].push_back(idx);
+      }
+      numDetected = keepTopK;
+    }
+    totalKeepNum += numDetected;
+  }
+  return totalKeepNum;
+}
+
+void getDetectionOutput(
+    const size_t numKept,
+    const map<size_t, map<size_t, vector<size_t>>>& allIndices,
+    const map<size_t, map<size_t, vector<pair<real, NormalizedBBox>>>>&
+        allDecodedBBoxes,
+    Matrix& out) {
+  MatrixPtr outBuffer;
+  Matrix::resizeOrCreate(outBuffer, numKept, 7, false, false);
+  real* bufferData = outBuffer->getData();
+  size_t count = 0;
+  for (const auto& batchIdxIndicesPair : allIndices) {
+    size_t batchIdx = batchIdxIndicesPair.first;
+    for (const auto& classIndicesPair : batchIdxIndicesPair.second) {
+      size_t classId = classIndicesPair.first;
+      const vector<size_t>& indices = classIndicesPair.second;
+      const vector<pair<real, NormalizedBBox>>& scoreBBoxes =
+          allDecodedBBoxes.at(batchIdx).at(classId);
+      for (size_t i = 0; i < indices.size(); ++i) {
+        size_t idx = indices[i];
+        bufferData[count * 7] = batchIdx;
+        bufferData[count * 7 + 1] = classId;
+        bufferData[count * 7 + 2] = scoreBBoxes[idx].first;
+        bufferData[count * 7 + 3] = scoreBBoxes[idx].second.xMin;
+        bufferData[count * 7 + 4] = scoreBBoxes[idx].second.yMin;
+        bufferData[count * 7 + 5] = scoreBBoxes[idx].second.xMax;
+        bufferData[count * 7 + 6] = scoreBBoxes[idx].second.yMax;
+        ++count;
+      }
+    }
+  }
+  out.copyFrom(bufferData, numKept * 7);
+}
+
+NormalizedBBox decodeBBox(const vector<real>& priorBBoxData,
+                          const vector<real>& locPredData) {
+  real priorBoxWidth = priorBBoxData[2] - priorBBoxData[0] + 1;
+  real priorBoxHeight = priorBBoxData[3] - priorBBoxData[1] + 1;
+  real priorBoxCenterX = priorBBoxData[0] + priorBoxWidth / 2;
+  real priorBoxCenterY = priorBBoxData[1] + priorBoxHeight / 2;
+  real dx = locPredData[0];
+  real dy = locPredData[1];
+  real dw = locPredData[2];
+  real dh = locPredData[3];
+
+  real decodedBBoxCenterX = dx * priorBoxWidth + priorBoxCenterX;
+  real decodedBBoxCenterY = dy * priorBoxHeight + priorBoxCenterY;
+  real decodedBBoxWidth = std::exp(dw) * priorBoxWidth;
+  real decodedBBoxHeight = std::exp(dh) * priorBoxHeight;
+
+  NormalizedBBox decodedBBox;
+  decodedBBox.xMin = decodedBBoxCenterX - decodedBBoxWidth / 2;
+  decodedBBox.yMin = decodedBBoxCenterY - decodedBBoxHeight / 2;
+  decodedBBox.xMax = decodedBBoxCenterX + decodedBBoxWidth / 2;
+  decodedBBox.yMax = decodedBBoxCenterY + decodedBBoxHeight / 2;
+
+  return decodedBBox;
+}
+
 }  // namespace paddle

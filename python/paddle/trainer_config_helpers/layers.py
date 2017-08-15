@@ -118,6 +118,8 @@ __all__ = [
     'cross_channel_norm_layer',
     'multibox_loss_layer',
     'detection_output_layer',
+    'rcnn_loss_layer',
+    'rcnn_detection_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -207,6 +209,8 @@ class LayerType(object):
     PRIORBOX_LAYER = 'priorbox'
     MULTIBOX_LOSS_LAYER = 'multibox_loss'
     DETECTION_OUTPUT_LAYER = 'detection_output'
+    RCNN_LOSS_LAYER = 'rcnn_loss'
+    RCNN_DETECTION_LAYER = 'rcnn_detection'
 
     CTC_LAYER = 'ctc'
     WARP_CTC_LAYER = 'warp_ctc'
@@ -1247,6 +1251,101 @@ def detection_output_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
+@wrap_name_default("rcnn_loss")
+def rcnn_loss_layer(rois,
+                    input_loc,
+                    input_conf,
+                    loss_ratio,
+                    num_classes,
+                    background_id=0,
+                    name=None):
+    """
+    Compute the location loss and the confidence loss for Fast R-CNN.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param rois: The input RoIs' data.
+    :type rois: LayerOutput
+    :param input_loc: The input predicted locations.
+    :type input_loc: LayerOutput
+    :param input_conf: The input classificaiton confidence.
+    :type input_conf: LayerOutput
+    :param loss_ratio: The ratio of location loss to confidence loss.
+    :type loss_ratio: float
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.RCNN_LOSS_LAYER,
+        inputs=[rois.name, input_loc.name, input_conf.name],
+        loss_ratio=loss_ratio,
+        num_classes=num_classes,
+        background_id=background_id)
+    return LayerOutput(
+        name,
+        LayerType.RCNN_LOSS_LAYER,
+        parents=[rois, input_loc, input_conf],
+        size=1)
+
+
+@wrap_name_default("rcnn_detection")
+def rcnn_detection_layer(rois,
+                         input_loc,
+                         input_conf,
+                         num_classes,
+                         nms_threshold,
+                         nms_top_k,
+                         keep_top_k,
+                         confidence_threshold,
+                         background_id=0,
+                         name=None):
+    """
+    Apply the NMS to the output of network and compute the predict bounding
+    box location.
+
+    :param rois: The input RoIs' data.
+    :type rois: LayerOutput
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict locations.
+    :type input_loc: LayerOutput
+    :param input_conf: The input priorbox confidence.
+    :type input_conf: LayerOutput
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param nms_threshold: The Non-maximum suppression threshold.
+    :type nms_threshold: float
+    :param nms_top_k: The bbox number kept of the NMS's output
+    :type nms_top_k: int
+    :param keep_top_k: The bbox number kept of the layer's output
+    :type keep_top_k: int
+    :param confidence_threshold: The classification confidence threshold
+    :type confidence_threshold: float
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.RCNN_DETECTION_LAYER,
+        inputs=[rois.name, input_loc.name, input_conf.name],
+        num_classes=num_classes,
+        nms_threshold=nms_threshold,
+        nms_top_k=nms_top_k,
+        keep_top_k=keep_top_k,
+        confidence_threshold=confidence_threshold,
+        background_id=background_id)
+    return LayerOutput(
+        name,
+        LayerType.RCNN_DETECTION_LAYER,
+        parents=[rois, input_loc, input_conf],
+        size=keep_top_k * 7)
 
 
 @wrap_name_default("cross_channel_norm")
