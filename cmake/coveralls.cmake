@@ -44,7 +44,6 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
     )
 
     if (_COVERALLS_UPLOAD)
-        message("COVERALLS UPLOAD: ON")
         # Upload the JSON to coveralls.
         add_custom_target(coveralls_upload
             COMMAND ${CURL_EXECUTABLE}
@@ -56,7 +55,6 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
 
         add_custom_target(coveralls DEPENDS coveralls_upload)
     else()
-        message("COVERALLS UPLOAD: OFF")
         add_custom_target(coveralls DEPENDS coveralls_generate)
     endif()
 endfunction()
@@ -66,37 +64,33 @@ if(WITH_COVERAGE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
 
-    set(EXCLUDE_DIRS
-        "demo/"
-        "build/"
-        "tests/"
-        ".test_env/"
-    )
-
-    if(WITH_GPU)
-        file(GLOB_RECURSE PADDLE_SOURCES RELATIVE "${PROJECT_SOURCE_DIR}" "*.cpp" "*.cc" ".c" "*.cu")
-    else()
-        file(GLOB_RECURSE PADDLE_SOURCES RELATIVE "${PROJECT_SOURCE_DIR}" "*.cpp" "*.cc" "*.c")
-    endif()
-
-    # exclude trivial files in PADDLE_SOURCES
-    foreach(EXCLUDE_DIR ${EXCLUDE_DIRS})
-        foreach(TMP_PATH ${PADDLE_SOURCES})
-            string(FIND ${TMP_PATH} ${EXCLUDE_DIR} EXCLUDE_DIR_FOUND)
-            if(NOT ${EXCLUDE_DIR_FOUND} EQUAL -1)
-                list(REMOVE_ITEM PADDLE_SOURCES ${TMP_PATH})
-            endif()
-        endforeach(TMP_PATH)
+    file(GLOB_RECURSE PADDLE_SOURCES
+        ${PADDLE_SOURCE_DIR}/paddle/memory/*.cc
+        ${PADDLE_SOURCE_DIR}/paddle/memory/*.cu
+        ${PADDLE_SOURCE_DIR}/paddle/memory/*.h
+        ${PADDLE_SOURCE_DIR}/paddle/framework/*.h
+        ${PADDLE_SOURCE_DIR}/paddle/framework/*.cu
+        ${PADDLE_SOURCE_DIR}/paddle/framework/*.cc
+        ${PADDLE_SOURCE_DIR}/paddle/operators/*.h
+        ${PADDLE_SOURCE_DIR}/paddle/operators/*.cu
+        ${PADDLE_SOURCE_DIR}/paddle/operators/*.cc
+        ${PADDLE_SOURCE_DIR}/paddle/platform/*.h
+        ${PADDLE_SOURCE_DIR}/paddle/platform/*.cu
+        ${PADDLE_SOURCE_DIR}/paddle/platform/*.cc)
+ 
+    # exclude trivial tests in PADDLE_SOURCES
+    foreach(TEST_SOURCE ${PADDLE_SOURCES}) 
+        string(REGEX MATCH "[/A-Za-z0-9_]*test.[a-z]*" TEST_SOURCE ${TEST_SOURCE})
+        if (TEST_SOURCE)
+            list(REMOVE_ITEM PADDLE_SOURCES ${TEST_SOURCE}) 
+        endif()
     endforeach()
 
-    # convert to absolute path
-    set(PADDLE_SRCS "")
-    foreach(PADDLE_SRC ${PADDLE_SOURCES})
-        set(PADDLE_SRCS "${PADDLE_SRCS};${PROJECT_SOURCE_DIR}/${PADDLE_SRC}")
-    endforeach()
+    message("-- Code Coverage: ${WITH_COVERAGE}")
+    message("-- Coveralls Upload: ${COVERALLS_UPLOAD}")
 
     code_coverage(
-        "${PADDLE_SRCS}"
+        "${PADDLE_SOURCES}"
         ${COVERALLS_UPLOAD}
         "${PROJECT_SOURCE_DIR}/cmake"
     )

@@ -109,9 +109,7 @@ endmacro()
 ##############################################################################
 
 # Get the coverage data.
-file(GLOB_RECURSE GCDA_FILES "${COV_PATH}" "*.gcda")
-message("Process GCDA files:")
-message("===============================")
+file(GLOB_RECURSE GCDA_FILES "${COV_PATH}/*.gcda")
 
 # Get a list of all the object directories needed by gcov
 # (The directories the .gcda files and .o files are found in)
@@ -135,12 +133,12 @@ foreach(GCDA ${GCDA_FILES})
 	#
 	execute_process(
 		COMMAND ${GCOV_EXECUTABLE} -p -o ${GCDA_DIR} ${GCDA} >/dev/null
-		WORKING_DIRECTORY ${GCDA_DIR}
+		WORKING_DIRECTORY ${COV_PATH}
 	)
 endforeach()
 
 # TODO: Make these be absolute path
-file(GLOB_RECURSE ALL_GCOV_FILES "${COV_PATH}" "*.gcov")
+file(GLOB ALL_GCOV_FILES ${COV_PATH}/*.gcov)
 
 # Get only the filenames to use for filtering.
 #set(COVERAGE_SRCS_NAMES "")
