@@ -73,20 +73,15 @@ EOF
 make -j `nproc`
 
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+cat <<EOF
+========================================
+Running unit tests ...
+========================================
+EOF
     if [ ${WITH_COVERAGE:-OFF} == "ON" ] && [ ${COVERALLS_UPLOAD:-OFF} == "ON" ] ; then
-        cat <<EOF
-        ========================================
-        Running unit tests and code coverage ...
-        ========================================
-        EOF
         # run unit tests and code coverage
         make coveralls
     else
-        cat <<EOF
-        ========================================
-        Running unit tests ...
-        ========================================
-        EOF
         ctest --output-on-failure 
     fi
     # make install should also be test when unittest
