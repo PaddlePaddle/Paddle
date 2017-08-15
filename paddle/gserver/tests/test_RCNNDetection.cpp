@@ -142,9 +142,9 @@ TEST(Layer, rcnnDetectionLayerFwd) {
   inputLoc = Matrix::create(3, numClasses * 4, false, useGpu);
   inputConf = Matrix::create(3, numClasses, false, useGpu);
   result = Matrix::create(2, 7, false, useGpu);
-  inputRoi->copyFrom(inputLocData, 3 * 5);
-  inputLoc->copyFrom(inputConfData, 3 * numClasses * 4);
-  inputConf->copyFrom(inputAnchorData, 3 * numClasses);
+  inputRoi->copyFrom(inputRoiData, 3 * 5);
+  inputLoc->copyFrom(inputLocData, 3 * numClasses * 4);
+  inputConf->copyFrom(inputConfData, 3 * numClasses);
   result->copyFrom(resultData, 2 * 7);
   doOneProposalTest(inputRoi,
                     inputLoc,
