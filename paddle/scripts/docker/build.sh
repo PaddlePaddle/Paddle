@@ -174,3 +174,7 @@ ADD go/cmd/master/master /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
+
+set +xe
+printf "If you need to install PaddlePaddle in develop docker image,"
+printf "please make install or pip install build/python/dist/*.whl.\n"
