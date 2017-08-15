@@ -17,7 +17,6 @@
 #include <cstring>
 #include <sstream>
 
-#include "paddle/framework/backward.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 

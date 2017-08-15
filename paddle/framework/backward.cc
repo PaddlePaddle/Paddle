@@ -198,10 +198,8 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     if (net->ops_.empty()) {  // Current no aux op is added to network
       return grad_op;
     }
-
     net->AddOp(grad_op);
   }
-
   net->SetType("@GENERATED_BACKWARD@");
   net->CompleteAddOp();
   return net;
