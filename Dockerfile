@@ -71,6 +71,9 @@ RUN pip install -r /root/requirements.txt
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
 
+# To avoid OpenBlas build from source in CMake
+RUN apt-get install -y libopenblas-dev
+
 # TODO(qijun) The template library Eigen doesn't work well with GCC 5 
 # coming with the default Docker image, so we switch to use GCC 4.8 
 # by default. And I will check Eigen library later.
