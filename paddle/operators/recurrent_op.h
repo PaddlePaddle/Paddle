@@ -127,6 +127,11 @@ class RecurrentGradientOp final : public framework::OperatorBase {
                       const VarNameMap& outputs,
                       const framework::AttributeMap& attrs);
 
+  /*
+   * Some special preprocesses after a gradient op is created.
+   */
+  static void Init(const RecurrentOp* const op, RecurrentGradientOp* grad_op);
+
   /**
    * InferShape must be called before Run.
    */

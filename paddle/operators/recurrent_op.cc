@@ -243,6 +243,9 @@ RecurrentGradientOp::RecurrentGradientOp(
   alg_.Init(std::move(arg));
 }
 
+void RecurrentGradientOp::Init(const RecurrentOp* const op,
+                               RecurrentGradientOp* grad_op) {}
+
 }  // namespace operators
 }  // namespace paddle
 
