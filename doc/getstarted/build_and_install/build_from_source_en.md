@@ -68,7 +68,7 @@ As a simple example, consider the following:
 
 1. **BLAS Dependencies(optional)**
   
-    CMake will search BLAS libraries from system. If not found, OpenBLAS will be downloaded, built and installed automatically.
+    CMake will search BLAS libraries from the system. If not found, OpenBLAS will be downloaded, built and installed automatically.
     To utilize preinstalled BLAS， you can simply specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
 
     ```bash
@@ -131,9 +131,9 @@ As a simple example, consider the following:
     To build GPU version, you will need the following installed:
 
         1. a CUDA-capable GPU
-        2. A supported version of Linux with a gcc compiler and toolchain
+        2. A supported version of Linux with a GCC compiler and toolchain
         3. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
-        4. NVIDIA cuDNN Library (availabel at https://developer.nvidia.com/cudnn)
+        4. NVIDIA cuDNN Library (available at https://developer.nvidia.com/cudnn)
 
     The CUDA development environment relies on tight integration with the host development environment,
     including the host compiler and C runtime libraries, and is therefore only supported on
@@ -163,25 +163,25 @@ mkdir build && cd build
 Finally, you can build and install PaddlePaddle:
 
 - Install PaddlePaddle with `make install`
-```bash
-# you can add build option here, such as:    
-cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
-# please use sudo make install, if you want to install PaddlePaddle into the system
-make -j `nproc` && make install
-# set PaddlePaddle installation path in ~/.bashrc
-export PATH=<path to install>/bin:$PATH
-# install PaddlePaddle Python modules.
-sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
-```
+    ```bash
+    # you can add build option here, such as:    
+    cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
+    # please use sudo make install, if you want to install PaddlePaddle into the system
+    make -j `nproc` && make install
+    # set PaddlePaddle installation path in ~/.bashrc
+    export PATH=<path to install>/bin:$PATH
+    # install PaddlePaddle Python modules.
+    sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
+    ```
 
 - Install PaddlePaddle with `pip install`
-```bash
-# buid PaddlePaddle
-cmake ..
-make -j `nproc`
-# install PaddlePaddle modules, you can specify the customer install path with --prefix
-sudo pip install python/dist/*.whl --prefix=<path to install>
-```
+    ```bash
+    # buid PaddlePaddle
+    cmake ..
+    make -j `nproc`
+    # install PaddlePaddle modules, you can specify the customer install path with --prefix
+    sudo pip install python/dist/*.whl --prefix=<path to install>
+    ```
 
 ## <span id="centos">Build on Centos 7</span>
 
@@ -203,9 +203,9 @@ sudo pip install python/dist/*.whl --prefix=<path to install>
     To build GPU version, you will need the following installed:
 
         1. a CUDA-capable GPU
-        2. A supported version of Linux with a gcc compiler and toolchain
+        2. A supported version of Linux with a GCC compiler and toolchain
         3. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
-        4. NVIDIA cuDNN Library (availabel at https://developer.nvidia.com/cudnn)
+        4. NVIDIA cuDNN Library (available at https://developer.nvidia.com/cudnn)
 
     The CUDA development environment relies on tight integration with the host development environment,
     including the host compiler and C runtime libraries, and is therefore only supported on
@@ -234,13 +234,23 @@ mkdir build && cd build
 
 Finally, you can build and install PaddlePaddle:
 
-```bash
-# you can add build option here, such as:    
-cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>
-# please use sudo make install, if you want to install PaddlePaddle into the system
-make -j `nproc` && make install
-# set PaddlePaddle installation path in ~/.bashrc
-export PATH=<path to install>/bin:$PATH
-# install PaddlePaddle Python modules.
-sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
-```
+- Install PaddlePaddle with `make install`
+    ```bash
+    # you can add build option here, such as:    
+    cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>
+    # please use sudo make install, if you want to install PaddlePaddle into the system
+    make -j `nproc` && make install
+    # set PaddlePaddle installation path in ~/.bashrc
+    export PATH=<path to install>/bin:$PATH
+    # install PaddlePaddle Python modules.
+    sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
+    ```
+
+- Install PaddlePaddle with `pip install`
+    ```bash
+    # buid PaddlePaddle
+    cmake3 ..
+    make -j `nproc`
+    # install PaddlePaddle modules, you can specify the customer install path with --prefix
+    sudo pip install python/dist/*.whl --prefix=<path to install>
+    ```
