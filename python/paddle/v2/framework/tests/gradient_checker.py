@@ -53,15 +53,18 @@ def get_numeric_gradient(op,
         tensor.set(input_values[var_name], core.CPUPlace())
 
     # Create all output variable in local_scope
-    for output in op.outputs():
-        if local_scope.find_var(output) is None:
-            local_scope.new_var(output).get_tensor()
-
+    opts = op.outputs()
+    for key in opts:
+        for output in opts[key]:
+            if local_scope.find_var(output) is None:
+                local_scope.new_var(output).get_tensor()
     op.infer_shape(local_scope)
 
     # allocate output memory
-    for output in op.outputs():
-        local_scope.find_var(output).get_tensor().alloc_float(core.CPUPlace())
+    for key in opts:
+        for output in opts[key]:
+            local_scope.find_var(output).get_tensor().alloc_float(core.CPUPlace(
+            ))
 
     # TODO(yuyang18): Only CPU is support now.
     cpu_ctx = core.DeviceContext.create(core.CPUPlace())
@@ -73,21 +76,35 @@ def get_numeric_gradient(op,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
+    # get the input tensor that we want to get it's numeric gradient.
     tensor_to_check = local_scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
+    # prepare a numpy array to store the gradient.
     gradient_flat = numpy.zeros(shape=(tensor_size, ), dtype='float32')
+
+    # we only compute gradient of one element each time.
+    # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
+        # get one input element throw it's index i.
         origin = tensor_to_check.get_float_element(i)
+
+        # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
         tensor_to_check.set_float_element(i, x_pos)
         y_pos = get_output()
 
+        # plus delta to this element, run op and get the sum of the result tensor.
         x_neg = origin - delta
         tensor_to_check.set_float_element(i, x_neg)
         y_neg = get_output()
 
-        tensor_to_check.set_float_element(i, origin)  # restore old value
+        # restore old value
+        tensor_to_check.set_float_element(i, origin)
+
+        # compute the gradient of this element and store it into a numpy array.
         gradient_flat[i] = (y_pos - y_neg) / delta / 2
+
+    # reshape the gradient result to the shape of the source tensor.
     return gradient_flat.reshape(tensor_to_check.get_dims())
 
 
@@ -136,18 +153,23 @@ class GradientChecker(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
 
-        tmp_outs = forward_op.temp_outputs()
-        no_tmp_out = filter(lambda name: name not in tmp_outs,
-                            forward_op.outputs())
+        no_tmp_out = forward_op.no_intermediate_outputs()
         if len(no_tmp_out) != 1:
             raise ValueError("non temp out_names should be 1")
 
-        in_names = forward_op.inputs()
+        inputs = forward_op.inputs()
+        in_names = [item for k in inputs for item in inputs[k]]
+        outputs = forward_op.outputs()
+        out_names = [item for k in outputs for item in outputs[k]]
+
         for no_grad in no_grad_set:
             if no_grad not in in_names:
                 raise ValueError("no_grad should be in in_names")
 
         backward_op = core.Operator.backward(forward_op, no_grad_set)
+
+        bwd_outputs = backward_op.outputs()
+        bwd_out_names = [item for k in bwd_outputs for item in bwd_outputs[k]]
 
         places = [core.CPUPlace()]
         if not only_cpu and core.is_compile_gpu() and backward_op.support_gpu():
@@ -174,7 +196,7 @@ class GradientChecker(unittest.TestCase):
                 var.set(value, place)
 
             # create output var
-            for out_name in forward_op.outputs():
+            for out_name in out_names:
                 scope.new_var(out_name).get_tensor()
 
             # infer the shape of output var and compute/set value of output var
@@ -184,7 +206,7 @@ class GradientChecker(unittest.TestCase):
             # create output grad var
             # set shape as the output var
             # set value of this grad to ones
-            for name in forward_op.outputs():
+            for name in out_names:
                 out_tensor = scope.find_var(name).get_tensor()
                 grad_tensor = scope.new_var(grad_var_name(name)).get_tensor()
                 grad_tensor.set_dims(out_tensor.shape())
@@ -192,7 +214,7 @@ class GradientChecker(unittest.TestCase):
                 grad_tensor.set(data, place)
 
             # create input grad var
-            for name in backward_op.outputs():
+            for name in bwd_out_names:
                 scope.new_var(name).get_tensor()
 
             # infer the shape of input gradient var and compute/set it's value
