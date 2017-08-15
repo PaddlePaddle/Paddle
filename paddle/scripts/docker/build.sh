@@ -39,6 +39,8 @@ Configuring cmake in /paddle/build ...
       -DCUDNN_ROOT=/usr/
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
       -DWITH_TESTING=${WITH_TESTING:-OFF}
+      -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
+      -DCOVERALLS_UPLOAD=${COVERALLS_UPLOAD:-OFF}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
 EOF
@@ -58,6 +60,8 @@ cmake .. \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
       -DWITH_TESTING=${WITH_TESTING:-OFF} \
+      -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
+      -DCOVERALLS_UPLOAD=${COVERALLS_UPLOAD:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
@@ -69,12 +73,22 @@ EOF
 make -j `nproc`
 
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-cat <<EOF
-========================================
-Running unit tests ...
-========================================
-EOF
-    ctest --output-on-failure
+    if [ ${WITH_COVERAGE:-OFF} == "ON" ] && [ ${COVERALLS_UPLOAD:-OFF} == "ON" ] ; then
+        cat <<EOF
+        ========================================
+        Running unit tests and code coverage ...
+        ========================================
+        EOF
+        # run unit tests and code coverage
+        make coveralls
+    else
+        cat <<EOF
+        ========================================
+        Running unit tests ...
+        ========================================
+        EOF
+        ctest --output-on-failure 
+    fi
     # make install should also be test when unittest
     make install -j `nproc`
     pip install /usr/local/opt/paddle/share/wheels/*.whl
