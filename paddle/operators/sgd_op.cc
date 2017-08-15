@@ -13,32 +13,27 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/sgd_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 
 class SGDOp : public framework::OperatorWithKernel {
-protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "Input size of SGDOp must be two");
-    PADDLE_ENFORCE(outputs.size() == 1, "Output size of SGDOp must be one");
-    PADDLE_ENFORCE(inputs[0] != nullptr, "inputs[0] mast be set");
-    PADDLE_ENFORCE(inputs[1] != nullptr, "inputs[1] mast be set");
-    PADDLE_ENFORCE(outputs[0] != nullptr, "outputs[0] mast be set");
-    PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
-                   "Two input of SGD Op's dimension must be same.");
-    outputs[0]->set_dims(inputs[0]->dims());
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(
+        ctx.Input<Tensor>("param")->dims() == ctx.Input<Tensor>("grad")->dims(),
+        "Two input of SGD Op's dimension must be same.");
+    ctx.Output<Tensor>("param_out")->Resize(ctx.Input<Tensor>("param")->dims());
   }
 };
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
-public:
+ public:
   SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
     AddOutput("param_out", "output parameter");
@@ -55,7 +50,7 @@ param_out = param - learning_rate * grad;
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(sgd, paddle::operators::SGDOp, paddle::operators::SGDOpMaker);
-typedef paddle::operators::SGDOpKernel<::paddle::platform::CPUPlace, float>
-    SGDOpKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(sgd, SGDOpKernel_CPU_float);
+namespace ops = paddle::operators;
+REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
+REGISTER_OP_CPU_KERNEL(sgd,
+                       ops::SGDOpKernel<paddle::platform::CPUPlace, float>);

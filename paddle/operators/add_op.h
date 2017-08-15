@@ -13,27 +13,34 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "glog/logging.h"
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
 class AddKernel : public framework::OpKernel {
-public:
-  void Compute(const framework::KernelContext& context) const override {
-    auto input0 = context.Input(0)->Get<framework::Tensor>();
-    auto input1 = context.Input(1)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* input0 = context.Input<Tensor>("X");
+    auto* input1 = context.Input<Tensor>("Y");
+    auto* output = context.Output<Tensor>("Out");
 
     output->mutable_data<T>(context.GetPlace());
 
-    framework::EigenVector<T>::Flatten(*output).device(
-        *(context.GetEigenDevice<Place>())) =
-        framework::EigenVector<T>::Flatten(input0) +
-        framework::EigenVector<T>::Flatten(input1);
+    auto X = EigenVector<T>::Flatten(*input0);
+    auto Y = EigenVector<T>::Flatten(*input1);
+    auto Z = EigenVector<T>::Flatten(*output);
+
+    auto place = context.GetEigenDevice<Place>();
+
+    Z.device(place) = X + Y;
   }
 };
 

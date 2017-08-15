@@ -1,13 +1,10 @@
-import paddle.v2.framework.proto.op_proto_pb2
-import paddle.v2.framework.proto.attr_type_pb2
+import paddle.v2.framework.proto.framework_pb2 as framework_pb2
 import unittest
 
 
 class TestFrameworkProto(unittest.TestCase):
     def test_all(self):
-        op_proto_lib = paddle.v2.framework.proto.op_proto_pb2
-        attr_type_lib = paddle.v2.framework.proto.attr_type_pb2
-        op_proto = op_proto_lib.OpProto()
+        op_proto = framework_pb2.OpProto()
         ipt0 = op_proto.inputs.add()
         ipt0.name = "a"
         ipt0.comment = "the input of cosine op"
@@ -21,7 +18,7 @@ class TestFrameworkProto(unittest.TestCase):
         attr = op_proto.attrs.add()
         attr.name = "scale"
         attr.comment = "scale of cosine op"
-        attr.type = attr_type_lib.FLOAT
+        attr.type = framework_pb2.FLOAT
         op_proto.type = "cos"
         self.assertTrue(op_proto.IsInitialized())
 

@@ -14,22 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <initializer_list>
 #include <stdexcept>
 #include <vector>
 #include "paddle/framework/dim.h"
 #include "paddle/platform/enforce.h"
-#include "unsupported/Eigen/CXX11/Tensor"
+#include "paddle/platform/variant.h"
 
 namespace paddle {
 namespace framework {
-
-namespace {
-typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>, Dim<6>, Dim<7>,
-                       Dim<8>, Dim<9>>
-    DDimVar;
-}
 
 /**
  * \brief A dynamically sized dimension.
@@ -37,6 +30,9 @@ typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>, Dim<6>, Dim<7>,
  * The number of dimensions must be between [1, 9].
  */
 struct DDim {
+  typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>, Dim<6>, Dim<7>,
+                         Dim<8>, Dim<9>>
+      DDimVar;
   DDimVar var;
 
   DDim() : var(Dim<1>()) {}

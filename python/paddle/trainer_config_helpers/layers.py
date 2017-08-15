@@ -76,6 +76,7 @@ __all__ = [
     'trans_layer',
     'rotate_layer',
     'sum_to_one_norm_layer',
+    'row_l2_norm_layer',
     'get_output_layer',
     'LayerType',
     'context_projection',
@@ -129,6 +130,10 @@ __all__ = [
     'prelu_layer',
     'gated_unit_layer',
     'crop_layer',
+    'sub_nested_seq_layer',
+    'clip_layer',
+    'slice_projection',
+    'kmax_sequence_score_layer',
 ]
 
 
@@ -160,6 +165,7 @@ class LayerType(object):
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
     SUM_TO_ONE_NORM_LAYER = 'sum_to_one_norm'
+    ROW_L2_NORM_LAYER = 'row_l2_norm'
     ADDTO_LAYER = 'addto'
 
     CONCAT_LAYER = 'concat'
@@ -222,6 +228,10 @@ class LayerType(object):
 
     PRELU = 'prelu'
     CROP_LAYER = 'crop'
+    SUB_NESTED_SEQ = 'sub_nested_seq'
+    CLIP_LAYER = 'clip'
+
+    KMAX_SEQ_SCORE = 'kmax_seq_score'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -535,6 +545,45 @@ def identity_projection(input, offset=None, size=None):
         proj = IdentityOffsetProjection(
             input_layer_name=input.name, offset=offset, size=size)
         proj.origin = input
+    return proj
+
+
+def slice_projection(input, slices):
+    """
+    slice_projection can slice the input value into multiple parts,
+    and then select some of them to merge into a new output.
+
+    .. math::
+       output = [input.slices()]
+
+    The example usage is:
+
+    .. code-block:: python
+
+       proj = slice_projection(input=layer, slices=[(0, 10), (20, 30)])
+
+    Note that slice_projection should not have any parameter.
+
+    :param input: Input Layer.
+    :type input: LayerOutput
+    :param slices: An array of slice parameters.
+                   Each slice contains the start and end offsets based
+                   on the input.
+    :type slices: pair of int
+    :return: A SliceProjection object
+    :rtype: SliceProjection
+    """
+    assert len(slices) >= 1
+    start = 0
+    for i in xrange(len(slices)):
+        assert len(slices[i]) == 2
+        # The start position of the next slice needs to be greater than
+        # or equal to the end position of the previous slice.
+        assert slices[i][0] >= start
+        assert slices[i][1] >= slices[i][0]
+        start = slices[i][1]
+    proj = SliceProjection(input_layer_name=input.name, slices=slices)
+    proj.origin = input
     return proj
 
 
@@ -867,7 +916,7 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
 
 @wrap_name_default("embedding")
 @wrap_param_attr_default()
-@layer_support(ERROR_CLIPPING)
+@layer_support(ERROR_CLIPPING, DROPOUT)
 def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
     """
     Define a embedding Layer.
@@ -1357,7 +1406,7 @@ def pooling_layer(input,
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(param_names=["act", 'state_act'], act=TanhActivation())
 @wrap_name_default("lstmemory")
-@layer_support(DROPOUT)
+@layer_support()
 def lstmemory(input,
               name=None,
               size=None,
@@ -1466,7 +1515,7 @@ def lstmemory(input,
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(param_names=["act"], act=TanhActivation())
 @wrap_name_default("gru")
-@layer_support(DROPOUT)
+@layer_support()
 def grumemory(input,
               size=None,
               name=None,
@@ -1830,7 +1879,7 @@ def repeat_layer(input,
 @wrap_name_default("seqreshape")
 @wrap_act_default(act=IdentityActivation())
 @wrap_bias_attr_default(has_bias=False)
-@layer_support()
+@layer_support(ERROR_CLIPPING, DROPOUT)
 def seq_reshape_layer(input,
                       reshape_size,
                       act=None,
@@ -2740,7 +2789,7 @@ def img_cmrnorm_layer(input,
     default_factory=lambda _: ParamAttr(initial_mean=1.0, initial_std=0.))
 @wrap_act_default(act=ReluActivation())
 @wrap_name_default("batch_norm")
-@layer_support(DROPOUT)
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def batch_norm_layer(input,
                      act=None,
                      name=None,
@@ -2820,15 +2869,6 @@ def batch_norm_layer(input,
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    if not isinstance(act, ReluActivation):
-        logger.log(logging.WARN,
-                   "%s is not recommend for batch normalization's activation, "
-                   "maybe the relu is better" % act.name)
-
-    if not isinstance(input.activation, LinearActivation):
-        logger.log(logging.WARN,
-                   "The activation should be inside batch normalization, the "
-                   "previous layer's activation may be Linear")
 
     if num_channels is None:
         if input.num_filters is not None:
@@ -2895,10 +2935,46 @@ def sum_to_one_norm_layer(input, name=None, layer_attr=None):
         name, LayerType.SUM_TO_ONE_NORM_LAYER, parents=[input], size=input.size)
 
 
+@wrap_name_default()
+@layer_support()
+def row_l2_norm_layer(input, name=None, layer_attr=None):
+    """
+    A layer for L2-normalization in each row.
+
+    .. math::
+       out[i] = \frac{in[i]}{\sqrt{\sum_{k=1}^N in[k]^{2}}}
+
+    where the size of :math:`in` is (batchSize x dataDim) ,
+    and the size of :math:`out` is a (batchSize x dataDim) .
+
+    The example usage is:
+
+    .. code-block:: python
+
+       row_l2_norm_layer = row_l2_norm_layer(input=layer)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.ROW_L2_NORM_LAYER,
+        inputs=[input.name],
+        **ExtraAttr.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.ROW_L2_NORM_LAYER, parents=[input], size=input.size)
+
+
 @wrap_name_default("addto")
 @wrap_act_default(act=LinearActivation())
 @wrap_bias_attr_default(has_bias=False)
-@layer_support(DROPOUT)
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
     """
     AddtoLayer.
@@ -2977,7 +3053,7 @@ def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
 
 @wrap_act_default(act=IdentityActivation())
 @wrap_name_default("concat")
-@layer_support()
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
     """
     Concat all input vector into one huge vector.
@@ -3061,7 +3137,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
 @wrap_name_default("seqconcat")
 @wrap_act_default(act=IdentityActivation())
 @wrap_bias_attr_default(has_bias=False)
-@layer_support()
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
                      bias_attr=None):
     """
@@ -3210,8 +3286,8 @@ def memory(name,
 
 
 @wrap_bias_attr_default()
-@wrap_act_default(
-    param_names=['gate_act', 'state_act'], act=SigmoidActivation())
+@wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
+@wrap_act_default(param_names=['state_act'], act=TanhActivation())
 @wrap_act_default(act=TanhActivation())
 @wrap_name_default('lstm_step')
 @layer_support()
@@ -3568,12 +3644,7 @@ def SubsequenceInput(input):
 
 
 @wrap_name_default("recurrent_group")
-def recurrent_group(step,
-                    input,
-                    reverse=False,
-                    name=None,
-                    targetInlink=None,
-                    is_generating=False):
+def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
     """
     Recurrent layer group is an extremely flexible recurrent unit in
     PaddlePaddle. As long as the user defines the calculation done within a
@@ -3639,21 +3710,12 @@ def recurrent_group(step,
 
     :type targetInlink: LayerOutput|SubsequenceInput
 
-    :param is_generating: If is generating, none of input type should be LayerOutput;
-                          else, for training or testing, one of the input type must
-                          be LayerOutput.
-
-    :type is_generating: bool
-
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
     model_type('recurrent_nn')
 
-    def is_single_input(x):
-        return isinstance(x, LayerOutput) or isinstance(x, StaticInput)
-
-    if is_single_input(input):
+    if isinstance(input, LayerOutput) or isinstance(input, StaticInput):
         input = [input]
     assert isinstance(input, collections.Sequence)
 
@@ -3667,13 +3729,8 @@ def recurrent_group(step,
         in_links=map(lambda x: x.name, in_links),
         seq_reversed=reverse)
     in_args = []
-    has_LayerOutput = False
     for each_input in input:
-        assert is_single_input(each_input)
-        if isinstance(each_input, LayerOutput):
-            in_args.append(each_input)
-            has_LayerOutput = True
-        else:  # StaticInput
+        if isinstance(each_input, StaticInput):  # StaticInput
             mem_name = "__%s_memory__" % each_input.input.name
             mem = memory(
                 name=None,
@@ -3681,24 +3738,26 @@ def recurrent_group(step,
                 boot_layer=each_input.input)
             mem.set_input(mem)
             in_args.append(mem)
-
-    assert (is_generating != has_LayerOutput)
+        else:
+            in_args.append(each_input)
 
     layer_outs = step(*in_args)
 
     if isinstance(layer_outs, LayerOutput):
         layer_outs = [layer_outs]
 
-    for ot in layer_outs:
-        assert isinstance(ot, LayerOutput)
-        ot.reverse = reverse
-        RecurrentLayerGroupSetOutLink(ot.name)
+    for layer_out in layer_outs:
+        assert isinstance(
+            layer_out, LayerOutput
+        ), "Type of step function's return value must be LayerOutput."
+        layer_out.reverse = reverse
+        RecurrentLayerGroupSetOutLink(layer_out.name)
 
     RecurrentLayerGroupEnd(name=name)
 
     for layer_out in layer_outs:
-        # Thee previous full_name is the name is the rnn group
-        # We need a full_name outside the rnn group
+        # The previous full_name is the name inside the recurrent group.
+        # We need a full_name outside the recurrent group.
         layer_out.full_name = MakeLayerNameInSubmodel(layer_out.name)
 
     if len(layer_outs) == 1:
@@ -3721,7 +3780,20 @@ class BaseGeneratedInput(object):
 
 class GeneratedInput(BaseGeneratedInput):
     def after_real_step(self, input):
-        return maxid_layer(input=input, name='__beam_search_predict__')
+        if isinstance(input, LayerOutput):
+            input = [input]
+        elif isinstance(input, collections.Sequence):
+            input = list(input)
+            if len(input) > 1:
+                logger.info(
+                    ("More than one layers inside the recurrent_group "
+                     "are returned as outputs of the entire recurrent_group "
+                     "PLEASE garantee the first output is probability of "
+                     "the predicted next word."))
+
+        return [maxid_layer(
+            input=input[0], name='__beam_search_predict__')] + (
+                input[1:] if len(input) > 1 else [])
 
     def before_real_step(self):
         predict_id = memory(
@@ -3908,6 +3980,7 @@ def beam_search(step,
     :type step: callable
     :param input: Input data for the recurrent unit, which should include the
                   previously generated words as a GeneratedInput object.
+                  In beam_search, none of the input's type should be LayerOutput.
     :type input: list
     :param bos_id: Index of the start symbol in the dictionary. The start symbol
                    is a special token for NLP task, which indicates the
@@ -3949,15 +4022,18 @@ def beam_search(step,
 
     real_input = []
     for i, each_input in enumerate(input):
-        assert isinstance(each_input, StaticInput) or isinstance(
-            each_input, BaseGeneratedInput)
+        assert not isinstance(each_input, LayerOutput), (
+            "in beam_search, "
+            "none of the input should has a type of LayerOutput.")
         if isinstance(each_input, BaseGeneratedInput):
-            assert generated_input_index == -1
+            assert generated_input_index == -1, ("recurrent_group accepts "
+                                                 "only one GeneratedInput.")
             generated_input_index = i
+
         else:
             real_input.append(each_input)
 
-    assert generated_input_index != -1
+    assert generated_input_index != -1, "No GeneratedInput is given."
 
     gipt = input[generated_input_index]
 
@@ -3978,17 +4054,11 @@ def beam_search(step,
 
         predict = gipt.after_real_step(step(*args))
 
-        eos_layer(input=predict, eos_id=eos_id, name=eos_name)
+        eos_layer(input=predict[0], eos_id=eos_id, name=eos_name)
         return predict
 
-    tmp = recurrent_group(
-        step=__real_step__,
-        input=real_input,
-        reverse=False,
-        name=name,
-        is_generating=True)
-
-    return tmp
+    return recurrent_group(
+        step=__real_step__, input=real_input, reverse=False, name=name)
 
 
 def __cost_input__(input, label, weight=None):
@@ -4523,7 +4593,7 @@ def tensor_layer(a,
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
 @wrap_act_default()
-@layer_support()
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def selective_fc_layer(input,
                        size,
                        select=None,
@@ -6017,7 +6087,7 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
     """
     The crop layer crops images by offset and shape. User can set crop shape by
     args 'shape' explicitly or by reference input layer.
-    
+
     The example usage is:
 
     .. code-block:: python
@@ -6058,3 +6128,122 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
         layer_type=LayerType.CROP_LAYER,
         parents=input,
         size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def sub_nested_seq_layer(input, selected_indices, name=None):
+    """
+    The sub_nested_seq_layer accepts two inputs: the first one is a nested
+    sequence; the second one is a set of selceted indices in the nested sequence.
+
+    Then sub_nest_seq_layer trims the first nested sequence input according
+    to the selected indices to form a new output. This layer is useful in
+    beam training.
+
+    The example usage is:
+
+    .. code-block:: python
+
+        sub_nest_seq = sub_nested_seq_layer(input=[data, selected_indices])
+
+
+    :param input: A nested sequence.
+    :type input: LayerOutput
+    :param selected_indices: a set of sequence indices in the nested sequence.
+    :type input: LayerOutput
+    :param name: name of this layer.
+    :type name: basestring
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of '
+        'sub_nested_seq_layer must be a Paddle layer.')
+    assert isinstance(selected_indices, LayerOutput), (
+        'The second input of '
+        'sub_nested_seq_layer must be a Paddle layer.')
+
+    l = Layer(
+        inputs=input.name,
+        selected_indices=selected_indices.name,
+        name=name,
+        type=LayerType.SUB_NESTED_SEQ)
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SUB_NESTED_SEQ,
+        parents=input,
+        size=l.config.size)
+
+
+@wrap_name_default("clip")
+def clip_layer(input, min, max, name=None):
+    """
+    A layer for clipping the input value by the threshold.
+
+    .. math::
+
+        out[i] = \min\left(\max\left(in[i],p_{1}\right),p_{2}\right)
+
+    .. code-block:: python
+
+        clip = clip_layer(input=input_layer, min=-10, max=10)
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput.
+    :param min: The lower threshold for clipping.
+    :type min: double
+    :param max: The upper threshold for clipping.
+    :type max: double
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.CLIP_LAYER,
+        inputs=[input.name],
+        min=min,
+        max=max)
+    return LayerOutput(
+        name, LayerType.CLIP_LAYER, parents=[input], size=input.size)
+
+
+@wrap_name_default()
+@layer_support()
+def kmax_sequence_score_layer(input, name=None, beam_size=1):
+    """
+    This layer accepts one input which are scores over a sequence or a nested
+    sequence, and returns indices of beam_size sequences with highest scores.
+
+    .. code-block:: python
+
+        kmax_indices = kmax_sequence_score_layer(input=input_layer, beam_size)
+
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer. It stores scores over a sequence or a nested
+        sequence and its size must be 1.
+    :type input: LayerOutput.
+    :param beam_size: squence indices with top beam_size scores are returned.
+    :type beam_size: double
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput), ("kmax_sequence_score_layer "
+                                            "accepts only one input.")
+    assert input.size == 1, (
+        "input of kmax_sequence_score_layer is a score"
+        "over a sequence or a nested sequence, so its width must be 1.")
+
+    Layer(
+        name=name,
+        type=LayerType.KMAX_SEQ_SCORE,
+        inputs=[input.name],
+        beam_size=beam_size)
+
+    return LayerOutput(
+        name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)

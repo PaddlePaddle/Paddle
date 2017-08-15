@@ -104,7 +104,7 @@ layers {
   }
   bias_parameter_name: "lstm_bias"
   active_gate_type: "sigmoid"
-  active_state_type: "sigmoid"
+  active_state_type: "tanh"
 }
 layers {
   name: "__lstm_group_0___state@__lstm_group_0___recurrent_group"
@@ -183,7 +183,7 @@ layers {
   }
   bias_parameter_name: "lstm_bias"
   active_gate_type: "sigmoid"
-  active_state_type: "sigmoid"
+  active_state_type: "tanh"
 }
 layers {
   name: "__lstm_group_1___state@__lstm_group_1___recurrent_group"

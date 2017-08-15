@@ -22,12 +22,13 @@ namespace paddle {
  * A layer used by Fast R-CNN to extract feature maps of ROIs from the last
  * feature map.
  * - Input: This layer needs two input layers: The first input layer is a
- * convolution layer; The second input layer contains the ROI data which is the
- * output of ProposalLayer in Faster R-CNN. layers for generating bbox
- * location offset and the classification confidence. - Output: The
- * ROIs' feature map. Reference: Shaoqing Ren, Kaiming He, Ross Girshick, and
- * Jian Sun. Faster R-CNN: Towards Real-Time Object Detection with Region
- * Proposal
+ *          convolution layer; The second input layer contains the ROI data
+ *          which is the output of ProposalLayer in Faster R-CNN. layers for
+ *          generating bbox location offset and the classification confidence.
+ * - Output: The ROIs' feature map.
+ * Reference:
+ *    Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun.
+ *    Faster R-CNN: Towards Real-Time Object Detection with Region Proposal
  */
 
 class ROIPoolLayer : public Layer {

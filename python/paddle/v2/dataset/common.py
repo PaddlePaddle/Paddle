@@ -32,17 +32,22 @@ __all__ = [
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
+
 # When running unit tests, there could be multiple processes that
 # trying to create DATA_HOME directory simultaneously, so we cannot
 # use a if condition to check for the existence of the directory;
 # instead, we use the filesystem as the synchronization mechanism by
 # catching returned errors.
-try:
-    os.makedirs(DATA_HOME)
-except OSError as exc:
-    if exc.errno != errno.EEXIST:
-        raise
-    pass
+def must_mkdirs(path):
+    try:
+        os.makedirs(DATA_HOME)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+        pass
+
+
+must_mkdirs(DATA_HOME)
 
 
 def md5file(fname):
@@ -91,6 +96,19 @@ def fetch_all():
             getattr(
                 importlib.import_module("paddle.v2.dataset.%s" % module_name),
                 "fetch")()
+
+
+def fetch_all_recordio(path):
+    for module_name in filter(lambda x: not x.startswith("__"),
+                              dir(paddle.v2.dataset)):
+        if "convert" in dir(
+                importlib.import_module("paddle.v2.dataset.%s" % module_name)) and \
+                not module_name == "common":
+            ds_path = os.path.join(path, module_name)
+            must_mkdirs(ds_path)
+            getattr(
+                importlib.import_module("paddle.v2.dataset.%s" % module_name),
+                "convert")(ds_path)
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
@@ -166,55 +184,37 @@ def cluster_files_reader(files_pattern,
     return reader
 
 
-def convert(output_path,
-            reader,
-            num_shards,
-            name_prefix,
-            max_lines_to_shuffle=1000):
+def convert(output_path, reader, line_count, name_prefix):
     import recordio
     """
     Convert data from reader to recordio format files.
 
     :param output_path: directory in which output files will be saved.
     :param reader: a data reader, from which the convert program will read data instances.
-    :param num_shards: the number of shards that the dataset will be partitioned into.
     :param name_prefix: the name prefix of generated files.
     :param max_lines_to_shuffle: the max lines numbers to shuffle before writing.
     """
 
-    assert num_shards >= 1
-    assert max_lines_to_shuffle >= 1
+    assert line_count >= 1
+    indx_f = 0
 
-    def open_writers():
-        w = []
-        for i in range(0, num_shards):
-            n = "%s/%s-%05d-of-%05d" % (output_path, name_prefix, i,
-                                        num_shards - 1)
-            w.append(recordio.writer(n))
-
-        return w
-
-    def close_writers(w):
-        for i in range(0, num_shards):
-            w[i].close()
-
-    def write_data(w, lines):
+    def write_data(indx_f, lines):
         random.shuffle(lines)
-        for i, d in enumerate(lines):
+        filename = "%s/%s-%05d" % (output_path, name_prefix, indx_f)
+        writer = recordio.writer(filename)
+        for l in lines:
             # FIXME(Yancey1989):
             # dumps with protocol: pickle.HIGHEST_PROTOCOL
-            o = pickle.dumps(d)
-            w[i % num_shards].write(o)
+            writer.write(cPickle.dumps(l))
+        writer.close()
 
-    w = open_writers()
     lines = []
-
     for i, d in enumerate(reader()):
         lines.append(d)
-        if i % max_lines_to_shuffle == 0 and i >= max_lines_to_shuffle:
-            write_data(w, lines)
+        if i % line_count == 0 and i >= line_count:
+            write_data(indx_f, lines)
             lines = []
+            indx_f += 1
             continue
 
-    write_data(w, lines)
-    close_writers(w)
+    write_data(indx_f, lines)
