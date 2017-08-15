@@ -16,5 +16,5 @@ ELSE()
     set(GPU_CTX_DEPS)
 ENDIF()
 
-cc_library(device_context SRCS device_context.cc DEPS place eigen3 ${GPU_CTX_DEPS})
+cc_library(device_context SRCS device_context.cc DEPS memory place eigen3 ${GPU_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cc DEPS device_context gpu_info)
