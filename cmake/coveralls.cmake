@@ -1,10 +1,11 @@
 # CMake script for code coverage.
 # If _COVERALLS_UPLOAD is ON, it will upload json files to overalls.io automatically.
 
+# Param _GCOV_EXECUTABLE        gcov executable.
 # Param _COVERAGE_SRCS          A list of coverage source files.
 # Param _COVERALLS_UPLOAD       Upload the result to coveralls.
 # Param _CMAKE_SCRIPT_PATH      CMake script path.
-function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
+function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
     # clean previous gcov data.
     file(REMOVE_RECURSE ${PROJECT_BINARY_DIR}/*.gcda)
 
@@ -34,6 +35,7 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
                 -DCOVERALLS_OUTPUT_FILE="${COVERALLS_FILE}"
                 -DCOV_PATH="${PROJECT_BINARY_DIR}"
                 -DPROJECT_ROOT="${PROJECT_SOURCE_DIR}"
+                -DGCOV_EXECUTABLE="${_GCOV_EXECUTABLE}"
                 -P "${_CMAKE_SCRIPT_PATH}/coverallsGcovJsons.cmake"
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         COMMENT "Coveralls: generating coveralls output..."
@@ -86,7 +88,16 @@ if(WITH_COVERAGE)
     message("-- Code Coverage: ${WITH_COVERAGE}")
     message("-- Coveralls Upload: ${COVERALLS_UPLOAD}")
 
+    get_filename_component(CXX_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
+    set(GCOV_EXECUTABLE ${CXX_DIR}/gcov)
+    if (NOT GCOV_EXECUTABLE)
+        message(FATAL_ERROR "gcov not found! Aborting...")
+    else()
+        message("-- Found gcov: ${GCOV_EXECUTABLE}")
+    endif()
+
     code_coverage(
+        "${GCOV_EXECUTABLE}"
         "${PADDLE_SOURCES}"
         ${COVERALLS_UPLOAD}
         "${PROJECT_SOURCE_DIR}/cmake"

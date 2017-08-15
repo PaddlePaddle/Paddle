@@ -40,11 +40,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 # CMake list format.
 string(REGEX REPLACE "\\*" ";" COVERAGE_SRCS ${COVERAGE_SRCS})
 
-get_filename_component(CXX_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
-set(GCOV_EXECUTABLE ${CXX_DIR}/gcov)
-if (NOT GCOV_EXECUTABLE)
-	message(FATAL_ERROR "gcov not found! Aborting...")
-endif()
 
 find_package(Git)
 
