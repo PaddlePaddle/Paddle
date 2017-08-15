@@ -162,6 +162,7 @@ mkdir build && cd build
 
 Finally, you can build and install PaddlePaddle:
 
+- Install PaddlePaddle with `make install`
 ```bash
 # you can add build option here, such as:    
 cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
@@ -172,6 +173,16 @@ export PATH=<path to install>/bin:$PATH
 # install PaddlePaddle Python modules.
 sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
 ```
+
+- Install PaddlePaddle with `pip install`
+```bash
+# buid PaddlePaddle
+cmake ..
+make -j `nproc`
+# install PaddlePaddle modules, you can specify the customer install path with --prefix
+sudo pip install python/dist/*.whl --prefix=<path to install>
+```
+
 ## <span id="centos">Build on Centos 7</span>
 
 ### Install Dependencies
