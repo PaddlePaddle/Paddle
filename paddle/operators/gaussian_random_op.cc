@@ -43,7 +43,8 @@ class GaussianRandomKernel : public framework::OpKernel {
 };
 
 class GaussianRandomOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(GaussianRandomOp, framework::OperatorWithKernel);
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext& context) const override {
@@ -80,5 +81,6 @@ Use to initialize tensor with gaussian random generator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(gaussian_random, ops::GaussianRandomOp, ops::GaussianRandomOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
+                             ops::GaussianRandomOpMaker);
 REGISTER_OP_CPU_KERNEL(gaussian_random, ops::GaussianRandomKernel<float>);

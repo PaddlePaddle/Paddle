@@ -14,13 +14,20 @@ limitations under the License. */
 
 #pragma once
 
-#include <execinfo.h>
+#include <dlfcn.h>     // for dladdr
+#include <execinfo.h>  // for backtrace
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+
 #include "paddle/string/printf.h"
 #include "paddle/string/to_string.h"
+
+#ifdef __GNUC__
+#include <cxxabi.h>  // for __cxa_demangle
+#endif
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -39,6 +46,19 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+namespace {
+#ifdef __GNUC__
+inline std::string demangle(std::string name) {
+  int status = -4;  // some arbitrary value to eliminate the compiler warning
+  std::unique_ptr<char, void (*)(void*)> res{
+      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+  return (status == 0) ? res.get() : name;
+}
+#else
+inline std::string demangle(std::string name) { return name; }
+#endif
+}
+
 struct EnforceNotMet : public std::exception {
   std::exception_ptr exp_;
   std::string err_str_;
@@ -48,15 +68,29 @@ struct EnforceNotMet : public std::exception {
       std::rethrow_exception(exp_);
     } catch (const std::exception& exp) {
       std::ostringstream sout;
+
       sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
-      sout << "Call Stacks: " << std::endl;
+      sout << "PaddlePaddle Call Stacks: " << std::endl;
+
       void* call_stack[TRACE_STACK_LIMIT];
-      int sz = backtrace(call_stack, TRACE_STACK_LIMIT);
-      auto line = backtrace_symbols(call_stack, sz);
-      for (int i = 0; i < sz; ++i) {
-        sout << line[i] << std::endl;
+      auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+      auto symbols = backtrace_symbols(call_stack, size);
+
+      Dl_info info;
+      for (int i = 0; i < size; ++i) {
+        if (dladdr(call_stack[i], &info)) {
+          auto demangled = demangle(info.dli_sname);
+          auto addr_offset = static_cast<char*>(call_stack[i]) -
+                             static_cast<char*>(info.dli_saddr);
+          sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
+                                  2 + sizeof(void*) * 2, call_stack[i],
+                                  demangled, addr_offset);
+        } else {
+          sout << string::Sprintf("%-3d %*0p %s\n", i, 2 + sizeof(void*) * 2,
+                                  call_stack[i]);
+        }
       }
-      free(line);
+      free(symbols);
       err_str_ = sout.str();
     }
   }
@@ -170,7 +204,7 @@ inline void throw_on_error(T e) {
  *    PADDLE_ENFORCE_EQ(a, b);
  *
  *    will raise an expression described as follows:
- *    "enforce a == b failed, 1 != 2" with detailed stack infomation.
+ *    "enforce a == b failed, 1 != 2" with detailed stack information.
  *
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)

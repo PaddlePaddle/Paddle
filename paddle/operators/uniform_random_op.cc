@@ -46,7 +46,9 @@ class CPUUniformRandomKernel : public framework::OpKernel {
 };
 
 class UniformRandomOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(UniformRandomOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE(GetAttr<float>("min") < GetAttr<float>("max"),
@@ -79,7 +81,7 @@ Used to initialize tensor with uniform random generator.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(uniform_random, paddle::operators::UniformRandomOp,
-            paddle::operators::UniformRandomOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(uniform_random, paddle::operators::UniformRandomOp,
+                             paddle::operators::UniformRandomOpMaker);
 REGISTER_OP_CPU_KERNEL(uniform_random,
                        paddle::operators::CPUUniformRandomKernel<float>);

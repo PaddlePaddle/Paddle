@@ -50,8 +50,6 @@ inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
 
-extern std::unordered_map<std::string, OpProto>& OpProtos();
-
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
@@ -66,10 +64,8 @@ class OperatorBase {
  public:
   using VarNameMap = std::map<std::string, std::vector<std::string>>;
 
-  OperatorBase() = default;
   OperatorBase(const std::string& type, const VarNameMap& inputs,
-               const VarNameMap& outputs, const AttributeMap& attrs)
-      : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
+               const VarNameMap& outputs, const AttributeMap& attrs);
 
   OperatorBase(const OperatorBase& o) = delete;
   OperatorBase& operator=(const OperatorBase& o) = delete;
@@ -86,10 +82,6 @@ class OperatorBase {
 
   virtual std::string DebugString() const;
 
-  /// Init will be called after CreateOperator, you can put some initialization
-  /// logic here.
-  virtual void Init() {}
-
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
   virtual void InferShape(const Scope& scope) const = 0;
@@ -105,6 +97,8 @@ class OperatorBase {
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
+  const VarNameMap& Inputs() const { return inputs_; }
+  const VarNameMap& Outputs() const { return outputs_; }
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
   //! Get a input which has multiple variables.
@@ -118,10 +112,11 @@ class OperatorBase {
 
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
-  std::string Type() const { return type_; }
+  const std::string& Type() const { return type_; }
+  void SetType(const std::string& type) { type_ = type; }
   const AttributeMap& Attrs() const { return attrs_; }
 
- public:
+ protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
   // I (Inputs)
@@ -135,14 +130,13 @@ class OperatorBase {
   AttributeMap attrs_;
 };
 
-#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                               \
- public:                                                                       \
-  Class() : ParentClass() { /* TODO(yi): This constructor is to be removed. */ \
-  }                                                                            \
-  Class(const std::string& type, const VarNameMap& inputs,                     \
-        const VarNameMap& outputs,                                             \
-        const paddle::framework::AttributeMap& attrs)                          \
-      : ParentClass(type, inputs, outputs, attrs) {}
+class NOP : public OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
+};
 
 class InferShapeContext {
  public:
@@ -225,7 +219,7 @@ class InferShapeContext {
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
                      PADDLE_ENFORCE_NOT_NULL(
-                         var, "MultiOutput(%s:%s) should not be nullptr", name,
+                         var, "MultiOutput(%s:%s) should not be nullptr.", name,
                          sub_name);
                      return var->GetMutable<T>();
                    });
@@ -264,6 +258,10 @@ class ExecutionContext : public InferShapeContext {
 
   platform::Place GetPlace() const { return device_context_->GetPlace(); }
 
+  const platform::DeviceContext* device_context() const {
+    return device_context_;
+  }
+
   const platform::DeviceContext* device_context_;
 };
 
@@ -283,8 +281,6 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(OperatorWithKernel, OperatorBase)
-
   struct OpKernelKey {
     platform::Place place_;
 
@@ -307,6 +303,10 @@ class OperatorWithKernel : public OperatorBase {
 
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
+
+  OperatorWithKernel(const std::string& type, const VarNameMap& inputs,
+                     const VarNameMap& outputs, const AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(const Scope& scope) const override {
     InferShape(InferShapeContext(*this, scope));

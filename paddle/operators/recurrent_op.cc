@@ -77,13 +77,14 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
   PADDLE_ENFORCE(!(*stepnet_)->outputs_.empty(), "stepnet_ op has no outputs");
+  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
       auto& step_scope = scope.NewScope();
 
       // create step net's temp inputs
-      for (auto& input : (*stepnet_)->inputs_) {
+      for (auto& input : (*stepnet_)->inputs()) {
         // the weight are located in parent scope
         for (auto& var_name : input.second) {
           if (!step_scope.FindVar(var_name)) {
@@ -92,7 +93,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
         }
       }
       // create stepnet's outputs
-      for (const auto& output : (*stepnet_)->outputs_) {
+      for (const auto& output : (*stepnet_)->outputs()) {
         for (auto& var_name : output.second) {
           step_scope.NewVar(var_name);
         }
@@ -129,8 +130,11 @@ const rnn::ArgumentName RecurrentGradientOp::kArgName{
     "inlink@grad", "inlink_alias", "outlink_alias",
     "memories",    "pre_memories", "boot_memories@grad"};
 
-void RecurrentOp::Init() {
-  OperatorBase::Init();
+RecurrentOp::RecurrentOp(const std::string& type,
+                         const framework::OperatorBase::VarNameMap& inputs,
+                         const framework::OperatorBase::VarNameMap& outputs,
+                         const framework::AttributeMap& attrs)
+    : OperatorBase(type, inputs, outputs, attrs) {
   std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
   rnn::InitArgument(kArgName, arg.get(), *this);
   alg_.Init(std::move(arg), &stepnet_);
@@ -219,8 +223,11 @@ void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
   LinkBootMemoryGradients(step_scopes[0], true /*infer_shape_mode*/);
 }
 
-void RecurrentGradientOp::Init() {
-  OperatorBase::Init();
+RecurrentGradientOp::RecurrentGradientOp(
+    const std::string& type, const framework::OperatorBase::VarNameMap& inputs,
+    const framework::OperatorBase::VarNameMap& outputs,
+    const framework::AttributeMap& attrs)
+    : OperatorBase(type, inputs, outputs, attrs) {
   std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
   rnn::InitArgument(kArgName, arg.get(), *this);
   alg_.Init(std::move(arg), &stepnet_);
@@ -229,5 +236,6 @@ void RecurrentGradientOp::Init() {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(recurrent_op, paddle::operators::RecurrentOp,
-            paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    recurrent_op, paddle::operators::RecurrentOp,
+    paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);

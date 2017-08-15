@@ -114,13 +114,11 @@ class RecurrentGradientAlgorithm {
 
 class RecurrentOp final : public framework::OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(RecurrentOp, framework::OperatorBase);
-
-  void Init() override;
-
+  RecurrentOp(const std::string& type, const VarNameMap& inputs,
+              const VarNameMap& outputs, const framework::AttributeMap& attrs);
   /**
-   * InferShape must be called before Run.
-   */
+     * InferShape must be called before Run.
+     */
   void InferShape(const framework::Scope& scope) const override {
     alg_.InferShape(scope);
   }
@@ -142,8 +140,9 @@ class RecurrentOp final : public framework::OperatorBase {
 
 class RecurrentGradientOp final : public framework::OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(RecurrentGradientOp, framework::OperatorBase)
-  void Init() override;
+  RecurrentGradientOp(const std::string& type, const VarNameMap& inputs,
+                      const VarNameMap& outputs,
+                      const framework::AttributeMap& attrs);
 
   /**
    * InferShape must be called before Run.
