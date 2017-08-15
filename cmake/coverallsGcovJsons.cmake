@@ -203,13 +203,24 @@ endforeach()
 set(JSON_SERVICE_NAME "travis-ci")
 set(JSON_SERVICE_JOB_ID $ENV{TRAVIS_JOB_ID})
 
-set(JSON_TEMPLATE
-"{
-  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
-  \"service_job_id\": \"\@JSON_SERVICE_JOB_ID\@\",
-  \"source_files\": \@JSON_GCOV_FILES\@
-}"
-)
+
+if(ON_TRAVIS)
+	set(JSON_TEMPLATE
+	"{
+	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
+	  \"service_job_id\": \"\@JSON_SERVICE_JOB_ID\@\",
+	  \"source_files\": \@JSON_GCOV_FILES\@
+	}"
+	)
+else(ON_TRAVIS)
+	set(JSON_TEMPLATE
+	"{
+		\"repo_token\": \"\@JSON_REPO_TOKEN\@\",
+		\"service_name\": \"\@JSON_SERVICE_NAME\@\",
+		\"source_files\": \@JSON_GCOV_FILES\@
+	}"
+	)
+endif(ON_TRAVIS)
 
 set(SRC_FILE_TEMPLATE
 "{
