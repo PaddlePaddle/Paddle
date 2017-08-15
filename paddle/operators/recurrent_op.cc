@@ -232,15 +232,6 @@ RecurrentGradientOp::RecurrentGradientOp(
   alg_.Init(&arg_, &stepnet_);
 }
 
-// create the gradient NetOp for forward-op's stepnet.
-void RecurrentGradientOp::Init(
-    const RecurrentOp& op, RecurrentGradientOp* grad_op,
-    const std::unordered_set<std::string>& no_grad_vars) {
-  auto gradop = Backward(op.stepnet(), no_grad_vars);
-  auto grad_stepnet = std::static_pointer_cast<NetOp>(gradop);
-  grad_op->set_stepnet(grad_stepnet);
-}
-
 }  // namespace operators
 }  // namespace paddle
 

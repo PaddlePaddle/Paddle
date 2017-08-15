@@ -183,11 +183,12 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     if (forwardOp.Type() == "recurrent_op") {
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself), or
       // this will result in infinite loop.
-      const auto& rnnop =
-          *static_cast<const operators::RecurrentOp*>(&forwardOp);
       auto rnn_grad_op =
           static_cast<operators::RecurrentGradientOp*>(grad_op.get());
-      operators::RecurrentGradientOp::Init(rnnop, rnn_grad_op, no_grad_names);
+      // create stepnet's gradient op
+      auto grad_stepnet = BackwardRecursive(forwardOp, no_grad_names, uniq_id);
+      rnn_grad_op->set_stepnet(
+          std::static_pointer_cast<operators::NetOp>(grad_stepnet));
     }
 
     if (net->ops_.empty()) {  // Current no aux op is added to network
