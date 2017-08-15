@@ -1604,6 +1604,8 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
+    layer_type = 'fc'
+
     def __init__(self,
                  name,
                  size,
@@ -1611,14 +1613,27 @@ class FCLayer(LayerBase):
                  bias=True,
                  error_clipping_threshold=None,
                  **xargs):
-        super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        use_mkldnn_wgt = bool(
+            int(g_command_config_args.get("use_mkldnn_wgt", 0)))
+        if use_mkldnn:
+            self.layer_type = 'mkldnn_fc'
+            config_assert(
+                len(inputs) == 1,
+                "MkldnnFCLayer support one and only one input!")
+        super(FCLayer, self).__init__(
+            name, self.layer_type, size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
             dims = [input_layer.size, self.config.size]
             format = self.inputs[input_index].format
             sparse = format == "csr" or format == "csc"
-
+            if use_mkldnn:
+                config_assert(not sparse,
+                              "MkldnnFCLayer do not support sparse format yet")
+                if use_mkldnn_wgt:
+                    dims = [self.config.size, input_layer.size]
             if sparse:
                 psize = self.inputs[input_index].nnz
             else:
@@ -1629,6 +1644,11 @@ class FCLayer(LayerBase):
         self.create_bias_parameter(bias, self.config.size)
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
+
+
+@config_layer('mkldnn_fc')
+class MkldnnFcLayer(FCLayer):
+    layer_type = 'mkldnn_fc'
 
 
 @config_layer('selective_fc')
@@ -2657,6 +2677,31 @@ class SubSequenceLayer(LayerBase):
         self.create_bias_parameter(bias, size)
 
 
+@config_layer('sub_nested_seq')
+class SubNestedSequenceLayer(LayerBase):
+    def __init__(self, name, inputs, selected_indices, bias=False, **xargs):
+        if isinstance(inputs, list):
+            assert len(inputs) == 1, ('the first input of sub_nested_seq '
+                                      'layer is a single nested sequence.')
+            inputs = inputs[0]
+        if isinstance(selected_indices, list):
+            assert len(selected_indices) == 1, (
+                'the second input of '
+                'sub_nested_seq layer is a single layer which is a '
+                'set of selected indices.')
+            selected_indices = selected_indices[0]
+
+        super(SubNestedSequenceLayer, self).__init__(
+            name,
+            'sub_nested_seq',
+            0,
+            inputs=[inputs, selected_indices],
+            **xargs)
+        input_layer0 = self.get_input_layer(0)
+        size = input_layer0.size
+        self.set_layer_size(size)
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
@@ -3221,6 +3266,16 @@ class CTCLayer(LayerBase):
         super(CTCLayer, self).__init__(name, 'ctc', size, inputs, device=device)
         self.config.norm_by_times = norm_by_times
         config_assert(len(self.inputs) == 2, 'CTCLayer must have 2 inputs')
+
+
+@config_layer('kmax_seq_score')
+class KmaxSeqScoreLayer(LayerBase):
+    def __init__(self, name, inputs, beam_size, **xargs):
+        super(KmaxSeqScoreLayer, self).__init__(
+            name, 'kmax_seq_score', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1, 'KmaxSeqScoreLayer has only one input.')
+        self.config.beam_size = beam_size
 
 
 @config_layer('warp_ctc')

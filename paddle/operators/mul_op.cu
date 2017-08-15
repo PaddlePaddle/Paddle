@@ -15,4 +15,5 @@
 #define EIGEN_USE_GPU
 #include "paddle/operators/mul_op.h"
 
-REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<ops::GPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);

@@ -18,6 +18,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <vector>
+
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
@@ -26,19 +28,17 @@ limitations under the License. */
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
-namespace pybind {
-namespace details {  // forward declare
-template <bool less, size_t i, typename... args>
-struct CastToPyBufferImpl;
-}  // namespace details
-}  // namespace pybind
 
 namespace framework {
+namespace details {
+template <bool less, size_t i, typename... args>
+struct CastToPyBufferImpl;
+}
 
 class Tensor {
  public:
   template <bool less, size_t i, typename... args>
-  friend struct paddle::pybind::details::CastToPyBufferImpl;
+  friend struct details::CastToPyBufferImpl;
 
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
@@ -79,11 +79,11 @@ class Tensor {
   inline const DDim& dims() const;
 
   /*! Resize the dimensions of the memory block. */
-  inline void Resize(const DDim& dims);
+  inline Tensor& Resize(const DDim& dims);
 
   /*! The internal of two tensors share the same memory block. */
   template <typename T>
-  inline void ShareDataWith(const Tensor& src);
+  inline Tensor& ShareDataWith(const Tensor& src);
 
   /**
    * @brief   Copy the content of external tensor to a new place.
@@ -104,6 +104,8 @@ class Tensor {
    */
   template <typename T>
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+
+  platform::Place place() const { return holder_->place(); }
 
  private:
   template <typename T>
@@ -129,8 +131,8 @@ class Tensor {
                memory::PODDeleter<T, Place>(place)),
           place_(place),
           size_(size) {
-      PADDLE_ENFORCE(ptr_ != nullptr, "Insufficient %s memory to allocation.",
-                     is_cpu_place(place_) ? "CPU" : "GPU");
+      PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
+                              (is_cpu_place(place_) ? "CPU" : "GPU"));
     }
 
     virtual size_t size() const { return size_; }

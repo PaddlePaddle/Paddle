@@ -29,7 +29,7 @@ public:
       vals.push_back(s.str());
     }
     size_t pos = 0;
-    int i = 0;
+    size_t i = 0;
     std::ostringstream s;
     const std::string& format = config_.user_arg();
     while (true) {
