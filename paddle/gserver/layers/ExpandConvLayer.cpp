@@ -53,6 +53,7 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
         convGradInputType = "DepthwiseConvGradInput";
         convGradFilterType = "DepthwiseConvGradFilter";
       } else {
+        convType = "DepthwiseConv";
         convGradInputType = "GemmConvGradInput";
         convGradFilterType = "GemmConvGradFilter";
       }

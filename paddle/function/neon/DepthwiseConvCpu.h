@@ -95,30 +95,31 @@ void ComputeDepthwiseConv(const T* inputPaddedData,
   func = DepthwiseConvNaiveCPUKernel<T>::run;
 
 #ifdef HAVE_NEON
-#define PADDLE_USE_DEPTHWISECONV_KERNEL(FILTERSIZE, STRIDE) \
-  if (FILTERSIZE == filterSize && STRIDE == stride) {
-  func = neon::DepthwiseConvNeonKernel<FILTERSIZE, STRIDE>::run;
-}
+#define PADDLE_USE_DEPTHWISECONV_KERNEL(FILTERSIZE, STRIDE)        \
+  if (FILTERSIZE == filterSize && STRIDE == stride) {              \
+    func = neon::DepthwiseConvNeonKernel<FILTERSIZE, STRIDE>::run; \
+  }
 
-PADDLE_USE_DEPTHWISECONV_KERNEL(3, 1)
-PADDLE_USE_DEPTHWISECONV_KERNEL(3, 2)
+  PADDLE_USE_DEPTHWISECONV_KERNEL(3, 1)
+  PADDLE_USE_DEPTHWISECONV_KERNEL(3, 2)
 #endif
 
-int inputPaddedHeight = inputHeight + 2 * padding;
-int inputPaddedWidth = inputWidth + 2 * padding;
-func(inputPaddedData,
-     filterData,
-     batchSize,
-     outputChannels,
-     outputHeight,
-     outputWidth,
-     inputChannels,
-     inputPaddedHeight,
-     inputPaddedWidth,
-     filterMultiplier,
-     filterSize,
-     stride,
-     outputData);
+  int inputPaddedHeight = inputHeight + 2 * padding;
+  int inputPaddedWidth = inputWidth + 2 * padding;
+
+  func(inputPaddedData,
+       filterData,
+       batchSize,
+       outputChannels,
+       outputHeight,
+       outputWidth,
+       inputChannels,
+       inputPaddedHeight,
+       inputPaddedWidth,
+       filterMultiplier,
+       filterSize,
+       stride,
+       outputData);
 }
 
 }  // end namespace
