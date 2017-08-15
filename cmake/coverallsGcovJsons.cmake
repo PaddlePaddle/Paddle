@@ -215,9 +215,9 @@ if(ON_TRAVIS)
 else(ON_TRAVIS)
 	set(JSON_TEMPLATE
 	"{
-		\"repo_token\": \"\@JSON_REPO_TOKEN\@\",
-		\"service_name\": \"\@JSON_SERVICE_NAME\@\",
-		\"source_files\": \@JSON_GCOV_FILES\@
+	  \"repo_token\": \"\@JSON_REPO_TOKEN\@\",
+	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
+	  \"source_files\": \@JSON_GCOV_FILES\@
 	}"
 	)
 endif(ON_TRAVIS)
