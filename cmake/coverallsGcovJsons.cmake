@@ -40,7 +40,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 # CMake list format.
 string(REGEX REPLACE "\\*" ";" COVERAGE_SRCS ${COVERAGE_SRCS})
 
-find_program(GCOV_EXECUTABLE gcov)
+get_filename_component(CXX_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
+set(GCOV_EXECUTABLE ${CXX_DIR}/gcov)
 if (NOT GCOV_EXECUTABLE)
 	message(FATAL_ERROR "gcov not found! Aborting...")
 endif()
@@ -202,7 +203,7 @@ endforeach()
 # TODO: Enable setting these
 set(JSON_SERVICE_NAME "travis-ci")
 set(JSON_SERVICE_JOB_ID $ENV{TRAVIS_JOB_ID})
-
+set(JSON_REPO_TOKEN "JSUOs6TF6fD2i30OJ5o2S55V8XWv6euen")
 
 if(ON_TRAVIS)
 	set(JSON_TEMPLATE
