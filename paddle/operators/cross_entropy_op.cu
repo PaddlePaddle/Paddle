@@ -21,6 +21,21 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
+struct clipping_log {
+  __host__ __device__ T operator()(const T x) {
+    PADDLE_ASSERT(std::is_floating_point<T>::value);
+    const T kApproInf = 1e20;
+    if (x == INFINITY) {
+      return kApproInf;
+    }
+    if (x == -INFINITY) {
+      return -kApproInf;
+    }
+    return x;
+  }
+};
+
+template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
                                    const int N, const int D) {
   // TOOD(qingqing) define CUDA_1D_KERNEL_LOOP macro in a common file.
@@ -28,10 +43,11 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
-    Y[i] = -log(X[i * D + label[i]]);
+    Y[i] = -clipping_log<T>()(X[i * D + label[i]]);
   }
 }
 
+// TODO(qingqing): make zero setting an common function.
 template <typename T>
 __global__ void zero(T* X, const int N) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
@@ -98,7 +114,6 @@ class OnehotCrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
     int D = X->dims()[1];
     int block = 512;
     int grid = (N * D + block - 1) / block;
-    // TODO(qingqing): make zero an common function.
     zero<T><<<grid, block>>>(dXdata, N * D);
 
     grid = (N + block - 1) / block;

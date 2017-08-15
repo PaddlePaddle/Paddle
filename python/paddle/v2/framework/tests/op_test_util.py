@@ -64,7 +64,8 @@ class OpTestMeta(type):
                     actual = numpy.array(scope.find_var(out_name).get_tensor())
                     expect = self.outputs[out_name]
                     self.assertTrue(
-                        numpy.allclose(actual, expect),
+                        numpy.allclose(
+                            actual, expect, atol=1e-04),
                         "output name: " + out_name + "has diff")
 
         obj.test_all = test_all

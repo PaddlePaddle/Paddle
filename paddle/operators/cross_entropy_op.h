@@ -21,7 +21,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-T tolerable_value(T x) {
+T tolerable_value(const T x) {
   static_assert(std::is_floating_point<T>::value,
                 "tolerable_value works only on float, "
                 "double and double double.");
@@ -85,6 +85,7 @@ class OnehotCrossEntropyGradientOpKernel : public framework::OpKernel {
     const int batch_size = X->dims()[0];
     const int class_num = X->dims()[1];
 
+    // TODO(qingqing): make zero setting an common function.
     memset(dXdata, 0, sizeof(T) * batch_size * class_num);
     for (int i = 0; i < batch_size; ++i) {
       int index = i * class_num + label_data[i];
