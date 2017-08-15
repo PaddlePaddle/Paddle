@@ -17,6 +17,7 @@
 #include <list>
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
+#include "paddle/operators/recurrent_op.h"
 
 namespace paddle {
 namespace framework {
@@ -178,11 +179,22 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
                      return false;
                    });
 
+    // process recurrent gradient op as a special operator.
+    if (forwardOp.Type() == "recurrent_op") {
+      const auto& rnnop =
+          *static_cast<const operators::RecurrentOp*>(&forwardOp);
+      auto rnn_grad_op =
+          static_cast<operators::RecurrentGradientOp*>(grad_op.get());
+      operators::RecurrentGradientOp::Init(rnnop, rnn_grad_op, no_grad_names);
+    }
+
     if (net->ops_.empty()) {  // Current no aux op is added to network
       return grad_op;
     }
+
     net->AddOp(grad_op);
   }
+
   net->SetType("@GENERATED_BACKWARD@");
   net->CompleteAddOp();
   return net;

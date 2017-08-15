@@ -38,7 +38,7 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 cc_library(backward SRCS backward.cc DEPS net_op)
-cc_test(backward_test SRCS backward_test.cc DEPS backward)
+cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op)
 
 if(WITH_PYTHON)
 cc_library(paddle_pybind SHARED
