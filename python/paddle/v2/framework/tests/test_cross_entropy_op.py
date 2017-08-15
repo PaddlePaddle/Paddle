@@ -22,7 +22,7 @@ class TestCrossEntropy(unittest.TestCase):
 
 
 class CrossEntropyGradOpTest(GradientChecker):
-    def test_softmax_grad(self):
+    def test_check_grad(self):
         op = create_op("onehot_cross_entropy")
         batch_size = 100
         class_num = 10

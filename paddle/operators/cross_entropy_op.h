@@ -39,10 +39,13 @@ T tolerable_value(T x) {
   return x;
 }
 
-template <typename Place, typename T>
+template <typename T>
 class OnehotCrossEntropyOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "It must use CPUPlace.");
+
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
     const int* label_data = ctx.Input<Tensor>("label")->data<int>();
@@ -62,10 +65,13 @@ class OnehotCrossEntropyOpKernel : public framework::OpKernel {
   }
 };
 
-template <typename Place, typename T>
+template <typename T>
 class OnehotCrossEntropyGradientOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "It must use CPUPlace.");
+
     auto X = ctx.Input<Tensor>("X");
     auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
@@ -79,6 +85,7 @@ class OnehotCrossEntropyGradientOpKernel : public framework::OpKernel {
     const int batch_size = X->dims()[0];
     const int class_num = X->dims()[1];
 
+    memset(dXdata, 0, sizeof(T) * batch_size * class_num);
     for (int i = 0; i < batch_size; ++i) {
       int index = i * class_num + label_data[i];
       dXdata[index] = -tolerable_value(dYdata[i] / Xdata[index]);
