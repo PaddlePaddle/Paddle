@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/optimizer.go.in ${CMAKE_CURRENT_SOURCE_DIR}/optimizer.go)
+
 if(WITH_TESTING)
   go_test(pserver_test DEPS paddle_go_optimizer)
 endif()

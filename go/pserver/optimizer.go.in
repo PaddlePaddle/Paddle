@@ -15,7 +15,7 @@
 package pserver
 
 // #cgo CFLAGS: -I ../../
-// #cgo LDFLAGS: /Users/liaogang/baidu/Paddle/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++ -lm -g -O0 -fprofile-arcs -ftest-coverage
+// #cgo LDFLAGS: ${CMAKE_CURRENT_SOURCE_DIR}/client/c/libpaddle_go_optimizer.a -lstdc++ -lm ${CODE_COVERAGE_FLAGS} 
 // #include "paddle/optimizer/optimizer.h"
 // #include <stdlib.h>
 // #include <string.h>

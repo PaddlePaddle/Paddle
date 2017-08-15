@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 cc_library(paddle_go_optimizer DEPS paddle_optimizer paddle_proto glog gflags protobuf)
-target_link_libraries(paddle_go_optimizer stdc++ m)
+target_link_libraries(paddle_go_optimizer stdc++ m ${CODE_COVERAGE_FLAGS})
 
 # Copy library to the required place.
 # See: go/pserver/optimizer.go:
