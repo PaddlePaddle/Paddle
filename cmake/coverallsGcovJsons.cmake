@@ -334,6 +334,8 @@ foreach (GCOV_FILE ${GCOV_FILES})
 					# Translate the hitcount into valid JSON values.
 					if (${HITCOUNT} STREQUAL "#####")
 						set(GCOV_FILE_COVERAGE "${GCOV_FILE_COVERAGE}0, ")
+					elseif (${HITCOUNT} STREQUAL "=====")
+						set(GCOV_FILE_COVERAGE "${GCOV_FILE_COVERAGE}0, ")
 					elseif (${HITCOUNT} STREQUAL "-")
 						set(GCOV_FILE_COVERAGE "${GCOV_FILE_COVERAGE}null, ")
 					else()
