@@ -76,7 +76,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
 
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
-  PADDLE_ENFORCE(!(*stepnet_)->outputs_.empty(), "stepnet_ op has no outputs");
+  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
   PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
@@ -84,7 +84,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
       auto& step_scope = scope.NewScope();
 
       // create step net's temp inputs
-      for (auto& input : (*stepnet_)->inputs()) {
+      for (auto& input : (*stepnet_)->Inputs()) {
         // the weight are located in parent scope
         for (auto& var_name : input.second) {
           if (!step_scope.FindVar(var_name)) {
@@ -93,7 +93,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
         }
       }
       // create stepnet's outputs
-      for (const auto& output : (*stepnet_)->outputs()) {
+      for (const auto& output : (*stepnet_)->Outputs()) {
         for (auto& var_name : output.second) {
           step_scope.NewVar(var_name);
         }
