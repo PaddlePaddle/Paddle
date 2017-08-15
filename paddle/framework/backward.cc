@@ -181,6 +181,8 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
 
     // process recurrent gradient op as a special operator.
     if (forwardOp.Type() == "recurrent_op") {
+      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself), or
+      // this will result in infinite loop.
       const auto& rnnop =
           *static_cast<const operators::RecurrentOp*>(&forwardOp);
       auto rnn_grad_op =
