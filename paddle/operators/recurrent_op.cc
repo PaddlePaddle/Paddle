@@ -17,6 +17,7 @@
 #include <cstring>
 #include <sstream>
 
+#include "paddle/framework/backward.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 
@@ -231,8 +232,14 @@ RecurrentGradientOp::RecurrentGradientOp(
   alg_.Init(&arg_, &stepnet_);
 }
 
-void RecurrentGradientOp::Init(const RecurrentOp* const op,
-                               RecurrentGradientOp* grad_op) {}
+// create the gradient NetOp for forward-op's stepnet.
+void RecurrentGradientOp::Init(
+    const RecurrentOp& op, RecurrentGradientOp* grad_op,
+    const std::unordered_set<std::string>& no_grad_vars) {
+  auto gradop = Backward(op.stepnet(), no_grad_vars);
+  auto grad_stepnet = std::static_pointer_cast<NetOp>(gradop);
+  grad_op->set_stepnet(grad_stepnet);
+}
 
 }  // namespace operators
 }  // namespace paddle
