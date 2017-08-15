@@ -29,6 +29,16 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
 }
 
 #ifndef PADDLE_ONLY_CPU
+
+template <>
+void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::GPUPlace src_place,
+                                                  const void* src, size_t num) {
+  platform::SetDeviceId(src_place.device);
+  platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+}
+
 template <>
 void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace dst_place,
                                                   void* dst,
@@ -37,6 +47,15 @@ void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace dst_place,
                                                   cudaStream_t stream) {
   platform::SetDeviceId(src_place.device);
   platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+}
+
+template <>
+void Copy<platform::GPUPlace, platform::CPUPlace>(platform::GPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::CPUPlace src_place,
+                                                  const void* src, size_t num) {
+  platform::SetDeviceId(dst_place.device);
+  platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
 }
 
 template <>

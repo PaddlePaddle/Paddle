@@ -67,3 +67,5 @@ op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
 cc_test(recurrent_op_test SRCS recurrent_op_test.cc DEPS recurrent_op gtest mul_op add_op)
 op_library(uniform_random_op
         SRCS uniform_random_op.cc uniform_random_op.cu)
+
+op_library(fill_op SRCS fill_op.cc fill_op.cu)

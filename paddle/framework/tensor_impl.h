@@ -67,12 +67,11 @@ inline T* Tensor::mutable_data(platform::Place place) {
     } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_ONLY_CPU
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
-    }
 #else
       holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
           boost::get<platform::GPUPlace>(place), size));
-    }
 #endif
+    }
     offset_ = 0;
   }
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +

@@ -107,6 +107,8 @@ class Tensor {
 
   platform::Place place() const { return holder_->place(); }
 
+  bool IsHoldingMemory() const { return holder_ != nullptr; }
+
  private:
   template <typename T>
   inline void check_memory_size() const;
