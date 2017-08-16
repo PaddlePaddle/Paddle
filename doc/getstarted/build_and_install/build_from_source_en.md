@@ -162,26 +162,13 @@ mkdir build && cd build
 
 Finally, you can build and install PaddlePaddle:
 
-- Install PaddlePaddle with `make install`
-    ```bash
-    # you can add build option here, such as:    
-    cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
-    # please use sudo make install, if you want to install PaddlePaddle into the system
-    make -j `nproc` && make install
-    # set PaddlePaddle installation path in ~/.bashrc
-    export PATH=<path to install>/bin:$PATH
-    # install PaddlePaddle Python modules.
-    sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
-    ```
-
-- Install PaddlePaddle with `pip install`
-    ```bash
-    # buid PaddlePaddle
-    cmake ..
-    make -j `nproc`
-    # install PaddlePaddle modules, you can specify the customer install path with --prefix
-    sudo pip install python/dist/*.whl --prefix=<path to install>
-    ```
+```bash
+# buid PaddlePaddle
+cmake ..
+make -j `nproc`
+# install PaddlePaddle modules, you can specify the customer install path with --prefix
+sudo pip install python/dist/*.whl --prefix=<path to install>
+```
 
 ## <span id="centos">Build on Centos 7</span>
 
@@ -234,23 +221,10 @@ mkdir build && cd build
 
 Finally, you can build and install PaddlePaddle:
 
-- Install PaddlePaddle with `make install`
-    ```bash
-    # you can add build option here, such as:    
-    cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>
-    # please use sudo make install, if you want to install PaddlePaddle into the system
-    make -j `nproc` && make install
-    # set PaddlePaddle installation path in ~/.bashrc
-    export PATH=<path to install>/bin:$PATH
-    # install PaddlePaddle Python modules.
-    sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
-    ```
-
-- Install PaddlePaddle with `pip install`
-    ```bash
-    # buid PaddlePaddle
-    cmake3 ..
-    make -j `nproc`
-    # install PaddlePaddle modules, you can specify the customer install path with --prefix
-    sudo pip install python/dist/*.whl --prefix=<path to install>
-    ```
+```bash
+# build PaddlePaddle with cmake3 ...
+cmake3 ..
+make -j 'nproc'
+# install PaddlePaddle modules, you can specify the customer install path with --prefix
+sudo pip install python/dist/*.whl --prefix=<path to install>
+```
