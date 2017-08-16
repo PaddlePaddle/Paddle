@@ -19,6 +19,79 @@ limitations under the License. */
 
 namespace paddle {
 
+struct BeamExpansion {
+  // store the entire beam expansion for a single sequence
+  std::vector<MatrixPtr> scores;
+  std::vector<IVectorPtr> seqInfo;
+
+  std::vector<MatrixPtr> candidateIds;
+  std::vector<int> gold;
+
+  std::vector<MatrixPtr> scoreGrad;
+
+  size_t expansionCount;
+
+  BeamExpansion(int n) {
+    expansionCount = n;
+    scores.resize(expansionCount);
+    seqInfo.resize(expansionCount);
+    candidateIds.resize(expansionCount);
+    scoreGrad.resize(expansionCount);
+
+    gold.resize(expansionCount);
+  };
+};
+typedef std::shared_ptr<BeamExpansion> BeamExpansionPtr;
+
+class CostForOneSequence {
+public:
+  CostForOneSequence()
+      : beamSize_(0), validExpansionCount_(0), goldAsExtraPath_(false) {}
+  void setData(const BeamExpansionPtr bPtr, size_t beamSize) {
+    beams_ = bPtr;
+    beamSize_ = beamSize;
+
+    expandedPathScores_.clear();
+    expandedPathScores_.resize(beams_->expansionCount);
+
+    goldRowIds_.clear();
+    goldRowIds_.resize(beams_->expansionCount, 0);
+    goldColIds_.clear();
+    goldColIds_.resize(beams_->expansionCount, -1);
+  }
+  size_t getValidExpansionCount() { return validExpansionCount_; }
+
+  real forward();
+  void backward();
+
+private:
+  void calValidExpandStep();
+  void constructTotalExpansion();
+  size_t initLastExpansion();
+  real globallyNormalizedScore();
+
+  int getSeqStartPos(size_t beamId, size_t rowId) {
+    CHECK_GT(beams_->seqInfo[beamId]->getSize() - 1, rowId);
+    int* starts = beams_->seqInfo[beamId]->getData();
+    return starts[rowId] - starts[0];
+  };
+
+  size_t beamSize_;
+  size_t validExpansionCount_;
+  bool goldAsExtraPath_;
+  std::vector<int> goldRowIds_;
+  std::vector<int> goldColIds_;
+
+  BeamExpansionPtr beams_;
+  std::vector<std::vector<int>> pathRowIdsInEachBeam_;
+  std::vector<int> parentIdsInBeam_;
+  size_t goldIdsInFinalExpansion_;
+
+  std::vector<MatrixPtr> expandedPathScores_;
+
+  MatrixPtr softmaxOut_;
+};
+
 class CrossEntropyOverBeam : public Layer {
 public:
   explicit CrossEntropyOverBeam(const LayerConfig& config) : Layer(config) {}
@@ -26,6 +99,31 @@ public:
             const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
+
+private:
+  void checkInputs();
+  void copyInputsToCpu();
+  void resizeOutput();
+  void copyGradToGpu(size_t copyCount);
+  void splitBatchBeams();
+
+  size_t beamExpanCount_;
+  size_t batchSize_;
+  size_t beamSize_;
+
+  // Currently, this layer only works on CPU, if its inputs is on GPU,
+  // copy them to CPU memory.
+  std::vector<MatrixPtr> candidateScores_;
+  std::vector<MatrixPtr> candidateScoreGrad_;
+  std::vector<MatrixPtr> candidateInBeam_;
+  std::vector<MatrixPtr> gradToInputs_;
+  std::vector<IVectorPtr> goldSequence_;
+  std::vector<std::vector<int>> beamSplitPos_;
+
+  // split entire bath of beams into beam per sequnence.
+  std::vector<BeamExpansion> beamPerSeq_;
+  // beamCosts_ is used to propagate error in one sequence.
+  std::vector<CostForOneSequence> beamCosts_;
 };
 
 }  // namespace paddle

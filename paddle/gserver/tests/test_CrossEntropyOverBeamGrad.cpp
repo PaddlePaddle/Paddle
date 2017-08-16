@@ -28,9 +28,17 @@ using namespace paddle;  // NOLINT
 DECLARE_int32(gpu_id);
 DECLARE_bool(thread_local_rand_use_global_seed);
 
-const size_t MAX_SEQ_NUM = 10;
-const size_t MAX_SEQ_LEN = 27;
-const size_t MAX_BEAM_SIZE = 10;
+// const size_t MAX_SEQ_NUM = 5;
+// const size_t MAX_SEQ_LEN = 10;
+// const size_t MAX_BEAM_SIZE = 3;
+
+const size_t MAX_SEQ_NUM = 23;
+const size_t MAX_SEQ_LEN = 50;
+const size_t MAX_BEAM_SIZE = 27;
+
+// const size_t SEED = 1503391792;
+// const size_t SEED = 1;
+const size_t SEED = (size_t)(time(NULL));
 
 struct SingleBeamExpansion {
   vector<int> seqStartPos;
@@ -43,11 +51,30 @@ struct SingleBeamExpansion {
   vector<int> groundTruth;
   vector<size_t> inBeam;
   vector<int> rowIdxInBeam;
+  vector<int> colIdxInBeam;
+
+  void resetGroundTruth(size_t n) {
+    groundTruth.clear();
+    groundTruth.resize(n, -1);
+
+    inBeam.clear();
+    inBeam.resize(n, 0);
+
+    rowIdxInBeam.clear();
+    rowIdxInBeam.resize(n, -1);
+
+    colIdxInBeam.clear();
+    colIdxInBeam.resize(n, -1);
+  }
 };
+
+inline float randFloat() {
+  return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+}
 
 void genRand(real* numbers, size_t n) {
   default_random_engine generator;
-  uniform_real_distribution<double> distribution(0.0, 1.0);
+  uniform_real_distribution<real> distribution(0.0, 1.0);
   for (size_t i = 0; i < n; ++i) numbers[i] = distribution(generator);
 }
 
@@ -72,8 +99,7 @@ void genCandidateScores(bool hasSubseq,
   vector<int>& subSeqStartPos = curBeam.subSeqStartPos;
   subSeqStartPos.resize(1, 0);
 
-  srand((size_t)(time(NULL)));
-  // srand(1);
+  srand(SEED);
   if (prevBeam.selectedIndices.size()) {
     if (prevBeam.subSeqStartPos.size() > 1) {
       int seqIdx = 1;
@@ -81,9 +107,8 @@ void genCandidateScores(bool hasSubseq,
       for (size_t i = 1; i < prevBeam.subSeqStartPos.size(); ++i) {
         for (size_t j = 0; j < beamSize; ++j) {
           if (prevBeam.selectedIndices[(i - 1) * beamSize + j] == -1.) break;
-          for (size_t k = 0; k < beamSize; ++k)
-            subSeqStartPos.push_back(1 + (rand() % MAX_SEQ_LEN) +
-                                     subSeqStartPos.back());
+          subSeqStartPos.push_back(1 + (rand() % MAX_SEQ_LEN) +
+                                   subSeqStartPos.back());
         }
         if (prevBeam.seqStartPos[seqIdx] == prevBeam.subSeqStartPos[i]) {
           seqStartPos.push_back(subSeqStartPos.back());
@@ -91,7 +116,6 @@ void genCandidateScores(bool hasSubseq,
         }
       }
     } else {
-      // samples in previous beam are sequences.
       for (size_t i = 0; i <= prevBeam.selectedIndices.size(); ++i) {
         if (i && i % beamSize == 0) {
           seqStartPos.push_back(subSeqStartPos.back());
@@ -141,27 +165,41 @@ void genSelectedIndices(size_t beamSize,
 
 void genGroundTruth(vector<SingleBeamExpansion>& beamExpansions,
                     size_t beamSize) {
-  size_t seqNum = beamExpansions[1].seqStartPos.size() - 1;
+  SingleBeamExpansion& beam = beamExpansions[1];
+  size_t seqNum = beam.seqStartPos.size() - 1;
   for (size_t i = 2; i < beamExpansions.size(); ++i)
-    CHECK_EQ(seqNum, beamExpansions[i - 1].seqStartPos.size() - 1);
+    CHECK_EQ(seqNum, beamExpansions[i].seqStartPos.size() - 1);
 
-  // srand(1);
-  srand((size_t)(time(NULL)));
+  srand(SEED);
 
   // initialize the first beam.
-  SingleBeamExpansion& beam = beamExpansions[1];
-  beam.groundTruth.resize(seqNum, 0);
-  beam.inBeam.resize(seqNum, 0);
-  beam.rowIdxInBeam.resize(seqNum, -1);
-
-  auto begPos = beam.selectedIndices.begin();
+  beam.resetGroundTruth(seqNum);
   for (size_t i = 0; i < seqNum; ++i) {
-    int seqLen = beam.seqStartPos[i + 1] - beam.seqStartPos[i];
-    int label = rand() % seqLen;
-    auto endPos = begPos + beamSize;
-    beam.groundTruth[i] = label;
-    if (find(begPos, endPos, real(label)) != endPos) beam.inBeam[i] = 1;
-    begPos = endPos;
+    if (randFloat() > 0.5) {
+      // force the randomly generated label falls in the beam by chance 0.5.
+      // otherwise, when sequence length is relatively long and beam size is
+      // relatively small, the gold sequences falls off the beam at in
+      // the first search.
+      real* begPos = beam.selectedIndices.data() + i * beamSize;
+      beam.colIdxInBeam[i] =
+          rand() % count_if(begPos, begPos + beamSize, [](const real& val) {
+            return val != -1.;
+          });
+      beam.groundTruth[i] =
+          beam.selectedIndices[i * beamSize + beam.colIdxInBeam[i]];
+      beam.inBeam[i] = 1;
+    } else {
+      int label = rand() % (beam.seqStartPos[i + 1] - beam.seqStartPos[i]);
+      beam.groundTruth[i] = label;
+
+      real* begPos = beam.selectedIndices.data() + i * beamSize;
+      real* endPos = begPos + beamSize;
+      real* lblPos = find(begPos, endPos, real(label));
+      if (lblPos != endPos) {
+        beam.inBeam[i] = 1;
+        beam.colIdxInBeam[i] = lblPos - begPos;
+      }
+    }
     beam.rowIdxInBeam[i] = i;
   }
 
@@ -169,22 +207,33 @@ void genGroundTruth(vector<SingleBeamExpansion>& beamExpansions,
   for (size_t i = 2; i < beamExpansions.size(); ++i) {
     SingleBeamExpansion& curBeam = beamExpansions[i];
     SingleBeamExpansion& prevBeam = beamExpansions[i - 1];
-
-    curBeam.groundTruth.resize(seqNum, 0);
-    curBeam.inBeam.resize(seqNum, 0);
-    curBeam.rowIdxInBeam.resize(seqNum, -1);
+    curBeam.resetGroundTruth(seqNum);
 
     // iterate over each sequence
     for (size_t j = 0; j < seqNum; ++j) {
-      if (prevBeam.inBeam[j]) {
-        // gold sequence falls in the beam in previous search.
+      if (!prevBeam.inBeam[j]) continue;
 
-        auto begPos = prevBeam.selectedIndices.begin();
-        auto endPos = begPos + prevBeam.rowIdxInBeam[j] * beamSize;
-        size_t totalExpansion =
-            prevBeam.rowIdxInBeam[j] * beamSize - count(begPos, endPos, -1.);
-        curBeam.rowIdxInBeam[j] = totalExpansion + prevBeam.groundTruth[j];
+      // gold sequence falls in the beam in previous search.
+      real* begPos = prevBeam.selectedIndices.data();
+      int offset =
+          prevBeam.rowIdxInBeam[j] * beamSize + prevBeam.colIdxInBeam[j];
+      curBeam.rowIdxInBeam[j] = count_if(
+          begPos, begPos + offset, [](const real& val) { return val != -1.; });
 
+      if (randFloat() > 0.5) {
+        // force the randomly generated label falls in the beam by chance 0.5.
+        // otherwise, when sequence length is relatively long and beam size is
+        // relatively small, the gold sequences falls off the beam at in
+        // the first search.
+        real* start =
+            curBeam.selectedIndices.data() + curBeam.rowIdxInBeam[j] * beamSize;
+        int n = rand() % count_if(start, start + beamSize, [](const real& val) {
+                  return val != -1.;
+                });
+        curBeam.colIdxInBeam[j] = n;
+        curBeam.groundTruth[j] = *(start + n);
+        curBeam.inBeam[j] = 1;
+      } else {
         CHECK_LE(curBeam.rowIdxInBeam[j] + 1,
                  curBeam.subSeqStartPos.size() - 1);
         int start = curBeam.subSeqStartPos[curBeam.rowIdxInBeam[j]];
@@ -193,16 +242,14 @@ void genGroundTruth(vector<SingleBeamExpansion>& beamExpansions,
         int label = rand() % (end - start);
 
         curBeam.groundTruth[j] = label;
-        auto findBeg = curBeam.selectedIndices.begin() +
-                       curBeam.rowIdxInBeam[j] * beamSize;
-        auto findEnd = findBeg + beamSize;
-        if (find(findBeg, findEnd, real(label)) != findEnd)
+        real* findBeg =
+            curBeam.selectedIndices.data() + curBeam.rowIdxInBeam[j] * beamSize;
+        real* lblPos =
+            find(findBeg, findBeg + beamSize, static_cast<real>(label));
+        if (lblPos != (findBeg + beamSize)) {
           curBeam.inBeam[j] = 1;
-      } else {
-        // in previous search, gold sequence has fallen off the beam,
-        // the beam search stops, here use -1 as a dummy label.
-        // It will not used in calculation the cost.
-        beamExpansions[i].groundTruth[j] = -1;
+          curBeam.colIdxInBeam[j] = lblPos - findBeg;
+        }
       }
     }
   }
@@ -230,14 +277,11 @@ void genRandomBeamExpansion(size_t expansionCount,
   genGroundTruth(beamExpansions, beamSize);
 }
 
-void testCrossEntropyOverBeam(bool useGpu) {
+void testCrossEntropyOverBeam(bool useGpu,
+                              size_t beamSize,
+                              vector<SingleBeamExpansion>& beams) {
   TestConfig config;
   config.layerConfig.set_type("cross_entropy_over_beam");
-
-  const size_t expansionCount = 3;
-  const size_t beamSize = MAX_BEAM_SIZE;
-  vector<SingleBeamExpansion> beams;
-  genRandomBeamExpansion(expansionCount, beamSize, beams);
 
   size_t seqNum = 0;
   for (size_t i = 1; i < beams.size(); ++i) {
@@ -291,7 +335,17 @@ void testCrossEntropyOverBeam(bool useGpu) {
 }
 
 TEST(Layer, CrossEntropyOverBeam) {
-  for (bool useGpu : {false, true}) testCrossEntropyOverBeam(useGpu);
+  LOG(INFO) << "SEED = " << SEED;
+  const size_t beamSize = 1 + rand() % MAX_BEAM_SIZE;
+  LOG(INFO) << "beamSize = " << beamSize;
+
+  // TODO(caoying): test with more beam expansions.
+  const size_t expansionCount = 3;
+  vector<SingleBeamExpansion> beams;
+  genRandomBeamExpansion(expansionCount, beamSize, beams);
+
+  for (bool useGpu : {false, true})
+    testCrossEntropyOverBeam(useGpu, beamSize, beams);
 }
 
 int main(int argc, char** argv) {
@@ -299,7 +353,7 @@ int main(int argc, char** argv) {
   hl_start();
   hl_init(FLAGS_gpu_id);
   FLAGS_thread_local_rand_use_global_seed = true;
-  srand(1);
+  srand(SEED);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
