@@ -38,7 +38,9 @@ class SGD(object):
     :type extra_layers: paddle.v2.config_base.Layer
     :param is_local: Whether trainning locally
     :type is_local: bool
-    :param pserver_spec: pserver location, eg: localhost:3000
+    :param pserver_spec: pserver location, eg: localhost:3000,
+                         if use_etcd is true, pserver_spec indicates
+                         the etcd endpoints, eg: http://127.0.0.1:2379
     :type pserver_spec: string
     :param use_etcd: Whether using etcd pserver.
     :param use_etcd: bool
