@@ -18,6 +18,7 @@
 # SOFTWARE.
 #
 # Copyright (C) 2014 Joakim Söderberg <joakim.soderberg@gmail.com>
+# Copyright (C) 2017 Gang Liao <liaogang@baidu.com>
 #
 # This is intended to be run by a custom target in a CMake project like this.
 # 0. Compile program with coverage support.
@@ -43,7 +44,6 @@ string(REGEX REPLACE "\\*" ";" COVERAGE_SRCS ${COVERAGE_SRCS})
 
 find_package(Git)
 
-# TODO: Add these git things to the coveralls json.
 if (GIT_FOUND)
 	# Branch.
 	execute_process(
@@ -62,20 +62,63 @@ if (GIT_FOUND)
 		)
 	endmacro()
 
-	git_log_format(an GIT_AUTHOR_EMAIL)
+	git_log_format(an GIT_AUTHOR_NAME)
 	git_log_format(ae GIT_AUTHOR_EMAIL)
 	git_log_format(cn GIT_COMMITTER_NAME)
 	git_log_format(ce GIT_COMMITTER_EMAIL)
-	git_log_format(B GIT_COMMIT_MESSAGE)
+    git_log_format(B GIT_COMMIT_MESSAGE)
+    git_log_format(H GIT_COMMIT_HASH)
+    git_log_format(ai GIT_DATE_ISO_8601)
 
 	message("Git exe: ${GIT_EXECUTABLE}")
 	message("Git branch: ${GIT_BRANCH}")
-	message("Git author: ${GIT_AUTHOR_NAME}")
+    message("Git author: ${GIT_AUTHOR_NAME}")
+    message("Git author date: ${GIT_DATE_ISO_8601}")
 	message("Git e-mail: ${GIT_AUTHOR_EMAIL}")
 	message("Git commiter name: ${GIT_COMMITTER_NAME}")
 	message("Git commiter e-mail: ${GIT_COMMITTER_EMAIL}")
-	message("Git commit message: ${GIT_COMMIT_MESSAGE}")
+    message("Git commit message: ${GIT_COMMIT_MESSAGE}")
+    message("Git commit hash: ${GIT_COMMIT_HASH}")
 
+	#
+	# Store git commit infomation into coveralls json
+	#
+	# For example:
+	#	"git": {
+	#		"head": {
+	#		  "id": "b31f08d07ae564b08237e5a336e478b24ccc4a65",
+	#		  "author_name": "Nick Merwin",
+	#		  "author_email": "...",
+	#		  "committer_name": "Nick Merwin",
+	#		  "committer_email": "...",
+	#		  "message": "version bump"
+	#		},
+	#		"branch": "master",
+	#		"remotes": [
+	#		  {
+	#			"name": "origin",
+	#			"url": "git@github.com:lemurheavy/coveralls-ruby.git"
+	#		  }
+	#		]
+	#	  },
+	#
+
+	set(JSON_GIT_INFO
+	"{
+	  \"head\": {
+	    \"id\": \"\@GIT_COMMIT_HASH\@\",
+	    \"author_name\": \"\@GIT_AUTHOR_NAME\@\",
+	    \"author_email\": \"\@GIT_AUTHOR_EMAIL\@\",
+	    \"committer_name\": \"\@GIT_COMMITTER_NAME\@\",
+	    \"committer_email\": \"\@GIT_COMMITTER_EMAIL\@\",
+	    \"message\": \"\@GIT_COMMIT_MESSAGE\@\"
+	  },
+	  \"branch\": \"\@GIT_BRANCH\@\",
+	  \"remotes\": [{
+	    \"name\": \"origin\",
+	    \"url\": \"https://github.com/PaddlePaddle/Paddle.git\"
+	  }]
+	}")
 endif()
 
 ############################# Macros #########################################
@@ -195,23 +238,26 @@ foreach (GCOV_FILE ${ALL_GCOV_FILES})
 	endif()
 endforeach()
 
-# TODO: Enable setting these
-set(JSON_SERVICE_NAME "travis-ci")
-set(JSON_SERVICE_JOB_ID $ENV{TRAVIS_JOB_ID})
-set(JSON_REPO_TOKEN "JSUOs6TF6fD2i30OJ5o2S55V8XWv6euen")
-
 if(ON_TRAVIS)
+    set(JSON_SERVICE_NAME "travis-ci")
+    set(JSON_SERVICE_JOB_ID $ENV{TRAVIS_JOB_ID})
 	set(JSON_TEMPLATE
 	"{
 	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
 	  \"service_job_id\": \"\@JSON_SERVICE_JOB_ID\@\",
+	  \"git\": \"\@JSON_SERVICE_JOB_ID\@\",
+      \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
 	  \"source_files\": \@JSON_GCOV_FILES\@
 	}"
 	)
 else(ON_TRAVIS)
+	set(JSON_SERVICE_NAME "teamcity")
+    set(JSON_REPO_TOKEN "JSUOs6TF6fD2i30OJ5o2S55V8XWv6euen")
 	set(JSON_TEMPLATE
 	"{
 	  \"repo_token\": \"\@JSON_REPO_TOKEN\@\",
+	  \"git\": \"\@JSON_SERVICE_JOB_ID\@\",
+      \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
 	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
 	  \"source_files\": \@JSON_GCOV_FILES\@
 	}"
