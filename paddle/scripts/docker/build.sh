@@ -120,25 +120,6 @@ EOF
     /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
 fi
 
-# generate deb package for current build
-# FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-if [[ ${WITH_DEB:-ON} == "ON" ]]; then
-    cat <<EOF
-========================================
-Generating .deb package ...
-========================================
-EOF
-    set +e
-    cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
-    err_code=$?
-    if [ ${err_code} -ne 0 ]; then
-        # cat error logs if cpack failed.
-        cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
-        exit ${err_code}
-    fi
-    set -e
-fi
-
 cat <<EOF
 ========================================
 Generate /paddle/build/Dockerfile ...
@@ -158,14 +139,13 @@ EOF
 fi
 
 cat >> /paddle/build/Dockerfile <<EOF
-# Use different deb file when building different type of images
-ADD *.deb /
+ADD python/dist/*.whl /
 # run paddle version to install python packages first
 RUN apt-get update &&\
     apt-get install -y wget python-pip && pip install -U pip && \
-    dpkg -i /*.deb ; apt-get install -f -y && \
+    pip install /*.whl; apt-get install -f -y && \
     apt-get clean -y && \
-    rm -f /*.deb && \
+    rm -f /*.whl && \
     paddle version
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
