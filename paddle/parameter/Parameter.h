@@ -116,7 +116,8 @@ public:
     if (config_.dims_size() == 2) {
       if (matType == MAT_NORMAL || matType == MAT_NORMAL_SHARED ||
           matType == MAT_SPARSE_ROW_PREFETCH_FULL_SIZE ||
-          matType == MAT_VALUE_SHARED || matType == MAT_SPARSE_ROW_IDS) {
+          matType == MAT_SPARSE_ROW_PREFETCH || matType == MAT_VALUE_SHARED ||
+          matType == MAT_SPARSE_ROW_IDS) {
         bufs_[type] = Vector::createParallelVector(config_.size(), useGpu_);
         bufs_[type]->zeroMem();
       } else {
