@@ -45,6 +45,7 @@ TEST(Device, CUDADeviceContext) {
     ASSERT_NE(nullptr, cublas_handle);
     curandGenerator_t curand_handle = device_context->curand_generator();
     ASSERT_NE(nullptr, curand_handle);
+    ASSERT_NE(nullptr, device_context->stream());
     delete device_context;
   }
 }
