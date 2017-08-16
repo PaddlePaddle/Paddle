@@ -207,8 +207,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<OperatorBase, std::shared_ptr<OperatorBase>> operator_base(
-      m, "Operator");
+  py::class_<OperatorBase> operator_base(m, "Operator");
 
   operator_base.def_static("create", [](py::bytes protobin) {
     OpDesc desc;
@@ -228,25 +227,23 @@ All parameter, weight, gradient are variables in Paddle.
 
   ExposeOperator(operator_base);
 
-  py::class_<operators::NetOp, std::shared_ptr<operators::NetOp>> net(m, "Net");
+  py::class_<operators::NetOp> net(m, "Net");
 
   net.def_static("create",
-                 []() -> std::shared_ptr<operators::NetOp> {
-                   auto retv = std::make_shared<operators::NetOp>();
+                 []() -> operators::NetOp * {
+                   auto *retv = new operators::NetOp;
                    retv->SetType("plain_net");
                    return retv;
                  })
-      .def("add_op", &operators::NetOp::AddOp)
+      .def("add_op", [](operators::NetOp &self,
+                        const OperatorBase &op) { self.AddOp(op); })
       .def("add_op",
-           [](operators::NetOp &self,
-              const std::shared_ptr<operators::NetOp> &net) -> void {
-             self.AddOp(std::static_pointer_cast<OperatorBase>(net));
+           [](operators::NetOp &self, const operators::NetOp &net) -> void {
+             self.AddOp(net);
            })
       .def("add_op",
            [](operators::NetOp &self,
-              const std::shared_ptr<operators::RecurrentOp> &rnn) -> void {
-             self.AddOp(std::static_pointer_cast<OperatorBase>(rnn));
-           })
+              const operators::RecurrentOp &rnn) -> void { self.AddOp(rnn); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
@@ -255,12 +252,11 @@ All parameter, weight, gradient are variables in Paddle.
   ExposeOperator(net);
 
   // recurrent_op
-  py::class_<operators::RecurrentOp, std::shared_ptr<operators::RecurrentOp>>
-      rnn(m, "RecurrentOp");
+  py::class_<operators::RecurrentOp> rnn(m, "RecurrentOp");
 
   rnn.def_static(
          "create",
-         [](py::bytes protobin) -> std::shared_ptr<operators::RecurrentOp> {
+         [](py::bytes protobin) -> operators::RecurrentOp * {
            OpDesc desc;
            PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                           "Cannot parse user input to OpDesc");
@@ -268,13 +264,12 @@ All parameter, weight, gradient are variables in Paddle.
                           "User OpDesc is not initialized, reason %s",
                           desc.InitializationErrorString());
            auto rnn_op = OpRegistry::CreateOp(desc);
-           return std::dynamic_pointer_cast<operators::RecurrentOp>(rnn_op);
+           return static_cast<operators::RecurrentOp *>(rnn_op.release());
          })
-      .def("set_stepnet",
-           [](operators::RecurrentOp &self,
-              const std::shared_ptr<operators::NetOp> &net) -> void {
-             self.set_stepnet(net);
-           });
+      .def("set_stepnet", [](operators::RecurrentOp &self,
+                             const operators::NetOp &net) -> void {
+        self.set_stepnet(net.Clone());
+      });
   ExposeOperator(rnn);
 
   m.def("unique_integer", UniqueIntegerGenerator);

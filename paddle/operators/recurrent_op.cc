@@ -42,7 +42,7 @@ void RecurrentAlgorithm::InferShape(const Scope& scope) const {
       rnn::LinkMemories(step_scopes, arg_->memories, i, -1,
                         true /*infer_shape_mode*/);
     }
-    (*stepnet_)->InferShape(*step_scopes[i]);
+    stepnet_->InferShape(*step_scopes[i]);
   }
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
                      true /*infer_shape_mode*/);
@@ -61,7 +61,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1,
                         false /*infer_shape_mode*/);
     }
-    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
+    stepnet_->Run(*step_scopes[step_id], dev_ctx);
   }
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
                      false /*infer_shape_mode*/);
@@ -76,15 +76,15 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
 
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "net_op has no outputs");
+  PADDLE_ENFORCE(!stepnet_->Outputs().empty(), "stepnet_ op has no outputs");
+  PADDLE_ENFORCE(!stepnet_->Outputs().empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
       auto& step_scope = scope.NewScope();
 
       // create step net's temp inputs
-      for (auto& input : (*stepnet_)->Inputs()) {
+      for (auto& input : stepnet_->Inputs()) {
         // the weight are located in parent scope
         for (auto& var_name : input.second) {
           if (!step_scope.FindVar(var_name)) {
@@ -93,7 +93,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
         }
       }
       // create stepnet's outputs
-      for (const auto& output : (*stepnet_)->Outputs()) {
+      for (const auto& output : stepnet_->Outputs()) {
         for (auto& var_name : output.second) {
           step_scope.NewVar(var_name);
         }
@@ -136,7 +136,7 @@ RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
   rnn::InitArgument(kArgName, &arg_, *this);
-  alg_.Init(&arg_, &stepnet_);
+  alg_.Init(&arg_, stepnet_.get());
 }
 
 class RecurrentAlgorithmProtoAndCheckerMaker
@@ -178,7 +178,7 @@ void RecurrentGradientAlgorithm::Run(
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1,
                         false /*infer_shape_mode*/);
     }
-    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
+    stepnet_->Run(*step_scopes[step_id], dev_ctx);
   }
   LinkBootMemoryGradients(step_scopes[0], false);
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
@@ -215,7 +215,7 @@ void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1,
                         true /*infer_shape_mode*/);
     }
-    (*stepnet_)->InferShape(*step_scopes[step_id]);
+    stepnet_->InferShape(*step_scopes[step_id]);
   }
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
                      true /*infer_shape_mode*/);
@@ -228,7 +228,7 @@ RecurrentGradientOp::RecurrentGradientOp(
     const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
   rnn::InitArgument(kArgName, &arg_, *this);
-  alg_.Init(&arg_, &stepnet_);
+  alg_.Init(&arg_, stepnet_.get());
 }
 
 }  // namespace operators

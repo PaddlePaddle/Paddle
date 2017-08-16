@@ -174,7 +174,7 @@ class OpRegistry {
     }
   }
 
-  static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
+  static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VarNameMap& inputs,
                                                 const VarNameMap& outputs,
                                                 AttributeMap attrs) {
@@ -183,7 +183,7 @@ class OpRegistry {
                    "Operator '%s' has not been registered.", type);
     it->second.checker_->Check(attrs);
     auto op = it->second.creator_(type, inputs, outputs, attrs);
-    return std::shared_ptr<OperatorBase>(op);
+    return std::unique_ptr<OperatorBase>(op);
   }
 
   static VarNameMap ConvertOpDescVarsToVarNameMap(
@@ -199,7 +199,7 @@ class OpRegistry {
     return ret_val;
   }
 
-  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
     VarNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
     VarNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
     AttributeMap attrs;
@@ -210,11 +210,10 @@ class OpRegistry {
     return CreateOp(op_desc.type(), inputs, outputs, attrs);
   }
 
-  static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
+  static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
     PADDLE_ENFORCE(!op.IsNetOp(),
                    "Use framework::Backward to get backward ops");
-    std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
-    return grad_op;
+    return std::unique_ptr<OperatorBase>(BuildGradOp(&op));
   }
 
   static std::unordered_map<std::string, const OpInfo>& op_info_map() {
