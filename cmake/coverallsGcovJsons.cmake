@@ -106,14 +106,14 @@ if (GIT_FOUND)
 	set(JSON_GIT_INFO
 	"{
 	  \"head\": {
-	    \"id\": \"\@GIT_COMMIT_HASH\@\",
-	    \"author_name\": \"\@GIT_AUTHOR_NAME\@\",
-	    \"author_email\": \"\@GIT_AUTHOR_EMAIL\@\",
-	    \"committer_name\": \"\@GIT_COMMITTER_NAME\@\",
-	    \"committer_email\": \"\@GIT_COMMITTER_EMAIL\@\",
-	    \"message\": \"\@GIT_COMMIT_MESSAGE\@\"
+	    \"id\": \"${GIT_COMMIT_HASH}\",
+	    \"author_name\": \"${GIT_AUTHOR_NAME}\",
+	    \"author_email\": \"${GIT_AUTHOR_EMAIL}\",
+	    \"committer_name\": \"${GIT_COMMITTER_NAME}\",
+	    \"committer_email\": \"${GIT_COMMITTER_EMAIL}\",
+	    \"message\": \"${GIT_COMMIT_MESSAGE}\"
 	  },
-	  \"branch\": \"\@GIT_BRANCH\@\",
+	  \"branch\": \"${GIT_BRANCH}\",
 	  \"remotes\": [{
 	    \"name\": \"origin\",
 	    \"url\": \"https://github.com/PaddlePaddle/Paddle.git\"
@@ -245,23 +245,21 @@ if(ON_TRAVIS)
 	"{
 	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
 	  \"service_job_id\": \"\@JSON_SERVICE_JOB_ID\@\",
-	  \"git\": \"\@JSON_GIT_INFO\@\",
+	  \"git\": ${JSON_GIT_INFO},
       \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
 	  \"source_files\": \@JSON_GCOV_FILES\@
-	}"
-	)
+	}")
 else(ON_TRAVIS)
 	set(JSON_SERVICE_NAME "teamcity")
     set(JSON_REPO_TOKEN "JSUOs6TF6fD2i30OJ5o2S55V8XWv6euen")
 	set(JSON_TEMPLATE
 	"{
 	  \"repo_token\": \"\@JSON_REPO_TOKEN\@\",
-	  \"git\": \"\@JSON_GIT_INFO\@\",
+	  \"git\": ${JSON_GIT_INFO},
 	  \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
 	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
 	  \"source_files\": \@JSON_GCOV_FILES\@
-	}"
-	)
+	}")
 endif(ON_TRAVIS)
 
 set(SRC_FILE_TEMPLATE
