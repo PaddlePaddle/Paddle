@@ -275,6 +275,13 @@ All parameter, weight, gradient are variables in Paddle.
               const std::shared_ptr<operators::NetOp> &net) -> void {
              self.set_stepnet(net);
            });
+
+  rnn.def("backward", [](const operators::RecurrentOp &forwardOp,
+                         const std::unordered_set<std::string> &no_grad_vars) {
+    const auto &op = *static_cast<const OperatorBase *>(&forwardOp);
+    return Backward(op, no_grad_vars);
+  });
+
   ExposeOperator(rnn);
 
   m.def("unique_integer", UniqueIntegerGenerator);

@@ -29,13 +29,13 @@ def get_numeric_gradient(op,
                          local_scope=None):
     """
     Get Numeric Gradient for an operator's input.
-    
-    :param op: C++ operator instance, could be an network 
-    :param input_values: The input variables. Should be an dictionary, key is 
-    variable name. Value is numpy array.
-    :param output_name: The final output variable name. 
+
+    :param op: C++ operator instance, could be an network
+    :param input_values: The input variables. Should be an dictionary, key is
+    variable name. Value is numpy array
+    :param output_name: The final output variable name.
     :param input_to_check: The input variable need to get gradient.
-    :param delta: The perturbation value for numeric gradient method. The 
+    :param delta: The perturbation value for numeric gradient method. The
     smaller delta is, the more accurate result will get. But if that delta is
      too small, it could occur numerical stability problem.
     :param local_scope: The local scope used for get_numeric_gradient.
