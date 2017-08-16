@@ -257,6 +257,7 @@ else(ON_TRAVIS)
 	  \"repo_token\": \"\@JSON_REPO_TOKEN\@\",
 	  \"git\": ${JSON_GIT_INFO},
 	  \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
+	  \"service_pull_request\": \"${GIT_PR_ID}\",
 	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
 	  \"source_files\": \@JSON_GCOV_FILES\@
 	}")

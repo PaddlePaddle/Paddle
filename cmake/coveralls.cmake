@@ -1,11 +1,12 @@
 # CMake script for code coverage.
 # If _COVERALLS_UPLOAD is ON, it will upload json files to overalls.io automatically.
 
-# Param _GCOV_EXECUTABLE        gcov executable.
+# Param _GCOV_EXECUTABLE        Gcov executable.
 # Param _COVERAGE_SRCS          A list of coverage source files.
+# Param _GIT_PR_ID              Git pull request number.
 # Param _COVERALLS_UPLOAD       Upload the result to coveralls.
 # Param _CMAKE_SCRIPT_PATH      CMake script path.
-function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
+function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _GIT_PR_ID _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
     # clean previous gcov data.
     file(REMOVE_RECURSE ${PROJECT_BINARY_DIR}/*.gcda)
 
@@ -36,6 +37,7 @@ function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_
                 -DCOV_PATH="${PROJECT_BINARY_DIR}"
                 -DPROJECT_ROOT="${PROJECT_SOURCE_DIR}"
                 -DGCOV_EXECUTABLE="${_GCOV_EXECUTABLE}"
+                -DGIT_PR_ID="${_GIT_PR_ID}"
                 -P "${_CMAKE_SCRIPT_PATH}/coverallsGcovJsons.cmake"
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         COMMENT "Coveralls: generating coveralls output..."
@@ -96,9 +98,13 @@ if(WITH_COVERAGE)
         message("-- Found gcov: ${GCOV_EXECUTABLE}")
     endif()
 
+    # CI needs to pass pull request number into code coverage
+    # in order to bind coveralls with github.
+    set(GIT_PR_ID)
     code_coverage(
         "${GCOV_EXECUTABLE}"
         "${PADDLE_SOURCES}"
+        "${GIT_PR_ID}"
         ${COVERALLS_UPLOAD}
         "${PROJECT_SOURCE_DIR}/cmake"
     )
