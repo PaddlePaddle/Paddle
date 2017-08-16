@@ -91,10 +91,6 @@ EOF
 fi
 
 
-# To build documentation, we need to run cmake again after installing
-# PaddlePaddle.  This awkwardness is due to
-# https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
-# describes a solution.
 if [[ ${WITH_DOC:-OFF} == "ON" ]]; then
     cat <<EOF
 ========================================
@@ -102,11 +98,6 @@ Building documentation ...
    In /paddle/build_doc
 ========================================
 EOF
-    # build documentation need install Paddle before
-    make install -j `nproc`
-    pip install /usr/local/opt/paddle/share/wheels/*.whl
-    paddle version
-
     mkdir -p /paddle/build_doc
     pushd /paddle/build_doc
     cmake .. \
@@ -115,7 +106,8 @@ EOF
           -DWITH_AVX=${WITH_AVX:-ON} \
           -DWITH_SWIG_PY=ON \
           -DWITH_STYLE_CHECK=OFF
-    make paddle_docs paddle_docs_cn
+    make -j `nproc` gen_proto_py
+    make -j `nproc` paddle_docs paddle_docs_cn
     popd
 fi
 
@@ -191,3 +183,7 @@ ADD go/cmd/master/master /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
+
+set +xe
+printf "If you need to install PaddlePaddle in develop docker image,"
+printf "please make install or pip install build/python/dist/*.whl.\n"

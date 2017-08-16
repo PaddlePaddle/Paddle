@@ -19,10 +19,10 @@
     -   id: end-of-file-fixer
 -   repo: local
     hooks:
-    -   id: clang-format
+    -   id: clang-format-with-version-check
         name: clang-format
         description: Format files with ClangFormat.
-        entry: clang-format -i
+        entry: ./.clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
 -   repo: https://github.com/PaddlePaddle/pre-commit-golang
