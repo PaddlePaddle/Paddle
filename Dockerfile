@@ -71,20 +71,6 @@ RUN pip install -r /root/requirements.txt
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
 
-# TODO(qijun) The template library Eigen doesn't work well with GCC 5 
-# coming with the default Docker image, so we switch to use GCC 4.8 
-# by default. And I will check Eigen library later.
-
-RUN ln -sf gcc-4.8 /usr/bin/gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/gcc-ranlib && \
-    ln -sf gcc-4.8 /usr/bin/x86_64-linux-gnu-gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/x86_64-linux-gnu-gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/x86_64-linux-gnu-gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
-    ln -sf g++-4.8 /usr/bin/g++ && \
-    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++ 
 
 # Install woboq_codebrowser to /woboq
 RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \

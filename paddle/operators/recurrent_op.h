@@ -127,7 +127,7 @@ class RecurrentOp final : public framework::OperatorBase {
   }
 
   void set_stepnet(std::shared_ptr<NetOp> net) { stepnet_ = net; }
-  const NetOp* stepnet() const { return stepnet_.get(); }
+  const NetOp& stepnet() const { return *stepnet_; }
 
   static const rnn::ArgumentName kArgName;
 
@@ -158,7 +158,7 @@ class RecurrentGradientOp final : public framework::OperatorBase {
   static const rnn::ArgumentName kArgName;
 
   void set_stepnet(const std::shared_ptr<NetOp>& net) { stepnet_ = net; }
-  const NetOp* stepnet() const { return stepnet_.get(); }
+  const NetOp& stepnet() const { return *stepnet_; }
 
  private:
   RecurrentGradientAlgorithm alg_;
