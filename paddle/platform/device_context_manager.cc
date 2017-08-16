@@ -18,7 +18,7 @@ DeviceContextManager::DeviceContextManager() {
 #ifndef PADDLE_ONLY_CPU
   gpu_cnt_.reserve(kNUM_GPUS);
   cuda_contexts_.reserve(kNUM_GPUS);
-  cuda_io_contexts_.reserve(kNUM_GPUS);  
+  cuda_io_contexts_.reserve(kNUM_GPUS);
   for (size_t i = 0; i < kNUM_GPUS; i++) {
     gpu_cnt_.at(i) = -1;
   }
@@ -30,7 +30,7 @@ DeviceContext& DeviceContextManager::GetDeviceContext(Place& place) {
   if (is_cpu_place(place)) {
     if (!cpu_context_) {
       cpu_context_ = new CPUDeviceContext();
-    }    
+    }
     return *cpu_context_;
   } else {
 #ifndef PADDLE_ONLY_CPU
@@ -39,7 +39,7 @@ DeviceContext& DeviceContextManager::GetDeviceContext(Place& place) {
     PADDLE_ENFORCE(gpu_id < kNUM_GPUS,
                    "GPU device id must less than kNUM_GPUS");
     SetDeviceId(gpu_id);
-    if(gpu_cnt_[gpu_id] == -1) {
+    if (gpu_cnt_[gpu_id] == -1) {
     cuda_contexts_[gpu_id].reserve(kNUM_STREAMS);
     for (auto&& ctx : cuda_contexts_[gpu_id]) {
       ctx = new CUDADeviceContext(gpu_place);
@@ -68,5 +68,5 @@ DeviceContextManager::~DeviceContextManager() {
 
 #endif
 }
-}
-}
+}  // namespace platform
+}  // namespace paddle

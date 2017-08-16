@@ -33,5 +33,5 @@ class DeviceContextManager {
   std::vector<int> gpu_cnt_;
 #endif
 };
-}
-}
+}  // namespace platform
+}  // namespace paddle
