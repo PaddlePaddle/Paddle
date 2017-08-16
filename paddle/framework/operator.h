@@ -118,7 +118,7 @@ class OperatorBase {
  public:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)
+  // I (Inputs)opear
   // O (Outputs)
   // OG (Output Gradients)
   VarNameMap inputs_;
@@ -139,7 +139,7 @@ class OperatorBase {
 // You can also use
 //   using PARENT_CLASS::PARENT_CLASS;
 // to use parent's constructor.
-#define DEFINE_OP_CTOR(CLS, PARENT_CLS)                                        \
+#define DEFINE_OP_CONSTRUCTOR(CLS, PARENT_CLS)                                 \
   CLS(const std::string& type, const VarNameMap& inputs,                       \
       const VarNameMap& outputs, const paddle::framework::AttributeMap& attrs) \
       : PARENT_CLS(type, inputs, outputs, attrs) {}

@@ -274,7 +274,7 @@ class OpKernelRegistrar : public Registrar {
   class _OpClass_##op_type##_ : public op_class {                             \
    public:                                                                    \
     DEFINE_OP_CLONE_METHOD(_OpClass_##op_type##_);                            \
-    DEFINE_OP_CTOR(_OpClass_##op_type##_, op_class);                          \
+    DEFINE_OP_CONSTRUCTOR(_OpClass_##op_type##_, op_class);                   \
   };                                                                          \
   static ::paddle::framework::OpRegistrar<_OpClass_##op_type##_,              \
                                           op_maker_class>                     \
@@ -294,7 +294,7 @@ class OpKernelRegistrar : public Registrar {
   class _OpGradClass_##op_type##_ : public grad_op_class {                   \
    public:                                                                   \
     DEFINE_OP_CLONE_METHOD(_OpGradClass_##op_type##_);                       \
-    DEFINE_OP_CTOR(_OpGradClass_##op_type##_, grad_op_class);                \
+    DEFINE_OP_CONSTRUCTOR(_OpGradClass_##op_type##_, grad_op_class);         \
   };                                                                         \
   static ::paddle::framework::GradOpRegistrar<_OpGradClass_##op_type##_>     \
       __op_gradient_registrar_##op_type##_##grad_op_type##__(#op_type,       \
