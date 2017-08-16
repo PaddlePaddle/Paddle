@@ -52,6 +52,7 @@ class CPUDeviceContext : public DeviceContext {
 };
 
 #ifndef PADDLE_ONLY_CPU
+class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -76,6 +77,9 @@ class CUDADeviceContext : public DeviceContext {
 
   /*! \brief  Return curand handle in the device context. */
   curandGenerator_t curand_generator();
+
+  /*! \brief  Return cuda stream in the device context. */
+  cudaStream_t      stream();
   // clang-format on
 
  private:
@@ -83,15 +87,16 @@ class CUDADeviceContext : public DeviceContext {
 
  private:
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
-  std::unique_ptr<Eigen::CudaStreamDevice> eigen_stream_;
+  std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
  private:
   uint64_t seed_;
 
   // clang-format off
-  cudnnHandle_t     cudnn_handle_     = nullptr;
-  cublasHandle_t    cublas_handle_    = nullptr;
-  curandGenerator_t curand_generator_ = nullptr;
+  cudaStream_t       stream_{nullptr};
+  cudnnHandle_t      cudnn_handle_{nullptr};
+  cublasHandle_t     cublas_handle_{nullptr};
+  curandGenerator_t  curand_generator_{nullptr};
   // clang-format on
 };
 

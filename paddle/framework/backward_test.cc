@@ -28,13 +28,6 @@ using OpAttrChecker = framework::OpAttrChecker;
 using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
 
-class EmptyOp : public OperatorBase {
- public:
-  using OperatorBase::OperatorBase;
-  void InferShape(const Scope &scope) const override {}
-  void Run(const Scope &scope, const DeviceContext &dev_ctx) const override {}
-};
-
 class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
@@ -155,27 +148,24 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
-REGISTER_OP(rowwise_add, f::EmptyOp, f::RowWiseAddOpMaker);
-REGISTER_GRADIENT_OP(rowwise_add, rowwise_add_grad, f::EmptyOp);
-REGISTER_OP(mul, f::EmptyOp, f::MulOpMaker);
-REGISTER_GRADIENT_OP(mul, mul_grad, f::EmptyOp);
-REGISTER_OP(sigmoid, f::EmptyOp, f::SigmoidOpMaker);
-REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, f::EmptyOp);
-REGISTER_OP(nograd, f::EmptyOp, f::NoGradOpMaker);
-REGISTER_OP(fill_zeros_like, f::EmptyOp, f::FillZeroOpMaker);
-REGISTER_OP(add, f::EmptyOp, f::AddOpMaker);
-REGISTER_GRADIENT_OP(add, add_grad, f::EmptyOp);
-REGISTER_OP(fc, f::FcOp, f::FcOpMaker);
-REGISTER_OP(many_output_op, f::EmptyOp, f::ManyOutputOpMaker);
-REGISTER_GRADIENT_OP(many_output_op, many_output_op_grad, f::EmptyOp);
+REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, rowwise_add_grad,
+            f::NOP);
+REGISTER_OP(mul, f::NOP, f::MulOpMaker, mul_grad, f::NOP);
+REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, sigmoid_grad, f::NOP);
+REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, f::NOP, f::FillZeroOpMaker);
+REGISTER_OP(add, f::NOP, f::AddOpMaker, add_grad, f::NOP);
+REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
+REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
+            f::NOP);
 
 TEST(Backward, simple_op_grad) {
   auto fwd = f::OpRegistry::CreateOp(
       "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
   ASSERT_NE(fwd, nullptr);
   auto gop = f::OpRegistry::CreateGradOp(*fwd);
-  ASSERT_EQ(1UL, gop->inputs_.size());
-  ASSERT_EQ("rowwise_add_grad", gop->type_);
+  ASSERT_EQ(1UL, gop->Inputs().size());
+  ASSERT_EQ("rowwise_add_grad", gop->Type());
   ASSERT_EQ(f::GradVarName("x"), gop->Output(f::GradVarName("X")));
   ASSERT_EQ(f::GradVarName("b"), gop->Output(f::GradVarName("b")));
 }
@@ -211,13 +201,13 @@ TEST(Backward, net_fc_backward_normal) {
   ASSERT_EQ(3UL, net->ops_.size());
 
   f::OperatorBase &d_sigmoid = *net->ops_[0];
-  ASSERT_EQ("sigmoid_grad", d_sigmoid.type_);
+  ASSERT_EQ("sigmoid_grad", d_sigmoid.Type());
 
   f::OperatorBase &d_add = *net->ops_[1];
-  ASSERT_EQ("rowwise_add_grad", d_add.type_);
+  ASSERT_EQ("rowwise_add_grad", d_add.Type());
 
   f::OperatorBase &d_mul = *net->ops_[2];
-  ASSERT_EQ("mul_grad", d_mul.type_);
+  ASSERT_EQ("mul_grad", d_mul.Type());
 }
 
 TEST(Backward, net_fc_backward_not_have_b) {
@@ -237,10 +227,10 @@ TEST(Backward, net_fc_backward_not_have_b) {
   ASSERT_EQ(2UL, net->ops_.size());
 
   f::OperatorBase &d_sigmoid = *net->ops_[0];
-  ASSERT_EQ("sigmoid_grad", d_sigmoid.type_);
+  ASSERT_EQ("sigmoid_grad", d_sigmoid.Type());
 
   f::OperatorBase &d_mul = *net->ops_[1];
-  ASSERT_EQ("mul_grad", d_mul.type_);
+  ASSERT_EQ("mul_grad", d_mul.Type());
 }
 
 TEST(Backward, net_input_of_network_not_need_grad) {
@@ -294,7 +284,7 @@ TEST(Backward, net_shared_weight) {
   ASSERT_TRUE(bwd->IsNetOp());
   auto bwd_net = static_cast<ops::NetOp *>(bwd.get());
   ASSERT_EQ(3UL, bwd_net->ops_.size());
-  ASSERT_EQ("add", bwd_net->ops_[2]->type_);
+  ASSERT_EQ("add", bwd_net->ops_[2]->Type());
 }
 
 TEST(Backward, op_register_grad_not_for_network) {
@@ -335,15 +325,15 @@ TEST(Backward, op_part_of_output_are_not_need) {
   ASSERT_EQ(net->ops_.size(), 2UL);
 
   auto &fill_zero = *net->ops_[0];
-  ASSERT_EQ("fill_zeros_like", fill_zero.type_);
+  ASSERT_EQ("fill_zeros_like", fill_zero.Type());
   ASSERT_EQ(1UL, fill_zero.Inputs("Src").size());
   ASSERT_EQ("Z", fill_zero.Input("Src"));
   ASSERT_EQ(1UL, fill_zero.Outputs("Dst").size());
   ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.Output("Dst"));
 
   auto &d_many_out = *net->ops_[1];
-  ASSERT_EQ("many_output_op_grad", d_many_out.type_);
-  ASSERT_EQ(1UL + 2UL + 2UL, d_many_out.inputs_.size());  // I/O/OG
+  ASSERT_EQ("many_output_op_grad", d_many_out.Type());
+  ASSERT_EQ(1UL + 2UL + 2UL, d_many_out.Inputs().size());  // I/O/OG
   ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix,
             d_many_out.Input(f::GradVarName("z")));
   ASSERT_EQ(f::GradVarName("Y"), d_many_out.Input(f::GradVarName("y")));
@@ -355,9 +345,9 @@ TEST(Backward, op_part_of_input_are_not_need) {
                                      {{"Out", {"out"}}}, {});
   auto backward = f::Backward(*fwd, {"a"});
   auto &grad_mul = *backward;
-  ASSERT_EQ(grad_mul.type_, "mul_grad");
-  ASSERT_EQ(grad_mul.inputs_.size(), 2UL + 1UL + 1UL);
-  ASSERT_EQ(grad_mul.outputs_.size(), 2UL);
+  ASSERT_EQ(grad_mul.Type(), "mul_grad");
+  ASSERT_EQ(grad_mul.Inputs().size(), 2UL + 1UL + 1UL);
+  ASSERT_EQ(grad_mul.Outputs().size(), 2UL);
   ASSERT_EQ(grad_mul.Output(f::GradVarName("X")), f::kEmptyVarName);
   ASSERT_EQ(grad_mul.Output(f::GradVarName("Y")), f::GradVarName("b"));
   ASSERT_EQ(grad_mul.Input(f::GradVarName("Out")), f::GradVarName("out"));
@@ -395,18 +385,18 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
   auto &grad_fc = *bwd_net->ops_[0];
 
   const char *all = paddle::operators::NetOp::kAll;
-  EXPECT_EQ(grad_fc.inputs_[all].size(),
+  EXPECT_EQ(grad_fc.Inputs(all).size(),
             2UL       /* external input number */
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
                 + 2U /* internal variable number*/);
-  EXPECT_EQ(grad_fc.outputs_[all].size(),
+  EXPECT_EQ(grad_fc.Outputs(all).size(),
             2UL       /* input number of mul*/
                 + 2UL /* input number of rowwise_add
                        */
                 + 1UL /* input number of sigmod */);
-  EXPECT_EQ(bwd_net->ops_[1]->inputs_[all].size(), 0UL);
-  EXPECT_EQ(bwd_net->ops_[1]->outputs_[all].size(), 0UL);
-  EXPECT_EQ(bwd_net->ops_[2]->inputs_[all].size(), 0UL);
-  EXPECT_EQ(bwd_net->ops_[2]->outputs_[all].size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[1]->Inputs(all).size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[1]->Outputs(all).size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[2]->Inputs(all).size(), 0UL);
+  EXPECT_EQ(bwd_net->ops_[2]->Outputs(all).size(), 0UL);
 }

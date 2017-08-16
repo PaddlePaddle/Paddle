@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/gather.h"
+#include "paddle/operators/scatter.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/place.h"
@@ -21,7 +21,7 @@ limitations under the License. */
 #include <iostream>
 #include <string>
 
-TEST(Gather, GatherData) {
+TEST(scatter, ScatterUpdate) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   using namespace paddle::operators;
@@ -30,19 +30,23 @@ TEST(Gather, GatherData) {
   Tensor* index = new Tensor();
   Tensor* output = new Tensor();
 
-  int* p_src = nullptr;
+  float* p_src = nullptr;
   int* p_index = nullptr;
-  p_src = src->mutable_data<int>(make_ddim({3, 4}), CPUPlace());
-  p_index = index->mutable_data<int>(make_ddim({2}), CPUPlace());
+  p_src = src->mutable_data<float>(make_ddim({1, 4}), CPUPlace());
+  p_index = index->mutable_data<int>(make_ddim({1}), CPUPlace());
 
-  for (int i = 0; i < 12; ++i) p_src[i] = i;
+  for (size_t i = 0; i < 4; ++i) p_src[i] = float(i);
   p_index[0] = 1;
-  p_index[1] = 0;
 
-  int* p_output = output->mutable_data<int>(make_ddim({2, 4}), CPUPlace());
+  float* p_output = output->mutable_data<float>(make_ddim({4, 4}), CPUPlace());
 
-  Gather<int>(CPUPlace(), src, index, output);
+  ScatterUpdate<float>(CPUPlace(), src, index, output);
 
-  for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);
-  for (int i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], i - 4);
+  for (size_t i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], float(0));
+  for (size_t i = 0; i < 4; ++i) EXPECT_EQ(output->data<float>()[i], float(0));
+  for (size_t i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], float(i - 4));
+  for (size_t i = 4; i < 8; ++i)
+    EXPECT_EQ(output->data<float>()[i], float(i - 4));
+  for (size_t i = 8; i < 16; ++i) EXPECT_EQ(p_output[i], float(0));
+  for (size_t i = 8; i < 16; ++i) EXPECT_EQ(output->data<float>()[i], float(0));
 }

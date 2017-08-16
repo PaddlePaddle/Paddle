@@ -21,14 +21,6 @@ class TestOp : public framework::OperatorBase {
   }
 };
 
-class EmptyOp : public framework::OperatorBase {
- public:
-  using framework::OperatorBase::OperatorBase;
-  DEFINE_OP_CLONE_METHOD(EmptyOp);
-  void InferShape(const Scope& scope) const override {}
-  void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
-};
-
 template <typename T>
 void AssertSameVectorWithoutOrder(const std::vector<T>& expected,
                                   const std::vector<T>& actual) {
@@ -58,8 +50,8 @@ TEST(OpKernel, all) {
 
   net->CompleteAddOp();
   AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
-                               net->inputs_.at(NetOp::kAll));
-  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_.at(NetOp::kAll));
+                               net->Inputs(NetOp::kAll));
+  AssertSameVectorWithoutOrder({"y", "z"}, net->Outputs(NetOp::kAll));
 
   auto final_outs = net->OutputVars(false);
 
@@ -69,9 +61,9 @@ TEST(OpKernel, all) {
 
 TEST(NetOp, insert_op) {
   NetOp net;
-  auto op1 = std::shared_ptr<EmptyOp>(
-      new EmptyOp("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
-                  {{"Out", {"y"}}}, {}));
+  auto op1 = std::shared_ptr<framework::NOP>(
+      new framework::NOP("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
+                         {{"Out", {"y"}}}, {}));
   net.AddOp(op1);
   net.InsertOp(0, op1);
   ASSERT_EQ(2UL, net.ops_.size());
@@ -81,8 +73,10 @@ TEST(NetOp, insert_op) {
 
 TEST(NetOp, Clone) {
   NetOp net;
-  net.AddOp(std::shared_ptr<EmptyOp>(new EmptyOp{"empty", {}, {}, {}}));
-  net.AddOp(std::shared_ptr<EmptyOp>(new EmptyOp{"empty2", {}, {}, {}}));
+  net.AddOp(
+      std::shared_ptr<framework::NOP>(new framework::NOP{"empty", {}, {}, {}}));
+  net.AddOp(std::shared_ptr<framework::NOP>(
+      new framework::NOP{"empty2", {}, {}, {}}));
   net.CompleteAddOp(true);
   auto new_net_op = net.Clone();
   ASSERT_NE(new_net_op, nullptr);
