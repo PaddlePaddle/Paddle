@@ -163,14 +163,14 @@ mkdir build && cd build
 Finally, you can build and install PaddlePaddle:
 
 ```bash
- -# you can add build option here, such as:    
- -cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
- -# please use sudo make install, if you want to install PaddlePaddle into the system
- -make -j `nproc` && make install
- -# set PaddlePaddle installation path in ~/.bashrc
- -export PATH=<path to install>/bin:$PATH
- -# install PaddlePaddle Python modules.
- -sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
+# you can add build option here, such as:    
+cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
+# please use sudo make install, if you want to install PaddlePaddle into the system
+make -j `nproc` && make install
+# set PaddlePaddle installation path in ~/.bashrc
+export PATH=<path to install>/bin:$PATH
+# install PaddlePaddle Python modules.
+sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
 ```
 
 ## <span id="centos">Build on Centos 7</span>
@@ -225,12 +225,12 @@ mkdir build && cd build
 Finally, you can build and install PaddlePaddle:
   
 ```bash
-you can add build option here, such as:    
+# you can add build option here, such as:    
 cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>
-please use sudo make install, if you want to install PaddlePaddle into the system
+# please use sudo make install, if you want to install PaddlePaddle into the system
 make -j `nproc` && make install
-set PaddlePaddle installation path in ~/.bashrc
+# set PaddlePaddle installation path in ~/.bashrc
 export PATH=<path to install>/bin:$PATH
-install PaddlePaddle Python modules.
+# install PaddlePaddle Python modules.
 sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
 ```
