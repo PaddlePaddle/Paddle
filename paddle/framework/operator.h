@@ -164,11 +164,8 @@ class OpProtoAndCheckerMaker {
       return *this;
     }
 
-    // TODO(FengJiayi, yuyang18): `AsNoGradient` is a very bad name, because it
-    // means that input/output is not needed when calculate gradient. It does
-    // not mean no gradient when backward. It should be changed soon.
-    VariableBuilder& AsNoGradient() {
-      var_->set_no_gradient(true);
+    VariableBuilder& NotInGradient() {
+      var_->set_not_in_gradient(true);
       return *this;
     }
   };

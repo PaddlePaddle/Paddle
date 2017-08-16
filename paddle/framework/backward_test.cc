@@ -32,9 +32,9 @@ class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").AsNoGradient();
-    AddInput("b", "Bias of Add").AsNoGradient();
-    AddOutput("Out", "Out of Add").AsNoGradient();
+    AddInput("X", "Input X of Add").NotInGradient();
+    AddInput("b", "Bias of Add").NotInGradient();
+    AddOutput("Out", "Out of Add").NotInGradient();
     AddComment("Add Op");
   }
 };
