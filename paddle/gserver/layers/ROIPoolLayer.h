@@ -29,6 +29,7 @@ namespace paddle {
  * Reference:
  *    Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun.
  *    Faster R-CNN: Towards Real-Time Object Detection with Region Proposal
+ * Networks
  */
 
 class ROIPoolLayer : public Layer {

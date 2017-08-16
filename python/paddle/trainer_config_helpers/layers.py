@@ -1257,6 +1257,7 @@ def roi_pool_layer(input,
                    pooled_width,
                    pooled_height,
                    spatial_scale,
+                   num_channels=None,
                    name=None):
     """
     A layer used by Fast R-CNN to extract feature maps of ROIs from the last
@@ -1274,8 +1275,14 @@ def roi_pool_layer(input,
     :type pooled_height: int
     :param spatial_scale: The spatial scale between the image and feature map.
     :type spatial_scale: float
+    :param num_channels: number of input channel.
+    :type num_channels: int
     :return: LayerOutput
     """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+    size = num_channels * pooled_width * pooled_height
     Layer(
         name=name,
         type=LayerType.ROI_POOL_LAYER,
@@ -1283,7 +1290,8 @@ def roi_pool_layer(input,
         pooled_width=pooled_width,
         pooled_height=pooled_height,
         spatial_scale=spatial_scale)
-    return LayerOutput(name, LayerType.ROI_POOL_LAYER, parents=[input, rois])
+    return LayerOutput(
+        name, LayerType.ROI_POOL_LAYER, parents=[input, rois], size=size)
 
 
 @wrap_name_default("cross_channel_norm")

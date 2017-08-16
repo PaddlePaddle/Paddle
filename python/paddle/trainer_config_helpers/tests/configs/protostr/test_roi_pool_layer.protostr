@@ -1,0 +1,45 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 588
+  active_type: ""
+  height: 14
+  width: 14
+}
+layers {
+  name: "rois"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "__roi_pool_0__"
+  type: "roi_pool"
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    roi_pool_conf {
+      pooled_width: 7
+      pooled_height: 7
+      spatial_scale: 0.0625
+    }
+  }
+  inputs {
+    input_layer_name: "rois"
+  }
+}
+input_layer_names: "data"
+input_layer_names: "rois"
+output_layer_names: "__roi_pool_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "rois"
+  layer_names: "__roi_pool_0__"
+  input_layer_names: "data"
+  input_layer_names: "rois"
+  output_layer_names: "__roi_pool_0__"
+  is_recurrent_layer_group: false
+}
+

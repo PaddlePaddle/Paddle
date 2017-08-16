@@ -48,7 +48,7 @@ void ROIPoolLayer::forward(PassType passType) {
   resetOutput(numROIs, channels_ * pooledHeight_ * pooledWidth_);
   MatrixPtr outputValue = getOutputValue();
 
-  if (useGpu_) {
+  if (useGpu_) {  // TODO(guosheng): implement on GPU later
     MatrixPtr dataCpuBuffer;
     Matrix::resizeOrCreate(dataCpuBuffer,
                            dataValue->getHeight(),
@@ -90,9 +90,6 @@ void ROIPoolLayer::forward(PassType passType) {
                          false);
   real* argmaxData = maxIdxs_->getData();
 
-  size_t uZero = 0;
-  size_t uOne = 1;
-
   for (size_t n = 0; n < numROIs; ++n) {
     size_t roiBatchIdx = bottomROIs[0];
     size_t roiStartW = round(bottomROIs[1] * spatialScale_);
@@ -101,8 +98,8 @@ void ROIPoolLayer::forward(PassType passType) {
     size_t roiEndH = round(bottomROIs[4] * spatialScale_);
     CHECK_GE(roiBatchIdx, 0);
     CHECK_LT(roiBatchIdx, batchSize);
-    size_t roiHeight = std::max(roiEndH - roiStartH + 1, uOne);
-    size_t roiWidth = std::max(roiEndW - roiStartW + 1, uOne);
+    size_t roiHeight = std::max(roiEndH - roiStartH + 1, 1UL);
+    size_t roiWidth = std::max(roiEndW - roiStartW + 1, 1UL);
     real binSizeH =
         static_cast<real>(roiHeight) / static_cast<real>(pooledHeight_);
     real binSizeW =
@@ -115,10 +112,10 @@ void ROIPoolLayer::forward(PassType passType) {
           size_t wstart = static_cast<size_t>(std::floor(pw * binSizeW));
           size_t hend = static_cast<size_t>(std::ceil((ph + 1) * binSizeH));
           size_t wend = static_cast<size_t>(std::ceil((pw + 1) * binSizeW));
-          hstart = std::min(std::max(hstart + roiStartH, uZero), height_);
-          wstart = std::min(std::max(wstart + roiStartW, uZero), width_);
-          hend = std::min(std::max(hend + roiStartH, uZero), height_);
-          wend = std::min(std::max(wend + roiStartW, uZero), width_);
+          hstart = std::min(std::max(hstart + roiStartH, 0UL), height_);
+          wstart = std::min(std::max(wstart + roiStartW, 0UL), width_);
+          hend = std::min(std::max(hend + roiStartH, 0UL), height_);
+          wend = std::min(std::max(wend + roiStartW, 0UL), width_);
 
           bool isEmpty = (hend <= hstart) || (wend <= wstart);
           size_t poolIndex = ph * pooledWidth_ + pw;
