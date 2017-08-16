@@ -403,7 +403,7 @@ public:
       : layerName_(layerName) {
     addEvaluator(std::move(evaluator));
   }
-  virtual void eval(const NeuralNetwork& nn) override {
+  void eval(const NeuralNetwork& nn) override {
     const LayerPtr& layer = nn.getLayer(layerName_);
     CHECK(layer) << "Nonexisted layer: " << layerName_ << " in submodel "
                  << nn.getName();

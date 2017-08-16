@@ -8,20 +8,13 @@ add_subdirectory(gserver)
 add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
-add_subdirectory(optimizer)
-add_subdirectory(strings)
-
-# Do not build go directory until go cmake is working smoothly.
-# if(CMAKE_Go_COMPILER)
-#   add_subdirectory(go)
-# endif()
-
-find_package(Boost QUIET)
+add_subdirectory(string)
 
 if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
+  add_subdirectory(memory)
   add_subdirectory(platform)
   add_subdirectory(framework)
+  add_subdirectory(operators)
 endif()
 
 if(WITH_C_API)
@@ -29,7 +22,5 @@ if(WITH_C_API)
 endif()
 
 if(WITH_SWIG_PY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-          ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
   add_subdirectory(api)
 endif()

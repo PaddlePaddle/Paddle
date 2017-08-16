@@ -104,6 +104,11 @@ cross_channel_norm
 ------------------
 ..  autoclass:: paddle.v2.layer.cross_channel_norm
     :noindex:
+
+row_l2_norm
+-----------
+..  autoclass:: paddle.v2.layer.row_l2_norm
+    :noindex:
     
 Recurrent Layers
 ================
@@ -198,6 +203,10 @@ identity_projection
 ..  autoclass:: paddle.v2.layer.identity_projection
     :noindex:
 
+slice_projection
+-------------------
+..  autoclass:: paddle.v2.layer.slice_projection
+    :noindex:
 
 table_projection
 ----------------
@@ -246,6 +255,16 @@ concat
 seq_concat
 ----------
 ..  autoclass:: paddle.v2.layer.seq_concat
+    :noindex:
+
+kmax_sequence_score
+-------------------
+..  autoclass:: paddle.v2.layer.kmax_sequence_score
+    :noindex:
+
+sub_nested_seq
+--------------
+..  autoclass:: paddle.v2.layer.sub_nested_seq
     :noindex:
 
 Reshaping Layers
@@ -314,6 +333,11 @@ power
 scaling
 -------
 ..  autoclass:: paddle.v2.layer.scaling
+    :noindex:
+
+clip
+----
+..  autoclass:: paddle.v2.layer.clip
     :noindex:
 
 slope_intercept
@@ -445,6 +469,11 @@ smooth_l1_cost
 ..  autoclass:: paddle.v2.layer.smooth_l1_cost
     :noindex:
 
+multibox_loss
+--------------
+..  autoclass:: paddle.v2.layer.multibox_loss
+    :noindex:
+
 Check Layer
 ============
 
@@ -467,4 +496,17 @@ Activation with learnable parameter
 prelu
 --------
 ..  autoclass:: paddle.v2.layer.prelu
+    :noindex:
+
+gated_unit
+-----------
+..  autoclass:: paddle.v2.layer.gated_unit
+    :noindex:
+
+Detection output Layer
+======================
+
+detection_output
+----------------
+..  autoclass:: paddle.v2.layer.detection_output
     :noindex:

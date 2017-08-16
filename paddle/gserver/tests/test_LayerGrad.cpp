@@ -152,6 +152,26 @@ TEST(Projection, identity) {
   }
 }
 
+TEST(Projection, slice) {
+  ProjectionConfig conf;
+  conf.set_type("slice");
+  conf.set_input_size(100);
+  SliceConfig& slice1 = *conf.add_slices();
+  slice1.set_start(10);
+  slice1.set_end(20);
+  SliceConfig& slice2 = *conf.add_slices();
+  slice2.set_start(50);
+  slice2.set_end(70);
+  conf.set_output_size(30);
+  for (auto useGpu : {false, true}) {
+    testProjectionGrad(conf,
+                       INPUT_DATA,
+                       /* parameterSize */ 0,
+                       /* batchSize */ 10,
+                       useGpu);
+  }
+}
+
 TEST(Projection, scaling) {
   ProjectionConfig conf;
   conf.set_type("scaling");
@@ -345,6 +365,55 @@ TEST(Layer, CosSimVecMatLayer) {
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "cos_vm", 100, false, useGpu);
   }
+}
+
+void testDepthwiseConvLayer(const string& type, bool useGpu) {
+  TestConfig config;
+  config.biasSize = 32;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_num_filters(32);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 2048, 192});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+  conv->set_filter_size(2);
+  conv->set_filter_size_y(3);
+  conv->set_channels(16);
+  conv->set_padding(0);
+  conv->set_padding_y(1);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_groups(16);
+  conv->set_filter_channels(conv->channels() / conv->groups());
+  conv->set_img_size(16);
+  conv->set_img_size_y(8);
+  conv->set_output_x(outputSize(conv->img_size(),
+                                conv->filter_size(),
+                                conv->padding(),
+                                conv->stride(),
+                                /* caffeMode */ true));
+  conv->set_output_y(outputSize(conv->img_size_y(),
+                                conv->filter_size_y(),
+                                conv->padding_y(),
+                                conv->stride_y(),
+                                /* caffeMode */ true));
+  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
+                              config.layerConfig.num_filters());
+
+  testLayerGrad(config, "depthwise_conv", 100, false, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "depthwise_conv", 2, false, useGpu, true, 0.02);
+}
+
+TEST(Layer, depthwiseConvLayer) {
+  //  'depthwise_conv' is a sepecial case of 'exconv' whose
+  //  groups size equals to the input channels size.
+  testDepthwiseConvLayer("exconv", /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  testDepthwiseConvLayer("exconv", /* useGpu= */ true);
+#endif
 }
 
 void testConvLayer(const string& type, bool trans, bool useGpu) {
@@ -845,8 +914,12 @@ void testDegradeLayer(bool hasSubseq,
 
 TEST(Layer, MaxLayer) {
   testDegradeLayer(false, "max", "non-seq", -1);  // seq max to non-seq
-  testDegradeLayer(true, "max", "non-seq", -1);   // hasSubseq max to non-seq
-  testDegradeLayer(true, "max", "seq", -1);       // hasSubseq max to seq
+  testDegradeLayer(false,
+                   "max",
+                   "non-seq",
+                   5);  // seq max to a shorten seq, stride window = 5
+  testDegradeLayer(true, "max", "non-seq", -1);  // hasSubseq max to non-seq
+  testDegradeLayer(true, "max", "seq", -1);      // hasSubseq max to seq
 }
 
 TEST(Layer, SequenceLastInstanceLayer) {
@@ -868,6 +941,10 @@ TEST(Layer, SequenceLastInstanceLayer) {
 
 TEST(Layer, AverageLayer) {
   testDegradeLayer(false, "average", "non-seq", -1);  // seq average to non-seq
+  testDegradeLayer(false,
+                   "average",
+                   "non-seq",
+                   5);  // seq average to a shorten seq, stride window = 5
   testDegradeLayer(
       true, "average", "non-seq", -1);           // hasSubseq average to non-seq
   testDegradeLayer(true, "average", "seq", -1);  // hasSubseq average to seq
@@ -1661,6 +1738,8 @@ TEST(Layer, PadLayer) {
 
 TEST(Layer, CrossChannelNormLayer) {
   TestConfig config;
+  config.paramInitialMean = 1.;
+  config.paramInitialStd = 0.;
   config.layerConfig.set_type("norm");
   config.layerConfig.set_size(100);
   LayerInputConfig* input = config.layerConfig.add_inputs();
@@ -1674,7 +1753,7 @@ TEST(Layer, CrossChannelNormLayer) {
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 100, 10});
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "cross-channel-norm", 10, false, useGpu, false, 5);
+    testLayerGrad(config, "cross-channel-norm", 10, false, useGpu, false);
   }
 }
 
@@ -1689,6 +1768,70 @@ TEST(Layer, smooth_l1) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "smooth_l1", 100, false, useGpu, false);
+  }
+}
+
+TEST(Layer, multibox_loss) {
+  TestConfig config;
+  config.layerConfig.set_type("multibox_loss");
+  config.biasSize = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  MultiBoxLossConfig* multiboxLoss = input->mutable_multibox_loss_conf();
+  multiboxLoss->set_num_classes(21);
+  multiboxLoss->set_input_num(1);
+  multiboxLoss->set_overlap_threshold(0.5);
+  multiboxLoss->set_neg_pos_ratio(3);
+  multiboxLoss->set_neg_overlap(0.5);
+  multiboxLoss->set_background_id(0);
+  multiboxLoss->set_height(3);
+  multiboxLoss->set_width(3);
+
+  size_t gtNum = 1;
+  MatrixPtr labelValue = Matrix::create(gtNum, 6, false, false);
+  labelValue->randomizeUniform();
+  labelValue->add(-0.5);
+  labelValue->sigmoid(*labelValue);
+  real* labelData = labelValue->getData();
+  size_t labelWidth = labelValue->getWidth();
+  for (size_t i = 0; i < gtNum; ++i) {
+    *(labelData + i * labelWidth) = std::rand() % 20 + 1;
+    *(labelData + i * labelWidth + 1) = 0.400259;
+    *(labelData + i * labelWidth + 2) = 0.377857;
+    *(labelData + i * labelWidth + 3) = 0.525712;
+    *(labelData + i * labelWidth + 4) = 0.519368;
+  }
+  vector<int> seqStartPositions(gtNum + 1, 0);
+  for (size_t i = 1; i <= gtNum; ++i) {
+    seqStartPositions[i] = i;
+  }
+
+  // Ensure at lease one matched bbox
+  MatrixPtr priorValue = Matrix::create(1, 72, false, false);
+  priorValue->randomizeUniform();
+  priorValue->add(-0.5);
+  priorValue->sigmoid(*priorValue);
+  real* priorData = priorValue->getData();
+  *(priorData) = 0.424811;
+  *(priorData + 1) = 0.397059;
+  *(priorData + 2) = 0.538905;
+  *(priorData + 3) = 0.447091;
+  *(priorData + 4) = 0.425720;
+  *(priorData + 5) = 0.515228;
+  *(priorData + 6) = 0.519452;
+  *(priorData + 7) = 0.591065;
+
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "priorbox", priorValue, {}});
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "label", labelValue, seqStartPositions});
+  config.inputDefs.push_back({INPUT_DATA, "locPred", 36, 0});
+  config.inputDefs.push_back({INPUT_DATA, "confPred", 189, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "multibox_loss", 1, false, useGpu, false);
   }
 }
 
@@ -1725,6 +1868,142 @@ TEST(Layer, RowConvLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "row_conv", 100, false, useGpu, false);
+  }
+}
+
+TEST(Layer, CropLayer) {
+  TestConfig config;
+  // config input_0
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ImageConfig* img = input->mutable_image_conf();
+  img->set_channels(4);
+  img->set_img_size(16);
+  config.layerConfig.set_axis(2);
+  config.layerConfig.add_offset(0);
+  config.layerConfig.add_offset(0);
+
+  // config input_1
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", 128, 0});
+  input = config.layerConfig.add_inputs();
+  img = input->mutable_image_conf();
+  img->set_channels(2);
+  img->set_img_size(8);
+
+  // config crop layer
+  config.layerConfig.set_type("crop");
+  config.layerConfig.set_name("cropLayer");
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "crop", 100, false, useGpu, false);
+  }
+}
+
+vector<real> randSampling(real range, int n) {
+  CHECK_GE(range, n);
+  vector<real> num(range);
+  iota(begin(num), end(num), 0.);
+  if (range == n) return num;
+
+  random_shuffle(begin(num), end(num));
+  num.resize(n);
+  sort(begin(num), end(num));
+  return num;
+}
+
+TEST(Layer, SubNestedSequenceLayer) {
+  // layer size is not crutial for this layer,
+  // so use a small layer size in unittest
+  const int layerSize = 4;
+
+  const int maxSeqNum = 50;
+  const int maxSeqLen = 50;
+  const int maxBeamSize = 32;
+
+  srand((size_t)(time(NULL)));
+  int beamSize = 1 + (rand() % maxBeamSize);
+
+  TestConfig config;
+  config.layerConfig.set_type("sub_nested_seq");
+  config.layerConfig.set_name("sub_nested_seq_layer");
+  config.layerConfig.set_size(layerSize);
+
+  int seqNum = 1 + (rand() % maxSeqNum);
+
+  // sequence information for the first input, it is a nested sequence
+  vector<int> seqStartPos(seqNum + 1, 0);
+  vector<int> subSeqStartPos(1, 0);
+
+  // selected indices
+  MatrixPtr selectedIndices = Matrix::create(seqNum, beamSize, false, false);
+  selectedIndices->one();
+  selectedIndices->mulScalar(-1.);
+  real* indicesData = selectedIndices->getData();
+
+  for (int i = 0; i < seqNum; ++i) {
+    int subSeqNum = 1 + (rand() % maxSeqNum);
+    for (int j = 0; j < subSeqNum; ++j) {
+      subSeqStartPos.push_back(subSeqStartPos.back() +
+                               (1 + (rand() % maxSeqLen)));
+    }
+    vector<real> selSeqs =
+        randSampling(static_cast<real>(subSeqNum), min(beamSize, subSeqNum));
+    memcpy(indicesData + (i * beamSize),
+           selSeqs.data(),
+           selSeqs.size() * sizeof(real));
+    seqStartPos[i + 1] = subSeqStartPos.back();
+  }
+
+  MatrixPtr seqInputPtr =
+      Matrix::create(seqStartPos.back(), layerSize, false, false);
+  seqInputPtr->randomizeUniform();
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                              "nested_seq_input",
+                              seqInputPtr,
+                              seqStartPos,
+                              subSeqStartPos});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "selected_indices", selectedIndices});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "sub_nested_seq",
+                  /* batchSize */ seqNum,
+                  /* trans */ false,
+                  /* useGpu*/ useGpu,
+                  /* useWeight */ false);
+  }
+}
+
+TEST(Layer, ClipLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("clip");
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ClipConfig* layerConf = input->mutable_clip_conf();
+  double p1 = std::rand() / (double)RAND_MAX;
+  double p2 = std::rand() / (double)RAND_MAX;
+  layerConf->set_min(std::min(p1, p2));
+  layerConf->set_max(std::max(p1, p2));
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "clip", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, RowL2NormLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("row_l2_norm");
+  config.layerConfig.set_size(size);
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  config.layerConfig.add_inputs();
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "row_l2_norm", batchSize, false, useGpu, false);
   }
 }
 
