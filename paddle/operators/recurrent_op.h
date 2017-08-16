@@ -34,7 +34,8 @@ class RecurrentAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void Init(rnn::Argument* arg, framework::OperatorBase* stepnet) {
+  void Init(rnn::Argument* arg,
+            std::unique_ptr<framework::OperatorBase>* stepnet) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = arg;
     stepnet_ = stepnet;
@@ -63,7 +64,7 @@ class RecurrentAlgorithm {
   void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
 
  private:
-  framework::OperatorBase* stepnet_;
+  std::unique_ptr<framework::OperatorBase>* stepnet_;
   rnn::Argument* arg_;
   mutable size_t seq_len_;
 };
@@ -80,7 +81,8 @@ class RecurrentGradientAlgorithm {
    * operator.
    */
  public:
-  void Init(rnn::Argument* arg, framework::OperatorBase* stepnet) {
+  void Init(rnn::Argument* arg,
+            std::unique_ptr<framework::OperatorBase>* stepnet) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = std::move(arg);
     stepnet_ = stepnet;
@@ -107,7 +109,7 @@ class RecurrentGradientAlgorithm {
  private:
   rnn::Argument* arg_;
   mutable size_t seq_len_;
-  framework::OperatorBase* stepnet_;
+  std::unique_ptr<framework::OperatorBase>* stepnet_;
 };
 
 class RecurrentOp : public framework::OperatorBase {

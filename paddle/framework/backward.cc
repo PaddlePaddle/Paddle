@@ -89,7 +89,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
   }
 
   // Returned gradient network
-  auto net = std::unique_ptr<operators::NetOp>();
+  auto net = std::unique_ptr<operators::NetOp>(new operators::NetOp());
 
   if (forwardOp.IsNetOp()) {
     // Because forwardOp is a net op, it can static_cast.
@@ -204,7 +204,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
 }
 
 // See header for comments
-std::shared_ptr<OperatorBase> Backward(
+std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars) {
   std::unordered_set<std::string> no_grad_names;

@@ -41,9 +41,7 @@ class NetOp : public framework::OperatorBase {
   NetOp(const std::string& type, const VarNameMap& inputs,
         const VarNameMap& outputs, const framework::AttributeMap& attrs);
 
-  NetOp(const NetOp& o)
-      : framework::OperatorBase(
-            static_cast<const framework::OperatorBase&>(o)) {
+  NetOp(const NetOp& o) : framework::OperatorBase(o.type_, {}, {}, o.attrs_) {
     this->ops_.reserve(o.ops_.size());
     std::transform(
         o.ops_.begin(), o.ops_.end(), std::back_inserter(this->ops_),
