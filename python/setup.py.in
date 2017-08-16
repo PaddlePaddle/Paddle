@@ -32,7 +32,9 @@ paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle_usage',
                '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 
 paddle_rt_lib_dir = 'lib'
-paddle_rt_libs = [] if '${MKL_SHARED_LIBS}'== '' else '${MKL_SHARED_LIBS}'.split(';')
+paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
+if '${MKL_SHARED_LIBS}'!= '':
+  paddle_rt_libs += '${MKL_SHARED_LIBS}'.split(';')
 
 setup(name='paddlepaddle',
       version='${PADDLE_VERSION}',
