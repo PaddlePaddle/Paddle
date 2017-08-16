@@ -111,6 +111,8 @@ class OperatorBase {
   std::string Type() const { return type_; }
   const AttributeMap& Attrs() const { return attrs_; }
 
+  // Return a new operator instance, which is as same as this.
+  // NOTE: It is caller's responsibility to delete that operator instance.
   virtual OperatorBase* Clone() const = 0;
 
  public:
@@ -127,9 +129,16 @@ class OperatorBase {
   AttributeMap attrs_;
 };
 
+// Macro for define a clone method.
+// If you are writing an kernel operator, `Clone` will be defined when you
+// register it.
 #define DEFINE_OP_CLONE_METHOD(CLS) \
   OperatorBase* Clone() const final { return new CLS(*this); }
 
+// Macro for define a default constructor for Operator.
+// You can also use
+//   using PARENT_CLASS::PARENT_CLASS;
+// to use parent's constructor.
 #define DEFINE_OP_CTOR(CLS, PARENT_CLS)                                        \
   CLS(const std::string& type, const VarNameMap& inputs,                       \
       const VarNameMap& outputs, const paddle::framework::AttributeMap& attrs) \
