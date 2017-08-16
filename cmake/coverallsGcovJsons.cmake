@@ -245,7 +245,7 @@ if(ON_TRAVIS)
 	"{
 	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
 	  \"service_job_id\": \"\@JSON_SERVICE_JOB_ID\@\",
-	  \"git\": \"\@JSON_SERVICE_JOB_ID\@\",
+	  \"git\": \"\@JSON_GIT_INFO\@\",
       \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
 	  \"source_files\": \@JSON_GCOV_FILES\@
 	}"
@@ -256,8 +256,8 @@ else(ON_TRAVIS)
 	set(JSON_TEMPLATE
 	"{
 	  \"repo_token\": \"\@JSON_REPO_TOKEN\@\",
-	  \"git\": \"\@JSON_SERVICE_JOB_ID\@\",
-      \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
+	  \"git\": \"\@JSON_GIT_INFO\@\",
+	  \"run_at\": \"\@GIT_DATE_ISO_8601\@\",
 	  \"service_name\": \"\@JSON_SERVICE_NAME\@\",
 	  \"source_files\": \@JSON_GCOV_FILES\@
 	}"
