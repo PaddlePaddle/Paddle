@@ -120,12 +120,21 @@ OperatorBase::OperatorBase(const std::string& type,
                            const AttributeMap& attrs)
     : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
   static std::atomic<size_t> gUniqId(0UL);
-  for (auto& output : outputs_) {
-    for (auto& output_name : output.second) {
-      if (output_name == kTempVarName) {
-        output_name += type_;
-        output_name += "@";
-        output_name += std::to_string(gUniqId.fetch_add(1));
+
+  auto op_info_it = OpRegistry::op_info_map().find(type_);
+
+  if (op_info_it != OpRegistry::op_info_map().end()) {
+    auto* op_proto = op_info_it->second.proto_;
+    for (auto& output : op_proto->outputs()) {
+      if (output.duplicable()) {  // If outputs is duplicable, do not set
+                                  // default output
+        continue;
+      }
+      auto& outs = outputs_[output.name()];
+      // Set Default output name, if it is not set
+      if (outs.empty()) {
+        outs.push_back(type_ + "@GENERATE_OUTPUT@" +
+                       std::to_string(gUniqId.fetch_add(1)));
       }
     }
   }

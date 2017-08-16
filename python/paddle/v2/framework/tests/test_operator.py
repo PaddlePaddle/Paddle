@@ -1,12 +1,11 @@
 import unittest
 import paddle.v2.framework.op as op
-import paddle.v2.framework.core as core
 import paddle.v2.framework.proto.framework_pb2 as framework_pb2
 
 
 class TestGetAllProtos(unittest.TestCase):
     def test_all(self):
-        all_protos = op.get_all_op_protos()
+        all_protos = op.get_all_op_protos().values()
         self.assertNotEqual(0, len(all_protos))
 
         for each in all_protos:

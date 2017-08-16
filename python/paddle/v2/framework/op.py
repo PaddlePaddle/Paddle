@@ -1,6 +1,8 @@
 import paddle.v2.framework.core as core
 import paddle.v2.framework.proto.framework_pb2 as framework_pb2
 
+g_all_op_protos = None
+
 
 def get_all_op_protos():
     """
@@ -8,11 +10,13 @@ def get_all_op_protos():
     :return: list of OpProto
     """
     protostrs = core.get_all_op_protos()
-    ret_values = []
-    for pbstr in protostrs:
-        op_proto = framework_pb2.OpProto.FromString(str(pbstr))
-        ret_values.append(op_proto)
-    return ret_values
+    if g_all_op_protos is None:
+        global g_all_op_protos
+        g_all_op_protos = dict()
+        for pbstr in protostrs:
+            op_proto = framework_pb2.OpProto.FromString(str(pbstr))
+            g_all_op_protos[op_proto.type] = op_proto
+    return g_all_op_protos
 
 
 def is_str(s):
@@ -141,7 +145,7 @@ def create_op_creation_method(op_proto):
 class OperatorFactory(object):
     def __init__(self):
         self.op_methods = dict()
-        for op_proto in get_all_op_protos():
+        for op_proto in get_all_op_protos().values():
             method = create_op_creation_method(op_proto)
             self.op_methods[method.name] = method
 
@@ -184,9 +188,7 @@ class __RecurrentOp__(object):
     def __init__(self):
         # cache recurrent_op's proto
         if self.__proto__ is None:
-            for op_proto in get_all_op_protos():
-                if op_proto.type == self.type:
-                    self.__proto__ = op_proto
+            self.__proto__ = get_all_op_protos()[self.type]
 
     def __call__(self, *args, **kwargs):
         if self.type not in args and 'type' not in kwargs:

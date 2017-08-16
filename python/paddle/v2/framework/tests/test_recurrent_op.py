@@ -143,7 +143,7 @@ class TestRecurrentOp(unittest.TestCase):
             memories=["h@alias"])
 
     def create_step_net(self):
-        stepnet = core.Net.create()
+        stepnet = core.Net()
         x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
         sum_op = Operator("add_two", X="Wx", Y="Uh", Out="sum")
