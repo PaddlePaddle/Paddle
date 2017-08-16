@@ -16,19 +16,31 @@ limitations under the License. */
 #include "paddle/memory/detail/buddy_allocator.h"
 #include "paddle/memory/detail/system_allocator.h"
 
-#include <cstring>  // for memcpy
+#include <algorithm>  // for transfrom
+#include <cstring>    // for memcpy
+#include <mutex>      // for call_once
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace memory {
 
-detail::BuddyAllocator* GetCPUBuddyAllocator() {
-  static detail::BuddyAllocator* a = nullptr;
-  if (a == nullptr) {
-    a = new detail::BuddyAllocator(new detail::CPUAllocator,
-                                   platform::CpuMinChunkSize(),
-                                   platform::CpuMaxChunkSize());
-  }
-  return a;
+using BuddyAllocator = detail::BuddyAllocator;
+
+std::once_flag cpu_alloctor_flag;
+std::once_flag gpu_alloctor_flag;
+
+BuddyAllocator* GetCPUBuddyAllocator() {
+  static std::unique_ptr<BuddyAllocator, void (*)(BuddyAllocator*)> a{
+      nullptr, [](BuddyAllocator* p) { delete p; }};
+
+  std::call_once(cpu_alloctor_flag, [&]() {
+    a.reset(new BuddyAllocator(new detail::CPUAllocator,
+                               platform::CpuMinChunkSize(),
+                               platform::CpuMaxChunkSize()));
+  });
+
+  return a.get();
 }
 
 template <>
@@ -48,20 +60,31 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 
 #ifndef PADDLE_ONLY_CPU
 
-detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
-  static detail::BuddyAllocator** as = NULL;
-  if (as == NULL) {
+BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
+  using BuddyAllocVec = std::vector<BuddyAllocator*>;
+  static std::unique_ptr<BuddyAllocVec, void (*)(BuddyAllocVec * p)> as{
+      new std::vector<BuddyAllocator*>, [](BuddyAllocVec* p) {
+        std::for_each(p->begin(), p->end(),
+                      [](BuddyAllocator* p) { delete p; });
+      }};
+
+  // GPU buddy alloctors
+  auto& alloctors = *as.get();
+
+  // GPU buddy allocator initialization
+  std::call_once(gpu_alloctor_flag, [&]() {
     int gpu_num = platform::GetDeviceCount();
-    as = new detail::BuddyAllocator*[gpu_num];
+    alloctors.reserve(gpu_num);
     for (int gpu = 0; gpu < gpu_num; gpu++) {
       platform::SetDeviceId(gpu);
-      as[gpu] = new detail::BuddyAllocator(new detail::GPUAllocator,
-                                           platform::GpuMinChunkSize(),
-                                           platform::GpuMaxChunkSize());
+      alloctors.emplace_back(new BuddyAllocator(new detail::GPUAllocator,
+                                                platform::GpuMinChunkSize(),
+                                                platform::GpuMaxChunkSize()));
     }
-  }
+  });
+
   platform::SetDeviceId(gpu_id);
-  return as[gpu_id];
+  return alloctors[gpu_id];
 }
 
 template <>
