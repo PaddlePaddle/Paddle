@@ -29,103 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// this class not only make proto but also init attribute checkers.
-class OpProtoAndCheckerMaker {
- public:
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : proto_(proto), op_checker_(op_checker) {}
-
-  ~OpProtoAndCheckerMaker() {
-    PADDLE_ENFORCE(validated_, "should call Validate after build");
-  }
-
-  void Validate() {
-    validated_ = true;
-    CheckNoDuplicatedInOutAttrs();
-  }
-
- protected:
-  struct VariableBuilder {
-    OpProto::Var* var_;
-
-    VariableBuilder& AsDuplicable() {
-      var_->set_duplicable(true);
-      return *this;
-    }
-
-    VariableBuilder& AsIntermediate() {
-      var_->set_intermediate(true);
-      return *this;
-    }
-
-    // TODO(FengJiayi, yuyang18): `AsNoGradient` is a very bad name, because it
-    // means that input/output is not needed when calculate gradient. It does
-    // not mean no gradient when backward. It should be changed soon.
-    VariableBuilder& AsNoGradient() {
-      var_->set_no_gradient(true);
-      return *this;
-    }
-  };
-
-  VariableBuilder AddInput(const std::string& name,
-                           const std::string& comment) {
-    auto* input = proto_->add_inputs();
-    input->set_name(name);
-    input->set_comment(comment);
-    return VariableBuilder{input};
-  }
-
-  VariableBuilder AddOutput(const std::string& name,
-                            const std::string& comment) {
-    auto* output = proto_->add_outputs();
-    output->set_name(name);
-    output->set_comment(comment);
-    return VariableBuilder{output};
-  }
-
-  template <typename T>
-  TypedAttrChecker<T>& AddAttr(const std::string& name,
-                               const std::string& comment,
-                               bool generated = false) {
-    auto* attr = proto_->add_attrs();
-    attr->set_name(name);
-    attr->set_comment(comment);
-    attr->set_generated(generated);
-    attr->set_type(AttrTypeID<T>());
-    return op_checker_->AddAttrChecker<T>(name);
-  }
-
-  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
-
- private:
-  void CheckNoDuplicatedInOutAttrs() {
-    std::unordered_set<std::string> names;
-    auto checker = [&](const std::string& name) {
-      PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
-      names.insert(name);
-    };
-    for (auto& attr : proto_->attrs()) {
-      checker(attr.name());
-    }
-    for (auto& input : proto_->inputs()) {
-      checker(input.name());
-    }
-    for (auto& output : proto_->outputs()) {
-      checker(output.name());
-    }
-  }
-
-  OpProto* proto_;
-  OpAttrChecker* op_checker_;
-  bool validated_{false};
-};
-
-class NOPMaker : public OpProtoAndCheckerMaker {
- public:
-  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
-};
-
 class OpRegistry {
   using VarNameMap = OperatorBase::VarNameMap;
   using OpCreator = std::function<OperatorBase*(
@@ -177,45 +80,14 @@ class OpRegistry {
   static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VarNameMap& inputs,
                                                 const VarNameMap& outputs,
-                                                AttributeMap attrs) {
-    auto it = op_info_map().find(type);
-    PADDLE_ENFORCE(it != op_info_map().end(),
-                   "Operator '%s' has not been registered.", type);
-    it->second.checker_->Check(attrs);
-    auto op = it->second.creator_(type, inputs, outputs, attrs);
-    return std::shared_ptr<OperatorBase>(op);
-  }
+                                                AttributeMap attrs);
+
+  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
   static VarNameMap ConvertOpDescVarsToVarNameMap(
-      const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars) {
-    VarNameMap ret_val;
-    for (auto& var : op_desc_vars) {
-      auto& var_names = ret_val[var.parameter()];
-      auto& var_names_in_proto = var.arguments();
-      var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
-      std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
-                std::back_inserter(var_names));
-    }
-    return ret_val;
-  }
+      const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars);
 
-  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
-    VarNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
-    VarNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
-    AttributeMap attrs;
-    for (auto& attr : op_desc.attrs()) {
-      attrs[attr.name()] = GetAttrValue(attr);
-    }
-
-    return CreateOp(op_desc.type(), inputs, outputs, attrs);
-  }
-
-  static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
-    PADDLE_ENFORCE(!op.IsNetOp(),
-                   "Use framework::Backward to get backward ops");
-    std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
-    return grad_op;
-  }
+  static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
 
   static std::unordered_map<std::string, const OpInfo>& op_info_map() {
     static std::unordered_map<std::string, const OpInfo> op_info_map_;
