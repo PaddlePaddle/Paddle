@@ -17,6 +17,8 @@ limitations under the License. */
 #include <cstring>
 
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/place.h"
 

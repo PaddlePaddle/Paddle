@@ -12,11 +12,12 @@ class TestGatherOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "gather"
+        xnp = numpy.random.random((10, 20)).astype("float32")
         self.inputs = {
-            'X': numpy.random.random((10, 20)).astype("float32"),
-            'Index': numpy.array([1, 3, 5]).astype("int")
+            'X': xnp,
+            'Index': numpy.array([1, 3, 5]).astype("int32")
         }
-        self.outputs = {'Y': self.input['X'][self.input['Index']]}
+        self.outputs = {'Y': self.inputs['X'][self.inputs['Index']]}
 
 
 if __name__ == "__main__":
