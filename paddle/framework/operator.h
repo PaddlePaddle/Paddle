@@ -112,8 +112,8 @@ class OperatorBase {
   const AttributeMap& Attrs() const { return attrs_; }
 
   // Return a new operator instance, which is as same as this.
-  // NOTE: It is caller's responsibility to delete that operator instance.
-  virtual OperatorBase* Clone() const = 0;
+  // Use unique_ptr to prevent caller forget to delete this pointer.
+  virtual std::unique_ptr<OperatorBase> Clone() const = 0;
 
  public:
   std::string type_;
@@ -132,8 +132,10 @@ class OperatorBase {
 // Macro for define a clone method.
 // If you are writing an kernel operator, `Clone` will be defined when you
 // register it.
-#define DEFINE_OP_CLONE_METHOD(CLS) \
-  OperatorBase* Clone() const final { return new CLS(*this); }
+#define DEFINE_OP_CLONE_METHOD(CLS)                       \
+  std::unique_ptr<OperatorBase> Clone() const final {     \
+    return std::unique_ptr<OperatorBase>(new CLS(*this)); \
+  }
 
 // Macro for define a default constructor for Operator.
 // You can also use

@@ -84,14 +84,13 @@ TEST(NetOp, Clone) {
   net.AddOp(std::shared_ptr<EmptyOp>(new EmptyOp{"empty", {}, {}, {}}));
   net.AddOp(std::shared_ptr<EmptyOp>(new EmptyOp{"empty2", {}, {}, {}}));
   net.CompleteAddOp(true);
-  auto* new_net_op = net.Clone();
+  auto new_net_op = net.Clone();
   ASSERT_NE(new_net_op, nullptr);
   ASSERT_TRUE(new_net_op->IsNetOp());
-  auto* new_net = static_cast<NetOp*>(new_net_op);
+  auto* new_net = static_cast<NetOp*>(new_net_op.get());
   ASSERT_EQ(2, new_net->ops_.size());
   ASSERT_EQ(new_net->ops_[0]->Type(), "empty");
   ASSERT_EQ(new_net->ops_[1]->Type(), "empty2");
-  delete new_net;
 }
 
 }  // namespace operators

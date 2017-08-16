@@ -109,7 +109,8 @@ class NetOp : public framework::OperatorBase {
 
   bool IsNetOp() const override;
   std::vector<std::string> OutputVars(bool has_intermediate) const override;
-  framework::OperatorBase* Clone() const override;
+
+  std::unique_ptr<framework::OperatorBase> Clone() const override;
 
   std::vector<std::shared_ptr<OperatorBase>> ops_;
 

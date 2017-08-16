@@ -257,7 +257,6 @@ class OperatorClone : public paddle::framework::OperatorBase {
 
 TEST(Operator, Clone) {
   OperatorClone a("ABC", {}, {}, {});
-  auto* b = a.Clone();
+  auto b = a.Clone();
   ASSERT_EQ(a.Type(), b->Type());
-  delete b;
 }
