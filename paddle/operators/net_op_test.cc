@@ -13,6 +13,7 @@ static int run_cnt = 0;
 class TestOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
+  DEFINE_OP_CLONE_METHOD(TestOp);
   void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -23,6 +24,7 @@ class TestOp : public framework::OperatorBase {
 class EmptyOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
+  DEFINE_OP_CLONE_METHOD(EmptyOp);
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
 };
@@ -75,6 +77,21 @@ TEST(NetOp, insert_op) {
   ASSERT_EQ(2UL, net.ops_.size());
   net.InsertOp(2, op1);
   ASSERT_EQ(3UL, net.ops_.size());
+}
+
+TEST(NetOp, Clone) {
+  NetOp net;
+  net.AddOp(std::shared_ptr<EmptyOp>(new EmptyOp{"empty", {}, {}, {}}));
+  net.AddOp(std::shared_ptr<EmptyOp>(new EmptyOp{"empty2", {}, {}, {}}));
+  net.CompleteAddOp(true);
+  auto* new_net_op = net.Clone();
+  ASSERT_NE(new_net_op, nullptr);
+  ASSERT_TRUE(new_net_op->IsNetOp());
+  auto* new_net = static_cast<NetOp*>(new_net_op);
+  ASSERT_EQ(2, new_net->ops_.size());
+  ASSERT_EQ(new_net->ops_[0]->Type(), "empty");
+  ASSERT_EQ(new_net->ops_[1]->Type(), "empty2");
+  delete new_net;
 }
 
 }  // namespace operators

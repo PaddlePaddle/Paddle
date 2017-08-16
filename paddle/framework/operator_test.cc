@@ -242,3 +242,22 @@ TEST(OpKernel, multi_inputs) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
 }
+
+class OperatorClone : public paddle::framework::OperatorBase {
+ public:
+  DEFINE_OP_CLONE_METHOD(OperatorClone);
+  OperatorClone(const std::string& type, const VarNameMap& inputs,
+                const VarNameMap& outputs,
+                const paddle::framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+  void InferShape(const paddle::framework::Scope& scope) const override {}
+  void Run(const paddle::framework::Scope& scope,
+           const paddle::platform::DeviceContext& dev_ctx) const override {}
+};
+
+TEST(Operator, Clone) {
+  OperatorClone a("ABC", {}, {}, {});
+  auto* b = a.Clone();
+  ASSERT_EQ(a.Type(), b->Type());
+  delete b;
+}

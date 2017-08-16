@@ -271,7 +271,13 @@ class OpKernelRegistrar : public Registrar {
 #define REGISTER_OP(op_type, op_class, op_maker_class)                        \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
       __reg_op__##op_type, "REGISTER_OP must be called in global namespace"); \
-  static ::paddle::framework::OpRegistrar<op_class, op_maker_class>           \
+  class _OpClass_##op_type##_ : public op_class {                             \
+   public:                                                                    \
+    DEFINE_OP_CLONE_METHOD(_OpClass_##op_type##_);                            \
+    DEFINE_OP_CTOR(_OpClass_##op_type##_, op_class);                          \
+  };                                                                          \
+  static ::paddle::framework::OpRegistrar<_OpClass_##op_type##_,              \
+                                          op_maker_class>                     \
       __op_registrar_##op_type##__(#op_type);                                 \
   int TouchOpRegistrar_##op_type() {                                          \
     __op_registrar_##op_type##__.Touch();                                     \
@@ -285,7 +291,12 @@ class OpKernelRegistrar : public Registrar {
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                            \
       __reg_gradient_op__##op_type##_##grad_op_type,                         \
       "REGISTER_GRADIENT_OP must be called in global namespace");            \
-  static ::paddle::framework::GradOpRegistrar<grad_op_class>                 \
+  class _OpGradClass_##op_type##_ : public grad_op_class {                   \
+   public:                                                                   \
+    DEFINE_OP_CLONE_METHOD(_OpGradClass_##op_type##_);                       \
+    DEFINE_OP_CTOR(_OpGradClass_##op_type##_, grad_op_class);                \
+  };                                                                         \
+  static ::paddle::framework::GradOpRegistrar<_OpGradClass_##op_type##_>     \
       __op_gradient_registrar_##op_type##_##grad_op_type##__(#op_type,       \
                                                              #grad_op_type); \
   int TouchOpGradientRegistrar_##op_type() {                                 \

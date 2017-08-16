@@ -69,10 +69,6 @@ class OperatorBase {
   OperatorBase(const std::string& type, const VarNameMap& inputs,
                const VarNameMap& outputs, const AttributeMap& attrs);
 
-  OperatorBase(const OperatorBase& o) = delete;
-  OperatorBase& operator=(const OperatorBase& o) = delete;
-  OperatorBase(OperatorBase&& o) = delete;
-
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -115,6 +111,8 @@ class OperatorBase {
   std::string Type() const { return type_; }
   const AttributeMap& Attrs() const { return attrs_; }
 
+  virtual OperatorBase* Clone() const = 0;
+
  public:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -128,6 +126,14 @@ class OperatorBase {
   VarNameMap outputs_;
   AttributeMap attrs_;
 };
+
+#define DEFINE_OP_CLONE_METHOD(CLS) \
+  OperatorBase* Clone() const final { return new CLS(*this); }
+
+#define DEFINE_OP_CTOR(CLS, PARENT_CLS)                                        \
+  CLS(const std::string& type, const VarNameMap& inputs,                       \
+      const VarNameMap& outputs, const paddle::framework::AttributeMap& attrs) \
+      : PARENT_CLS(type, inputs, outputs, attrs) {}
 
 class InferShapeContext {
  public:
