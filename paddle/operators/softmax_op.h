@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
-class SoftmaxKernel : public OpKernel {
-public:
-  void Compute(const ExecutionContext& context) const override {
+class SoftmaxKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
     auto input = context.Input<Tensor>("X");
     auto output = context.Output<Tensor>("Y");
     output->mutable_data<T>(context.GetPlace());
@@ -62,14 +64,14 @@ public:
 };
 
 template <typename Place, typename T>
-class SoftmaxGradKernel : public OpKernel {
-public:
-  void Compute(const ExecutionContext& context) const override {
+class SoftmaxGradKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
     std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
 
     auto Y = context.Input<Tensor>("Y");
-    auto dY = context.Input<Tensor>(OperatorBase::GRAD_VAR_NAME("Y"));
-    auto dX = context.Output<Tensor>(OperatorBase::GRAD_VAR_NAME("X"));
+    auto dY = context.Input<Tensor>(framework::GradVarName("Y"));
+    auto dX = context.Output<Tensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
 
     const int batch_size = Y->dims()[0];

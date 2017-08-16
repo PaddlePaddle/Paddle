@@ -155,6 +155,7 @@ def convert(path):
     N = 5
     word_dict = build_dict()
     paddle.v2.dataset.common.convert(path,
-                                     train(word_dict, N), 10, "imikolov_train")
+                                     train(word_dict, N), 1000,
+                                     "imikolov_train")
     paddle.v2.dataset.common.convert(path,
-                                     test(word_dict, N), 10, "imikolov_test")
+                                     test(word_dict, N), 1000, "imikolov_test")

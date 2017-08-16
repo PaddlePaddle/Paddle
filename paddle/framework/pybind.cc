@@ -18,13 +18,12 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
 #include "paddle/framework/tensor_py.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/type_alias.h"
+#include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/string/to_string.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -32,30 +31,44 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_OP(onehot_cross_entropy);
-USE_OP_WITHOUT_KERNEL(fc);
+USE_CPU_ONLY_OP(onehot_cross_entropy);
 USE_OP(sgd);
 USE_OP(mul);
 USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
-USE_OP_WITHOUT_KERNEL(recurrent_op);
+USE_OP(fill_zeros_like);
+USE_OP_ITSELF(recurrent_op);
+USE_OP(gaussian_random);
+USE_OP(uniform_random);
+
 namespace paddle {
 namespace framework {
+
+using Tensor = framework::Tensor;
+
 template <typename ClassType>
 void ExposeOperator(ClassType &m) {
   m.def("infer_shape", &ClassType::type::InferShape)
       .def("run", &ClassType::type::Run)
       .def("type",
            [](const typename ClassType::type &op) -> std::string {
-             return op.type_;
+             return op.Type();
            })
       .def("outputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             return op.outputs_;
+           [](const typename ClassType::type &op)
+               -> std::map<std::string, std::vector<std::string>> {
+                 return op.Outputs();
+               })
+      .def("inputs",
+           [](const typename ClassType::type &op) { return op.Inputs(); })
+      .def("__str__", &ClassType::type::DebugString)
+      .def("no_intermediate_outputs",
+           [](const typename ClassType::type &op) {
+             return op.OutputVars(false);
            })
-      .def("__str__", &ClassType::type::DebugString);
+      .def("support_gpu", &ClassType::type::SupportGPU);
 }
 
 static size_t UniqueIntegerGenerator() {
@@ -105,7 +118,16 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
 #endif
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); });
+      .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("set_float_element",
+           [](Tensor &self, size_t offset, float f) {
+             // TODO(yuyang18): Only support GPU now.
+             self.data<float>()[offset] = f;
+           })
+      .def("get_float_element", [](Tensor &self, size_t offset) -> float {
+        // TODO(yuyang18): Only support GPU now.
+        return self.data<float>()[offset];
+      });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
@@ -119,8 +141,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
            py::return_value_policy::reference)
       .def("get_net",
-           [](Variable &self) -> ops::NetOp * {
-             return self.GetMutable<ops::NetOp>();
+           [](Variable &self) -> operators::NetOp * {
+             return self.GetMutable<operators::NetOp>();
            },
            py::return_value_policy::reference);
 
@@ -139,13 +161,16 @@ All parameter, weight, gradient are variables in Paddle.
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &protos = OpRegistry::protos();
+    auto &op_info_map = OpRegistry::op_info_map();
     std::vector<py::bytes> ret_values;
-    for (auto it = protos.begin(); it != protos.end(); ++it) {
-      PADDLE_ENFORCE(it->second.IsInitialized(),
-                     "OpProto must all be initialized");
+    for (auto it = op_info_map.begin(); it != op_info_map.end(); ++it) {
+      const OpProto *proto = it->second.proto_;
+      if (proto == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE(proto->IsInitialized(), "OpProto must all be initialized");
       std::string str;
-      PADDLE_ENFORCE(it->second.SerializeToString(&str),
+      PADDLE_ENFORCE(proto->SerializeToString(&str),
                      "Serialize OpProto Error. This could be a bug of Paddle.");
       ret_values.push_back(py::bytes(str));
     }
@@ -154,8 +179,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
-      .def("empty", OperatorBase::EMPTY_VAR_NAME)
-      .def("temp", OperatorBase::TMP_VAR_NAME);
+      .def("empty", []() { return kEmptyVarName; })
+      .def("temp", []() { return kTempVarName; });
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
@@ -174,9 +199,13 @@ All parameter, weight, gradient are variables in Paddle.
                   });
   // clang-format on
 
-  py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
+  py::class_<platform::GPUPlace>(m, "GPUPlace")
+      .def(py::init<int>())
+      .def("__str__", string::to_string<const platform::GPUPlace &>);
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace").def(py::init<>());
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
+      .def(py::init<>())
+      .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<OperatorBase, std::shared_ptr<OperatorBase>> operator_base(
       m, "Operator");
@@ -199,25 +228,54 @@ All parameter, weight, gradient are variables in Paddle.
 
   ExposeOperator(operator_base);
 
-  py::class_<ops::NetOp, std::shared_ptr<ops::NetOp>> net(m, "Net");
+  py::class_<operators::NetOp, std::shared_ptr<operators::NetOp>> net(m, "Net");
 
   net.def_static("create",
-                 []() -> std::shared_ptr<ops::NetOp> {
-                   auto retv = std::make_shared<ops::NetOp>();
-                   retv->type_ = "plain_net";
+                 []() -> std::shared_ptr<operators::NetOp> {
+                   auto retv = std::make_shared<operators::NetOp>();
+                   retv->SetType("plain_net");
                    return retv;
                  })
-      .def("add_op", &ops::NetOp::AddOp)
-      .def(
-          "add_op",
-          [](ops::NetOp &self, const std::shared_ptr<ops::NetOp> &net) -> void {
-            self.AddOp(std::static_pointer_cast<OperatorBase>(net));
-          })
-      .def("complete_add_op", &ops::NetOp::CompleteAddOp)
-      .def("complete_add_op",
-           [](std::shared_ptr<ops::NetOp> &self) { self->CompleteAddOp(); });
+      .def("add_op", &operators::NetOp::AddOp)
+      .def("add_op",
+           [](operators::NetOp &self,
+              const std::shared_ptr<operators::NetOp> &net) -> void {
+             self.AddOp(std::static_pointer_cast<OperatorBase>(net));
+           })
+      .def("add_op",
+           [](operators::NetOp &self,
+              const std::shared_ptr<operators::RecurrentOp> &rnn) -> void {
+             self.AddOp(std::static_pointer_cast<OperatorBase>(rnn));
+           })
+      .def("complete_add_op", &operators::NetOp::CompleteAddOp)
+      .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
+        self->CompleteAddOp();
+      });
 
   ExposeOperator(net);
+
+  // recurrent_op
+  py::class_<operators::RecurrentOp, std::shared_ptr<operators::RecurrentOp>>
+      rnn(m, "RecurrentOp");
+
+  rnn.def_static(
+         "create",
+         [](py::bytes protobin) -> std::shared_ptr<operators::RecurrentOp> {
+           OpDesc desc;
+           PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                          "Cannot parse user input to OpDesc");
+           PADDLE_ENFORCE(desc.IsInitialized(),
+                          "User OpDesc is not initialized, reason %s",
+                          desc.InitializationErrorString());
+           auto rnn_op = OpRegistry::CreateOp(desc);
+           return std::dynamic_pointer_cast<operators::RecurrentOp>(rnn_op);
+         })
+      .def("set_stepnet",
+           [](operators::RecurrentOp &self,
+              const std::shared_ptr<operators::NetOp> &net) -> void {
+             self.set_stepnet(net);
+           });
+  ExposeOperator(rnn);
 
   m.def("unique_integer", UniqueIntegerGenerator);
 

@@ -14,13 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/op_desc.pb.h"
-#include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
-#include "paddle/operators/type_alias.h"
-#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -40,7 +35,12 @@ namespace operators {
  * it defines.
  */
 class NetOp : public framework::OperatorBase {
-public:
+ public:
+  static const char kAll[];
+  NetOp() : framework::OperatorBase("plain_net", {}, {}, {}) {}
+  NetOp(const std::string& type, const VarNameMap& inputs,
+        const VarNameMap& outputs, const framework::AttributeMap& attrs);
+
   /**
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
@@ -65,20 +65,29 @@ public:
     }
   }
 
+  bool SupportGPU() const override {
+    for (auto& op : ops_) {
+      if (!op->SupportGPU()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * @brief Add an operator by ptr
    */
   void AddOp(const std::shared_ptr<OperatorBase>& op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
-    PADDLE_ENFORCE(op != nullptr, "Cannot Insert Null op");
+    PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
     ops_.push_back(op);
   }
 
   void InsertOp(size_t pos, const std::shared_ptr<OperatorBase>& op) {
     PADDLE_ENFORCE(!add_op_done_,
                    "Cannot InsertOp when this network is sealed");
-    PADDLE_ENFORCE(op != nullptr, "Cannot Insert Null op");
-    PADDLE_ENFORCE(pos <= ops_.size(), "Out of range");
+    PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
+    PADDLE_ENFORCE_LE(pos, ops_.size(), "Out of range");
     ops_.insert(ops_.begin() + pos, op);
   }
 
@@ -87,11 +96,13 @@ public:
   std::string DebugString() const override;
 
   bool IsNetOp() const override;
+  std::vector<std::string> OutputVars(bool has_intermediate) const override;
 
   std::vector<std::shared_ptr<OperatorBase>> ops_;
 
-private:
+ private:
   bool add_op_done_{false};
+  std::set<std::string> intermediate_outputs_;
 
   template <typename T, typename KeyType>
   static bool Contains(T container, KeyType key) {

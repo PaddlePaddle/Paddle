@@ -17,31 +17,35 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class MeanOp : public OperatorWithKernel {
-protected:
-  void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 1, "Input size of AddOp must be one");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.OutputVar(0) != nullptr,
-                   "Input/Output of MeanOp must be initialized.");
-    ctx.Output<Tensor>(0)->Resize(framework::make_ddim({1}));
+class MeanOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input of MeanOp must be initialized.");
+    ctx.Output<Tensor>("Out")->Resize({1});
   }
 };
 
-class MeanOpMaker : public OpProtoAndCheckerMaker {
-public:
-  MeanOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  MeanOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
-    AddOutput("Out", "The output of mean op").IgnoreGradient();
+    AddOutput("Out", "The output of mean op").AsNoGradient();
     AddComment("Mean Operator");
   }
 };
 
-class MeanGradOp : public OperatorWithKernel {
-protected:
-  void InferShape(const InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>("X" + GRAD_VAR_SUFFIX())
+class MeanGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    ctx.Output<Tensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
@@ -49,7 +53,9 @@ protected:
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker);
-REGISTER_OP_CPU_KERNEL(mean, ops::MeanKernel<ops::CPUPlace, float>);
-REGISTER_GRADIENT_OP(mean, mean_grad, ops::MeanGradOp);
-REGISTER_OP_CPU_KERNEL(mean_grad, ops::MeanGradKernel<ops::CPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
+REGISTER_OP_CPU_KERNEL(mean,
+                       ops::MeanKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(mean_grad,
+                       ops::MeanGradKernel<paddle::platform::CPUPlace, float>);

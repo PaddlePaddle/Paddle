@@ -13,29 +13,35 @@
    limitations under the License. */
 
 #include "paddle/operators/mul_op.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-class MulOp : public OperatorWithKernel {
-protected:
-  void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
-    auto dim0 = ctx.Input<Tensor>(0)->dims();
-    auto dim1 = ctx.Input<Tensor>(1)->dims();
-    PADDLE_ENFORCE(dim0.size() == 2 && dim1.size() == 2,
-                   "The input of mul op must be matrix");
-    PADDLE_ENFORCE(
-        dim0[1] == dim1[0],
+class MulOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    auto dim0 = ctx.Input<Tensor>("X")->dims();
+    auto dim1 = ctx.Input<Tensor>("Y")->dims();
+    PADDLE_ENFORCE_EQ(dim0.size(), 2,
+                      "input X(%s) should be a tensor with 2 dims, a matrix",
+                      ctx.op_.Input("X"));
+    PADDLE_ENFORCE_EQ(dim1.size(), 2,
+                      "input Y(%s) should be a tensor with 2 dims, a matrix",
+                      ctx.op_.Input("Y"));
+    PADDLE_ENFORCE_EQ(
+        dim0[1], dim1[0],
         "First matrix's width must be equal with second matrix's height.");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1, "The mul op must take one output");
-    ctx.Output<Tensor>(0)->Resize({dim0[0], dim1[1]});
+    ctx.Output<Tensor>("Out")->Resize({dim0[0], dim1[1]});
   }
 };
 
-class MulOpMaker : public OpProtoAndCheckerMaker {
-public:
-  MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");
@@ -48,9 +54,12 @@ The equation is: Out = X * Y
   }
 };
 
-class MulOpGrad : public OperatorWithKernel {
-protected:
-  void InferShape(const InferShapeContext &ctx) const override {}
+class MulOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "MulGrad";
     return "";
@@ -60,7 +69,6 @@ protected:
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker);
-REGISTER_GRADIENT_OP(mul, mul_grad, ops::MulOpGrad);
-
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<ops::CPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);

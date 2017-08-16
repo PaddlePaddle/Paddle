@@ -17,7 +17,7 @@ IF(NOT ${WITH_MKLML})
 ENDIF(NOT ${WITH_MKLML})
 
 IF(WIN32 OR APPLE)
-    MESSAGE(WARNING 
+    MESSAGE(WARNING
         "Windows or Mac is not supported with MKLML in Paddle yet."
         "Force WITH_MKLML=OFF")
     SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in Windows and MacOS" FORCE)
@@ -43,22 +43,21 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
 
 INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 
-SET(mklml_cmakefile ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt)
-FILE(WRITE ${mklml_cmakefile} "PROJECT(MKLML)\n"
-                              "cmake_minimum_required(VERSION 3.0)\n"
-                              "install(DIRECTORY ${MKLML_VER}\n"
-                              "        DESTINATION ${MKLML_DST_DIR})\n")
+FILE(WRITE ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt
+  "PROJECT(MKLML)\n"
+  "cmake_minimum_required(VERSION 3.0)\n"
+  "install(DIRECTORY ${MKLML_VER}\n"
+  "        DESTINATION ${MKLML_DST_DIR})\n")
 
 ExternalProject_Add(
     ${MKLML_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${MKLML_SOURCE_DIR}
     DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate -O ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz ${MKLML_URL}
-                          && tar -xzf ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz
+    DOWNLOAD_COMMAND      wget --no-check-certificate -qO- ${MKLML_URL} | tar xz -C ${MKLML_DOWNLOAD_DIR}
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
-    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT} 
+    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${MKLML_INSTALL_ROOT}
 )
 
