@@ -34,7 +34,8 @@ class RecurrentAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void Init(rnn::Argument* arg, std::shared_ptr<NetOp>* stepnet) {
+  void Init(rnn::Argument* arg,
+            std::unique_ptr<framework::OperatorBase>* stepnet) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = arg;
     stepnet_ = stepnet;
@@ -63,7 +64,7 @@ class RecurrentAlgorithm {
   void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
 
  private:
-  std::shared_ptr<NetOp>* stepnet_;
+  std::unique_ptr<framework::OperatorBase>* stepnet_;
   rnn::Argument* arg_;
   mutable size_t seq_len_;
 };
@@ -80,7 +81,8 @@ class RecurrentGradientAlgorithm {
    * operator.
    */
  public:
-  void Init(rnn::Argument* arg, std::shared_ptr<NetOp>* stepnet) {
+  void Init(rnn::Argument* arg,
+            std::unique_ptr<framework::OperatorBase>* stepnet) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = std::move(arg);
     stepnet_ = stepnet;
@@ -107,7 +109,7 @@ class RecurrentGradientAlgorithm {
  private:
   rnn::Argument* arg_;
   mutable size_t seq_len_;
-  std::shared_ptr<NetOp>* stepnet_;
+  std::unique_ptr<framework::OperatorBase>* stepnet_;
 };
 
 class RecurrentOp : public framework::OperatorBase {
@@ -133,15 +135,17 @@ class RecurrentOp : public framework::OperatorBase {
     alg_.Run(scope, dev_ctx);
   }
 
-  void set_stepnet(std::shared_ptr<NetOp> net) { stepnet_ = net; }
-  const NetOp& stepnet() const { return *stepnet_; }
+  void set_stepnet(std::unique_ptr<OperatorBase> net) {
+    stepnet_ = std::move(net);
+  }
+  const OperatorBase& stepnet() const { return *stepnet_; }
 
   static const rnn::ArgumentName kArgName;
 
  private:
   RecurrentAlgorithm alg_;
   rnn::Argument arg_;
-  std::shared_ptr<NetOp> stepnet_;
+  std::unique_ptr<OperatorBase> stepnet_;
 };
 
 class RecurrentGradientOp : public framework::OperatorBase {
@@ -171,12 +175,14 @@ class RecurrentGradientOp : public framework::OperatorBase {
 
   static const rnn::ArgumentName kArgName;
 
-  void set_stepnet(const std::shared_ptr<NetOp>& net) { stepnet_ = net; }
-  const NetOp& stepnet() const { return *stepnet_; }
+  void set_stepnet(std::unique_ptr<OperatorBase> net) {
+    stepnet_ = std::move(net);
+  }
+  const OperatorBase& stepnet() const { return *stepnet_; }
 
  private:
   RecurrentGradientAlgorithm alg_;
-  std::shared_ptr<NetOp> stepnet_;
+  std::unique_ptr<OperatorBase> stepnet_;
   rnn::Argument arg_;
 };
 

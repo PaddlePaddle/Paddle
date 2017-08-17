@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::shared_ptr<OperatorBase> OpRegistry::CreateOp(const std::string& type,
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const std::string& type,
                                                    const VarNameMap& inputs,
                                                    const VarNameMap& outputs,
                                                    AttributeMap attrs) {
@@ -28,10 +28,10 @@ std::shared_ptr<OperatorBase> OpRegistry::CreateOp(const std::string& type,
                  "Operator '%s' has not been registered.", type);
   it->second.checker_->Check(attrs);
   auto op = it->second.creator_(type, inputs, outputs, attrs);
-  return std::shared_ptr<OperatorBase>(op);
+  return std::unique_ptr<OperatorBase>(op);
 }
 
-std::shared_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   VarNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VarNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
   AttributeMap attrs;
@@ -55,10 +55,9 @@ OperatorBase::VarNameMap OpRegistry::ConvertOpDescVarsToVarNameMap(
   return ret_val;
 }
 
-std::shared_ptr<OperatorBase> OpRegistry::CreateGradOp(const OperatorBase& op) {
+std::unique_ptr<OperatorBase> OpRegistry::CreateGradOp(const OperatorBase& op) {
   PADDLE_ENFORCE(!op.IsNetOp(), "Use framework::Backward to get backward ops");
-  std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
-  return grad_op;
+  return std::unique_ptr<OperatorBase>(BuildGradOp(&op));
 }
 
 }  // namespace framework

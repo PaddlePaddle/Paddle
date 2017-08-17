@@ -38,15 +38,12 @@ TEST(OpKernel, all) {
   auto net = std::make_shared<NetOp>();
   ASSERT_NE(net, nullptr);
 
-  auto op1 = std::shared_ptr<TestOp>(
+  net->AddOp(std::unique_ptr<TestOp>(
       new TestOp("test", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
-                 {{"Out", {"y"}}}, {}));
-  net->AddOp(op1);
-
-  auto op2 = std::shared_ptr<TestOp>(
+                 {{"Out", {"y"}}}, {})));
+  net->AddOp(std::unique_ptr<TestOp>(
       new TestOp("test", {{"X", {"y"}}, {"W", {"w2"}}, {"b", {"b2"}}},
-                 {{"Out", {"z"}}}, {}));
-  net->AddOp(op2);
+                 {{"Out", {"z"}}}, {})));
 
   net->CompleteAddOp();
   AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
@@ -61,21 +58,21 @@ TEST(OpKernel, all) {
 
 TEST(NetOp, insert_op) {
   NetOp net;
-  auto op1 = std::shared_ptr<framework::NOP>(
+  auto op1 = std::unique_ptr<framework::NOP>(
       new framework::NOP("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
                          {{"Out", {"y"}}}, {}));
-  net.AddOp(op1);
-  net.InsertOp(0, op1);
+  net.AddOp(*op1);
+  net.InsertOp(0, *op1);
   ASSERT_EQ(2UL, net.ops_.size());
-  net.InsertOp(2, op1);
+  net.InsertOp(2, std::move(op1));
   ASSERT_EQ(3UL, net.ops_.size());
 }
 
 TEST(NetOp, Clone) {
   NetOp net;
   net.AddOp(
-      std::shared_ptr<framework::NOP>(new framework::NOP{"empty", {}, {}, {}}));
-  net.AddOp(std::shared_ptr<framework::NOP>(
+      std::unique_ptr<framework::NOP>(new framework::NOP{"empty", {}, {}, {}}));
+  net.AddOp(std::unique_ptr<framework::NOP>(
       new framework::NOP{"empty2", {}, {}, {}}));
   net.CompleteAddOp(true);
   auto new_net_op = net.Clone();
