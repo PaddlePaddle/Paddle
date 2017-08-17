@@ -66,10 +66,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx.Output<Tensor>("X")->dims();
+    auto y_dims = ctx.Output<Tensor>("Y")->dims();
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto x_dims = ctx.Output<Tensor>(framework::GradVarName("X"))->dims();
-    auto y_dims = ctx.Output<Tensor>(framework::GradVarName("Y"))->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
     PADDLE_ENFORCE(x_dims[0] == out_dims[0],
                    "Out@GRAD M X N must equal to X dims 0, M ");
