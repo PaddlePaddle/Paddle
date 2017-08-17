@@ -73,7 +73,7 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(rowwise_add, ops::RowwiseAddOp, ops::RowwiseAddOpMaker,
-            rowwise_add_grad);
+            rowwise_add_grad, ops::RowwiseAddGradOp);
 REGISTER_OP_CPU_KERNEL(
     rowwise_add, ops::RowwiseAddKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
