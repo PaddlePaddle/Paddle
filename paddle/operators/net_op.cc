@@ -29,7 +29,7 @@ void NetOp::CompleteAddOp(bool calc) {
   std::set<std::string> input_set;
   std::set<std::string> output_set;
   for (auto& op : ops_) {
-    for (auto& ipt : op->inputs_) {
+    for (auto& ipt : op->Inputs()) {
       for (auto& var_name : ipt.second) {
         if (!Contains(output_set, var_name)) {  // Not other op's output
           input_set.insert(var_name);
@@ -39,7 +39,7 @@ void NetOp::CompleteAddOp(bool calc) {
       }
     }
 
-    for (auto& opt : op->outputs_) {
+    for (auto& opt : op->Outputs()) {
       for (auto& var_name : opt.second) {
         output_set.insert(var_name);
       }
@@ -79,6 +79,19 @@ std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
     }
   }
   return ret_val;
+}
+
+NetOp::NetOp(const std::string& type,
+             const framework::OperatorBase::VarNameMap& inputs,
+             const framework::OperatorBase::VarNameMap& outputs,
+             const framework::AttributeMap& attrs)
+    : framework::OperatorBase(type, inputs, outputs, attrs) {}
+
+std::unique_ptr<framework::OperatorBase> NetOp::Clone() const {
+  PADDLE_ENFORCE(
+      add_op_done_,
+      "Must clone a sealed NetOp, invoke Net::CompleteAddOp before clone");
+  return std::unique_ptr<OperatorBase>(new NetOp(*this));
 }
 
 }  // namespace operators

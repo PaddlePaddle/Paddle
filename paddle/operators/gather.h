@@ -29,7 +29,7 @@ void CPUGather(const T* params, const int* indices, const int slice_size,
                const int index_size, T* output) {
   const size_t slice_bytes = slice_size * sizeof(T);
 
-  for (size_t i = 0; i < index_size; ++i) {
+  for (int i = 0; i < index_size; ++i) {
     int index_ = indices[i];
     memcpy(output + i * slice_size, params + index_ * slice_size, slice_bytes);
   }
@@ -60,7 +60,7 @@ void Gather(const platform::Place& place, const paddle::framework::Tensor* src,
 
   // slice size
   int slice_size = 1;
-  for (size_t i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   // Gathering
   if (platform::is_cpu_place(place)) {

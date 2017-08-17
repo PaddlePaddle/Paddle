@@ -7,7 +7,7 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(CosineOp, OperatorBase);
+  using OperatorBase::OperatorBase;
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
   void InferShape(const Scope& scope) const override {}
@@ -28,7 +28,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class MyTestOp : public OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(MyTestOp, OperatorBase);
+  using OperatorBase::OperatorBase;
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
@@ -59,11 +59,10 @@ static void BuildVar(const std::string& param_name,
     var->add_arguments(arg_name);
   }
 }
-
-REGISTER_OP(cos_sim, paddle::framework::CosineOp,
-            paddle::framework::CosineOpProtoAndCheckerMaker);
-REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
-            paddle::framework::MyTestOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(cos_sim, paddle::framework::CosineOp,
+                             paddle::framework::CosineOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(my_test_op, paddle::framework::MyTestOp,
+                             paddle::framework::MyTestOpProtoAndCheckerMaker);
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;

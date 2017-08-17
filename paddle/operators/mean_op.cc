@@ -18,7 +18,9 @@ namespace paddle {
 namespace operators {
 
 class MeanOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(MeanOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
@@ -38,7 +40,9 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 class MeanGradOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(MeanGradOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     ctx.Output<Tensor>(framework::GradVarName("X"))
@@ -50,9 +54,8 @@ class MeanGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker);
+REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean,
                        ops::MeanKernel<paddle::platform::CPUPlace, float>);
-REGISTER_GRADIENT_OP(mean, mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean_grad,
                        ops::MeanGradKernel<paddle::platform::CPUPlace, float>);

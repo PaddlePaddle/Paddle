@@ -37,7 +37,21 @@ namespace operators {
 class NetOp : public framework::OperatorBase {
  public:
   static const char kAll[];
-  DEFINE_OPERATOR_CTOR(NetOp, framework::OperatorBase);
+  NetOp() : framework::OperatorBase("plain_net", {}, {}, {}) {}
+  NetOp(const std::string& type, const VarNameMap& inputs,
+        const VarNameMap& outputs, const framework::AttributeMap& attrs);
+
+  NetOp(const NetOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    this->ops_.reserve(o.ops_.size());
+    std::transform(o.ops_.begin(), o.ops_.end(), std::back_inserter(this->ops_),
+                   [](const std::shared_ptr<OperatorBase>& op)
+                       -> std::shared_ptr<OperatorBase> {
+                         return std::shared_ptr<OperatorBase>(op->Clone());
+                       });
+    this->CompleteAddOp();
+  }
 
   /**
    * Infer all the operators' input and output variables' shapes, will be called
@@ -95,6 +109,8 @@ class NetOp : public framework::OperatorBase {
 
   bool IsNetOp() const override;
   std::vector<std::string> OutputVars(bool has_intermediate) const override;
+
+  std::unique_ptr<framework::OperatorBase> Clone() const override;
 
   std::vector<std::shared_ptr<OperatorBase>> ops_;
 
