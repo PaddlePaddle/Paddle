@@ -277,17 +277,20 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        param = self.get(name)
-        size = reduce(lambda a, b: a * b, param.shape)
-        f.write(struct.pack("IIQ", 0, 4, size))
-        param = param.astype(np.float32)
-        s = param.tostring()
-        wrote_size = 0
-        buf = buffer(s, wrote_size, 65535)
-        while buf:  # f.write crashes with big data blog.
-            f.write(buf)
-            wrote_size += 65535
-            buf = buffer(s, wrote_size, 65535)
+        import py_paddle.swig_paddle as api
+        import os
+        for each_gradient_machine in self.__gradient_machines__:
+            print name
+            param = __get_parameter_in_gradient_machine__(each_gradient_machine,
+                                                          name)
+            # for simplify implementation now, we always copy from C++
+            assert isinstance(param, api.Parameter)
+            filename = 'tmpfile'
+            param.save(filename)
+            with open(filename, 'rb') as fdata:
+                f.write(fdata.read())
+            os.remove(filename)
+            return
 
     def deserialize(self, name, f):
         """
