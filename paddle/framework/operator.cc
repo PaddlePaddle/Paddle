@@ -125,6 +125,7 @@ OperatorBase::OperatorBase(const std::string& type,
 
   if (op_info_it != OpRegistry::op_info_map().end()) {
     auto* op_proto = op_info_it->second.proto_;
+    if (op_proto == nullptr) return;
     for (auto& output : op_proto->outputs()) {
       if (output.duplicable()) {  // If outputs is duplicable, do not set
                                   // default output

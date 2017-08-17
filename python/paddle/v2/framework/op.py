@@ -9,9 +9,9 @@ def get_all_op_protos():
     Get all registered op proto from Paddle C++
     :return: list of OpProto
     """
+    global g_all_op_protos
     protostrs = core.get_all_op_protos()
     if g_all_op_protos is None:
-        global g_all_op_protos
         g_all_op_protos = dict()
         for pbstr in protostrs:
             op_proto = framework_pb2.OpProto.FromString(str(pbstr))
