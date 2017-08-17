@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/memory/memory.h"
 
-#include <algorithm>  // for transfrom
+#include <algorithm>  // for transform
 #include <cstring>    // for memcpy
 #include <mutex>      // for call_once
 
