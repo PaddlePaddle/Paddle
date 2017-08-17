@@ -118,6 +118,8 @@ if (GIT_FOUND)
 	    \"url\": \"https://github.com/PaddlePaddle/Paddle.git\"
 	  }]
 	}")
+
+	message("${JSON_GIT_INFO}")
 endif()
 
 ############################# Macros #########################################
