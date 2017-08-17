@@ -172,7 +172,7 @@ foreach(GCDA ${GCDA_FILES})
 	# If -p is not specified then the file is named only "the_file.c.gcov"
 	#
 	execute_process(
-		COMMAND ${GCOV_EXECUTABLE} -p -o ${GCDA_DIR} ${GCDA} >/dev/null
+		COMMAND ${GCOV_EXECUTABLE} -p -o ${GCDA_DIR} ${GCDA} >/dev/null 2>/dev/null
 		WORKING_DIRECTORY ${COV_PATH}
 	)
 endforeach()
@@ -227,7 +227,7 @@ foreach (GCOV_FILE ${ALL_GCOV_FILES})
 	list(FIND COVERAGE_SRCS ${GCOV_SRC_PATH} WAS_FOUND)
 
 	if (NOT WAS_FOUND EQUAL -1)
-		message("YES: ${GCOV_FILE}")
+		# message("YES: ${GCOV_FILE}")
 		list(APPEND GCOV_FILES ${GCOV_FILE})
 
 		# We remove it from the list, so we don't bother searching for it again.
@@ -235,7 +235,7 @@ foreach (GCOV_FILE ${ALL_GCOV_FILES})
 		# have coverage data generated from them (no lines are covered).
 		list(REMOVE_ITEM COVERAGE_SRCS_REMAINING ${GCOV_SRC_PATH})
 	else()
-		message("NO:  ${GCOV_FILE}")
+		# message("NO:  ${GCOV_FILE}")
 	endif()
 endforeach()
 
@@ -286,7 +286,7 @@ foreach (GCOV_FILE ${GCOV_FILES})
 	# The new coveralls API doesn't need the entire source (Yay!)
 	# However, still keeping that part for now. Will cleanup in the future.
 	file(MD5 "${GCOV_SRC_PATH}" GCOV_CONTENTS_MD5)
-	message("MD5: ${GCOV_SRC_PATH} = ${GCOV_CONTENTS_MD5}")
+	# message("MD5: ${GCOV_SRC_PATH} = ${GCOV_CONTENTS_MD5}")
 
 	# Loads the gcov file as a list of lines.
 	# (We first open the file and replace all occurences of [] with _
@@ -394,7 +394,7 @@ foreach (GCOV_FILE ${GCOV_FILES})
 		math(EXPR GCOV_LINE_COUNT "${GCOV_LINE_COUNT}+1")
 	endforeach()
 
-	message("${GCOV_LINE_COUNT} of ${LINE_COUNT} lines read!")
+	# message("${GCOV_LINE_COUNT} of ${LINE_COUNT} lines read!")
 
 	# Advanced way of removing the trailing comma in the JSON array.
 	# "[1, 2, 3, " -> "[1, 2, 3"
@@ -404,7 +404,7 @@ foreach (GCOV_FILE ${GCOV_FILES})
 	set(GCOV_FILE_COVERAGE "${GCOV_FILE_COVERAGE}]")
 
 	# Generate the final JSON for this file.
-	message("Generate JSON for file: ${GCOV_SRC_REL_PATH}...")
+	# message("Generate JSON for file: ${GCOV_SRC_REL_PATH}...")
 	string(CONFIGURE ${SRC_FILE_TEMPLATE} FILE_JSON)
 
 	set(JSON_GCOV_FILES "${JSON_GCOV_FILES}${FILE_JSON}, ")
