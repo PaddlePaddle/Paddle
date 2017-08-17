@@ -304,6 +304,23 @@ public:
                    Matrix& outputGrad) override;
 };
 
+/*
+ * A base layer for HuberRegressionLoss and HuberTwoClassification.
+ */
+class HuberCost : public CostLayer {
+public:
+  std::vector<Argument> tmpCpuInput_;
+
+  explicit HuberCost(const LayerConfig& config) : CostLayer(config) {}
+
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
+  void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
+
+  void backwardImp(Matrix& outputValue, Argument& label, Matrix& outputGrad) {}
+};
+
 /**
  * Huber loss for robust 2-classes classification.
  *
@@ -312,25 +329,19 @@ public:
  * Loss = (1 - y * f)^2, if -1 < y * f < 1  \\
  * Loss = 0, otherwise
  */
-class HuberTwoClassification : public CostLayer {
-  std::vector<Argument> tmpCpuInput_;
-
+class HuberTwoClassification : public HuberCost {
 public:
   explicit HuberTwoClassification(const LayerConfig& config)
-      : CostLayer(config) {}
+      : HuberCost(config) {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
-  void forwardImpIn(Matrix& output, Argument& label, Matrix& cost);
-
   void backwardImp(Matrix& outputValue,
                    Argument& label,
                    Matrix& outputGrad) override;
-
-  void backwardImpIn(Matrix& outputValue, Argument& label, Matrix& outputGrad);
 };
 
 typedef std::shared_ptr<CostLayer> CostLayerPtr;

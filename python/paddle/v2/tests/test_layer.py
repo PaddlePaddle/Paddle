@@ -141,7 +141,7 @@ class CostLayerTest(unittest.TestCase):
         cost8 = layer.rank_cost(left=score, right=score, label=score)
         cost9 = layer.lambda_cost(input=inference, score=score)
         cost10 = layer.sum_cost(input=inference)
-        cost11 = layer.huber_cost(input=score, label=label)
+        cost11 = layer.huber_classification_cost(input=score, label=label)
 
         print layer.parse_network([cost1, cost2])
         print layer.parse_network([cost3, cost4])
