@@ -89,13 +89,13 @@ class NetOp : public framework::OperatorBase {
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(std::unique_ptr<framework::OperatorBase>&& op) {
+  void AddOp(std::unique_ptr<framework::OperatorBase> op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
     ops_.push_back(std::move(op));
   }
 
-  void InsertOp(size_t pos, std::unique_ptr<framework::OperatorBase>&& op) {
+  void InsertOp(size_t pos, std::unique_ptr<framework::OperatorBase> op) {
     PADDLE_ENFORCE(!add_op_done_,
                    "Cannot InsertOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
