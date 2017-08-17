@@ -41,15 +41,13 @@ class NetOp : public framework::OperatorBase {
   NetOp(const std::string& type, const VarNameMap& inputs,
         const VarNameMap& outputs, const framework::AttributeMap& attrs);
 
-  NetOp(const NetOp& o)
-      : framework::OperatorBase(
-            static_cast<const framework::OperatorBase&>(o)) {
+  NetOp(const NetOp& o) : framework::OperatorBase(o.type_, {}, {}, o.attrs_) {
     this->ops_.reserve(o.ops_.size());
-    std::transform(o.ops_.begin(), o.ops_.end(), std::back_inserter(this->ops_),
-                   [](const std::shared_ptr<OperatorBase>& op)
-                       -> std::shared_ptr<OperatorBase> {
-                         return std::shared_ptr<OperatorBase>(op->Clone());
-                       });
+    std::transform(
+        o.ops_.begin(), o.ops_.end(), std::back_inserter(this->ops_),
+        [](const std::unique_ptr<framework::OperatorBase>& op) {
+          return std::unique_ptr<framework::OperatorBase>(op->Clone());
+        });
     this->CompleteAddOp();
   }
 
@@ -86,21 +84,27 @@ class NetOp : public framework::OperatorBase {
     return true;
   }
 
+  void AddOp(const framework::OperatorBase& op) { AddOp(op.Clone()); }
+
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(const std::shared_ptr<OperatorBase>& op) {
+  void AddOp(std::unique_ptr<framework::OperatorBase> op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
-    ops_.push_back(op);
+    ops_.push_back(std::move(op));
   }
 
-  void InsertOp(size_t pos, const std::shared_ptr<OperatorBase>& op) {
+  void InsertOp(size_t pos, std::unique_ptr<framework::OperatorBase> op) {
     PADDLE_ENFORCE(!add_op_done_,
                    "Cannot InsertOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
     PADDLE_ENFORCE_LE(pos, ops_.size(), "Out of range");
-    ops_.insert(ops_.begin() + pos, op);
+    ops_.insert(ops_.begin() + pos, std::move(op));
+  }
+
+  void InsertOp(size_t pos, const framework::OperatorBase& op) {
+    InsertOp(pos, op.Clone());
   }
 
   void CompleteAddOp(bool calculate = true);
@@ -112,7 +116,7 @@ class NetOp : public framework::OperatorBase {
 
   std::unique_ptr<framework::OperatorBase> Clone() const override;
 
-  std::vector<std::shared_ptr<OperatorBase>> ops_;
+  std::vector<std::unique_ptr<framework::OperatorBase>> ops_;
 
  private:
   bool add_op_done_{false};

@@ -165,7 +165,6 @@ class GradientChecker(unittest.TestCase):
         for no_grad in no_grad_set:
             if no_grad not in in_names:
                 raise ValueError("no_grad should be in in_names")
-
         backward_op = core.Operator.backward(forward_op, no_grad_set)
 
         bwd_outputs = backward_op.outputs()
