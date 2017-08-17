@@ -119,7 +119,7 @@ class OperatorBase {
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)
+  // I (Inputs)opear
   // O (Outputs)
   // OG (Output Gradients)
   VarNameMap inputs_;
