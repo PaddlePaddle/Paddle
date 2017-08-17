@@ -345,10 +345,10 @@ void MKLDNNTester::run(const TestConfig& dnn,
     return;
   }
 
-  // After run some iters, the mkldnn weight has been stored in dnnLayer
-  // and we can also get the mkldnn weight paramter header format
-  // Weight param should always be index 0 (and bias index 1).
-  // TODO(TJ): should also considerate mean and var format when batchnorm ready
+  // After run some iterations, the mkldnn weight has been stored in dnnLayer
+  // and we can also get the mkldnn weight parameter header format.
+  // Weight parameter should always be index 0 (and bias index 1).
+  // TODO(TJ): should also consider mean and var format when batchnorm ready
   int dnnWgtFmt = parameters_[DNN][0]->getHeaderFormat();
   int refWgtFmt = parameters_[REF][0]->getHeaderFormat();
   if (dnnWgtFmt == refWgtFmt) {
