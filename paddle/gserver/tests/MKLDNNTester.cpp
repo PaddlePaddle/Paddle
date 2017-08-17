@@ -330,9 +330,7 @@ void MKLDNNTester::run(const TestConfig& dnn,
   log_ = log;
   lvl_ = level;
 
-  // Firstly test FLAGS_use_mkldnn_wgt = false
-  FLAGS_use_mkldnn_wgt = false;
-  // reset and run once
+  // Firstly test mkldnn init from PARAM_FORMAT_ORIGINAL weight
   reset(dnn, ref, batchSize);
   randomWgtDatas();
   clearWgtDiffs();
@@ -342,17 +340,32 @@ void MKLDNNTester::run(const TestConfig& dnn,
     runOnce();
   }
 
-  // Then test FLAGS_use_mkldnn_wgt = true
-  FLAGS_use_mkldnn_wgt = true;
-  // after run once the mkldnn weight has been stored in dnnlayer
+  if (parameters_[DNN].empty()) {
+    // has no paramters
+    return;
+  }
+
+  // After run some iters, the mkldnn weight has been stored in dnnLayer
+  // and we can also get the mkldnn weight paramter header format
+  // Weight param should always be index 0 (and bias index 1).
+  // TODO(TJ): should also considerate mean and var format when batchnorm ready
+  int dnnWgtFmt = parameters_[DNN][0]->getHeaderFormat();
+  int refWgtFmt = parameters_[REF][0]->getHeaderFormat();
+  if (dnnWgtFmt == refWgtFmt) {
+    // weight format are equal, so no need check more
+    return;
+  }
+
   // then save the weights and restart again
   vector<VectorPtr> dnnWgts, refWgts;
   CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
   saveWgt(parameters_[DNN], dnnWgts);
   saveWgt(parameters_[REF], refWgts);
 
-  // restart again with flag true
+  // restart again with dnn weight format
   reset(dnn, ref, batchSize);
+  // TODO(TJ): should also considerate mean and var format when batchnorm ready
+  parameters_[DNN][0]->setHeaderFormat(dnnWgtFmt);
 
   // restore wgt
   restoreWgt(dnnWgts, parameters_[DNN]);
