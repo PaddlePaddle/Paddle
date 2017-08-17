@@ -30,8 +30,7 @@ std::once_flag cpu_allocator_flag;
 std::once_flag gpu_allocator_flag;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
-  static std::unique_ptr<BuddyAllocator, void (*)(BuddyAllocator*)> a{
-      nullptr, [](BuddyAllocator* p) { delete p; }};
+  static std::unique_ptr<BuddyAllocator> a{nullptr};
 
   std::call_once(cpu_allocator_flag, [&]() {
     a.reset(new BuddyAllocator(new detail::CPUAllocator,
