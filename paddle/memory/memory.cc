@@ -63,7 +63,7 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   using BuddyAllocVec = std::vector<BuddyAllocator*>;
   static std::unique_ptr<BuddyAllocVec, void (*)(BuddyAllocVec * p)> as{
-      new std::vector<BuddyAllocator*>, [](BuddyAllocVec* p) {
+      new BuddyAllocVec, [](BuddyAllocVec* p) {
         std::for_each(p->begin(), p->end(),
                       [](BuddyAllocator* p) { delete p; });
       }};
