@@ -119,7 +119,7 @@ class OperatorBase {
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)opear
+  // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
   VarNameMap inputs_;
@@ -156,6 +156,74 @@ class NOP : public OperatorBase {
   std::unique_ptr<OperatorBase> Clone() const override {
     return std::unique_ptr<OperatorBase>(new NOP(*this));
   }
+};
+
+// this class not only make proto but also init attribute checkers.
+class OpProtoAndCheckerMaker {
+ public:
+  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : proto_(proto), op_checker_(op_checker) {}
+
+  ~OpProtoAndCheckerMaker() {
+    PADDLE_ENFORCE(validated_, "should call Validate after build");
+  }
+
+  void Validate();
+
+ protected:
+  struct VariableBuilder {
+    OpProto::Var* var_;
+
+    VariableBuilder& AsDuplicable() {
+      var_->set_duplicable(true);
+      return *this;
+    }
+
+    VariableBuilder& AsIntermediate() {
+      var_->set_intermediate(true);
+      return *this;
+    }
+
+    // TODO(FengJiayi, yuyang18): `AsNoGradient` is a very bad name, because it
+    // means that input/output is not needed when calculate gradient. It does
+    // not mean no gradient when backward. It should be changed soon.
+    VariableBuilder& AsNoGradient() {
+      var_->set_no_gradient(true);
+      return *this;
+    }
+  };
+
+  VariableBuilder AddInput(const std::string& name, const std::string& comment);
+
+  VariableBuilder AddOutput(const std::string& name,
+                            const std::string& comment);
+
+  template <typename T>
+  TypedAttrChecker<T>& AddAttr(const std::string& name,
+                               const std::string& comment,
+                               bool generated = false) {
+    auto* attr = proto_->add_attrs();
+    attr->set_name(name);
+    attr->set_comment(comment);
+    attr->set_generated(generated);
+    attr->set_type(AttrTypeID<T>());
+    return op_checker_->AddAttrChecker<T>(name);
+  }
+
+  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
+
+ private:
+  void CheckNoDuplicatedInOutAttrs();
+
+  OpProto* proto_;
+  OpAttrChecker* op_checker_;
+  bool validated_{false};
+};
+
+class NOPMaker : public OpProtoAndCheckerMaker {
+ public:
+  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {}
 };
 
 class InferShapeContext {

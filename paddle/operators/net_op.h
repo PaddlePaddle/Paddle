@@ -89,33 +89,18 @@ class NetOp : public framework::OperatorBase {
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(framework::OperatorBase* op, bool own) {
+  void AddOp(std::unique_ptr<framework::OperatorBase>&& op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
-    if (!own) {
-      op = op->Clone().release();
-    }
-    ops_.emplace_back(op);
+    ops_.push_back(std::move(op));
   }
 
-  void AddOp(std::unique_ptr<framework::OperatorBase>&& op) {
-    AddOp(op.release(), true);
-  }
-
-  void InsertOp(size_t pos, framework::OperatorBase* op, bool own) {
+  void InsertOp(size_t pos, std::unique_ptr<framework::OperatorBase>&& op) {
     PADDLE_ENFORCE(!add_op_done_,
                    "Cannot InsertOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
     PADDLE_ENFORCE_LE(pos, ops_.size(), "Out of range");
-    if (!own) {
-      op = op->Clone().release();
-    }
-    ops_.insert(ops_.begin() + pos,
-                std::unique_ptr<framework::OperatorBase>(op));
-  }
-
-  void InsertOp(size_t pos, std::unique_ptr<framework::OperatorBase>&& op) {
-    InsertOp(pos, op.release(), true);
+    ops_.insert(ops_.begin() + pos, std::move(op));
   }
 
   void InsertOp(size_t pos, const framework::OperatorBase& op) {
