@@ -82,10 +82,6 @@ EOF
 fi
 
 
-# To build documentation, we need to run cmake again after installing
-# PaddlePaddle.  This awkwardness is due to
-# https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
-# describes a solution.
 if [[ ${WITH_DOC:-OFF} == "ON" ]]; then
     cat <<EOF
 ========================================
@@ -93,11 +89,6 @@ Building documentation ...
    In /paddle/build_doc
 ========================================
 EOF
-    # build documentation need install Paddle before
-    make install -j `nproc`
-    pip install /usr/local/opt/paddle/share/wheels/*.whl
-    paddle version
-
     mkdir -p /paddle/build_doc
     pushd /paddle/build_doc
     cmake .. \
@@ -106,7 +97,8 @@ EOF
           -DWITH_AVX=${WITH_AVX:-ON} \
           -DWITH_SWIG_PY=ON \
           -DWITH_STYLE_CHECK=OFF
-    make paddle_docs paddle_docs_cn
+    make -j `nproc` gen_proto_py
+    make -j `nproc` paddle_docs paddle_docs_cn
     popd
 fi
 
@@ -128,25 +120,6 @@ EOF
     /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
 fi
 
-# generate deb package for current build
-# FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-if [[ ${WITH_DEB:-ON} == "ON" ]]; then
-    cat <<EOF
-========================================
-Generating .deb package ...
-========================================
-EOF
-    set +e
-    cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
-    err_code=$?
-    if [ ${err_code} -ne 0 ]; then
-        # cat error logs if cpack failed.
-        cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
-        exit ${err_code}
-    fi
-    set -e
-fi
-
 cat <<EOF
 ========================================
 Generate /paddle/build/Dockerfile ...
@@ -166,15 +139,15 @@ EOF
 fi
 
 cat >> /paddle/build/Dockerfile <<EOF
-# Use different deb file when building different type of images
-ADD *.deb /
+ADD python/dist/*.whl /
 # run paddle version to install python packages first
 RUN apt-get update &&\
     apt-get install -y wget python-pip && pip install -U pip && \
-    dpkg -i /*.deb ; apt-get install -f -y && \
+    pip install /*.whl; apt-get install -f -y && \
     apt-get clean -y && \
-    rm -f /*.deb && \
-    paddle version
+    rm -f /*.whl && \
+    paddle version && \
+    ldconfig
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 ADD go/cmd/pserver/pserver /usr/bin/
@@ -182,3 +155,7 @@ ADD go/cmd/master/master /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
+
+set +xe
+printf "If you need to install PaddlePaddle in develop docker image,"
+printf "please make install or pip install build/python/dist/*.whl.\n"
