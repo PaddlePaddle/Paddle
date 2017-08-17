@@ -144,8 +144,18 @@ class OpKernelRegistrar : public Registrar {
                     grad_op_class)                                            \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
       __reg_op__##op_type, "REGISTER_OP must be called in global namespace"); \
-  static ::paddle::framework::OpRegistrar<op_class, op_maker_class,           \
-                                          grad_op_class>                      \
+  class _OpClass_##op_type##_ : public op_class {                             \
+   public:                                                                    \
+    DEFINE_OP_CLONE_METHOD(_OpClass_##op_type##_);                            \
+    DEFINE_OP_CONSTRUCTOR(_OpClass_##op_type##_, op_class);                   \
+  };                                                                          \
+  class _OpGradClass_##op_type##_ : public grad_op_class {                    \
+   public:                                                                    \
+    DEFINE_OP_CLONE_METHOD(_OpGradClass_##op_type##_);                        \
+    DEFINE_OP_CONSTRUCTOR(_OpGradClass_##op_type##_, grad_op_class);          \
+  };                                                                          \
+  static ::paddle::framework::OpRegistrar<                                    \
+      _OpClass_##op_type##_, op_maker_class, _OpGradClass_##op_type##_>       \
       __op_registrar_##op_type##__(#op_type, #grad_op_type);                  \
   int TouchOpRegistrar_##op_type() {                                          \
     __op_registrar_##op_type##__.Touch();                                     \
@@ -176,7 +186,8 @@ class OpKernelRegistrar : public Registrar {
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
 /**
- * Macro to mark what Operator and Kernel we will use and tell the compiler to
+ * Macro to mark what Operator and Kernel
+ * we will use and tell the compiler to
  * link them into target.
  */
 #define USE_OP_ITSELF(op_type)                                    \
@@ -196,7 +207,8 @@ class OpKernelRegistrar : public Registrar {
       __attribute__((unused)) =                                  \
           TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
 
-// TODO(fengjiayi): The following macros seems ugly, do we have better method?
+// TODO(fengjiayi): The following macros
+// seems ugly, do we have better method?
 
 #ifdef PADDLE_ONLY_CPU
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)

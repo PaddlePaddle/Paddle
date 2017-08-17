@@ -85,7 +85,14 @@ NetOp::NetOp(const std::string& type,
              const framework::OperatorBase::VarNameMap& inputs,
              const framework::OperatorBase::VarNameMap& outputs,
              const framework::AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {}
+    : framework::OperatorBase(type, inputs, outputs, attrs) {}
+
+std::unique_ptr<framework::OperatorBase> NetOp::Clone() const {
+  PADDLE_ENFORCE(
+      add_op_done_,
+      "Must clone a sealed NetOp, invoke Net::CompleteAddOp before clone");
+  return std::unique_ptr<OperatorBase>(new NetOp(*this));
+}
 
 }  // namespace operators
 }  // namespace paddle
