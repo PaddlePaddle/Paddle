@@ -49,4 +49,8 @@ TEST(scatter, ScatterUpdate) {
     EXPECT_EQ(output->data<float>()[i], float(i - 4));
   for (size_t i = 8; i < 16; ++i) EXPECT_EQ(p_output[i], float(0));
   for (size_t i = 8; i < 16; ++i) EXPECT_EQ(output->data<float>()[i], float(0));
+
+  delete src;
+  delete index;
+  delete output;
 }
