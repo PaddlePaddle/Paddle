@@ -110,13 +110,20 @@ class RecurrentGradientAlgorithm {
   std::shared_ptr<NetOp>* stepnet_;
 };
 
-class RecurrentOp final : public framework::OperatorBase {
+class RecurrentOp : public framework::OperatorBase {
  public:
   RecurrentOp(const std::string& type, const VarNameMap& inputs,
               const VarNameMap& outputs, const framework::AttributeMap& attrs);
+
+  RecurrentOp(const RecurrentOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    // TODO(yuyang18): Implement copy ctor well.
+    PADDLE_THROW("Not implemented");
+  }
   /**
-     * InferShape must be called before Run.
-     */
+   * InferShape must be called before Run.
+   */
   void InferShape(const framework::Scope& scope) const override {
     alg_.InferShape(scope);
   }
@@ -137,11 +144,18 @@ class RecurrentOp final : public framework::OperatorBase {
   std::shared_ptr<NetOp> stepnet_;
 };
 
-class RecurrentGradientOp final : public framework::OperatorBase {
+class RecurrentGradientOp : public framework::OperatorBase {
  public:
   RecurrentGradientOp(const std::string& type, const VarNameMap& inputs,
                       const VarNameMap& outputs,
                       const framework::AttributeMap& attrs);
+
+  RecurrentGradientOp(const RecurrentGradientOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    // TODO(yuyang18): Implement Copy ctor.
+    PADDLE_THROW("Not Implemented");
+  }
 
   /**
    * InferShape must be called before Run.
