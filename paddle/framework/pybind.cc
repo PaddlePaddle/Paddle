@@ -66,6 +66,17 @@ void AddOp(operators::NetOp &self, const T &op) {
   self.AddOp(op);
 }
 
+static std::unique_ptr<OperatorBase> create_op_from_pb(
+    const py::bytes &protobin) {
+  OpDesc desc;
+  PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                 "Cannot parse user input to OpDesc");
+  PADDLE_ENFORCE(desc.IsInitialized(),
+                 "User OpDesc is not initialized, reason %s",
+                 desc.InitializationErrorString());
+  return OpRegistry::CreateOp(desc);
+}
+
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -189,16 +200,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  auto create_op_from_pb = [](const py::bytes &protobin) {
-    OpDesc desc;
-    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                   "Cannot parse user input to OpDesc");
-    PADDLE_ENFORCE(desc.IsInitialized(),
-                   "User OpDesc is not initialized, reason %s",
-                   desc.InitializationErrorString());
-    return OpRegistry::CreateOp(desc);
-  };
-
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create", create_op_from_pb)
       .def("backward",
@@ -229,7 +230,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("complete_add_op",
            [](operators::NetOp &self) { self.CompleteAddOp(); })
       .def("create_and_add_op",
-           [&create_op_from_pb](operators::NetOp &self, const py::bytes &str) {
+           [](operators::NetOp &self, const py::bytes &str) {
              self.AddOp(create_op_from_pb(str));
              return self.ops_.back().get();
            },
@@ -238,7 +239,7 @@ All parameter, weight, gradient are variables in Paddle.
   // recurrent_op
   py::class_<operators::RecurrentOp, OperatorBase>(m, "RecurrentOp")
       .def_static("create",
-                  [&create_op_from_pb](const py::bytes &str) {
+                  [](const py::bytes &str) {
                     return static_cast<operators::RecurrentOp *>(
                         create_op_from_pb(str).release());
                   })
