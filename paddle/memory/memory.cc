@@ -13,14 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/memory.h"
-#include "paddle/memory/detail/buddy_allocator.h"
-#include "paddle/memory/detail/system_allocator.h"
 
 #include <algorithm>  // for transfrom
 #include <cstring>    // for memcpy
 #include <mutex>      // for call_once
 
-#include "glog/logging.h"
+#include "paddle/memory/detail/buddy_allocator.h"
+#include "paddle/memory/detail/system_allocator.h"
 
 namespace paddle {
 namespace memory {
