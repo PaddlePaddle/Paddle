@@ -146,3 +146,19 @@ paddle_error paddle_gradient_machine_randomize_param(
   m->machine->randParameters();
   return kPD_NO_ERROR;
 }
+
+paddle_error paddle_gradient_machine_get_layer_output(
+    paddle_gradient_machine machine,
+    const char* layerName,
+    paddle_arguments args) {
+  auto m = cast(machine);
+  auto out = paddle::capi::cast<paddle::capi::CArguments>(args);
+  if (m == nullptr || layerName == nullptr || out == nullptr ||
+      m->machine == nullptr) {
+    return kPD_NULLPTR;
+  }
+
+  auto layerOutput = m->machine->getLayerOutput(layerName);
+  out->args.push_back(layerOutput);
+  return kPD_NO_ERROR;
+}

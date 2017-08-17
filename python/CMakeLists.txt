@@ -21,6 +21,18 @@ if(WITH_GOLANG)
   add_dependencies(copy_paddle_master paddle_master)
 endif(WITH_GOLANG)
 
+set(MKL_SHARED_LIBS "")
+set(MKL_DEPENDS "")
+if(WITH_MKLML)
+  list(APPEND MKL_SHARED_LIBS ${MKLML_LIB} ${MKLML_IOMP_LIB})
+  list(APPEND MKL_DEPENDS mklml)
+endif()
+
+if(WITH_MKLDNN)
+  list(APPEND MKL_SHARED_LIBS "${MKLDNN_LIB}" "${MKLDNN_LIB}.0")
+  list(APPEND MKL_DEPENDS mkldnn)
+endif()
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
@@ -38,8 +50,11 @@ add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
     DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
-add_custom_target(paddle_python ALL DEPENDS
-    ${PADDLE_PYTHON_BUILD_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model python_api_wheel)
+set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model ${MKL_DEPENDS})
+if(WITH_SWIG_PY)
+    list(APPEND paddle_python_deps python_api_wheel)
+endif()
+add_custom_target(paddle_python ALL DEPENDS ${paddle_python_deps})
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 

@@ -57,7 +57,7 @@ def text_file(path):
     return reader
 
 
-def recordio_local(paths, buf_size=100):
+def recordio(paths, buf_size=100):
     """
     Creates a data reader from given RecordIO file paths separated by ",",
         glob pattern is supported.
@@ -67,15 +67,19 @@ def recordio_local(paths, buf_size=100):
 
     import recordio as rec
     import paddle.v2.reader.decorator as dec
+    import cPickle as pickle
 
     def reader():
-        a = ','.join(paths)
-        f = rec.reader(a)
+        if isinstance(paths, basestring):
+            path = paths
+        else:
+            path = ",".join(paths)
+        f = rec.reader(path)
         while True:
             r = f.read()
             if r is None:
                 break
-            yield r
+            yield pickle.loads(r)
         f.close()
 
     return dec.buffered(reader, buf_size)

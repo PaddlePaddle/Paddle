@@ -17,12 +17,13 @@
 #include <list>
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
+#include "paddle/operators/recurrent_op.h"
 
 namespace paddle {
 namespace framework {
 
 template <typename Map, typename T>
-static void ForEachVarName(Map& names, T callback) {
+static void ForEachVarName(const Map& names, T callback) {
   for (auto& name : names) {
     for (auto& n : name.second) {
       if (callback(n)) return;
@@ -44,7 +45,7 @@ static bool AllInSet(
 
 static std::shared_ptr<OperatorBase> NOP() {
   auto net_op = std::make_shared<operators::NetOp>();
-  net_op->type_ = "@NOP@";
+  net_op->SetType("@NOP@");
   net_op->CompleteAddOp();
   return net_op;
 }
@@ -70,8 +71,8 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
     std::unordered_set<std::string>& no_grad_names, size_t& uniq_id) {
   //  If all input gradients of forwarding operator do not need to calculate,
   //  just return an NOP. Not return null ptr because NOP does not take
-  //  much time for calculation, but it is useful for simplifying logic.
-  if (AllInSet(forwardOp.inputs_ /*names*/, kGradVarSuffix /*suffix*/,
+  //  too much time for calculation, but it is useful for simplifying logic.
+  if (AllInSet(forwardOp.Inputs() /*names*/, kGradVarSuffix /*suffix*/,
                no_grad_names /*set*/)) {
     return NOP();
   }
@@ -79,9 +80,9 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   //  All output gradients of forwarding operator do not need to calculate.
   //  Then all input gradients cannot be computed at all, and we put them into
   //  `no_grad_names` set. Return an NOP.
-  if (AllInSet(forwardOp.outputs_ /*names*/, kGradVarSuffix /*suffix*/,
+  if (AllInSet(forwardOp.Outputs() /*names*/, kGradVarSuffix /*suffix*/,
                no_grad_names /*set*/)) {
-    ForEachVarName(forwardOp.inputs_,
+    ForEachVarName(forwardOp.Inputs(),
                    [&no_grad_names](const std::string& name) -> bool {
                      no_grad_names.insert(GradVarName(name));
                      return false;
@@ -107,7 +108,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
       auto fwd = *it;
       auto bwd = BackwardRecursive(*fwd, no_grad_names, uniq_id);
       net->AddOp(bwd);
-      ForEachVarName(bwd->outputs_,
+      ForEachVarName(bwd->Outputs(),
                      [&dup_output_ops, local_op_id](const std::string& out) {
                        dup_output_ops[out].emplace_back(local_op_id);
                        return false;
@@ -154,13 +155,13 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
   } else {
     std::shared_ptr<OperatorBase> grad_op = OpRegistry::CreateGradOp(forwardOp);
 
-    ForEachVarName(grad_op->inputs_, [&no_grad_names,
-                                      &net](std::string& grad_input) {
+    ForEachVarName(grad_op->Inputs(), [&no_grad_names, &net,
+                                       grad_op](const std::string& grad_input) {
       if (no_grad_names.count(grad_input)) {
         // +1 for \0
         std::string prefix = grad_input.substr(
             0, grad_input.size() - sizeof(kGradVarSuffix) / sizeof(char) + 1);
-        grad_input = prefix + kZeroVarSuffix;
+        grad_op->Rename(grad_input, prefix + kZeroVarSuffix);
 
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
@@ -170,20 +171,36 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
       return false;
     });
 
-    ForEachVarName(grad_op->outputs_,
-                   [&no_grad_names](std::string& grad_output) {
+    ForEachVarName(grad_op->Outputs(),
+                   [&no_grad_names, &grad_op](const std::string& grad_output) {
                      if (no_grad_names.count(grad_output)) {
-                       grad_output = kEmptyVarName;
+                       grad_op->Rename(grad_output, kEmptyVarName);
                      }
                      return false;
                    });
+
+    // process recurrent gradient op as a special operator.
+    if (forwardOp.Type() == "recurrent_op") {
+      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself), or
+      // this will result in infinite loop.
+      const auto& rnnop =
+          *static_cast<const operators::RecurrentOp*>(&forwardOp);
+      auto rnn_grad_op =
+          static_cast<operators::RecurrentGradientOp*>(grad_op.get());
+      const auto& stepnet_op =
+          *static_cast<const OperatorBase*>(&rnnop.stepnet());
+      // create stepnet's gradient op
+      auto grad_stepnet = BackwardRecursive(stepnet_op, no_grad_names, uniq_id);
+      rnn_grad_op->set_stepnet(
+          std::static_pointer_cast<operators::NetOp>(grad_stepnet));
+    }
 
     if (net->ops_.empty()) {  // Current no aux op is added to network
       return grad_op;
     }
     net->AddOp(grad_op);
   }
-  net->type_ = "@GENERATED_BACKWARD@";
+  net->SetType("@GENERATED_BACKWARD@");
   net->CompleteAddOp();
   return net;
 }  // namespace framework

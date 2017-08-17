@@ -13,18 +13,12 @@ static int run_cnt = 0;
 class TestOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
+  DEFINE_OP_CLONE_METHOD(TestOp);
   void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;
   }
-};
-
-class EmptyOp : public framework::OperatorBase {
- public:
-  using framework::OperatorBase::OperatorBase;
-  void InferShape(const Scope& scope) const override {}
-  void Run(const Scope& scope, const DeviceContext& dev_ctx) const override {}
 };
 
 template <typename T>
@@ -56,8 +50,8 @@ TEST(OpKernel, all) {
 
   net->CompleteAddOp();
   AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
-                               net->inputs_.at(NetOp::kAll));
-  AssertSameVectorWithoutOrder({"y", "z"}, net->outputs_.at(NetOp::kAll));
+                               net->Inputs(NetOp::kAll));
+  AssertSameVectorWithoutOrder({"y", "z"}, net->Outputs(NetOp::kAll));
 
   auto final_outs = net->OutputVars(false);
 
@@ -67,14 +61,30 @@ TEST(OpKernel, all) {
 
 TEST(NetOp, insert_op) {
   NetOp net;
-  auto op1 = std::shared_ptr<EmptyOp>(
-      new EmptyOp("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
-                  {{"Out", {"y"}}}, {}));
+  auto op1 = std::shared_ptr<framework::NOP>(
+      new framework::NOP("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
+                         {{"Out", {"y"}}}, {}));
   net.AddOp(op1);
   net.InsertOp(0, op1);
   ASSERT_EQ(2UL, net.ops_.size());
   net.InsertOp(2, op1);
   ASSERT_EQ(3UL, net.ops_.size());
+}
+
+TEST(NetOp, Clone) {
+  NetOp net;
+  net.AddOp(
+      std::shared_ptr<framework::NOP>(new framework::NOP{"empty", {}, {}, {}}));
+  net.AddOp(std::shared_ptr<framework::NOP>(
+      new framework::NOP{"empty2", {}, {}, {}}));
+  net.CompleteAddOp(true);
+  auto new_net_op = net.Clone();
+  ASSERT_NE(new_net_op, nullptr);
+  ASSERT_TRUE(new_net_op->IsNetOp());
+  auto* new_net = static_cast<NetOp*>(new_net_op.get());
+  ASSERT_EQ(2, new_net->ops_.size());
+  ASSERT_EQ(new_net->ops_[0]->Type(), "empty");
+  ASSERT_EQ(new_net->ops_[1]->Type(), "empty2");
 }
 
 }  // namespace operators

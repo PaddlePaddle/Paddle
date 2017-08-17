@@ -86,7 +86,7 @@ struct EnforceNotMet : public std::exception {
                                   2 + sizeof(void*) * 2, call_stack[i],
                                   demangled, addr_offset);
         } else {
-          sout << string::Sprintf("%-3d %*0p %s\n", i, 2 + sizeof(void*) * 2,
+          sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
                                   call_stack[i]);
         }
       }
