@@ -57,10 +57,6 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    // PADDLE_ENFORCE(ctx.InputSize() == 4UL,
-    //                "RowwiseAddGrad inputs is I, O, OG, size must be 4");
-    // PADDLE_ENFORCE(ctx.OutputSize() == 2,
-    //                "RowwiseAddGrad output is IG, size must be 2");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "X should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("b"), "b should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
@@ -76,11 +72,10 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(rowwise_add, ops::RowwiseAddOp, ops::RowwiseAddOpMaker);
+REGISTER_OP(rowwise_add, ops::RowwiseAddOp, ops::RowwiseAddOpMaker,
+            rowwise_add_grad);
 REGISTER_OP_CPU_KERNEL(
     rowwise_add, ops::RowwiseAddKernel<paddle::platform::CPUPlace, float>);
-
-REGISTER_GRADIENT_OP(rowwise_add, rowwise_add_grad, ops::RowwiseAddGradOp);
 REGISTER_OP_CPU_KERNEL(
     rowwise_add_grad,
     ops::RowwiseAddGradKernel<paddle::platform::CPUPlace, float>);

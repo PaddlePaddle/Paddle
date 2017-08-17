@@ -51,6 +51,6 @@ param_out = param - learning_rate * grad;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sgd, ops::SGDOp, ops::SGDOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
 REGISTER_OP_CPU_KERNEL(sgd,
                        ops::SGDOpKernel<paddle::platform::CPUPlace, float>);

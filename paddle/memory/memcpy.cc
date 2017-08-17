@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <cstring>  // for memcpy
 
-#include "paddle/platform/device_context.h"
-
 namespace paddle {
 namespace memory {
 

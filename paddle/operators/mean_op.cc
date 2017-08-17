@@ -34,7 +34,7 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
   MeanOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
-    AddOutput("Out", "The output of mean op").AsNoGradient();
+    AddOutput("Out", "The output of mean op").NotInGradient();
     AddComment("Mean Operator");
   }
 };
@@ -54,9 +54,8 @@ class MeanGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker);
+REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean,
                        ops::MeanKernel<paddle::platform::CPUPlace, float>);
-REGISTER_GRADIENT_OP(mean, mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean_grad,
                        ops::MeanGradKernel<paddle::platform::CPUPlace, float>);

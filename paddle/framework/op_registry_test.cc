@@ -59,11 +59,10 @@ static void BuildVar(const std::string& param_name,
     var->add_arguments(arg_name);
   }
 }
-
-REGISTER_OP(cos_sim, paddle::framework::CosineOp,
-            paddle::framework::CosineOpProtoAndCheckerMaker);
-REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
-            paddle::framework::MyTestOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(cos_sim, paddle::framework::CosineOp,
+                             paddle::framework::CosineOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(my_test_op, paddle::framework::MyTestOp,
+                             paddle::framework::MyTestOpProtoAndCheckerMaker);
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
@@ -77,8 +76,7 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
@@ -119,8 +117,7 @@ TEST(OpRegistry, DefaultValue) {
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);

@@ -51,9 +51,9 @@ template <typename Place, typename T>
 class RowwiseAddGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
     auto* db = context.Output<Tensor>(framework::GradVarName("b"));
-    auto* dOut = context.Output<Tensor>(framework::GradVarName("Out"));
     dX->mutable_data<T>(context.GetPlace());
     db->mutable_data<T>(context.GetPlace());
 
