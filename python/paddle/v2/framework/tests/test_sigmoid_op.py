@@ -14,14 +14,14 @@ class TestSigmoidOp(unittest.TestCase):
 
 
 class TestSigmoidGradOp(GradientChecker):
-    def test_compare_grad(self):
+    def test_grad(self):
         op = create_op("sigmoid")
-        inputs = {"X": np.random.random((11, 17)).astype("float32")}
+        inputs = {"X": np.random.uniform(0.1, 1, [11, 17]).astype("float32")}
         # compare gpu and cpu results for backward op.
-        # skip this test if only compiling CPU version.
+        # this test will be skiped if only compiling CPU version.
         self.compare_grad(op, inputs)
         # check gradients 
-        self.check_grad(op, inputs, set("X"), "Y")
+        self.check_grad(op, inputs, set("X"), "Y", max_relative_error=0.007)
 
 
 if __name__ == '__main__':

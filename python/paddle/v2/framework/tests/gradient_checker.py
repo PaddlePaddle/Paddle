@@ -188,10 +188,10 @@ class GradientChecker(unittest.TestCase):
 
         outputs = backward_op.outputs()
         out_names = [item for k in outputs for item in outputs[k]]
-        cpu_grads = self.get_grad(forward_op, backward_op, input_value,
-                                  out_names, core.CPUPlace())
-        gpu_grads = self.get_grad(forward_op, backward_op, input_value,
-                                  out_names, core.GPUPlace(0))
+        cpu_grads = self.__get_gradient(forward_op, backward_op, input_value,
+                                        out_names, core.CPUPlace())
+        gpu_grads = self.__get_gradient(forward_op, backward_op, input_value,
+                                        out_names, core.GPUPlace(0))
 
         for c_grad, g_grad, name in itertools.izip(cpu_grads, gpu_grads,
                                                    out_names):
@@ -277,8 +277,8 @@ class GradientChecker(unittest.TestCase):
         check_names = [grad_var_name(name) for name in inputs_to_check]
         for place in places:
             # get analytical gradients according to different device
-            analytic_grads = self.get_grad(forward_op, backward_op, input_vars,
-                                           check_names, place)
+            analytic_grads = self.__get_gradient(forward_op, backward_op,
+                                                 input_vars, check_names, place)
             self.__assert_is_close(numeric_grads, analytic_grads, check_names,
                                    max_relative_error,
                                    "Gradient Check On %s" % str(place))
