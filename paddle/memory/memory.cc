@@ -27,14 +27,14 @@ namespace memory {
 
 using BuddyAllocator = detail::BuddyAllocator;
 
-std::once_flag cpu_alloctor_flag;
-std::once_flag gpu_alloctor_flag;
+std::once_flag cpu_allocator_flag;
+std::once_flag gpu_allocator_flag;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
   static std::unique_ptr<BuddyAllocator, void (*)(BuddyAllocator*)> a{
       nullptr, [](BuddyAllocator* p) { delete p; }};
 
-  std::call_once(cpu_alloctor_flag, [&]() {
+  std::call_once(cpu_allocator_flag, [&]() {
     a.reset(new BuddyAllocator(new detail::CPUAllocator,
                                platform::CpuMinChunkSize(),
                                platform::CpuMaxChunkSize()));
@@ -68,23 +68,23 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
                       [](BuddyAllocator* p) { delete p; });
       }};
 
-  // GPU buddy alloctors
-  auto& alloctors = *as.get();
+  // GPU buddy allocators
+  auto& allocators = *as.get();
 
   // GPU buddy allocator initialization
-  std::call_once(gpu_alloctor_flag, [&]() {
+  std::call_once(gpu_allocator_flag, [&]() {
     int gpu_num = platform::GetDeviceCount();
-    alloctors.reserve(gpu_num);
+    allocators.reserve(gpu_num);
     for (int gpu = 0; gpu < gpu_num; gpu++) {
       platform::SetDeviceId(gpu);
-      alloctors.emplace_back(new BuddyAllocator(new detail::GPUAllocator,
-                                                platform::GpuMinChunkSize(),
-                                                platform::GpuMaxChunkSize()));
+      allocators.emplace_back(new BuddyAllocator(new detail::GPUAllocator,
+                                                 platform::GpuMinChunkSize(),
+                                                 platform::GpuMaxChunkSize()));
     }
   });
 
   platform::SetDeviceId(gpu_id);
-  return alloctors[gpu_id];
+  return allocators[gpu_id];
 }
 
 template <>
