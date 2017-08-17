@@ -32,6 +32,10 @@ struct BlasGemm<DEVICE_TYPE_CPU, T> {
                       const T beta,
                       T* C,
                       const int ldc) {
+#ifdef PADDLE_USE_EIGEN_FOR_BLAS
+    EigenBlasGemm<T>::compute(
+        transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+#else
     gemm<T>(transA == false ? CblasNoTrans : CblasTrans,
             transB == false ? CblasNoTrans : CblasTrans,
             M,
@@ -45,6 +49,7 @@ struct BlasGemm<DEVICE_TYPE_CPU, T> {
             beta,
             C,
             ldc);
+#endif
   }
 };
 
