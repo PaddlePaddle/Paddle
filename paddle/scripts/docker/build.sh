@@ -146,7 +146,8 @@ RUN apt-get update &&\
     pip install /*.whl; apt-get install -f -y && \
     apt-get clean -y && \
     rm -f /*.whl && \
-    paddle version
+    paddle version && \
+    ldconfig
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 ADD go/cmd/pserver/pserver /usr/bin/

@@ -37,7 +37,7 @@ class SigmoidKernel : public framework::OpKernel {
     auto Y = EigenVector<T>::Flatten(*output);
     auto place = context.GetEigenDevice<Place>();
 
-    Y.device(place) = 1.0 / (1.0 + (-1.0 * X).exp());
+    Y.device(place) = 1. / (1. + (-X).exp());
   }
 };
 
