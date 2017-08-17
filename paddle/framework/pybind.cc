@@ -225,7 +225,14 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<operators::NetOp, OperatorBase>(m, "Net")
       .def(py::init<>())
       .def("add_op", [](operators::NetOp &self,
-                        const OperatorBase &op) { self.AddOp(op); })
+                        const OperatorBase &op) { return self.AddOp(op); })
+      .def("__len__", &operators::NetOp::Size)
+      .def("infer_shape",
+           [](operators::NetOp &self, size_t begin, const Scope &scope) {
+             self.InferShape(begin, std::numeric_limits<size_t>::max(), scope);
+           })
+      .def("infer_shape", [](operators::NetOp &self,
+                             const Scope &scope) { self.InferShape(scope); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op",
            [](operators::NetOp &self) { self.CompleteAddOp(); })

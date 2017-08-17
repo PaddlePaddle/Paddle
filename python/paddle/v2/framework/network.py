@@ -30,6 +30,9 @@ class Network(object):
             else:
                 raise AttributeError("No such attribute %s" % name)
 
+    def create_and_add_op(self, type, **kwargs):
+        return getattr(self, type)(**kwargs)
+
     def add_op(self, op):
         if isinstance(op, Network):
             self.add_op(op.net)
@@ -38,3 +41,6 @@ class Network(object):
 
     def __str__(self):
         return str(self.net)
+
+    def __len__(self):
+        return len(self.net)

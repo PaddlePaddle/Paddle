@@ -56,10 +56,17 @@ class NetOp : public framework::OperatorBase {
    * before every mini-batch
    */
   void InferShape(const framework::Scope& scope) const override {
-    for (auto& op : ops_) {
-      op->InferShape(scope);
+    InferShape(0, std::numeric_limits<size_t>::max(), scope);
+  }
+
+  void InferShape(size_t begin, size_t end,
+                  const framework::Scope& scope) const {
+    for (; begin < std::min(end, ops_.size()); ++begin) {
+      ops_[begin]->InferShape(scope);
     }
   }
+
+  size_t Size() const { return ops_.size(); }
 
   /**
    * @brief Run the network.
@@ -84,15 +91,16 @@ class NetOp : public framework::OperatorBase {
     return true;
   }
 
-  void AddOp(const framework::OperatorBase& op) { AddOp(op.Clone()); }
+  size_t AddOp(const framework::OperatorBase& op) { return AddOp(op.Clone()); }
 
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(std::unique_ptr<framework::OperatorBase> op) {
+  size_t AddOp(std::unique_ptr<framework::OperatorBase> op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
     ops_.push_back(std::move(op));
+    return ops_.size() - 1;
   }
 
   void InsertOp(size_t pos, std::unique_ptr<framework::OperatorBase> op) {
