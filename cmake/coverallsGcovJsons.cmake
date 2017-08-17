@@ -42,6 +42,86 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 string(REGEX REPLACE "\\*" ";" COVERAGE_SRCS ${COVERAGE_SRCS})
 
 
+find_package(Git)
+
+if (GIT_FOUND)
+	# Branch.
+	execute_process(
+		COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_BRANCH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+
+	macro (git_log_format FORMAT_CHARS VAR_NAME)
+		execute_process(
+			COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%${FORMAT_CHARS}
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			OUTPUT_VARIABLE ${VAR_NAME}
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+	endmacro()
+
+	git_log_format(an GIT_AUTHOR_NAME)
+	git_log_format(ae GIT_AUTHOR_EMAIL)
+	git_log_format(cn GIT_COMMITTER_NAME)
+	git_log_format(ce GIT_COMMITTER_EMAIL)
+	git_log_format(B GIT_COMMIT_MESSAGE)
+	git_log_format(H GIT_COMMIT_HASH)
+	git_log_format(ai GIT_DATE_ISO_8601)
+
+	message("Git exe: ${GIT_EXECUTABLE}")
+	message("Git branch: ${GIT_BRANCH}")
+	message("Git author: ${GIT_AUTHOR_NAME}")
+	message("Git author date: ${GIT_DATE_ISO_8601}")
+	message("Git e-mail: ${GIT_AUTHOR_EMAIL}")
+	message("Git commiter name: ${GIT_COMMITTER_NAME}")
+	message("Git commiter e-mail: ${GIT_COMMITTER_EMAIL}")
+	message("Git commit message: ${GIT_COMMIT_MESSAGE}")
+	message("Git commit hash: ${GIT_COMMIT_HASH}")
+
+	#
+	# Store git commit infomation into coveralls json
+	#
+	# For example:
+	#	"git": {
+	#		"head": {
+	#		  "id": "b31f08d07ae564b08237e5a336e478b24ccc4a65",
+	#		  "author_name": "Nick Merwin",
+	#		  "author_email": "...",
+	#		  "committer_name": "Nick Merwin",
+	#		  "committer_email": "...",
+	#		  "message": "version bump"
+	#		},
+	#		"branch": "master",
+	#		"remotes": [
+	#		  {
+	#			"name": "origin",
+	#			"url": "git@github.com:lemurheavy/coveralls-ruby.git"
+	#		  }
+	#		]
+	#	  },
+	#
+
+	set(JSON_GIT_INFO
+	"{
+	  \"head\": {
+	    \"author_name\": \"${GIT_AUTHOR_NAME}\",
+	    \"author_email\": \"${GIT_AUTHOR_EMAIL}\",
+	    \"committer_name\": \"${GIT_COMMITTER_NAME}\",
+	    \"committer_email\": \"${GIT_COMMITTER_EMAIL}\",
+	    \"message\": \"${GIT_COMMIT_MESSAGE}\"
+	  },
+	  \"branch\": \"${GIT_BRANCH}\",
+	  \"remotes\": [{
+	    \"name\": \"origin\",
+	    \"url\": \"https://github.com/PaddlePaddle/Paddle.git\"
+	  }]
+	}")
+
+	message("${JSON_GIT_INFO}")
+endif()
+
 ############################# Macros #########################################
 
 #
