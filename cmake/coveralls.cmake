@@ -4,9 +4,10 @@
 # Param _GCOV_EXECUTABLE        Gcov executable.
 # Param _COVERAGE_SRCS          A list of coverage source files.
 # Param _GIT_PR_ID              Git pull request number.
+# Param _JSON_GIT_INFO          Json format of git information  
 # Param _COVERALLS_UPLOAD       Upload the result to coveralls.
 # Param _CMAKE_SCRIPT_PATH      CMake script path.
-function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _GIT_PR_ID _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
+function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _GIT_PR_ID _JSON_GIT_INFO _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
     # clean previous gcov data.
     file(REMOVE_RECURSE ${PROJECT_BINARY_DIR}/*.gcda)
 
@@ -38,6 +39,7 @@ function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _GIT_PR_ID _COVERALLS_UPL
                 -DPROJECT_ROOT="${PROJECT_SOURCE_DIR}"
                 -DGCOV_EXECUTABLE="${_GCOV_EXECUTABLE}"
                 -DGIT_PR_ID="${_GIT_PR_ID}"
+                -DJSON_GIT_INFO="${_JSON_GIT_INFO}"
                 -P "${_CMAKE_SCRIPT_PATH}/coverallsGcovJsons.cmake"
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         COMMENT "Coveralls: generating coveralls output..."
@@ -58,6 +60,84 @@ function(code_coverage _GCOV_EXECUTABLE _COVERAGE_SRCS _GIT_PR_ID _COVERALLS_UPL
         add_custom_target(coveralls DEPENDS coveralls_generate)
     endif()
 endfunction()
+
+find_package(Git)
+
+if (GIT_FOUND)
+	# Branch.
+	execute_process(
+		COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_BRANCH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+
+	macro (git_log_format FORMAT_CHARS VAR_NAME)
+		execute_process(
+			COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%${FORMAT_CHARS}
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			OUTPUT_VARIABLE ${VAR_NAME}
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+	endmacro()
+
+	git_log_format(an GIT_AUTHOR_NAME)
+	git_log_format(ae GIT_AUTHOR_EMAIL)
+	git_log_format(cn GIT_COMMITTER_NAME)
+	git_log_format(ce GIT_COMMITTER_EMAIL)
+	git_log_format(B GIT_COMMIT_MESSAGE)
+	git_log_format(H GIT_COMMIT_HASH)
+	git_log_format(ai GIT_DATE_ISO_8601)
+
+	message("-- Git exe: ${GIT_EXECUTABLE}")
+	message("-- Git branch: ${GIT_BRANCH}")
+	message("-- Git author: ${GIT_AUTHOR_NAME}")
+	message("-- Git author date: ${GIT_DATE_ISO_8601}")
+	message("-- Git e-mail: ${GIT_AUTHOR_EMAIL}")
+	message("-- Git commiter name: ${GIT_COMMITTER_NAME}")
+	message("-- Git commiter e-mail: ${GIT_COMMITTER_EMAIL}")
+	message("-- Git commit message: ${GIT_COMMIT_MESSAGE}")
+	message("-- Git commit hash: ${GIT_COMMIT_HASH}")
+
+	#
+	# Store git commit infomation into coveralls json
+	#
+	# For example:
+	#	"git": {
+	#		"head": {
+	#		  "id": "b31f08d07ae564b08237e5a336e478b24ccc4a65",
+	#		  "author_name": "Nick Merwin",
+	#		  "author_email": "...",
+	#		  "committer_name": "Nick Merwin",
+	#		  "committer_email": "...",
+	#		  "message": "version bump"
+	#		},
+	#		"branch": "master",
+	#		"remotes": [
+	#		  {
+	#			"name": "origin",
+	#			"url": "git@github.com:lemurheavy/coveralls-ruby.git"
+	#		  }
+	#		]
+	#	  },
+	#
+
+	set(JSON_GIT_INFO
+	"{
+	  \"head\": {
+	    \"author_name\": \"${GIT_AUTHOR_NAME}\",
+	    \"author_email\": \"${GIT_AUTHOR_EMAIL}\",
+	    \"committer_name\": \"${GIT_COMMITTER_NAME}\",
+	    \"committer_email\": \"${GIT_COMMITTER_EMAIL}\",
+	    \"message\": \"${GIT_COMMIT_MESSAGE}\"
+	  },
+	  \"branch\": \"${GIT_BRANCH}\",
+	  \"remotes\": [{
+	    \"name\": \"origin\",
+	    \"url\": \"https://github.com/PaddlePaddle/Paddle.git\"
+	  }]
+	}")
+endif()
 
 if(WITH_COVERAGE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -105,6 +185,7 @@ if(WITH_COVERAGE)
         "${GCOV_EXECUTABLE}"
         "${PADDLE_SOURCES}"
         "${GIT_PR_ID}"
+        "${JSON_GIT_INFO}"
         ${COVERALLS_UPLOAD}
         "${PROJECT_SOURCE_DIR}/cmake"
     )
