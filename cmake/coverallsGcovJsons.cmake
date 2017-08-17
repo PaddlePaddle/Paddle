@@ -106,7 +106,6 @@ if (GIT_FOUND)
 	set(JSON_GIT_INFO
 	"{
 	  \"head\": {
-	    \"id\": \"${GIT_COMMIT_HASH}\",
 	    \"author_name\": \"${GIT_AUTHOR_NAME}\",
 	    \"author_email\": \"${GIT_AUTHOR_EMAIL}\",
 	    \"committer_name\": \"${GIT_COMMITTER_NAME}\",
