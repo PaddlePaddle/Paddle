@@ -14,6 +14,21 @@
 #
 file(GLOB MATH_HEADERS . *.h)
 file(GLOB MATH_SOURCES . *.cpp)
+
+message(STATUS "----------MATH_HEADERS:${MATH_HEADERS}")
+message(STATUS "----------MATH_SOURCES:${MATH_SOURCES}")
+if(NOT WITH_MKLDNN)
+    file(GLOB_RECURSE DNN_HEADER RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLDNN*.h")
+    file(GLOB_RECURSE DNN_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLDNN*.cpp")
+    message(STATUS "----------DNN_HEADER:${DNN_HEADER}")
+    message(STATUS "----------DNN_SOURCES:${DNN_SOURCES}")
+    list(REMOVE_ITEM MATH_HEADERS ${DNN_HEADER})
+    list(REMOVE_ITEM MATH_SOURCES ${DNN_SOURCES})
+    message(STATUS "Skip compiling with MKLDNNMatrix")
+else()
+    message(STATUS "Compile with MKLDNNMatrix")
+endif()
+
 set(MATH_SOURCES
     "${PADDLE_SOURCE_DIR}/paddle/math/BaseMatrix.cu"
     "${PADDLE_SOURCE_DIR}/paddle/math/TrainingAlgorithmOp.cu"

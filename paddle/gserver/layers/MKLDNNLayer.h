@@ -18,6 +18,7 @@ limitations under the License. */
 #include "Layer.h"
 #include "MKLDNNBase.h"
 #include "mkldnn.hpp"
+#include "paddle/math/MKLDNNMatrix.h"
 
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(use_mkldnn_wgt);
