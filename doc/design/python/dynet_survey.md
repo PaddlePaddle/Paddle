@@ -52,7 +52,7 @@ struct Expression {
 };
 ```
 
-graph至此构建完毕，dynet的反向过程并没有显示的拿出来
+graph至此构建完毕，dynet的反向过程并没有显式的加入到graph中
 
 
 
@@ -76,11 +76,10 @@ graph执行依次调用forward和backward方法，参数更新不是graph的一�
 
 2. 需要有一个全局的Net，来记录网络的拓扑结构。Net是否是Model的成员变量都可以
 
-3. 参数更新也是Net的一部分，
 
 ### 讨论
 
-1. 输入数据与参数是不是graph的节点
+1. 输入数据与参数是不是Net的节点
 
 2. 输入数据怎么加载，使用LoadOp，还是创建Variable，然后直接FeedVariable
 
@@ -89,3 +88,5 @@ graph执行依次调用forward和backward方法，参数更新不是graph的一�
 有一部分参数是随机产生的，这部分参数是由paddle提供的Op产生；
 
 还有一些参数是从用户给定数据加载的，使用LoadOp，还是FeedVariable
+
+4. 参数更新是不是Net的节点
