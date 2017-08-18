@@ -21,12 +21,10 @@ class RowwiseAddGradOpTest(GradientChecker):
         op = create_op("rowwise_add")
         inputs = {
             "X": np.random.uniform(0.1, 1, [10, 10]).astype("float32"),
-            "b": np.random.uniform(0.1, 1, [10, 1]).astype("float32")
+            "b": np.random.uniform(0.1, 1, [10]).astype("float32")
         }
         self.check_grad(op, inputs, set(["X", "b"]), "Out")
 
-
-#TODO(dzh): rowwise_grad check
 
 if __name__ == '__main__':
     unittest.main()
