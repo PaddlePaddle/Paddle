@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "TensorCheck.h"
+#include "paddle/math/MathUtils.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/testing/TestUtil.h"
@@ -1203,19 +1204,6 @@ TEST(Matrix, warpCTC) {
   }
 }
 
-int outputSizeCol2Vol(
-    int imageSize, int filterSize, int padding, int stride, bool caffeMode) {
-  int outputSize;
-  if (!caffeMode) {
-    outputSize =
-        (imageSize - filterSize + 2 * padding + stride - 1) / stride + 1;
-  } else {
-    outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
-  }
-  CHECK_GE(outputSize, 1);
-  return outputSize;
-}
-
 void testMatrixCol2Vol(int depth, int height, int width) {
   int channel = 3;
   int filterX = 3, filterY = 4, filterZ = 5;
@@ -1229,9 +1217,9 @@ void testMatrixCol2Vol(int depth, int height, int width) {
   cpuImage->randomizeUniform();
   gpuImage->copyFrom(*cpuImage);
 
-  int outD = outputSizeCol2Vol(depth, filterZ, padZ, strideZ, true);
-  int outH = outputSizeCol2Vol(height, filterY, padZ, strideY, true);
-  int outW = outputSizeCol2Vol(width, filterX, padZ, strideX, true);
+  int outD = outputSize(depth, filterZ, padZ, strideZ, true);
+  int outH = outputSize(height, filterY, padY, strideY, true);
+  int outW = outputSize(width, filterX, padX, strideX, true);
 
   int colBufHeight = channel * filterZ * filterY * filterX;
   int colBufWidth = outD * outH * outW;
@@ -1305,11 +1293,9 @@ void testMatrixCol2Vol(int depth, int height, int width) {
 }
 
 TEST(Matrix, col2Vol) {
-  for (auto depth : {9, 16, 64, 128}) {
-    for (auto height : {9, 11, 73, 128, 256}) {
-      for (auto width : {
-               9, 32, 100, 512,
-           }) {
+  for (auto depth : {9, 16, 64}) {
+    for (auto height : {9, 11, 128}) {
+      for (auto width : {9, 32, 128}) {
         VLOG(3) << "depth=" << depth << " height=" << height
                 << " width=" << width;
         testMatrixCol2Vol(depth, height, width);

@@ -240,16 +240,25 @@ extern void hl_matrix_rotate(
  * @param[in]   strideW    stride in the width.
  * @param[in]   paddingD   padding in the depth.
  * @param[in]   paddingH   padding in the height.
- * @param[in]   paddingW   padding in the width. 
+ * @param[in]   paddingW   padding in the width.
  * @param[out]   matDst     output matrix.
- * 
+ *
  */
-extern void hl_matrix_vol2Col(real* matSrc,
-                 int channel, int depth, int height, int width,
-                 int filterD, int filterH, int filterW,
-                 int strideD, int strideH, int strideW,
-                 int paddingD, int paddingH, int paddingW,
-                 real* matDst);
+extern void hl_matrix_vol2Col(const real* dataSrc,
+                              int channels,
+                              int depth,
+                              int height,
+                              int width,
+                              int filterD,
+                              int filterH,
+                              int filterW,
+                              int strideD,
+                              int strideH,
+                              int strideW,
+                              int paddingD,
+                              int paddingH,
+                              int paddingW,
+                              real* dataDst);
 
 /**
  * @brief  Matrix col2Vol: Convert col matrix into 3D volume
@@ -267,19 +276,28 @@ extern void hl_matrix_vol2Col(real* matSrc,
  * @param[in]   strideW    stride in the width.
  * @param[in]   paddingD   padding in the depth.
  * @param[in]   paddingH   padding in the height.
- * @param[in]   paddingW   padding in the width. 
+ * @param[in]   paddingW   padding in the width.
  * @param[in]   matSrc     input matrix.
- * @param[in]   beta       input 
- * @param[in]   alpha      input 
- * 
+ * @param[in]   beta       input
+ * @param[in]   alpha      input
+ *
  */
-extern void hl_matrix_col2Vol(real* matDst,
-                int channels, int depth, int height, int width,
-                int filterD, int filterH, int filterW,
-                int strideD, int strideH, int strideW,
-                int paddingD, int paddingH, int paddingW,
-                real* matSrc,
-                real alpha, real beta);
-
+extern void hl_matrix_col2Vol(real* dataDst,
+                              int channels,
+                              int depth,
+                              int height,
+                              int width,
+                              int filterD,
+                              int filterH,
+                              int filterW,
+                              int strideD,
+                              int strideH,
+                              int strideW,
+                              int paddingD,
+                              int paddingH,
+                              int paddingW,
+                              const real* dataSrc,
+                              real alpha,
+                              real beta);
 
 #endif /* HL_MATRIX_H_ */

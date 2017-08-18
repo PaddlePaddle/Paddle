@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include "ConvBaseLayer.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/math/MathUtils.h"
 #include <vector>
+#include "ConvBaseLayer.h"
+#include "paddle/math/MathUtils.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -29,30 +28,25 @@ namespace paddle {
  */
 class DeConv3DLayer : public ConvBaseLayer {
 public:
-    explicit DeConv3DLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
+  explicit DeConv3DLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
+  ~DeConv3DLayer() {}
+  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
-    ~DeConv3DLayer() {}
-
-    bool init(const LayerMap &layerMap, const ParameterMap &parameterMap);
-
-    size_t getSize();
-
-    void forward(PassType passType);
-    void addBias();
-
-    void backward(const UpdateCallback& callback);
-
-    void bpropBiases();
-    void bpropData(int i);
-    void bpropWeights(int i);
+  void forward(PassType passType);
+  void addBias();
+  void backward(const UpdateCallback& callback);
+  void bpropBiases();
+  void bpropData(int i);
+  void bpropWeights(int i);
+  size_t getSize();
 
 protected:
-    // Figure out the dimensions for individual gemms.
-    IntV M_;  /// numFilters_ / filter_group_;
-    IntV N_;  /// channels_ * filterSizeZ_ * filterSize_ * filterSizeY_
-    IntV K_;  /// outputD_ * outputH_ * outputW_
-    IntV No_;
-    MatrixPtr colBuf_;
+  // Figure out the dimensions for individual gemms.
+  IntV M_;  /// numFilters_ / filter_group_;
+  IntV N_;  /// channels_ * filterSizeZ_ * filterSize_ * filterSizeY_
+  IntV K_;  /// outputD_ * outputH_ * outputW_
+  IntV NOut_;
+  MatrixPtr colBuf_;
 };
 
 }  // namespace paddle

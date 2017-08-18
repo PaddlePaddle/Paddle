@@ -20,9 +20,6 @@ namespace paddle {
 
 REGISTER_LAYER(deconv3d, DeConv3DLayer);
 
-#define DECONV_OUTPUT_SIZE(IN_SIZE, STRID, PAD, KSIZE) \
-  (((IN_SIZE)-1) * (STRID)-2 * (PAD) + (KSIZE))
-
 bool DeConv3DLayer::init(const LayerMap &layerMap,
                          const ParameterMap &parameterMap) {
   if (!ConvBaseLayer::init(layerMap, parameterMap)) return false;
@@ -32,14 +29,25 @@ bool DeConv3DLayer::init(const LayerMap &layerMap,
   for (int index = 0; index < config_.inputs().size(); ++index) {
     M_.push_back(filterChannels_[index]);
     K_.push_back(filterPixels_[index] * (numFilters_ / groups_[index]));
-    if (weights_[index]->getW())
-      weights_[index]->getW()->reshape(filterPixels_[index] * numFilters_,
-                                       filterChannels_[index]);
-    if (weights_[index]->getWGrad())
-      weights_[index]->getWGrad()->reshape(filterPixels_[index] * numFilters_,
-                                           filterChannels_[index]);
+
+    // create a new weight
+    size_t height, width;
+    height = filterPixels_[index] * numFilters_;
+    width = filterChannels_[index];
+    CHECK_EQ(parameters_[index]->getSize(), width * height);
+    Weight *w = new Weight(height, width, parameters_[index]);
+    weights_.emplace_back(w);
   }
-  CHECK(inputLayers_.size() == parameters_.size());
+  if (biasParameter_.get()) {
+    if (sharedBiases_) {
+      CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(1, numFilters_, biasParameter_));
+    } else {
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
+    }
+  }
   return true;
 }
 
@@ -52,22 +60,22 @@ size_t DeConv3DLayer::getSize() {
   outputW_.clear();
   outputD_.clear();
   N_.clear();
-  No_.clear();
+  NOut_.clear();
   size_t layerSize = 0;
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
     // imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
     // imgSizeW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
     // imgSizeD_.push_back(inputLayers_[i]->getOutput().getFrameDepth());
-    outputW_.push_back(DECONV_OUTPUT_SIZE(
-        imgSizeW_[i], stride_[i], padding_[i], filterSize_[i]));
-    outputH_.push_back(DECONV_OUTPUT_SIZE(
-        imgSizeH_[i], strideY_[i], paddingY_[i], filterSizeY_[i]));
-    outputD_.push_back(DECONV_OUTPUT_SIZE(
-        imgSizeD_[i], strideZ_[i], paddingZ_[i], filterSizeZ_[i]));
-    No_.push_back(outputD_[i] * outputH_[i] * outputW_[i]);
+    outputW_.push_back(
+        imageSize(imgSizeW_[i], filterSize_[i], padding_[i], stride_[i], true));
+    outputH_.push_back(imageSize(
+        imgSizeH_[i], filterSizeY_[i], paddingY_[i], strideY_[i], true));
+    outputD_.push_back(imageSize(
+        imgSizeD_[i], filterSizeZ_[i], paddingZ_[i], strideZ_[i], true));
+    NOut_.push_back(outputD_[i] * outputH_[i] * outputW_[i]);
     N_.push_back(imgSizeD_[i] * imgSizeH_[i] * imgSizeW_[i]);
     CHECK(layerSize == 0 || N_[i] * size_t(numFilters_) == layerSize);
-    layerSize += No_[i] * numFilters_;
+    layerSize += NOut_[i] * numFilters_;
   }
   getOutput().setFrameHeight(outputH_[0]);
   getOutput().setFrameWidth(outputW_[0]);

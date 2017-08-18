@@ -12,13 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
-
-#include "ConvBaseLayer.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/math/MathUtils.h"
 #include <vector>
+#include "ConvBaseLayer.h"
+#include "paddle/math/MathUtils.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -30,21 +28,17 @@ namespace paddle {
 class Conv3DLayer : public ConvBaseLayer {
 public:
   explicit Conv3DLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
-
   ~Conv3DLayer() {}
 
-  bool init(const LayerMap &layerMap, const ParameterMap &parameterMap);
-
-  size_t getSize();
+  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
   void forward(PassType passType);
   void addBias();
-
   void backward(const UpdateCallback& callback);
-
   void bpropBiases();
   void bpropData(int i);
   void bpropWeights(int i);
+  size_t getSize();
 
 protected:
   // Figure out the dimensions for individual gemms.

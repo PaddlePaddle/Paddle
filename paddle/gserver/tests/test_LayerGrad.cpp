@@ -2019,7 +2019,7 @@ void test3DConvLayer(const string& type, bool trans, bool useGpu) {
   const int CHANNELS = 3;
   const int IMAGE_SIZE = 9;
   const int IMAGE_SIZE_Y = 9;
-  const int IMAGE_SIZE_Z = 9;  //  2, 3, 5, 5, 5
+  const int IMAGE_SIZE_Z = 9;
 
   TestConfig config;
   config.biasSize = NUM_FILTERS;
@@ -2084,10 +2084,6 @@ TEST(Layer, test3DConvLayer) {
 #endif
 }
 
-int deConvOutputSize(int inSize, int kSize, int pad, int stride) {
-  return (inSize - 1) * stride - 2 * pad + kSize;
-}
-
 void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
   // filter size
   const int NUM_FILTERS = 6;
@@ -2126,16 +2122,21 @@ void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
   conv->set_img_size(IMAGE_SIZE);
   conv->set_img_size_y(IMAGE_SIZE_Y);
   conv->set_img_size_z(IMAGE_SIZE_Z);
-  conv->set_output_x(deConvOutputSize(
-      conv->img_size(), conv->filter_size(), conv->padding(), conv->stride()));
-  conv->set_output_y(deConvOutputSize(conv->img_size_y(),
-                                      conv->filter_size_y(),
-                                      conv->padding_y(),
-                                      conv->stride_y()));
-  conv->set_output_z(deConvOutputSize(conv->img_size_z(),
-                                      conv->filter_size_z(),
-                                      conv->padding_z(),
-                                      conv->stride_z()));
+  conv->set_output_x(imageSize(conv->img_size(),
+                               conv->filter_size(),
+                               conv->padding(),
+                               conv->stride(),
+                               true));
+  conv->set_output_y(imageSize(conv->img_size_y(),
+                               conv->filter_size_y(),
+                               conv->padding_y(),
+                               conv->stride_y(),
+                               true));
+  conv->set_output_z(imageSize(conv->img_size_z(),
+                               conv->filter_size_z(),
+                               conv->padding_z(),
+                               conv->stride_z(),
+                               true));
   config.layerConfig.set_size(conv->output_x() * conv->output_y() *
                               conv->output_z() * NUM_FILTERS);
   conv->set_groups(1);

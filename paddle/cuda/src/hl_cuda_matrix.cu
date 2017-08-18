@@ -594,7 +594,7 @@ void hl_matrix_rotate(
 }
 
 __global__ void keMatrixVol2Col(int num_kernels,
-                                real* dataSrc,
+                                const real* dataSrc,
                                 real* dataDst,
                                 int depth,
                                 int height,
@@ -643,7 +643,7 @@ __global__ void keMatrixVol2Col(int num_kernels,
   }
 }
 
-void hl_matrix_vol2Col(real* dataSrc,
+void hl_matrix_vol2Col(const real* dataSrc,
                        int channels,
                        int depth,
                        int height,
@@ -666,30 +666,30 @@ void hl_matrix_vol2Col(real* dataSrc,
   const int threads = 512;
   const int blocks = DIVUP(num_kernels, threads);
 
-  keMatrixVol2Col<<<blocks, threads>>>(num_kernels,
-                                       dataSrc,
-                                       dataDst,
-                                       depth,
-                                       height,
-                                       width,
-                                       filterD,
-                                       filterH,
-                                       filterW,
-                                       strideD,
-                                       strideH,
-                                       strideW,
-                                       paddingD,
-                                       paddingH,
-                                       paddingW,
-                                       depth_col,
-                                       height_col,
-                                       width_col);
+  keMatrixVol2Col<<<blocks, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                          dataSrc,
+                                                          dataDst,
+                                                          depth,
+                                                          height,
+                                                          width,
+                                                          filterD,
+                                                          filterH,
+                                                          filterW,
+                                                          strideD,
+                                                          strideH,
+                                                          strideW,
+                                                          paddingD,
+                                                          paddingH,
+                                                          paddingW,
+                                                          depth_col,
+                                                          height_col,
+                                                          width_col);
   CHECK_SYNC("hl_matrix_vol2Col failed");
 }
 
 __global__ void keMatrixCol2Vol(int num_kernels,
                                 real* dataDst,
-                                real* dataSrc,
+                                const real* dataSrc,
                                 int depth,
                                 int height,
                                 int width,
@@ -759,7 +759,7 @@ void hl_matrix_col2Vol(real* dataDst,
                        int paddingD,
                        int paddingH,
                        int paddingW,
-                       real* dataSrc,
+                       const real* dataSrc,
                        real alpha,
                        real beta) {
   int depth_col = (depth + 2 * paddingD - filterD) / strideD + 1;
@@ -770,26 +770,26 @@ void hl_matrix_col2Vol(real* dataDst,
   const int threads = 512;
   const int blocks = DIVUP(num_kernels, threads);
 
-  keMatrixCol2Vol<<<blocks, threads>>>(num_kernels,
-                                       dataDst,
-                                       dataSrc,
-                                       depth,
-                                       height,
-                                       width,
-                                       filterD,
-                                       filterH,
-                                       filterW,
-                                       strideD,
-                                       strideH,
-                                       strideW,
-                                       paddingD,
-                                       paddingH,
-                                       paddingW,
-                                       depth_col,
-                                       height_col,
-                                       width_col,
-                                       alpha,
-                                       beta);
+  keMatrixCol2Vol<<<blocks, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                          dataDst,
+                                                          dataSrc,
+                                                          depth,
+                                                          height,
+                                                          width,
+                                                          filterD,
+                                                          filterH,
+                                                          filterW,
+                                                          strideD,
+                                                          strideH,
+                                                          strideW,
+                                                          paddingD,
+                                                          paddingH,
+                                                          paddingW,
+                                                          depth_col,
+                                                          height_col,
+                                                          width_col,
+                                                          alpha,
+                                                          beta);
 
   CHECK_SYNC("hl_matrix_col2Vol failed");
 }

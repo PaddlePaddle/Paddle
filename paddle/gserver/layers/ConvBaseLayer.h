@@ -23,7 +23,6 @@ namespace paddle {
  * with learned filters and (optionally) adds biases.
  */
 
-
 class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;

@@ -28,16 +28,26 @@ bool Conv3DLayer::init(const LayerMap &layerMap,
     const ConvConfig &conf = inputConfig.conv_conf();
     M_.push_back(numFilters_ / conf.groups());
     K_.push_back(filterPixels_[index] * filterChannels_[index]);
-    if (nullptr != weights_[index]->getW())
-      weights_[index]->getW()->reshape(weights_[index]->getW()->getWidth(),
-                                       weights_[index]->getW()->getHeight());
-    if (nullptr != weights_[index]->getWGrad())
-      weights_[index]->getWGrad()->reshape(
-          weights_[index]->getWGrad()->getWidth(),
-          weights_[index]->getWGrad()->getHeight());
+
+    // create a new weight
+    size_t height, width;
+    width = filterPixels_[index] * filterChannels_[index];
+    height = numFilters_;
+    CHECK_EQ(parameters_[index]->getSize(), width * height);
+    Weight *w = new Weight(height, width, parameters_[index]);
+    weights_.emplace_back(w);
     ++index;
   }
-  CHECK(inputLayers_.size() == parameters_.size());
+  if (biasParameter_.get()) {
+    if (sharedBiases_) {
+      CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(1, numFilters_, biasParameter_));
+    } else {
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
+    }
+  }
   return true;
 }
 

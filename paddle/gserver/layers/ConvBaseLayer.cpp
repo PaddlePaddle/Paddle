@@ -21,8 +21,7 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
-  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv" ||
-               config_.type() == "conv3d" || config_.type() == "deconv3d")
+  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
                   ? false
                   : true;
 
@@ -56,28 +55,9 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
   }
 
   CHECK(inputLayers_.size() == parameters_.size());
-  for (size_t i = 0; i < inputLayers_.size(); i++) {
-    size_t height, width;
-    height = filterPixels_[i] * filterChannels_[i];
-    width = (!isDeconv_) ? numFilters_ : channels_[i];
 
-    // create a new weight
-    CHECK_EQ(parameters_[i]->getSize(), width * height);
-    Weight* w = new Weight(height, width, parameters_[i]);
-    weights_.emplace_back(w);
-  }
-
-  /* initialize the biases_ */
-  if (biasParameter_.get()) {
-    if (sharedBiases_) {
-      CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
-      biases_ =
-          std::unique_ptr<Weight>(new Weight(1, numFilters_, biasParameter_));
-    } else {
-      biases_ =
-          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
-    }
-  }
+  // create new weights_ in derived class
+  // create new biases_ in derived class
 
   // default caffe model
   caffeMode_ = true;
