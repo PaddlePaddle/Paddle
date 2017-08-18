@@ -61,11 +61,6 @@ bool IsCompileGPU() {
 #endif
 }
 
-template <typename T>
-void AddOp(operators::NetOp &self, const T &op) {
-  self.AddOp(op);
-}
-
 static std::unique_ptr<OperatorBase> create_op_from_pb(
     const py::bytes &protobin) {
   OpDesc desc;
