@@ -1,12 +1,11 @@
-import logging
+from common import logger, g_scope, g_device
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator, RecurrentOp
+from session import g_session
 '''
 Variable acts as the inputs and outputs' arguments of a op/layer,
 same with the role of tensor in TF or pytorch.
 '''
-g_scope = core.Scope()
-g_device = core.CPUPlace()
 
 
 class Var(object):
@@ -24,9 +23,11 @@ class Var(object):
                  device=None,
                  is_parameter=False):
         if name is None:
-            name = "var-%d" % self.count
-            self.count += 1
-        assert name not in self.name_set, "var name %s duplicate with others"
+            name = "var-%d" % Var.count
+            Var.count += 1
+        assert name not in self.name_set, "var name %s duplicate with others" % name
+        logger.info("create Var %s" % name)
+        Var.name_set.add(name)
         self.name = name
         # assert shape or data, "either shape or data should be set, or paddle cannot create the var"
         self.shape = shape
@@ -38,7 +39,13 @@ class Var(object):
 
         self._create_var()
 
+        # register this var to global session
+        g_session.add_var(self)
+
     def val(self):
+        '''
+        return numpy value of this Var
+        '''
         return np.array(self._tensor)
 
     def __str__(self):
