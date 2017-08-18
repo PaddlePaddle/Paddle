@@ -1203,4 +1203,120 @@ TEST(Matrix, warpCTC) {
   }
 }
 
+int outputSizeCol2Vol(
+    int imageSize, int filterSize, int padding, int stride, bool caffeMode) {
+  int outputSize;
+  if (!caffeMode) {
+    outputSize =
+        (imageSize - filterSize + 2 * padding + stride - 1) / stride + 1;
+  } else {
+    outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
+  }
+  CHECK_GE(outputSize, 1);
+  return outputSize;
+}
+
+void testMatrixCol2Vol(int depth, int height, int width) {
+  int channel = 3;
+  int filterX = 3, filterY = 4, filterZ = 5;
+  int strideX = 2, strideY = 2, strideZ = 2;
+  int padX = 1, padY = 1, padZ = 1;
+
+  MatrixPtr cpuImage =
+      std::make_shared<CpuMatrix>(channel, depth * height * width);
+  MatrixPtr gpuImage =
+      std::make_shared<GpuMatrix>(channel, depth * height * width);
+  cpuImage->randomizeUniform();
+  gpuImage->copyFrom(*cpuImage);
+
+  int outD = outputSizeCol2Vol(depth, filterZ, padZ, strideZ, true);
+  int outH = outputSizeCol2Vol(height, filterY, padZ, strideY, true);
+  int outW = outputSizeCol2Vol(width, filterX, padZ, strideX, true);
+
+  int colBufHeight = channel * filterZ * filterY * filterX;
+  int colBufWidth = outD * outH * outW;
+  MatrixPtr cpuColBuf = std::make_shared<CpuMatrix>(colBufHeight, colBufWidth);
+  MatrixPtr gpuColBuf = std::make_shared<GpuMatrix>(colBufHeight, colBufWidth);
+  cpuColBuf->vol2Col(cpuImage->getData(),
+                     channel,
+                     depth,
+                     height,
+                     width,
+                     filterZ,
+                     filterY,
+                     filterX,
+                     strideZ,
+                     strideY,
+                     strideX,
+                     padZ,
+                     padY,
+                     padX);
+  gpuColBuf->vol2Col(gpuImage->getData(),
+                     channel,
+                     depth,
+                     height,
+                     width,
+                     filterZ,
+                     filterY,
+                     filterX,
+                     strideZ,
+                     strideY,
+                     strideX,
+                     padZ,
+                     padY,
+                     padX);
+  TensorCheckEqual(*cpuColBuf, *gpuColBuf);
+
+  cpuColBuf->randomizeUniform();
+  gpuColBuf->copyFrom(*cpuColBuf);
+  cpuColBuf->col2Vol(cpuImage->getData(),
+                     channel,
+                     depth,
+                     height,
+                     width,
+                     filterZ,
+                     filterY,
+                     filterX,
+                     strideZ,
+                     strideY,
+                     strideX,
+                     padZ,
+                     padY,
+                     padX,
+                     1.0,
+                     1.0);
+  gpuColBuf->col2Vol(gpuImage->getData(),
+                     channel,
+                     depth,
+                     height,
+                     width,
+                     filterZ,
+                     filterY,
+                     filterX,
+                     strideZ,
+                     strideY,
+                     strideX,
+                     padZ,
+                     padY,
+                     padX,
+                     1.0,
+                     1.0);
+  TensorCheckErr(*cpuImage, *gpuImage);
+}
+
+TEST(Matrix, col2Vol) {
+  for (auto depth : {9, 16, 64, 128}) {
+    for (auto height : {9, 11, 73, 128, 256}) {
+      for (auto width : {
+               9, 32, 100, 512,
+           }) {
+        VLOG(3) << "depth=" << depth << " height=" << height
+                << " width=" << width;
+        testMatrixCol2Vol(depth, height, width);
+      }
+    }
+  }
+}
+///////
+
 #endif
