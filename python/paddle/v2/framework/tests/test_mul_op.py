@@ -23,7 +23,9 @@ class MulGradOpTest(GradientChecker):
             'X': np.random.random((32, 84)).astype("float32"),
             'Y': np.random.random((84, 100)).astype("float32")
         }
-        self.check_grad(op, inputs, set(["X", "Y"]), "Out")
+        # mul op will enlarge the relative error
+        self.check_grad(
+            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.5)
 
 
 # TODO(dzh,qijun) : mulgrad test case need transpose feature of blas library
