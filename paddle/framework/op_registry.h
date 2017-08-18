@@ -77,17 +77,17 @@ class OpRegistry {
     }
   }
 
-  static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
+  static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VarNameMap& inputs,
                                                 const VarNameMap& outputs,
                                                 AttributeMap attrs);
 
-  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
   static VarNameMap ConvertOpDescVarsToVarNameMap(
       const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars);
 
-  static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
+  static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
 
   static std::unordered_map<std::string, const OpInfo>& op_info_map() {
     static std::unordered_map<std::string, const OpInfo> op_info_map_;
