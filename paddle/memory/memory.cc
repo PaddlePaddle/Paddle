@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>  // for transform
 #include <cstring>    // for memcpy
+#include <memory>     // for unique_ptr
 #include <mutex>      // for call_once
 
 #include "glog/logging.h"
