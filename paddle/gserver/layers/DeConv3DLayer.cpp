@@ -39,11 +39,6 @@ bool DeConv3DLayer::init(const LayerMap &layerMap,
       weights_[index]->getWGrad()->reshape(filterPixels_[index] * numFilters_,
                                            filterChannels_[index]);
   }
-  if (biases_->getWGrad())
-    biases_->getWGrad()->reshape(biases_->getWGrad()->width_,
-                                 biases_->getWGrad()->height_);
-  if (biases_->getW())
-    biases_->getW()->reshape(biases_->getW()->width_, biases_->getW()->height_);
   CHECK(inputLayers_.size() == parameters_.size());
   return true;
 }

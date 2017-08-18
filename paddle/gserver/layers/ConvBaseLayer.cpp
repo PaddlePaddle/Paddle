@@ -21,11 +21,10 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
-  isDeconv_ = (config_.type() == "exconv" ||
-          config_.type() == "cudnn_conv" ||
-          config_.type() == "conv3d" ||
-          config_.type() == "deconv3d"   )
-                  ? false : true;
+  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv" ||
+               config_.type() == "conv3d" || config_.type() == "deconv3d")
+                  ? false
+                  : true;
 
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
@@ -52,8 +51,8 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     filterSizeZ_.push_back(conf.filter_size_z());
     imgSizeD_.push_back(conf.img_size_z());
     outputD_.push_back(conf.output_z());
-    filterPixels_.push_back(
-            filterSize_.back() * filterSizeY_.back() * filterSizeZ_.back());
+    filterPixels_.push_back(filterSize_.back() * filterSizeY_.back() *
+                            filterSizeZ_.back());
   }
 
   CHECK(inputLayers_.size() == parameters_.size());
@@ -73,10 +72,10 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
       biases_ =
-          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
+          std::unique_ptr<Weight>(new Weight(1, numFilters_, biasParameter_));
     } else {
       biases_ =
-          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
+          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
     }
   }
 
