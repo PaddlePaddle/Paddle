@@ -26,10 +26,10 @@ class IOIgnoredOpMaker : public OpProtoAndCheckerMaker {
   IOIgnoredOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("In1", "a single input");
-    AddInput("In2_mult", "a multiple input").AsDuplicable().AsNoGradient();
+    AddInput("In2_mult", "a multiple input").AsDuplicable().NotInGradient();
     AddInput("In3_mult", "another multiple input").AsDuplicable();
     AddOutput("Out1_mult", "a multiple output").AsDuplicable();
-    AddOutput("Out2", "a single output").AsNoGradient();
+    AddOutput("Out2", "a single output").NotInGradient();
     AddComment("op with inputs and outputs ignored in gradient calculating");
   }
 };

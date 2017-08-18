@@ -57,11 +57,14 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
 }
 
 void MKLDNNFcLayer::convertWeightsFromPaddle() {
-  if (FLAGS_use_mkldnn_wgt) {
+  if (hasInitedWgt_) {
     return;
   }
 
-  if (hasInitedWgt_) {
+  // TODO(TJ): dst format should get from wgtVal_
+  int dstFmt = PARAM_FORMAT_MKLDNN_OI;
+  int srcFmt = weight_->getParameterPtr()->getHeaderFormat();
+  if (srcFmt == dstFmt) {
     return;
   }
 
@@ -78,6 +81,7 @@ void MKLDNNFcLayer::convertWeightsFromPaddle() {
   MatrixPtr paddleWgtT;
   paddleWgt->transpose(paddleWgtT, true);
   weight_->getW()->copyFrom(*paddleWgtT);
+  weight_->getParameterPtr()->setHeaderFormat(dstFmt);
   hasInitedWgt_ = true;
 }
 
