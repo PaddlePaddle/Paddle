@@ -277,15 +277,15 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        import py_paddle.swig_paddle as api
         import os
+        import py_paddle.swig_paddle as api
         for each_gradient_machine in self.__gradient_machines__:
             print name
             param = __get_parameter_in_gradient_machine__(each_gradient_machine,
                                                           name)
             # for simplify implementation now, we always copy from C++
             assert isinstance(param, api.Parameter)
-            filename = 'tmpfile'
+            filename = 'tmp_param_file'
             param.save(filename)
             with open(filename, 'rb') as fdata:
                 f.write(fdata.read())
@@ -300,9 +300,22 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        f.read(16)  # header
-        arr = np.frombuffer(f.read(), dtype=np.float32)
-        self.set(name, arr.reshape(self.get_shape(name)))
+        if len(self.__gradient_machines__) == 0:
+            f.read(16)  # header
+            arr = np.frombuffer(f.read(), dtype=np.float32)
+            self.set(name, arr.reshape(self.get_shape(name)))
+        else:
+            import os
+            import py_paddle.swig_paddle as api
+            for each_gradient_machine in self.__gradient_machines__:
+                param = __get_parameter_in_gradient_machine__(
+                    each_gradient_machine, name)
+                assert isinstance(param, api.Parameter)
+                filename = 'tmp_param_file'
+                with open(filename, 'w') as fdata:
+                    fdata.write(f.read())
+                param.load(filename)
+                os.remove(filename)
 
     def to_tar(self, f):
         tar = tarfile.TarFile(fileobj=f, mode='w')
