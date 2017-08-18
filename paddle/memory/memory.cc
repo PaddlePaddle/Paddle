@@ -19,8 +19,13 @@ limitations under the License. */
 #include <memory>     // for unique_ptr
 #include <mutex>      // for call_once
 
+#include "glog/logging.h"
+
 #include "paddle/memory/detail/buddy_allocator.h"
 #include "paddle/memory/detail/system_allocator.h"
+#include "paddle/platform/gpu_info.h"
+
+DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
 namespace memory {
@@ -80,6 +85,11 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
                                                  platform::GpuMinChunkSize(),
                                                  platform::GpuMaxChunkSize()));
     }
+    VLOG(3) << "\n\nNOTE: each GPU device use "
+            << FLAGS_fraction_of_gpu_memory_to_use * 100 << "% of GPU memory.\n"
+            << "You can set environment variable '"
+            << platform::kEnvFractionGpuMemoryToUse
+            << "' to change the fraction of GPU usage.\n\n";
   });
 
   platform::SetDeviceId(gpu_id);
