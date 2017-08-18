@@ -28,7 +28,7 @@ static void TransOpArg(const OperatorBase* src_op, const OpArgType& src_type,
   const auto& src_arg_list =
       src_type == OpArgType::IN ? proto->inputs() : proto->outputs();
   for (const auto& arg : src_arg_list) {
-    if (arg.no_gradient() && !is_grad) continue;
+    if (arg.not_in_gradient() && !is_grad) continue;
     const std::string src_name = arg.name();
     std::string dst_name = is_grad ? GradVarName(src_name) : src_name;
     dst_inout[dst_name].reserve(src_inout.at(src_name).size());

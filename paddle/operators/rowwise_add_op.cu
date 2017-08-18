@@ -17,4 +17,4 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    rowwise_add, ops::RowWiseAddKernel<paddle::platform::GPUPlace, float>);
+    rowwise_add, ops::RowwiseAddKernel<paddle::platform::GPUPlace, float>);

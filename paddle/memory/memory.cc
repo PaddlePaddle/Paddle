@@ -13,22 +13,38 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/memory.h"
+
+#include <algorithm>  // for transform
+#include <cstring>    // for memcpy
+#include <memory>     // for unique_ptr
+#include <mutex>      // for call_once
+
+#include "glog/logging.h"
+
 #include "paddle/memory/detail/buddy_allocator.h"
 #include "paddle/memory/detail/system_allocator.h"
+#include "paddle/platform/gpu_info.h"
 
-#include <cstring>  // for memcpy
+DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
 namespace memory {
 
-detail::BuddyAllocator* GetCPUBuddyAllocator() {
-  static detail::BuddyAllocator* a = nullptr;
-  if (a == nullptr) {
-    a = new detail::BuddyAllocator(new detail::CPUAllocator,
-                                   platform::CpuMinChunkSize(),
-                                   platform::CpuMaxChunkSize());
-  }
-  return a;
+using BuddyAllocator = detail::BuddyAllocator;
+
+std::once_flag cpu_allocator_flag;
+std::once_flag gpu_allocator_flag;
+
+BuddyAllocator* GetCPUBuddyAllocator() {
+  static std::unique_ptr<BuddyAllocator> a{nullptr};
+
+  std::call_once(cpu_allocator_flag, [&]() {
+    a.reset(new BuddyAllocator(new detail::CPUAllocator,
+                               platform::CpuMinChunkSize(),
+                               platform::CpuMaxChunkSize()));
+  });
+
+  return a.get();
 }
 
 template <>
@@ -48,20 +64,36 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 
 #ifndef PADDLE_ONLY_CPU
 
-detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
-  static detail::BuddyAllocator** as = NULL;
-  if (as == NULL) {
+BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
+  using BuddyAllocVec = std::vector<BuddyAllocator*>;
+  static std::unique_ptr<BuddyAllocVec, void (*)(BuddyAllocVec * p)> as{
+      new BuddyAllocVec, [](BuddyAllocVec* p) {
+        std::for_each(p->begin(), p->end(),
+                      [](BuddyAllocator* p) { delete p; });
+      }};
+
+  // GPU buddy allocators
+  auto& allocators = *as.get();
+
+  // GPU buddy allocator initialization
+  std::call_once(gpu_allocator_flag, [&]() {
     int gpu_num = platform::GetDeviceCount();
-    as = new detail::BuddyAllocator*[gpu_num];
+    allocators.reserve(gpu_num);
     for (int gpu = 0; gpu < gpu_num; gpu++) {
       platform::SetDeviceId(gpu);
-      as[gpu] = new detail::BuddyAllocator(new detail::GPUAllocator,
-                                           platform::GpuMinChunkSize(),
-                                           platform::GpuMaxChunkSize());
+      allocators.emplace_back(new BuddyAllocator(new detail::GPUAllocator,
+                                                 platform::GpuMinChunkSize(),
+                                                 platform::GpuMaxChunkSize()));
     }
-  }
+    VLOG(3) << "\n\nNOTE: each GPU device use "
+            << FLAGS_fraction_of_gpu_memory_to_use * 100 << "% of GPU memory.\n"
+            << "You can set environment variable '"
+            << platform::kEnvFractionGpuMemoryToUse
+            << "' to change the fraction of GPU usage.\n\n";
+  });
+
   platform::SetDeviceId(gpu_id);
-  return as[gpu_id];
+  return allocators[gpu_id];
 }
 
 template <>
