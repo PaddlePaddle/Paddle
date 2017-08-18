@@ -2317,6 +2317,17 @@ class LambdaCost(LayerBase):
         self.config.max_sort_size = max_sort_size
 
 
+@config_layer('huber_regression')
+class HuberRegressionLoss(LayerBase):
+    def __init__(self, name, inputs, delta=1., coeff=1., device=None):
+        super(HuberRegressionLoss, self).__init__(
+            name, 'huber_regression', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2, 'HuberRegression must have 2 inputs')
+        self.config.delta = delta
+        self.config.coeff = coeff
+
+
 @config_layer('nce')
 class NCELayer(LayerBase):
     def __init__(self,

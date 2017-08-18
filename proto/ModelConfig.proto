@@ -496,6 +496,9 @@ message LayerConfig {
   optional int32 axis = 54 [ default = 2 ];
   repeated uint32 offset = 55;
   repeated uint32 shape = 56;
+
+  // for HuberRegressionLoss
+  optional double delta = 57 [ default = 1.0 ];
 }
 
 message EvaluatorConfig {

@@ -322,6 +322,30 @@ public:
 };
 
 /**
+ * Huber loss for robust regression.
+ *
+ * Given output f(x), label y and delta, the loss is:
+ * Loss = 0.5 * (1 - y * f)^2, if abs(y - f) <= delta \\
+ * Loss = delta * abs(y - f) - 0.5 * delta^2, otherwise
+ */
+class HuberRegressionLoss : public HuberCost {
+public:
+  explicit HuberRegressionLoss(const LayerConfig& config) : HuberCost(config) {}
+
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
+  void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
+
+  void backwardImp(Matrix& outputValue,
+                   Argument& label,
+                   Matrix& outputGrad) override;
+
+protected:
+  real delta_;
+};
+
+/**
  * Huber loss for robust 2-classes classification.
  *
  * For label={0, 1}, let y=2*label-1. Given output f(x), the loss is:

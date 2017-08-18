@@ -409,6 +409,11 @@ multi_binary_label_cross_entropy_cost
 ..  autoclass:: paddle.v2.layer.multi_binary_label_cross_entropy_cost
     :noindex:
 
+huber_regression_cost
+-------------------------
+..  autoclass:: paddle.v2.layer.huber_regression_cost
+    :noindex:
+
 huber_classification_cost
 -------------------------
 ..  autoclass:: paddle.v2.layer.huber_classification_cost

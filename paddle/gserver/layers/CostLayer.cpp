@@ -595,6 +595,61 @@ void HuberCost::forwardImp(Matrix& output, Argument& label, Matrix& cost) {
 }
 
 //
+// Huber loss for robust regression.
+//
+REGISTER_LAYER(huber_regression, HuberRegressionLoss);
+
+bool HuberRegressionLoss::init(const LayerMap& layerMap,
+                               const ParameterMap& parameterMap) {
+  HuberCost::init(layerMap, parameterMap);
+  delta_ = config_.delta();
+  return true;
+}
+
+void HuberRegressionLoss::forwardImp(Matrix& output,
+                                     Argument& label,
+                                     Matrix& target) {
+  HuberCost::forwardImp(output, label, target);
+  size_t numSamples = target.getHeight();
+  CHECK(label.value);
+  CHECK_EQ((*label.value).getHeight(), numSamples);
+  CHECK_EQ(output.getHeight(), numSamples);
+  CHECK_EQ(output.getWidth(), (*label.value).getWidth());
+  CHECK_EQ(target.getWidth(), (size_t)1);
+
+  real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
+  real* lbl =
+      useGpu_ ? tmpCpuInput_[1].value->getData() : (*label.value).getData();
+  std::vector<real> cost(numSamples);
+  for (size_t i = 0; i < numSamples; ++i) {
+    real a = std::abs(lbl[i] - out[i]);
+    if (a <= delta_)
+      cost[i] = a * a / 2;
+    else
+      cost[i] = delta_ * (a - delta_ / 2);
+  }
+  target.copyFrom(cost.data(), numSamples);
+}
+
+void HuberRegressionLoss::backwardImp(Matrix& output,
+                                      Argument& label,
+                                      Matrix& outputG) {
+  size_t numSamples = output.getHeight();
+  real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
+  real* lbl =
+      useGpu_ ? tmpCpuInput_[1].value->getData() : (*label.value).getData();
+  real* grad = useGpu_ ? tmpCpuInput_[0].grad->getData() : outputG.getData();
+  for (size_t i = 0; i < numSamples; ++i) {
+    real a = lbl[i] - out[i];
+    if (std::abs(a) <= delta_)
+      grad[i] += -a;
+    else
+      grad[i] += a > 0 ? delta_ : -delta_;
+  }
+  if (useGpu_) outputG.copyFrom(grad, numSamples);
+}
+
+//
 // Huber loss for robust 2-classes classification
 //
 REGISTER_LAYER(huber_classification, HuberTwoClassification);
