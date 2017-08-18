@@ -6,17 +6,6 @@ class Network(object):
     def __init__(self):
         self.net = core.Net()
 
-    def __getattr__(self, name):
-        op_protos = get_all_op_protos()
-        if name in op_protos:
-            return lambda **kwargs: self.add_op(name, **kwargs)
-        else:
-            fn = getattr(self.net, name, None)
-            if fn is not None:
-                return fn
-            else:
-                raise AttributeError("No such attribute %s" % name)
-
     def add_op(self, op, **kwargs):
         if len(kwargs) == 0:
             if isinstance(op, Network):
@@ -42,3 +31,6 @@ class Network(object):
 
     def __str__(self):
         return str(self.net)
+
+    def complete_add_op(self):
+        self.net.complete_add_op()
