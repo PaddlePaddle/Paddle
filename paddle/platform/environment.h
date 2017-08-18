@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/platform/enforce.h"
 #include "paddle/string/piece.h"
 
+extern char** environ;  // for environment variables
+
 namespace paddle {
 namespace platform {
 
@@ -45,7 +47,6 @@ inline std::string GetEnvValue(const std::string& name) {
 }
 
 inline std::vector<std::string> GetAllEnvVariables() {
-  extern char** environ;
   std::vector<std::string> vars;
   for (auto var = environ; *var != nullptr; ++var) {
     auto tail = string::Index(*var, "=");
