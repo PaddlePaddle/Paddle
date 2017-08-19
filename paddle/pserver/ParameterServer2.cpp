@@ -155,8 +155,11 @@ void ParameterServer2::setConfig(const SetConfigRequest& request,
     }
 
     for (const auto& config : request.param_configs()) {
-      CHECK(!configMap_.count(config.para_id()))
-          << "Duplicated parameter name: " << config.name();
+      if (configMap_.count(config.para_id())) {
+        SetConfigResponse response;
+        callback(response);
+        continue;
+      }
       configMap_[config.para_id()] = config;
       CHECK_EQ(config.sparse_remote_update(), isSparseServer_);
     }
@@ -1037,8 +1040,8 @@ void ParameterServer2::loadValueVector(const LoadValueRequest& request,
   CHECK_EQ(header.size, (size_t)size_)
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << size_ << ") of the pserver: " << serverId_;
-  CHECK_EQ(header.valueSize, sizeof(real)) << "Unsupported valueSize "
-                                           << header.valueSize;
+  CHECK_EQ(header.valueSize, sizeof(real))
+      << "Unsupported valueSize " << header.valueSize;
   CHECK(fs.read(reinterpret_cast<char*>(vec.getData()),
                 header.size * sizeof(real)));
 

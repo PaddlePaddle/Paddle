@@ -175,6 +175,21 @@ void ParameterClient2::sendParallel(int tid,
     CHECK_EQ(msgReader->getNumBlocks(), (size_t)response.blocks_size());
     bufs.clear();
     bufs.reserve(response.blocks_size());
+    // HACK: let it resize to max
+    real* tmpbuf = nullptr;
+    for (auto& tmpBlock : response.blocks()) {
+      auto it = parameterMap_.find(tmpBlock.para_id());
+      CHECK(it != parameterMap_.end());
+      Parameter* parameter = it->second.get();
+      if (!parameter->getBuf(recvParameterType)) {
+        auto recvMat = dynamic_cast<SparseRowCpuMatrix*>(
+            parameter->getMat(recvParameterType).get());
+        CHECK(recvMat);
+        tmpbuf =
+            recvMat->getLocalRow(tmpBlock.begin_pos() / tmpBlock.block_size());
+        CHECK(tmpbuf);
+      }
+    }
     for (auto& block : response.blocks()) {
       auto it = parameterMap_.find(block.para_id());
       CHECK(it != parameterMap_.end());
@@ -186,8 +201,14 @@ void ParameterClient2::sendParallel(int tid,
         auto recvMat = dynamic_cast<SparseRowCpuMatrix*>(
             parameter->getMat(recvParameterType).get());
         CHECK(recvMat);
-        size_t width = parameter->getConfig().dims(1);
-        buf = recvMat->getLocalRow(block.begin_pos() / width);
+        VLOG(10) << "sendParallel response, row: "
+                 << recvMat->getLocalRow(block.begin_pos() / block.block_size())
+                 << " blocks_size " << response.blocks_size()
+                 << "recvParameterType" << recvParameterType << " block_id "
+                 << block.block_id() << " para_id " << block.para_id()
+                 << " begin_pos" << block.begin_pos() << " block_size "
+                 << block.block_size();
+        buf = recvMat->getLocalRow(block.begin_pos() / block.block_size());
       }
       /// sparse_id is not useful while receiving data since sparse data
       /// storage is continuous, do commit recieved data as that of dense.
@@ -224,6 +245,14 @@ void ParameterClient2::prepareSendData(
     request.set_cost(cost);
     request.set_batch_status(batchStatus);
     CHECK_EQ(request.blocks_size(), 0);
+    VLOG(10) << "request: trainer_id: " << request.trainer_id()
+             << " update_mode" << request.update_mode()
+             << " send_back_parameter: " << request.send_back_parameter()
+             << " send_back_parameter_type: "
+             << request.send_back_parameter_type()
+             << " num_samples: " << request.num_samples()
+             << " cost: " << request.cost()
+             << " batch_status: " << request.batch_status();
   }
   for (const auto& segments : parameterSegments) {
     const auto it = parameterMap_.find(segments.id);
@@ -275,7 +304,6 @@ void ParameterClient2::prepareSendData(
           block->set_begin_pos(row * blockSize);
           /// block len
           block->set_block_size(endDim - beginDim);
-
           if (sendingPara) {
             sendJob->parallelInputIovs[serverId].push_back(
                 {sendMat->getLocalRow(row), sizeof(real) * (size_t)blockSize});
@@ -550,9 +578,9 @@ PServerVector ParameterClient2::createVector() {
     if (handle == -1) {
       handle = response.handle();
     } else {
-      CHECK_EQ(handle, response.handle()) << "Inconsistent handle from client"
-                                          << &response - &responses[0] << " "
-                                          << handle << " " << response.handle();
+      CHECK_EQ(handle, response.handle())
+          << "Inconsistent handle from client" << &response - &responses[0]
+          << " " << handle << " " << response.handle();
     }
   }
   return PServerVector{handle};
@@ -580,9 +608,9 @@ PServerMatrix ParameterClient2::createMatrix(int32_t numCols) {
     if (handle == -1) {
       handle = response.handle();
     } else {
-      CHECK_EQ(handle, response.handle()) << "Inconsistent handle from client"
-                                          << &response - &responses[0] << " "
-                                          << handle << " " << response.handle();
+      CHECK_EQ(handle, response.handle())
+          << "Inconsistent handle from client" << &response - &responses[0]
+          << " " << handle << " " << response.handle();
     }
   }
   return PServerMatrix{handle};
