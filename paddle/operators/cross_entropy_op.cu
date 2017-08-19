@@ -21,19 +21,18 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct clipping_log {
-  __host__ __device__ T operator()(const T x) {
-    PADDLE_ASSERT(std::is_floating_point<T>::value);
-    const T kApproInf = 1e20;
-    if (x == INFINITY) {
-      return kApproInf;
-    }
-    if (x == -INFINITY) {
-      return -kApproInf;
-    }
-    return x;
+__host__ __device__ T clipping_log(const T x) {
+  PADDLE_ASSERT(std::is_floating_point<T>::value);
+  const T kApproInf = 1e20;
+  T v = log(x);
+  if (v == INFINITY) {
+    return kApproInf;
   }
-};
+  if (v == -INFINITY) {
+    return -kApproInf;
+  }
+  return v;
+}
 
 template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
@@ -43,7 +42,7 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
-    Y[i] = -clipping_log<T>()(X[i * D + label[i]]);
+    Y[i] = -clipping_log(X[i * D + label[i]]);
   }
 }
 

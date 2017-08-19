@@ -21,7 +21,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-T tolerable_value(const T x) {
+inline T tolerable_value(const T x) {
   static_assert(std::is_floating_point<T>::value,
                 "tolerable_value works only on float, "
                 "double and double double.");
