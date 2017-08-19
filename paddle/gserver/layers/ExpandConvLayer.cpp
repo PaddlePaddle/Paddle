@@ -47,10 +47,16 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
     std::vector<size_t> paddings = {(size_t)paddingY_[i], (size_t)padding_[i]};
     std::vector<size_t> strides = {(size_t)strideY_[i], (size_t)stride_[i]};
 
-    if (useGpu_ && (size_t)groups_[i] == (size_t)channels_[i] && !isDeconv_) {
-      convType = "DepthwiseConv";
-      convGradInputType = "DepthwiseConvGradInput";
-      convGradFilterType = "DepthwiseConvGradFilter";
+    if ((size_t)groups_[i] == (size_t)channels_[i] && !isDeconv_) {
+      if (useGpu_) {
+        convType = "DepthwiseConv";
+        convGradInputType = "DepthwiseConvGradInput";
+        convGradFilterType = "DepthwiseConvGradFilter";
+      } else {
+        convType = "DepthwiseConv";
+        convGradInputType = "GemmConvGradInput";
+        convGradFilterType = "GemmConvGradFilter";
+      }
     } else {
       convType = "GemmConv";
       convGradInputType = "GemmConvGradInput";
