@@ -18,6 +18,8 @@
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 class MulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -59,10 +61,23 @@ class MulOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "MulGrad";
-    return "";
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto y_dims = ctx.Input<Tensor>("Y")->dims();
+    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
+    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    PADDLE_ENFORCE(x_dims[0] == out_dims[0],
+                   "Out@GRAD M X N must equal to X dims 0, M ");
+    PADDLE_ENFORCE(y_dims[1] == out_dims[1],
+                   "Out@GRAD M X N must equal to Y dims 1, N ");
+
+    x_grad->Resize(x_dims);
+    y_grad->Resize(y_dims);
   }
 };
 
@@ -72,3 +87,5 @@ class MulOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(mul_grad,
+                       ops::MulGradKernel<paddle::platform::CPUPlace, float>);

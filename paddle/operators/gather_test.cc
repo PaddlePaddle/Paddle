@@ -45,4 +45,8 @@ TEST(Gather, GatherData) {
 
   for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);
   for (int i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], i - 4);
+
+  delete src;
+  delete index;
+  delete output;
 }
