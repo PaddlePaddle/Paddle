@@ -138,7 +138,7 @@ All parameter, weight, gradient are variables in Paddle.
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &op_info_map = OpRegistry::op_info_map();
+    auto &op_info_map = OpInfoMap();
     std::vector<py::bytes> ret_values;
     for (auto it = op_info_map.begin(); it != op_info_map.end(); ++it) {
       const OpProto *proto = it->second.proto_;

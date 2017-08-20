@@ -19,32 +19,20 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const std::string& type,
-                                                   const VarNameMap& inputs,
-                                                   const VarNameMap& outputs,
-                                                   AttributeMap attrs) {
-  auto it = op_info_map().find(type);
-  PADDLE_ENFORCE(it != op_info_map().end(),
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
+    const std::string& type, const VariableNameMap& inputs,
+    const VariableNameMap& outputs, AttributeMap attrs) {
+  auto it = OpInfoMap().find(type);
+  PADDLE_ENFORCE(it != OpInfoMap().end(),
                  "Operator '%s' has not been registered.", type);
   it->second.checker_->Check(attrs);
   auto op = it->second.creator_(type, inputs, outputs, attrs);
   return std::unique_ptr<OperatorBase>(op);
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
-  VarNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
-  VarNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
-  AttributeMap attrs;
-  for (auto& attr : op_desc.attrs()) {
-    attrs[attr.name()] = GetAttrValue(attr);
-  }
-
-  return CreateOp(op_desc.type(), inputs, outputs, attrs);
-}
-
-OperatorBase::VarNameMap OpRegistry::ConvertOpDescVarsToVarNameMap(
+static VariableNameMap ConvertOpDescVarsToVarNameMap(
     const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars) {
-  VarNameMap ret_val;
+  VariableNameMap ret_val;
   for (auto& var : op_desc_vars) {
     auto& var_names = ret_val[var.parameter()];
     auto& var_names_in_proto = var.arguments();
@@ -53,6 +41,17 @@ OperatorBase::VarNameMap OpRegistry::ConvertOpDescVarsToVarNameMap(
               std::back_inserter(var_names));
   }
   return ret_val;
+}
+
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+  VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
+  VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
+  AttributeMap attrs;
+  for (auto& attr : op_desc.attrs()) {
+    attrs[attr.name()] = GetAttrValue(attr);
+  }
+
+  return CreateOp(op_desc.type(), inputs, outputs, attrs);
 }
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateGradOp(const OperatorBase& op) {

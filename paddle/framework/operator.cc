@@ -115,8 +115,8 @@ void OperatorBase::Rename(const std::string& old_name,
 }
 
 OperatorBase::OperatorBase(const std::string& type,
-                           const OperatorBase::VarNameMap& inputs,
-                           const OperatorBase::VarNameMap& outputs,
+                           const VariableNameMap& inputs,
+                           const VariableNameMap& outputs,
                            const AttributeMap& attrs)
     : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
   static std::atomic<size_t> gUniqId(0UL);
@@ -141,9 +141,9 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto it = OpRegistry::op_info_map().find(type_);
+  auto it = OpInfoMap().find(type_);
   PADDLE_ENFORCE(
-      it != OpRegistry::op_info_map().end(),
+      it != OpInfoMap().end(),
       "Operator %s not registered, cannot figure out intermediate outputs",
       type_);
   PADDLE_ENFORCE(

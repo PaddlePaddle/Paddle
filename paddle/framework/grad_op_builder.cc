@@ -20,11 +20,11 @@ namespace framework {
 enum class OpArgType { IN, OUT };
 
 static void TransOpArg(const OperatorBase* src_op, const OpArgType& src_type,
-                       bool is_grad, OperatorBase::VarNameMap* vars) {
+                       bool is_grad, VariableNameMap* vars) {
   const auto& src_inout =
       src_type == OpArgType::IN ? src_op->Inputs() : src_op->Outputs();
   auto& dst_inout = *vars;
-  const OpProto* proto = OpRegistry::op_info_map().at(src_op->Type()).proto_;
+  const OpProto* proto = OpInfoMap().at(src_op->Type()).proto_;
   const auto& src_arg_list =
       src_type == OpArgType::IN ? proto->inputs() : proto->outputs();
   for (const auto& arg : src_arg_list) {
@@ -40,25 +40,25 @@ static void TransOpArg(const OperatorBase* src_op, const OpArgType& src_type,
 }
 
 OperatorBase* BuildGradOp(const OperatorBase* op) {
-  auto it = OpRegistry::op_info_map().find(op->Type());
-  PADDLE_ENFORCE(it != OpRegistry::op_info_map().end(),
-                 "'%s' has not been registered.", op->Type());
+  auto it = OpInfoMap().find(op->Type());
+  PADDLE_ENFORCE(it != OpInfoMap().end(), "'%s' has not been registered.",
+                 op->Type());
   PADDLE_ENFORCE(it->second.proto_ != nullptr, "'%s' has no OpProto.",
                  op->Type());
   std::string grad_op_type = it->second.grad_op_type_;
   PADDLE_ENFORCE(!grad_op_type.empty(), "'%s' has no gradient operator.",
                  op->Type());
 
-  OperatorBase::VarNameMap inputs;
-  OperatorBase::VarNameMap outputs;
+  VariableNameMap inputs;
+  VariableNameMap outputs;
   TransOpArg(op, OpArgType::IN, false, &inputs);   // I
   TransOpArg(op, OpArgType::OUT, false, &inputs);  // O
   TransOpArg(op, OpArgType::OUT, true, &inputs);   // OG
   TransOpArg(op, OpArgType::IN, true, &outputs);   // IG
 
-  it = OpRegistry::op_info_map().find(grad_op_type);
-  PADDLE_ENFORCE(it != OpRegistry::op_info_map().end(),
-                 "'%s' has not been registered.", grad_op_type);
+  it = OpInfoMap().find(grad_op_type);
+  PADDLE_ENFORCE(it != OpInfoMap().end(), "'%s' has not been registered.",
+                 grad_op_type);
   return it->second.creator_(grad_op_type, inputs, outputs, op->Attrs());
 }
 
