@@ -150,7 +150,7 @@ class TestRecurrentOp(unittest.TestCase):
         sig_op = Operator("sigmoid", X="sum", Y="h@alias")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
-            stepnet.add_op(op)
+            stepnet.append_op(op)
         stepnet.complete_add_op(True)
         self.rnnop.set_stepnet(stepnet)
 

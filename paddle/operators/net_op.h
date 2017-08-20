@@ -84,13 +84,14 @@ class NetOp : public framework::OperatorBase {
     return true;
   }
 
-  void AddOp(const framework::OperatorBase& op) { AddOp(op.Clone()); }
+  void AppendOp(const framework::OperatorBase& op) { AppendOp(op.Clone()); }
 
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(std::unique_ptr<framework::OperatorBase> op) {
-    PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
+  void AppendOp(std::unique_ptr<framework::OperatorBase> op) {
+    PADDLE_ENFORCE(!add_op_done_,
+                   "Cannot AppendOp when this network is sealed");
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot Insert Null op");
     ops_.push_back(std::move(op));
   }
