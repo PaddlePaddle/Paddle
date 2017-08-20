@@ -141,18 +141,10 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto it = OpInfoMap().find(type_);
-  PADDLE_ENFORCE(
-      it != OpInfoMap().end(),
-      "Operator %s not registered, cannot figure out intermediate outputs",
-      type_);
-  PADDLE_ENFORCE(
-      it->second.proto_ != nullptr,
-      "Operator %s has no OpProto, cannot figure out intermediate outputs",
-      type_);
+  auto& info = OpInfoMap::Instance().Get(Type());
 
   // get all OpProto::Var for outputs
-  for (auto& o : it->second.proto_->outputs()) {
+  for (auto& o : info.Proto().outputs()) {
     // ignore all intermediate output
     if (o.intermediate()) continue;
     auto out = outputs_.find(o.name());

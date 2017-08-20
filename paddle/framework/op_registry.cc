@@ -22,11 +22,9 @@ namespace framework {
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type, const VariableNameMap& inputs,
     const VariableNameMap& outputs, AttributeMap attrs) {
-  auto it = OpInfoMap().find(type);
-  PADDLE_ENFORCE(it != OpInfoMap().end(),
-                 "Operator '%s' has not been registered.", type);
-  it->second.checker_->Check(attrs);
-  auto op = it->second.creator_(type, inputs, outputs, attrs);
+  auto& info = OpInfoMap::Instance().Get(type);
+  info.Checker().Check(attrs);
+  auto op = info.Creator()(type, inputs, outputs, attrs);
   return std::unique_ptr<OperatorBase>(op);
 }
 

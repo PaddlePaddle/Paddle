@@ -24,9 +24,9 @@ static void TransOpArg(const OperatorBase* src_op, const OpArgType& src_type,
   const auto& src_inout =
       src_type == OpArgType::IN ? src_op->Inputs() : src_op->Outputs();
   auto& dst_inout = *vars;
-  const OpProto* proto = OpInfoMap().at(src_op->Type()).proto_;
+  auto& proto = OpInfoMap::Instance().Get(src_op->Type()).Proto();
   const auto& src_arg_list =
-      src_type == OpArgType::IN ? proto->inputs() : proto->outputs();
+      src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
   for (const auto& arg : src_arg_list) {
     if (arg.not_in_gradient() && !is_grad) continue;
     const std::string src_name = arg.name();
@@ -40,14 +40,8 @@ static void TransOpArg(const OperatorBase* src_op, const OpArgType& src_type,
 }
 
 OperatorBase* BuildGradOp(const OperatorBase* op) {
-  auto it = OpInfoMap().find(op->Type());
-  PADDLE_ENFORCE(it != OpInfoMap().end(), "'%s' has not been registered.",
-                 op->Type());
-  PADDLE_ENFORCE(it->second.proto_ != nullptr, "'%s' has no OpProto.",
-                 op->Type());
-  std::string grad_op_type = it->second.grad_op_type_;
-  PADDLE_ENFORCE(!grad_op_type.empty(), "'%s' has no gradient operator.",
-                 op->Type());
+  auto& info = OpInfoMap::Instance().Get(op->Type());
+  PADDLE_ENFORCE(info.HasGradientOp());
 
   VariableNameMap inputs;
   VariableNameMap outputs;
@@ -56,10 +50,8 @@ OperatorBase* BuildGradOp(const OperatorBase* op) {
   TransOpArg(op, OpArgType::OUT, true, &inputs);   // OG
   TransOpArg(op, OpArgType::IN, true, &outputs);   // IG
 
-  it = OpInfoMap().find(grad_op_type);
-  PADDLE_ENFORCE(it != OpInfoMap().end(), "'%s' has not been registered.",
-                 grad_op_type);
-  return it->second.creator_(grad_op_type, inputs, outputs, op->Attrs());
+  auto& grad_info = OpInfoMap::Instance().Get(info.grad_op_type_);
+  return grad_info.Creator()(info.grad_op_type_, inputs, outputs, op->Attrs());
 }
 
 }  // namespace framework

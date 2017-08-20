@@ -34,9 +34,68 @@ struct OpInfo {
   std::string grad_op_type_;
   OpProto* proto_;
   OpAttrChecker* checker_;
+
+  bool HasOpProtoAndChecker() const {
+    return proto_ != nullptr && checker_ != nullptr;
+  }
+
+  const OpProto& Proto() const {
+    PADDLE_ENFORCE_NOT_NULL(proto_, "Operator Proto has not been registered");
+    PADDLE_ENFORCE(proto_->IsInitialized(),
+                   "Operator Proto must be initialized in op info");
+    return *proto_;
+  }
+
+  const OpAttrChecker& Checker() const {
+    PADDLE_ENFORCE_NOT_NULL(checker_,
+                            "Operator Checker has not been registered");
+    return *checker_;
+  }
+
+  const OpCreator& Creator() const {
+    PADDLE_ENFORCE_NOT_NULL(creator_,
+                            "Operator Creator has not been registered");
+    return creator_;
+  }
+
+  bool HasGradientOp() const { return !grad_op_type_.empty(); }
 };
 
-extern std::unordered_map<std::string, const OpInfo>& OpInfoMap();
+class OpInfoMap {
+ public:
+  static OpInfoMap& Instance();
+
+  OpInfoMap(const OpInfoMap& o) = delete;
+  OpInfoMap(OpInfoMap&& o) = delete;
+  OpInfoMap& operator=(const OpInfoMap& o) = delete;
+  OpInfoMap& operator=(OpInfoMap&& o) = delete;
+
+  bool Has(const std::string& op_type) const {
+    return map_.find(op_type) != map_.end();
+  }
+
+  void Insert(const std::string& type, const OpInfo& info) {
+    PADDLE_ENFORCE(!Has(type), "Operator %s has been registered", type);
+    map_.insert({type, info});
+  }
+
+  const OpInfo& Get(const std::string& type) const {
+    auto it = map_.find(type);
+    PADDLE_ENFORCE(it != map_.end(), "Operator %s are not found", type);
+    return it->second;
+  }
+
+  template <typename Callback>
+  void IterAllInfo(Callback callback) {
+    for (auto& it : map_) {
+      callback(it.first, it.second);
+    }
+  }
+
+ private:
+  OpInfoMap() = default;
+  std::unordered_map<std::string, const OpInfo> map_;
+};
 
 }  // namespace framework
 }  // namespace paddle

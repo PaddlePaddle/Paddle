@@ -17,12 +17,11 @@
 namespace paddle {
 namespace framework {
 
-static std::unordered_map<std::string, const paddle::framework::OpInfo>*
-    g_op_info_map = nullptr;
-std::unordered_map<std::string, const paddle::framework::OpInfo>& OpInfoMap() {
+static OpInfoMap* g_op_info_map = nullptr;
+
+OpInfoMap& OpInfoMap::Instance() {
   if (g_op_info_map == nullptr) {
-    g_op_info_map =
-        new std::unordered_map<std::string, const paddle::framework::OpInfo>();
+    g_op_info_map = new OpInfoMap();
   }
   return *g_op_info_map;
 }

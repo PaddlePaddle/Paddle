@@ -35,7 +35,7 @@ class OpRegistry {
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
                          const std::string& grad_op_type) {
-    PADDLE_ENFORCE(OpInfoMap().count(op_type) == 0,
+    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;
     op_info.creator_ = [](
@@ -59,7 +59,7 @@ class OpRegistry {
       op_info.proto_ = nullptr;
       op_info.checker_ = nullptr;
     }
-    OpInfoMap().insert(std::make_pair(op_type, op_info));
+    OpInfoMap::Instance().Insert(op_type, op_info);
     // register gradient op
     if (!grad_op_type.empty()) {
       RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "");
