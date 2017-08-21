@@ -12,21 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
+#include "paddle/operators/scale_op.h"
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/memory/memcpy.h"
-namespace paddle {
-namespace operators {
-template <typename T>
-class IdentityKernel : public framework::OpKernel {
- public:
-  virtual void Compute(const framework::ExecutionContext& context) const {
-    auto* tensor = context.Output<framework::Tensor>("Out");
-    auto* in = context.Input<framework::Tensor>("X");
-    tensor->CopyFrom<T>(*in, in->place());
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
+REGISTER_OP_GPU_KERNEL(
+    scale, paddle::operators::ScaleKernel<paddle::platform::GPUPlace, float>);

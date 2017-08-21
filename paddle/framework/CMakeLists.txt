@@ -56,5 +56,5 @@ cc_library(paddle_pybind SHARED
     uniform_random_op
     gaussian_random_op
     fill_zeros_like_op
-    identity_op)
+    scale_op)
 endif(WITH_PYTHON)
