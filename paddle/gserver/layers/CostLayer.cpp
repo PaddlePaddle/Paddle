@@ -644,7 +644,7 @@ void HuberRegressionLoss::backwardImp(Matrix& output,
     if (std::abs(a) <= delta_)
       grad[i] += -a;
     else
-      grad[i] += a > 0 ? delta_ : -delta_;
+      grad[i] += a > 0 ? -delta_ : delta_;
   }
   if (useGpu_) outputG.copyFrom(grad, numSamples);
 }
