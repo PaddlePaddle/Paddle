@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import itertools
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
 
@@ -8,6 +9,7 @@ __all__ = ['get_numeric_gradient']
 
 
 def create_op(op_type):
+    # TODO need to set attrs
     kwargs = dict()
     for in_name in Operator.get_op_input_names(op_type):
         kwargs[in_name] = in_name
@@ -66,7 +68,6 @@ def get_numeric_gradient(op,
             local_scope.find_var(output).get_tensor().alloc_float(core.CPUPlace(
             ))
 
-    # TODO(yuyang18): Only CPU is support now.
     cpu_ctx = core.DeviceContext.create(core.CPUPlace())
 
     def get_output():
@@ -109,12 +110,110 @@ def get_numeric_gradient(op,
 
 
 class GradientChecker(unittest.TestCase):
-    def assert_is_close(self, numeric_grads, scope, max_relative_error,
-                        msg_prefix):
-        for name in numeric_grads:
-            b = numpy.array(scope.find_var(grad_var_name(name)).get_tensor())
-            a = numeric_grads[name]
+    def __get_gradient(self, forward_op, backward_op, input_value, grad_names,
+                       place):
+        """Get the input gradients after running forward and backward operators
+        on the given places.
 
+        :param forward_op: forward operator
+        :type forward_op: Operator
+        :param backward_op: backward operator
+        :type backward_op: Operator
+        :param input_value: input values.
+        :type input_value: dict{string:numpy.array}
+        :param grad_names: the names of returned input gradients.
+        :type input_value: a list of string
+        :param place: the device type.
+        :type place: CPUPlace or GPUPlace
+        :return: the input grdients of given grad_names.
+        :rtype: a list of numpy.array
+        """
+        scope = core.Scope()
+        ctx = core.DeviceContext.create(place)
+
+        inputs = forward_op.inputs()
+        in_names = [item for k in inputs for item in inputs[k]]
+        outputs = forward_op.outputs()
+        out_names = [item for k in outputs for item in outputs[k]]
+
+        # create input var and set value
+        for name, value in input_value.iteritems():
+            if name not in in_names:
+                raise ValueError(name + "does not exist in Op's inputs.")
+            var = scope.new_var(name).get_tensor()
+            var.set_dims(value.shape)
+            var.set(value, place)
+
+        # run forward op
+        for out_name in out_names:
+            scope.new_var(out_name)
+        forward_op.infer_shape(scope)
+        forward_op.run(scope, ctx)
+
+        # set output var's shape
+        # set output grad to ones
+        for name in out_names:
+            out_tensor = scope.find_var(name).get_tensor()
+            grad_tensor = scope.new_var(grad_var_name(name)).get_tensor()
+            grad_tensor.set_dims(out_tensor.shape())
+            data = numpy.ones(out_tensor.shape(), dtype=numpy.float32)
+            grad_tensor.set(data, place)
+
+        # run backward op
+        for name in backward_op.outputs():
+            scope.new_var(name)
+        backward_op.infer_shape(scope)
+        backward_op.run(scope, ctx)
+
+        outs = [
+            numpy.array(scope.find_var(name).get_tensor())
+            for name in grad_names
+        ]
+        return outs
+
+    def compare_grad(self, forward_op, input_value):
+        """ Compare the input gradients between CPU and GPU for the given forward
+        operator.
+
+        :param forward_op: forward operator
+        :type forward_op: Operator
+        :param input_value: input values.
+        :type input_value: dict{string:numpy.array}
+        :raises: AssertionError, there is different gradient value.
+        """
+        backward_op = core.Operator.backward(forward_op, set())
+        # return if not compile with GPU or not implementing GPU kernel
+        if not (core.is_compile_gpu() and backward_op.support_gpu()):
+            return
+
+        outputs = backward_op.outputs()
+        out_names = [item for k in outputs for item in outputs[k]]
+        cpu_grads = self.__get_gradient(forward_op, backward_op, input_value,
+                                        out_names, core.CPUPlace())
+        gpu_grads = self.__get_gradient(forward_op, backward_op, input_value,
+                                        out_names, core.GPUPlace(0))
+
+        for c_grad, g_grad, name in itertools.izip(cpu_grads, gpu_grads,
+                                                   out_names):
+            self.assertTrue(
+                numpy.allclose(
+                    c_grad, g_grad, atol=1e-4),
+                "output name: " + name + " has diff")
+
+    def __assert_is_close(self, numeric_grads, analytic_grads, names,
+                          max_relative_error, msg_prefix):
+        """Use relative error for the comparison.
+
+        :param numeric_grads: the numerical graidents.
+        :type numeric_grads: a list of numpy.array 
+        :param analytic_grads: the analytical graidents.
+        :type analytic_grads: a list of numpy.array 
+        :param name: the names of gradients, used to print for debug.
+        :type names: a list of string
+        :param msg_prefix: string info, used to print for debug.
+        :type msf_prefix: string
+        """
+        for a, b, name in itertools.izip(numeric_grads, analytic_grads, names):
             abs_a = numpy.abs(a)
             # if abs_a is nearly zero, then use abs error for a, not relative
             # error.
@@ -159,106 +258,26 @@ class GradientChecker(unittest.TestCase):
 
         inputs = forward_op.inputs()
         in_names = [item for k in inputs for item in inputs[k]]
-        outputs = forward_op.outputs()
-        out_names = [item for k in outputs for item in outputs[k]]
-
         for no_grad in no_grad_set:
             if no_grad not in in_names:
                 raise ValueError("no_grad should be in in_names")
-
         backward_op = core.Operator.backward(forward_op, no_grad_set)
-
-        bwd_outputs = backward_op.outputs()
-        bwd_out_names = [item for k in bwd_outputs for item in bwd_outputs[k]]
 
         places = [core.CPUPlace()]
         if not only_cpu and core.is_compile_gpu() and backward_op.support_gpu():
             places.append(core.GPUPlace(0))
 
-        numeric_grad = dict()
-        # get numeric gradient
-        for check_name in inputs_to_check:
-            numeric_grad[check_name] = \
-                get_numeric_gradient(forward_op, input_vars, output_name,
-                                     check_name)
+        # get numerical gradients
+        numeric_grads = [
+            get_numeric_gradient(forward_op, input_vars, output_name, name)
+            for name in inputs_to_check
+        ]
 
-        # get operator gradient according to different device
+        check_names = [grad_var_name(name) for name in inputs_to_check]
         for place in places:
-            scope = core.Scope()
-            ctx = core.DeviceContext.create(place)
-
-            # create input var and set value
-            for name, value in input_vars.iteritems():
-                if name not in in_names:
-                    raise ValueError(name + " not in op.inputs_")
-                var = scope.new_var(name).get_tensor()
-                var.set_dims(value.shape)
-                var.set(value, place)
-
-            # create output var
-            for out_name in out_names:
-                scope.new_var(out_name).get_tensor()
-
-            # infer the shape of output var and compute/set value of output var
-            forward_op.infer_shape(scope)
-            forward_op.run(scope, ctx)
-
-            # create output grad var
-            # set shape as the output var
-            # set value of this grad to ones
-            for name in out_names:
-                out_tensor = scope.find_var(name).get_tensor()
-                grad_tensor = scope.new_var(grad_var_name(name)).get_tensor()
-                grad_tensor.set_dims(out_tensor.shape())
-                data = 1.0 * numpy.ones(out_tensor.shape())
-                grad_tensor.set(data, place)
-
-            # create input grad var
-            for name in bwd_out_names:
-                scope.new_var(name).get_tensor()
-
-            # infer the shape of input gradient var and compute/set it's value
-            # with backward op
-            backward_op.infer_shape(scope)
-            backward_op.run(scope, ctx)
-
-            self.assert_is_close(numeric_grad, scope, max_relative_error,
-                                 "Gradient Check On %s" % str(place))
-
-
-if __name__ == '__main__':
-
-    class GetNumericGradientTest(unittest.TestCase):
-        def test_add_op(self):
-            add_op = Operator('add_two', X="X", Y="Y", Out="Z")
-            x = numpy.random.random((10, 1)).astype("float32")
-            y = numpy.random.random((10, 1)).astype("float32")
-
-            arr = get_numeric_gradient(add_op, {'X': x, "Y": y}, 'Z', 'X')
-            self.assertAlmostEqual(arr.mean(), 1.0, delta=1e-2)
-
-        def test_softmax_op(self):
-            def stable_softmax(x):
-                """Compute the softmax of vector x in a numerically stable way."""
-                shiftx = x - numpy.max(x)
-                exps = numpy.exp(shiftx)
-                return exps / numpy.sum(exps)
-
-            def label_softmax_grad(Y, dY):
-                dX = Y * 0.0
-                for i in range(Y.shape[0]):
-                    d = numpy.dot(Y[i, :], dY[i, :])
-                    dX[i, :] = Y[i, :] * (dY[i, :] - d)
-                return dX
-
-            softmax_op = Operator("softmax", X="X", Y="Y")
-
-            X = numpy.random.random((2, 2)).astype("float32")
-            Y = numpy.apply_along_axis(stable_softmax, 1, X)
-            dY = numpy.ones(Y.shape)
-            dX = label_softmax_grad(Y, dY)
-
-            arr = get_numeric_gradient(softmax_op, {"X": X}, 'Y', 'X')
-            numpy.testing.assert_almost_equal(arr, dX, decimal=1e-2)
-
-    unittest.main()
+            # get analytical gradients according to different device
+            analytic_grads = self.__get_gradient(forward_op, backward_op,
+                                                 input_vars, check_names, place)
+            self.__assert_is_close(numeric_grads, analytic_grads, check_names,
+                                   max_relative_error,
+                                   "Gradient Check On %s" % str(place))

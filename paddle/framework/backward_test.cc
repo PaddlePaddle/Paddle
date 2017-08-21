@@ -32,9 +32,9 @@ class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").AsNoGradient();
-    AddInput("b", "Bias of Add").AsNoGradient();
-    AddOutput("Out", "Out of Add").AsNoGradient();
+    AddInput("X", "Input X of Add").NotInGradient();
+    AddInput("b", "Bias of Add").NotInGradient();
+    AddOutput("Out", "Out of Add").NotInGradient();
     AddComment("Add Op");
   }
 };
@@ -180,8 +180,7 @@ TEST(Backward, simple_op_not_need_grad) {
   auto no_input_gop = f::Backward(*fwd, {"x", "b"});
   ASSERT_NE(no_input_gop, nullptr);
   ASSERT_TRUE(no_input_gop->IsNetOp());
-  ASSERT_EQ(0UL,
-            std::static_pointer_cast<ops::NetOp>(no_input_gop)->ops_.size());
+  ASSERT_EQ(0UL, static_cast<ops::NetOp *>(no_input_gop.get())->ops_.size());
 }
 
 TEST(Backward, net_fc_backward_normal) {
