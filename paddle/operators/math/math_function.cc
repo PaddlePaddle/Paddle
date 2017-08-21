@@ -110,6 +110,15 @@ void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
 }
 
 template <>
+void Set<typename CPUPlace, typename float>(const int n, const float alpha,
+                                            float* output,
+                                            platform::DeviceContext* context) {
+  auto* cpu_context = reinterpret_cast<platform::CPUDeviceContext*>(context);
+  framework::EigenVector::Type<T> out(output, n);
+  out.device(*(cpu_context->eigen_device())) = t.constant(T(alpha));
+}
+
+template <>
 void RandUniform<platform::CPUPlace, float>(const int n, const float min,
                                             const float max, float* output,
                                             platform::DeviceContext* context) {

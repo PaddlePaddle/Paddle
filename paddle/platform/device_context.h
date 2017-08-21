@@ -15,10 +15,9 @@ limitations under the License. */
 #include "paddle/platform/place.h"
 
 #ifndef PADDLE_ONLY_CPU
-#include <thrust/device_ptr.h>
-#include <thrust/random.h>
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
+#include "paddle/platform/dynload/curand.h"
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
@@ -80,7 +79,8 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t     cudnn_handle();
 
-  thrust::minstd_rand& CPUDeviceContext::rand_engine();
+   /*! \brief  Return curand handle in the device context. */
+  curandGenerator_t curand_generator();
 
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t      stream();

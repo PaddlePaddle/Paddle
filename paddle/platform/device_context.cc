@@ -157,12 +157,17 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() {
   return cudnn_handle_;
 }
 
-thrust::minstd_rand& CPUDeviceContext::rand_engine() {
-  if (!rand_engine_) {
-    rand_engine_.reset(new thrust::minstd_rand());
-    rand_engine_->seed(rand_seed_);
+curandGenerator_t CUDADeviceContext::curand_generator() {
+  if (!curand_generator_) {
+    SetDeviceId(place_.device);
+    PADDLE_ENFORCE(dynload::curandCreateGenerator(&curand_generator_,
+                                                  CURAND_RNG_PSEUDO_DEFAULT));
+    PADDLE_ENFORCE(
+        dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
+
+    PADDLE_ENFORCE(dynload::curandSetStream(curand_generator_, stream_));
   }
-  return *(rand_engine_.get());
+  return curand_generator_;
 }
 
 cudaStream_t CUDADeviceContext::stream() { return stream_; }

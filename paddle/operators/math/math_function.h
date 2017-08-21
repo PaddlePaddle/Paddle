@@ -54,6 +54,7 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
+#include "paddle/platform/eigen.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
@@ -76,6 +77,13 @@ void matmul(const framework::Tensor& matrix_a, bool trans_a,
             const framework::Tensor& matrix_b, bool trans_b, T alpha,
             framework::Tensor* matrix_out, T beta,
             platform::DeviceContext* context);
+
+template <typename Place, typename T>
+void Set(const int n, const T alpha, T* output,
+         platform::DeviceContext* context) {
+  framework::EigenVector::Type<T> out(output, n);
+  out.device(*(context->eigen_device())) = t.constant(T(alpha));
+}
 
 template <typename Place, typename T>
 void RandUniform(const int n, const T min, const T max, T* output,
