@@ -155,11 +155,8 @@ void ParameterServer2::setConfig(const SetConfigRequest& request,
     }
 
     for (const auto& config : request.param_configs()) {
-      if (configMap_.count(config.para_id())) {
-        SetConfigResponse response;
-        callback(response);
-        continue;
-      }
+      CHECK(!configMap_.count(config.para_id()))
+          << "Duplicated parameter name: " << config.name();
       configMap_[config.para_id()] = config;
       CHECK_EQ(config.sparse_remote_update(), isSparseServer_);
     }

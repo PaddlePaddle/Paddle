@@ -198,12 +198,9 @@ void NeuralNetwork::prefetch(const std::vector<Argument>& inArgs) {
 
   if (paramSelfInited_) {
     for (auto& para : parameters_) {
-      LOG(ERROR) << "NeuralNetwork::prefetch, isSparseRemoteUpdate()"
-                 << para->isSparseRemoteUpdate() << "name: " << para->getName();
       if (para->isSparseRemoteUpdate()) {
         auto mat = dynamic_cast<SparsePrefetchRowCpuMatrix*>(
             para->getMat(PARAMETER_VALUE).get());
-        LOG(ERROR) << "mat: " << mat;
         para->clearGradient();
         if (mat) mat->clearIndices();
       }

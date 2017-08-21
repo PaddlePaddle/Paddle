@@ -65,7 +65,6 @@ void ParameterClient2::initThreads() {
     LOG(INFO) << "parallel_thread_num dosent need to set";
   }
   syncThreadPool_.reset(new SyncThreadPool(threadNum_));
-
   startThreads();
 }
 
@@ -175,21 +174,6 @@ void ParameterClient2::sendParallel(int tid,
     CHECK_EQ(msgReader->getNumBlocks(), (size_t)response.blocks_size());
     bufs.clear();
     bufs.reserve(response.blocks_size());
-    // HACK: let it resize to max
-    real* tmpbuf = nullptr;
-    for (auto& tmpBlock : response.blocks()) {
-      auto it = parameterMap_.find(tmpBlock.para_id());
-      CHECK(it != parameterMap_.end());
-      Parameter* parameter = it->second.get();
-      if (!parameter->getBuf(recvParameterType)) {
-        auto recvMat = dynamic_cast<SparseRowCpuMatrix*>(
-            parameter->getMat(recvParameterType).get());
-        CHECK(recvMat);
-        tmpbuf =
-            recvMat->getLocalRow(tmpBlock.begin_pos() / tmpBlock.block_size());
-        CHECK(tmpbuf);
-      }
-    }
     for (auto& block : response.blocks()) {
       auto it = parameterMap_.find(block.para_id());
       CHECK(it != parameterMap_.end());
@@ -201,14 +185,8 @@ void ParameterClient2::sendParallel(int tid,
         auto recvMat = dynamic_cast<SparseRowCpuMatrix*>(
             parameter->getMat(recvParameterType).get());
         CHECK(recvMat);
-        VLOG(10) << "sendParallel response, row: "
-                 << recvMat->getLocalRow(block.begin_pos() / block.block_size())
-                 << " blocks_size " << response.blocks_size()
-                 << "recvParameterType" << recvParameterType << " block_id "
-                 << block.block_id() << " para_id " << block.para_id()
-                 << " begin_pos" << block.begin_pos() << " block_size "
-                 << block.block_size();
-        buf = recvMat->getLocalRow(block.begin_pos() / block.block_size());
+        size_t width = parameter->getConfig().dims(1);
+        buf = recvMat->getLocalRow(block.begin_pos() / width);
       }
       /// sparse_id is not useful while receiving data since sparse data
       /// storage is continuous, do commit recieved data as that of dense.
@@ -280,11 +258,17 @@ void ParameterClient2::prepareSendData(
       CHECK(sendMat != nullptr) << "sendMat is nullptr";
 
       syncThreadPool_->exec([&](int tid, size_t numThreads) {
+        std::lock_guard<std::mutex> guard(sparseAutoGrowthMutex_);
         const auto& localIndices = prefetchMat->getLocalIndices();
         /// num of sparse rows
         size_t nLocalBlocks = localIndices.size();
         uint64_t beginDim = 0;
         uint64_t endDim = 0;
+
+        // FIXME(typhoonzero): let it resize first
+        prefetchMat->getLocalRow(nLocalBlocks + 1);
+        sendMat->getLocalRow(nLocalBlocks + 1);
+
         for (size_t row = 0; row < nLocalBlocks; ++row) {
           int64_t blockId = localIndices[row];  // local row -> sparse row
           int serverId = std::abs((blockId + nameHash) % serviceNum_);
