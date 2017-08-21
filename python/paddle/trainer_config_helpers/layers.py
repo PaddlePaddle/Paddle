@@ -31,108 +31,34 @@ except ImportError:
 import copy
 
 __all__ = [
-    'full_matrix_projection',
-    'AggregateLevel',
-    'ExpandLevel',
-    'identity_projection',
-    'dotmul_projection',
-    'dotmul_operator',
-    'repeat_layer',
-    'seq_reshape_layer',
-    'table_projection',
-    'mixed_layer',
-    'data_layer',
-    'embedding_layer',
-    'fc_layer',
-    'grumemory',
-    'pooling_layer',
-    'lstmemory',
-    'last_seq',
-    'first_seq',
-    'cos_sim',
-    'hsigmoid',
-    'conv_projection',
-    'mse_cost',
-    'regression_cost',
-    'classification_cost',
-    'LayerOutput',
-    'img_conv_layer',
-    'img_pool_layer',
-    'batch_norm_layer',
-    'img_cmrnorm_layer',
-    'addto_layer',
-    'concat_layer',
-    'seq_concat_layer',
-    'lstm_step_layer',
-    'recurrent_group',
-    'memory',
-    'StaticInput',
-    'expand_layer',
-    'scaling_layer',
-    'scaling_projection',
-    'power_layer',
-    'interpolation_layer',
-    'bilinear_interp_layer',
-    'trans_layer',
-    'rotate_layer',
-    'sum_to_one_norm_layer',
-    'row_l2_norm_layer',
-    'get_output_layer',
-    'LayerType',
-    'context_projection',
-    'beam_search',
-    'maxid_layer',
-    'GeneratedInput',
-    'SubsequenceInput',
-    'gru_step_layer',
-    'gru_step_naive_layer',
-    'recurrent_layer',
-    'BaseGeneratedInput',
-    'conv_operator',
-    'conv_shift_layer',
-    'tensor_layer',
-    'selective_fc_layer',
-    'sampling_id_layer',
-    'slope_intercept_layer',
-    'trans_full_matrix_projection',
-    'linear_comb_layer',
-    'convex_comb_layer',
-    'ctc_layer',
-    'warp_ctc_layer',
-    'crf_layer',
-    'crf_decoding_layer',
-    'nce_layer',
-    'cross_entropy_with_selfnorm',
-    'cross_entropy',
-    'multi_binary_label_cross_entropy',
-    'sum_cost',
-    'rank_cost',
-    'lambda_cost',
-    'huber_cost',
-    'block_expand_layer',
-    'maxout_layer',
-    'out_prod_layer',
-    'printer_layer',
-    'print_layer',
-    'priorbox_layer',
-    'cross_channel_norm_layer',
-    'multibox_loss_layer',
-    'detection_output_layer',
-    'spp_layer',
-    'pad_layer',
-    'eos_layer',
-    'smooth_l1_cost',
-    'layer_support',
-    'multiplex_layer',
-    'row_conv_layer',
-    'dropout_layer',
-    'prelu_layer',
-    'gated_unit_layer',
-    'crop_layer',
-    'sub_nested_seq_layer',
-    'clip_layer',
-    'slice_projection',
-    'kmax_sequence_score_layer',
+    'full_matrix_projection', 'AggregateLevel', 'ExpandLevel',
+    'identity_projection', 'dotmul_projection', 'dotmul_operator',
+    'repeat_layer', 'seq_reshape_layer', 'table_projection', 'mixed_layer',
+    'data_layer', 'embedding_layer', 'fc_layer', 'grumemory', 'pooling_layer',
+    'lstmemory', 'last_seq', 'first_seq', 'cos_sim', 'hsigmoid',
+    'conv_projection', 'mse_cost', 'regression_cost', 'classification_cost',
+    'LayerOutput', 'img_conv_layer', 'img_pool_layer', 'batch_norm_layer',
+    'img_cmrnorm_layer', 'addto_layer', 'concat_layer', 'seq_concat_layer',
+    'lstm_step_layer', 'recurrent_group', 'memory', 'StaticInput',
+    'expand_layer', 'scaling_layer', 'scaling_projection', 'power_layer',
+    'interpolation_layer', 'bilinear_interp_layer', 'trans_layer',
+    'rotate_layer', 'sum_to_one_norm_layer', 'row_l2_norm_layer',
+    'get_output_layer', 'LayerType', 'context_projection', 'beam_search',
+    'maxid_layer', 'GeneratedInput', 'SubsequenceInput', 'gru_step_layer',
+    'gru_step_naive_layer', 'recurrent_layer', 'BaseGeneratedInput',
+    'conv_operator', 'conv_shift_layer', 'tensor_layer', 'selective_fc_layer',
+    'sampling_id_layer', 'slope_intercept_layer',
+    'trans_full_matrix_projection', 'linear_comb_layer', 'convex_comb_layer',
+    'ctc_layer', 'warp_ctc_layer', 'crf_layer', 'crf_decoding_layer',
+    'nce_layer', 'cross_entropy_with_selfnorm', 'cross_entropy',
+    'multi_binary_label_cross_entropy', 'sum_cost', 'rank_cost', 'lambda_cost',
+    'huber_cost', 'block_expand_layer', 'maxout_layer', 'out_prod_layer',
+    'printer_layer', 'print_layer', 'priorbox_layer',
+    'cross_channel_norm_layer', 'multibox_loss_layer', 'detection_output_layer',
+    'spp_layer', 'pad_layer', 'eos_layer', 'smooth_l1_cost', 'layer_support',
+    'multiplex_layer', 'row_conv_layer', 'dropout_layer', 'prelu_layer',
+    'gated_unit_layer', 'crop_layer', 'sub_nested_seq_layer', 'clip_layer',
+    'slice_projection', 'kmax_sequence_score_layer', 'img_conv3d_layer'
 ]
 
 
@@ -213,6 +139,9 @@ class LayerType(object):
     CRF_LAYER = 'crf'
     CRF_DECODING_LAYER = 'crf_decoding'
     NCE_LAYER = 'nce'
+
+    CONV3D_LAYER = 'conv3d'
+    DECONV3D_LAYER = 'deconv3d'
 
     RANK_COST = 'rank-cost'
     LAMBDA_COST = 'lambda_cost'
@@ -878,7 +807,8 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, height=None, width=None, layer_attr=None):
+def data_layer(name, size, height=None, width=None, depth=None,
+               layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -907,6 +837,7 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         size=size,
         height=height,
         width=width,
+        depth=depth,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     return LayerOutput(name, LayerType.DATA, size=size)
@@ -6210,3 +6141,182 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 
     return LayerOutput(
         name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)
+
+
+@wrap_name_default("conv3d")
+@wrap_param_attr_default()
+@wrap_bias_attr_default()
+@wrap_act_default(act=ReluActivation())
+@layer_support(DROPOUT)
+def img_conv3d_layer(input,
+                     filter_size,
+                     num_filters,
+                     name=None,
+                     num_channels=None,
+                     act=None,
+                     groups=1,
+                     stride=1,
+                     padding=0,
+                     bias_attr=None,
+                     param_attr=None,
+                     shared_biases=True,
+                     layer_attr=None,
+                     filter_size_y=None,
+                     stride_y=None,
+                     padding_y=None,
+                     filter_size_z=None,
+                     stride_z=None,
+                     padding_z=None,
+                     trans=False,
+                     layer_type=None):
+    """
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        conv = img_conv3d_layer(input=data, filter_size=1, filter_size_y=1,
+                              num_channels=8,
+                              num_filters=16, stride=1,
+                              bias_attr=False,
+                              act=ReluActivation())
+
+    :param name: Layer name.
+    :type name: basestring
+    :param input: Layer Input.
+    :type input: LayerOutput
+    :param filter_size: The x dimension of a filter kernel. Or input a tuple for
+                        two image dimension.
+    :type filter_size: int|tuple|list
+    :param filter_size_y: The y dimension of a filter kernel. Since PaddlePaddle
+                        currently supports rectangular filters, the filter's
+                        shape will be (filter_size, filter_size_y).
+    :type filter_size_y: int|None
+    :param num_filters: Each filter group's number of filter
+    :param act: Activation type. Default is tanh
+    :type act: BaseActivation
+    :param groups: Group size of filters.
+    :type groups: int
+    :param stride: The x dimension of the stride. Or input a tuple for two image
+                   dimension.
+    :type stride: int|tuple|list
+    :param stride_y: The y dimension of the stride.
+    :type stride_y: int
+    :param padding: The x dimension of the padding. Or input a tuple for two
+                    image dimension
+    :type padding: int|tuple|list
+    :param padding_y: The y dimension of the padding.
+    :type padding_y: int
+    :param bias_attr: Convolution bias attribute. None means default bias.
+                      False means no bias.
+    :type bias_attr: ParameterAttribute|False
+    :param num_channels: number of input channels. If None will be set
+                        automatically from previous output.
+    :type num_channels: int
+    :param param_attr: Convolution param attribute. None means default attribute
+    :type param_attr: ParameterAttribute
+    :param shared_biases: Is biases will be shared between filters or not.
+    :type shared_biases: bool
+    :param layer_attr: Layer Extra Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :type trans: bool
+    :param layer_type: specify the layer_type, default is None. If trans=True,
+                       layer_type has to be "exconvt" or "cudnn_convt",
+                       otherwise layer_type has to be either "exconv" or
+                       "cudnn_conv"
+    :type layer_type: String
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if filter_size_y is None:
+        if isinstance(filter_size, collections.Sequence):
+            assert len(filter_size) == 2
+            filter_size, filter_size_y = filter_size
+        else:
+            filter_size_y = filter_size
+
+    if filter_size_z is None:
+        if isinstance(filter_size, collections.Sequence):
+            assert len(filter_size) == 2
+            filter_size, filter_size_z = filter_size
+        else:
+            filter_size_z = filter_size
+
+    if stride_y is None:
+        if isinstance(stride, collections.Sequence):
+            assert len(stride) == 2
+            stride, stride_y = stride
+        else:
+            stride_y = stride
+
+    if stride_z is None:
+        if isinstance(stride, collections.Sequence):
+            assert len(stride) == 2
+            stride, stride_z = stride
+        else:
+            stride_z = stride
+
+    if padding_y is None:
+        if isinstance(padding, collections.Sequence):
+            assert len(padding) == 2
+            padding, padding_y = padding
+        else:
+            padding_y = padding
+
+    if padding_z is None:
+        if isinstance(padding, collections.Sequence):
+            assert len(padding) == 2
+            padding, padding_z = padding
+        else:
+            padding_z = padding
+
+    if param_attr.attr.get('initial_smart'):
+        # special initial for conv layers.
+        init_w = (2.0 / (filter_size**2 * num_channels))**0.5
+        param_attr.attr["initial_mean"] = 0.0
+        param_attr.attr["initial_std"] = init_w
+        param_attr.attr["initial_strategy"] = 0
+        param_attr.attr["initial_smart"] = False
+
+    if layer_type:
+        if trans:
+            assert layer_type in ["deconv3d"]
+        lt = layer_type
+    else:
+        lt = LayerType.DECONV3D_LAYER if trans else LayerType.CONV3D_LAYER
+
+    l = Layer(
+        name=name,
+        inputs=Input(
+            input.name,
+            conv=Conv3D(
+                filter_size=filter_size,
+                padding=padding,
+                stride=stride,
+                channels=num_channels,
+                groups=groups,
+                filter_size_y=filter_size_y,
+                padding_y=padding_y,
+                stride_y=stride_y,
+                filter_size_z=filter_size_z,
+                padding_z=padding_z,
+                stride_z=stride_z),
+            **param_attr.attr),
+        active_type=act.name,
+        num_filters=num_filters,
+        bias=ParamAttr.to_bias(bias_attr),
+        shared_biases=shared_biases,
+        type=lt,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        lt,
+        parents=[input],
+        activation=act,
+        num_filters=num_filters,
+        size=l.config.size)

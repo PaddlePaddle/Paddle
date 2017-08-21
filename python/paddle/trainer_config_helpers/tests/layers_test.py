@@ -16,4 +16,6 @@ from paddle.trainer.config_parser import parse_config_and_serialize
 
 if __name__ == '__main__':
     parse_config_and_serialize(
-        'trainer_config_helpers/tests/layers_test_config.py', '')
+        'trainer_config_helpers/tests/configs/conv3d_deconv3d_test_config.py',
+        '')
+# layers_test_config.py
