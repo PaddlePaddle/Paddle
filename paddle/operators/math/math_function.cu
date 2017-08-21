@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/device_ptr.h>
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/random.h>
+#include <thrust/transform.h>
 #include "paddle/operators/math/math_function.h"
 
 namespace paddle {
@@ -120,6 +124,38 @@ void matmul<platform::GPUPlace, double>(const framework::Tensor& matrix_a,
   gemm<platform::GPUPlace, double>(
       transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>(), context);
+}
+
+template <>
+void RandUniform<platform::GPUPlace, float>(const int n, const float min,
+                                            const float max, float* output,
+                                            platform::DeviceContext* context) {
+  auto* cuda_context = reinterpret_cast<platform::CUDADeviceContext*>(context);
+  thrust::uniform_real_distribution<float> distribution(min, max);
+  thrust::minstd_rand engine = cuda_context->rand_enigne();
+  engine->discard(n);
+
+  thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+
+  thrust::transform(thrust::cuda::par.on(cuda_context->stream()),
+                    index_sequence_begin, index_sequence_begin + n,
+                    thrust::device_ptr<float>(output), distribution(engine));
+}
+
+template <>
+void RandGaussian<platform::GPUPlace, float>(const int n, const float mean,
+                                             const float std, float* output,
+                                             platform::DeviceContext* context) {
+  auto* cuda_context = reinterpret_cast<platform::CUDADeviceContext*>(context);
+  thrust::normal_distribution<float> distribution(mean, std);
+  thrust::minstd_rand engine = cuda_context->rand_enigne();
+  engine->discard(n);
+
+  thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+
+  thrust::transform(thrust::cuda::par.on(cuda_context->stream()),
+                    index_sequence_begin, index_sequence_begin + n,
+                    thrust::device_ptr<float>(output), distribution(engine));
 }
 
 }  // namespace math

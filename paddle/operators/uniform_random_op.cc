@@ -12,38 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <random>
-#include <type_traits>
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/uniform_random_op.h"
 
 namespace paddle {
 namespace operators {
-
-// It seems that Eigen::Tensor::random in GPU will SEGFAULT.
-// Use std::random and thrust::random(thrust is a std library in CUDA) to
-// implement uniform random.
-template <typename T>
-class CPUUniformRandomKernel : public framework::OpKernel {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
-    T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed =
-        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
-    std::uniform_real_distribution<T> dist(
-        static_cast<T>(context.op_.GetAttr<float>("min")),
-        static_cast<T>(context.op_.GetAttr<float>("max")));
-    for (ssize_t i = 0; i < framework::product(tensor->dims()); ++i) {
-      data[i] = dist(engine);
-    }
-  }
-};
 
 class UniformRandomOp : public framework::OperatorWithKernel {
  public:
@@ -72,10 +44,6 @@ Used to initialize tensor with uniform random generator.
     AddAttr<std::vector<int>>("dims", "the dimension of random tensor");
     AddAttr<float>("min", "Minimum value of uniform random").SetDefault(-1.0f);
     AddAttr<float>("max", "Maximun value of uniform random").SetDefault(1.0f);
-    AddAttr<int>("seed",
-                 "Random seed of uniform random. "
-                 "0 means generate a seed by system")
-        .SetDefault(0);
   }
 };
 }  // namespace operators
@@ -83,5 +51,6 @@ Used to initialize tensor with uniform random generator.
 
 REGISTER_OP_WITHOUT_GRADIENT(uniform_random, paddle::operators::UniformRandomOp,
                              paddle::operators::UniformRandomOpMaker);
-REGISTER_OP_CPU_KERNEL(uniform_random,
-                       paddle::operators::CPUUniformRandomKernel<float>);
+REGISTER_OP_CPU_KERNEL(
+    uniform_random,
+    paddle::operators::UniformRandomKernel<paddle::platform::CPUPlace, float>);

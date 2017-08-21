@@ -25,8 +25,17 @@ CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
+CPUDeviceContext::CPUDeviceContext(CPUPlace place, int rand_seed) {
   eigen_device_.reset(new Eigen::DefaultDevice());
+  rand_seed_ = rand_seed;
+}
+
+std::minstd_rand& CPUDeviceContext::rand_engine() {
+  if (!rand_engine_) {
+    rand_engine_.reset(new std::minstd_rand());
+    rand_engine_->seed(rand_seed_);
+  }
+  return *(rand_engine_.get());
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
@@ -95,7 +104,8 @@ Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
   return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
 }
 
-CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
+CUDADeviceContext::CUDADeviceContext(GPUPlace place, uint64_t seed)
+    : place_(place), seed_(seed) {
   SetDeviceId(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
@@ -114,9 +124,6 @@ CUDADeviceContext::~CUDADeviceContext() {
     PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
   }
 
-  if (curand_generator_) {
-    PADDLE_ENFORCE(dynload::curandDestroyGenerator(curand_generator_));
-  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -150,20 +157,15 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() {
   return cudnn_handle_;
 }
 
-cudaStream_t CUDADeviceContext::stream() { return stream_; }
-
-curandGenerator_t CUDADeviceContext::curand_generator() {
-  if (!curand_generator_) {
-    SetDeviceId(place_.device);
-    PADDLE_ENFORCE(dynload::curandCreateGenerator(&curand_generator_,
-                                                  CURAND_RNG_PSEUDO_DEFAULT));
-    PADDLE_ENFORCE(
-        dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
-
-    PADDLE_ENFORCE(dynload::curandSetStream(curand_generator_, stream_));
+thrust::minstd_rand& CPUDeviceContext::rand_engine() {
+  if (!rand_engine_) {
+    rand_engine_.reset(new thrust::minstd_rand());
+    rand_engine_->seed(rand_seed_);
   }
-  return curand_generator_;
+  return *(rand_engine_.get());
 }
+
+cudaStream_t CUDADeviceContext::stream() { return stream_; }
 
 #endif  // PADDLE_ONLY_CPU
 

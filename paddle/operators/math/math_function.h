@@ -77,6 +77,14 @@ void matmul(const framework::Tensor& matrix_a, bool trans_a,
             framework::Tensor* matrix_out, T beta,
             platform::DeviceContext* context);
 
+template <typename Place, typename T>
+void RandUniform(const int n, const T min, const T max, T* output,
+                 platform::DeviceContext* context);
+
+template <typename Place, typename T>
+void RandGaussian(const int n, const T mean, const T std, T* output,
+                  platform::DeviceContext* context);
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
