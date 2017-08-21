@@ -174,6 +174,202 @@ extern void hl_avgpool_backward(const int frameCnt,
                                 const int outStride);
 
 /**
+ * @brief   Maximum pool forward.
+ *
+ * @param[in]   frameCnt    batch size of input image.
+ * @param[in]   inputData   input data.
+ * @param[in]   channels    number of channel.
+ * @param[in]   depth      image depth.
+ * @param[in]   height      image height.
+ * @param[in]   width       image width.
+ * @param[in]   pooledD     output image depth.
+ * @param[in]   pooledH     output image height.
+ * @param[in]   pooledW     output image width.
+ * @param[in]   sizeZ       depth of pooling window.
+ * @param[in]   sizeY       height of pooling window.
+ * @param[in]   sizeX       width of pooling window.
+ * @param[in]   strideD     pooling stride depth.
+ * @param[in]   strideH     pooling stride height.
+ * @param[in]   strideW     pooling stride width.
+ * @param[in]   paddingD    padding depth.
+ * @param[in]   paddingH    padding height.
+ * @param[in]   paddingW    padding width.
+ * @param[out]  tgtData     output data.
+ * @param[in]   tgtStride   stride between output data samples.
+ *
+ */
+extern void hl_maxpool3D_forward(const int frameCnt,
+                                 const real* inputData,
+                                 const int channels,
+                                 const int depth,
+                                 const int height,
+                                 const int width,
+                                 const int pooledD,
+                                 const int pooledH,
+                                 const int pooledW,
+                                 const int sizeZ,
+                                 const int sizeY,
+                                 const int sizeX,
+                                 const int strideD,
+                                 const int strideH,
+                                 const int strideW,
+                                 const int paddingD,
+                                 const int paddingH,
+                                 const int paddingW,
+                                 real* tgtData,
+                                 const int tgtStride);
+
+/**
+ * @brief   Maximum pool backward.
+ *
+ * @param[in]   frameCnt    batch size of input image.
+ * @param[in]   inputData   input data.
+ * @param[out]  outData     output data.
+ * @param[out]  outGrad     output grad data.
+ * @param[in]   channels    number of channel.
+ * @param[in]   depth       image depth.
+ * @param[in]   height      image height.
+ * @param[in]   width       image width.
+ * @param[in]   pooledD     output image depth.
+ * @param[in]   pooledH     output image height.
+ * @param[in]   pooledW     output image width.
+ * @param[in]   sizeZ       depth of pooling window.
+ * @param[in]   sizeY       height of pooling window.
+ * @param[in]   sizeX       width of pooling window.
+ * @param[in]   strideD     pooling stride depth.
+ * @param[in]   strideH     pooling stride height.
+ * @param[in]   strideW     pooling stride width.
+ * @param[in]   scaleA      scale.
+ * @param[in]   scaleB      scale.
+ * @param[in]   paddingD    padding depth.
+ * @param[in]   paddingH    padding height.
+ * @param[in]   paddingW    padding width.
+ * @param[out]  targetGrad  output grad.
+ * @param[in]   outStride   stride between output data samples.
+ *
+ */
+extern void hl_maxpool3D_backward(const int frameCnt,
+                                  const real* inputData,
+                                  const real* outData,
+                                  const real* outGrad,
+                                  const int channels,
+                                  const int depth,
+                                  const int height,
+                                  const int width,
+                                  const int pooledD,
+                                  const int pooledH,
+                                  const int pooledW,
+                                  const int sizeZ,
+                                  const int sizeY,
+                                  const int sizeX,
+                                  const int strideD,
+                                  const int strideH,
+                                  const int strideW,
+                                  const int paddingD,
+                                  const int paddingH,
+                                  const int paddingW,
+                                  real scaleA,
+                                  real scaleB,
+                                  real* targetGrad,
+                                  const int outStride);
+
+/**
+ * @brief   Averge pool forward.
+ *
+ * @param[in]   frameCnt    batch size of input image.
+ * @param[in]   inputData   input data.
+ * @param[in]   channels    number of channel.
+ * @param[in]   depth       image depth.
+ * @param[in]   height      image height.
+ * @param[in]   width       image width.
+ * @param[in]   pooledD     output image depth.
+ * @param[in]   pooledH     output image height.
+ * @param[in]   pooledW     output image width.
+ * @param[in]   sizeZ       depth of pooling window.
+ * @param[in]   sizeY       height of pooling window.
+ * @param[in]   sizeX       width of pooling window.
+ * @param[in]   strideD     pooling stride depth.
+ * @param[in]   strideH     pooling stride height.
+ * @param[in]   strideW     pooling stride width.
+ * @param[in]   paddingD    padding depth.
+ * @param[in]   paddingH    padding height.
+ * @param[in]   paddingW    padding width.
+ * @param[out]  tgtData     output data.
+ * @param[in]   tgtStride   stride between output data samples.
+ *
+ */
+extern void hl_avgpool3D_forward(const int frameCnt,
+                                 const real* inputData,
+                                 const int channels,
+                                 const int depth,
+                                 const int height,
+                                 const int width,
+                                 const int pooledD,
+                                 const int pooledH,
+                                 const int pooledW,
+                                 const int sizeZ,
+                                 const int sizeY,
+                                 const int sizeX,
+                                 const int strideD,
+                                 const int strideH,
+                                 const int strideW,
+                                 const int paddingD,
+                                 const int paddingH,
+                                 const int paddingW,
+                                 real* tgtData,
+                                 const int tgtStride);
+
+/**
+ * @brief   Maximum pool backward.
+ *
+ * @param[in]   frameCnt    batch size of input image.
+ * @param[in]   outGrad     output grad data.
+ * @param[in]   channels    number of channel.
+ * @param[in]   depth      image depth.
+ * @param[in]   height      image height.
+ * @param[in]   width       image width.
+ * @param[in]   pooledD     output image depth.
+ * @param[in]   pooledH     output image height.
+ * @param[in]   pooledW     output image width.
+ * @param[in]   sizeZ       depth of pooling window.
+ * @param[in]   sizeY       height of pooling window.
+ * @param[in]   sizeX       width of pooling window.
+ * @param[in]   strideD     pooling stride depth.
+ * @param[in]   strideH     pooling stride height.
+ * @param[in]   strideW     pooling stride width.
+ * @param[in]   paddingD    padding depth.
+ * @param[in]   paddingH    padding height.
+ * @param[in]   paddingW    padding width.
+ * @param[in]   scaleA      scale.
+ * @param[in]   scaleB      scale.
+ * @param[out]  backGrad    output grad.
+ * @param[in]   outStride   stride between output data samples.
+ *
+ */
+extern void hl_avgpool3D_backward(const int frameCnt,
+                                  const real* outGrad,
+                                  const int channels,
+                                  const int depth,
+                                  const int height,
+                                  const int width,
+                                  const int pooledD,
+                                  const int pooledH,
+                                  const int pooledW,
+                                  const int sizeZ,
+                                  const int sizeY,
+                                  const int sizeX,
+                                  const int strideD,
+                                  const int strideH,
+                                  const int strideW,
+                                  int paddingD,
+                                  int paddingH,
+                                  int paddingW,
+                                  real scaleA,
+                                  real scaleB,
+                                  real* backGrad,
+                                  const int outStride);
+
+/**
  * @brief   Bilinear interpolation forward.
  *
  * @param[in]   inData      input value.
@@ -275,4 +471,4 @@ extern void hl_maxout_backward(real* inGrad,
                                size_t featLen,
                                size_t groups);
 
-#endif /* HL_CNN_H_ */
+#endif  // HL_CNN_H_

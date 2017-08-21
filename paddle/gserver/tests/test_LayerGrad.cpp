@@ -1206,6 +1206,75 @@ TEST(Layer, PoolLayer) {
 #endif
 }
 
+void setPool3DConfig(TestConfig* config,
+                     PoolConfig* pool,
+                     const string& poolType) {
+  // filter size
+  const int NUM_FILTERS = 16;
+  const int FILTER_SIZE = 3;
+  const int FILTER_SIZE_Y = 3;
+  const int FILTER_SIZE_Z = 3;
+  const int CHANNELS = 16;
+
+  (*config).biasSize = 0;
+  (*config).layerConfig.set_type("pool3d");
+  (*config).layerConfig.set_num_filters(NUM_FILTERS);
+
+  int kw = FILTER_SIZE, kh = FILTER_SIZE_Y, kd = FILTER_SIZE_Z;
+  int pw = 0, ph = 0, pd = 0;
+  int sw = 2, sh = 2, sd = 2;
+
+  pool->set_pool_type(poolType);
+  pool->set_pool_type("avg");
+  pool->set_channels(CHANNELS);
+  pool->set_size_x(kw);
+  pool->set_size_y(kh);
+  pool->set_size_z(kd);
+  pool->set_padding(0);
+  pool->set_padding_y(0);
+  pool->set_padding_z(0);
+  pool->set_stride(sw);
+  pool->set_stride_y(sh);
+  pool->set_stride_z(sd);
+  pool->set_start(0);
+  int ow = outputSize(pool->img_size(), kw, pw, sw, /* caffeMode */ false);
+  int oh = outputSize(pool->img_size_y(), kh, ph, sh, /* caffeMode */ false);
+  int od = outputSize(pool->img_size_z(), kd, pd, sd, /* caffeMode */ false);
+  pool->set_output_x(ow);
+  pool->set_output_y(oh);
+  pool->set_output_z(od);
+}
+
+void testPool3DLayer(const string& poolType, bool trans, bool useGpu) {
+  TestConfig config;
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 11664, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  PoolConfig* pool = input->mutable_pool_conf();
+
+  const int IMAGE_SIZE = 9;
+  const int IMAGE_SIZE_Y = 9;
+  const int IMAGE_SIZE_Z = 9;
+
+  pool->set_img_size(IMAGE_SIZE);
+  pool->set_img_size_y(IMAGE_SIZE_Y);
+  pool->set_img_size_z(IMAGE_SIZE_Z);
+
+  setPool3DConfig(&config, pool, poolType);
+  config.layerConfig.set_size(pool->output_x() * pool->output_y() *
+                              pool->channels());
+
+  testLayerGrad(config, "pool3d", 100, trans, useGpu);
+}
+
+TEST(Layer, Pool3DLayer) {
+  testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ false);
+  testPool3DLayer("max", /* trans= */ false, /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ true);
+  testPool3DLayer("max", /* trans= */ false, /* useGpu= */ true);
+#endif
+}
+
 void testSppLayer(const string& poolType,
                   const int pyramidHeight,
                   bool trans,

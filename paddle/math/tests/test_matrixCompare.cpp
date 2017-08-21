@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "TensorCheck.h"
+#include "paddle/math/MathUtils.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/testing/TestUtil.h"
@@ -1199,6 +1200,209 @@ TEST(Matrix, warpCTC) {
     for (auto inputDim : {1, 3, 31}) {
       VLOG(3) << " batchSize=" << batchSize << " inputDim=" << inputDim;
       testBatch2seqPadding(batchSize, inputDim);
+    }
+  }
+}
+
+/////
+void testMatrixPool3D(int depth, int height, int width) {
+  int channel = 3;
+  int filterX = 3, filterY = 4, filterZ = 5;
+  int strideX = 2, strideY = 2, strideZ = 2;
+  int padX = 1, padY = 1, padZ = 1;
+
+  MatrixPtr cpuImage =
+      std::make_shared<CpuMatrix>(1, channel * depth * height * width);
+  MatrixPtr gpuImage =
+      std::make_shared<GpuMatrix>(1, channel * depth * height * width);
+
+  int outD = outputSize(depth, filterZ, padZ, strideZ, true);
+  int outH = outputSize(height, filterY, padZ, strideY, true);
+  int outW = outputSize(width, filterX, padZ, strideX, true);
+
+  int colBufWidth = outD * outH * outW;
+  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(1, channel * colBufWidth);
+  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(1, channel * colBufWidth);
+
+  cpuImage->randomizeUniform();
+  gpuImage->copyFrom(*cpuImage);
+  // std::cout << "test maxPool3DForward...\n";
+  cpuOutput->maxPool3DForward(*cpuImage,
+                              depth,
+                              height,
+                              width,
+                              channel,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              padZ,
+                              padY,
+                              padX);
+  gpuOutput->maxPool3DForward(*gpuImage,
+                              depth,
+                              height,
+                              width,
+                              channel,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              padZ,
+                              padY,
+                              padX);
+  TensorCheckErr(*cpuOutput, *gpuOutput);
+
+  cpuImage->randomizeUniform();
+  gpuImage->copyFrom(*cpuImage);
+  // std::cout << "test avgPool3DForward...\n";
+  cpuOutput->avgPool3DForward(*cpuImage,
+                              depth,
+                              height,
+                              width,
+                              channel,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              padZ,
+                              padY,
+                              padX);
+
+  gpuOutput->avgPool3DForward(*gpuImage,
+                              depth,
+                              height,
+                              width,
+                              channel,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              padZ,
+                              padY,
+                              padX);
+  TensorCheckErr(*cpuOutput, *gpuOutput);
+  cpuImage->randomizeUniform();
+  gpuImage->copyFrom(*cpuImage);
+  cpuOutput->randomizeUniform();
+  gpuOutput->copyFrom(*cpuOutput);
+  // std::cout << "test avgPool3DBackward...\n";
+  cpuImage->avgPool3DBackward(*cpuOutput,
+                              depth,
+                              height,
+                              width,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              1,
+                              1,
+                              padZ,
+                              padY,
+                              padX);
+
+  gpuImage->avgPool3DBackward(*gpuOutput,
+                              depth,
+                              height,
+                              width,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              1,
+                              1,
+                              padZ,
+                              padY,
+                              padX);
+  TensorCheckErr(*cpuImage, *gpuImage);
+
+  cpuImage->randomizeUniform();
+  gpuImage->copyFrom(*cpuImage);
+  cpuOutput->randomizeUniform();
+  gpuOutput->copyFrom(*cpuOutput);
+  // std::cout << "test maxPool3DBackward...\n";
+  cpuImage->maxPool3DBackward(*cpuImage,
+                              depth,
+                              height,
+                              width,
+                              *cpuOutput,
+                              *cpuOutput,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              1,
+                              1,
+                              padZ,
+                              padY,
+                              padX);
+
+  gpuImage->maxPool3DBackward(*gpuImage,
+                              depth,
+                              height,
+                              width,
+                              *gpuOutput,
+                              *gpuOutput,
+                              filterZ,
+                              filterY,
+                              filterX,
+                              strideZ,
+                              strideY,
+                              strideX,
+                              outD,
+                              outH,
+                              outW,
+                              1,
+                              1,
+                              padZ,
+                              padY,
+                              padX);
+  TensorCheckErr(*cpuImage, *gpuImage);
+}
+
+TEST(Matrix, Pool3D) {
+  for (auto depth : {9, 16, 64, 128}) {
+    for (auto height : {9, 11, 128, 256}) {
+      for (auto width : {9, 32, 128}) {
+        VLOG(3) << "depth=" << depth << " height=" << height
+                << " width=" << width;
+        testMatrixPool3D(depth, height, width);
+      }
     }
   }
 }
