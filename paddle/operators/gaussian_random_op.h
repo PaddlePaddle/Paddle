@@ -34,5 +34,5 @@ class GaussianRandomKernel : public framework::OpKernel {
     math::RandGaussian<Place, T>(n, mean, std, data, device_context);
   }
 };
-}
-}
+}  // namespace operators
+}  // namespace paddle

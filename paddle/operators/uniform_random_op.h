@@ -34,5 +34,5 @@ class UniformRandomKernel : public framework::OpKernel {
     math::RandUniform<Place, T>(n, min, max, data, device_context);
   }
 };
-}
-}
+}  // namespace operators
+}  // namespace paddle
