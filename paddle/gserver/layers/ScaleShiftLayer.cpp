@@ -17,8 +17,9 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer does scaling and shifting to the input by appling a slope and
- * an intercept which are trainable to the input element-wise.
+ * A layer applies a slope and an intercept to the input element-wise for
+ * scaling and shifting. Noting that this layer is trainable which differs
+ * from the SlopeInterceptLayer.
  *
  * \f[
  *    y = wx + b

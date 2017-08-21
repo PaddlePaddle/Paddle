@@ -2008,8 +2008,8 @@ TEST(Layer, RowL2NormLayer) {
 }
 
 TEST(Layer, ScaleShiftLayer) {
-  const size_t batchSize = 128;
-  const size_t size = 512;
+  const size_t batchSize = 16;
+  const size_t size = 32;
   TestConfig config;
   config.layerConfig.set_type("scale_shift");
   config.layerConfig.set_size(size);
