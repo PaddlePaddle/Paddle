@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/math/MKLDNNMatrix.h"
 
 DECLARE_bool(use_mkldnn);
-DECLARE_bool(use_mkldnn_wgt);
 
 namespace paddle {
 
@@ -54,13 +53,14 @@ protected:
   std::vector<mkldnn::primitive> pipelineBwd_;
 
   // TODO(TJ): change below memory as MKLDNNMatrixPtr type
-  std::shared_ptr<mkldnn::memory> inVal_;
+  // MKLDNNMatrixPtr ;
+  MKLDNNMatrixPtr inVal_;
   std::shared_ptr<mkldnn::memory> inGrad_;
-  std::shared_ptr<mkldnn::memory> outVal_;
+  MKLDNNMatrixPtr outVal_;
   std::shared_ptr<mkldnn::memory> outGrad_;
-  std::shared_ptr<mkldnn::memory> wgtVal_;
+  MKLDNNMatrixPtr wgtVal_;
   std::shared_ptr<mkldnn::memory> wgtGrad_;
-  std::shared_ptr<mkldnn::memory> biasVal_;
+  MKLDNNMatrixPtr biasVal_;
   std::shared_ptr<mkldnn::memory> biasGrad_;
 
 public:
@@ -94,7 +94,7 @@ public:
     stream_.reset(new MKLDNNStream());
     engine_ = CPUEngine::Instance().getEngine();
 
-    // TODO(TJ): deivecId
+    setDeviceID(MKLDNN_DEVICE);
     return true;
   }
 
@@ -127,6 +127,19 @@ public:
       mkldnn::memory::data_type type = mkldnn::memory::data_type::f32) {
     // TODO(TJ): isFmtSuppoted(fmt)
     return mkldnn::memory::desc(dims, type, fmt);
+  }
+
+  void resetMKLDNNOutput(size_t height, size_t width) {
+    Layer::resetOutput(height, width);
+    // get valu and grad, use mkldnn matrix instaed
+    // output_.value;
+  }
+
+protected:
+  void setDeviceID(int id) {
+    deviceId_ = id;
+    output_.deviceId = id;
+    // TODO: handle mkldnn device or add mkldnn device to other
   }
 };
 

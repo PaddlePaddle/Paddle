@@ -14,9 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-//#include "Matrix.h"
-#include "Vector.h"
-
+#include <vector>
+#include "Matrix.h"
 #include "mkldnn.hpp"
 #include "paddle/parameter/Parameter.h"
 
@@ -32,14 +31,42 @@ typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
  * @brief MKLDNN Matrix.
  *
  */
-class MKLDNNMatrix : public CpuVector {
+class MKLDNNMatrix : public CpuMatrix, public mkldnn::memory {
 public:
-  explicit MKLDNNMatrix(size_t size, int fmt) : CpuVector(size), fmt_(fmt) {}
+  MKLDNNMatrix(real* data,
+               size_t height,
+               size_t width,
+               mkldnn::memory::primitive_desc pd)
+      : CpuMatrix(data, height, width, false), mkldnn::memory(pd, data) {}
+
+  MKLDNNMatrix(size_t height, size_t width, mkldnn::memory::primitive_desc pd)
+      : CpuMatrix(height, width, false), mkldnn::memory(pd) {
+    set_data_handle(CpuMatrix::getData());
+  }
+
+  static MKLDNNMatrixPtr create(
+      const MatrixPtr& m,
+      mkldnn::memory::dims dims,
+      mkldnn::memory::format fmt,
+      mkldnn::engine& eg,
+      mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
+
+  /**
+   * Get primitive descriptor
+   */
+  mkldnn::memory::primitive_desc getPD() { return this->get_primitive_desc(); }
+
+  /**
+   * Get memory descriptor
+   */
+  mkldnn::memory::desc getMD() { return getPD().desc(); }
+
+  /**
+   * Get format
+   */
+  int getFormat() { return getMD().data.format; }
 
   ~MKLDNNMatrix() {}
-
-protected:
-  int fmt_;
 };
 
 }  // namespace paddle

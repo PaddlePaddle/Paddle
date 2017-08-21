@@ -59,7 +59,12 @@ protected:
   LayerConfig config_;
   /// whether to use GPU
   bool useGpu_;
-  /// Device Id. CPU is -1, and GPU is 0, 1, 2 ...
+  /// Paddle device ID, MKLDNN is -2, CPU is -1
+  enum PADDLE_DEVICE_ID {
+    MKLDNN_DEVICE = -2,
+    CPU_DEVICE = -1,
+  };
+  /// Device Id. MKLDNN is -2, CPU is -1, and GPU is 0, 1, 2 ...
   int deviceId_;
   /// Input layers
   std::vector<LayerPtr> inputLayers_;
@@ -321,6 +326,19 @@ public:
     if (deviceId == getDeviceId()) {
       return output_;
     } else {
+      bool CPU2MKLDNN =
+          getDeviceId() == CPU_DEVICE && deviceId == MKLDNN_DEVICE;
+      bool MKLDNN2CPU =
+          getDeviceId() == MKLDNN_DEVICE && deviceId == CPU_DEVICE;
+      if (CPU2MKLDNN) {
+        // TODO: do something
+        return output_;
+      } else if (MKLDNN2CPU) {
+        // TODO: do something
+        return output_;
+      }
+
+      // TODO: handle mkldnn device or add mkldnn device to other
       for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
         if (outputOtherDevice_[i].deviceId == deviceId) {
           return outputOtherDevice_[i];

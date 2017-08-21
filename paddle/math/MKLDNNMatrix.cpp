@@ -16,4 +16,31 @@ limitations under the License. */
 
 using namespace mkldnn;  // NOLINT
 
-namespace paddle {}  // namespace paddle
+namespace paddle {
+
+MKLDNNMatrixPtr MKLDNNMatrix::create(const MatrixPtr& m,
+                                     memory::dims dims,
+                                     memory::format fmt,
+                                     engine& eg,
+                                     mkldnn::memory::data_type dtype) {
+  CpuMatrixPtr cpuM = std::dynamic_pointer_cast<CpuMatrix>(m);
+  CHECK(cpuM) << "Only support create from CPU matrix yet";
+
+  size_t ndims = dims.size();
+  CHECK(ndims > 0) << "Input dims should not be empty";
+  size_t cnt = 1;
+  for (size_t i = 0; i < ndims; ++i) {
+    cnt *= dims[i];
+  }
+  CHECK_EQ(cnt, m->getElementCnt()) << "Count size does not match";
+
+  size_t width = m->getWidth();
+  size_t height = m->getHeight();
+  real* data = m->getData();
+
+  memory::desc md = memory::desc(dims, dtype, fmt);
+  memory::primitive_desc pd = memory::primitive_desc(md, eg);
+  return std::make_shared<MKLDNNMatrix>(data, height, width, pd);
+}
+
+}  // namespace paddle
