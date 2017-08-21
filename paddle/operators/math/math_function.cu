@@ -127,12 +127,12 @@ void matmul<platform::GPUPlace, double>(const framework::Tensor& matrix_a,
 }
 
 template <>
-void Set<typename GPUPlace, typename float>(const int n, const float alpha,
-                                            float* output,
-                                            platform::DeviceContext* context) {
+void Set<platform::GPUPlace, float>(const int n, const float alpha,
+                                    float* output,
+                                    platform::DeviceContext* context) {
   auto* cuda_context = reinterpret_cast<platform::CUDADeviceContext*>(context);
-  framework::EigenVector::Type<T> out(output, n);
-  out.device(*(cuda_context->eigen_device())) = t.constant(T(alpha));
+  framework::EigenVector<float>::Type out(output, n);
+  out.device(*(cuda_context->eigen_device())) = out.constant(float(alpha));
 }
 
 template <typename T>
@@ -159,12 +159,13 @@ void RandUniform<platform::GPUPlace, float>(const int n, const float min,
 
 template <typename T>
 int HandleOddLengthRandGaussian(const int n, const T mean, const T std,
-                                T* output, CUDADeviceContext* context) {
+                                T* output,
+                                platform::CUDADeviceContext* context) {
   if (n % 2 == 1) {
     std::default_random_engine generator;
     std::normal_distribution<T> distribution(mean, std);
     const T random_value = distribution(generator);
-    Set<T, platform::GPUPlace>(1, random_value, output + (n - 1), context);
+    Set<platform::GPUPlace, T>(1, random_value, output + (n - 1), context);
     return n - 1;
   }
   return n;

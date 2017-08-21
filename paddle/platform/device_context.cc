@@ -25,9 +25,9 @@ CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place, int rand_seed) {
+CPUDeviceContext::CPUDeviceContext(CPUPlace place, int seed) {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  rand_seed_ = rand_seed;
+  rand_seed_ = seed;
 }
 
 std::minstd_rand& CPUDeviceContext::rand_engine() {
@@ -105,7 +105,7 @@ Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
 }
 
 CUDADeviceContext::CUDADeviceContext(GPUPlace place, uint64_t seed)
-    : place_(place), seed_(seed) {
+    : place_(place), rand_seed_(seed) {
   SetDeviceId(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
@@ -162,8 +162,8 @@ curandGenerator_t CUDADeviceContext::curand_generator() {
     SetDeviceId(place_.device);
     PADDLE_ENFORCE(dynload::curandCreateGenerator(&curand_generator_,
                                                   CURAND_RNG_PSEUDO_DEFAULT));
-    PADDLE_ENFORCE(
-        dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
+    PADDLE_ENFORCE(dynload::curandSetPseudoRandomGeneratorSeed(
+        curand_generator_, rand_seed_));
 
     PADDLE_ENFORCE(dynload::curandSetStream(curand_generator_, stream_));
   }

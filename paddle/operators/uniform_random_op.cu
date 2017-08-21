@@ -14,9 +14,6 @@
 
 #include "paddle/operators/uniform_random_op.h"
 
-namespace paddle {
-namespace operators {
-
-REGISTER_OP_GPU_KERNEL(uniform_random,
-                       paddle::operators::GPUUniformRandomKernel<
-                           paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    uniform_random,
+    paddle::operators::UniformRandomKernel<paddle::platform::GPUPlace, float>);

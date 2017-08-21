@@ -40,7 +40,7 @@ class DeviceContext {
 class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place, int rand_seed = 0);
+  explicit CPUDeviceContext(CPUPlace place, int seed = 0);
   virtual ~CPUDeviceContext() {}
 
   Eigen::DefaultDevice* eigen_device() const;
@@ -60,7 +60,7 @@ class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
-  explicit CUDADeviceContext(GPUPlace place, uint64_t rand_seed = 0);
+  explicit CUDADeviceContext(GPUPlace place, uint64_t seed = 0);
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */
@@ -93,12 +93,12 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
   uint64_t rand_seed_;
-  std::unique_ptr<thrust::minstd_rand> rand_engine_;
 
   // clang-format off
   cudaStream_t       stream_{nullptr};
   cudnnHandle_t      cudnn_handle_{nullptr};
   cublasHandle_t     cublas_handle_{nullptr};
+  curandGenerator_t  curand_generator_{nullptr};
   // clang-format on
 };
 
