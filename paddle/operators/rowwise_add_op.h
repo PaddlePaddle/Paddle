@@ -63,7 +63,7 @@ class RowwiseAddGradKernel : public framework::OpKernel {
 
     // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
     // colwise add
-    Eigen::array<int, 1> dims{{1}}; /* dimension to reduce */
+    Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
     EigenVector<T>::Flatten(*db).device(place) = OutGrad.sum(dims);
   }
 };

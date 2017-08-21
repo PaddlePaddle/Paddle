@@ -20,7 +20,7 @@ class RowwiseAddGradOpTest(GradientChecker):
     def test_rowwise_add(self):
         op = create_op("rowwise_add")
         inputs = {
-            "X": np.random.uniform(0.1, 1, [10, 10]).astype("float32"),
+            "X": np.random.uniform(0.1, 1, [5, 10]).astype("float32"),
             "b": np.random.uniform(0.1, 1, [10]).astype("float32")
         }
         self.check_grad(op, inputs, set(["X", "b"]), "Out")
