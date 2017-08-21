@@ -84,7 +84,7 @@ struct BlasGemm<DEVICE_TYPE_GPU, T> {
   }
 };
 
-template class BlasGemm<DEVICE_TYPE_CPU, real>;
-template class BlasGemm<DEVICE_TYPE_GPU, real>;
+template struct BlasGemm<DEVICE_TYPE_CPU, real>;
+template struct BlasGemm<DEVICE_TYPE_GPU, real>;
 
 }  // namespace paddle
