@@ -77,8 +77,7 @@ struct EigenBlasGemm {
     } else if (alpha == T(1) && beta == T(1)) {
       c.device(device) += a.contract(b, dims);
     } else {
-      c.device(device) =
-          c.constant(alpha) * a.contract(b, dims) + c.constant(beta) * c;
+      c.device(device) = alpha * a.contract(b, dims) + beta * c;
     }
   }
 };
