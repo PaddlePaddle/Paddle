@@ -133,6 +133,7 @@ __all__ = [
     'clip_layer',
     'slice_projection',
     'kmax_sequence_score_layer',
+    'scale_shift_layer',
 ]
 
 
@@ -230,6 +231,7 @@ class LayerType(object):
     CLIP_LAYER = 'clip'
 
     KMAX_SEQ_SCORE = 'kmax_seq_score'
+    SCALE_SHIFT_LAYER = 'scale_shift'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6210,3 +6212,43 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 
     return LayerOutput(
         name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)
+
+
+@wrap_name_default("scale_shift")
+@wrap_param_attr_default()
+@wrap_bias_attr_default()
+def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
+    """
+    A layer applies a linear transformation to each element in each row of 
+    the input matrix. For each element, the layer first re-scale it and then 
+    adds a bias to it.
+
+    This layer is very like the SlopeInterceptLayer, except the scale and 
+    bias are trainable.
+
+    .. math::
+
+        y = w * x + b
+
+    .. code-block:: python
+
+        scale_shift = scale_shift_layer(input=input_layer, bias_attr=False)
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput.
+    :param param_attr: The parameter attribute of scaling.
+    :type param_attr: ParameterAttribute
+    :param bias_attr: The parameter attribute of shifting.
+    :type bias_attr: ParameterAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.SCALE_SHIFT_LAYER,
+        inputs=Input(input.name, **param_attr.attr),
+        bias=ParamAttr.to_bias(bias_attr))
+    return LayerOutput(
+        name, LayerType.SCALE_SHIFT_LAYER, parents=[input], size=input.size)

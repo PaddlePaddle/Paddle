@@ -2007,6 +2007,21 @@ TEST(Layer, RowL2NormLayer) {
   }
 }
 
+TEST(Layer, ScaleShiftLayer) {
+  const size_t batchSize = 16;
+  const size_t size = 32;
+  TestConfig config;
+  config.layerConfig.set_type("scale_shift");
+  config.layerConfig.set_size(size);
+  config.biasSize = 1;
+  config.inputDefs.push_back(
+      {INPUT_DATA, "input", /* dim= */ size, /* paraSize= */ 1});
+  config.layerConfig.add_inputs();
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "scale_shift", batchSize, false, useGpu, false);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
