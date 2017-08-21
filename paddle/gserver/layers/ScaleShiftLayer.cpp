@@ -17,15 +17,15 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer applies a slope and an intercept to the input element-wise for
- * scaling and shifting. Noting that this layer is trainable which differs
- * from the SlopeInterceptLayer.
+ * A layer applies a linear transformation to each element in each row of
+ * the input matrix. For each element, the layer first re-scale it and then
+ * adds a bias to it.
  *
  * \f[
  *    y = wx + b
  * \f]
  *
- * Here, w is scale and b is offset, which are scalars and trainable.
+ * Here, w is the scale and b is the bias. Both w and b are trainable scalars.
  *
  */
 

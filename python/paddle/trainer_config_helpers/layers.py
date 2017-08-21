@@ -6219,9 +6219,13 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 @wrap_bias_attr_default()
 def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
     """
-    A layer applies a slope and an intercept to the input element-wise for 
-    scaling and shifting. Noting that this layer is trainable which differs
-    from the slope_intercept_layer.
+    A layer applies a linear transformation to each element in each row of 
+    the input matrix. For each element, the layer first re-scale it and then 
+    adds a bias to it.
+
+    This layer is very like the SlopeInterceptLayer, except the scale and 
+    bias are trainable.
+
     .. math::
 
         y = w * x + b
