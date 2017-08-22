@@ -2,7 +2,7 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
 import numpy
 
-BATCH_SIZE = 100
+BATCH_SIZE = 2
 
 scope = core.Scope()
 place = core.CPUPlace()
@@ -35,10 +35,15 @@ def data_layer(name, dims):
 
 
 def feed_data(name, data):
-    assert isinstance(data, numpy.array)
+    assert isinstance(data, numpy.ndarray)
     tensor = scope.find_var(name).get_tensor()
     tensor.set_dims(data.shape)
-    tensor.alloc_float(place)
+    if data.dtype == numpy.dtype('int32'):
+        tensor.alloc_float(place)
+    elif data.dtype == numpy.dtype('float32'):
+        tensor.alloc_int(place)
+    else:
+        raise ValueError("data type not supported")
     tensor.set(data, place)
 
 
@@ -49,7 +54,11 @@ def grad_var_name(var_name):
 def sgd_optimizer(net, param_name, learning_rate=0.01):
     grad_name = grad_var_name(param_name)
     optimize_op = Operator(
-        "sgd", param=param_name, grad=grad_name, learning_rate=learning_rate)
+        "sgd",
+        param=param_name,
+        grad=grad_name,
+        param_out=param_name,
+        learning_rate=learning_rate)
     net.add_op(optimize_op)
 
 
@@ -65,7 +74,7 @@ def init_param(param_name, dims):
 
 
 # fc_layer
-def fc_layer(net, input, size, act="sigmoid", bias=True, param=None, name=None):
+def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
     """
     Add a fc layer to net
 
@@ -125,16 +134,64 @@ def cross_entropy_layer(net, input, label):
     return cost_name
 
 
+def get_backward_net(forward_net):
+    net = core.Operator.backward(forward_net, set())
+    for input in net.inputs()["all"]:
+        var = scope.new_var(input)
+        var.get_tensor()
+    for output in net.outputs()["all"]:
+        var = scope.new_var(output)
+        var.get_tensor()
+    return net
+
+
+def print_inputs_outputs(op):
+    print("===============" + op.type() + "==============")
+    print("***inputs:***")
+    for input in op.inputs()["all"]:
+        print input, scope.find_var(input).get_tensor().get_dims()
+    print("***outputs:***")
+    for output in op.outputs()["all"]:
+        print output, scope.find_var(output).get_tensor().get_dims()
+    print("")
+    print("")
+
+
 images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
 label = data_layer(name='label', dims=[BATCH_SIZE])
 fc = fc_layer(net=forward_network, input=images, size=10, act="softmax")
 cost = cross_entropy_layer(net=forward_network, input=fc, label=label)
 forward_network.complete_add_op(True)
 print(forward_network)
-backward_net = core.Operator.backward(forward_network, set())
-
+backward_net = get_backward_net(forward_network)
 print(backward_net)
+optimize_net.complete_add_op(True)
+print(optimize_net)
 
 PASS_NUM = 10
 for pass_id in range(PASS_NUM):
-    print pass_id
+    print("===========forward==========")
+    feed_data("pixel", numpy.random.random((BATCH_SIZE, 784)).astype('float32'))
+    feed_data("label", numpy.ones(BATCH_SIZE).astype("int32"))
+    forward_network.infer_shape(scope)
+    print_inputs_outputs(forward_network)
+
+    print(numpy.array(scope.find_var("label").get_tensor()))
+    forward_network.run(scope, dev_ctx)
+    # print(numpy.array(scope.find_var("fc_0").get_tensor()))
+
+    print("===========backward==========")
+    cost_data = numpy.array(scope.find_var("cross_entropy_1").get_tensor())
+    cost_grad = scope.find_var(grad_var_name("cross_entropy_1")).get_tensor()
+    cost_grad.set_dims(cost_data.shape)
+    cost_grad.alloc_float(place)
+    cost_grad.set(cost_data, place)
+
+    backward_net.infer_shape(scope)
+    print_inputs_outputs(backward_net)
+
+    backward_net.run(scope, dev_ctx)
+
+    print("===========optimize_net==========")
+    print_inputs_outputs(optimize_net)
+    optimize_net.run(scope, dev_ctx)
