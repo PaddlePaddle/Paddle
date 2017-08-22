@@ -34,8 +34,6 @@ USE_CUDA_ATOMIC(Add, float);
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
 USE_CUDA_ATOMIC(Add, double);
 #else
-// Custom implementation of atomicAdd for double.
-// This implementation is copied from CUDA manual.
 CUDA_ATOMIC_WRAPPER(Add, double) {
   unsigned long long int* address_as_ull =
       reinterpret_cast<unsigned long long int*>(address);
@@ -50,8 +48,8 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
   } while (assumed != old);
 
   return __longlong_as_double(old);
-#endif
 }
+#endif
 
 }  // namespace platform
 }  // namespace paddle
