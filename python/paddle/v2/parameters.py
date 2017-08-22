@@ -65,6 +65,8 @@ class Parameters(object):
         self.__param_conf__ = dict()
         self.__gradient_machines__ = []
         self.__tmp_params__ = dict()
+        # The key is the name of parameter, the value is header format.
+        self.__tmp_params_header__ = dict()
 
     def __append_config__(self, param_conf):
         """
@@ -133,10 +135,10 @@ class Parameters(object):
 
         if len(self.__gradient_machines__) == 0:
             # create new parameter in python numpy.
-            header_format = 0  # default
             if key in self.__tmp_params__:
-                return header_format, self.__tmp_params__[key]
+                return self.__tmp_params_header__[key], self.__tmp_params__[key]
             else:
+                header_format = 0  # default
                 return header_format, np.ndarray(shape=shape, dtype=np.float32)
         else:
             for each_gradient_machine in self.__gradient_machines__:
@@ -183,13 +185,15 @@ class Parameters(object):
         dims = conf.dims if conf.dims else (1, conf.size)
         return tuple(map(int, dims))
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, header_format, value):
         """
-        Set parameter by parameter name & value. It use Python dict syntax.
+        Set parameter by parameter name & header format & value. It use Python dict syntax.
 
         :note: It will always copy the parameter to C++ side.
         :param key: Parameter name
         :type key: basestring
+        :param header_format: Parameter header format
+        :type header_format: int
         :param value: Parameter matrix.
         :type value: np.ndarray
         :return: Nothing
@@ -205,10 +209,11 @@ class Parameters(object):
 
         if len(self.__gradient_machines__) == 0:
             self.__tmp_params__[key] = value
+            self.__tmp_params_header__[key] = header_format
         else:
             for each_gradient_machine in self.__gradient_machines__:
-                __copy_parameter_to_gradient_machine__(each_gradient_machine,
-                                                       key, value)
+                __copy_parameter_to_gradient_machine__(
+                    each_gradient_machine, key, header_format, value)
 
     def get(self, parameter_name):
         """
@@ -235,17 +240,20 @@ class Parameters(object):
         import py_paddle.swig_paddle as api
         return self.__getter_inner(key, api.PARAMETER_GRADIENT)
 
-    def set(self, parameter_name, value):
+    def set(self, parameter_name, header_format, value):
         """
         Set parameter by parameter name & matrix.
 
         :param parameter_name: parameter name
         :type parameter_name: basestring
+        :param header_format: parameter header format
+        :type header_format: int
         :param value: parameter matrix
         :type value: np.ndarray
         :return: Nothing.
         """
-        self.__setitem__(key=parameter_name, value=value)
+        self.__setitem__(
+            key=parameter_name, header_format=header_format, value=value)
 
     def append_gradient_machine(self, gradient_machine):
         """
@@ -263,8 +271,9 @@ class Parameters(object):
         if len(self.__tmp_params__) != 0:
             for name, val in self.__tmp_params__.iteritems():
                 try:
-                    __copy_parameter_to_gradient_machine__(gradient_machine,
-                                                           name, val)
+                    header_format = self.__tmp_params_header__[name]
+                    __copy_parameter_to_gradient_machine__(
+                        gradient_machine, name, header_format, val)
                 except ValueError:
                     # If no such parameter in gradient machine, then don't copy
                     pass
@@ -299,9 +308,10 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        f.read(16)  # header
+        header_format = f.read(4)
+        f.read(12)
         arr = np.frombuffer(f.read(), dtype=np.float32)
-        self.set(name, arr.reshape(self.get_shape(name)))
+        self.set(name, header_format, arr.reshape(self.get_shape(name)))
 
     def to_tar(self, f):
         tar = tarfile.TarFile(fileobj=f, mode='w')
@@ -386,20 +396,24 @@ def __get_parameter_in_gradient_machine__(gradient_machine, name):
         return params[0]
 
 
-def __copy_parameter_to_gradient_machine__(gradient_machine, name, arr):
+def __copy_parameter_to_gradient_machine__(gradient_machine, name, format, arr):
     """
     Copy a python ndarray into the gradient machine.
 
     :param gradient_machine:
     :type gradient_machine: api.GradientMachine
-    :param name:
-    :param arr:
+    :param name: parameter name 
+    :type name: basestring
+    :param format: parameter header format
+    :type name: int
+    :param arr: parameter matrix
     :type arr: np.ndarray
     :return:
     :rtype: api.Parameter
     """
     import py_paddle.swig_paddle as api
     param = __get_parameter_in_gradient_machine__(gradient_machine, name)
+    param.setHeaderFormat(format)
     vec = param.getBuf(api.PARAMETER_VALUE)
     assert isinstance(vec, api.Vector)
     vec.copyFromNumpyArray(arr.flatten())
