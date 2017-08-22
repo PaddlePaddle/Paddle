@@ -14,13 +14,10 @@
 
 import os
 import errno
-import uuid
 
 import paddle.v2.master
 
 __all__ = ["save_model", "load_model"]
-
-trainer_id = str(uuid.uuid4())
 
 
 def mkdir_p(path):
@@ -33,37 +30,38 @@ def mkdir_p(path):
             raise
 
 
-def save_model(parameters, path):
+def save_model(parameters, folder, name="model.tar"):
     need_request = "KUBERNETES_SERVICE_HOST" in os.environ.keys()
 
     if need_request:
         # TODO(helin): figure out how MPI trains, since MPI only save
         # model when trainer_id == "0", we can consolidate the logic
         # here.
-
-        # TODO(helin): change this environment variable name from
-        # MASTER_IP to ETCD_IP
-        etcd_name = "MASTER_IP"
-        if etcd_name not in os.environ.keys():
-            raise Exception('not find ' + etcd_name +
+        trainer_key = "PADDLE_INIT_TRAINER_ID"
+        if trainer_key not in os.environ.keys():
+            raise Exception('not find ' + trainer_key +
                             ' in environment variable.')
-
-        etcd_ip = os.environ.get(etcd_name)
-        client = master.client("http://" + etcd_ip + ":2379", 5, 0)
-        r = client.request_save_model(trainer_id, 5000)
-        if r == 0:
-            # do not need to save
-            return
-        elif r < 0:
-            # error
-            return
+        trainer_id = os.environ.get(trainer_key)
+        etcd_key = "ETCD_IP"
+        if etcd_key not in os.environ.keys():
+            # non-fault-tolerant training
+            if trainer_id != "0":
+                # only trainer 0 saves model
+                return
         else:
-            # save model
-            path = os.path.join(path, trainer_id)
-            path = os.path.join(path, "model.tar")
-
-    mkdir_p(path)
-
+            etcd_ip = os.environ.get(etcd_key)
+            client = master.client("http://" + etcd_ip + ":2379", 5, 0)
+            r = client.request_save_model(trainer_id, 5000)
+            if r == 0:
+                # do not need to save
+                return
+            elif r < 0:
+                # error
+                return
+        # save model
+        folder = os.path.join(folder, trainer_id)
+    path = os.path.join(folder, name)
+    mkdir_p(folder)
     with open(path, 'wb') as f:
         parameters.to_tar(f)
 
