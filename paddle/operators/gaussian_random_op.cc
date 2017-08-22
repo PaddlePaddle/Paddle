@@ -81,3 +81,4 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
                              ops::GaussianRandomOpMaker);
 REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>);
+
