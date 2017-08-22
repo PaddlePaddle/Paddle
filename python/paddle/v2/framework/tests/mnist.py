@@ -52,7 +52,7 @@ def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
-def sgd_optimizer(net, param_name, learning_rate=0.01):
+def sgd_optimizer(net, param_name, learning_rate=0.001):
     grad_name = grad_var_name(param_name)
     optimize_op = Operator(
         "sgd",
@@ -65,7 +65,6 @@ def sgd_optimizer(net, param_name, learning_rate=0.01):
 
 # should use operator and add these to the init_network
 def init_param(param_name, dims):
-    print param_name
     var = scope.new_var(param_name)
     tensor = var.get_tensor()
     tensor.set_dims(dims)
@@ -158,16 +157,33 @@ def print_inputs_outputs(op):
     print("")
 
 
+def set_cost():
+    cost_data = numpy.array(scope.find_var("cross_entropy_1").get_tensor())
+    # print(cost_data)
+    print(cost_data.sum() / len(cost_data))
+
+    cost_grad = scope.find_var(grad_var_name("cross_entropy_1")).get_tensor()
+    cost_grad.set_dims(cost_data.shape)
+    cost_grad.alloc_float(place)
+    cost_grad.set(cost_data, place)
+
+
 images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
 label = data_layer(name='label', dims=[BATCH_SIZE])
 fc = fc_layer(net=forward_network, input=images, size=10, act="softmax")
 cost = cross_entropy_layer(net=forward_network, input=fc, label=label)
+
 forward_network.complete_add_op(True)
-print(forward_network)
 backward_net = get_backward_net(forward_network)
-print(backward_net)
 optimize_net.complete_add_op(True)
+
+print(forward_network)
+print(backward_net)
 print(optimize_net)
+
+print_inputs_outputs(forward_network)
+print_inputs_outputs(backward_net)
+print_inputs_outputs(optimize_net)
 
 reader = paddle.batch(
     paddle.reader.shuffle(
@@ -176,34 +192,17 @@ reader = paddle.batch(
 
 PASS_NUM = 1000
 for pass_id in range(PASS_NUM):
-    print("===========forward==========")
-    # feed_data("pixel", numpy.random.random((BATCH_SIZE, 784)).astype('float32'))
-    # feed_data("label", numpy.ones(BATCH_SIZE).astype("int32"))
     data = reader().next()
+
     image = numpy.array(map(lambda x: x[0], data)).astype("float32")
     label = numpy.array(map(lambda x: x[1], data)).astype("int32")
     feed_data("pixel", image)
     feed_data("label", label)
+
     forward_network.infer_shape(scope)
-    print_inputs_outputs(forward_network)
-
-    # print(numpy.array(scope.find_var("label").get_tensor()))
     forward_network.run(scope, dev_ctx)
-    # print(numpy.array(scope.find_var("fc_0").get_tensor()))
-
-    print("===========backward==========")
-    cost_data = numpy.array(scope.find_var("cross_entropy_1").get_tensor())
-    print(cost_data.sum() / len(cost_data))
-    cost_grad = scope.find_var(grad_var_name("cross_entropy_1")).get_tensor()
-    cost_grad.set_dims(cost_data.shape)
-    cost_grad.alloc_float(place)
-    cost_grad.set(cost_data, place)
-
+    set_cost()
     backward_net.infer_shape(scope)
-    print_inputs_outputs(backward_net)
-
     backward_net.run(scope, dev_ctx)
 
-    print("===========optimize_net==========")
-    print_inputs_outputs(optimize_net)
     optimize_net.run(scope, dev_ctx)
