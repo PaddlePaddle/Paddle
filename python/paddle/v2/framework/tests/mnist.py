@@ -1,8 +1,9 @@
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
 import numpy
+import paddle.v2 as paddle
 
-BATCH_SIZE = 2
+BATCH_SIZE = 100
 
 scope = core.Scope()
 place = core.CPUPlace()
@@ -39,9 +40,9 @@ def feed_data(name, data):
     tensor = scope.find_var(name).get_tensor()
     tensor.set_dims(data.shape)
     if data.dtype == numpy.dtype('int32'):
-        tensor.alloc_float(place)
-    elif data.dtype == numpy.dtype('float32'):
         tensor.alloc_int(place)
+    elif data.dtype == numpy.dtype('float32'):
+        tensor.alloc_float(place)
     else:
         raise ValueError("data type not supported")
     tensor.set(data, place)
@@ -168,20 +169,31 @@ print(backward_net)
 optimize_net.complete_add_op(True)
 print(optimize_net)
 
-PASS_NUM = 10
+reader = paddle.batch(
+    paddle.reader.shuffle(
+        paddle.dataset.mnist.train(), buf_size=8192),
+    batch_size=BATCH_SIZE)
+
+PASS_NUM = 1000
 for pass_id in range(PASS_NUM):
     print("===========forward==========")
-    feed_data("pixel", numpy.random.random((BATCH_SIZE, 784)).astype('float32'))
-    feed_data("label", numpy.ones(BATCH_SIZE).astype("int32"))
+    # feed_data("pixel", numpy.random.random((BATCH_SIZE, 784)).astype('float32'))
+    # feed_data("label", numpy.ones(BATCH_SIZE).astype("int32"))
+    data = reader().next()
+    image = numpy.array(map(lambda x: x[0], data)).astype("float32")
+    label = numpy.array(map(lambda x: x[1], data)).astype("int32")
+    feed_data("pixel", image)
+    feed_data("label", label)
     forward_network.infer_shape(scope)
     print_inputs_outputs(forward_network)
 
-    print(numpy.array(scope.find_var("label").get_tensor()))
+    # print(numpy.array(scope.find_var("label").get_tensor()))
     forward_network.run(scope, dev_ctx)
     # print(numpy.array(scope.find_var("fc_0").get_tensor()))
 
     print("===========backward==========")
     cost_data = numpy.array(scope.find_var("cross_entropy_1").get_tensor())
+    print(cost_data.sum() / len(cost_data))
     cost_grad = scope.find_var(grad_var_name("cross_entropy_1")).get_tensor()
     cost_grad.set_dims(cost_data.shape)
     cost_grad.alloc_float(place)
