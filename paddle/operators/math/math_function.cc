@@ -109,15 +109,6 @@ void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
       matrix_b.data<double>(), beta, matrix_out->data<double>(), context);
 }
 
-template <>
-void Set<platform::CPUPlace, float>(const int n, const float alpha,
-                                    float* output,
-                                    platform::DeviceContext* context) {
-  auto* cpu_context = reinterpret_cast<platform::CPUDeviceContext*>(context);
-  framework::EigenVector<float>::Type out(output, n);
-  out.device(*(cpu_context->eigen_device())) = out.constant(float(alpha));
-}
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

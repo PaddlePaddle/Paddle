@@ -12,10 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thrust/device_ptr.h>
-#include <thrust/iterator/counting_iterator.h>
-#include <thrust/random.h>
-#include <thrust/transform.h>
 #include "paddle/operators/math/math_function.h"
 
 namespace paddle {
@@ -124,15 +120,6 @@ void matmul<platform::GPUPlace, double>(const framework::Tensor& matrix_a,
   gemm<platform::GPUPlace, double>(
       transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>(), context);
-}
-
-template <>
-void Set<platform::GPUPlace, float>(const int n, const float alpha,
-                                    float* output,
-                                    platform::DeviceContext* context) {
-  auto* cuda_context = reinterpret_cast<platform::CUDADeviceContext*>(context);
-  framework::EigenVector<float>::Type out(output, n);
-  out.device(*(cuda_context->eigen_device())) = out.constant(float(alpha));
 }
 
 }  // namespace math
