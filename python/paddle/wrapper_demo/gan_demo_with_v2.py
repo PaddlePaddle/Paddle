@@ -1,7 +1,9 @@
 '''
 GAN implementation, just a demo.
 '''
-# pd for short, should be more concise.
+# pd for short of paddle, should be more concise.
+# all paddle.layer and paddle.op are merge into paddle namespace, that means
+# we can use `pd.fc` and `pd.add` to use fc layer and add operator.
 from paddle.v2 as pd
 import numpy as np
 import logging
@@ -14,6 +16,11 @@ pd.init(use_gpu=False, trainer_count=1)
 # NOTE here pd.data is short of paddle.layer.data in V2
 # NOTE `name` is not necessary, but also supported
 X = pd.data(name='X', pd.float_vector(784))
+
+# NOTE In V2, all model parameters are created by layers
+# GAN cannot be implemented using native V2, but all the model based on V2 syntax
+# will hide the following parameters in layer, and that is easy to suppored using
+# new op-based syntax features.
 
 # Discriminator Net
 # define parameters
