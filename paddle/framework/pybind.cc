@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/tensor_py.h"
 #include "paddle/operators/net_op.h"
+#include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/to_string.h"
@@ -30,8 +31,8 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_CPU_OP(onehot_cross_entropy);
-USE_NO_GRAD_OP(sgd);
+USE_OP(onehot_cross_entropy);
+USE_OP(sgd);
 USE_OP(mul);
 USE_OP(mean);
 USE_OP(sigmoid);
@@ -46,41 +47,6 @@ namespace paddle {
 namespace framework {
 
 using Tensor = framework::Tensor;
-
-template <typename ClassType>
-void ExposeOperator(ClassType &m) {
-  m.def("infer_shape", &ClassType::type::InferShape)
-      .def("run", &ClassType::type::Run)
-      .def("type",
-           [](const typename ClassType::type &op) -> std::string {
-             return op.type_;
-           })
-      .def("outputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             return op.outputs_;
-           })
-      .def("inputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             return op.inputs_;
-           })
-      .def("support_gpu", &ClassType::type::SupportGPU)
-      .def("temp_outputs",
-           [](const typename ClassType::type &op) -> std::vector<std::string> {
-             auto iter = op.attrs_.find("temporary_index");
-             std::vector<std::string> ret;
-             if (iter == op.attrs_.end()) {
-               return ret;
-             } else {
-               auto tmp_idx = boost::get<std::vector<int>>(iter->second);
-               ret.reserve(tmp_idx.size());
-               for (auto &index : tmp_idx) {
-                 ret.push_back(op.outputs_.at(index));
-               }
-               return ret;
-             }
-           })
-      .def("__str__", &ClassType::type::DebugString);
-}
 
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
@@ -172,13 +138,16 @@ All parameter, weight, gradient are variables in Paddle.
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &protos = OpRegistry::protos();
+    auto &op_info_map = OpRegistry::op_info_map();
     std::vector<py::bytes> ret_values;
-    for (auto it = protos.begin(); it != protos.end(); ++it) {
-      PADDLE_ENFORCE(it->second.IsInitialized(),
-                     "OpProto must all be initialized");
+    for (auto it = op_info_map.begin(); it != op_info_map.end(); ++it) {
+      const OpProto *proto = it->second.proto_;
+      if (proto == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE(proto->IsInitialized(), "OpProto must all be initialized");
       std::string str;
-      PADDLE_ENFORCE(it->second.SerializeToString(&str),
+      PADDLE_ENFORCE(proto->SerializeToString(&str),
                      "Serialize OpProto Error. This could be a bug of Paddle.");
       ret_values.push_back(py::bytes(str));
     }
@@ -215,47 +184,69 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<OperatorBase, std::shared_ptr<OperatorBase>> operator_base(
-      m, "Operator");
-
-  operator_base.def_static("create", [](py::bytes protobin) {
-    OpDesc desc;
-    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                   "Cannot parse user input to OpDesc");
-    PADDLE_ENFORCE(desc.IsInitialized(),
-                   "User OpDesc is not initialized, reason %s",
-                   desc.InitializationErrorString());
-    return OpRegistry::CreateOp(desc);
-  });
-
-  operator_base.def("backward",
-                    [](const OperatorBase &forwardOp,
-                       const std::unordered_set<std::string> &no_grad_vars) {
-                      return Backward(forwardOp, no_grad_vars);
-                    });
-
-  ExposeOperator(operator_base);
-
-  py::class_<operators::NetOp, std::shared_ptr<operators::NetOp>> net(m, "Net");
-
-  net.def_static("create",
-                 []() -> std::shared_ptr<operators::NetOp> {
-                   auto retv = std::make_shared<operators::NetOp>();
-                   retv->type_ = "plain_net";
-                   return retv;
-                 })
-      .def("add_op", &operators::NetOp::AddOp)
-      .def("add_op",
-           [](operators::NetOp &self,
-              const std::shared_ptr<operators::NetOp> &net) -> void {
-             self.AddOp(std::static_pointer_cast<OperatorBase>(net));
+  py::class_<OperatorBase>(m, "Operator")
+      .def_static("create",
+                  [](py::bytes protobin) {
+                    OpDesc desc;
+                    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                                   "Cannot parse user input to OpDesc");
+                    PADDLE_ENFORCE(desc.IsInitialized(),
+                                   "User OpDesc is not initialized, reason %s",
+                                   desc.InitializationErrorString());
+                    return OpRegistry::CreateOp(desc);
+                  })
+      .def("backward",
+           [](const OperatorBase &forwardOp,
+              const std::unordered_set<std::string> &no_grad_vars) {
+             return Backward(forwardOp, no_grad_vars).release();
            })
+      .def("infer_shape", &OperatorBase::InferShape)
+      .def("run", &OperatorBase::Run)
+      .def("type",
+           [](const OperatorBase &op) -> std::string { return op.Type(); })
+      .def("outputs",
+           [](const OperatorBase &op)
+               -> std::map<std::string, std::vector<std::string>> {
+                 return op.Outputs();
+               })
+      .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
+      .def("__str__", &OperatorBase::DebugString)
+      .def("no_intermediate_outputs",
+           [](const OperatorBase &op) { return op.OutputVars(false); })
+      .def("support_gpu", &OperatorBase::SupportGPU);
+
+  py::class_<operators::NetOp, OperatorBase>(m, "Net")
+      .def_static("create",
+                  []() -> operators::NetOp * {
+                    auto *retv = new operators::NetOp;
+                    retv->SetType("plain_net");
+                    return retv;
+                  })
+      .def("append_op", [](operators::NetOp &self,
+                           const OperatorBase &op) { self.AppendOp(op); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
       });
 
-  ExposeOperator(net);
+  // recurrent_op
+  py::class_<operators::RecurrentOp, OperatorBase>(m, "RecurrentOp")
+      .def_static(
+          "create",
+          [](py::bytes protobin) -> operators::RecurrentOp * {
+            OpDesc desc;
+            PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                           "Cannot parse user input to OpDesc");
+            PADDLE_ENFORCE(desc.IsInitialized(),
+                           "User OpDesc is not initialized, reason %s",
+                           desc.InitializationErrorString());
+            auto rnn_op = OpRegistry::CreateOp(desc);
+            return static_cast<operators::RecurrentOp *>(rnn_op.release());
+          })
+      .def("set_stepnet", [](operators::RecurrentOp &self,
+                             const operators::NetOp &net) -> void {
+        self.set_stepnet(net.Clone());
+      });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 

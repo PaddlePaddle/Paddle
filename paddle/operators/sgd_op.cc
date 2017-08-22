@@ -18,17 +18,15 @@ namespace paddle {
 namespace operators {
 
 class SGDOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(SGDOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 2, "Input size of SGDOp must be two");
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1, "Output size of SGDOp must be one");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0), "inputs[0] mast be set");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(1), "inputs[1] mast be set");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(0), "outputs[0] mast be set");
-    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
-                   "Two input of SGD Op's dimension must be same.");
-    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+    PADDLE_ENFORCE(
+        ctx.Input<Tensor>("param")->dims() == ctx.Input<Tensor>("grad")->dims(),
+        "Two input of SGD Op's dimension must be same.");
+    ctx.Output<Tensor>("param_out")->Resize(ctx.Input<Tensor>("param")->dims());
   }
 };
 
@@ -53,6 +51,6 @@ param_out = param - learning_rate * grad;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sgd, ops::SGDOp, ops::SGDOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
 REGISTER_OP_CPU_KERNEL(sgd,
                        ops::SGDOpKernel<paddle::platform::CPUPlace, float>);

@@ -2,7 +2,7 @@ import logging
 import paddle.v2.framework.core as core
 import unittest
 import numpy as np
-from paddle.v2.framework.op import Operator
+from paddle.v2.framework.op import Operator, RecurrentOp
 
 
 def py_sigmoid(x):
@@ -98,11 +98,11 @@ class TestRecurrentOp(unittest.TestCase):
     def forward(self):
         self.scope = core.Scope()
         self.create_global_variables()
+        self.create_rnn_op()
         self.create_step_net()
-        rnn_op = self.create_rnn_op()
         ctx = core.DeviceContext.create(core.CPUPlace())
-        rnn_op.infer_shape(self.scope)
-        rnn_op.run(self.scope, ctx)
+        self.rnnop.infer_shape(self.scope)
+        self.rnnop.run(self.scope, ctx)
         return np.array(self.scope.find_var("h").get_tensor())
 
     def create_global_variables(self):
@@ -128,8 +128,7 @@ class TestRecurrentOp(unittest.TestCase):
 
     def create_rnn_op(self):
         # create RNNOp
-        rnnop = Operator(
-            "recurrent_op",
+        self.rnnop = RecurrentOp(
             # inputs
             inlinks=["x"],
             boot_memories=["h_boot"],
@@ -142,22 +141,18 @@ class TestRecurrentOp(unittest.TestCase):
             outlink_alias=["h@alias"],
             pre_memories=["h@pre"],
             memories=["h@alias"])
-        return rnnop
 
     def create_step_net(self):
-        var = self.scope.new_var("stepnet")
-        stepnet = var.get_net()
-
-        # x_fc_op = Operator("fc", X="x@alias", W="W", Y="Wx")
-        # h_fc_op = Operator("fc", X="h@pre", W="U", Y="Uh")
+        stepnet = core.Net.create()
         x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
         sum_op = Operator("add_two", X="Wx", Y="Uh", Out="sum")
         sig_op = Operator("sigmoid", X="sum", Y="h@alias")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
-            stepnet.add_op(op)
+            stepnet.append_op(op)
         stepnet.complete_add_op(True)
+        self.rnnop.set_stepnet(stepnet)
 
     def test_forward(self):
         print 'test recurrent op forward'

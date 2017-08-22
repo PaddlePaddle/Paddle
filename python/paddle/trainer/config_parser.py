@@ -2247,6 +2247,20 @@ class ClipLayer(LayerBase):
         self.config.inputs[0].clip_conf.max = max
 
 
+@config_layer('scale_shift')
+class ScaleShiftLayer(LayerBase):
+    def __init__(self, name, inputs, bias=True, **xargs):
+        super(ScaleShiftLayer, self).__init__(
+            name, 'scale_shift', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ScaleShiftLayer must have one and only one input.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.create_input_parameter(0, 1, [1, 1])
+        self.create_bias_parameter(bias, 1)
+
+
 # key: cost type
 # value: cost class
 g_cost_map = {}

@@ -7,8 +7,7 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(CosineOp, OperatorBase)
-
+  using OperatorBase::OperatorBase;
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
   void InferShape(const Scope& scope) const override {}
@@ -29,8 +28,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class MyTestOp : public OperatorBase {
  public:
-  DEFINE_OPERATOR_CTOR(MyTestOp, OperatorBase)
-
+  using OperatorBase::OperatorBase;
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
@@ -40,8 +38,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of cosine op").SetMultiple();
-    AddOutput("output", "output of cosine op").SetTemporary();
+    AddInput("input", "input of cosine op").AsDuplicable();
+    AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };
@@ -53,16 +51,24 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(cos_sim, paddle::framework::CosineOp,
-            paddle::framework::CosineOpProtoAndCheckerMaker);
-REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
-            paddle::framework::MyTestOpProtoAndCheckerMaker);
+static void BuildVar(const std::string& param_name,
+                     std::initializer_list<const char*> arguments,
+                     paddle::framework::OpDesc::Var* var) {
+  var->set_parameter(param_name);
+  for (auto& arg_name : arguments) {
+    var->add_arguments(arg_name);
+  }
+}
+REGISTER_OP_WITHOUT_GRADIENT(cos_sim, paddle::framework::CosineOp,
+                             paddle::framework::CosineOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(my_test_op, paddle::framework::MyTestOp,
+                             paddle::framework::MyTestOpProtoAndCheckerMaker);
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
@@ -70,8 +76,7 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
@@ -82,8 +87,8 @@ TEST(OpRegistry, CreateOp) {
 TEST(OpRegistry, IllegalAttr) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -107,33 +112,23 @@ TEST(OpRegistry, IllegalAttr) {
 TEST(OpRegistry, DefaultValue) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
   ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
-static void SetInputFormat(paddle::framework::OpDesc* desc) {
-  auto attr = desc->add_attrs();
-  attr->set_name("input_format");
-  attr->set_type(paddle::framework::INTS);
-  attr->mutable_ints()->Add(0);
-  attr->mutable_ints()->Add(1);
-}
-
 TEST(OpRegistry, CustomChecker) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
-  op_desc.add_inputs("ii");
-  op_desc.add_outputs("oo");
-  SetInputFormat(&op_desc);
+  BuildVar("input", {"ii"}, op_desc.add_inputs());
+  BuildVar("output", {"oo"}, op_desc.add_outputs());
 
   // attr 'test_attr' is not set
   bool caught = false;
@@ -173,7 +168,6 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  SetInputFormat(&op_desc);
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
   paddle::framework::Scope scope;

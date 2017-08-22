@@ -106,7 +106,6 @@ void LinkMemories(const std::vector<Scope*>& scopes,
 
 void InitArgument(const ArgumentName& name, Argument* arg,
                   const framework::OperatorBase& op) {
-  arg->step_net = op.Input(name.step_net);
   arg->step_scopes = op.Output(name.step_scopes);
 
   auto inlinks = op.Inputs(name.inlinks);
