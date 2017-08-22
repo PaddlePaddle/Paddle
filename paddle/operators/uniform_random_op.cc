@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
    http://www.apache.org/licenses/LICENSE-2.0
-
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,7 +36,8 @@ class CPUUniformRandomKernel : public framework::OpKernel {
     std::uniform_real_distribution<T> dist(
         static_cast<T>(context.op_.GetAttr<float>("min")),
         static_cast<T>(context.op_.GetAttr<float>("max")));
-    for (ssize_t i = 0; i < framework::product(tensor->dims()); ++i) {
+    ssize_t size = framework::product(tensor->dims());
+    for (ssize_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
   }
@@ -66,7 +64,6 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(Uniform random operator.
-
 Used to initialize tensor with uniform random generator.
 )DOC");
     AddAttr<std::vector<int>>("dims", "the dimension of random tensor");

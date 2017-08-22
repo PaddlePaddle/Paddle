@@ -223,8 +223,8 @@ All parameter, weight, gradient are variables in Paddle.
                     retv->SetType("plain_net");
                     return retv;
                   })
-      .def("add_op", [](operators::NetOp &self,
-                        const OperatorBase &op) { self.AddOp(op); })
+      .def("append_op", [](operators::NetOp &self,
+                           const OperatorBase &op) { self.AppendOp(op); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
