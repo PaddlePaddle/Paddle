@@ -503,9 +503,9 @@ private:
    * sequence in Matrix stored the entire beam search batch's forward pass
    * results.
    *
-   * @param isSeq: a flag indicating whetehr the layer to be output of the
+   * @param isSeq: a flag indicating whether the layer to be output of the
    * RecurrentGradientMachine is a sequence or not
-   * @param outArgs: all of the the returned Arguments of the forward pass
+   * @param outArgs: all of the returned Arguments of the forward pass
    * during the generation process.
    */
   void createDataOutlinkSelRowsInfo(bool isSeq, std::vector<Argument>& outArgs);
