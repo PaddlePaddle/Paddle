@@ -4,9 +4,15 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
+# ENV variables
+ARG ANDROID_ABI
+
+ENV ANDROID_ABI=${ANDROID_ABI:-"armeabi-v7a"}
+
 ENV HOME=/root \
     ANDROID_NDK_HOME=/opt/android-ndk-linux \
-    ANDROID_STANDALONE_TOOLCHAIN=/opt/android-toolchain-gcc
+    ANDROID_ARM_STANDALONE_TOOLCHAIN=/opt/arm-toolchain-gcc \
+    ANDROID_ARM64_STANDALONE_TOOLCHAIN=/opt/arm64-toolchain-gcc
 
 RUN apt-get update && \
     apt-get install -y \
@@ -15,12 +21,11 @@ RUN apt-get update && \
     apt-get clean -y
 
 # Install Go and glide
-RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go.tgz && \
+RUN wget -qO- go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
+    tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
-    mkdir /root/gopath/src && \
-    rm go.tgz
+    mkdir /root/gopath/src
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
 ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
@@ -42,7 +47,8 @@ RUN mkdir /opt/android-ndk-tmp && \
     wget -q https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip && \
     unzip -q android-ndk-r14b-linux-x86_64.zip && \
     mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm --platform=android-21 --install-dir=${ANDROID_STANDALONE_TOOLCHAIN} && \
+    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm --platform=android-21 --install-dir=${ANDROID_ARM_STANDALONE_TOOLCHAIN} && \
+    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm64 --platform=android-21 --install-dir=${ANDROID_ARM64_STANDALONE_TOOLCHAIN} && \
     rm -rf /opt/android-ndk-tmp && \
     rm -rf ${ANDROID_NDK_HOME}
 
