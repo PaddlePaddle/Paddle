@@ -55,5 +55,6 @@ cc_library(paddle_pybind SHARED
     recurrent_op
     uniform_random_op
     gaussian_random_op
+    lookup_table_op
     fill_zeros_like_op)
 endif(WITH_PYTHON)
