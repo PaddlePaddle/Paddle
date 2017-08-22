@@ -41,8 +41,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              " which is a learnable parameter.");
     AddInput("Ids",
              "An input with type int32 or int64"
-             "contains the ids to be looked up in W.")
-        .NotInGradient();
+             "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type with W.");
     AddComment(
         "This operator is used to perform lookups on the parameter W,"
@@ -56,7 +55,9 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &context) const override {
-    context.Output<Tensor>(0)->Resize(context.Input<Tensor>(0)->dims());
+    auto table = context.Input<Tensor>("W");
+    auto d_table = context.Output<Tensor>(framework::GradVarName("W"));
+    d_table->Resize(table->dims());
   }
 };
 

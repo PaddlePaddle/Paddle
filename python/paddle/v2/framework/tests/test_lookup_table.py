@@ -10,7 +10,7 @@ class TestSigmoidOp(unittest.TestCase):
     def setUp(self):
         self.type = 'lookup_table'
         table = np.random.random((17, 31)).astype('float32')
-        ids = np.random.randint(0, 17, 4)
+        ids = np.random.randint(0, 17, 4).astype('int32')
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids]}
 
@@ -19,10 +19,8 @@ class TestSigmoidGradOp(GradientChecker):
     def test_grad(self):
         op = create_op('lookup_table')
         table = np.random.random((17, 31)).astype('float32')
-        ids = np.random.randint(0, 17, 4)
+        ids = np.random.randint(0, 17, 4).astype('int32')
         inputs = {'W': table, 'Ids': ids}
-        # compare gradients between cpu and gpu
-        self.compare_grad(op, inputs)
         # check gradients 
         self.check_grad(op, inputs, set('W'), 'Out')
 
