@@ -133,20 +133,22 @@ class Parameters(object):
 
         if len(self.__gradient_machines__) == 0:
             # create new parameter in python numpy.
+            header_format = 0  # default
             if key in self.__tmp_params__:
-                return self.__tmp_params__[key]
+                return header_format, self.__tmp_params__[key]
             else:
-                return np.ndarray(shape=shape, dtype=np.float32)
+                return header_format, np.ndarray(shape=shape, dtype=np.float32)
         else:
             for each_gradient_machine in self.__gradient_machines__:
                 param = __get_parameter_in_gradient_machine__(
                     each_gradient_machine, key)
                 # for simplify implementation now, we always copy from C++
                 assert isinstance(param, api.Parameter)
+                header_format = param.getHeaderFormat()
                 val = param.getBuf(param_type)
                 assert isinstance(val, api.Vector)
                 val = val.copyToNumpyArray()
-                return val
+                return header_format, val
                 # else continue
 
             raise RuntimeError("Unexpected branch")
@@ -277,9 +279,9 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        param = self.get(name)
+        header_format, param = self.get(name)
         size = reduce(lambda a, b: a * b, param.shape)
-        f.write(struct.pack("IIQ", 0, 4, size))
+        f.write(struct.pack("IIQ", header_format, 4, size))
         param = param.astype(np.float32)
         s = param.tostring()
         wrote_size = 0

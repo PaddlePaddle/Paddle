@@ -578,6 +578,9 @@ public:
 
   bool load(const std::string& filename) const;
 
+  int getHeaderFormat();
+  void setHeaderFormat(int32_t fmt);
+
   size_t getSize() const;
 
 private:
