@@ -17,7 +17,12 @@ class UniformRandomTest(unittest.TestCase):
         scope.new_var("X").get_tensor()
 
         op = Operator(
-            "uniform_random", Out="X", dims=[1000, 784], min=-5.0, max=10.0)
+            "uniform_random",
+            Out="X",
+            dims=[1000, 784],
+            min=-5.0,
+            max=10.0,
+            seed=10)
 
         op.infer_shape(scope)
         ctx = core.DeviceContext.create(place)

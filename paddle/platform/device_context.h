@@ -17,7 +17,6 @@ limitations under the License. */
 #ifndef PADDLE_ONLY_CPU
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
-#include "paddle/platform/dynload/curand.h"
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
@@ -40,18 +39,14 @@ class DeviceContext {
 class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place, int seed = 0);
+  explicit CPUDeviceContext(CPUPlace place);
   virtual ~CPUDeviceContext() {}
 
   Eigen::DefaultDevice* eigen_device() const;
 
-  std::minstd_rand& rand_engine();
-
   Place GetPlace() const override;
 
  private:
-  int rand_seed_;
-  std::unique_ptr<std::minstd_rand> rand_engine_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
@@ -60,7 +55,7 @@ class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
-  explicit CUDADeviceContext(GPUPlace place, uint64_t seed = 0);
+  explicit CUDADeviceContext(GPUPlace place);
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */
@@ -79,9 +74,6 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t     cudnn_handle();
 
-   /*! \brief  Return curand handle in the device context. */
-  curandGenerator_t curand_generator();
-
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t      stream();
   // clang-format on
@@ -92,13 +84,10 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
-  uint64_t rand_seed_;
-
   // clang-format off
   cudaStream_t       stream_{nullptr};
   cudnnHandle_t      cudnn_handle_{nullptr};
   cublasHandle_t     cublas_handle_{nullptr};
-  curandGenerator_t  curand_generator_{nullptr};
   // clang-format on
 };
 

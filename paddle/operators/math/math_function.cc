@@ -118,28 +118,6 @@ void Set<platform::CPUPlace, float>(const int n, const float alpha,
   out.device(*(cpu_context->eigen_device())) = out.constant(float(alpha));
 }
 
-template <>
-void RandUniform<platform::CPUPlace, float>(const int n, const float min,
-                                            const float max, float* output,
-                                            platform::DeviceContext* context) {
-  auto* cpu_context = reinterpret_cast<platform::CPUDeviceContext*>(context);
-  std::uniform_real_distribution<float> distribution(min, max);
-  for (int i = 0; i < n; i++) {
-    output[i] = distribution(cpu_context->rand_engine());
-  }
-}
-
-template <>
-void RandGaussian<platform::CPUPlace, float>(const int n, const float mean,
-                                             const float std, float* output,
-                                             platform::DeviceContext* context) {
-  auto* cpu_context = reinterpret_cast<platform::CPUDeviceContext*>(context);
-  std::normal_distribution<float> distribution(mean, std);
-  for (int i = 0; i < n; i++) {
-    output[i] = distribution(cpu_context->rand_engine());
-  }
-}
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -17,7 +17,12 @@ class GaussianRandomTest(unittest.TestCase):
         scope.new_var("Out").get_tensor()
 
         op = Operator(
-            "gaussian_random", Out="Out", dims=[1000, 784], mean=.0, std=1.)
+            "gaussian_random",
+            Out="Out",
+            dims=[1000, 784],
+            mean=.0,
+            std=1.,
+            seed=10)
 
         op.infer_shape(scope)
         context = core.DeviceContext.create(place)

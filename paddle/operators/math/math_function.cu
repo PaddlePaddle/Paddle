@@ -135,54 +135,6 @@ void Set<platform::GPUPlace, float>(const int n, const float alpha,
   out.device(*(cuda_context->eigen_device())) = out.constant(float(alpha));
 }
 
-template <typename T>
-__global__ void UniformShift(const int n, const T min, const T max, T* x) {
-  float scale = max - min;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
-       i += blockDim.x * gridDim.x) {
-    x[i] = x[i] * scale + min;
-  }
-}
-
-template <>
-void RandUniform<platform::GPUPlace, float>(const int n, const float min,
-                                            const float max, float* output,
-                                            platform::DeviceContext* context) {
-  auto* cuda_context = reinterpret_cast<platform::CUDADeviceContext*>(context);
-  PADDLE_ENFORCE(platform::dynload::curandGenerateUniform(
-      cuda_context->curand_generator(), output, n));
-  int block = 512;
-  int grid = (n + block - 1) / block;
-  UniformShift<float><<<grid, block, 0, cuda_context->stream()>>>(n, min, max,
-                                                                  output);
-}
-
-template <typename T>
-int HandleOddLengthRandGaussian(const int n, const T mean, const T std,
-                                T* output,
-                                platform::CUDADeviceContext* context) {
-  if (n % 2 == 1) {
-    std::default_random_engine generator;
-    std::normal_distribution<T> distribution(mean, std);
-    const T random_value = distribution(generator);
-    Set<platform::GPUPlace, T>(1, random_value, output + (n - 1), context);
-    return n - 1;
-  }
-  return n;
-}
-
-template <>
-void RandGaussian<platform::GPUPlace, float>(const int n, const float mean,
-                                             const float std, float* output,
-                                             platform::DeviceContext* context) {
-  auto* cuda_context = reinterpret_cast<platform::CUDADeviceContext*>(context);
-
-  const int even_n =
-      HandleOddLengthRandGaussian<float>(n, mean, std, output, cuda_context);
-  PADDLE_ENFORCE(platform::dynload::curandGenerateNormal(
-      cuda_context->curand_generator(), output, even_n, mean, std));
-}
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
