@@ -184,7 +184,7 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {
-    if (biases_) {
+    if (biases_ && biases_->getWGrad()) {
       backwardActivation();
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
       biases_->getParameterPtr()->incUpdate(callback);
