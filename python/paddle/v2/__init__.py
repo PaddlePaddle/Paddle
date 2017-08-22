@@ -20,7 +20,6 @@ import trainer
 import event
 import data_type
 import topology
-import data_feeder
 import networks
 import evaluator
 from . import dataset
@@ -31,10 +30,11 @@ import op
 import pooling
 import inference
 import networks
-import py_paddle.swig_paddle as api
 import minibatch
 import plot
 import image
+import model
+import paddle.trainer.config_parser as cp
 
 __all__ = [
     'optimizer',
@@ -47,7 +47,6 @@ __all__ = [
     'data_type',
     'attr',
     'pooling',
-    'data_feeder',
     'dataset',
     'reader',
     'topology',
@@ -56,10 +55,15 @@ __all__ = [
     'plot',
     'evaluator',
     'image',
+    'master',
+    'model',
 ]
+
+cp.begin_parse()
 
 
 def init(**kwargs):
+    import py_paddle.swig_paddle as api
     args = []
     args_dict = {}
     # NOTE: append arguments if they are in ENV
@@ -71,6 +75,11 @@ def init(**kwargs):
     # NOTE: overwrite arguments from ENV if it is in kwargs
     for key in args_dict.keys():
         args.append('--%s=%s' % (key, str(args_dict[key])))
+
+    if 'use_gpu' in kwargs:
+        cp.g_command_config_args['use_gpu'] = kwargs['use_gpu']
+    assert 'parallel_nn' not in kwargs, ("currently 'parallel_nn' is not "
+                                         "supported in v2 APIs.")
 
     api.initPaddle(*args)
 

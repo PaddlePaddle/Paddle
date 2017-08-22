@@ -22,10 +22,22 @@ DECLARE_string(save_dir);
 namespace paddle {
 NewRemoteParameterUpdater::NewRemoteParameterUpdater(
     const OptimizationConfig &config, const std::string pserverSpec)
-    : parameterClient_(-1),
+    : trainerConfig_(config),
+      parameterClient_(-1),
       newParameters_(nullptr),
       newGradients_(nullptr),
       pserverSpec_(pserverSpec) {}
+
+NewRemoteParameterUpdater::NewRemoteParameterUpdater(
+    const OptimizationConfig &config,
+    const std::string pserverSpec,
+    const bool useEtcd)
+    : trainerConfig_(config),
+      parameterClient_(-1),
+      newParameters_(nullptr),
+      newGradients_(nullptr),
+      pserverSpec_(pserverSpec),
+      useEtcd_(useEtcd) {}
 
 void NewRemoteParameterUpdater::init(
     const std::vector<ParameterPtr> &parameters) {
@@ -37,8 +49,13 @@ void NewRemoteParameterUpdater::init(
   }
 
   // create parameter server client.
-  parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
-                                               FLAGS_trainer_id == 0);
+  if (useEtcd_) {
+    parameterClient_ =
+        paddle_new_etcd_pserver_client((char *)pserverSpec_.c_str());
+  } else {
+    parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
+                                                 FLAGS_trainer_id == 0);
+  }
 
   // init new parameter and gradient.
   newParameters_ = initNewParameter(PARAMETER_VALUE);
@@ -49,9 +66,92 @@ void NewRemoteParameterUpdater::init(
   // from parameter server
   if (paddle_begin_init_params(parameterClient_)) {
     LOG(INFO) << "paddle_begin_init_params start";
+    // NOTE: convert V1 OptimizatioinConfig proto to V2 OptimizerConfig.
+    // This makes golang pserver compatible with handy V1 demos.
+    // TODO(wuyi): Refine or remove these ugly converting lines
+    OptimizerConfig optimizerConfigV2;
+    if (trainerConfig_.learning_method() == "momentum") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::SGD);
+    } else if (trainerConfig_.learning_method() == "adagrad") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::Adagrad);
+      optimizerConfigV2.mutable_adagrad()->set_epsilon(
+          trainerConfig_.ada_epsilon());
+    } else if (trainerConfig_.learning_method() == "adadelta") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::Adagrad);
+      optimizerConfigV2.mutable_adadelta()->set_epsilon(
+          trainerConfig_.ada_epsilon());
+      optimizerConfigV2.mutable_adadelta()->set_rho(trainerConfig_.ada_rou());
+    } else if (trainerConfig_.learning_method() == "adam") {
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::Adam);
+      optimizerConfigV2.mutable_adam()->set_beta_1(trainerConfig_.adam_beta1());
+      optimizerConfigV2.mutable_adam()->set_beta_2(trainerConfig_.adam_beta2());
+      optimizerConfigV2.mutable_adam()->set_epsilon(
+          trainerConfig_.adam_epsilon());
+    } else {
+      LOG(ERROR) << "got unsupported v1 optimizer config: "
+                 << trainerConfig_.learning_method();
+      optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::SGD);
+    }
+
+    if (trainerConfig_.learning_rate_schedule() == "constant") {
+      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Const);
+      optimizerConfigV2.mutable_const_lr()->set_learning_rate(
+          trainerConfig_.learning_rate());
+    } else if (trainerConfig_.learning_rate_schedule() == "linear") {
+      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Linear);
+      optimizerConfigV2.mutable_linear_lr()->set_learning_rate(
+          trainerConfig_.learning_rate());
+      optimizerConfigV2.mutable_linear_lr()->set_lr_decay_a(
+          trainerConfig_.learning_rate_decay_a());
+      optimizerConfigV2.mutable_linear_lr()->set_lr_decay_b(
+          trainerConfig_.learning_rate_decay_b());
+    } else {
+      LOG(ERROR) << "got unsupported v1 learning_rate_schedule config: "
+                 << trainerConfig_.learning_rate_schedule() << ", set to const";
+      optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Const);
+    }
+
+    // overwrite optimizerConfigV2 for per-parameter(layer) configs
     for (int i = 0; i < parameterSize(); ++i) {
       auto paramConfig = parameters_[i]->getConfig();
-      std::string bytes = paramConfig.SerializeAsString();
+      if (paramConfig.has_momentum() &&
+          trainerConfig_.learning_method() == "momentum") {
+        optimizerConfigV2.mutable_sgd()->set_momentum(paramConfig.momentum());
+      }
+      if (paramConfig.has_learning_rate()) {
+        switch (optimizerConfigV2.lr_policy()) {
+          case 0:
+            optimizerConfigV2.mutable_const_lr()->set_learning_rate(
+                paramConfig.learning_rate());
+            break;
+          case 1:
+            optimizerConfigV2.mutable_linear_lr()->set_learning_rate(
+                paramConfig.learning_rate());
+            break;
+        }
+      }
+      if (paramConfig.has_decay_rate()) {
+        switch (optimizerConfigV2.optimizer()) {
+          case 1:  // SGD
+            optimizerConfigV2.mutable_sgd()->set_decay(
+                paramConfig.decay_rate());
+            break;
+          case 2:  // Adadelta
+            optimizerConfigV2.mutable_adadelta()->set_decay(
+                paramConfig.decay_rate());
+            break;
+          case 3:  // Adagrad
+            optimizerConfigV2.mutable_adagrad()->set_decay(
+                paramConfig.decay_rate());
+            break;
+          case 4:  // Adam
+            optimizerConfigV2.mutable_adam()->set_decay(
+                paramConfig.decay_rate());
+            break;
+        }
+      }
+      // send param and config to pserver
+      std::string bytes = optimizerConfigV2.SerializeAsString();
       const char *array = bytes.data();
       int size = (int)bytes.size();
       paddle_init_param(
@@ -83,4 +183,4 @@ void NewRemoteParameterUpdater::finishBatch(real cost) {
 void NewRemoteParameterUpdater::startPass() {}
 
 bool NewRemoteParameterUpdater::finishPass() { return true; }
-}
+}  // namespace paddle

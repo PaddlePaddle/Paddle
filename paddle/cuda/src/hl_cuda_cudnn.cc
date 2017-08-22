@@ -1022,6 +1022,7 @@ void hl_batch_norm_forward_inference(hl_tensor_descriptor inputDesc,
   real alpha = 1.0f;
   real beta = 1.0f;
   cudnnBatchNormMode_t mode = CUDNN_BATCHNORM_SPATIAL;
+
   CHECK_CUDNN(
       dynload::cudnnBatchNormalizationForwardInference(t_resource.cudnn_handle,
                                                        mode,

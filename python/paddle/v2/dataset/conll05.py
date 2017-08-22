@@ -23,9 +23,9 @@ to initialize SRL model.
 import tarfile
 import gzip
 import itertools
-from common import download
+import paddle.v2.dataset.common
 
-__all__ = ['test, get_dict', 'get_embedding']
+__all__ = ['test, get_dict', 'get_embedding', 'convert']
 
 DATA_URL = 'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
@@ -182,9 +182,15 @@ def get_dict():
     """
     Get the word, verb and label dictionary of Wikipedia corpus.
     """
-    word_dict = load_dict(download(WORDDICT_URL, 'conll05st', WORDDICT_MD5))
-    verb_dict = load_dict(download(VERBDICT_URL, 'conll05st', VERBDICT_MD5))
-    label_dict = load_dict(download(TRGDICT_URL, 'conll05st', TRGDICT_MD5))
+    word_dict = load_dict(
+        paddle.v2.dataset.common.download(WORDDICT_URL, 'conll05st',
+                                          WORDDICT_MD5))
+    verb_dict = load_dict(
+        paddle.v2.dataset.common.download(VERBDICT_URL, 'conll05st',
+                                          VERBDICT_MD5))
+    label_dict = load_dict(
+        paddle.v2.dataset.common.download(TRGDICT_URL, 'conll05st',
+                                          TRGDICT_MD5))
     return word_dict, verb_dict, label_dict
 
 
@@ -192,7 +198,7 @@ def get_embedding():
     """
     Get the trained word vector based on Wikipedia corpus.
     """
-    return download(EMB_URL, 'conll05st', EMB_MD5)
+    return paddle.v2.dataset.common.download(EMB_URL, 'conll05st', EMB_MD5)
 
 
 def test():
@@ -209,15 +215,23 @@ def test():
     """
     word_dict, verb_dict, label_dict = get_dict()
     reader = corpus_reader(
-        download(DATA_URL, 'conll05st', DATA_MD5),
+        paddle.v2.dataset.common.download(DATA_URL, 'conll05st', DATA_MD5),
         words_name='conll05st-release/test.wsj/words/test.wsj.words.gz',
         props_name='conll05st-release/test.wsj/props/test.wsj.props.gz')
     return reader_creator(reader, word_dict, verb_dict, label_dict)
 
 
 def fetch():
-    download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)
-    download(VERBDICT_URL, 'conll05st', VERBDICT_MD5)
-    download(TRGDICT_URL, 'conll05st', TRGDICT_MD5)
-    download(EMB_URL, 'conll05st', EMB_MD5)
-    download(DATA_URL, 'conll05st', DATA_MD5)
+    paddle.v2.dataset.common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)
+    paddle.v2.dataset.common.download(VERBDICT_URL, 'conll05st', VERBDICT_MD5)
+    paddle.v2.dataset.common.download(TRGDICT_URL, 'conll05st', TRGDICT_MD5)
+    paddle.v2.dataset.common.download(EMB_URL, 'conll05st', EMB_MD5)
+    paddle.v2.dataset.common.download(DATA_URL, 'conll05st', DATA_MD5)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    paddle.v2.dataset.common.convert(path, test(), 1000, "conl105_train")
+    paddle.v2.dataset.common.convert(path, test(), 1000, "conl105_test")

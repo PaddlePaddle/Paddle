@@ -23,14 +23,15 @@ set and test set into paddle reader creators.
 """
 
 import zipfile
-from common import download
+import paddle.v2.dataset.common
 import re
 import random
 import functools
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
+    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info',
+    'convert'
 ]
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
@@ -99,7 +100,7 @@ USER_INFO = None
 
 
 def __initialize_meta_info__():
-    fn = download(URL, "movielens", MD5)
+    fn = paddle.v2.dataset.common.download(URL, "movielens", MD5)
     global MOVIE_INFO
     if MOVIE_INFO is None:
         pattern = re.compile(r'^(.*)\((\d+)\)$')
@@ -246,7 +247,15 @@ def unittest():
 
 
 def fetch():
-    download(URL, "movielens", MD5)
+    paddle.v2.dataset.common.download(URL, "movielens", MD5)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    paddle.v2.dataset.common.convert(path, train(), 1000, "movielens_train")
+    paddle.v2.dataset.common.convert(path, test(), 1000, "movielens_test")
 
 
 if __name__ == '__main__':

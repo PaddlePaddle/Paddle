@@ -561,7 +561,7 @@ void Argument::degradeSequence(const Argument& input) {
 
 void Argument::poolSequenceWithStride(const Argument& input,
                                       size_t stride,
-                                      IVectorPtr* stridePostions,
+                                      ICpuGpuVectorPtr* stridePostions,
                                       bool reversed) {
   // If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
   // then sequenceStartPositions = [0, 2, 3, 4, 7].
@@ -598,8 +598,8 @@ void Argument::poolSequenceWithStride(const Argument& input,
   stridePos.emplace_back(starts[numSequences]);
   int size = stridePos.size();
   CHECK_EQ(size - 1, tgtBuf[numSequences]);
-  IVector::resizeOrCreate(*stridePostions, size, false);
-  (*stridePostions)->copyFrom(stridePos.data(), size);
+  ICpuGpuVector::resizeOrCreate(*stridePostions, size, false);
+  (*stridePostions)->getMutableVector(false)->copyFrom(stridePos.data(), size);
 }
 
 void Argument::getValueString(
@@ -663,6 +663,26 @@ void Argument::subArgFrom(const Argument& input,
   if (seqFlag) {
     sequenceStartPositions = std::make_shared<ICpuGpuVector>(
         *(input.sequenceStartPositions), seqStart, seqSize);
+  }
+}
+
+void Argument::reorganizeSeqInfo(
+    const ICpuGpuVectorPtr seqStartPos,
+    const ICpuGpuVectorPtr subSeqStartPos,
+    std::vector<std::vector<int>>& reorganizedSeqInfo) {
+  int* seqStarts = seqStartPos->getMutableData(false);
+  int* subSeqStarts = subSeqStartPos->getMutableData(false);
+
+  int seqNum = seqStartPos->getSize() - 1;
+  reorganizedSeqInfo.resize(seqNum, std::vector<int>());
+  int seqIdx = 0;
+  for (size_t i = 0; i < subSeqStartPos->getSize(); ++i) {
+    reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
+    if (subSeqStarts[i] == seqStarts[seqIdx + 1]) {
+      seqIdx++;
+      if (seqIdx == seqNum) return;
+      reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
+    }
   }
 }
 

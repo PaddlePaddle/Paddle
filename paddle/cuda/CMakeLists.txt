@@ -39,6 +39,7 @@ set(CUDA_CU_SOURCES
     src/hl_cuda_lstm.cu
     src/hl_top_k.cu
     src/hl_batch_transpose.cu
+    src/hl_batch_norm.cu
     src/hl_cuda_sequence.cu
     src/hl_table_apply.cu)
 
@@ -83,7 +84,7 @@ else()
                 ${CUDA_CXX_SOURCES})
 endif()
 
-add_dependencies(paddle_cuda ${external_project_dependencies})
+add_dependencies(paddle_cuda paddle_proto ${external_project_dependencies})
 
 add_style_check_target(paddle_cuda
                        ${CUDA_SOURCES}

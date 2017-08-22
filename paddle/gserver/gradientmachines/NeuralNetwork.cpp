@@ -202,7 +202,7 @@ void NeuralNetwork::prefetch(const std::vector<Argument>& inArgs) {
         auto mat = dynamic_cast<SparsePrefetchRowCpuMatrix*>(
             para->getMat(PARAMETER_VALUE).get());
         para->clearGradient();
-        mat->clearIndices();
+        if (mat) mat->clearIndices();
       }
     }
   }
@@ -403,7 +403,7 @@ public:
       : layerName_(layerName) {
     addEvaluator(std::move(evaluator));
   }
-  virtual void eval(const NeuralNetwork& nn) override {
+  void eval(const NeuralNetwork& nn) override {
     const LayerPtr& layer = nn.getLayer(layerName_);
     CHECK(layer) << "Nonexisted layer: " << layerName_ << " in submodel "
                  << nn.getName();

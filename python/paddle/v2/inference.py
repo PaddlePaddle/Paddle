@@ -1,9 +1,7 @@
 import numpy
-import py_paddle.swig_paddle as api
 import collections
 import topology
 import minibatch
-from data_feeder import DataFeeder
 
 __all__ = ['infer', 'Inference']
 
@@ -28,6 +26,7 @@ class Inference(object):
     """
 
     def __init__(self, output_layer, parameters):
+        import py_paddle.swig_paddle as api
         topo = topology.Topology(output_layer)
         gm = api.GradientMachine.createFromConfigProto(
             topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
@@ -36,10 +35,18 @@ class Inference(object):
             name = param.getName()
             assert isinstance(val, api.Vector)
             val.copyFromNumpyArray(parameters.get(name).flatten())
+            # the setValueUpdated function is called in randomize, zeroMem,
+            # load function in paddle/parameter/Parameter.cpp. But in the
+            # inference mode, the setValueUpdated is never called, it will
+            # cause the parameter will not be dispatched
+            # in MultiGradientMachine for multi-GPU. So setValueUpdated is
+            # called here, but it's better to call this function in one place.
+            param.setValueUpdated()
         self.__gradient_machine__ = gm
         self.__data_types__ = topo.data_type()
 
     def iter_infer(self, input, feeding=None):
+        from data_feeder import DataFeeder
         feeder = DataFeeder(self.__data_types__, feeding)
         batch_size = len(input)
 

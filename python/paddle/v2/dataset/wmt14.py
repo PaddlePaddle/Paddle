@@ -22,19 +22,19 @@ parse training set and test set into paddle reader creators.
 import tarfile
 import gzip
 
-from paddle.v2.dataset.common import download
+import paddle.v2.dataset.common
 from paddle.v2.parameters import Parameters
 
-__all__ = ['train', 'test', 'build_dict']
+__all__ = ['train', 'test', 'build_dict', 'convert']
 
 URL_DEV_TEST = 'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and will be add later.
 URL_TRAIN = 'http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz'
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
-# this is the pretrained model, whose bleu = 26.92
+# BLEU of this trained model is 26.92
 URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
-MD5_MODEL = '4ce14a26607fb8a1cc23bcdedb1895e4'
+MD5_MODEL = '0cb4a5366189b6acba876491c8724fa3'
 
 START = "<s>"
 END = "<e>"
@@ -115,7 +115,8 @@ def train(dict_size):
     :rtype: callable
     """
     return reader_creator(
-        download(URL_TRAIN, 'wmt14', MD5_TRAIN), 'train/train', dict_size)
+        paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
+        'train/train', dict_size)
 
 
 def test(dict_size):
@@ -130,16 +131,18 @@ def test(dict_size):
     :rtype: callable
     """
     return reader_creator(
-        download(URL_TRAIN, 'wmt14', MD5_TRAIN), 'test/test', dict_size)
+        paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
+        'test/test', dict_size)
 
 
 def gen(dict_size):
     return reader_creator(
-        download(URL_TRAIN, 'wmt14', MD5_TRAIN), 'gen/gen', dict_size)
+        paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
+        'gen/gen', dict_size)
 
 
 def model():
-    tar_file = download(URL_MODEL, 'wmt14', MD5_MODEL)
+    tar_file = paddle.v2.dataset.common.download(URL_MODEL, 'wmt14', MD5_MODEL)
     with gzip.open(tar_file, 'r') as f:
         parameters = Parameters.from_tar(f)
     return parameters
@@ -148,7 +151,7 @@ def model():
 def get_dict(dict_size, reverse=True):
     # if reverse = False, return dict = {'a':'001', 'b':'002', ...}
     # else reverse = true, return dict = {'001':'a', '002':'b', ...}
-    tar_file = download(URL_TRAIN, 'wmt14', MD5_TRAIN)
+    tar_file = paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
     src_dict, trg_dict = __read_to_dict__(tar_file, dict_size)
     if reverse:
         src_dict = {v: k for k, v in src_dict.items()}
@@ -157,5 +160,15 @@ def get_dict(dict_size, reverse=True):
 
 
 def fetch():
-    download(URL_TRAIN, 'wmt14', MD5_TRAIN)
-    download(URL_MODEL, 'wmt14', MD5_MODEL)
+    paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
+    paddle.v2.dataset.common.download(URL_MODEL, 'wmt14', MD5_MODEL)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    dict_size = 30000
+    paddle.v2.dataset.common.convert(path,
+                                     train(dict_size), 1000, "wmt14_train")
+    paddle.v2.dataset.common.convert(path, test(dict_size), 1000, "wmt14_test")

@@ -184,7 +184,7 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {
-    if (biases_) {
+    if (biases_ && biases_->getWGrad()) {
       backwardActivation();
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
       biases_->getParameterPtr()->incUpdate(callback);
@@ -636,7 +636,7 @@ void lenToStarts(std::vector<int>& starts) {
   }
   starts.back() = pos;
 }
-}
+}  // namespace
 
 void RecurrentGradientMachine::calcSequenceStartPositions() {
   std::vector<int> starts(commonSeqInfo_.size() + 1);
@@ -967,8 +967,9 @@ void RecurrentGradientMachine::generateSequence() {
   size_t numSequences = getGenBatchSize();
 
   resizeBootFrame(numSequences);
-  // We create only two sub-network in generation for alternate use.
-  // Thus, we can reduce total memory of output_ in layer forward.
+  // We create only two sub-network in generation, one stores states of all
+  // layers in previous time step and the other storing the states at current
+  // time step.
   resizeOrCreateFrames(2);
 
   // outFrameLines_.size() > 1UL
@@ -1001,15 +1002,19 @@ void RecurrentGradientMachine::generateSequence() {
 
   // init outArg
   size_t resultNum = generator_.config.num_results_per_sample();
-  IVector::resizeOrCreate(
-      generator_.outArg.ids,
-      generator_.config.max_num_frames() * numSequences * resultNum,
-      false);
+  size_t maxGenWordCount =
+      generator_.config.max_num_frames() * numSequences * resultNum;
+  IVector::resizeOrCreate(generator_.outArg.ids, maxGenWordCount, false);
   if (resultNum > 1) {
     CHECK_LE(resultNum, static_cast<size_t>(generator_.config.beam_size()));
     Matrix::resizeOrCreate(generator_.outArg.in,
                            /* height */ numSequences,
                            /* width */ resultNum,
+                           false,
+                           /* useGpu */ false);
+    Matrix::resizeOrCreate(generator_.outArg.value,
+                           /* height */ maxGenWordCount,
+                           /* width */ 1,
                            false,
                            /* useGpu */ false);
   }
@@ -1313,13 +1318,20 @@ void RecurrentGradientMachine::fillGenOutputs() {
   starts[0] = 0;
   if (numResults > 1) {
     real* probs = generator_.outArg.in->getData();
+    real* idsProb = generator_.outArg.value->getData();
+    size_t curPos = 0;
     for (size_t i = 0; i < finalPaths_.size(); ++i) {
       for (size_t j = 0; j < finalPaths_[i].size(); ++j) {
         Path& path = finalPaths_[i][j];
-        generator_.ids.push_back(path.ids.size());  // sequence size
+        size_t genLen = path.ids.size();
+        generator_.ids.push_back(genLen);  // sequence size
         generator_.ids.insert(
             generator_.ids.end(), path.ids.begin(), path.ids.end());
         generator_.ids.push_back(-1);  // end of sequence
+
+        memcpy(idsProb + curPos, path.idsProb.data(), sizeof(real) * genLen);
+        curPos += genLen;
+        idsProb[curPos++] = -1.0;
         probs[i * numResults + j] = path.logProb;
 
         if (!j && dataArgsSize_) {

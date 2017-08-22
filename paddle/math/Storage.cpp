@@ -32,9 +32,7 @@ static InitFunction __init_storage_engine([]() { StorageEngine::singleton(); },
 StorageEngine::StorageEngine() : cpuAllocator_(nullptr) {}
 
 StorageEngine::~StorageEngine() {
-  if (cpuAllocator_) {
-    delete cpuAllocator_;
-  }
+  delete cpuAllocator_;
   for (auto it : gpuAllocator_) {
     delete it;
   }

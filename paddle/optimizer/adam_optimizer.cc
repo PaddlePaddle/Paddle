@@ -24,20 +24,23 @@ void AdamOptimizer::Update(const Tensor *gradient) {
 
 const char *AdamOptimizer::SerializeState(int *state_len) {
   AdamOptimizerState state;
-  // TODO(zhihong) : add lr_policy serialization
+  std::string lr_str = this->lr_policy_->SerializeState(state_len);
+  state.mutable_lr_state()->ParseFromString(lr_str);
   state.set_num_sample_passed(num_sample_passed_);
+
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*momentums_, state.mutable_momentums());
   TensorToProto(*velocitys_, state.mutable_velocitys());
   auto str = state.SerializeAsString();
-  *state_len = str.size();
+  *state_len += str.size();
   return str.c_str();
 }
 
 void AdamOptimizer::DeserializeState(const std::string &str) {
   AdamOptimizerState state;
   state.ParseFromString(str);
-  // TODO(zhihong) : add lr_policy DeserializeState
+  auto lr_state = state.lr_state();
+  this->lr_policy_->DeserializeState(lr_state.SerializeAsString());
   num_sample_passed_ = state.num_sample_passed();
 
   ProtoToTensor(state.parameter(), parameter_);
