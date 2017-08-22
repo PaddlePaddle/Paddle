@@ -52,16 +52,15 @@ protected:
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-  // TODO(TJ): change below memory as MKLDNNMatrixPtr type
-  // MKLDNNMatrixPtr ;
+  // MKLDNNMatrixPtr
   MKLDNNMatrixPtr inVal_;
-  std::shared_ptr<mkldnn::memory> inGrad_;
+  MKLDNNMatrixPtr inGrad_;
   MKLDNNMatrixPtr outVal_;
-  std::shared_ptr<mkldnn::memory> outGrad_;
+  MKLDNNMatrixPtr outGrad_;
   MKLDNNMatrixPtr wgtVal_;
-  std::shared_ptr<mkldnn::memory> wgtGrad_;
+  MKLDNNMatrixPtr wgtGrad_;
   MKLDNNMatrixPtr biasVal_;
-  std::shared_ptr<mkldnn::memory> biasGrad_;
+  MKLDNNMatrixPtr biasGrad_;
 
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
@@ -84,17 +83,24 @@ public:
 
   virtual bool init(const LayerMap& layerMap,
                     const ParameterMap& parameterMap) {
+    CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
+                            << "Please set WITH_MKLDNN=ON "
+                            << "and set use_mkldnn=True";
+    if (useGpu_ == true) {
+      LOG(WARNING) << "Do not support GPU yet, will change to useGpu = false";
+      useGpu_ = false;
+    }
+
+    // set device id before Layer::init
+    setDevice(MKLDNN_DEVICE);
+    // change param device to MKLDNN device
+    setParamsDevice(MKLDNN_DEVICE, parameterMap);
     if (!Layer::init(layerMap, parameterMap)) {
       return false;
     }
 
-    CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
-                            << "Please set WITH_MKLDNN=ON "
-                            << "and set use_mkldnn=True";
     stream_.reset(new MKLDNNStream());
     engine_ = CPUEngine::Instance().getEngine();
-
-    setDeviceID(MKLDNN_DEVICE);
     return true;
   }
 
@@ -136,10 +142,33 @@ public:
   }
 
 protected:
-  void setDeviceID(int id) {
-    deviceId_ = id;
-    output_.deviceId = id;
-    // TODO: handle mkldnn device or add mkldnn device to other
+  /**
+   * Set deviceId of this layer.
+   */
+  void setDevice(int id) { deviceId_ = id; }
+
+  /**
+   * Set deviceId of the params used in this layer.
+   */
+  void setParamsDevice(int id, const ParameterMap& parameterMap) {
+    for (auto& inputConfig : config_.inputs()) {
+      if (inputConfig.has_input_parameter_name()) {
+        ParameterPtr parameter;
+        std::string name = inputConfig.input_parameter_name();
+        CHECK(mapGet(name, parameterMap, &parameter))
+            << "Cannot find input parameter " << name << " for layer "
+            << getName();
+        parameter->setDevice(id);
+      }
+    }
+    if (config_.has_bias_parameter_name()) {
+      ParameterPtr parameter;
+      std::string name = config_.bias_parameter_name();
+      CHECK(mapGet(name, parameterMap, &parameter))
+          << "Cannot find bias parameter " << name << " for layer "
+          << getName();
+      parameter->setDevice(id);
+    }
   }
 };
 

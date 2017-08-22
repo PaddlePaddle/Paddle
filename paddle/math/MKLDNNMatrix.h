@@ -44,6 +44,8 @@ public:
     set_data_handle(CpuMatrix::getData());
   }
 
+  ~MKLDNNMatrix() {}
+
   static MKLDNNMatrixPtr create(
       const MatrixPtr& m,
       mkldnn::memory::dims dims,
@@ -52,21 +54,42 @@ public:
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
 
   /**
-   * Get primitive descriptor
+   * Get primitive descriptor.
    */
   mkldnn::memory::primitive_desc getPD() { return this->get_primitive_desc(); }
 
   /**
-   * Get memory descriptor
+   * Get memory descriptor.
    */
   mkldnn::memory::desc getMD() { return getPD().desc(); }
 
   /**
-   * Get format
+   * Get dims.
    */
-  int getFormat() { return getMD().data.format; }
+  mkldnn::memory::dims getDims() {
+    mkldnn::memory::dims dst;
+    int* src = getMD().data.dims;
+    int ndims = getMD().data.ndims;
+    dst.resize(ndims);
+    for (int i = 0; i < ndims; ++i) {
+      dst[i] = src[i];
+    }
+    return dst;
+  }
 
-  ~MKLDNNMatrix() {}
+  /**
+   * Get format.
+   */
+  mkldnn::memory::format getFormat() {
+    return (mkldnn::memory::format)(getMD().data.format);
+  }
+
+  /**
+   * Update the memory data handle.
+   * Caution: This will not check the buffer size of the data,
+   *          it should be coverd by user.
+   */
+  void updateData(void* data) { set_data_handle(data); }
 };
 
 }  // namespace paddle
