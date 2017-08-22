@@ -26,8 +26,7 @@ class CPUUniformRandomKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed =
-        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+    unsigned int seed = context.op_.GetAttr<int>("seed");
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
@@ -69,9 +68,9 @@ Used to initialize tensor with uniform random generator.
     AddAttr<std::vector<int>>("dims", "the dimension of random tensor");
     AddAttr<float>("min", "Minimum value of uniform random").SetDefault(-1.0f);
     AddAttr<float>("max", "Maximun value of uniform random").SetDefault(1.0f);
-    AddAttr<int>("seed",
-                 "Random seed of uniform random. "
-                 "0 means generate a seed by system")
+    AddAttr<unsigned>("seed",
+                      "Random seed of uniform random. "
+                      "0 means generate a seed by system")
         .SetDefault(0);
   }
 };

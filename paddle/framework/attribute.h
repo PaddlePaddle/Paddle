@@ -27,8 +27,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                       std::vector<float>, std::vector<std::string>>
+typedef boost::variant<boost::blank, int, unsigned, float, std::string,
+                       std::vector<int>, std::vector<float>,
+                       std::vector<std::string>>
     Attribute;
 
 typedef std::unordered_map<std::string, Attribute> AttributeMap;
