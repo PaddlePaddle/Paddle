@@ -1,10 +1,9 @@
 import unittest
-
+from op_test_util import OpTestMeta
+from gradient_checker import GradientChecker, create_op
 import numpy
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
-
-from op_test_util import OpTestMeta
 
 
 class TestGatherOp(unittest.TestCase):
@@ -17,7 +16,18 @@ class TestGatherOp(unittest.TestCase):
             'X': xnp,
             'Index': numpy.array([1, 3, 5]).astype("int32")
         }
-        self.outputs = {'Y': self.inputs['X'][self.inputs['Index']]}
+        self.outputs = {'Out': self.inputs['X'][self.inputs['Index']]}
+
+
+class TestGatherGradOp(GradientChecker):
+    def test_gather_grad(self):
+        print 'creating op'
+        op = create_op("gather")
+        print 'creating op done'
+        xnp = numpy.random.random((10, 20)).astype("float32")
+        inputs = {'X': xnp, 'Index': numpy.array([1, 3, 5]).astype("int32")}
+        print 'correct before check gradient'
+        self.check_grad(op, inputs, set("X"), "Out")
 
 
 if __name__ == "__main__":

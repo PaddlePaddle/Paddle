@@ -26,9 +26,9 @@ class GatherOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     int batch_size = ctx.Input<Tensor>("Index")->dims()[0];
     PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
-    paddle::framework::DDim output_dims(ctx.Input<Tensor>("X")->dims());
+    framework::DDim output_dims(ctx.Input<Tensor>("X")->dims());
     output_dims[0] = batch_size;
-    ctx.Output<Tensor>("Y")->Resize(output_dims);
+    ctx.Output<Tensor>("Out")->Resize(output_dims);
   }
 };
 
@@ -51,11 +51,11 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
-    AddOutput("Y", "The output of add op");
+    AddOutput("Out", "The output of add op");
     AddComment(R"DOC(
 Gather Operator by selecting from the first axis, 
 
-Y = X[Index]
+Out = X[Index]
 )DOC");
   }
 };

@@ -27,13 +27,13 @@ namespace operators {
 
 // Implementation of CPU copy
 template <typename T>
-void CPUGather(const T* params, const int* indices, const int slice_size,
+void CPUGather(const T* src, const int* indices, const int slice_size,
                const int index_size, T* output) {
   const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int i = 0; i < index_size; ++i) {
     int index_ = indices[i];
-    memcpy(output + i * slice_size, params + index_ * slice_size, slice_bytes);
+    memcpy(output + i * slice_size, src + index_ * slice_size, slice_bytes);
   }
 }
 
@@ -57,7 +57,7 @@ void Gather(const platform::Place& place, const paddle::framework::Tensor* src,
   int index_size = index->dims()[0];
 
   auto src_dims = src->dims();
-  paddle::framework::DDim output_dims(src_dims);
+  framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
   // slice size
