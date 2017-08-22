@@ -44,6 +44,7 @@ USE_OP(gaussian_random);
 USE_OP(uniform_random);
 USE_OP(scale);
 USE_OP_ITSELF(identity);
+USE_OP(minus);
 
 namespace paddle {
 namespace framework {
