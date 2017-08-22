@@ -6,8 +6,8 @@ import unittest
 def fc(X, W, Y):
     ret_v = core.Net.create()
 
-    ret_v.add_op(Operator("mul", X="X", Y="W", Out="pre_activation"))
-    ret_v.add_op(Operator("sigmoid", X="pre_activation", Y=Y))
+    ret_v.append_op(Operator("mul", X="X", Y="W", Out="pre_activation"))
+    ret_v.append_op(Operator("sigmoid", X="pre_activation", Y=Y))
     ret_v.complete_add_op(True)
     return ret_v
 
@@ -16,12 +16,12 @@ class TestNet(unittest.TestCase):
     def test_net_all(self):
         net = core.Net.create()
         op1 = Operator("add_two", X="X", Y="Y", Out="Out")
-        net.add_op(op1)
+        net.append_op(op1)
 
         net2 = core.Net.create()
-        net2.add_op(fc(X="X", W="w", Y="fc.out"))
+        net2.append_op(fc(X="X", W="w", Y="fc.out"))
         net2.complete_add_op(True)
-        net.add_op(net2)
+        net.append_op(net2)
         net.complete_add_op(True)
 
         expected = '''
