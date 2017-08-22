@@ -1,5 +1,18 @@
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
-import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
 import paddle.trainer.config_parser as cp
 import struct
@@ -114,16 +127,8 @@ class Parameters(object):
         """
         return iter(self.__param_conf__)
 
-    def __getitem__(self, key):
-        """
-        Get parameter by parameter name. It uses Python dict syntax.
-
-        :note: It will always copy the parameter from C++ side.
-        :param key: Parameter name
-        :type key: basestring
-        :return: parameter value
-        :rtype: np.ndarray
-        """
+    def __getter_inner(self, key, param_type):
+        import py_paddle.swig_paddle as api
         shape = self.get_shape(key)
 
         if len(self.__gradient_machines__) == 0:
@@ -138,13 +143,26 @@ class Parameters(object):
                     each_gradient_machine, key)
                 # for simplify implementation now, we always copy from C++
                 assert isinstance(param, api.Parameter)
-                val = param.getBuf(api.PARAMETER_VALUE)
+                val = param.getBuf(param_type)
                 assert isinstance(val, api.Vector)
                 val = val.copyToNumpyArray()
                 return val
                 # else continue
 
             raise RuntimeError("Unexpected branch")
+
+    def __getitem__(self, key):
+        """
+        Get parameter by parameter name. It uses Python dict syntax.
+
+        :note: It will always copy the parameter from C++ side.
+        :param key: Parameter name
+        :type key: basestring
+        :return: parameter value
+        :rtype: np.ndarray
+        """
+        import py_paddle.swig_paddle as api
+        return self.__getter_inner(key, api.PARAMETER_VALUE)
 
     def get_shape(self, key):
         """
@@ -202,6 +220,19 @@ class Parameters(object):
         """
         return self.__getitem__(key=parameter_name)
 
+    def get_grad(self, key):
+        """
+        Get grandient by parameter name.
+
+        :note: It will always copy the parameter from C++ side.
+        :param key: parameter name
+        :type key: basestring
+        :return: The grandient matrix.
+        :rtype: np.ndarray
+        """
+        import py_paddle.swig_paddle as api
+        return self.__getter_inner(key, api.PARAMETER_GRADIENT)
+
     def set(self, parameter_name, value):
         """
         Set parameter by parameter name & matrix.
@@ -223,7 +254,7 @@ class Parameters(object):
         :type gradient_machine: api.GradientMachine
         :return:
         """
-
+        import py_paddle.swig_paddle as api
         if not isinstance(gradient_machine, api.GradientMachine):
             raise ValueError("gradient_machine should be api.GradientMachine")
 
@@ -250,7 +281,13 @@ class Parameters(object):
         size = reduce(lambda a, b: a * b, param.shape)
         f.write(struct.pack("IIQ", 0, 4, size))
         param = param.astype(np.float32)
-        f.write(param.tostring())
+        s = param.tostring()
+        wrote_size = 0
+        buf = buffer(s, wrote_size, 65535)
+        while buf:  # f.write crashes with big data blog.
+            f.write(buf)
+            wrote_size += 65535
+            buf = buffer(s, wrote_size, 65535)
 
     def deserialize(self, name, f):
         """
@@ -359,6 +396,7 @@ def __copy_parameter_to_gradient_machine__(gradient_machine, name, arr):
     :return:
     :rtype: api.Parameter
     """
+    import py_paddle.swig_paddle as api
     param = __get_parameter_in_gradient_machine__(gradient_machine, name)
     vec = param.getBuf(api.PARAMETER_VALUE)
     assert isinstance(vec, api.Vector)

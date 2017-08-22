@@ -565,6 +565,35 @@ class IdentityOffsetProjection(Projection):
         return []
 
 
+@config_class
+class SliceProjection(Projection):
+    type = 'slice'
+
+    def __init__(self, input_layer_name, slices, **xargs):
+        super(SliceProjection, self).__init__(input_layer_name, **xargs)
+        input = g_layer_map[input_layer_name]
+        if input.type in ["exconv", "cudnn_conv"]:
+            # the slice operator is for the channel dimension
+            assert input.num_filters is not None
+            channels = input.num_filters
+            image_size = input.size / channels
+            assert slices[len(slices) - 1][1] <= channels
+            for i in xrange(len(slices)):
+                slice = self.proj_conf.slices.add()
+                slice.start = slices[i][0] * image_size
+                slice.end = slices[i][1] * image_size
+                self.size += slice.end - slice.start
+        else:
+            config_assert(False,
+                          'Currently the input should be convolution layer')
+
+    def calc_parameter_size(self, input_size, output_size):
+        return 0
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return []
+
+
 # DotMulProjection performs element-wise multiplication with weight
 @config_class
 class DotMulProjection(Projection):
@@ -1575,15 +1604,36 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
-    def __init__(self, name, size, inputs, bias=True, **xargs):
-        super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
+    layer_type = 'fc'
+
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 bias=True,
+                 error_clipping_threshold=None,
+                 **xargs):
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        use_mkldnn_wgt = bool(
+            int(g_command_config_args.get("use_mkldnn_wgt", 0)))
+        if use_mkldnn:
+            self.layer_type = 'mkldnn_fc'
+            config_assert(
+                len(inputs) == 1,
+                "MkldnnFCLayer support one and only one input!")
+        super(FCLayer, self).__init__(
+            name, self.layer_type, size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
             dims = [input_layer.size, self.config.size]
             format = self.inputs[input_index].format
             sparse = format == "csr" or format == "csc"
-
+            if use_mkldnn:
+                config_assert(not sparse,
+                              "MkldnnFCLayer do not support sparse format yet")
+                if use_mkldnn_wgt:
+                    dims = [self.config.size, input_layer.size]
             if sparse:
                 psize = self.inputs[input_index].nnz
             else:
@@ -1592,6 +1642,13 @@ class FCLayer(LayerBase):
             self.create_input_parameter(input_index, psize, dims, sparse,
                                         format)
         self.create_bias_parameter(bias, self.config.size)
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
+
+
+@config_layer('mkldnn_fc')
+class MkldnnFcLayer(FCLayer):
+    layer_type = 'mkldnn_fc'
 
 
 @config_layer('selective_fc')
@@ -1990,6 +2047,23 @@ class PadLayer(LayerBase):
         self.config.size = out_ch * out_h * out_w
 
 
+@config_layer('crop')
+class CropLayer(LayerBase):
+    def __init__(self, name, inputs, axis, offset, shape, **xargs):
+        super(CropLayer, self).__init__(name, 'crop', 0, inputs=inputs, **xargs)
+        self.config.axis = axis
+        self.config.offset.extend(offset)
+        self.config.shape.extend(shape)
+
+        # get channel, width and height from input_0 layer
+        input_layer = self.get_input_layer(0)
+        image_conf = self.config.inputs[0].image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+
+
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
     layer_type = 'batch_norm'
@@ -2030,8 +2104,7 @@ class BatchNormLayer(LayerBase):
         # Automatically select cudnn_batch_norm for GPU and batch_norm for CPU.
         # Also based on cudnn version.
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
-            ((not parallel_nn) or self.config.device > -1) and \
-            cudnn_version >= 4007
+                ((not parallel_nn) or self.config.device > -1)
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **xargs)
@@ -2143,6 +2216,34 @@ class RowConvLayer(LayerBase):
         psize = context_length * input_layer.size
         dims = [context_length, input_layer.size]
         self.create_input_parameter(0, psize, dims)
+
+
+@config_layer('clip')
+class ClipLayer(LayerBase):
+    def __init__(self, name, inputs, min, max, **xargs):
+        super(ClipLayer, self).__init__(name, 'clip', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ClipLayer must have one and only one input.')
+        config_assert(min < max, 'min must be less than max.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.config.inputs[0].clip_conf.min = min
+        self.config.inputs[0].clip_conf.max = max
+
+
+@config_layer('scale_shift')
+class ScaleShiftLayer(LayerBase):
+    def __init__(self, name, inputs, bias=True, **xargs):
+        super(ScaleShiftLayer, self).__init__(
+            name, 'scale_shift', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ScaleShiftLayer must have one and only one input.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.create_input_parameter(0, 1, [1, 1])
+        self.create_bias_parameter(bias, 1)
 
 
 # key: cost type
@@ -2590,6 +2691,31 @@ class SubSequenceLayer(LayerBase):
         self.create_bias_parameter(bias, size)
 
 
+@config_layer('sub_nested_seq')
+class SubNestedSequenceLayer(LayerBase):
+    def __init__(self, name, inputs, selected_indices, bias=False, **xargs):
+        if isinstance(inputs, list):
+            assert len(inputs) == 1, ('the first input of sub_nested_seq '
+                                      'layer is a single nested sequence.')
+            inputs = inputs[0]
+        if isinstance(selected_indices, list):
+            assert len(selected_indices) == 1, (
+                'the second input of '
+                'sub_nested_seq layer is a single layer which is a '
+                'set of selected indices.')
+            selected_indices = selected_indices[0]
+
+        super(SubNestedSequenceLayer, self).__init__(
+            name,
+            'sub_nested_seq',
+            0,
+            inputs=[inputs, selected_indices],
+            **xargs)
+        input_layer0 = self.get_input_layer(0)
+        size = input_layer0.size
+        self.set_layer_size(size)
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
@@ -2699,6 +2825,16 @@ class SumToOneNormLayer(LayerBase):
             len(self.inputs) == 1, 'SumToOneNormLayer must have 1 input')
         input_layer0 = self.get_input_layer(0)
         self.set_layer_size(input_layer0.size)
+
+
+@config_layer('row_l2_norm')
+class RowL2NormLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(RowL2NormLayer, self).__init__(
+            name, 'row_l2_norm', 0, inputs=inputs, **xargs)
+        config_assert(len(self.inputs) == 1, 'RowL2NormLayer must have 1 input')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
 
 
 @config_layer('cos_vm')
@@ -3146,6 +3282,16 @@ class CTCLayer(LayerBase):
         config_assert(len(self.inputs) == 2, 'CTCLayer must have 2 inputs')
 
 
+@config_layer('kmax_seq_score')
+class KmaxSeqScoreLayer(LayerBase):
+    def __init__(self, name, inputs, beam_size, **xargs):
+        super(KmaxSeqScoreLayer, self).__init__(
+            name, 'kmax_seq_score', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1, 'KmaxSeqScoreLayer has only one input.')
+        self.config.beam_size = beam_size
+
+
 @config_layer('warp_ctc')
 class WarpCTCLayer(LayerBase):
     def __init__(self,
@@ -3193,6 +3339,10 @@ def ParameterHook(type, **kwargs):
         sparsity_ratio = kwargs.get('sparsity_ratio', None)
         if sparsity_ratio is not None:
             hook.sparsity_ratio = sparsity_ratio
+        return hook
+    elif type == 'dpruning':
+        hook = ParameterUpdaterHookConfig()
+        hook.type = type
         return hook
     else:
         return None

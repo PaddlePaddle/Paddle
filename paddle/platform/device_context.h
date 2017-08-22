@@ -11,17 +11,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/enforce.h"
+#include "paddle/platform/enforce.h"
+#include "paddle/platform/place.h"
+
 #ifndef PADDLE_ONLY_CPU
-#include "paddle/platform/cuda.h"
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
-#include "paddle/platform/dynload/curand.h"
+#include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
-#include <paddle/platform/place.h>
 #include <memory>
-#include <unsupported/Eigen/CXX11/Tensor>
+#include "paddle/platform/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace platform {
@@ -32,149 +33,62 @@ class DeviceContext {
   virtual Place GetPlace() const = 0;
 
   template <typename DeviceType>
-  DeviceType* get_eigen_device();
+  DeviceType* get_eigen_device() const;
 };
 
 class CPUDeviceContext : public DeviceContext {
  public:
-  Eigen::DefaultDevice* eigen_device() {
-    if (!eigen_device_) {
-      eigen_device_.reset(new Eigen::DefaultDevice());
-    }
-    return eigen_device_.get();
-  }
+  CPUDeviceContext();
+  explicit CPUDeviceContext(CPUPlace place);
+  virtual ~CPUDeviceContext() {}
 
-  Place GetPlace() const override {
-    Place retv = CPUPlace();
-    return retv;
-  }
+  Eigen::DefaultDevice* eigen_device() const;
+
+  Place GetPlace() const override;
 
  private:
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
 #ifndef PADDLE_ONLY_CPU
-
-class GPUPlaceGuard {
- public:
-  explicit GPUPlaceGuard(GPUPlace new_place) : previous_(GetCurrentDeviceId()) {
-    if (previous_ != new_place) {
-      paddle::platform::SetDeviceId(new_place.device);
-    }
-  }
-
-  ~GPUPlaceGuard() { paddle::platform::SetDeviceId(previous_.device); }
-
- private:
-  GPUPlace previous_;
-};
+class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
-  explicit CUDADeviceContext(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
-    GPUPlaceGuard guard(gpu_place_);
-    paddle::platform::throw_on_error(cudaStreamCreate(&stream_),
-                                     "cudaStreamCreate failed");
-    eigen_stream_.reset(new Eigen::CudaStreamDevice(&stream_));
-    eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-  }
+  explicit CUDADeviceContext(GPUPlace place);
+  virtual ~CUDADeviceContext();
 
-  Place GetPlace() const override {
-    Place retv = GPUPlace();
-    return retv;
-  }
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const;
 
-  void Wait() {
-    paddle::platform::throw_on_error(cudaStreamSynchronize(stream_),
-                                     "cudaStreamSynchronize failed");
-  }
+  /*! \brief  Return place in the device context. */
+  Place GetPlace() const override;
 
-  cudaStream_t stream() { return stream_; }
+  /*! \brief  Return eigen device in the device context. */
+  Eigen::GpuDevice* eigen_device() const;
 
-  Eigen::GpuDevice* eigen_device() { return eigen_device_.get(); }
+  // clang-format off
+  /*! \brief  Return cublas handle in the device context. */
+  cublasHandle_t    cublas_handle();
 
-  cublasHandle_t cublas_handle() {
-    if (!blas_handle_) {
-      GPUPlaceGuard guard(gpu_place_);
-      PADDLE_ENFORCE(paddle::platform::dynload::cublasCreate(&blas_handle_) ==
-                         CUBLAS_STATUS_SUCCESS,
-                     "cublasCreate failed");
-      PADDLE_ENFORCE(paddle::platform::dynload::cublasSetStream(
-                         blas_handle_, stream_) == CUBLAS_STATUS_SUCCESS,
-                     "cublasSetStream failed");
-    }
-    return blas_handle_;
-  }
+  /*! \brief  Return cudnn  handle in the device context. */
+  cudnnHandle_t     cudnn_handle();
 
-  cudnnHandle_t cudnn_handle() {
-    if (!dnn_handle_) {
-      GPUPlaceGuard guard(gpu_place_);
-      PADDLE_ENFORCE(paddle::platform::dynload::cudnnCreate(&dnn_handle_) ==
-                         CUDNN_STATUS_SUCCESS,
-                     "cudnnCreate failed");
-      PADDLE_ENFORCE(paddle::platform::dynload::cudnnSetStream(
-                         dnn_handle_, stream_) == CUDNN_STATUS_SUCCESS,
-                     "cudnnSetStream failed");
-    }
-    return dnn_handle_;
-  }
-
-  curandGenerator_t curand_generator() {
-    if (!rand_generator_) {
-      GPUPlaceGuard guard(gpu_place_);
-      PADDLE_ENFORCE(paddle::platform::dynload::curandCreateGenerator(
-                         &rand_generator_, CURAND_RNG_PSEUDO_DEFAULT) ==
-                         CURAND_STATUS_SUCCESS,
-                     "curandCreateGenerator failed");
-      PADDLE_ENFORCE(
-          paddle::platform::dynload::curandSetPseudoRandomGeneratorSeed(
-              rand_generator_, random_seed_) == CURAND_STATUS_SUCCESS,
-          "curandSetPseudoRandomGeneratorSeed failed");
-      PADDLE_ENFORCE(paddle::platform::dynload::curandSetStream(
-                         rand_generator_, stream_) == CURAND_STATUS_SUCCESS,
-                     "curandSetStream failed");
-    }
-    return rand_generator_;
-  }
-
-  ~CUDADeviceContext() {
-    Wait();
-    if (blas_handle_) {
-      PADDLE_ENFORCE(paddle::platform::dynload::cublasDestroy(blas_handle_) ==
-                         CUBLAS_STATUS_SUCCESS,
-                     "cublasDestroy failed");
-    }
-
-    if (dnn_handle_) {
-      PADDLE_ENFORCE(paddle::platform::dynload::cudnnDestroy(dnn_handle_) ==
-                         CUDNN_STATUS_SUCCESS,
-                     "cudnnDestroy failed");
-    }
-
-    if (rand_generator_) {
-      PADDLE_ENFORCE(paddle::platform::dynload::curandDestroyGenerator(
-                         rand_generator_) == CURAND_STATUS_SUCCESS,
-                     "curandDestroyGenerator failed");
-    }
-    eigen_stream_.reset();
-    eigen_device_.reset();
-    paddle::platform::throw_on_error(cudaStreamDestroy(stream_),
-                                     "cudaStreamDestroy failed");
-  }
+  /*! \brief  Return cuda stream in the device context. */
+  cudaStream_t      stream();
+  // clang-format on
 
  private:
-  GPUPlace gpu_place_;
-  cudaStream_t stream_;
+  GPUPlace place_;
 
-  std::unique_ptr<Eigen::CudaStreamDevice> eigen_stream_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
+  std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
-  cublasHandle_t blas_handle_{nullptr};
-
-  cudnnHandle_t dnn_handle_{nullptr};
-
-  int random_seed_;
-  curandGenerator_t rand_generator_{nullptr};
+  // clang-format off
+  cudaStream_t       stream_{nullptr};
+  cudnnHandle_t      cudnn_handle_{nullptr};
+  cublasHandle_t     cublas_handle_{nullptr};
+  // clang-format on
 };
 
 #endif

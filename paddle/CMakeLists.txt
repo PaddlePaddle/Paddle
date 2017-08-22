@@ -14,7 +14,7 @@ if(Boost_FOUND)
   add_subdirectory(memory)
   add_subdirectory(platform)
   add_subdirectory(framework)
-  add_subdirectory(pybind)
+  add_subdirectory(operators)
 endif()
 
 if(WITH_C_API)
@@ -22,7 +22,5 @@ if(WITH_C_API)
 endif()
 
 if(WITH_SWIG_PY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-          ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
   add_subdirectory(api)
 endif()

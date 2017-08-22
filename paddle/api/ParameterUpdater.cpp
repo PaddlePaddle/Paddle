@@ -33,14 +33,15 @@ ParameterUpdater *ParameterUpdater::createLocalUpdater(
 
 ParameterUpdater *ParameterUpdater::createNewRemoteUpdater(
     OptimizationConfig *config,
-    const std::string pserverSpec) throw(UnsupportError) {
+    const std::string pserverSpec,
+    const bool useEtcd) throw(UnsupportError) {
 #ifndef PADDLE_WITHOUT_GOLANG
   auto updater = new ParameterUpdater();
   updater->m->updater.reset(new paddle::NewRemoteParameterUpdater(
-      config->m->getConfig(), pserverSpec));
+      config->m->getConfig(), pserverSpec, useEtcd));
   return updater;
 #else
-  throw UnsupportError();
+  throw UnsupportError("not compiled with WITH_GOLANG");
 #endif
 }
 

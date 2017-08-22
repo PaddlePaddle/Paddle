@@ -110,7 +110,7 @@ set(COMMON_FLAGS
     -Wno-error=literal-suffix
     -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs
-    -Wno-error=parentheses-equality # Warnings in Pybind11
+    -Wno-error=parentheses-equality # Warnings in pybind11
 )
 
 set(GPU_COMMON_FLAGS
@@ -124,6 +124,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
+    -Wno-error=array-bounds # Warnings in Eigen::array
 )
 
 if (APPLE)
@@ -189,6 +190,7 @@ endif()
 # Modern gpu architectures: Pascal
 if (CUDA_VERSION VERSION_GREATER "8.0" OR CUDA_VERSION VERSION_EQUAL "8.0")
       list(APPEND __arch_flags " -gencode arch=compute_60,code=sm_60")
+      list(APPEND CUDA_NVCC_FLAGS --expt-relaxed-constexpr)
 endif()
 
 # Custom gpu architecture

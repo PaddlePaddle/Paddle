@@ -184,7 +184,7 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {
-    if (biases_) {
+    if (biases_ && biases_->getWGrad()) {
       backwardActivation();
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
       biases_->getParameterPtr()->incUpdate(callback);
@@ -636,7 +636,7 @@ void lenToStarts(std::vector<int>& starts) {
   }
   starts.back() = pos;
 }
-}
+}  // namespace
 
 void RecurrentGradientMachine::calcSequenceStartPositions() {
   std::vector<int> starts(commonSeqInfo_.size() + 1);

@@ -1,9 +1,24 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #include "paddle/framework/ddim.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-///@cond HIDDEN
+/// @cond HIDDEN
 
 template <int i>
 Dim<i> make_dim(const int* d) {
@@ -50,7 +65,7 @@ void make_ddim(DDim& ddim, const int* dims, int n) {
   }
 }
 
-///@endcond
+/// @endcond
 
 DDim make_ddim(std::initializer_list<int> dims) {
   DDim result(make_dim(0));
@@ -64,11 +79,11 @@ DDim make_ddim(const std::vector<int>& dims) {
   return result;
 }
 
-///@cond HIDDEN
+/// @cond HIDDEN
 // XXX For some reason, putting this in an anonymous namespace causes errors
 class DynamicMutableIndexer : public boost::static_visitor<int&> {
  public:
-  DynamicMutableIndexer(int idx) : idx_(idx) {}
+  explicit DynamicMutableIndexer(int idx) : idx_(idx) {}
 
   template <int D>
   int& operator()(Dim<D>& dim) const {
@@ -81,7 +96,7 @@ class DynamicMutableIndexer : public boost::static_visitor<int&> {
 
 class DynamicConstIndexer : public boost::static_visitor<int> {
  public:
-  DynamicConstIndexer(int idx) : idx_(idx) {}
+  explicit DynamicConstIndexer(int idx) : idx_(idx) {}
 
   template <int D>
   int operator()(const Dim<D>& dim) const {
@@ -92,7 +107,7 @@ class DynamicConstIndexer : public boost::static_visitor<int> {
   int idx_;
 };
 
-///@endcond
+/// @endcond
 
 int& DDim::operator[](int idx) {
   return boost::apply_visitor(DynamicMutableIndexer(idx), var);
@@ -101,6 +116,8 @@ int& DDim::operator[](int idx) {
 int DDim::operator[](int idx) const {
   return boost::apply_visitor(DynamicConstIndexer(idx), var);
 }
+
+ssize_t DDim::size() const { return arity(*this); }
 
 bool DDim::operator==(DDim d) const {
   if (var.which() != d.getVar().which()) {
@@ -155,11 +172,11 @@ int get(const DDim& ddim, int idx) { return ddim[idx]; }
 
 void set(DDim& ddim, int idx, int value) { ddim[idx] = value; }
 
-///@cond HIDDEN
+/// @cond HIDDEN
 struct VectorizeVisitor : public boost::static_visitor<> {
   std::vector<int>& vector;
 
-  VectorizeVisitor(std::vector<int>& v) : vector(v) {}
+  explicit VectorizeVisitor(std::vector<int>& v) : vector(v) {}
 
   template <typename T>
   void operator()(const T& t) {
@@ -169,7 +186,7 @@ struct VectorizeVisitor : public boost::static_visitor<> {
 
   void operator()(const Dim<1>& t) { vector.push_back(t.head); }
 };
-///@endcond
+/// @endcond
 
 std::vector<int> vectorize(const DDim& ddim) {
   std::vector<int> result;
@@ -178,16 +195,59 @@ std::vector<int> vectorize(const DDim& ddim) {
   return result;
 }
 
-ssize_t product(const DDim& ddim) {
-  ssize_t result = 1;
-  std::vector<int> v = vectorize(ddim);
-  for (auto i : v) {
-    result *= i;
+struct ProductVisitor : public boost::static_visitor<ssize_t> {
+  template <int D>
+  ssize_t operator()(const Dim<D>& dim) {
+    return product(dim);
   }
-  return result;
+};
+
+ssize_t product(const DDim& ddim) {
+  ProductVisitor visitor;
+  return boost::apply_visitor(visitor, ddim);
 }
 
-///\cond HIDDEN
+struct SliceVectorizeVisitor : public boost::static_visitor<> {
+  std::vector<int>& vector;
+  int begin;
+  int end;
+
+  SliceVectorizeVisitor(std::vector<int>& v, int b, int e)
+      : vector(v), begin(b), end(e) {
+    PADDLE_ENFORCE(begin < end,
+                   "Begin index must be less than end index in ddim slice.");
+    PADDLE_ENFORCE(begin >= 0,
+                   "Begin index can't be less than zero in ddim slice.");
+  }
+
+  template <int S>
+  void operator()(const Dim<S>& dim) {
+    if (begin == 0) {
+      vector.push_back(dim.head);
+    } else {
+      --begin;
+    }
+    --end;
+    if (end > 0) {
+      this->operator()(dim.tail);
+    }
+  }
+
+  void operator()(const Dim<1>& dim) {
+    PADDLE_ENFORCE(end == 1, "End index in ddim slice is out of bound.");
+    vector.push_back(dim.head);
+  }
+};
+
+DDim slice_ddim(const DDim& dim, int begin, int end) {
+  std::vector<int> vec;
+  vec.reserve(end - begin);
+  SliceVectorizeVisitor visitor(vec, begin, end);
+  boost::apply_visitor(visitor, dim);
+  return make_ddim(vec);
+}
+
+/// \cond HIDDEN
 
 struct ArityVisitor : boost::static_visitor<int> {
   template <int D>
@@ -196,15 +256,15 @@ struct ArityVisitor : boost::static_visitor<int> {
   }
 };
 
-///\endcond
+/// \endcond
 
 int arity(const DDim& d) { return boost::apply_visitor(ArityVisitor(), d); }
 
-///\cond HIDDEN
+/// \cond HIDDEN
 
 struct DDimPrinter : boost::static_visitor<void> {
   std::ostream& os;
-  DDimPrinter(std::ostream& os_) : os(os_) {}
+  explicit DDimPrinter(std::ostream& os_) : os(os_) {}
 
   template <typename T>
   void operator()(const T& t) {
@@ -212,7 +272,7 @@ struct DDimPrinter : boost::static_visitor<void> {
   }
 };
 
-///\endcond
+/// \endcond
 
 std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   DDimPrinter printer(os);
@@ -220,5 +280,8 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   return os;
 }
 
+DDim::DDim(std::initializer_list<int> init_list) {
+  *this = make_ddim(init_list);
+}
 }  // namespace framework
 }  // namespace paddle

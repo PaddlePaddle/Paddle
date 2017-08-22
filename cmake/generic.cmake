@@ -104,6 +104,7 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
+  list(REMOVE_DUPLICATES libs_deps)
 
   if(APPLE) # Use OSX's libtool to merge archives
     # To produce a library we need at least one source file.
@@ -127,7 +128,7 @@ function(merge_static_libs TARGET_NAME)
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
   else() # general UNIX: use "ar" to extract objects and re-add to a common lib
@@ -145,11 +146,11 @@ function(merge_static_libs TARGET_NAME)
         DEPENDS ${lib} ${objdir}
         WORKING_DIRECTORY ${objdir})
 
-      # Empty dummy source file that goes into merged library
-      set(mergebase ${lib}.mergebase.c)
-      add_custom_command(OUTPUT ${mergebase}
-        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}
-        DEPENDS ${objlistfile})
+      # Empty dummy source file that goes into merged library		
+      set(mergebase ${lib}.mergebase.c)		
+      add_custom_command(OUTPUT ${mergebase}		
+        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}		
+        DEPENDS ${objlistfile})		
 
       list(APPEND mergebases "${mergebase}")
     endforeach()
@@ -184,6 +185,16 @@ function(cc_library TARGET_NAME)
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
+    
+    # cpplint code style
+    foreach(source_file ${cc_library_SRCS})
+      string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+        list(APPEND cc_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+      endif()
+    endforeach()
+    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS} ${cc_library_HEADERS})
+
   else(cc_library_SRCS)
     if (cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
@@ -234,6 +245,14 @@ function(nv_library TARGET_NAME)
         add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
         target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
       endif()
+      # cpplint code style
+      foreach(source_file ${nv_library_SRCS})
+        string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+        if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+          list(APPEND cc_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+        endif()
+      endforeach()
+      add_style_check_target(${TARGET_NAME} ${nv_library_SRCS} ${nv_library_HEADERS})
     else(nv_library_SRCS)
       if (nv_library_DEPS)
         merge_static_libs(${TARGET_NAME} ${nv_library_DEPS})
@@ -285,8 +304,22 @@ function(go_library TARGET_NAME)
     set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
 
-  # Add dummy code to support `make target_name` under Terminal Command
   set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+
+  # This custom command will always run since it depends on a not
+  # existing file.
+  add_custom_command(
+    OUTPUT dummy_rebulid_${TARGET_NAME}
+    COMMAND cmake -E touch ${dummyfile}
+    )
+  # Create a custom target that depends on the custom command output
+  # file, so the custom command can be referenced as a dependency by
+  # `add_dependencies`.
+  add_custom_target(rebuild_${TARGET_NAME}
+    DEPENDS dummy_rebulid_${TARGET_NAME}
+    )
+
+  # Add dummy code to support `make target_name` under Terminal Command
   file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
   if (go_library_SHARED OR go_library_shared)
     add_library(${TARGET_NAME} SHARED ${dummyfile})
@@ -296,6 +329,12 @@ function(go_library TARGET_NAME)
   if(go_library_DEPS)
     add_dependencies(${TARGET_NAME} ${go_library_DEPS})
   endif(go_library_DEPS)
+
+  # The "source file" of the library is `${dummyfile}` which never
+  # change, so the target will never rebuild. Make the target depends
+  # on the custom command that touches the library "source file", so
+  # rebuild will always happen.
+  add_dependencies(${TARGET_NAME} rebuild_${TARGET_NAME})
 
   set(${TARGET_NAME}_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/${${TARGET_NAME}_LIB_NAME}" CACHE STRING "output library path for target ${TARGET_NAME}")
 
@@ -337,7 +376,7 @@ function(go_test TARGET_NAME)
   string(REPLACE "${PADDLE_GO_PATH}" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${go_test_DEPS})
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test -race
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ".${CMAKE_CURRENT_SOURCE_REL_DIR}"
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
@@ -363,4 +402,17 @@ function(py_proto_compile TARGET_NAME)
   set(py_srcs)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
+endfunction()
+
+function(py_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(options STATIC static SHARED shared)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
+    add_test(NAME ${TARGET_NAME}
+             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
+             python2 ${py_test_SRCS}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  endif()
 endfunction()

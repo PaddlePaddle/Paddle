@@ -13,75 +13,126 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/detail/system_allocator.h"
+#include "paddle/platform/assert.h"
+#include "paddle/platform/enforce.h"
+#include "paddle/platform/gpu_info.h"
 
 #include <stdlib.h>    // for malloc and free
 #include <sys/mman.h>  // for mlock and munlock
 
 #include "gflags/gflags.h"
-#include "paddle/platform/assert.h"
-#include "paddle/platform/cuda.h"
 
 // If use_pinned_memory is true, CPUAllocator calls mlock, which
 // returns pinned and locked memory as staging areas for data exchange
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, false,
-            "If set, allocate cpu/gpu pinned memory.");
+DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
 
 namespace paddle {
 namespace memory {
 namespace detail {
 
-void* CPUAllocator::Alloc(size_t size) {
+void* CPUAllocator::Alloc(size_t& index, size_t size) {
   // According to http://www.cplusplus.com/reference/cstdlib/malloc/,
   // malloc might not return nullptr if size is zero, but the returned
   // pointer shall not be dereferenced -- so we make it nullptr.
   if (size <= 0) return nullptr;
 
+  index = 0;  // unlock memory
+
   void* p = malloc(size);
-  if (p != nullptr && FLAGS_use_pinned_memory) {
-    mlock(p, size);
+
+  if (p != nullptr) {
+    if (FLAGS_use_pinned_memory) {
+      index = 1;
+      mlock(p, size);  // lock memory
+    }
   }
+
   return p;
 }
 
-void CPUAllocator::Free(void* p, size_t size) {
-  if (p != nullptr && FLAGS_use_pinned_memory) {
+void CPUAllocator::Free(void* p, size_t size, size_t index) {
+  if (p != nullptr && index == 1) {
     munlock(p, size);
   }
   free(p);
 }
 
+bool CPUAllocator::UseGpu() const { return false; }
+
 #ifndef PADDLE_ONLY_CPU
 
-void* GPUAllocator::Alloc(size_t size) {
+void* GPUAllocator::Alloc(size_t& index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
   // if size is 0.  We just make sure it does.
-  if (size <= 0) {
-    return nullptr;
+  if (size <= 0) return nullptr;
+
+  size_t available = 0;
+  size_t capacity = 0;
+  paddle::platform::GpuMemoryUsage(available, capacity);
+
+  // Reserve memory for page tables, etc.
+  size_t reserving = capacity - paddle::platform::GpuMaxAllocSize();
+  size_t usable = available > reserving ? available - reserving : 0;
+
+  // If remaining size no less than expected size, using general
+  // cudaMalloc to allocate GPU memory.
+  void* p = 0;
+  if (size <= usable) {
+    cudaError_t result = cudaMalloc(&p, size);
+    if (result == cudaSuccess) {
+      index = 0;
+      gpu_alloc_size_ += size;
+      return p;
+    }
   }
 
-  void* p = 0;
-  cudaError_t result =
-      FLAGS_use_pinned_memory ? cudaMallocHost(&p, size) : cudaMalloc(&p, size);
-  if (result != cudaSuccess) {
-    cudaGetLastError();  // clear error if there is any.
+  // If remaining size less than expected size or cudaMalloc failed,
+  // cudaMallocHost will be considered as a fallback allocator.
+  //
+  // NOTE: here, we use GpuMaxAllocSize() as the maximum memory size
+  // of host fallback allocation. Allocates too much would reduce
+  // the amount of memory available to the underlying system for paging.
+  usable = paddle::platform::GpuMaxAllocSize() - fallback_alloc_size_;
+
+  if (size > usable) return nullptr;
+
+  cudaError_t result = cudaMallocHost(&p, size);
+  if (result == cudaSuccess) {
+    index = 1;
+    fallback_alloc_size_ += size;
+    return p;
   }
-  return result == cudaSuccess ? p : nullptr;
+
+  return nullptr;
 }
 
-void GPUAllocator::Free(void* p, size_t size) {
+void GPUAllocator::Free(void* p, size_t size, size_t index) {
+  cudaError_t err;
+
+  if (index == 0) {
+    PADDLE_ASSERT(gpu_alloc_size_ >= size);
+    gpu_alloc_size_ -= size;
+    err = cudaFree(p);
+  } else {
+    PADDLE_ASSERT(fallback_alloc_size_ >= size);
+    fallback_alloc_size_ -= size;
+    err = cudaFreeHost(p);
+  }
+
   // Purposefully allow cudaErrorCudartUnloading, because
   // that is returned if you ever call cudaFree after the
   // driver has already shutdown. This happens only if the
   // process is terminating, in which case we don't care if
   // cudaFree succeeds.
-  cudaError_t err = FLAGS_use_pinned_memory ? cudaFreeHost(p) : cudaFree(p);
   if (err != cudaErrorCudartUnloading) {
-    platform::throw_on_error(err, "cudaFree{Host} failed");
+    PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
   }
 }
+
+bool GPUAllocator::UseGpu() const { return true; }
 
 #endif  // PADDLE_ONLY_CPU
 
