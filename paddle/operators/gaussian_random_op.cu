@@ -30,7 +30,7 @@ struct GaussianGenerator {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    thrust::normal_distribution<T> dist(min_, max_);
+    thrust::normal_distribution<T> dist(mean_, std_);
     rng.discard(n);
     return dist(rng);
   }
