@@ -562,8 +562,8 @@ PServerVector ParameterClient2::createVector() {
     if (handle == -1) {
       handle = response.handle();
     } else {
-      CHECK_EQ(handle, response.handle()) << "Inconsistent handle from client" 
-                                          << &response - &responses[0] << " " 
+      CHECK_EQ(handle, response.handle()) << "Inconsistent handle from client"
+                                          << &response - &responses[0] << " "
                                           << handle << " " << response.handle();
     }
   }
@@ -592,8 +592,8 @@ PServerMatrix ParameterClient2::createMatrix(int32_t numCols) {
     if (handle == -1) {
       handle = response.handle();
     } else {
-      CHECK_EQ(handle, response.handle()) << "Inconsistent handle from client" 
-                                          << &response - &responses[0] << " " 
+      CHECK_EQ(handle, response.handle()) << "Inconsistent handle from client"
+                                          << &response - &responses[0] << " "
                                           << handle << " " << response.handle();
     }
   }
