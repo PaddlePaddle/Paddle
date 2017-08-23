@@ -127,7 +127,8 @@ void SequenceSliceLayer::copySliceIdsToCpu() {
 
 void SequenceSliceLayer::calSelectedRows(const MatrixPtr starts,
                                          const MatrixPtr ends) {
-  CHECK(starts && ends);
+  CHECK(starts || ends) << "At least one of the start or end indices "
+                        << "should be given.";
 
   outSeqStartPos_.resize(1, 0);
   outSubSeqStartPos_.resize(1, 0);
@@ -148,7 +149,7 @@ void SequenceSliceLayer::calSelectedRows(const MatrixPtr starts,
         if (ends) endPos = inputSeqInfoVec_[i][j] + ends->getElement(rowIdx, k);
 
         int seqLen = endPos - begPos + 1;
-        CHECK_LT(seqLen, 0U);
+        CHECK_GT(seqLen, 0U);
         for (int m = begPos; m <= endPos; ++m) selectedRows_.push_back(m);
         inputSeqInfoVec_.size() > 1
             ? outSubSeqStartPos_.push_back(outSubSeqStartPos_.back() + seqLen)
