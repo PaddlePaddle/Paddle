@@ -44,5 +44,6 @@ protected:
   int imgSizeW_, imgSizeH_, imgSizeD_;
   int outputW_, outputH_, outputD_;
   std::string poolType_;
+  MatrixPtr maxPoolIdx_;
 };
 }  // namespace paddle

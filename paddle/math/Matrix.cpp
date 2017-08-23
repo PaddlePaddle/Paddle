@@ -1191,23 +1191,23 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad,
 }
 
 void GpuMatrix::maxPool3DForward(Matrix& inputMat,
+                                 size_t channels,
                                  size_t imgSizeD,
                                  size_t imgSizeH,
                                  size_t imgSizeW,
-                                 size_t channels,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
                                  size_t sizeZ,
                                  size_t sizeY,
                                  size_t sizeX,
                                  size_t strideD,
                                  size_t strideH,
                                  size_t strideW,
-                                 size_t outputD,
-                                 size_t outputH,
-                                 size_t outputW,
                                  size_t paddingD,
                                  size_t paddingH,
                                  size_t paddingW) {
-  CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
+  CHECK(inputMat.useGpu_) << "Matrix type are not correct";
 
   real* inputData = inputMat.getData();
   size_t num = inputMat.getHeight();
@@ -1236,32 +1236,31 @@ void GpuMatrix::maxPool3DForward(Matrix& inputMat,
                        paddingD,
                        paddingH,
                        paddingW,
-                       data_,
+                       getData(),
                        getStride());
 }
 
 void GpuMatrix::maxPool3DBackward(Matrix& inputMat,
+                                  Matrix& outGrad,
+                                  Matrix& outV,
                                   size_t imgSizeD,
                                   size_t imgSizeH,
                                   size_t imgSizeW,
-                                  Matrix& outGrad,
-                                  Matrix& outV,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
                                   size_t sizeZ,
                                   size_t sizeY,
                                   size_t sizeX,
                                   size_t strideD,
                                   size_t strideH,
                                   size_t strideW,
-                                  size_t outputD,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real scaleTargets,
-                                  real scaleOutput,
                                   size_t paddingD,
                                   size_t paddingH,
-                                  size_t paddingW) {
-  CHECK(inputMat.useGpu_ == true && outGrad.useGpu_ == true &&
-        outV.useGpu_ == true)
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
+  CHECK(inputMat.useGpu_ && outGrad.useGpu_ && outV.useGpu_)
       << "Matrix type are not equal";
 
   real* inputData = inputMat.getData();
@@ -1300,28 +1299,28 @@ void GpuMatrix::maxPool3DBackward(Matrix& inputMat,
                         paddingW,
                         scaleTargets,
                         scaleOutput,
-                        data_,
+                        getData(),
                         outGrad.getStride());
 }
 
 void GpuMatrix::avgPool3DForward(Matrix& inputMat,
+                                 size_t channels,
                                  size_t imgSizeD,
                                  size_t imgSizeH,
                                  size_t imgSizeW,
-                                 size_t channels,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
                                  size_t sizeZ,
                                  size_t sizeY,
                                  size_t sizeX,
                                  size_t strideD,
                                  size_t strideH,
                                  size_t strideW,
-                                 size_t outputD,
-                                 size_t outputH,
-                                 size_t outputW,
                                  size_t paddingD,
                                  size_t paddingH,
                                  size_t paddingW) {
-  CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
+  CHECK(inputMat.useGpu_) << "Matrix type are not equal";
 
   real* inputData = inputMat.getData();
   size_t frameNum = inputMat.getHeight();
@@ -1350,7 +1349,7 @@ void GpuMatrix::avgPool3DForward(Matrix& inputMat,
                        paddingD,
                        paddingH,
                        paddingW,
-                       data_,
+                       getData(),
                        getStride());
 }
 
@@ -1358,21 +1357,21 @@ void GpuMatrix::avgPool3DBackward(Matrix& outGrad,
                                   size_t imgSizeD,
                                   size_t imgSizeH,
                                   size_t imgSizeW,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
                                   size_t sizeZ,
                                   size_t sizeY,
                                   size_t sizeX,
                                   size_t strideD,
                                   size_t strideH,
                                   size_t strideW,
-                                  size_t outputD,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real scaleTargets,
-                                  real scaleOutput,
                                   size_t paddingD,
                                   size_t paddingH,
-                                  size_t paddingW) {
-  CHECK(outGrad.useGpu_ == true) << "Matrix type are not equal";
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
+  CHECK(outGrad.useGpu_) << "Matrix type are not equal";
 
   real* outDiff = outGrad.getData();
   size_t frameNum = outGrad.getHeight();
@@ -1404,7 +1403,7 @@ void GpuMatrix::avgPool3DBackward(Matrix& outGrad,
                         paddingW,
                         scaleTargets,
                         scaleOutput,
-                        data_,
+                        getData(),
                         outGrad.getStride());
 }
 
@@ -2149,24 +2148,24 @@ void CpuMatrix::avgPoolBackward(Matrix& input,
 }
 
 void CpuMatrix::maxPool3DForward(Matrix& inputMat,
+                                 size_t channels,
                                  size_t imgSizeD,
                                  size_t imgSizeH,
                                  size_t imgSizeW,
-                                 size_t channels,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
                                  size_t sizeZ,
                                  size_t sizeY,
                                  size_t sizeX,
                                  size_t strideD,
                                  size_t strideH,
                                  size_t strideW,
-                                 size_t outputD,
-                                 size_t outputH,
-                                 size_t outputW,
                                  size_t paddingD,
                                  size_t paddingH,
                                  size_t paddingW) {
   real* inputData = inputMat.getData();
-  real* outData = data_;
+  real* outData = getData();
   size_t num = inputMat.getHeight();
   size_t inWidth = imgSizeW;
   size_t inHeight = imgSizeH;
@@ -2186,7 +2185,7 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
   /* pool max one by one */
   for (size_t n = 0; n < num; ++n) {  // frame by frame
     if (!isContiguous()) {
-      outData = data_ + n * outStride;
+      outData = getData() + n * outStride;
     }
     for (size_t c = 0; c < channels; ++c) {  // channel by channel
       for (size_t pd = 0; pd < outputD; ++pd) {
@@ -2201,15 +2200,18 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
             dstart = std::max(dstart, 0);
             hstart = std::max(hstart, 0);
             wstart = std::max(wstart, 0);
+            real maxOutData = outData[(pd * outputH + ph) * outputW + pw];
             for (int d = dstart; d < dend; ++d) {
               for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
-                  outData[(pd * outputH + ph) * outputW + pw] =
-                      std::max(outData[(pd * outputH + ph) * outputW + pw],
-                               inputData[(d * inHeight + h) * inWidth + w]);
+                  if (maxOutData <
+                      inputData[(d * inHeight + h) * inWidth + w]) {
+                    maxOutData = inputData[(d * inHeight + h) * inWidth + w];
+                  }
                 }
               }
             }
+            outData[(pd * outputH + ph) * outputW + pw] = maxOutData;
           }
         }
       }
@@ -2221,25 +2223,25 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
 }
 
 void CpuMatrix::maxPool3DBackward(Matrix& image,
+                                  Matrix& outGrad,
+                                  Matrix& outV,
                                   size_t imgSizeD,
                                   size_t imgSizeH,
                                   size_t imgSizeW,
-                                  Matrix& outGrad,
-                                  Matrix& outV,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
                                   size_t sizeZ,
                                   size_t sizeY,
                                   size_t sizeX,
                                   size_t strideD,
                                   size_t strideH,
                                   size_t strideW,
-                                  size_t outputD,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real scaleTargets,
-                                  real scaleOutput,
                                   size_t paddingD,
                                   size_t paddingH,
-                                  size_t paddingW) {
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
   size_t num = image.getHeight();
   size_t channels = size_t(width_ / imgSizeD / imgSizeH / imgSizeW);
   CHECK(image.getWidth() == imgSizeD * imgSizeH * imgSizeW * channels);
@@ -2247,19 +2249,18 @@ void CpuMatrix::maxPool3DBackward(Matrix& image,
   CHECK(outV.getHeight() == outGrad.getHeight() &&
         outV.getWidth() == outGrad.getWidth());
 
-  real* tgtGrad = data_;
+  real* tgtGrad = getData();
   real* inData = image.getData();
   real* otData = outV.getData();
   real* otGrad = outGrad.getData();
 
   size_t outStride = outV.getStride();
-  real* origOutData = otData;
-  real* origOutGrad = otGrad;
+  ;
 
   for (size_t n = 0; n < num; ++n) {
     if (!outV.isContiguous()) {
-      otData = origOutData + n * outStride;
-      otGrad = origOutGrad + n * outStride;
+      otData = outV.getData() + n * outStride;
+      otGrad = outGrad.getData() + n * outStride;
     }
     for (size_t c = 0; c < channels; ++c) {
       for (size_t pd = 0; pd < outputD; ++pd) {
@@ -2274,7 +2275,7 @@ void CpuMatrix::maxPool3DBackward(Matrix& image,
             dstart = std::max(dstart, 0);
             hstart = std::max(hstart, 0);
             wstart = std::max(wstart, 0);
-            for (int d = 0; d < dend; ++d) {
+            for (int d = dstart; d < dend; ++d) {
               for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
                   tgtGrad[(d * imgSizeH + h) * imgSizeW + w] =
@@ -2299,19 +2300,19 @@ void CpuMatrix::maxPool3DBackward(Matrix& image,
 }
 
 void CpuMatrix::avgPool3DForward(Matrix& input,
+                                 size_t channels,
                                  size_t imgSizeD,
                                  size_t imgSizeH,
                                  size_t imgSizeW,
-                                 size_t channels,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
                                  size_t sizeZ,
                                  size_t sizeY,
                                  size_t sizeX,
                                  size_t strideD,
                                  size_t strideH,
                                  size_t strideW,
-                                 size_t outputD,
-                                 size_t outputH,
-                                 size_t outputW,
                                  size_t paddingD,
                                  size_t paddingH,
                                  size_t paddingW) {
@@ -2322,7 +2323,7 @@ void CpuMatrix::avgPool3DForward(Matrix& input,
   size_t inWidth = imgSizeW;
   CHECK(inDepth * inHeight * inWidth * channels == input.getWidth());
   CHECK(outputD * outputH * outputW * channels * num == height_ * width_);
-  real* tgtData = data_;
+  real* tgtData = getData();
   real* inData = input.getData();
 
   for (size_t n = 0; n < num; ++n) {
@@ -2372,20 +2373,20 @@ void CpuMatrix::avgPool3DBackward(Matrix& input,
                                   size_t imgSizeD,
                                   size_t imgSizeH,
                                   size_t imgSizeW,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
                                   size_t sizeZ,
                                   size_t sizeY,
                                   size_t sizeX,
                                   size_t strideD,
                                   size_t strideH,
                                   size_t strideW,
-                                  size_t outputD,
-                                  size_t outputH,
-                                  size_t outputW,
-                                  real scaleTargets,
-                                  real scaleOutput,
                                   size_t paddingD,
                                   size_t paddingH,
-                                  size_t paddingW) {
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
   size_t num = input.getHeight();
   size_t channels = input.getWidth() / outputD / outputH / outputW;
   CHECK(imgSizeD * imgSizeH * imgSizeW * channels == getWidth());

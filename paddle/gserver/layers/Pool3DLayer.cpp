@@ -58,30 +58,9 @@ size_t Pool3DLayer::getSize() {
   CHECK_EQ(inputLayers_.size(), 1UL);
 
   size_t layerSize = 0;
-  //  imgSizeD_ = inputLayers_[0]->getOutput().getFrameDepth();
-  //  imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
-  //  imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
-  if (imgSizeH_ == 0) {
-    //    imgSizeH_ = imgSizeY_;
-  }
-  if (imgSizeW_ == 0) {
-    //    imgSizeW_ = imgSize_;
-  }
-  outputD_ = outputSize(imgSizeD_,
-                        sizeZ_,
-                        paddingD_,
-                        strideD_,
-                        /* caffeMode */ false);
-  outputH_ = outputSize(imgSizeH_,
-                        sizeY_,
-                        paddingH_,
-                        strideH_,
-                        /* caffeMode */ false);
-  outputW_ = outputSize(imgSizeW_,
-                        sizeX_,
-                        paddingW_,
-                        strideW_,
-                        /* caffeMode */ false);
+  outputD_ = outputSize(imgSizeD_, sizeZ_, paddingD_, strideD_, false);
+  outputH_ = outputSize(imgSizeH_, sizeY_, paddingH_, strideH_, false);
+  outputW_ = outputSize(imgSizeW_, sizeX_, paddingW_, strideW_, false);
 
   layerSize = outputD_ * outputH_ * outputW_ * channels_;
   getOutput().setFrameHeight(outputH_);
@@ -100,37 +79,37 @@ void Pool3DLayer::forward(PassType passType) {
 
   if (poolType_ == "avg") {
     outMat->avgPool3DForward(*inMat,
+                             channels_,
                              imgSizeD_,
                              imgSizeH_,
                              imgSizeW_,
-                             channels_,
+                             outputD_,
+                             outputH_,
+                             outputW_,
                              sizeZ_,
                              sizeY_,
                              sizeX_,
                              strideD_,
                              strideH_,
                              strideW_,
-                             outputD_,
-                             outputH_,
-                             outputW_,
                              paddingD_,
                              paddingH_,
                              paddingW_);
   } else if (poolType_ == "max") {
     outMat->maxPool3DForward(*inMat,
+                             channels_,
                              imgSizeD_,
                              imgSizeH_,
                              imgSizeW_,
-                             channels_,
+                             outputD_,
+                             outputH_,
+                             outputW_,
                              sizeZ_,
                              sizeY_,
                              sizeX_,
                              strideD_,
                              strideH_,
                              strideW_,
-                             outputD_,
-                             outputH_,
-                             outputW_,
                              paddingD_,
                              paddingH_,
                              paddingW_);
@@ -155,41 +134,41 @@ void Pool3DLayer::backward(const UpdateCallback& callback) {
                                  imgSizeD_,
                                  imgSizeH_,
                                  imgSizeW_,
+                                 outputD_,
+                                 outputH_,
+                                 outputW_,
                                  sizeZ_,
                                  sizeY_,
                                  sizeZ_,
                                  strideD_,
                                  strideH_,
                                  strideW_,
-                                 outputD_,
-                                 outputH_,
-                                 outputW_,
-                                 1,
-                                 1,
                                  paddingD_,
                                  paddingH_,
-                                 paddingW_);
+                                 paddingW_,
+                                 1.0,
+                                 1.0);
   } else if (poolType_ == "max") {
     inGradMat->maxPool3DBackward(*inMat,
+                                 *outGradMat,
+                                 *outMat,
                                  imgSizeD_,
                                  imgSizeH_,
                                  imgSizeW_,
-                                 *outGradMat,
-                                 *outMat,
+                                 outputD_,
+                                 outputH_,
+                                 outputW_,
                                  sizeZ_,
                                  sizeY_,
                                  sizeZ_,
                                  strideD_,
                                  strideH_,
                                  strideW_,
-                                 outputD_,
-                                 outputH_,
-                                 outputW_,
-                                 1,
-                                 1,
                                  paddingD_,
                                  paddingH_,
-                                 paddingW_);
+                                 paddingW_,
+                                 1.0,
+                                 1.0);
   } else {
     LOG(FATAL) << "Unknown pool type: " << poolType_;
   }
