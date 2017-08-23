@@ -862,7 +862,6 @@ class Conv(Cfg):
                  filter_size,
                  channels,
                  padding=None,
-                 dilation=None,
                  stride=None,
                  groups=None,
                  filter_channels=None,
@@ -871,8 +870,9 @@ class Conv(Cfg):
                  caffe_mode=True,
                  filter_size_y=None,
                  padding_y=None,
-                 dilation_y=None,
-                 stride_y=None):
+                 stride_y=None,
+                 dilation=None,
+                 dilation_y=None):
         self.add_keys(locals())
         if filter_size_y is None:
             self.filter_size_y = filter_size

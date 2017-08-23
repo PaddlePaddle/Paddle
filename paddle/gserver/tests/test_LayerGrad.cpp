@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_ONLY_CPU
 #include <cudnn.h>
+#endif
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
@@ -262,8 +264,8 @@ TEST(Projection, conv) {
   testProjectionConv(1, false);
   testProjectionConv(3, false);
   /// test ConvTransProjection
-  /// testProjectionConv(1, true);
-  /// testProjectionConv(3, true);
+  testProjectionConv(1, true);
+  testProjectionConv(3, true);
 }
 #endif
 

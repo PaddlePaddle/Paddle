@@ -640,7 +640,8 @@ void hl_create_convolution_descriptor(hl_convolution_descriptor* conv,
 #else
   if (dilation_h > 1 || dilation_w > 1) {
     LOG(FATAL)
-        << "Current cudnn version does't support for dilation convolution.";
+        << "Current cuDNN version does't support for dilation convolution. "
+        << "The dilation convolution requires cuDNN >= v6.0.";
   }
 
   CHECK_CUDNN(dynload::cudnnSetConvolution2dDescriptor(hl_conv->desc,

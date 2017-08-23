@@ -2340,7 +2340,7 @@ def img_conv_layer(input,
                    groups=1,
                    stride=1,
                    padding=0,
-                   dilation=0,
+                   dilation=1,
                    bias_attr=None,
                    param_attr=None,
                    shared_biases=True,
@@ -2472,9 +2472,6 @@ def img_conv_layer(input,
         else:
             dilation_y = dilation
 
-    if dilation > 1 or dilation_y > 1:
-        assert layer_type in ["cudnn_conv", "cudnn_convt"]
-
     if param_attr.attr.get('initial_smart'):
         # special initial for conv layers.
         init_w = (2.0 / (filter_size**2 * num_channels))**0.5
@@ -2484,6 +2481,8 @@ def img_conv_layer(input,
         param_attr.attr["initial_smart"] = False
 
     if layer_type:
+        if dilation > 1 or dilation_y > 1:
+            assert layer_type in ["cudnn_conv", "cudnn_convt"]
         if trans:
             assert layer_type in ["exconvt", "cudnn_convt"]
         else:
