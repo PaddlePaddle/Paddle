@@ -19,8 +19,8 @@ limitations under the License. */
 
 namespace paddle {
 
+/* This struct stores the beams in all search steps for a single sequence. */
 struct BeamExpansion {
-  // store the entire beam expansion for a single sequence
   std::vector<MatrixPtr> scores;
   std::vector<IVectorPtr> seqInfo;
 
@@ -111,8 +111,11 @@ private:
   size_t batchSize_;
   size_t beamSize_;
 
-  // Currently, this layer only works on CPU, if its inputs is on GPU,
-  // copy them to CPU memory.
+  /*
+   * the process of constructing beams is not friendly to GPU, currently, this
+   * layer only runs on CPU, if any of its inputs is on GPU memory, then copy
+   * it to CPU memory.
+   */
   std::vector<MatrixPtr> candidateScores_;
   std::vector<MatrixPtr> candidateScoreGrad_;
   std::vector<MatrixPtr> candidateInBeam_;
@@ -120,9 +123,12 @@ private:
   std::vector<IVectorPtr> goldSequence_;
   std::vector<std::vector<int>> beamSplitPos_;
 
-  // split entire bath of beams into beam per sequnence.
+  /*
+   * split entire bath of beams into beam per sequnence and store the result
+   * into this member.
+   */
   std::vector<BeamExpansion> beamPerSeq_;
-  // beamCosts_ is used to propagate error in one sequence.
+  /* beamCosts_ is used to propagate error in one sequence. */
   std::vector<CostForOneSequence> beamCosts_;
 };
 

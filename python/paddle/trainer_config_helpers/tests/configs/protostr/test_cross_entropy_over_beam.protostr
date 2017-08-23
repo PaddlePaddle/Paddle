@@ -114,10 +114,16 @@ layers {
     input_layer_name: "__kmax_sequence_score_layer_0__"
   }
   inputs {
+    input_layer_name: "sentences_ids"
+  }
+  inputs {
     input_layer_name: "__fc_layer_0__"
   }
   inputs {
     input_layer_name: "__kmax_sequence_score_layer_1__"
+  }
+  inputs {
+    input_layer_name: "start_ids"
   }
   inputs {
     input_layer_name: "__fc_layer_1__"
@@ -126,15 +132,8 @@ layers {
     input_layer_name: "__kmax_sequence_score_layer_2__"
   }
   inputs {
-    input_layer_name: "sentences_ids"
-  }
-  inputs {
-    input_layer_name: "start_ids"
-  }
-  inputs {
     input_layer_name: "end_ids"
   }
-  coeff: 1.0
 }
 parameters {
   name: "___fc_layer_0__.w0"
@@ -177,8 +176,8 @@ parameters {
   initial_smart: false
 }
 input_layer_names: "sentence_scores"
-input_layer_names: "sentence_states"
 input_layer_names: "sentences_ids"
+input_layer_names: "sentence_states"
 input_layer_names: "start_ids"
 input_layer_names: "end_ids"
 output_layer_names: "__cross_entropy_over_beam_0__"
@@ -198,8 +197,8 @@ sub_models {
   layer_names: "end_ids"
   layer_names: "__cross_entropy_over_beam_0__"
   input_layer_names: "sentence_scores"
-  input_layer_names: "sentence_states"
   input_layer_names: "sentences_ids"
+  input_layer_names: "sentence_states"
   input_layer_names: "start_ids"
   input_layer_names: "end_ids"
   output_layer_names: "__cross_entropy_over_beam_0__"

@@ -161,7 +161,17 @@ real CostForOneSequence::forward() {
 }
 
 void CostForOneSequence::backward() {
+  /*
+   * when softmax layer is the output layer, and it is combined with
+   * cross-entropy as cost. The derivate with regard to softmax's input
+   * is simply:
+   *
+   * grad_i = softmax_out_i - target_i,
+   *
+   * and here hard label is used.
+   */
   softmaxOut_->getData()[goldIdsInFinalExpansion_] -= 1.;
+
   MatrixPtr tmp = Matrix::create(
       softmaxOut_->getData(), softmaxOut_->getWidth(), 1, false, false);
 

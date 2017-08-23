@@ -29,11 +29,17 @@ topk_end_pos_ids = kmax_sequence_score_layer(
 sentence_idx = data_layer(name="sentences_ids", size=1)
 start_idx = data_layer(name="start_ids", size=1)
 end_idx = data_layer(name="end_ids", size=1)
-cost = cross_entropy_over_beam(
-    input=[
-        sentence_scores, topk_sentence_ids, start_pos_scores,
-        topk_start_pos_ids, end_pos_scores, topk_end_pos_ids
-    ],
-    label=[sentence_idx, start_idx, end_idx])
+cost = cross_entropy_over_beam(input=[
+    BeamInput(
+        candidate_scores=sentence_scores,
+        selected_candidates=topk_sentence_ids,
+        gold=sentence_idx), BeamInput(
+            candidate_scores=start_pos_scores,
+            selected_candidates=topk_start_pos_ids,
+            gold=start_idx), BeamInput(
+                candidate_scores=end_pos_scores,
+                selected_candidates=topk_end_pos_ids,
+                gold=end_idx)
+])
 
 outputs(cost)

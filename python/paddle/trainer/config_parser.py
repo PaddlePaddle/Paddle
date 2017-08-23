@@ -1605,16 +1605,16 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 @config_layer('cross_entropy_over_beam')
 class CrossEntropyOverBeamLayer(LayerBase):
     def __init__(self, name, inputs, **xargs):
-        config_assert(len(inputs) % 3 == 0, "Error input numbers.")
+        config_assert(len(inputs) % 3 == 0, "Error input number.")
         super(CrossEntropyOverBeamLayer, self).__init__(
             name, 'cross_entropy_over_beam', 0, inputs, **xargs)
         input_num = len(inputs) / 3
         for i in range(input_num):
-            input_layer = self.get_input_layer(i * 2)
-            config_assert(
-                input_layer.size == 1, "Inputs for this layer are made up of "
-                "several pairs and the first one in a pair is scores for "
-                "all the candidates, so its size should be equal to 1.")
+            input_layer = self.get_input_layer(i * 3)
+            config_assert(input_layer.size == 1, (
+                "Inputs for this layer are made up of "
+                "several triples, in which the first one is scores over "
+                "all candidate paths, whose size should be equal to 1."))
 
 
 @config_layer('fc')

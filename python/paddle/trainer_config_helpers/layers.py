@@ -103,6 +103,7 @@ __all__ = [
     'nce_layer',
     'cross_entropy_with_selfnorm',
     'cross_entropy',
+    'BeamInput',
     'cross_entropy_over_beam',
     'multi_binary_label_cross_entropy',
     'sum_cost',
@@ -5681,10 +5682,10 @@ def multi_binary_label_cross_entropy(input,
 
     if input.activation is None or \
             not isinstance(input.activation, SigmoidActivation):
-        logger.log(
-            logging.WARN,
-            "%s is not recommend for multi_binary_label_cross_entropy's activation, "
-            "maybe the sigmoid is better" % repr(input.activation))
+        logger.log(logging.WARN,
+                   ("%s is not a recommended activation for "
+                    "multi_binary_label_cross_entropy, sigmoid is better") %
+                   repr(input.activation))
 
     Layer(
         name=name,
@@ -5699,26 +5700,110 @@ def multi_binary_label_cross_entropy(input,
         size=1)
 
 
+class BeamInput(object):
+    """
+    Define the input for cross_entropy_over_beam layer.
+
+    A beam is made up of a triple: the first one is scores over all
+    candidates; the second one is indices of top k selected candidates; the
+    third one is the index of ground truth, which is also always called
+    gold.
+    """
+
+    def __init__(self, candidate_scores, selected_candidates, gold):
+        assert isinstance(candidate_scores, LayerOutput)
+        self.candidate_scores = candidate_scores
+        assert candidate_scores.size == 1
+
+        assert isinstance(selected_candidates, LayerOutput)
+        self.selected_candidates = selected_candidates
+
+        assert isinstance(gold, LayerOutput)
+        self.gold = gold
+
+
 @wrap_name_default()
 @layer_support()
-def cross_entropy_over_beam(input, label, name=None, coeff=1.0, weight=None):
+def cross_entropy_over_beam(input, name=None):
     """
-    TODO(caoying) add comments.
+    This layer is used in learning to search models, which is to solve complex
+    joint prediction problems based on learning to search through a
+    problem-defined search space.
+
+    Specifically, the learning to search process for this layer begins with
+    searching a target sequence from a nested sequence. In the first search
+    step, top beam size sequences with highest scores, indices of these top k
+    sequences in the original nested sequence, and the ground truth (also
+    called gold) altogether (a triple) make up of the first beam.
+
+    Then, several special positions, for example, start and end positions
+    that define meaningful segments are searched. In these searches, top k
+    positions with highest scores are selected, and then sequence, starting
+    from the selected starts till ends of the sequences (or a fixed position)
+    are taken to search next.
+
+    We call the possible top k results returned in one search the beam. This
+    search process can be repeated for pre-defined turns and leads to several
+    beam expansions.
+
+    Finally, the layer cross_entropy_over_beam takes all the beam expansions
+    which contain several candidate targets found along the multi-step search.
+    cross_entropy_over_beam calculates cross entropy over the expanded beams
+    which all the candidates in the beam as the normalized factor.
+
+    Note that, if gold falls off the beam at search step t, then the cost is
+    calculated over the beam at step t.
+
+    This cost layer always works together with kmax_sequence_score_layer,
+    sub_nested_seq_layer, and sequence_slice_layer to trim the input to form a
+    sub-search space.
+
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = cross_entropy_over_beam(input=[
+           BeamInput(
+               candidate_scores=beam1_candidates,
+               selected_candidates=beam1_topk,
+               gold=gold1),
+           BeamInput(
+               candidate_scores=beam2_candidates,
+               selected_candidates=beam2_topk,
+               gold=gold2),
+       ])
+
+
+    :param input: input beams for this layer.
+    :type input: BeamInput
+    :param name: input beams for this layer.
+    :type name: basestring
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
 
-    assert len(input) / 2 == len(label), "Error input numbers."
-    for i in range(0, len(input), 2):
-        assert (input[i].size == 1), (
-            "Inputs for this layer are made up of "
-            "several pairs and the first one in a pair is scores for "
-            "all the candidates, so its size should be equal to 1.")
+    if isinstance(input, BeamInput):
+        input = [input]
+    else:
+        assert isinstance(input, list), (
+            'input for cross_entropy_over_beam shold be a python list '
+            'of BeamInput object.')
+        for ipt in input:
+            assert isinstance(ipt, BeamInput), (
+                'input for cross_entropy_over_beam '
+                'should be a BeamInput object.')
 
-    ipts, parents = __cost_input__(input, label, weight)
-    Layer(
-        name=name,
-        type=LayerType.CROSS_ENTROPY_OVER_BEAM,
-        inputs=ipts,
-        coeff=coeff)
+    ipts = []
+    parents = []
+    for beam in input:
+        parents += [beam.candidate_scores, beam.selected_candidates, beam.gold]
+        ipts += [
+            beam.candidate_scores.name, beam.selected_candidates.name,
+            beam.gold.name
+        ]
+
+    Layer(name=name, type=LayerType.CROSS_ENTROPY_OVER_BEAM, inputs=ipts)
     return LayerOutput(name, LayerType.CROSS_ENTROPY, parents=parents, size=1)
 
 
@@ -6247,11 +6332,11 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 @wrap_bias_attr_default()
 def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
     """
-    A layer applies a linear transformation to each element in each row of 
-    the input matrix. For each element, the layer first re-scale it and then 
+    A layer applies a linear transformation to each element in each row of
+    the input matrix. For each element, the layer first re-scale it and then
     adds a bias to it.
 
-    This layer is very like the SlopeInterceptLayer, except the scale and 
+    This layer is very like the SlopeInterceptLayer, except the scale and
     bias are trainable.
 
     .. math::

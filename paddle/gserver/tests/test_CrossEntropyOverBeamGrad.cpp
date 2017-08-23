@@ -28,16 +28,10 @@ using namespace paddle;  // NOLINT
 DECLARE_int32(gpu_id);
 DECLARE_bool(thread_local_rand_use_global_seed);
 
-// const size_t MAX_SEQ_NUM = 5;
-// const size_t MAX_SEQ_LEN = 10;
-// const size_t MAX_BEAM_SIZE = 3;
-
 const size_t MAX_SEQ_NUM = 23;
 const size_t MAX_SEQ_LEN = 50;
 const size_t MAX_BEAM_SIZE = 27;
 
-// const size_t SEED = 1503391792;
-// const size_t SEED = 1;
 const size_t SEED = (size_t)(time(NULL));
 
 struct SingleBeamExpansion {
@@ -176,10 +170,12 @@ void genGroundTruth(vector<SingleBeamExpansion>& beamExpansions,
   beam.resetGroundTruth(seqNum);
   for (size_t i = 0; i < seqNum; ++i) {
     if (randFloat() > 0.5) {
-      // force the randomly generated label falls in the beam by chance 0.5.
-      // otherwise, when sequence length is relatively long and beam size is
-      // relatively small, the gold sequences falls off the beam at in
-      // the first search.
+      /*
+       * force the randomly generated label falls in the beam by chance 0.5.
+       * otherwise, when sequence length is relatively long and beam size is
+       * relatively small, the gold sequences falls off the beam at in the
+       * first search.
+       */
       real* begPos = beam.selectedIndices.data() + i * beamSize;
       beam.colIdxInBeam[i] =
           rand() % count_if(begPos, begPos + beamSize, [](const real& val) {
@@ -222,9 +218,7 @@ void genGroundTruth(vector<SingleBeamExpansion>& beamExpansions,
 
       if (randFloat() > 0.5) {
         // force the randomly generated label falls in the beam by chance 0.5.
-        // otherwise, when sequence length is relatively long and beam size is
-        // relatively small, the gold sequences falls off the beam at in
-        // the first search.
+
         real* start =
             curBeam.selectedIndices.data() + curBeam.rowIdxInBeam[j] * beamSize;
         int n = rand() % count_if(start, start + beamSize, [](const real& val) {
@@ -339,7 +333,7 @@ TEST(Layer, CrossEntropyOverBeam) {
   const size_t beamSize = 1 + rand() % MAX_BEAM_SIZE;
   LOG(INFO) << "beamSize = " << beamSize;
 
-  // TODO(caoying): test with more beam expansions.
+  // TODO(caoying): test with random beam expansions.
   const size_t expansionCount = 3;
   vector<SingleBeamExpansion> beams;
   genRandomBeamExpansion(expansionCount, beamSize, beams);
