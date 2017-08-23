@@ -114,8 +114,9 @@ class RecurrentGradientAlgorithm {
 
 class RecurrentOp : public framework::OperatorBase {
  public:
-  RecurrentOp(const std::string& type, const VarNameMap& inputs,
-              const VarNameMap& outputs, const framework::AttributeMap& attrs);
+  RecurrentOp(const std::string& type, const framework::VariableNameMap& inputs,
+              const framework::VariableNameMap& outputs,
+              const framework::AttributeMap& attrs);
 
   RecurrentOp(const RecurrentOp& o)
       : framework::OperatorBase(
@@ -150,8 +151,9 @@ class RecurrentOp : public framework::OperatorBase {
 
 class RecurrentGradientOp : public framework::OperatorBase {
  public:
-  RecurrentGradientOp(const std::string& type, const VarNameMap& inputs,
-                      const VarNameMap& outputs,
+  RecurrentGradientOp(const std::string& type,
+                      const framework::VariableNameMap& inputs,
+                      const framework::VariableNameMap& outputs,
                       const framework::AttributeMap& attrs);
 
   RecurrentGradientOp(const RecurrentGradientOp& o)
