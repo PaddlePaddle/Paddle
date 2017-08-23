@@ -60,13 +60,30 @@ func WithAddr(addr string) func(c *Client) error {
 	}
 }
 
+func retry(f func() error, dur time.Duration, count int) error {
+	err := f()
+	if err != nil {
+		if count > 0 {
+			return retry(f, dur, count-1)
+		}
+		return err
+	}
+	return nil
+}
+
 // WithEtcd sets the client to use etcd for master discovery.
 func WithEtcd(endpoints []string, timeout time.Duration) func(*Client) error {
 	return func(c *Client) error {
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   endpoints,
-			DialTimeout: timeout,
-		})
+		var cli *clientv3.Client
+		f := func() error {
+			var err error
+			cli, err = clientv3.New(clientv3.Config{
+				Endpoints:   endpoints,
+				DialTimeout: timeout,
+			})
+			return err
+		}
+		err := retry(f, time.Second, 10)
 		if err != nil {
 			return err
 		}
@@ -101,9 +118,6 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 		}
 	}
 	c.ch = make(chan record, c.bufSize)
-	// FIXME: connection is created asyncrosly in monitorMaster go routine,
-	//        ensure the connection is ready for use before calling c.addClient.
-	time.Sleep(time.Second)
 	return c, nil
 }
 
