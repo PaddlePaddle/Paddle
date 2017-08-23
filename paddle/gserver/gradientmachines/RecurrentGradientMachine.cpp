@@ -1344,7 +1344,7 @@ void RecurrentGradientMachine::fillGenOutputs() {
       CHECK(!finalPaths_[i].empty());
       Path& path = finalPaths_[i][0];
       generator_.ids.insert(
-          generator_.ids.begin(), path.ids.begin(), path.ids.end());
+          generator_.ids.end(), path.ids.begin(), path.ids.end());
       starts[i + 1] = starts[i] + path.ids.size();
     }
   }
