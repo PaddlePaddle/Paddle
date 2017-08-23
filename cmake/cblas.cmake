@@ -13,6 +13,10 @@
 # system paths.
 #
 
+if(USE_EIGEN_FOR_BLAS)
+  return()
+endif(USE_EIGEN_FOR_BLAS)
+
 set(CBLAS_FOUND OFF)
 
 ## Find MKLML First.

@@ -13,17 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MulOp.h"
-/// todo(tianbing), delete it
-#include <iostream>
-#include "paddle/math/MathFunctions.h"
+#include "GemmFunctor.h"
 #include "paddle/math/SIMDFunctions.h"
 #include "paddle/utils/ThreadLocal.h"
-
-#ifndef PADDLE_TYPE_DOUBLE
-#define GEMM paddle::gemm<float>
-#else
-#define GEMM paddle::gemm<double>
-#endif
 
 namespace {
 inline void vecAddTo(real* a, const real* b, real scaleB, size_t len) {
@@ -114,19 +106,20 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             real scaleT,
                             bool aTrans,
                             bool bTrans) {
-  GEMM(aTrans ? CblasTrans : CblasNoTrans,
-       bTrans ? CblasTrans : CblasNoTrans,
-       out.getHeight(),
-       out.getWidth(),
-       !aTrans ? a.getWidth() : a.getHeight(),
-       scaleAB,
-       a.getData(),
-       a.getStride(),
-       b.getData(),
-       b.getStride(),
-       scaleT,
-       out.getData(),
-       out.getStride());
+  BlasGemm<DEVICE_TYPE_CPU, real>::compute(
+      aTrans,
+      bTrans,
+      out.getHeight(),
+      out.getWidth(),
+      !aTrans ? a.getWidth() : a.getHeight(),
+      scaleAB,
+      a.getData(),
+      a.getStride(),
+      b.getData(),
+      b.getStride(),
+      scaleT,
+      out.getData(),
+      out.getStride());
 }
 
 /// dense matrix (+)= sparse matrix * dense matrix
