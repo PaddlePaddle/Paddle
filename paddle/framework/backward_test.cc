@@ -72,8 +72,8 @@ class NoGradOpMaker : public OpProtoAndCheckerMaker {
 
 class FcOp : public operators::NetOp {
  public:
-  FcOp(const std::string &type, const VarNameMap &inputs,
-       const VarNameMap &outputs, const AttributeMap &attrs)
+  FcOp(const std::string &type, const VariableNameMap &inputs,
+       const VariableNameMap &outputs, const AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
     AppendOp(OpRegistry::CreateOp("mul",
                                   {{"X", {Input("X")}}, {"Y", {Input("W")}}},
