@@ -110,7 +110,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                        dup_output_ops[out].emplace_back(local_op_id);
                        return false;
                      });
-      net->AddOp(std::move(bwd));
+      net->AppendOp(std::move(bwd));
     }
     // Get unique ID for this method.
     auto uid = uniq_id++;
@@ -163,8 +163,9 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
 
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
-        net->AddOp(OpRegistry::CreateOp("fill_zeros_like", {{"Src", {prefix}}},
-                                        {{"Dst", {grad_input}}}, {}));
+        net->AppendOp(OpRegistry::CreateOp("fill_zeros_like",
+                                           {{"Src", {prefix}}},
+                                           {{"Dst", {grad_input}}}, {}));
       }
       return false;
     });
@@ -195,7 +196,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
     if (net->ops_.empty()) {  // Current no aux op is added to network
       return grad_op;
     }
-    net->AddOp(std::move(grad_op));
+    net->AppendOp(std::move(grad_op));
   }
   net->SetType("@GENERATED_BACKWARD@");
   net->CompleteAddOp();
