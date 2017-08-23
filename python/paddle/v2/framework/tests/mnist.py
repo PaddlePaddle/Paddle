@@ -222,7 +222,7 @@ def test(cost_name):
         sum(error) / float(len(error))))
 
 
-PASS_NUM = 1000
+PASS_NUM = 1
 for pass_id in range(PASS_NUM):
     batch_id = 0
 
