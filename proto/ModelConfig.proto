@@ -83,8 +83,8 @@ message ConvConfig {
   // if not set, use img_size
   optional uint32 img_size_y = 14;
 
-  required uint32 dilation = 15 [ default = 1 ];
-  required uint32 dilation_y = 16 [ default = 1 ];
+  optional uint32 dilation = 15 [ default = 1 ];
+  optional uint32 dilation_y = 16 [ default = 1 ];
 }
 
 message PoolConfig {
