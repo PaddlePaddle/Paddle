@@ -114,9 +114,6 @@ CUDADeviceContext::~CUDADeviceContext() {
     PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
   }
 
-  if (curand_generator_) {
-    PADDLE_ENFORCE(dynload::curandDestroyGenerator(curand_generator_));
-  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -151,19 +148,6 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() {
 }
 
 cudaStream_t CUDADeviceContext::stream() { return stream_; }
-
-curandGenerator_t CUDADeviceContext::curand_generator() {
-  if (!curand_generator_) {
-    SetDeviceId(place_.device);
-    PADDLE_ENFORCE(dynload::curandCreateGenerator(&curand_generator_,
-                                                  CURAND_RNG_PSEUDO_DEFAULT));
-    PADDLE_ENFORCE(
-        dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
-
-    PADDLE_ENFORCE(dynload::curandSetStream(curand_generator_, stream_));
-  }
-  return curand_generator_;
-}
 
 #endif  // PADDLE_ONLY_CPU
 
