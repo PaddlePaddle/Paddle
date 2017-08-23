@@ -52,7 +52,7 @@ def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
-def sgd_optimizer(net, param_name, learning_rate=0.001):
+def sgd_optimizer(net, param_name, learning_rate=0.01):
     grad_name = grad_var_name(param_name)
     optimize_op = Operator(
         "sgd",
@@ -159,13 +159,13 @@ def print_inputs_outputs(op):
 
 def set_cost():
     cost_data = numpy.array(scope.find_var("cross_entropy_1").get_tensor())
-    # print(cost_data)
     print(cost_data.sum() / len(cost_data))
 
     cost_grad = scope.find_var(grad_var_name("cross_entropy_1")).get_tensor()
+
     cost_grad.set_dims(cost_data.shape)
     cost_grad.alloc_float(place)
-    cost_grad.set(cost_data, place)
+    cost_grad.set(numpy.ones(cost_data.shape).astype("float32"), place)
 
 
 images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
@@ -192,17 +192,18 @@ reader = paddle.batch(
 
 PASS_NUM = 1000
 for pass_id in range(PASS_NUM):
-    data = reader().next()
 
-    image = numpy.array(map(lambda x: x[0], data)).astype("float32")
-    label = numpy.array(map(lambda x: x[1], data)).astype("int32")
-    feed_data("pixel", image)
-    feed_data("label", label)
+    print("pass[" + str(pass_id) + "]")
+    for data in reader():
+        image = numpy.array(map(lambda x: x[0], data)).astype("float32")
+        label = numpy.array(map(lambda x: x[1], data)).astype("int32")
+        feed_data("pixel", image)
+        feed_data("label", label)
 
-    forward_network.infer_shape(scope)
-    forward_network.run(scope, dev_ctx)
-    set_cost()
-    backward_net.infer_shape(scope)
-    backward_net.run(scope, dev_ctx)
+        forward_network.infer_shape(scope)
+        forward_network.run(scope, dev_ctx)
+        set_cost()
+        backward_net.infer_shape(scope)
+        backward_net.run(scope, dev_ctx)
 
-    optimize_net.run(scope, dev_ctx)
+        optimize_net.run(scope, dev_ctx)
