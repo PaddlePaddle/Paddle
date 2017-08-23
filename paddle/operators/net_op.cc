@@ -68,10 +68,15 @@ std::string NetOp::DebugString() const {
 bool NetOp::IsNetOp() const { return true; }
 
 std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
-  if (has_intermediate) {
-    return this->outputs_.at(kAll);
+  std::vector<std::string> all;
+  for (auto& pair : this->outputs_) {
+    for (auto& var_name : pair.second) {
+      all.push_back(var_name);
+    }
   }
-  auto& all = this->outputs_.at(kAll);
+  if (has_intermediate) {
+    return all;
+  }
   std::vector<std::string> ret_val;
   for (auto& each : all) {
     if (!Contains(intermediate_outputs_, each)) {
@@ -81,9 +86,8 @@ std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
   return ret_val;
 }
 
-NetOp::NetOp(const std::string& type,
-             const framework::OperatorBase::VarNameMap& inputs,
-             const framework::OperatorBase::VarNameMap& outputs,
+NetOp::NetOp(const std::string& type, const framework::VariableNameMap& inputs,
+             const framework::VariableNameMap& outputs,
              const framework::AttributeMap& attrs)
     : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
