@@ -64,6 +64,7 @@ func retry(f func() error, dur time.Duration, count int) error {
 	err := f()
 	if err != nil {
 		if count > 0 {
+			time.Sleep(dur)
 			return retry(f, dur, count-1)
 		}
 		return err
