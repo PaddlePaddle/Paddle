@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/grad_op_builder.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
@@ -30,28 +31,16 @@ namespace paddle {
 namespace framework {
 
 class OpRegistry {
-  using VarNameMap = OperatorBase::VarNameMap;
-  using OpCreator = std::function<OperatorBase*(
-      const std::string& /*type*/, const VarNameMap& /*inputs*/,
-      const VarNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
-
  public:
-  struct OpInfo {
-    OpCreator creator_;
-    std::string grad_op_type_;
-    OpProto* proto_;
-    OpAttrChecker* checker_;
-  };
-
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
                          const std::string& grad_op_type) {
-    PADDLE_ENFORCE(op_info_map().count(op_type) == 0,
+    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;
-    op_info.creator_ = [](const std::string& type, const VarNameMap& inputs,
-                          const VarNameMap& outputs,
-                          const AttributeMap& attrs) {
+    op_info.creator_ = [](
+        const std::string& type, const VariableNameMap& inputs,
+        const VariableNameMap& outputs, const AttributeMap& attrs) {
       return new OpType(type, inputs, outputs, attrs);
     };
     op_info.grad_op_type_ = grad_op_type;
@@ -70,7 +59,7 @@ class OpRegistry {
       op_info.proto_ = nullptr;
       op_info.checker_ = nullptr;
     }
-    op_info_map().insert(std::make_pair(op_type, op_info));
+    OpInfoMap::Instance().Insert(op_type, op_info);
     // register gradient op
     if (!grad_op_type.empty()) {
       RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "");
@@ -78,21 +67,13 @@ class OpRegistry {
   }
 
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
-                                                const VarNameMap& inputs,
-                                                const VarNameMap& outputs,
+                                                const VariableNameMap& inputs,
+                                                const VariableNameMap& outputs,
                                                 AttributeMap attrs);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
-  static VarNameMap ConvertOpDescVarsToVarNameMap(
-      const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars);
-
   static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
-
-  static std::unordered_map<std::string, const OpInfo>& op_info_map() {
-    static std::unordered_map<std::string, const OpInfo> op_info_map_;
-    return op_info_map_;
-  }
 };
 
 class Registrar {

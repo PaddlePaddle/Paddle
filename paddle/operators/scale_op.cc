@@ -20,8 +20,9 @@ namespace operators {
 
 class ScaleOp : public framework::OperatorWithKernel {
  public:
-  ScaleOp(const std::string &type, const VarNameMap &inputs,
-          const VarNameMap &outputs, const framework::AttributeMap &attrs)
+  ScaleOp(const std::string &type, const framework::VariableNameMap &inputs,
+          const framework::VariableNameMap &outputs,
+          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
@@ -52,10 +53,11 @@ The equation is: Out = scale*X
 template <typename AttrType>
 class ScaleGradOp : public NetOp {
  public:
-  ScaleGradOp(const std::string &type, const VarNameMap &inputs,
-              const VarNameMap &outputs, const framework::AttributeMap &attrs)
+  ScaleGradOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
-    AddOp(framework::OpRegistry::CreateOp(
+    AppendOp(framework::OpRegistry::CreateOp(
         "scale", {{"X", {Input(framework::GradVarName("Out"))}}},
         {{"Out", {Output(framework::GradVarName("X"))}}},
         {{"scale", GetAttr<AttrType>("scale")}}));
@@ -80,10 +82,11 @@ class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
 template <typename AttrType>
 class IdentityOp : public NetOp {
  public:
-  IdentityOp(const std::string &type, const VarNameMap &inputs,
-             const VarNameMap &outputs, const framework::AttributeMap &attrs)
+  IdentityOp(const std::string &type, const framework::VariableNameMap &inputs,
+             const framework::VariableNameMap &outputs,
+             const framework::AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
-    AddOp(framework::OpRegistry::CreateOp(
+    AppendOp(framework::OpRegistry::CreateOp(
         "scale", {{"X", {Input("X")}}}, {{"Out", {Output("Out")}}},
         {{"scale", static_cast<AttrType>(1)}}));
   }

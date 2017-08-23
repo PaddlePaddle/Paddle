@@ -18,8 +18,8 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
-
-cc_library(operator SRCS operator.cc DEPS framework_proto device_context tensor scope attribute)
+cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
 cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS operator)
@@ -45,6 +45,7 @@ cc_library(paddle_pybind SHARED
     SRCS pybind.cc
     DEPS pybind python backward
     sgd_op
+    gather_op
     add_op
     mul_op
     rowwise_add_op

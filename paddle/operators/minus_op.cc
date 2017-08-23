@@ -20,8 +20,9 @@ namespace operators {
 
 class MinusOp : public framework::OperatorWithKernel {
  public:
-  MinusOp(const std::string &type, const VarNameMap &inputs,
-          const VarNameMap &outputs, const framework::AttributeMap &attrs)
+  MinusOp(const std::string &type, const framework::VariableNameMap &inputs,
+          const framework::VariableNameMap &outputs,
+          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
@@ -54,21 +55,23 @@ Equation: Out = X - Y
 template <typename AttrType>
 class MinusGradOp : public NetOp {
  public:
-  MinusGradOp(const std::string &type, const VarNameMap &inputs,
-              const VarNameMap &outputs, const framework::AttributeMap &attrs)
+  MinusGradOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
     auto out_grad = Input(framework::GradVarName("Out"));
     auto x_grad = Output(framework::GradVarName("X"));
     auto y_grad = Output(framework::GradVarName("Y"));
 
     // x_grad = out_grad
-    AddOp(framework::OpRegistry::CreateOp("identity", {{"X", {out_grad}}},
-                                          {{"Out", {x_grad}}}, {}));
+    AppendOp(framework::OpRegistry::CreateOp("identity", {{"X", {out_grad}}},
+                                             {{"Out", {x_grad}}}, {}));
 
     framework::AttributeMap scale_attr;
     scale_attr["scale"] = static_cast<AttrType>(-1);
-    AddOp(framework::OpRegistry::CreateOp("scale", {{"X", {out_grad}}},
-                                          {{"Out", {y_grad}}}, scale_attr));
+    AppendOp(framework::OpRegistry::CreateOp("scale", {{"X", {out_grad}}},
+                                             {{"Out", {y_grad}}}, scale_attr));
+    CompleteAddOp(false);
   }
 };
 

@@ -12,19 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "TensorType.h"
+#include "GemmFunctor.h"
+#include "paddle/math/MathFunctions.h"
 
 namespace paddle {
 
-// TODO(hedaoyuan): Since the hl_matrix_mul interface does not conform to the
-// cblas_dgemm interface's parameter format, it is necessary to introduce
-// GemmFunctor as a new interface. Later, when considering the implementation
-// of MatMulFunction, we need to consider the reconstruction of hl_matrix_mul
-// interface.
-template <DeviceType Device, class T>
-struct BlasGemm {
+template <class T>
+struct BlasGemm<DEVICE_TYPE_CPU, T> {
   static void compute(const bool transA,
                       const bool transB,
                       const int M,
@@ -37,16 +31,30 @@ struct BlasGemm {
                       const int ldb,
                       const T beta,
                       T* C,
-                      const int ldc);
+                      const int ldc) {
+#ifdef PADDLE_USE_EIGEN_FOR_BLAS
+    EigenBlasGemm<T>::compute(
+        transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+#else
+    gemm<T>(transA == false ? CblasNoTrans : CblasTrans,
+            transB == false ? CblasNoTrans : CblasTrans,
+            M,
+            N,
+            K,
+            alpha,
+            A,
+            lda,
+            B,
+            ldb,
+            beta,
+            C,
+            ldc);
+#endif
+  }
 };
 
-// TODO(hedaoyuan): Since the definition of the real type in the Paddle
-// conflicts with the Eigen library, so compile the Eigen code can not
-// include the Paddle header file. And need an EigenBlasGemm template class
-// that does not contain the DeviceType parameter.
-// I will fix this problem and merge BlasGemm and EigenBlasGemm into one.
 template <class T>
-struct EigenBlasGemm {
+struct BlasGemm<DEVICE_TYPE_GPU, T> {
   static void compute(const bool transA,
                       const bool transB,
                       const int M,
@@ -59,7 +67,24 @@ struct EigenBlasGemm {
                       const int ldb,
                       const T beta,
                       T* C,
-                      const int ldc);
+                      const int ldc) {
+    hl_matrix_mul((T*)A,
+                  transA == false ? HPPL_OP_N : HPPL_OP_T,
+                  (T*)B,
+                  transB == false ? HPPL_OP_N : HPPL_OP_T,
+                  C,
+                  M,
+                  N,
+                  K,
+                  alpha,
+                  beta,
+                  lda,
+                  ldb,
+                  ldc);
+  }
 };
+
+template struct BlasGemm<DEVICE_TYPE_CPU, real>;
+template struct BlasGemm<DEVICE_TYPE_GPU, real>;
 
 }  // namespace paddle
