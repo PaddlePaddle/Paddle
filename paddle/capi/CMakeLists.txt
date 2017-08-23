@@ -53,7 +53,10 @@ add_custom_target(paddle_capi_whole ALL
 set_target_properties(paddle_capi_whole
   PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library})
 
+set(LINK_FLAGS " -Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/export.sym -Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/export.map")
+# TODO: merge mkl into paddle_capi_shared
 add_library(paddle_capi_shared SHARED ${CAPI_SOURCES})
+set_target_properties(paddle_capi_shared	PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
 target_include_directories(paddle_capi_shared PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 link_paddle_exe(paddle_capi_shared)
 
