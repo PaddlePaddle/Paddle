@@ -69,7 +69,7 @@ def init_param(param_name, dims):
     tensor = var.get_tensor()
     tensor.set_dims(dims)
     data = numpy.random.uniform(
-        low=0.0, high=1.0, size=tensor.shape()).astype("float32")
+        low=-0.5, high=0.5, size=tensor.shape()).astype("float32")
     tensor.set(data, place)
 
 
@@ -109,7 +109,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
         bias_name = name + ".b"
         init_param(param_name=bias_name, dims=[size])
         sgd_optimizer(
-            net=optimize_net, param_name=bias_name, learning_rate=0.01)
+            net=optimize_net, param_name=bias_name, learning_rate=0.001)
         bias_out = name + ".rowwise_add.out"
         scope.new_var(bias_out)
         rowwise_append_op = Operator(
@@ -158,20 +158,33 @@ def print_inputs_outputs(op):
 
 
 def set_cost():
-    cost_data = numpy.array(scope.find_var("cross_entropy_1").get_tensor())
+    cost_shape = numpy.array(scope.find_var("cross_entropy_3").get_tensor(
+    )).shape
+    cost_grad = scope.find_var(grad_var_name("cross_entropy_3")).get_tensor()
+    cost_grad.set_dims(cost_shape)
+    cost_grad.alloc_float(place)
+    cost_grad.set(numpy.ones(cost_shape).astype("float32"), place)
+
+
+def print_cost():
+    cost_data = numpy.array(scope.find_var("cross_entropy_3").get_tensor())
     print(cost_data.sum() / len(cost_data))
 
-    cost_grad = scope.find_var(grad_var_name("cross_entropy_1")).get_tensor()
 
-    cost_grad.set_dims(cost_data.shape)
-    cost_grad.alloc_float(place)
-    cost_grad.set(numpy.ones(cost_data.shape).astype("float32"), place)
+def error_rate(predict, label):
+    predict_var = numpy.array(scope.find_var(predict).get_tensor()).argmax(
+        axis=1)
+    label = numpy.array(scope.find_var(label).get_tensor())
+    error_num = numpy.sum(predict_var != label)
+    print(error_num / float(len(label)))
 
 
 images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
 label = data_layer(name='label', dims=[BATCH_SIZE])
-fc = fc_layer(net=forward_network, input=images, size=10, act="softmax")
-cost = cross_entropy_layer(net=forward_network, input=fc, label=label)
+fc1 = fc_layer(net=forward_network, input=images, size=100, act="sigmoid")
+fc2 = fc_layer(net=forward_network, input=fc1, size=100, act="sigmoid")
+predict = fc_layer(net=forward_network, input=fc2, size=100, act="softmax")
+cost = cross_entropy_layer(net=forward_network, input=predict, label=label)
 
 forward_network.complete_add_op(True)
 backward_net = get_backward_net(forward_network)
@@ -192,8 +205,8 @@ reader = paddle.batch(
 
 PASS_NUM = 1000
 for pass_id in range(PASS_NUM):
+    batch_id = 0
 
-    print("pass[" + str(pass_id) + "]")
     for data in reader():
         image = numpy.array(map(lambda x: x[0], data)).astype("float32")
         label = numpy.array(map(lambda x: x[1], data)).astype("int32")
@@ -207,3 +220,9 @@ for pass_id in range(PASS_NUM):
         backward_net.run(scope, dev_ctx)
 
         optimize_net.run(scope, dev_ctx)
+        if batch_id % 100 == 0:
+            print("pass[" + str(pass_id) + "] batch_id[" + str(batch_id) + "]")
+            print_cost()
+            error_rate(predict, "label")
+
+        batch_id = batch_id + 1
