@@ -23,8 +23,8 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
-  OpWithoutKernelTest(const std::string& type, const VarNameMap& inputs,
-                      const VarNameMap& outputs, const AttributeMap& attrs)
+  OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
+                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
@@ -249,8 +249,9 @@ TEST(OpKernel, multi_inputs) {
 class OperatorClone : public paddle::framework::OperatorBase {
  public:
   DEFINE_OP_CLONE_METHOD(OperatorClone);
-  OperatorClone(const std::string& type, const VarNameMap& inputs,
-                const VarNameMap& outputs,
+  OperatorClone(const std::string& type,
+                const paddle::framework::VariableNameMap& inputs,
+                const paddle::framework::VariableNameMap& outputs,
                 const paddle::framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void InferShape(const paddle::framework::Scope& scope) const override {}

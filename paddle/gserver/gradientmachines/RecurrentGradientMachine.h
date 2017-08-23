@@ -190,7 +190,7 @@ public:
     std::vector<int> ids;
 
     /**
-     * @brief idsProb, log probability of each generated words.
+     * @brief idsProb, log probability of each generated word.
      */
     std::vector<real> idsProb;
 
@@ -472,15 +472,43 @@ private:
   void copyDataOutlinkFrame(size_t machineCur);
 
   /*
-   * @brief In generation, if the layer group has more than 1 outlink, outlinks
-   * except the first one are data outlinks. This function creates the data
-   * outlinks.
-   * @note In beam search, only one generated sequence with the hightest log
-   * probabilites are retained.
-   * @param machineIdVec : select a row of output matrix in each frame
-   * that the generation process expanded.
+   * @brief In generation, if the layer group has more than 1 outlink, outlink
+   * except the first one is a data outlink. In RecurrentLayerGroup, each time
+   * step is a separate Network, outputs of a layer inside the
+   * RecurrentLayerGroup are stored in separate Arguments. If one layer is
+   * specified as an outlink of RecurrentLayerGroup. This function will
+   * collect outputs in each time step of each generated sequence which are
+   * dispersed in separate Arguments to form a new single Argument as output of
+   * RecurrentLayerGroup.
    */
-  void createDataOutlink(std::vector<int>& machineIdVec);
+  void createDataOutlink();
+
+  /*
+   * @brief decide to select how many rows from the Matrix stored the forward
+   * pass results from a start position.
+   *
+   * @param isSeq: a flag indicating whetehr the layer to be output of the
+   * RecurrentGradientMachine is a sequence or not
+   * @param outArgs: all of the the returned Arguments of the forward pass
+   * during the generation process.
+   * @param copySize: the returned result, number of rows to select from the
+   * Matrix stored the forward pass results from a start position.
+   */
+  void createDataOutlinkCopySizeInfo(bool isSeq,
+                                     std::vector<Argument>& outArgs,
+                                     std::vector<int>& copySize);
+
+  /*
+   * @brief decide index of the start row for each time step of a generated
+   * sequence in Matrix stored the entire beam search batch's forward pass
+   * results.
+   *
+   * @param isSeq: a flag indicating whether the layer to be output of the
+   * RecurrentGradientMachine is a sequence or not
+   * @param outArgs: all of the returned Arguments of the forward pass
+   * during the generation process.
+   */
+  void createDataOutlinkSelRowsInfo(bool isSeq, std::vector<Argument>& outArgs);
 
   /*
    * @brief used in beam search, connect previous frame to form recurrent link
@@ -543,6 +571,7 @@ private:
   std::vector<int> topIds_;
   std::vector<int> seqIds_;
   std::vector<int> batchMachineIdVec_;
+  std::vector<int> batchMachineStartPos_;
   std::vector<std::vector<Path>> finalPaths_;
   std::vector<real> minFinalPathLogProb_;
   BeamSearchControlCallbacks* beamSearchCtrlCallbacks_;

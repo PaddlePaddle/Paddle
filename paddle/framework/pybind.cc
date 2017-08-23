@@ -42,6 +42,8 @@ USE_OP(fill_zeros_like);
 USE_OP_ITSELF(recurrent_op);
 USE_OP(gaussian_random);
 USE_OP(uniform_random);
+USE_OP(scale);
+USE_OP_ITSELF(identity);
 USE_CPU_ONLY_OP(gather);
 
 namespace paddle {
@@ -139,19 +141,16 @@ All parameter, weight, gradient are variables in Paddle.
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &op_info_map = OpRegistry::op_info_map();
     std::vector<py::bytes> ret_values;
-    for (auto it = op_info_map.begin(); it != op_info_map.end(); ++it) {
-      const OpProto *proto = it->second.proto_;
-      if (proto == nullptr) {
-        continue;
-      }
-      PADDLE_ENFORCE(proto->IsInitialized(), "OpProto must all be initialized");
+
+    OpInfoMap::Instance().IterAllInfo([&ret_values](const std::string &type,
+                                                    const OpInfo &info) {
+      if (!info.HasOpProtoAndChecker()) return;
       std::string str;
-      PADDLE_ENFORCE(proto->SerializeToString(&str),
+      PADDLE_ENFORCE(info.Proto().SerializeToString(&str),
                      "Serialize OpProto Error. This could be a bug of Paddle.");
-      ret_values.push_back(py::bytes(str));
-    }
+      ret_values.emplace_back(str);
+    });
     return ret_values;
   });
   m.def_submodule(
