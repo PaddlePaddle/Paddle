@@ -42,6 +42,8 @@ USE_OP(fill_zeros_like);
 USE_OP_ITSELF(recurrent_op);
 USE_OP(gaussian_random);
 USE_OP(uniform_random);
+USE_OP(scale);
+USE_OP_ITSELF(identity);
 USE_CPU_ONLY_OP(gather);
 
 namespace paddle {
