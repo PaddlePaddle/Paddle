@@ -80,13 +80,14 @@ void KmaxSeqScoreLayer::forward(PassType passType) {
       << "input of " << getName()
       << " must be a sequence or a nested sequence.";
   CHECK_EQ(input.value->getWidth(), 1UL)
-      << "input of " << getName()
-      << " is score over a sequence or a nested sequence, so its width "
-      << " must be 1.";
+      << "input of " << getName() << " are scores over a sequence or "
+      << "a nested sequence, so its width must be 1.";
 
   if (useGpu_) {
-    // this Layer runs only in CPU, if the model is runing on GPU,
-    // then copy the input to this layer from GPU to CPU.
+    /*
+     * currently, this Layer only runs in CPU, if the other part of the model is
+     * runing on GPU, then copy the input to this layer from GPU to CPU.
+     */
     Matrix::resizeOrCreate(scores_,
                            inputScore->getHeight(),
                            1,
@@ -97,13 +98,14 @@ void KmaxSeqScoreLayer::forward(PassType passType) {
     scores_ = inputScore;
   }
 
-  // TODO(caoying)
-  // In PaddlePaddle, the currently available matrixes all a have real-typed
-  // data field, but the selected indices information are actually int-typed
-  // (with -1 as a special token). Storing indices information in real-typed
-  // Matrix leads to converting real to int. This is very dangerous if a user
-  // fills this matrix himself, invalid data may occur.
-  // The selected indices should be stored in an int-typed matrix.
+  /*
+   * TODO(caoying)
+   * In PaddePaddle, currently all matrices are real number types,
+   * but output of this layer which is some selected indices of the give
+   * sequence are actually filled with int types so that storing int types
+   * information in a real number matrix is dangerous, since real numbers will
+   * be convered to int types.
+   */
   Matrix::resizeOrCreate(
       output_.value,
       input.hasSubseq() ? input.getNumSubSequences() : input.getNumSequences(),

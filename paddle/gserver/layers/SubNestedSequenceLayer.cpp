@@ -58,23 +58,28 @@ private:
   void calSelectedRows(const MatrixPtr selectedIndices,
                        const std::vector<std::vector<int>>& inputSeqInfo);
 
-  // if the second input of this layer is on GPU memory, copy it to CPU memory.
-  // TODO(caoying)
-  // In PaddlePaddle, the currently available matrixes all a have real-typed
-  // data field, but the selected indices information are actually int-typed
-  // (with -1 as a special token). Storing indices information in real-typed
-  // Matrix leads to converting real to int. This is very dangerous if a user
-  // fills this matrix himself, invalid data may occur.
-  // The selected indices should be stored in an int-typed matrix.
+  /*
+   * TODO(caoying)
+   * In PaddePaddle, currently all matrices are real number types,
+   * but the second is some selected indices of the give sequence to trim
+   * the nested sequence, are actually filled with int types so that storing
+   * int types information in real number matrices is very dangerous, since
+   * real numbers will be convered to int types. If a user fills this matrix
+   * himself, invalid data may occor.
+   *
+   * if the second input of this layer is on GPU memory, copy it to CPU memory.
+   */
   MatrixPtr selIdsCpu_;
 
-  // reorganized sequenceStartPositions and subSequenceStartPositions
-  // into a 2d vector to facilitate the sequence selection process.
+  /*
+   * reorganize sequenceStartPositions and subSequenceStartPositions
+   * into a 2d vector to facilitate the sequence selection process.
+   */
   std::vector<std::vector<int>> inputSeqInfoVec_;
 
-  // the final selected row indices in a batch,
-  // rowIndice_ and selectedRows_ actually share a same memory.
+  /* store the final selected row indices in a batch */
   IVectorPtr rowIndice_;
+  /* rowIndice_ and selectedRows_ actually share a same memory. */
   std::vector<int> selectedRows_;
 };
 

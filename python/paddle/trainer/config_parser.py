@@ -2717,10 +2717,7 @@ class SeqSliceLayer(LayerBase):
                     'If start and end indices are both given to'
                     'sequence slice layer, they should have the same width.')
         elif len(inputs) == 2:
-            if starts is not None:
-                self.config.select_first = True
-            else:
-                self.config.select_first = False
+            self.config.select_first = (starts is not None)
 
 
 @config_layer('sub_nested_seq')

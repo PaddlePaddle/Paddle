@@ -31,13 +31,15 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 private:
-  // TODO(caoying)
-  // In PaddlePaddle, the currently available matrixes all a have real-typed
-  // data field, but the selected indices information are actually int-typed
-  // (with -1 as a special token). Storing indices information in real-typed
-  // Matrix leads to converting real to int. This is very dangerous if a user
-  // fills this matrix himself, invalid data may occur.
-  // The selected indices should be stored in an int-typed matrix.
+  /*
+   * TODO(caoying)
+   * In PaddePaddle, currently all matrices are real number types,
+   * but the second and the (optional) third input which are some
+   * selected indices of the give sequence to trim the sequence, are actually
+   * filled with int types so that storing int types information in real number
+   * matrices is very dangerous, since real numbers will be convered to int
+   * types. If a user fills this matrix himself, invalid data may occor.
+   */
 
   MatrixPtr startIdsOnCpu_;
   MatrixPtr endIdsOnCpu_;
@@ -68,7 +70,7 @@ bool SequenceSliceLayer::init(const LayerMap& layerMap,
 
 void SequenceSliceLayer::checkInputs() {
   const Argument& inputSeq = getInput(0);
-  CHECK(inputSeq.hasSeq()) << "The first input of sequence slic layer "
+  CHECK(inputSeq.hasSeq()) << "The first input of sequence slice layer "
                            << "must be a sequence.";
   const MatrixPtr indices1 = getInputValue(1);
   CHECK_EQ(static_cast<size_t>(indices1->getHeight()),
@@ -86,22 +88,6 @@ void SequenceSliceLayer::checkInputs() {
 }
 
 void SequenceSliceLayer::copySliceIdsToCpu() {
-  if (!useGpu_) {
-    if (inputLayers_.size() == 2U) {
-      if (config_.select_first()) {
-        startIdsOnCpu_ = getInputValue(1);
-        endIdsOnCpu_ = nullptr;
-      } else {
-        startIdsOnCpu_ = nullptr;
-        endIdsOnCpu_ = getInputValue(1);
-      }
-    } else if (inputLayers_.size() == 3U) {
-      startIdsOnCpu_ = getInputValue(1);
-      endIdsOnCpu_ = getInputValue(2);
-    }
-    return;
-  }
-
   const MatrixPtr indices1 = getInputValue(1);
   if (inputLayers_.size() == 2U) {
     if (config_.select_first()) {
@@ -141,22 +127,19 @@ void SequenceSliceLayer::copySliceIdsToCpu() {
 
 void SequenceSliceLayer::calSelectedRows(const MatrixPtr starts,
                                          const MatrixPtr ends) {
+  CHECK(starts && ends);
+
   outSeqStartPos_.resize(1, 0);
   outSubSeqStartPos_.resize(1, 0);
   selectedRows_.clear();
 
   size_t beamSize = starts ? starts->getWidth() : ends->getWidth();
-  // iterate over sequence
   size_t rowIdx = 0;
   for (size_t i = 0; i < inputSeqInfoVec_.size(); ++i) {
-    // iterate over sub-sequence in a sequence
     for (size_t j = 0; j < inputSeqInfoVec_[i].size() - 1; ++j) {
-      // iterate over each index for slicing.
       for (size_t k = 0; k < beamSize; ++k) {
-        if (starts) {
-          if (starts->getElement(rowIdx, k) == -1.) break;
-        } else if (ends->getElement(rowIdx, k) == -1.)
-          break;
+        if (starts && starts->getElement(rowIdx, k) == -1.) break;
+        if (ends && ends->getElement(rowIdx, k) == -1.) break;
 
         int begPos = inputSeqInfoVec_[i][j];
         if (starts) begPos += starts->getElement(rowIdx, k);
@@ -165,7 +148,7 @@ void SequenceSliceLayer::calSelectedRows(const MatrixPtr starts,
         if (ends) endPos = inputSeqInfoVec_[i][j] + ends->getElement(rowIdx, k);
 
         int seqLen = endPos - begPos + 1;
-        CHECK(seqLen);
+        CHECK_LT(seqLen, 0U);
         for (int m = begPos; m <= endPos; ++m) selectedRows_.push_back(m);
         inputSeqInfoVec_.size() > 1
             ? outSubSeqStartPos_.push_back(outSubSeqStartPos_.back() + seqLen)
@@ -208,7 +191,16 @@ void SequenceSliceLayer::forward(PassType passType) {
   Argument::reorganizeSeqInfo(inputSeq.sequenceStartPositions,
                               inputSeq.subSequenceStartPositions,
                               inputSeqInfoVec_);
-  copySliceIdsToCpu();
+  if (!useGpu_) {
+    if (inputLayers_.size() == 2U) {
+      startIdsOnCpu_ = config_.select_first() ? getInputValue(1) : nullptr;
+      endIdsOnCpu_ = config_.select_first() ? nullptr : getInputValue(1);
+    } else if (inputLayers_.size() == 3U) {
+      startIdsOnCpu_ = getInputValue(1);
+      endIdsOnCpu_ = getInputValue(2);
+    }
+  } else
+    copySliceIdsToCpu();
 
   // calculate the selected row indices in a batch,
   // and build the output sequence information.
@@ -221,10 +213,7 @@ void SequenceSliceLayer::forward(PassType passType) {
 }
 
 void SequenceSliceLayer::backward(const UpdateCallback& callback) {
-  MatrixPtr inputSeqGrad = getInputGrad(0);
-  MatrixPtr outputGrad = getOutputGrad();
-
-  outputGrad->addToRows(*inputSeqGrad, *rowIndice_);
+  getOutputGrad()->addToRows(*getInputGrad(0), *rowIndice_);
 }
 
 }  // namespace paddle
