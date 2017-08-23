@@ -134,7 +134,7 @@ def cross_entropy_layer(net, input, label):
     return cost_name
 
 
-def get_backward_net(forward_net):
+def create_backward_net(forward_net):
     net = core.Operator.backward(forward_net, set())
     for input in net.inputs()["all"]:
         var = scope.new_var(input)
@@ -145,29 +145,29 @@ def get_backward_net(forward_net):
     return net
 
 
-def print_inputs_outputs(op):
+def debug_print_op(op):
     print("===============" + op.type() + "==============")
     print("***inputs:***")
     for input in op.inputs()["all"]:
         print input, scope.find_var(input).get_tensor().get_dims()
-    print("***outputs:***")
+    print("\n***outputs:***")
     for output in op.outputs()["all"]:
         print output, scope.find_var(output).get_tensor().get_dims()
     print("")
     print("")
 
 
-def set_cost():
-    cost_shape = numpy.array(scope.find_var("cross_entropy_3").get_tensor(
-    )).shape
-    cost_grad = scope.find_var(grad_var_name("cross_entropy_3")).get_tensor()
+def set_cost(cost):
+    cost_shape = numpy.array(scope.find_var(cost).get_tensor()).shape
+    cost_grad = \
+        scope.find_var(grad_var_name(cost)).get_tensor()
     cost_grad.set_dims(cost_shape)
     cost_grad.alloc_float(place)
     cost_grad.set(numpy.ones(cost_shape).astype("float32"), place)
 
 
-def mean_cost():
-    cost_data = numpy.array(scope.find_var("cross_entropy_3").get_tensor())
+def mean_cost(cost):
+    cost_data = numpy.array(scope.find_var(cost).get_tensor())
     return cost_data.sum() / len(cost_data)
 
 
@@ -180,23 +180,23 @@ def error_rate(predict, label):
 
 
 images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
-label = data_layer(name='label', dims=[BATCH_SIZE])
+labels = data_layer(name='label', dims=[BATCH_SIZE])
 fc1 = fc_layer(net=forward_network, input=images, size=100, act="sigmoid")
 fc2 = fc_layer(net=forward_network, input=fc1, size=100, act="sigmoid")
 predict = fc_layer(net=forward_network, input=fc2, size=100, act="softmax")
-cost = cross_entropy_layer(net=forward_network, input=predict, label=label)
+cost = cross_entropy_layer(net=forward_network, input=predict, label=labels)
 
 forward_network.complete_add_op(True)
-backward_net = get_backward_net(forward_network)
+backward_net = create_backward_net(forward_network)
 optimize_net.complete_add_op(True)
 
 print(forward_network)
 print(backward_net)
 print(optimize_net)
 
-print_inputs_outputs(forward_network)
-print_inputs_outputs(backward_net)
-print_inputs_outputs(optimize_net)
+debug_print_op(forward_network)
+debug_print_op(backward_net)
+debug_print_op(optimize_net)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -204,19 +204,19 @@ train_reader = paddle.batch(
     batch_size=BATCH_SIZE)
 
 
-def test():
+def test(cost_name):
     test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
     cost = []
     error = []
     for data in test_reader():
-        image = numpy.array(map(lambda x: x[0], data)).astype("float32")
-        label = numpy.array(map(lambda x: x[1], data)).astype("int32")
-        feed_data("pixel", image)
-        feed_data("label", label)
+        image_data = numpy.array(map(lambda x: x[0], data)).astype("float32")
+        label_data = numpy.array(map(lambda x: x[1], data)).astype("int32")
+        feed_data(images, image_data)
+        feed_data(labels, label_data)
 
         forward_network.infer_shape(scope)
         forward_network.run(scope, dev_ctx)
-        cost.append(mean_cost())
+        cost.append(mean_cost(cost_name))
         error.append(error_rate(predict, "label"))
     print("cost=" + str(sum(cost) / float(len(cost))) + " error_rate=" + str(
         sum(error) / float(len(error))))
@@ -227,22 +227,20 @@ for pass_id in range(PASS_NUM):
     batch_id = 0
 
     for data in train_reader():
-        image = numpy.array(map(lambda x: x[0], data)).astype("float32")
-        label = numpy.array(map(lambda x: x[1], data)).astype("int32")
-        feed_data("pixel", image)
-        feed_data("label", label)
+        image_data = numpy.array(map(lambda x: x[0], data)).astype("float32")
+        label_data = numpy.array(map(lambda x: x[1], data)).astype("int32")
+        feed_data(images, image_data)
+        feed_data(labels, label_data)
 
         forward_network.infer_shape(scope)
         forward_network.run(scope, dev_ctx)
-        set_cost()
+        set_cost(cost)
         backward_net.infer_shape(scope)
         backward_net.run(scope, dev_ctx)
 
         optimize_net.run(scope, dev_ctx)
         if batch_id % 100 == 0:
             print("pass[" + str(pass_id) + "] batch_id[" + str(batch_id) + "]")
-            test()
-            # print(mean_cost())
-            # print(error_rate(predict, "label"))
+            test(cost)
 
         batch_id = batch_id + 1
