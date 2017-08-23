@@ -1399,8 +1399,8 @@ void RecurrentGradientMachine::createDataOutlinkCopySizeInfo(
              getBeamSize() > 1 ? finalPaths_.size() : finalPaths_[0].size());
     int* starts = inputSeqStartPos->getMutableData(false);
     int seqId = 0;
-    for (int i = 0; i < finalPaths_.size(); ++i) {
-      for (int j = 0; j < finalPaths_[i].size(); ++j) {
+    for (size_t i = 0; i < finalPaths_.size(); ++i) {
+      for (size_t j = 0; j < finalPaths_[i].size(); ++j) {
         copySize[seqId] = getBeamSize() > 1 ? starts[i + 1] - starts[i]
                                             : starts[j + 1] - starts[j];
         batchMachineStartPos_[seqId + 1] =
