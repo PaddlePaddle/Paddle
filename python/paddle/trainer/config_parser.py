@@ -338,7 +338,8 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
         in_links_count += 1
         layer_name = MakeLayerNameInParentSubmodel(name)
         layer = g_layer_map[layer_name]
-        ScatterAgentLayer(name=name, size=layer.size)
+        ScatterAgentLayer(
+            name=name, size=layer.size, width=layer.width, height=layer.height)
 
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
@@ -2197,8 +2198,8 @@ class MaxOutLayer(LayerBase):
         maxout_conf = self.config.inputs[0].maxout_conf
         parse_maxout(self.inputs[0].maxout, input_layer.name, maxout_conf)
         out_channels = maxout_conf.image_conf.channels / maxout_conf.groups
-        self.set_cnn_layer(name, g_layer_map[input_layer.name].height,
-                           g_layer_map[input_layer.name].width, out_channels)
+        self.set_cnn_layer(name, maxout_conf.image_conf.img_size_y,
+                           maxout_conf.image_conf.img_size, out_channels)
 
 
 @config_layer('row_conv')
@@ -2230,6 +2231,20 @@ class ClipLayer(LayerBase):
         self.set_layer_size(input_layer.size)
         self.config.inputs[0].clip_conf.min = min
         self.config.inputs[0].clip_conf.max = max
+
+
+@config_layer('scale_shift')
+class ScaleShiftLayer(LayerBase):
+    def __init__(self, name, inputs, bias=True, **xargs):
+        super(ScaleShiftLayer, self).__init__(
+            name, 'scale_shift', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ScaleShiftLayer must have one and only one input.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.create_input_parameter(0, 1, [1, 1])
+        self.create_bias_parameter(bias, 1)
 
 
 # key: cost type
@@ -2391,9 +2406,11 @@ class GatherAgentLayer(LayerBase):
 
 @config_layer('scatter_agent')
 class ScatterAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
+    def __init__(self, name, size, width=None, height=None, device=None):
         super(ScatterAgentLayer, self).__init__(
             name, 'scatter_agent', size, inputs=[], device=device)
+        if height and width:
+            self.set_layer_height_width(height, width)
 
 
 @config_layer('multiplex')

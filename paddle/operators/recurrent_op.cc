@@ -131,8 +131,8 @@ const rnn::ArgumentName RecurrentGradientOp::kArgName{
     "memories",    "pre_memories", "boot_memories@grad"};
 
 RecurrentOp::RecurrentOp(const std::string& type,
-                         const framework::OperatorBase::VarNameMap& inputs,
-                         const framework::OperatorBase::VarNameMap& outputs,
+                         const framework::VariableNameMap& inputs,
+                         const framework::VariableNameMap& outputs,
                          const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
   rnn::InitArgument(kArgName, &arg_, *this);
@@ -223,8 +223,8 @@ void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
 }
 
 RecurrentGradientOp::RecurrentGradientOp(
-    const std::string& type, const framework::OperatorBase::VarNameMap& inputs,
-    const framework::OperatorBase::VarNameMap& outputs,
+    const std::string& type, const framework::VariableNameMap& inputs,
+    const framework::VariableNameMap& outputs,
     const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
   rnn::InitArgument(kArgName, &arg_, *this);

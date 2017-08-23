@@ -86,9 +86,8 @@ std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
   return ret_val;
 }
 
-NetOp::NetOp(const std::string& type,
-             const framework::OperatorBase::VarNameMap& inputs,
-             const framework::OperatorBase::VarNameMap& outputs,
+NetOp::NetOp(const std::string& type, const framework::VariableNameMap& inputs,
+             const framework::VariableNameMap& outputs,
              const framework::AttributeMap& attrs)
     : framework::OperatorBase(type, inputs, outputs, attrs) {}
 

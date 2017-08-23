@@ -31,7 +31,7 @@ limitations under the License. */
 namespace py = pybind11;
 
 USE_OP(add_two);
-USE_CPU_ONLY_OP(onehot_cross_entropy);
+USE_OP(onehot_cross_entropy);
 USE_OP(sgd);
 USE_OP(mul);
 USE_OP(mean);
@@ -44,6 +44,7 @@ USE_OP(gaussian_random);
 USE_OP(uniform_random);
 USE_OP(scale);
 USE_OP_ITSELF(identity);
+USE_CPU_ONLY_OP(gather);
 
 namespace paddle {
 namespace framework {
@@ -140,19 +141,16 @@ All parameter, weight, gradient are variables in Paddle.
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &op_info_map = OpRegistry::op_info_map();
     std::vector<py::bytes> ret_values;
-    for (auto it = op_info_map.begin(); it != op_info_map.end(); ++it) {
-      const OpProto *proto = it->second.proto_;
-      if (proto == nullptr) {
-        continue;
-      }
-      PADDLE_ENFORCE(proto->IsInitialized(), "OpProto must all be initialized");
+
+    OpInfoMap::Instance().IterAllInfo([&ret_values](const std::string &type,
+                                                    const OpInfo &info) {
+      if (!info.HasOpProtoAndChecker()) return;
       std::string str;
-      PADDLE_ENFORCE(proto->SerializeToString(&str),
+      PADDLE_ENFORCE(info.Proto().SerializeToString(&str),
                      "Serialize OpProto Error. This could be a bug of Paddle.");
-      ret_values.push_back(py::bytes(str));
-    }
+      ret_values.emplace_back(str);
+    });
     return ret_values;
   });
   m.def_submodule(
@@ -224,8 +222,8 @@ All parameter, weight, gradient are variables in Paddle.
                     retv->SetType("plain_net");
                     return retv;
                   })
-      .def("add_op", [](operators::NetOp &self,
-                        const OperatorBase &op) { self.AddOp(op); })
+      .def("append_op", [](operators::NetOp &self,
+                           const OperatorBase &op) { self.AppendOp(op); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
