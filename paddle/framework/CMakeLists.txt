@@ -39,23 +39,3 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
 
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
-
-if(WITH_PYTHON)
-cc_library(paddle_pybind SHARED
-    SRCS pybind.cc
-    DEPS pybind python backward
-    sgd_op
-    gather_op
-    add_op
-    mul_op
-    rowwise_add_op
-    sigmoid_op
-    softmax_op
-    mean_op
-    cross_entropy_op
-    recurrent_op
-    uniform_random_op
-    gaussian_random_op
-    fill_zeros_like_op
-    scale_op)
-endif(WITH_PYTHON)
