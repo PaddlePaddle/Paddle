@@ -13,7 +13,6 @@
    limitations under the License. */
 
 #include "paddle/operators/mul_op.h"
-#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

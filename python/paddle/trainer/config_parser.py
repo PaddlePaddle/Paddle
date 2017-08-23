@@ -338,7 +338,8 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
         in_links_count += 1
         layer_name = MakeLayerNameInParentSubmodel(name)
         layer = g_layer_map[layer_name]
-        ScatterAgentLayer(name=name, size=layer.size)
+        ScatterAgentLayer(
+            name=name, size=layer.size, width=layer.width, height=layer.height)
 
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
@@ -2197,8 +2198,8 @@ class MaxOutLayer(LayerBase):
         maxout_conf = self.config.inputs[0].maxout_conf
         parse_maxout(self.inputs[0].maxout, input_layer.name, maxout_conf)
         out_channels = maxout_conf.image_conf.channels / maxout_conf.groups
-        self.set_cnn_layer(name, g_layer_map[input_layer.name].height,
-                           g_layer_map[input_layer.name].width, out_channels)
+        self.set_cnn_layer(name, maxout_conf.image_conf.img_size_y,
+                           maxout_conf.image_conf.img_size, out_channels)
 
 
 @config_layer('row_conv')
@@ -2405,9 +2406,11 @@ class GatherAgentLayer(LayerBase):
 
 @config_layer('scatter_agent')
 class ScatterAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
+    def __init__(self, name, size, width=None, height=None, device=None):
         super(ScatterAgentLayer, self).__init__(
             name, 'scatter_agent', size, inputs=[], device=device)
+        if height and width:
+            self.set_layer_height_width(height, width)
 
 
 @config_layer('multiplex')
