@@ -43,6 +43,7 @@ USE_OP_ITSELF(recurrent_op);
 USE_OP(gaussian_random);
 USE_OP(uniform_random);
 USE_OP(lookup_table);
+USE_CPU_ONLY_OP(gather);
 
 namespace paddle {
 namespace framework {
