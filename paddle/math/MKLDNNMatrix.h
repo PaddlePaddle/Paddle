@@ -39,19 +39,36 @@ public:
                mkldnn::memory::primitive_desc pd)
       : CpuMatrix(data, height, width, false), mkldnn::memory(pd, data) {}
 
-  MKLDNNMatrix(size_t height, size_t width, mkldnn::memory::primitive_desc pd)
-      : CpuMatrix(height, width, false), mkldnn::memory(pd) {
-    set_data_handle(CpuMatrix::getData());
-  }
-
   ~MKLDNNMatrix() {}
 
+  /**
+   * Create MKLDNNMatrix from a MatrixPtr and memory primitive_desc
+   */
+  static MKLDNNMatrixPtr create(MatrixPtr m, mkldnn::memory::primitive_desc pd);
+
+  /**
+   * Create MKLDNNMatrix from a MatrixPtr and memory details info
+   */
   static MKLDNNMatrixPtr create(
-      const MatrixPtr& m,
+      MatrixPtr m,
       mkldnn::memory::dims dims,
       mkldnn::memory::format fmt,
       mkldnn::engine& eg,
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
+
+public:
+  /**
+   * Dimensionality reduction.
+   * Change format "nchw --> nc" or "oihw --> oi" if the h and w are both 1
+   */
+  void downSpatial();
+
+  /**
+   * Update the memory data handle.
+   * Caution: This will not check the buffer size of the data,
+   *          it should be coverd by user.
+   */
+  void updateData(void* data) { set_data_handle(data); }
 
   /**
    * Get primitive descriptor.
@@ -64,12 +81,13 @@ public:
   mkldnn::memory::desc getMD() { return getPD().desc(); }
 
   /**
-   * Get dims.
+   * Get dimensions.
    */
   mkldnn::memory::dims getDims() {
+    mkldnn::memory::desc md = getMD();
+    const int* src = md.data.dims;
+    int ndims = md.data.ndims;
     mkldnn::memory::dims dst;
-    int* src = getMD().data.dims;
-    int ndims = getMD().data.ndims;
     dst.resize(ndims);
     for (int i = 0; i < ndims; ++i) {
       dst[i] = src[i];
@@ -85,11 +103,16 @@ public:
   }
 
   /**
-   * Update the memory data handle.
-   * Caution: This will not check the buffer size of the data,
-   *          it should be coverd by user.
+   * Get memory data type.
    */
-  void updateData(void* data) { set_data_handle(data); }
+  mkldnn::memory::data_type getDtype() {
+    return (mkldnn::memory::data_type)(getMD().data.data_type);
+  }
+
+  /**
+   * Get engine.
+   */
+  mkldnn::engine getEngine() { return getPD().get_engine(); }
 };
 
 }  // namespace paddle

@@ -82,6 +82,7 @@ protected:
   Argument output_;
   /// Several outputs stored on different devices, used in 'parallel_nn' case,
   /// and record them by deviceId_.
+  /// Also used in 'use_mkldnn' case.
   std::vector<Argument> outputOtherDevice_;
   /// If there are several outputs, map them by each name.
   std::map<std::string, Argument*> outputMap_;
@@ -178,6 +179,13 @@ protected:
   }
 
   /**
+   * Get the argument of input layer with deviceId.
+   */
+  const Argument& getInput(size_t inputIndex, int deviceId) const {
+    return inputLayers_[inputIndex]->getOutput(deviceId);
+  }
+
+  /**
    * Get the forward-input value.
    */
   const MatrixPtr& getInputValue(int inputIndex) {
@@ -192,6 +200,13 @@ protected:
   }
 
   /**
+   * Get the forward-input value with deviceId.
+   */
+  const MatrixPtr& getInputValue(int inputIndex, int deviceId) {
+    return inputLayers_[inputIndex]->getOutput(deviceId).value;
+  }
+
+  /**
    * Get the forward-input grad.
    */
   const MatrixPtr& getInputGrad(int inputIndex) {
@@ -203,6 +218,13 @@ protected:
    */
   const MatrixPtr& getInputGrad(const Layer& inputLayer) {
     return inputLayer.getOutput(deviceId_).grad;
+  }
+
+  /**
+   * Get the forward-input grad.
+   */
+  const MatrixPtr& getInputGrad(int inputIndex, int deviceId) {
+    return inputLayers_[inputIndex]->getOutput(deviceId).grad;
   }
 
   /**
@@ -326,19 +348,6 @@ public:
     if (deviceId == getDeviceId()) {
       return output_;
     } else {
-      bool CPU2MKLDNN =
-          getDeviceId() == CPU_DEVICE && deviceId == MKLDNN_DEVICE;
-      bool MKLDNN2CPU =
-          getDeviceId() == MKLDNN_DEVICE && deviceId == CPU_DEVICE;
-      if (CPU2MKLDNN) {
-        // TODO: do something
-        return output_;
-      } else if (MKLDNN2CPU) {
-        // TODO: do something
-        return output_;
-      }
-
-      // TODO: handle mkldnn device or add mkldnn device to other
       for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
         if (outputOtherDevice_[i].deviceId == deviceId) {
           return outputOtherDevice_[i];

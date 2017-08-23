@@ -125,23 +125,80 @@ public:
                        << ", oh: " << oh_ << ", ow: " << ow_;
   }
 
-  // TODO(TJ): move to MkldnnMatrix
-  // create memory desc
-  inline mkldnn::memory::desc createMD(
-      mkldnn::memory::dims dims,
-      mkldnn::memory::format fmt,
-      mkldnn::memory::data_type type = mkldnn::memory::data_type::f32) {
-    // TODO(TJ): isFmtSuppoted(fmt)
-    return mkldnn::memory::desc(dims, type, fmt);
+  /**
+   * Print the mkldnn memory format flow of value
+   */
+  virtual void printValueFormatFlow() {
+    if (inVal_ && outVal_) {
+      VLOG(MKLDNN_FMTS) << "value format flow --- " << inVal_->getFormat()
+                        << " >>> " << outVal_->getFormat();
+    }
   }
 
-  void resetMKLDNNOutput(size_t height, size_t width) {
-    Layer::resetOutput(height, width);
-    // get valu and grad, use mkldnn matrix instaed
-    // output_.value;
+  /**
+   * Print the mkldnn memory format flow of grad
+   */
+  virtual void printGradFormatFlow() {
+    if (inGrad_ && outGrad_) {
+      VLOG(MKLDNN_FMTS) << "grad format flow --- " << inGrad_->getFormat()
+                        << " <<< " << outGrad_->getFormat();
+    }
   }
 
 protected:
+  /**
+   * If next layer only has MKLDNN type.
+   * Otherwise, only support otherdevice CPU device.
+   */
+  bool nextIsMKLDNN() {
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      CHECK_EQ(outputOtherDevice_[i].deviceId, CPU_DEVICE)
+          << "Only support other device is CPU yet";
+    }
+    return outputOtherDevice_.size() == 0;
+  }
+
+  /**
+   * Is previous layer MKLDNN type.
+   * Otherwise, only support otherdevice CPU device.
+   */
+  bool prevIsMKLDNN(int index = 0) {
+    int prevDevice = getPrev(index)->getDeviceId();
+    if (prevDevice == MKLDNN_DEVICE) {
+      return true;
+    } else {
+      // do not support GPU yet
+      CHECK_EQ(prevDevice, CPU_DEVICE) << "Only support CPU yet";
+      return false;
+    }
+  }
+
+  /**
+   * Sync input value data
+   */
+  void syncInputValue() {
+    if (prevIsMKLDNN()) {
+      return;
+    }
+    real* iData = getInputValue(0, CPU_DEVICE)->getData();
+    // update input data
+    // since it might be changed if this is after data layer
+    inVal_->updateData(iData);
+  }
+
+  /**
+   * Sync output grad data
+   */
+  void syncOutputGrad() {
+    if (nextIsMKLDNN()) {
+      return;
+    }
+
+    // update diff
+    real* oDiff = getOutput(CPU_DEVICE).grad->getData();
+    outGrad_->updateData(oDiff);
+  }
+
   /**
    * Set deviceId of this layer.
    */

@@ -97,7 +97,7 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
 }
 
 void MKLDNNFcLayer::reshape() {
-  const Argument& input = getInput(0);
+  const Argument& input = getInput(0, getPrev(0)->getDeviceId());
   int batchSize = input.getBatchSize();
   if (bs_ == batchSize) {
     return;
@@ -135,35 +135,43 @@ void MKLDNNFcLayer::reshape() {
 
 void MKLDNNFcLayer::resetFwd() {
   bool hasBias = biases_ && biases_->getW();
-  const MatrixPtr& in = getInputValue(0);
   const MatrixPtr& wgt = weight_->getW();
   const MatrixPtr& bias = hasBias ? biases_->getW() : nullptr;
   const MatrixPtr& out = output_.value;
 
-  if (getPrev(0)->getDeviceId() == MKLDNN_DEVICE) {
+  if (prevIsMKLDNN()) {
+    const MatrixPtr& in = getInputValue(0);
     inVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(in);
     CHECK(inVal_) << "Input should be MKLDNNMatrix";
-    // TODO:  change input nchw to nc if available
-    // inVal_->downSpatial()
   } else {
+    CHECK_EQ(getPrev(0)->getDeviceId(), CPU_DEVICE) << "Only support CPU yet";
+    const MatrixPtr& in = getInputValue(0, CPU_DEVICE);
     inVal_ = MKLDNNMatrix::create(
-        in,
-        hasSpatial_ ? memory::dims{bs_, ic_, ih_, iw_} : memory::dims{bs_, ic_},
-        hasSpatial_ ? format::nchw : format::nc,
-        engine_);
+        in, memory::dims{bs_, ic_, ih_, iw_}, format::nchw, engine_);
   }
-
+  inVal_->downSpatial();
   wgtVal_ = MKLDNNMatrix::create(
-      wgt,
-      hasSpatial_ ? memory::dims{oc_, ic_, ih_, iw_} : memory::dims{oc_, ic_},
-      hasSpatial_ ? format::oihw : format::oi,
-      engine_);
+      wgt, memory::dims{oc_, ic_, ih_, iw_}, format::oihw, engine_);
+  wgtVal_->downSpatial();
   biasVal_ =
       hasBias ? MKLDNNMatrix::create(bias, {oc_}, format::x, engine_) : nullptr;
   outVal_ = MKLDNNMatrix::create(out, {bs_, oc_}, format::nc, engine_);
 
-  // change original output to mkldnn output
+  // change original output value to mkldnn output value
   output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
+  if (!nextIsMKLDNN()) {
+    Argument cpuOutput;
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
+        cpuOutput = outputOtherDevice_[i];
+      }
+    }
+    cpuOutput.setFrameHeight(output_.getFrameHeight());
+    cpuOutput.setFrameWidth(output_.getFrameWidth());
+
+    // fc cpu output value do not need convert
+    cpuOutput.value = output_.value;
+  }
 
   // create forward handle
   prop_kind pk = prop_kind::forward;
@@ -176,12 +184,13 @@ void MKLDNNFcLayer::resetFwd() {
               : fc_fwd::desc(
                     pk, inVal_->getMD(), wgtVal_->getMD(), outVal_->getMD());
   fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
-
   if (hasBias) {
     fwd_.reset(new fc_fwd(fwdPD, *inVal_, *wgtVal_, *biasVal_, *outVal_));
   } else {
     fwd_.reset(new fc_fwd(fwdPD, *inVal_, *wgtVal_, *outVal_));
   }
+  printValueFormatFlow();
+
   pipelineFwd_.clear();
   pipelineFwd_.push_back(*fwd_);
 }
@@ -197,17 +206,24 @@ void MKLDNNFcLayer::resetBwd() {
   CHECK(inVal_) << "Should have input value";
   const MatrixPtr& wgt = weight_->getWGrad();
   const MatrixPtr& bias = hasBias ? biases_->getWGrad() : nullptr;
-  const MatrixPtr& out = output_.grad;
 
-  wgtGrad_ = MKLDNNMatrix::create(
-      wgt, wgtVal_->getDims(), wgtVal_->getFormat(), engine_);
-  biasGrad_ =
-      hasBias ? MKLDNNMatrix::create(bias, {oc_}, format::x, engine_) : nullptr;
+  if (nextIsMKLDNN()) {
+    // can not directly cast outputgrad to mkldnnmatrix,
+    // since each layer can not write the inputgrad to mkldnn inputgrad.
+    // So just create from matrix with outputvalue format.
+    const MatrixPtr& out = getOutput(MKLDNN_DEVICE).grad;
+    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPD());
+    // TODO: maybe need merge topdiffs
+  } else {
+    // TODO: merge topdiffs
+    const MatrixPtr& out = getOutput(CPU_DEVICE).grad;
+    // fc do not need to convert from cpu device since output always nc
+    // only need create from cpu device
+    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPD());
+  }
 
-  outGrad_ = MKLDNNMatrix::create(out, {bs_, oc_}, format::nc, engine_);
-  // change original output to mkldnn output
-  // TODO: right?
-  output_.grad = std::dynamic_pointer_cast<Matrix>(outGrad_);
+  wgtGrad_ = MKLDNNMatrix::create(wgt, wgtVal_->getPD());
+  biasGrad_ = hasBias ? MKLDNNMatrix::create(bias, biasVal_->getPD()) : nullptr;
 
   // create memory primitive desc
   fc_fwd::desc fwdDesc = fc_fwd::desc(prop_kind::forward,
@@ -235,21 +251,38 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdWgt_);
 
   /// backward data
-  const MatrixPtr& in = getInputGrad(0);
-  if (in == nullptr) {
-    return;
+  if (prevIsMKLDNN()) {
+    const MatrixPtr& in = getInputGrad(0, MKLDNN_DEVICE);
+    if (in == nullptr) {
+      return;
+    }
+    if (getInput(0, MKLDNN_DEVICE).getAllCount() > 1) {
+      // TODO: many mkldnn bots
+      // add sum handle
+    } else {
+      inGrad_ = MKLDNNMatrix::create(in, inVal_->getPD());
+    }
+  } else {
+    const MatrixPtr& in = getInputGrad(0, CPU_DEVICE);
+    if (in == nullptr) {
+      return;
+    }
+    if (getInput(0, CPU_DEVICE).getAllCount() > 1) {
+      // TODO: many  bots
+      // add sum handle
+    } else {
+      inGrad_ = MKLDNNMatrix::create(in, inVal_->getPD());
+    }
   }
+
   fc_bwdData::desc bwdDataDesc =
       fc_bwdData::desc(inVal_->getMD(), wgtGrad_->getMD(), outGrad_->getMD());
   fc_bwdData::primitive_desc bwdDataPD =
       fc_bwdData::primitive_desc(bwdDataDesc, engine_, fwdPD);
 
-  // TODO: check right, just from ingrad?
-  inGrad_ =
-      MKLDNNMatrix::create(in, inVal_->getDims(), inVal_->getFormat(), engine_);
-
   CHECK(wgtVal_) << "Should have weight memory";
   bwdData_.reset(new fc_bwdData(bwdDataPD, *outGrad_, *wgtVal_, *inGrad_));
+  printGradFormatFlow();
   pipelineBwd_.push_back(*bwdData_);
 }
 
@@ -259,11 +292,7 @@ void MKLDNNFcLayer::forward(PassType passType) {
 
   {
     REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
-
-    // update input data
-    // since it might be changed if this is after data layer
-    real* iData = getInputValue(0)->getData();
-    inVal_->updateData(iData);
+    syncInputValue();
 
     // just submit forward pipeline
     stream_->submit(pipelineFwd_);
@@ -285,10 +314,7 @@ void MKLDNNFcLayer::backward(const UpdateCallback& callback) {
     REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
     resetBwd();
 
-    // update diff
-    real* oDiff = getOutputGrad()->getData();
-    outGrad_->updateData(oDiff);
-
+    syncOutputGrad();
     // just sumbmit backward pipeline
     stream_->submit(pipelineBwd_);
   }
