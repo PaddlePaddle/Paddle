@@ -28,8 +28,8 @@ template <typename Place, typename T>
 class SigmoidKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>(0);
-    auto output = context.Output<Tensor>(0);
+    auto input = context.Input<Tensor>("X");
+    auto output = context.Output<Tensor>("Y");
     output->mutable_data<T>(context.GetPlace());
 
     // The clipping is used in Paddle's raw implenmention
@@ -37,7 +37,7 @@ class SigmoidKernel : public framework::OpKernel {
     auto Y = EigenVector<T>::Flatten(*output);
     auto place = context.GetEigenDevice<Place>();
 
-    Y.device(place) = 1.0 / (1.0 + (-1.0 * X).exp());
+    Y.device(place) = 1. / (1. + (-X).exp());
   }
 };
 

@@ -13,23 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/framework/op_desc.pb.h>
+#include "ConvOpTest.h"
 
-TEST(OpDesc, Create) {
-  paddle::framework::OpDesc op_desc;
-  op_desc.set_type("add");
-  op_desc.add_inputs("X");
-  op_desc.add_inputs("Y");
-  op_desc.add_outputs("Z");
+namespace paddle {
 
-  auto attr = op_desc.mutable_attrs()->Add();
-  attr->set_type(paddle::framework::AttrType::FLOAT);
-  attr->set_f(3.14);
-
-  // required field name is not set, so IsInitialized should be false.
-  ASSERT_FALSE(op_desc.IsInitialized());
-
-  attr->set_name("add");
-  // after all required fields are set, IsInitialized should be true now.
-  ASSERT_TRUE(op_desc.IsInitialized());
+#ifndef PADDLE_ONLY_CPU
+TEST(DepthwiseConv, Forward) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConv-CPU", "DepthwiseConv-GPU", forward);
 }
+
+TEST(DepthwiseConv, BackwardInput) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConvGradInput-CPU", "DepthwiseConvGradInput-GPU", backward_input);
+}
+
+TEST(DepthwiseConv, BackwardFilter) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
+      "GemmConvGradFilter-CPU", "DepthwiseConvGradFilter-GPU", backward_filter);
+}
+#endif
+
+}  // namespace paddle

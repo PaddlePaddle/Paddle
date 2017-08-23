@@ -367,6 +367,11 @@ trans
 ..  autoclass:: paddle.v2.layer.trans
     :noindex:
 
+scale_shift
+-----------
+..  autoclass:: paddle.v2.layer.scale_shift
+    :noindex:
+
 Sampling Layers
 ===============
 

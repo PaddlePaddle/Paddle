@@ -18,13 +18,14 @@ namespace paddle {
 namespace operators {
 
 class MeanOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 1, "Input size of AddOp must be one");
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0), "input should be set");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(0), "output should be set");
-    ctx.Output<Tensor>(0)->Resize(framework::make_ddim({1}));
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input of MeanOp must be initialized.");
+    ctx.Output<Tensor>("Out")->Resize({1});
   }
 };
 
@@ -33,12 +34,15 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
   MeanOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
-    AddOutput("Out", "The output of mean op").IgnoreGradient();
+    AddOutput("Out", "The output of mean op").NotInGradient();
     AddComment("Mean Operator");
   }
 };
 
 class MeanGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     ctx.Output<Tensor>(framework::GradVarName("X"))
@@ -50,9 +54,8 @@ class MeanGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker);
+REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean,
                        ops::MeanKernel<paddle::platform::CPUPlace, float>);
-REGISTER_GRADIENT_OP(mean, mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean_grad,
                        ops::MeanGradKernel<paddle::platform::CPUPlace, float>);

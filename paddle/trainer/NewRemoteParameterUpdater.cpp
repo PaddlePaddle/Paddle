@@ -68,7 +68,7 @@ void NewRemoteParameterUpdater::init(
     LOG(INFO) << "paddle_begin_init_params start";
     // NOTE: convert V1 OptimizatioinConfig proto to V2 OptimizerConfig.
     // This makes golang pserver compatible with handy V1 demos.
-    // TODO: Refine or remove these ugly converting lines
+    // TODO(wuyi): Refine or remove these ugly converting lines
     OptimizerConfig optimizerConfigV2;
     if (trainerConfig_.learning_method() == "momentum") {
       optimizerConfigV2.set_optimizer(paddle::OptimizerConfig::SGD);

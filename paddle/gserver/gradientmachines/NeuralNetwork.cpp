@@ -202,7 +202,7 @@ void NeuralNetwork::prefetch(const std::vector<Argument>& inArgs) {
         auto mat = dynamic_cast<SparsePrefetchRowCpuMatrix*>(
             para->getMat(PARAMETER_VALUE).get());
         para->clearGradient();
-        mat->clearIndices();
+        if (mat) mat->clearIndices();
       }
     }
   }
