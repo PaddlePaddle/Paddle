@@ -28,4 +28,3 @@ class Op(object):
 
     def run(self):
         pass
-
