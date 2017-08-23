@@ -60,7 +60,7 @@ def sgd_optimizer(net, param_name, learning_rate=0.01):
         grad=grad_name,
         param_out=param_name,
         learning_rate=learning_rate)
-    net.add_op(optimize_op)
+    net.append_op(optimize_op)
 
 
 # should use operator and add these to the init_network
@@ -102,7 +102,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
     pre_activation = name + ".mul.out"
     scope.new_var(pre_activation)
     mul_op = Operator("mul", X=input, Y=w_name, Out=pre_activation)
-    net.add_op(mul_op)
+    net.append_op(mul_op)
 
     # create bias variable if needed
     if bias:
@@ -112,13 +112,13 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
             net=optimize_net, param_name=bias_name, learning_rate=0.01)
         bias_out = name + ".rowwise_add.out"
         scope.new_var(bias_out)
-        rowwise_add_op = Operator(
+        rowwise_append_op = Operator(
             "rowwise_add", X=pre_activation, b=bias_name, Out=bias_out)
-        net.add_op(rowwise_add_op)
+        net.append_op(rowwise_append_op)
         pre_activation = bias_out
 
     activation_op = Operator(act, X=pre_activation, Y=name)
-    net.add_op(activation_op)
+    net.append_op(activation_op)
     scope.new_var(name)
     net.infer_shape(scope)
     return name
@@ -128,7 +128,7 @@ def cross_entropy_layer(net, input, label):
     cost_name = 'cross_entropy_%d' % uniq_id()
     cross_entropy_op = Operator(
         "onehot_cross_entropy", X=input, label=label, Y=cost_name)
-    net.add_op(cross_entropy_op)
+    net.append_op(cross_entropy_op)
     scope.new_var(cost_name)
     net.infer_shape(scope)
     return cost_name
