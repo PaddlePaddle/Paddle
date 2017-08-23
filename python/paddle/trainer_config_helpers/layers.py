@@ -6161,12 +6161,6 @@ def img_conv3d_layer(input,
                      param_attr=None,
                      shared_biases=True,
                      layer_attr=None,
-                     filter_size_y=None,
-                     stride_y=None,
-                     padding_y=None,
-                     filter_size_z=None,
-                     stride_z=None,
-                     padding_z=None,
                      trans=False,
                      layer_type=None):
     """
@@ -6175,7 +6169,7 @@ def img_conv3d_layer(input,
 
     ..  code-block:: python
 
-        conv = img_conv3d_layer(input=data, filter_size=1, filter_size_y=1,
+        conv = img_conv3d_layer(input=data, filter_size=1,
                               num_channels=8,
                               num_filters=16, stride=1,
                               bias_attr=False,
@@ -6185,13 +6179,8 @@ def img_conv3d_layer(input,
     :type name: basestring
     :param input: Layer Input.
     :type input: LayerOutput
-    :param filter_size: The x dimension of a filter kernel. Or input a tuple for
-                        two image dimension.
+    :param filter_size: The x dimension of a filter kernel. Or input a list.
     :type filter_size: int|tuple|list
-    :param filter_size_y: The y dimension of a filter kernel. Since PaddlePaddle
-                        currently supports rectangular filters, the filter's
-                        shape will be (filter_size, filter_size_y).
-    :type filter_size_y: int|None
     :param num_filters: Each filter group's number of filter
     :param act: Activation type. Default is tanh
     :type act: BaseActivation
@@ -6200,13 +6189,9 @@ def img_conv3d_layer(input,
     :param stride: The x dimension of the stride. Or input a tuple for two image
                    dimension.
     :type stride: int|tuple|list
-    :param stride_y: The y dimension of the stride.
-    :type stride_y: int
     :param padding: The x dimension of the padding. Or input a tuple for two
                     image dimension
     :type padding: int|tuple|list
-    :param padding_y: The y dimension of the padding.
-    :type padding_y: int
     :param bias_attr: Convolution bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
@@ -6233,47 +6218,26 @@ def img_conv3d_layer(input,
         assert input.num_filters is not None
         num_channels = input.num_filters
 
-    if filter_size_y is None:
-        if isinstance(filter_size, collections.Sequence):
-            assert len(filter_size) == 2
-            filter_size, filter_size_y = filter_size
-        else:
-            filter_size_y = filter_size
+    if isinstance(filter_size, collections.Sequence):
+        assert len(filter_size) == 3
+        filter_size, filter_size_y, filter_size_z = filter_size
+    else:
+        filter_size_y = filter_size
+        filter_size_z = filter_size
 
-    if filter_size_z is None:
-        if isinstance(filter_size, collections.Sequence):
-            assert len(filter_size) == 2
-            filter_size, filter_size_z = filter_size
-        else:
-            filter_size_z = filter_size
+    if isinstance(stride, collections.Sequence):
+        assert len(stride) == 3
+        stride, stride_y, stride_z = stride
+    else:
+        stride_y = stride
+        stride_z = stride
 
-    if stride_y is None:
-        if isinstance(stride, collections.Sequence):
-            assert len(stride) == 2
-            stride, stride_y = stride
-        else:
-            stride_y = stride
-
-    if stride_z is None:
-        if isinstance(stride, collections.Sequence):
-            assert len(stride) == 2
-            stride, stride_z = stride
-        else:
-            stride_z = stride
-
-    if padding_y is None:
-        if isinstance(padding, collections.Sequence):
-            assert len(padding) == 2
-            padding, padding_y = padding
-        else:
-            padding_y = padding
-
-    if padding_z is None:
-        if isinstance(padding, collections.Sequence):
-            assert len(padding) == 2
-            padding, padding_z = padding
-        else:
-            padding_z = padding
+    if isinstance(padding, collections.Sequence):
+        assert len(padding) == 3
+        padding, padding_y, padding_z = padding
+    else:
+        padding_y = padding
+        padding_z = padding
 
     if param_attr.attr.get('initial_smart'):
         # special initial for conv layers.

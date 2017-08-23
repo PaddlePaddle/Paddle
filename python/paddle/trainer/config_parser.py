@@ -901,20 +901,14 @@ class Conv3D(Cfg):
                  padding_z=None,
                  stride_z=None):
         self.add_keys(locals())
-        if filter_size_y is None:
-            self.filter_size_y = filter_size
-        if padding_y is None:
-            self.padding_y = padding
-        if stride_y is None:
-            self.stride_y = stride
+        self.filter_size_y = filter_size_y if filter_size_y else filter_size
+        self.filter_size_z = filter_size_z if filter_size_z else filter_size
+        self.padding_y = padding_y if padding_y else padding
+        self.padding_z = padding_z if padding_z else padding
+        self.stride_y = stride_y if stride_y else stride
+        self.stride_z = stride_z if stride_z else stride
         if output_x is not None:
             config_assert(output_x <= 0)
-        if filter_size_z is None:
-            self.filter_size_z = filter_size
-        if padding_z is None:
-            self.padding_z = padding
-        if stride_z is None:
-            self.stride_z = stride
 
 
 @config_class
@@ -1206,10 +1200,10 @@ def get_img_size(input_layer_name, channels):
 def get_img3d_size(input_layer_name, channels):
     input = g_layer_map[input_layer_name]
     img_pixels = input.size / channels
-    img_size = input.width if input.width > 0 else int(img_pixels**0.5)
-    img_size_y = input.height if input.height > 0 else int(img_pixels /
-                                                           img_size)
-    img_size_z = input.depth if input.depth > 1 else 1
+    img_size = input.width
+    img_size_y = input.height
+    img_size_z = input.depth
+
     config_assert(
         img_size * img_size_y * img_size_z == img_pixels,
         "Input layer %s: Incorrect input image size %d * %d * %d for input image pixels %d"
@@ -2000,163 +1994,6 @@ class ConvLayer(ConvLayerBase):
     layer_type = 'cudnn_conv'
 
 
-@config_layer('conv_3d')
-class Conv3DLayerBase(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs=[],
-                 bias=True,
-                 num_filters=None,
-                 shared_biases=False,
-                 **xargs):
-        super(Conv3DLayerBase, self).__init__(
-            name, self.layer_type, 0, inputs=inputs, **xargs)
-
-        if num_filters is not None:
-            self.config.num_filters = num_filters
-
-        use_gpu = int(g_command_config_args.get("use_gpu", 0))
-        parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
-
-        # Automatically select cudnn_type for GPU and exconv for CPU
-        # if set type=conv, but still reserve the way user specify
-        # exconv or cudnn_conv manually.
-        if self.layer_type == "cudnn_conv3d":
-            config_assert(use_gpu, "cudnn_conv3d only support GPU")
-
-        # need to specify layer in config
-        self.config.type = self.layer_type
-
-        if shared_biases is not None:
-            self.config.shared_biases = shared_biases
-
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            conv_conf = self.config.inputs[input_index].conv_conf
-            parse_conv3d(
-                self.inputs[input_index].conv, input_layer.name, conv_conf,
-                num_filters
-            )  # for z-axis pad:0, strid:1, filter_size:1, img_size:1
-            psize = self.calc_parameter_size(conv_conf)
-            self.create_input_parameter(input_index, psize)
-            self.set_cnn_layer(name, conv_conf.output_z, conv_conf.output_y,
-                               conv_conf.output_x, self.config.num_filters)
-
-        psize = self.config.size
-        if shared_biases:
-            psize = self.config.num_filters
-        self.create_bias_parameter(bias, psize, [psize, 1])
-
-    def calc_parameter_size(self, conv_conf):
-        return self.config.num_filters * conv_conf.filter_channels \
-               * (conv_conf.filter_size * conv_conf.filter_size_y \
-                  * conv_conf.filter_size_z)
-
-    def set_layer_height_width(self, depth, height, width):
-        self.config.depth = depth
-        self.config.height = height
-        self.config.width = width
-
-    def set_cnn_layer(self,
-                      input_layer_name,
-                      depth,
-                      height,
-                      width,
-                      channels,
-                      is_print=True):
-        size = depth * height * width * channels
-        self.set_layer_size(size)
-        self.set_layer_height_width(depth, height, width)
-        if is_print:
-            print("output for %s: c = %d, d = %d, h = %d, w = %d, size = %d" %
-                  (input_layer_name, channels, depth, height, width, size))
-
-
-@config_layer('conv3d')
-class Conv3DLayer(Conv3DLayerBase):
-    layer_type = 'conv3d'
-
-
-@config_layer('convt_3d')
-class Conv3DTransLayerBase(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs=[],
-                 bias=True,
-                 num_filters=None,
-                 shared_biases=False,
-                 **xargs):
-        super(Conv3DTransLayerBase, self).__init__(
-            name, self.layer_type, 0, inputs=inputs, **xargs)
-
-        if num_filters is not None:
-            self.config.num_filters = num_filters
-
-        use_gpu = int(g_command_config_args.get("use_gpu", 0))
-        parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
-
-        # Automatically select cudnn_type for GPU and exconv for CPU
-        # if set type=conv, but still reserve the way user specify
-        # exconv or cudnn_conv manually.
-        if self.layer_type == "cudnn_deconv3d":
-            config_assert(use_gpu, "cudnn_conv3d only support GPU")
-
-        # need to specify layer in config
-        self.config.type = self.layer_type
-
-        if shared_biases is not None:
-            self.config.shared_biases = shared_biases
-
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            conv_conf = self.config.inputs[input_index].conv_conf
-            parse_conv3d(
-                self.inputs[input_index].conv,
-                input_layer.name,
-                conv_conf,
-                num_filters,
-                trans=True
-            )  # for z-axis pad:0, strid:1, filter_size:1, img_size:1
-            psize = self.calc_parameter_size(conv_conf)
-            self.create_input_parameter(input_index, psize)
-            self.set_cnn_layer(name, conv_conf.img_size_z, conv_conf.img_size_y,
-                               conv_conf.img_size, self.config.num_filters)
-
-        psize = self.config.size
-        if shared_biases:
-            psize = self.config.num_filters
-        self.create_bias_parameter(bias, psize, [psize, 1])
-
-    def calc_parameter_size(self, conv_conf):
-        return self.config.num_filters * conv_conf.filter_channels \
-               * (conv_conf.filter_size * conv_conf.filter_size_y \
-                  * conv_conf.filter_size_z)
-
-    def set_layer_height_width(self, depth, height, width):
-        self.config.depth = depth
-        self.config.height = height
-        self.config.width = width
-
-    def set_cnn_layer(self,
-                      input_layer_name,
-                      depth,
-                      height,
-                      width,
-                      channels,
-                      is_print=True):
-        size = depth * height * width * channels
-        self.set_layer_size(size)
-        self.set_layer_height_width(depth, height, width)
-        if is_print:
-            print("output for %s: c = %d, d = %d, h = %d, w = %d, size = %d" %
-                  (input_layer_name, channels, depth, height, width, size))
-
-
-@config_layer('deconv3d')
-class DeConv3DLayer(Conv3DTransLayerBase):
-    layer_type = 'deconv3d'
-
-
 @config_layer('convt')
 class ConvTransLayerBase(LayerBase):
     layer_type = 'convt'
@@ -2226,6 +2063,87 @@ class ConvTransLayer(ConvTransLayerBase):
 @config_layer('cudnn_convt')
 class ConvTransLayer(ConvTransLayerBase):
     layer_type = 'cudnn_convt'
+
+
+@config_layer('conv_3d')
+class Conv3DLayerBase(LayerBase):
+    def __init__(self,
+                 name,
+                 inputs=[],
+                 bias=True,
+                 num_filters=None,
+                 shared_biases=True,
+                 **xargs):
+        super(Conv3DLayerBase, self).__init__(
+            name, self.layer_type, 0, inputs=inputs, **xargs)
+
+        if num_filters is not None:
+            self.config.num_filters = num_filters
+
+        # need to specify layer in config
+        self.config.type = self.layer_type
+
+        trans = False
+        if self.config.type == "deconv3d":
+            trans = True
+
+        if shared_biases is not None:
+            self.config.shared_biases = shared_biases
+
+        for input_index in xrange(len(self.inputs)):
+            input_layer = self.get_input_layer(input_index)
+            conv_conf = self.config.inputs[input_index].conv_conf
+            parse_conv3d(
+                self.inputs[input_index].conv,
+                input_layer.name,
+                conv_conf,
+                num_filters,
+                trans=trans
+            )  # for z-axis pad:0, strid:1, filter_size:1, img_size:1
+            psize = self.calc_parameter_size(conv_conf)
+            self.create_input_parameter(input_index, psize)
+            if trans:
+                self.set_cnn_layer(name, conv_conf.img_size_z,
+                                   conv_conf.img_size_y, conv_conf.img_size,
+                                   self.config.num_filters)
+            else:
+                self.set_cnn_layer(name, conv_conf.output_z, conv_conf.output_y,
+                                   conv_conf.output_x, self.config.num_filters)
+
+        psize = self.config.size
+        if shared_biases:
+            psize = self.config.num_filters
+        self.create_bias_parameter(bias, psize, [psize, 1])
+
+    def calc_parameter_size(self, conv_conf):
+        return self.config.num_filters * conv_conf.filter_channels \
+               * (conv_conf.filter_size * conv_conf.filter_size_y \
+                  * conv_conf.filter_size_z)
+
+    def set_cnn_layer(self,
+                      input_layer_name,
+                      depth,
+                      height,
+                      width,
+                      channels,
+                      is_print=True):
+        size = depth * height * width * channels
+        self.set_layer_size(size)
+        self.set_layer_height_width(height, width)
+        self.set_layer_depth(depth)
+        if is_print:
+            print("output for %s: c = %d, d = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, depth, height, width, size))
+
+
+@config_layer('conv3d')
+class Conv3DLayer(Conv3DLayerBase):
+    layer_type = 'conv3d'
+
+
+@config_layer('deconv3d')
+class Conv3DLayer(Conv3DLayerBase):
+    layer_type = 'deconv3d'
 
 
 @config_layer('norm')
