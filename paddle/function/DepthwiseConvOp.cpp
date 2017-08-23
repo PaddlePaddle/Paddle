@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "DepthwiseConvOp.h"
 #include "ConvOp.h"
-#include "GemmFunctor.h"
 
 namespace paddle {
 

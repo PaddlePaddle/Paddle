@@ -38,10 +38,10 @@ TEST(OpKernel, all) {
   auto net = std::make_shared<NetOp>();
   ASSERT_NE(net, nullptr);
 
-  net->AddOp(std::unique_ptr<TestOp>(
+  net->AppendOp(std::unique_ptr<TestOp>(
       new TestOp("test", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
                  {{"Out", {"y"}}}, {})));
-  net->AddOp(std::unique_ptr<TestOp>(
+  net->AppendOp(std::unique_ptr<TestOp>(
       new TestOp("test", {{"X", {"y"}}, {"W", {"w2"}}, {"b", {"b2"}}},
                  {{"Out", {"z"}}}, {})));
 
@@ -61,7 +61,7 @@ TEST(NetOp, insert_op) {
   auto op1 = std::unique_ptr<framework::NOP>(
       new framework::NOP("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
                          {{"Out", {"y"}}}, {}));
-  net.AddOp(*op1);
+  net.AppendOp(*op1);
   net.InsertOp(0, *op1);
   ASSERT_EQ(2UL, net.ops_.size());
   net.InsertOp(2, std::move(op1));
@@ -70,9 +70,9 @@ TEST(NetOp, insert_op) {
 
 TEST(NetOp, Clone) {
   NetOp net;
-  net.AddOp(
+  net.AppendOp(
       std::unique_ptr<framework::NOP>(new framework::NOP{"empty", {}, {}, {}}));
-  net.AddOp(std::unique_ptr<framework::NOP>(
+  net.AppendOp(std::unique_ptr<framework::NOP>(
       new framework::NOP{"empty2", {}, {}, {}}));
   net.CompleteAddOp(true);
   auto new_net_op = net.Clone();
