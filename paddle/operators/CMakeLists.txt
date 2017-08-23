@@ -42,7 +42,6 @@ function(op_library TARGET)
 endfunction()
 
 add_subdirectory(math)
-add_subdirectory(functor)
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 
@@ -69,4 +68,4 @@ op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
     DEPS framework_proto tensor op_registry operator net_op)
 op_library(uniform_random_op SRCS uniform_random_op.cc uniform_random_op.cu)
-op_library(lookup_table_op SRCS lookup_table_op.cc lookup_table_op.cu DEPS math_functor)
+op_library(lookup_table_op SRCS lookup_table_op.cc lookup_table_op.cu)

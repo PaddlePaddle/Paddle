@@ -23,6 +23,10 @@ def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
+def empty_var_name():
+    return "@EMPTY@"
+
+
 def get_numeric_gradient(op,
                          input_values,
                          output_name,
@@ -171,7 +175,7 @@ class GradientChecker(unittest.TestCase):
         ]
         return outs
 
-    def compare_grad(self, forward_op, input_value):
+    def compare_grad(self, forward_op, input_value, no_grad_set=None):
         """ Compare the input gradients between CPU and GPU for the given forward
         operator.
 
@@ -179,15 +183,20 @@ class GradientChecker(unittest.TestCase):
         :type forward_op: Operator
         :param input_value: input values.
         :type input_value: dict{string:numpy.array}
+        :param no_grad_set: the set of variables names without gradients.
+        :type no_grad_set: a set of string
         :raises: AssertionError, there is different gradient value.
         """
-        backward_op = core.Operator.backward(forward_op, set())
+        if no_grad_set is None:
+            no_grad_set = set()
+        backward_op = core.Operator.backward(forward_op, no_grad_set)
         # return if not compile with GPU or not implementing GPU kernel
         if not (core.is_compile_gpu() and backward_op.support_gpu()):
             return
 
         outputs = backward_op.outputs()
         out_names = [item for k in outputs for item in outputs[k]]
+        out_names = filter(lambda x: x != empty_var_name(), out_names)
         cpu_grads = self.__get_gradient(forward_op, backward_op, input_value,
                                         out_names, core.CPUPlace())
         gpu_grads = self.__get_gradient(forward_op, backward_op, input_value,

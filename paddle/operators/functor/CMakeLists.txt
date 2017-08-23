@@ -1,5 +1,0 @@
-if(WITH_GPU)
-    nv_library(math_functor SRCS math_functor.cc math_functor.cu DEPS device_context)
-else()
-    cc_library(math_functor SRCS math_functor.cc DEPS device_context)
-endif()

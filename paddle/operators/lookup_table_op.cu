@@ -12,8 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/functor/math_functor.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cuda_helper.h"
 
@@ -22,11 +22,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int blockDimX, int blockDimY, int gridDimX>
+template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void LookupTable(T* output, const T* table, const int32_t* ids,
                             const int N, const int K, const int D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDimX;
+  int idy = blockIdx.x + threadIdx.y * GridDimX;
 
   while (idy < K) {
     int id = ids[idy];
@@ -34,18 +34,18 @@ __global__ void LookupTable(T* output, const T* table, const int32_t* ids,
     PADDLE_ASSERT(id < N);
     T* out = output + idy * D;
     const T* tab = table + id * D;
-    for (int i = idx; i < D; i += blockDimX) {
+    for (int i = idx; i < D; i += BlockDimX) {
       out[i] = tab[i];
     }
-    idy += blockDimY * gridDimX;
+    idy += BlockDimY * GridDimX;
   }
 }
 
-template <typename T, int blockDimX, int blockDimY, int gridDimX>
+template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void LookupTableGrad(T* table, const T* output, const int32_t* ids,
                                 const int N, const int K, const int D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDimX;
+  int idy = blockIdx.x + threadIdx.y * GridDimX;
 
   while (idy < K) {
     int id = ids[idy];
@@ -53,10 +53,10 @@ __global__ void LookupTableGrad(T* table, const T* output, const int32_t* ids,
     PADDLE_ASSERT(id < N);
     const T* out = output + idy * D;
     T* tab = table + id * D;
-    for (int i = idx; i < D; i += blockDimX) {
+    for (int i = idx; i < D; i += BlockDimX) {
       paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
     }
-    idy += blockDimY * gridDimX;
+    idy += BlockDimY * GridDimX;
   }
 }
 
@@ -96,10 +96,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel {
     const T* d_output = d_output_t->data<T>();
     T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
 
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(context.device_context_);
-    functor::Set<paddle::platform::GPUPlace, T>()(static_cast<T>(0), d_table_t,
-                                                  device_context);
+    auto t = framework::EigenVector<T>::Flatten(*d_table_t);
+    t.device(context.GetEigenDevice<platform::GPUPlace>()) =
+        t.constant(static_cast<T>(0));
+
     dim3 threads(128, 8);
     dim3 grids(8, 1);
     LookupTableGrad<T, 128, 8, 8><<<grids, threads>>>(d_table, d_output, ids, N,

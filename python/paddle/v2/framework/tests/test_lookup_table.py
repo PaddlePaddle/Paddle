@@ -21,6 +21,8 @@ class TestSigmoidGradOp(GradientChecker):
         table = np.random.random((17, 31)).astype('float32')
         ids = np.random.randint(0, 17, 4).astype('int32')
         inputs = {'W': table, 'Ids': ids}
+        # comapre gradients 
+        self.compare_grad(op, inputs, set(['Ids']))
         # check gradients 
         self.check_grad(op, inputs, set('W'), 'Out')
 

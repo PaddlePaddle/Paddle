@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/functor/math_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -57,10 +57,10 @@ class LookupTableGradKernel : public framework::OpKernel {
     const T* d_output = d_output_t->data<T>();
     T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
 
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(context.device_context_);
-    functor::Set<paddle::platform::CPUPlace, T>()(static_cast<T>(0), d_table_t,
-                                                  device_context);
+    auto t = framework::EigenVector<T>::Flatten(*d_table_t);
+    t.device(context.GetEigenDevice<platform::CPUPlace>()) =
+        t.constant(static_cast<T>(0));
+
     for (size_t i = 0; i < product(ids_t->dims()); ++i) {
       PADDLE_ENFORCE_LT(ids[i], N);
       PADDLE_ENFORCE_GE(ids[i], 0);
