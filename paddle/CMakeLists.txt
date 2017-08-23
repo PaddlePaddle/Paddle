@@ -10,7 +10,7 @@ add_subdirectory(trainer)
 add_subdirectory(scripts)
 add_subdirectory(string)
 
-if(Boost_FOUND)
+if(WITH_REFACTORING)
   add_subdirectory(memory)
   add_subdirectory(platform)
   add_subdirectory(framework)
