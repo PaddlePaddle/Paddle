@@ -205,7 +205,8 @@ train_reader = paddle.batch(
 
 
 def test(cost_name):
-    test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
+    test_reader = paddle.batch(
+        paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
     cost = []
     error = []
     for data in test_reader():
