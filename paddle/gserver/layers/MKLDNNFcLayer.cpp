@@ -111,10 +111,6 @@ void MKLDNNFcLayer::reshape() {
   if (iw_ == 0) {
     iw_ = 1;
   }
-  hasSpatial_ = true;
-  if (ih_ == 1 && iw_ == 1) {
-    hasSpatial_ = false;
-  }
   CHECK_EQ(iLayerSize_, inputLayers_[0]->getSize());
   ic_ = iLayerSize_ / (ih_ * iw_);
   CHECK_EQ(size_t(ic_ * ih_ * iw_), iLayerSize_) << "not divisible";

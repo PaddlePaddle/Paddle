@@ -85,7 +85,12 @@ void MKLDNNMatrix::downSpatial() {
   memory::desc md = memory::desc(dstDims, getDtype(), dstFmt);
   memory::primitive_desc pd = memory::primitive_desc(md, getEngine());
   void* data = getData();
-  memory(pd, data);
+  mkldnn_primitive_t result;
+  mkldnn::error::wrap_c_api(
+      mkldnn_primitive_create(&result, pd.get(), nullptr, nullptr),
+      "could not create a memory primitive");
+  reset(result);
+  set_data_handle(data);
 }
 
 }  // namespace paddle
