@@ -16,6 +16,7 @@ if(WITH_REFACTORING)
     add_subdirectory(platform)
     add_subdirectory(framework)
     add_subdirectory(operators)
+    add_subdirectory(pybind)
   endif()  
 endif()
 
