@@ -257,6 +257,11 @@ seq_concat
 ..  autoclass:: paddle.v2.layer.seq_concat
     :noindex:
 
+seq_slice
+---------
+..  autoclass:: paddle.v2.layer.seq_slice
+    :noindex:
+
 kmax_sequence_score
 -------------------
 ..  autoclass:: paddle.v2.layer.kmax_sequence_score
