@@ -200,8 +200,9 @@ void SequenceSliceLayer::forward(PassType passType) {
       startIdsOnCpu_ = getInputValue(1);
       endIdsOnCpu_ = getInputValue(2);
     }
-  } else
+  } else {
     copySliceIdsToCpu();
+  }
 
   // calculate the selected row indices in a batch,
   // and build the output sequence information.
