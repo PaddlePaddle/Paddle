@@ -257,6 +257,11 @@ seq_concat
 ..  autoclass:: paddle.v2.layer.seq_concat
     :noindex:
 
+seq_slice
+---------
+..  autoclass:: paddle.v2.layer.seq_slice
+    :noindex:
+
 kmax_sequence_score
 -------------------
 ..  autoclass:: paddle.v2.layer.kmax_sequence_score
@@ -360,6 +365,11 @@ cos_sim
 trans
 -----
 ..  autoclass:: paddle.v2.layer.trans
+    :noindex:
+
+scale_shift
+-----------
+..  autoclass:: paddle.v2.layer.scale_shift
     :noindex:
 
 Sampling Layers
