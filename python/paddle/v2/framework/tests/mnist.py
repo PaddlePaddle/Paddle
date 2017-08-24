@@ -17,14 +17,14 @@ backward_net = None
 optimize_net = core.Net.create()
 
 
-def atom_id():
+def atomic_id():
     id = 0
     while True:
         yield id
         id += 1
 
 
-uniq_id = atom_id().next
+uniq_id = atomic_id().next
 
 
 def data_layer(name, dims):
@@ -164,7 +164,7 @@ def set_cost(cost):
     cost_grad.set(numpy.ones(cost_shape).astype("float32"), place)
 
 
-def mean_cost(cost):
+def get_cost_mean(cost):
     cost_data = numpy.array(scope.find_var(cost).get_tensor())
     return cost_data.sum() / len(cost_data)
 
@@ -217,7 +217,7 @@ def test(cost_name):
 
         forward_net.infer_shape(scope)
         forward_net.run(scope, dev_ctx)
-        cost.append(mean_cost(cost_name))
+        cost.append(get_cost_mean(cost_name))
         error.append(error_rate(predict, "label"))
     print("cost=" + str(sum(cost) / float(len(cost))) + " error_rate=" + str(
         sum(error) / float(len(error))))
