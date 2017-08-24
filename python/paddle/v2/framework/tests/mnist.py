@@ -9,11 +9,8 @@ scope = core.Scope()
 place = core.CPUPlace()
 dev_ctx = core.DeviceContext.create(place)
 
-# init_net = core.Net.create()
-forward_network = core.Net.create()
-
-# should be init after forward_op is constructed
-# backward_net = core.Operator.backward(forward_net, set())
+init_net = core.Net.create()
+forward_net = core.Net.create()
 backward_net = None
 optimize_net = core.Net.create()
 
@@ -64,13 +61,12 @@ def sgd_optimizer(net, param_name, learning_rate=0.005):
 
 
 # should use operator and add these to the init_network
-def init_param(param_name, dims):
-    var = scope.new_var(param_name)
-    tensor = var.get_tensor()
-    tensor.set_dims(dims)
-    data = numpy.random.uniform(
-        low=-0.5, high=0.5, size=tensor.shape()).astype("float32")
-    tensor.set(data, place)
+def init_param(net, param_name, dims):
+    scope.new_var(param_name)
+    op = Operator(
+        "uniform_random", Out=param_name, dims=dims, min=-0.5, max=0.5, seed=10)
+    op.infer_shape(scope)
+    net.append_op(op)
 
 
 # fc_layer
@@ -96,7 +92,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
     input_dims = scope.find_var(input).get_tensor().get_dims()
 
     w_name = param or name + ".w"
-    init_param(param_name=w_name, dims=[input_dims[1], size])
+    init_param(net=init_net, param_name=w_name, dims=[input_dims[1], size])
     sgd_optimizer(net=optimize_net, param_name=w_name, learning_rate=0.01)
 
     pre_activation = name + ".mul.out"
@@ -107,7 +103,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
     # create bias variable if needed
     if bias:
         bias_name = name + ".b"
-        init_param(param_name=bias_name, dims=[size])
+        init_param(net=init_net, param_name=bias_name, dims=[size])
         sgd_optimizer(
             net=optimize_net, param_name=bias_name, learning_rate=0.001)
         bias_out = name + ".rowwise_add.out"
@@ -181,20 +177,22 @@ def error_rate(predict, label):
 
 images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
 labels = data_layer(name='label', dims=[BATCH_SIZE])
-fc1 = fc_layer(net=forward_network, input=images, size=100, act="sigmoid")
-fc2 = fc_layer(net=forward_network, input=fc1, size=100, act="sigmoid")
-predict = fc_layer(net=forward_network, input=fc2, size=100, act="softmax")
-cost = cross_entropy_layer(net=forward_network, input=predict, label=labels)
+fc1 = fc_layer(net=forward_net, input=images, size=100, act="sigmoid")
+fc2 = fc_layer(net=forward_net, input=fc1, size=100, act="sigmoid")
+predict = fc_layer(net=forward_net, input=fc2, size=100, act="softmax")
+cost = cross_entropy_layer(net=forward_net, input=predict, label=labels)
 
-forward_network.complete_add_op(True)
-backward_net = create_backward_net(forward_network)
+init_net.complete_add_op(True)
+forward_net.complete_add_op(True)
+backward_net = create_backward_net(forward_net)
 optimize_net.complete_add_op(True)
 
-print(forward_network)
+print(init_net)
+print(forward_net)
 print(backward_net)
 print(optimize_net)
 
-debug_print_op(forward_network)
+debug_print_op(forward_net)
 debug_print_op(backward_net)
 debug_print_op(optimize_net)
 
@@ -215,8 +213,8 @@ def test(cost_name):
         feed_data(images, image_data)
         feed_data(labels, label_data)
 
-        forward_network.infer_shape(scope)
-        forward_network.run(scope, dev_ctx)
+        forward_net.infer_shape(scope)
+        forward_net.run(scope, dev_ctx)
         cost.append(mean_cost(cost_name))
         error.append(error_rate(predict, "label"))
     print("cost=" + str(sum(cost) / float(len(cost))) + " error_rate=" + str(
@@ -224,6 +222,8 @@ def test(cost_name):
 
 
 PASS_NUM = 1
+
+init_net.run(scope, dev_ctx)
 for pass_id in range(PASS_NUM):
     batch_id = 0
 
@@ -233,8 +233,8 @@ for pass_id in range(PASS_NUM):
         feed_data(images, image_data)
         feed_data(labels, label_data)
 
-        forward_network.infer_shape(scope)
-        forward_network.run(scope, dev_ctx)
+        forward_net.infer_shape(scope)
+        forward_net.run(scope, dev_ctx)
         set_cost(cost)
         backward_net.infer_shape(scope)
         backward_net.run(scope, dev_ctx)
