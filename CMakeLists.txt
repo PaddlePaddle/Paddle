@@ -56,6 +56,7 @@ option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
+option(WITH_REFACTORING "Compile PaddlePaddle with refactoring part"    ON)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)

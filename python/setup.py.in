@@ -13,9 +13,11 @@ packages=['paddle',
           'paddle.v2.reader',
           'paddle.v2.master',
           'paddle.v2.plot',
-          'paddle.v2.framework',
-          'paddle.v2.framework.proto',
           'py_paddle']
+
+if '${WITH_REFACTORING}' == 'ON':
+    packages+=['paddle.v2.framework', 'paddle.v2.framework.proto']
+
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -36,23 +38,19 @@ paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
 if '${MKL_SHARED_LIBS}'!= '':
   paddle_rt_libs += '${MKL_SHARED_LIBS}'.split(';')
 
+package_data = {'paddle.v2.master': ['libpaddle_master.so'], 'py_paddle': ['*.py', '_swig_paddle.so']}
+package_dir = {'': '${CMAKE_CURRENT_SOURCE_DIR}', 'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'}
+if '${WITH_REFACTORING}' == 'ON':
+    package_data['paddle.v2.framework'] = ['core.so']
+    package_dir['paddle.v2.framework.proto'] = '${PADDLE_BINARY_DIR}/paddle/framework'
+
 setup(name='paddlepaddle',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
-      package_data={
-        'paddle.v2.master': ['libpaddle_master.so'],
-        'paddle.v2.framework': ['core.so'],
-        'py_paddle':['*.py','_swig_paddle.so']
-      },
-      package_dir={
-          '': '${CMAKE_CURRENT_SOURCE_DIR}',
-          # The paddle.v2.framework.proto will be generated while compiling.
-          # So that package points to other directory.
-          'paddle.v2.framework.proto': '${PADDLE_BINARY_DIR}/paddle/framework',
-          'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
-      },
+      package_data=package_data,
+      package_dir=package_dir,
       scripts=paddle_bins,
       distclass=BinaryDistribution,
       data_files=[(paddle_rt_lib_dir, paddle_rt_libs)]
