@@ -115,8 +115,8 @@ void OperatorBase::Rename(const std::string& old_name,
 }
 
 OperatorBase::OperatorBase(const std::string& type,
-                           const OperatorBase::VarNameMap& inputs,
-                           const OperatorBase::VarNameMap& outputs,
+                           const VariableNameMap& inputs,
+                           const VariableNameMap& outputs,
                            const AttributeMap& attrs)
     : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
   static std::atomic<size_t> gUniqId(0UL);
@@ -141,18 +141,10 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto it = OpRegistry::op_info_map().find(type_);
-  PADDLE_ENFORCE(
-      it != OpRegistry::op_info_map().end(),
-      "Operator %s not registered, cannot figure out intermediate outputs",
-      type_);
-  PADDLE_ENFORCE(
-      it->second.proto_ != nullptr,
-      "Operator %s has no OpProto, cannot figure out intermediate outputs",
-      type_);
+  auto& info = OpInfoMap::Instance().Get(Type());
 
   // get all OpProto::Var for outputs
-  for (auto& o : it->second.proto_->outputs()) {
+  for (auto& o : info.Proto().outputs()) {
     // ignore all intermediate output
     if (o.intermediate()) continue;
     auto out = outputs_.find(o.name());
@@ -162,6 +154,44 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
   }
   return ret_val;
+}
+
+void OpProtoAndCheckerMaker::Validate() {
+  validated_ = true;
+  CheckNoDuplicatedInOutAttrs();
+}
+
+OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(
+    const std::string& name, const std::string& comment) {
+  auto* input = proto_->add_inputs();
+  input->set_name(name);
+  input->set_comment(comment);
+  return OpProtoAndCheckerMaker::VariableBuilder{input};
+}
+
+OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
+    const std::string& name, const std::string& comment) {
+  auto* output = proto_->add_outputs();
+  output->set_name(name);
+  output->set_comment(comment);
+  return OpProtoAndCheckerMaker::VariableBuilder{output};
+}
+
+void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
+  std::unordered_set<std::string> names;
+  auto checker = [&](const std::string& name) {
+    PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+    names.insert(name);
+  };
+  for (auto& attr : proto_->attrs()) {
+    checker(attr.name());
+  }
+  for (auto& input : proto_->inputs()) {
+    checker(input.name());
+  }
+  for (auto& output : proto_->outputs()) {
+    checker(output.name());
+  }
 }
 
 }  // namespace framework

@@ -55,9 +55,10 @@ class MeanGradKernel : public framework::OpKernel {
     IG->mutable_data<T>(context.GetPlace());
 
     T ig_size = (T)framework::product(IG->dims());
+    Eigen::DSizes<int, 1> bcast(ig_size);
 
     EigenVector<T>::Flatten(*IG).device(context.GetEigenDevice<Place>()) =
-        EigenScalar<T>::From(*OG) / ig_size;
+        (EigenVector<T>::From(*OG) / ig_size).broadcast(bcast);
   }
 };
 

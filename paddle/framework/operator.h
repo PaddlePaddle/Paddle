@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "op_info.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/scope.h"
@@ -62,14 +63,8 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
-  using VarNameMap = std::map<std::string, std::vector<std::string>>;
-
-  OperatorBase(const std::string& type, const VarNameMap& inputs,
-               const VarNameMap& outputs, const AttributeMap& attrs);
-
-  OperatorBase(const OperatorBase& o) = delete;
-  OperatorBase& operator=(const OperatorBase& o) = delete;
-  OperatorBase(OperatorBase&& o) = delete;
+  OperatorBase(const std::string& type, const VariableNameMap& inputs,
+               const VariableNameMap& outputs, const AttributeMap& attrs);
 
   virtual ~OperatorBase() {}
 
@@ -97,8 +92,8 @@ class OperatorBase {
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
-  const VarNameMap& Inputs() const { return inputs_; }
-  const VarNameMap& Outputs() const { return outputs_; }
+  const VariableNameMap& Inputs() const { return inputs_; }
+  const VariableNameMap& Outputs() const { return outputs_; }
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
   //! Get a input which has multiple variables.
@@ -116,19 +111,42 @@ class OperatorBase {
   void SetType(const std::string& type) { type_ = type; }
   const AttributeMap& Attrs() const { return attrs_; }
 
+  // Return a new operator instance, which is as same as this.
+  // Use unique_ptr to prevent caller forget to delete this pointer.
+  virtual std::unique_ptr<OperatorBase> Clone() const = 0;
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)
+  // I (Inputs)opear
   // O (Outputs)
   // OG (Output Gradients)
-  VarNameMap inputs_;
+  VariableNameMap inputs_;
 
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  VarNameMap outputs_;
+  VariableNameMap outputs_;
   AttributeMap attrs_;
 };
+
+// Macro for define a clone method.
+// If you are writing an kernel operator, `Clone` will be defined when you
+// register it. i.e. `Clone` method is not needed to define by yourself.
+#define DEFINE_OP_CLONE_METHOD(cls)                       \
+  std::unique_ptr<OperatorBase> Clone() const final {     \
+    return std::unique_ptr<OperatorBase>(new cls(*this)); \
+  }
+
+// Macro for define a default constructor for Operator.
+// You can also use
+//   using PARENT_CLASS::PARENT_CLASS;
+// to use parent's constructor.
+#define DEFINE_OP_CONSTRUCTOR(cls, parent_cls)             \
+  cls(const std::string& type,                             \
+      const ::paddle::framework::VariableNameMap& inputs,  \
+      const ::paddle::framework::VariableNameMap& outputs, \
+      const paddle::framework::AttributeMap& attrs)        \
+      : parent_cls(type, inputs, outputs, attrs) {}
 
 class NOP : public OperatorBase {
  public:
@@ -136,6 +154,74 @@ class NOP : public OperatorBase {
   void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
+  std::unique_ptr<OperatorBase> Clone() const override {
+    return std::unique_ptr<OperatorBase>(new NOP(*this));
+  }
+};
+
+// this class not only make proto but also init attribute checkers.
+class OpProtoAndCheckerMaker {
+ public:
+  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : proto_(proto), op_checker_(op_checker) {}
+
+  ~OpProtoAndCheckerMaker() {
+    PADDLE_ENFORCE(validated_, "should call Validate after build");
+  }
+
+  void Validate();
+
+ protected:
+  struct VariableBuilder {
+    OpProto::Var* var_;
+
+    VariableBuilder& AsDuplicable() {
+      var_->set_duplicable(true);
+      return *this;
+    }
+
+    VariableBuilder& AsIntermediate() {
+      var_->set_intermediate(true);
+      return *this;
+    }
+
+    VariableBuilder& NotInGradient() {
+      var_->set_not_in_gradient(true);
+      return *this;
+    }
+  };
+
+  VariableBuilder AddInput(const std::string& name, const std::string& comment);
+
+  VariableBuilder AddOutput(const std::string& name,
+                            const std::string& comment);
+
+  template <typename T>
+  TypedAttrChecker<T>& AddAttr(const std::string& name,
+                               const std::string& comment,
+                               bool generated = false) {
+    auto* attr = proto_->add_attrs();
+    attr->set_name(name);
+    attr->set_comment(comment);
+    attr->set_generated(generated);
+    attr->set_type(AttrTypeID<T>());
+    return op_checker_->AddAttrChecker<T>(name);
+  }
+
+  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
+
+ private:
+  void CheckNoDuplicatedInOutAttrs();
+
+  OpProto* proto_;
+  OpAttrChecker* op_checker_;
+  bool validated_{false};
+};
+
+class NOPMaker : public OpProtoAndCheckerMaker {
+ public:
+  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {}
 };
 
 class InferShapeContext {
@@ -304,8 +390,8 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  OperatorWithKernel(const std::string& type, const VarNameMap& inputs,
-                     const VarNameMap& outputs, const AttributeMap& attrs)
+  OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
+                     const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(const Scope& scope) const override {

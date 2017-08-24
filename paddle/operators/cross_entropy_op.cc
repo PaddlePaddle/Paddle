@@ -39,11 +39,10 @@ class OnehotCrossEntropyGradientOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto X_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto X = ctx.Input<Tensor>("X");
 
-    // TODO(superjom) add enforce here after helper functions ready
-    X_grad->Resize(X->dims());
+    dX->Resize(X->dims());
   }
 };
 
@@ -70,9 +69,7 @@ namespace ops = paddle::operators;
 REGISTER_OP(onehot_cross_entropy, ops::OnehotCrossEntropyOp,
             ops::OnehotCrossEntropyOpMaker, onehot_cross_entropy_grad,
             ops::OnehotCrossEntropyGradientOp);
-REGISTER_OP_CPU_KERNEL(
-    onehot_cross_entropy,
-    ops::OnehotCrossEntropyOpKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    onehot_cross_entropy_grad,
-    ops::OnehotCrossEntropyGradientOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(onehot_cross_entropy,
+                       ops::OnehotCrossEntropyOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(onehot_cross_entropy_grad,
+                       ops::OnehotCrossEntropyGradientOpKernel<float>);

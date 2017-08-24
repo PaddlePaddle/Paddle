@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include "paddle/framework/eigen.h"
@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class RowWiseAddKernel : public framework::OpKernel {
+class RowwiseAddKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto out = context.Output<Tensor>("Out");
@@ -47,5 +47,25 @@ class RowWiseAddKernel : public framework::OpKernel {
   }
 };
 
+template <typename Place, typename T>
+class RowwiseAddGradKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* db = context.Output<Tensor>(framework::GradVarName("b"));
+    dX->mutable_data<T>(context.GetPlace());
+    db->mutable_data<T>(context.GetPlace());
+
+    auto OutGrad = EigenMatrix<T>::From(*dOut);
+    auto place = context.GetEigenDevice<Place>();
+    EigenMatrix<T>::From(*dX).device(place) = OutGrad;
+
+    // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
+    // colwise add
+    Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
+    EigenVector<T>::Flatten(*db).device(place) = OutGrad.sum(dims);
+  }
+};
 }  // namespace operators
 }  // namespace paddle

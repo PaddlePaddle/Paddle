@@ -44,7 +44,8 @@ class SigmoidOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+    ctx.Output<Tensor>(framework::GradVarName("X"))
+        ->Resize(ctx.Input<Tensor>("Y")->dims());
   }
 };
 
