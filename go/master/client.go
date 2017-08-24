@@ -60,18 +60,6 @@ func WithAddr(addr string) func(c *Client) error {
 	}
 }
 
-func retry(f func() error, dur time.Duration, count int) error {
-	err := f()
-	if err != nil {
-		if count > 0 {
-			time.Sleep(dur)
-			return retry(f, dur, count-1)
-		}
-		return err
-	}
-	return nil
-}
-
 // WithEtcd sets the client to use etcd for master discovery.
 func WithEtcd(endpoints []string, timeout time.Duration) func(*Client) error {
 	return func(c *Client) error {
@@ -84,9 +72,14 @@ func WithEtcd(endpoints []string, timeout time.Duration) func(*Client) error {
 			})
 			return err
 		}
-		err := retry(f, time.Second, 10)
-		if err != nil {
-			return err
+		for {
+			err := f()
+			if err != nil {
+				log.Warningln(err)
+			} else {
+				break
+			}
+			time.Sleep(time.Second)
 		}
 
 		ch := make(chan string, 1)
