@@ -933,6 +933,7 @@ public:
    * in the sizeX of value
    */
   virtual void maxPool3DForward(Matrix& inputMat,
+                                Matrix& maxPoolIdx,
                                 size_t channels,
                                 size_t imgSizeD,
                                 size_t imgSizeH,
@@ -952,9 +953,8 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void maxPool3DBackward(Matrix& image,
-                                 Matrix& outGrad,
-                                 Matrix& outV,
+  virtual void maxPool3DBackward(Matrix& outGrad,
+                                 Matrix& maxPoolIdx,
                                  size_t imgSizeD,
                                  size_t imgSizeH,
                                  size_t imgSizeW,
@@ -1436,6 +1436,7 @@ public:
                        size_t paddingW);
 
   void maxPool3DForward(Matrix& inputMat,
+                        Matrix& maxPoolIdx,
                         size_t channels,
                         size_t imgSizeD,
                         size_t imgSizeH,
@@ -1453,9 +1454,8 @@ public:
                         size_t paddingH,
                         size_t paddingW);
 
-  void maxPool3DBackward(Matrix& image,
-                         Matrix& outGrad,
-                         Matrix& outV,
+  void maxPool3DBackward(Matrix& outGrad,
+                         Matrix& maxPoolIdx,
                          size_t imgSizeD,
                          size_t imgSizeH,
                          size_t imgSizeW,
@@ -1671,6 +1671,7 @@ public:
                        size_t paddingW);
 
   void maxPool3DForward(Matrix& inputMat,
+                        Matrix& maxPoolIdx,
                         size_t channels,
                         size_t imgSizeD,
                         size_t imgSizeH,
@@ -1688,9 +1689,8 @@ public:
                         size_t paddingH,
                         size_t paddingW);
 
-  void maxPool3DBackward(Matrix& image,
-                         Matrix& outGrad,
-                         Matrix& outV,
+  void maxPool3DBackward(Matrix& outGrad,
+                         Matrix& maxPoolIdx,
                          size_t imgSizeD,
                          size_t imgSizeH,
                          size_t imgSizeW,

@@ -106,11 +106,10 @@ inline void hl_maxpool3D_forward(const int frameCnt,
                                  const int paddingH,
                                  const int paddingW,
                                  real* tgtData,
+                                 real* maxPoolIdxData,
                                  const int tgtStride) {}
 
 inline void hl_maxpool3D_backward(const int frameCnt,
-                                  const real* inputData,
-                                  const real* outData,
                                   const real* outGrad,
                                   const int channels,
                                   const int depth,
@@ -131,6 +130,7 @@ inline void hl_maxpool3D_backward(const int frameCnt,
                                   real scaleA,
                                   real scaleB,
                                   real* targetGrad,
+                                  real* maxPoolIdxData,
                                   const int outStride) {}
 
 inline void hl_avgpool3D_forward(const int frameCnt,

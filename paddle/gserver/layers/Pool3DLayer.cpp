@@ -72,9 +72,10 @@ size_t Pool3DLayer::getSize() {
 void Pool3DLayer::forward(PassType passType) {
   Layer::forward(passType);
   const MatrixPtr& inMat = inputLayers_[0]->getOutputValue();
-  int batchSize = inMat->getHeight();
-  int outWidth = getSize();
+  size_t batchSize = inMat->getHeight();
+  size_t outWidth = getSize();
   resetOutput(batchSize, outWidth);
+  Matrix::resizeOrCreate(maxPoolIdx_, batchSize, outWidth, false, useGpu_);
   const MatrixPtr outMat = getOutputValue();
 
   if (poolType_ == "avg") {
@@ -97,6 +98,7 @@ void Pool3DLayer::forward(PassType passType) {
                              paddingW_);
   } else if (poolType_ == "max") {
     outMat->maxPool3DForward(*inMat,
+                             *maxPoolIdx_,
                              channels_,
                              imgSizeD_,
                              imgSizeH_,
@@ -149,9 +151,8 @@ void Pool3DLayer::backward(const UpdateCallback& callback) {
                                  1.0,
                                  1.0);
   } else if (poolType_ == "max") {
-    inGradMat->maxPool3DBackward(*inMat,
-                                 *outGradMat,
-                                 *outMat,
+    inGradMat->maxPool3DBackward(*outGradMat,
+                                 *maxPoolIdx_,
                                  imgSizeD_,
                                  imgSizeH_,
                                  imgSizeW_,

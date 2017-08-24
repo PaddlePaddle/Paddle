@@ -366,10 +366,11 @@ __global__ void KeMaxPool3DForward(const int nthreads,
                                    const int strideD,
                                    const int strideH,
                                    const int strideW,
-                                   const int offsetD,
-                                   const int offsetH,
-                                   const int offsetW,
+                                   const int padD,
+                                   const int padH,
+                                   const int padW,
                                    real* tgtData,
+                                   real* maxPoolIdxData,
                                    const int tgtStride) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
        index += blockDim.x * gridDim.x) {
@@ -378,9 +379,9 @@ __global__ void KeMaxPool3DForward(const int nthreads,
     int pd = (index / pooledW / pooledH) % pooledD;
     int c = (index / pooledW / pooledH / pooledD) % channels;
     int frameNum = index / pooledW / pooledH / pooledD / channels;
-    int dstart = pd * strideD - offsetD;
-    int hstart = ph * strideH - offsetH;
-    int wstart = pw * strideW - offsetW;
+    int dstart = pd * strideD - padD;
+    int hstart = ph * strideH - padH;
+    int wstart = pw * strideW - padW;
     int dend = min(dstart + ksizeD, depth);
     int hend = min(hstart + ksizeH, height);
     int wend = min(wstart + ksizeW, width);
@@ -388,18 +389,22 @@ __global__ void KeMaxPool3DForward(const int nthreads,
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
     real maxval = -FLT_MAX;
+    int maxIdx = -1;
     inputData += (frameNum * channels + c) * depth * height * width;
     for (int d = dstart; d < dend; ++d) {
       for (int h = hstart; h < hend; ++h) {
         for (int w = wstart; w < wend; ++w) {
-          if (maxval < inputData[(d * height + h) * width + w])
+          if (maxval < inputData[(d * height + h) * width + w]) {
             maxval = inputData[(d * height + h) * width + w];
+            maxIdx = (d * height + h) * width + w;
+          }
         }
       }
     }
     int tgtIndex =
         index % (pooledW * pooledH * pooledD * channels) + frameNum * tgtStride;
     tgtData[tgtIndex] = maxval;
+    maxPoolIdxData[tgtIndex] = maxIdx;
   }
 }
 
@@ -418,10 +423,11 @@ void hl_maxpool3D_forward(const int frameCnt,
                           const int strideD,
                           const int strideH,
                           const int strideW,
-                          const int paddingD,
-                          const int paddingH,
-                          const int paddingW,
+                          const int padD,
+                          const int padH,
+                          const int padW,
                           real* tgtData,
+                          real* maxPoolIdxData,
                           const int tgtStride) {
   int num_kernels = pooledD * pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
@@ -443,17 +449,16 @@ void hl_maxpool3D_forward(const int frameCnt,
                                                            strideD,
                                                            strideH,
                                                            strideW,
-                                                           paddingD,
-                                                           paddingH,
-                                                           paddingW,
+                                                           padD,
+                                                           padH,
+                                                           padW,
                                                            tgtData,
+                                                           maxPoolIdxData,
                                                            tgtStride);
   CHECK_SYNC("hl_maxpool3D_forward failed");
 }
 
 __global__ void KeMaxPool3DBackward(const int nthreads,
-                                    const real* inputData,
-                                    const real* outData,
                                     const real* outGrad,
                                     const int channels,
                                     const int depth,
@@ -474,33 +479,35 @@ __global__ void KeMaxPool3DBackward(const int nthreads,
                                     real scaleA,
                                     real scaleB,
                                     real* targetGrad,
+                                    real* maxPoolIdxData,
                                     const int outStride) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
        index += blockDim.x * gridDim.x) {
-    // find out the local index
-    // find out the local offset
-    int offsetW = index % width + padW;
-    int offsetH = (index / width) % height + padH;
-    int offsetD = (index / width / height) % depth + padD;
+    int offsetW = index % width;
+    int offsetH = (index / width) % height;
+    int offsetD = (index / width / height) % depth;
     int offsetC = (index / width / height / depth) % channels;
     int frameNum = index / width / height / depth / channels;
 
-    int pdstart = (offsetD < sizeZ) ? 0 : (offsetD - sizeZ) / strideD + 1;
-    int phstart = (offsetH < sizeY) ? 0 : (offsetH - sizeY) / strideH + 1;
-    int pwstart = (offsetW < sizeX) ? 0 : (offsetW - sizeX) / strideW + 1;
-    int pdend = min(offsetD / strideD + 1, pooledD);
-    int phend = min(offsetH / strideH + 1, pooledH);
-    int pwend = min(offsetW / strideW + 1, pooledW);
+    int pdstart =
+        (offsetD + padD < sizeZ) ? 0 : (offsetD + padD - sizeZ) / strideD + 1;
+    int phstart =
+        (offsetH + padH < sizeY) ? 0 : (offsetH + padH - sizeY) / strideH + 1;
+    int pwstart =
+        (offsetW + padW < sizeX) ? 0 : (offsetW + padW - sizeX) / strideW + 1;
+    int pdend = min((offsetD + padD) / strideD + 1, pooledD);
+    int phend = min((offsetH + padH) / strideH + 1, pooledH);
+    int pwend = min((offsetW + padW) / strideW + 1, pooledW);
 
     real gradient = 0;
-    real input = inputData[index];
-
-    outData += ((frameNum * channels + offsetC) * pooledD * pooledH * pooledW);
     outGrad += ((frameNum * channels + offsetC) * pooledD * pooledH * pooledW);
+    maxPoolIdxData +=
+        ((frameNum * channels + offsetC) * pooledD * pooledH * pooledW);
     for (int pd = pdstart; pd < pdend; ++pd) {
       for (int ph = phstart; ph < phend; ++ph) {
         for (int pw = pwstart; pw < pwend; ++pw) {
-          if (input == outData[(pd * pooledH + ph) * pooledW + pw])
+          if (((offsetD * height + offsetH) * width + offsetW) ==
+              maxPoolIdxData[(pd * pooledH + ph) * pooledW + pw])
             gradient += outGrad[(pd * pooledH + ph) * pooledW + pw];
         }
       }
@@ -510,8 +517,6 @@ __global__ void KeMaxPool3DBackward(const int nthreads,
 }
 
 void hl_maxpool3D_backward(const int frameCnt,
-                           const real* inputData,
-                           const real* outData,
                            const real* outGrad,
                            const int channels,
                            const int depth,
@@ -532,13 +537,12 @@ void hl_maxpool3D_backward(const int frameCnt,
                            real scaleA,
                            real scaleB,
                            real* targetGrad,
+                           real* maxPoolIdxData,
                            const int outStride) {
   int num_kernels = depth * height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
   KeMaxPool3DBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
-                                                           inputData,
-                                                           outData,
                                                            outGrad,
                                                            channels,
                                                            depth,
@@ -559,6 +563,7 @@ void hl_maxpool3D_backward(const int frameCnt,
                                                            scaleA,
                                                            scaleB,
                                                            targetGrad,
+                                                           maxPoolIdxData,
                                                            outStride);
   CHECK_SYNC("hl_maxpool3D_backward");
 }

@@ -1191,6 +1191,7 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad,
 }
 
 void GpuMatrix::maxPool3DForward(Matrix& inputMat,
+                                 Matrix& maxPoolIdx,
                                  size_t channels,
                                  size_t imgSizeD,
                                  size_t imgSizeH,
@@ -1210,6 +1211,7 @@ void GpuMatrix::maxPool3DForward(Matrix& inputMat,
   CHECK(inputMat.useGpu_) << "Matrix type are not correct";
 
   real* inputData = inputMat.getData();
+  real* maxPoolIdxData = maxPoolIdx.getData();
   size_t num = inputMat.getHeight();
   size_t width = imgSizeW;
   size_t height = imgSizeH;
@@ -1237,12 +1239,12 @@ void GpuMatrix::maxPool3DForward(Matrix& inputMat,
                        paddingH,
                        paddingW,
                        getData(),
+                       maxPoolIdxData,
                        getStride());
 }
 
-void GpuMatrix::maxPool3DBackward(Matrix& inputMat,
-                                  Matrix& outGrad,
-                                  Matrix& outV,
+void GpuMatrix::maxPool3DBackward(Matrix& outGrad,
+                                  Matrix& maxPoolIdx,
                                   size_t imgSizeD,
                                   size_t imgSizeH,
                                   size_t imgSizeW,
@@ -1260,26 +1262,21 @@ void GpuMatrix::maxPool3DBackward(Matrix& inputMat,
                                   size_t paddingW,
                                   real scaleTargets,
                                   real scaleOutput) {
-  CHECK(inputMat.useGpu_ && outGrad.useGpu_ && outV.useGpu_)
-      << "Matrix type are not equal";
+  CHECK(outGrad.useGpu_ && maxPoolIdx.useGpu_) << "Matrix type are not equal";
 
-  real* inputData = inputMat.getData();
-  real* outData = outV.getData();
   real* outDiff = outGrad.getData();
-  size_t frameNum = inputMat.getHeight();
-  size_t channels = outV.getWidth() / outputD / outputH / outputW;
+  real* maxPoolIdxData = maxPoolIdx.getData();
+  size_t frameNum = getHeight();
+  size_t channels = outGrad.getWidth() / outputD / outputH / outputW;
   size_t width = imgSizeW;
   size_t height = imgSizeH;
   size_t depth = imgSizeD;
-  CHECK(depth * height * width * channels == inputMat.getWidth());
-  CHECK(height_ == inputMat.getHeight());
+  CHECK(depth * height * width * channels == getWidth());
   CHECK(width_ == depth * width * height * channels);
-  CHECK(outGrad.getHeight() == outV.getHeight() &&
-        outGrad.getWidth() == outV.getWidth());
+  CHECK(outGrad.getHeight() == maxPoolIdx.getHeight() &&
+        outGrad.getWidth() == maxPoolIdx.getWidth());
 
   hl_maxpool3D_backward(frameNum,
-                        inputData,
-                        outData,
                         outDiff,
                         channels,
                         depth,
@@ -1300,6 +1297,7 @@ void GpuMatrix::maxPool3DBackward(Matrix& inputMat,
                         scaleTargets,
                         scaleOutput,
                         getData(),
+                        maxPoolIdxData,
                         outGrad.getStride());
 }
 
@@ -2148,6 +2146,7 @@ void CpuMatrix::avgPoolBackward(Matrix& input,
 }
 
 void CpuMatrix::maxPool3DForward(Matrix& inputMat,
+                                 Matrix& maxPoolIdx,
                                  size_t channels,
                                  size_t imgSizeD,
                                  size_t imgSizeH,
@@ -2166,6 +2165,7 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
                                  size_t paddingW) {
   real* inputData = inputMat.getData();
   real* outData = getData();
+  real* maxPoolIdxData = maxPoolIdx.getData();
   size_t num = inputMat.getHeight();
   size_t inWidth = imgSizeW;
   size_t inHeight = imgSizeH;
@@ -2179,6 +2179,7 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
   for (size_t i = 0; i < height_; i++) {
     for (size_t j = 0; j < width_; j++) {
       outData[(i)*outStride + j] = -(real)FLT_MAX;
+      maxPoolIdxData[(i)*outStride + j] = -1;
     }
   }
 
@@ -2186,6 +2187,7 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
   for (size_t n = 0; n < num; ++n) {  // frame by frame
     if (!isContiguous()) {
       outData = getData() + n * outStride;
+      maxPoolIdxData = maxPoolIdx.getData() + n * outStride;
     }
     for (size_t c = 0; c < channels; ++c) {  // channel by channel
       for (size_t pd = 0; pd < outputD; ++pd) {
@@ -2200,6 +2202,7 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
             dstart = std::max(dstart, 0);
             hstart = std::max(hstart, 0);
             wstart = std::max(wstart, 0);
+            int maxIdx = -1;
             real maxOutData = outData[(pd * outputH + ph) * outputW + pw];
             for (int d = dstart; d < dend; ++d) {
               for (int h = hstart; h < hend; ++h) {
@@ -2207,24 +2210,26 @@ void CpuMatrix::maxPool3DForward(Matrix& inputMat,
                   if (maxOutData <
                       inputData[(d * inHeight + h) * inWidth + w]) {
                     maxOutData = inputData[(d * inHeight + h) * inWidth + w];
+                    maxIdx = (d * inHeight + h) * inWidth + w;
                   }
                 }
               }
             }
             outData[(pd * outputH + ph) * outputW + pw] = maxOutData;
+            maxPoolIdxData[(pd * outputH + ph) * outputW + pw] = maxIdx;
           }
         }
       }
       // compute offset
       inputData += inDepth * inHeight * inWidth;
       outData += outputD * outputH * outputW;
+      maxPoolIdxData += outputD * outputH * outputW;
     }
   }
 }
 
-void CpuMatrix::maxPool3DBackward(Matrix& image,
-                                  Matrix& outGrad,
-                                  Matrix& outV,
+void CpuMatrix::maxPool3DBackward(Matrix& outGrad,
+                                  Matrix& maxPoolIdx,
                                   size_t imgSizeD,
                                   size_t imgSizeH,
                                   size_t imgSizeW,
@@ -2242,59 +2247,38 @@ void CpuMatrix::maxPool3DBackward(Matrix& image,
                                   size_t paddingW,
                                   real scaleTargets,
                                   real scaleOutput) {
-  size_t num = image.getHeight();
+  size_t num = getHeight();
   size_t channels = size_t(width_ / imgSizeD / imgSizeH / imgSizeW);
-  CHECK(image.getWidth() == imgSizeD * imgSizeH * imgSizeW * channels);
-  CHECK(image.getHeight() == height_ && image.getWidth() == width_);
-  CHECK(outV.getHeight() == outGrad.getHeight() &&
-        outV.getWidth() == outGrad.getWidth());
+  CHECK(maxPoolIdx.getHeight() == outGrad.getHeight() &&
+        maxPoolIdx.getWidth() == outGrad.getWidth());
 
   real* tgtGrad = getData();
-  real* inData = image.getData();
-  real* otData = outV.getData();
   real* otGrad = outGrad.getData();
+  real* maxPoolIdxData = maxPoolIdx.getData();
 
-  size_t outStride = outV.getStride();
+  size_t outStride = outGrad.getStride();
   ;
 
   for (size_t n = 0; n < num; ++n) {
-    if (!outV.isContiguous()) {
-      otData = outV.getData() + n * outStride;
+    if (!outGrad.isContiguous()) {
       otGrad = outGrad.getData() + n * outStride;
+      maxPoolIdxData = maxPoolIdx.getData() + n * outStride;
     }
     for (size_t c = 0; c < channels; ++c) {
       for (size_t pd = 0; pd < outputD; ++pd) {
         for (size_t ph = 0; ph < outputH; ++ph) {
           for (size_t pw = 0; pw < outputW; ++pw) {
-            int dstart = pd * strideD - paddingD;
-            int hstart = ph * strideH - paddingH;
-            int wstart = pw * strideW - paddingW;
-            int dend = std::min(dstart + sizeZ, imgSizeD);
-            int hend = std::min(hstart + sizeY, imgSizeH);
-            int wend = std::min(wstart + sizeX, imgSizeW);
-            dstart = std::max(dstart, 0);
-            hstart = std::max(hstart, 0);
-            wstart = std::max(wstart, 0);
-            for (int d = dstart; d < dend; ++d) {
-              for (int h = hstart; h < hend; ++h) {
-                for (int w = wstart; w < wend; ++w) {
-                  tgtGrad[(d * imgSizeH + h) * imgSizeW + w] =
-                      scaleTargets *
-                          tgtGrad[(d * imgSizeH + h) * imgSizeW + w] +
-                      scaleOutput * otGrad[(pd * outputH + ph) * outputW + pw] *
-                          (inData[(d * imgSizeH + h) * imgSizeW + w] ==
-                           otData[(pd * outputH + ph) * outputW + pw]);
-                }
-              }
-            }
+            const size_t index = (pd * outputH + ph) * outputW + pw;
+            const size_t tgtIdx = static_cast<size_t>(maxPoolIdxData[index]);
+            tgtGrad[tgtIdx] =
+                scaleTargets * tgtGrad[tgtIdx] + scaleOutput * otGrad[index];
           }
         }
       }
       // offset
-      inData += imgSizeD * imgSizeH * imgSizeW;
       tgtGrad += imgSizeD * imgSizeH * imgSizeW;
-      otData += outputD * outputH * outputW;
       otGrad += outputD * outputH * outputW;
+      maxPoolIdxData += outputD * outputH * outputW;
     }
   }
 }
