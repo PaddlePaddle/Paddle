@@ -34,4 +34,9 @@ TEST(DepthwiseConv, BackwardFilter) {
 }
 #endif
 
+TEST(DepthwiseConv, Forward) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>(
+      "GemmConv-CPU", "NeonDepthwiseConv-CPU", forward);
+}
+
 }  // namespace paddle

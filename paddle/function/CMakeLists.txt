@@ -21,6 +21,8 @@ if(USE_NNPACK)
   endif()
 endif()
 
+list(APPEND cpp_files neon/NeonDepthwiseConv.cpp)
+
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
 add_dependencies(paddle_function ${external_project_dependencies})
 add_dependencies(paddle_function paddle_proto)
