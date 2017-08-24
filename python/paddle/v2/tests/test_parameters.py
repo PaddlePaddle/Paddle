@@ -43,7 +43,7 @@ class TestParameters(unittest.TestCase):
         params.__append_config__(__rand_param_config__("param_1"))
 
         for name in params.names():
-            param = params.get(name)
+            param = params.get(name)[1]
             param[:] = numpy.random.uniform(
                 -1.0, 1.0, size=params.get_shape(name))
             params.set(name, param)
@@ -57,8 +57,8 @@ class TestParameters(unittest.TestCase):
 
         for name in params.names():
             self.assertEqual(params.get_shape(name), params_dup.get_shape(name))
-            p0 = params.get(name)
-            p1 = params_dup.get(name)
+            p0 = params.get(name)[1]
+            p1 = params_dup.get(name)[1]
             self.assertTrue(numpy.isclose(p0, p1).all())
 
     def test_initializer(self):
@@ -75,7 +75,7 @@ class TestParameters(unittest.TestCase):
                      param_attr=ParamAttr(
                          name="fc.w", initializer=initializer))
         params = parameters.create(y)
-        val = params["fc.w"]
+        header, val = params["fc.w"]
         assert val.shape == (3, 2)
         expected = numpy.array([[1, 1], [1, 2], [1, 1]], numpy.float32)
         assert numpy.logical_and.reduce(numpy.reshape(val == expected, 6))
@@ -86,7 +86,7 @@ class TestParameters(unittest.TestCase):
             for k, v in zip(names, size):
                 p.__append_config__(__rand_param_config__(k, v))
             for name in p.names():
-                param = p.get(name)
+                param = p.get(name)[1]
                 param[:] = numpy.random.uniform(
                     -1.0, 1.0, size=p.get_shape(name))
                 p.set(name, param)
@@ -112,16 +112,16 @@ class TestParameters(unittest.TestCase):
         p2.init_from_tar(file1)
         for name in p1.names():
             self.assertEqual(p1.get_shape(name), p2.get_shape(name))
-            v1 = p1.get(name)
-            v2 = p2.get(name)
+            v1 = p1.get(name)[1]
+            v2 = p2.get(name)[1]
             self.assertTrue(numpy.isclose(v1, v2).all())
 
         p1, file1, p2, file2 = get_parames()
         p1.init_from_tar(file2)
         for name in p1.names():
             self.assertEqual(p1.get_shape(name), p2.get_shape(name))
-            v1 = p1.get(name)
-            v2 = p2.get(name)
+            v1 = p1.get(name)[1]
+            v2 = p2.get(name)[1]
             self.assertTrue(numpy.isclose(v1, v2).all())
 
 
