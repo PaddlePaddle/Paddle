@@ -53,8 +53,8 @@ size_t CostForOneSequence::initLastExpansion() {
                                    candidates->getData() + height * beamSize_,
                                    [](const real& val) { return val != -1; });
   /*
-   * if the gold sequence falls off the beam during search,
-   * add the gold sequence as the last path into all expanded paths.
+   * if the gold sequence falls off the beam during search, add the gold
+   * sequence as the last path into the all expanded candidates.
    */
   if (goldAsExtraPath_) goldIdsInFinalExpansion_ = pathCount++;
 
@@ -133,7 +133,7 @@ real CostForOneSequence::globallyNormalizedScore() {
 
   Matrix::resizeOrCreate(
       softmaxOut_, 1, pathRowIdsInEachBeam_[0].size(), false, false);
-  softmaxOut_->zero();
+  softmaxOut_->zeroMem();
   MatrixPtr tmp = Matrix::create(
       softmaxOut_->getData(), softmaxOut_->getWidth(), 1, false, false);
 
@@ -143,6 +143,8 @@ real CostForOneSequence::globallyNormalizedScore() {
                            1,
                            false,
                            false);
+    expandedPathScores_[i]->zeroMem();
+
     IVectorPtr rowIds = IVector::create(pathRowIdsInEachBeam_[i].data(),
                                         pathRowIdsInEachBeam_[i].size(),
                                         false);
@@ -217,13 +219,16 @@ void CrossEntropyOverBeam::checkInputs() {
     const Argument& goldSeq = getInput(i * 3 + 2);
 
     if (i) {
-      CHECK(scores.hasSubseq()) << "Beam expansion expect the first one, "
-                                   "should be a nested sequence";
+      CHECK(scores.hasSubseq()) << "input " << i << " "
+                                << inputLayers_[i * 3]->getName()
+                                << " should be a nested sequence";
       CHECK_EQ(getInputValue(i * 3 + 1)->getWidth(), beamSize_);
       CHECK_EQ(scores.getNumSequences(), batchSize_);
       CHECK_EQ(scores.getNumSubSequences(), selCandidates.getBatchSize());
     } else {
-      CHECK(scores.hasSeq()) << "The first beam expansion should be a sequence";
+      CHECK(scores.hasSeq()) << "input " << i << " "
+                             << inputLayers_[i]->getName()
+                             << " should be a sequence";
       batchSize_ = scores.getNumSequences();
       beamSize_ = getInputValue(i * 3 + 1)->getWidth();
       CHECK_EQ(batchSize_, selCandidates.getBatchSize());
@@ -332,7 +337,7 @@ void CrossEntropyOverBeam::splitBatchBeams() {
 
 void CrossEntropyOverBeam::resizeOutput() {
   Matrix::resizeOrCreate(output_.value, batchSize_, 1, false, false);
-  output_.value->zero();
+  output_.value->zeroMem();
 
   for (size_t i = 0; i < beamExpanCount_; ++i) {
     MatrixPtr inGrad = getInputGrad(i * 3);
@@ -344,7 +349,7 @@ void CrossEntropyOverBeam::resizeOutput() {
                              false);
     } else
       candidateScoreGrad_[i] = std::move(inGrad);
-    candidateScoreGrad_[i]->zero();
+    candidateScoreGrad_[i]->zeroMem();
   }
 }
 
