@@ -2418,8 +2418,8 @@ def img_conv_layer(input,
     :param dilation: The x dimension of the dilation. Or input a tuple for two
                     image dimension
     :type dilation: int|tuple|list
-    :param padding_y: The y dimension of the dilation.
-    :type padding_y: int
+    :param dilation_y: The y dimension of the dilation.
+    :type dilation_y: int
     :param bias_attr: Convolution bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
