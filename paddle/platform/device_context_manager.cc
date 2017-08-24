@@ -16,13 +16,13 @@ namespace platform {
 
 DeviceContextManager::DeviceContextManager() {
 #ifndef PADDLE_ONLY_CPU
-  gpu_cnt_.reserve(kNUM_GPUS);
-  cuda_contexts_.reserve(kNUM_GPUS);
-  cuda_io_contexts_.reserve(kNUM_GPUS);
-  for (size_t i = 0; i < kNUM_GPUS; i++) {
+  device_count_ = GetDeviceCount();
+  gpu_cnt_.reserve(device_count_);
+  cuda_contexts_.reserve(device_count_);
+  cuda_io_contexts_.reserve(device_count_);
+  for (size_t i = 0; i < device_count_; i++) {
     gpu_cnt_.at(i) = -1;
   }
-
 #endif
 }
 
@@ -36,23 +36,30 @@ DeviceContext& DeviceContextManager::GetDeviceContext(Place& place) {
 #ifndef PADDLE_ONLY_CPU
     auto gpu_place = boost::get<GPUPlace>(place);
     auto gpu_id = gpu_place.device;
-    PADDLE_ENFORCE(gpu_id < kNUM_GPUS,
-                   "GPU device id must less than kNUM_GPUS");
+    PADDLE_ENFORCE(gpu_id < device_count_,
+                   "GPU device id must less than device count");
     SetDeviceId(gpu_id);
     if (gpu_cnt_[gpu_id] == -1) {
-    cuda_contexts_[gpu_id].reserve(kNUM_STREAMS);
-    for (auto&& ctx : cuda_contexts_[gpu_id]) {
-      ctx = new CUDADeviceContext(gpu_place);
-    }
-    gpu_cnt_[gpu_id] = 0;
+      cuda_contexts_[gpu_id].reserve(kNUM_STREAMS);
+      for (auto&& ctx : cuda_contexts_[gpu_id]) {
+        ctx = new CUDADeviceContext(gpu_place);
+      }
+      gpu_cnt_[gpu_id] = 0;
     }
     return *cuda_contexts_[gpu_id][0];
-
 #else
     PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #endif
   }
 }
+
+DeviceContext& DeviceContextManager::GetIODeviceContext(Place& place) {
+  PADDLE_ENFORCE(is_gpu_place(place), "IODeviceContext must in GPU device");
+  auto gpu_place = boost::get<GPUPlace>(place);
+  auto gpu_id = gpu_place.device;
+  PADDLE_ENFORCE(gpu_id < device_count_,
+                 "GPU device id must less than device count");
+  if () }
 
 DeviceContextManager::~DeviceContextManager() {
   delete cpu_context_;
@@ -65,7 +72,6 @@ DeviceContextManager::~DeviceContextManager() {
       gpu_cnt_.at(i) = -1;
     }
   }
-
 #endif
 }
 }  // namespace platform

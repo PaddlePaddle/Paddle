@@ -11,7 +11,6 @@ limitations under the License. */
 #pragma once
 #include "paddle/platform/device_context.h"
 
-#define kNUM_GPUS 16
 #define kNUM_STREAMS 16
 
 namespace paddle {
@@ -31,6 +30,7 @@ class DeviceContextManager {
   std::vector<std::vector<CUDADeviceContext*>> cuda_contexts_;
   std::vector<CUDADeviceContext*> cuda_io_contexts_;
   std::vector<int> gpu_cnt_;
+  int device_count_;
 #endif
 };
 }  // namespace platform
