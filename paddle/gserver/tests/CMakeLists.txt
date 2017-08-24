@@ -41,6 +41,13 @@ add_unittest_without_exec(test_CrossEntropyOverBeam
 add_test(NAME test_CrossEntropyOverBeam
     COMMAND test_CrossEntropyOverBeam)
 
+################ test_SeqSliceLayerGrad ####################
+add_unittest_without_exec(test_SeqSliceLayerGrad
+    test_SeqSliceLayerGrad.cpp
+    LayerGradUtil.cpp)
+add_test(NAME test_SeqSliceLayerGrad
+    COMMAND test_SeqSliceLayerGrad)
+
 add_unittest_without_exec(test_ActivationGrad
     test_ActivationGrad.cpp
     LayerGradUtil.cpp)
