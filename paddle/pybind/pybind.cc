@@ -18,11 +18,11 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor_py.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -42,6 +42,8 @@ USE_OP(fill_zeros_like);
 USE_OP_ITSELF(recurrent_op);
 USE_OP(gaussian_random);
 USE_OP(uniform_random);
+USE_OP(scale);
+USE_OP_ITSELF(identity);
 USE_CPU_ONLY_OP(gather);
 
 namespace paddle {
@@ -132,26 +134,24 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
       .def(py::init<>())
-      .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
+      .def("new_scope",
+           [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
-    auto &op_info_map = OpRegistry::op_info_map();
     std::vector<py::bytes> ret_values;
-    for (auto it = op_info_map.begin(); it != op_info_map.end(); ++it) {
-      const OpProto *proto = it->second.proto_;
-      if (proto == nullptr) {
-        continue;
-      }
-      PADDLE_ENFORCE(proto->IsInitialized(), "OpProto must all be initialized");
+
+    OpInfoMap::Instance().IterAllInfo([&ret_values](const std::string &type,
+                                                    const OpInfo &info) {
+      if (!info.HasOpProtoAndChecker()) return;
       std::string str;
-      PADDLE_ENFORCE(proto->SerializeToString(&str),
+      PADDLE_ENFORCE(info.Proto().SerializeToString(&str),
                      "Serialize OpProto Error. This could be a bug of Paddle.");
-      ret_values.push_back(py::bytes(str));
-    }
+      ret_values.emplace_back(str);
+    });
     return ret_values;
   });
   m.def_submodule(
@@ -223,8 +223,10 @@ All parameter, weight, gradient are variables in Paddle.
                     retv->SetType("plain_net");
                     return retv;
                   })
-      .def("append_op", [](operators::NetOp &self,
-                           const OperatorBase &op) { self.AppendOp(op); })
+      .def("append_op",
+           [](operators::NetOp &self, const OperatorBase &op) {
+             self.AppendOp(op);
+           })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
@@ -244,10 +246,9 @@ All parameter, weight, gradient are variables in Paddle.
             auto rnn_op = OpRegistry::CreateOp(desc);
             return static_cast<operators::RecurrentOp *>(rnn_op.release());
           })
-      .def("set_stepnet", [](operators::RecurrentOp &self,
-                             const operators::NetOp &net) -> void {
-        self.set_stepnet(net.Clone());
-      });
+      .def("set_stepnet",
+           [](operators::RecurrentOp &self, const operators::NetOp &net)
+               -> void { self.set_stepnet(net.Clone()); });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 

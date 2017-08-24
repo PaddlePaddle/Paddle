@@ -160,8 +160,13 @@ class GradientChecker(unittest.TestCase):
             grad_tensor.set(data, place)
 
         # run backward op
-        for name in backward_op.outputs():
+        backward_outs = backward_op.outputs()
+        backward_names = [
+            item for key in backward_outs for item in backward_outs[key]
+        ]
+        for name in backward_names:
             scope.new_var(name)
+
         backward_op.infer_shape(scope)
         backward_op.run(scope, ctx)
 
