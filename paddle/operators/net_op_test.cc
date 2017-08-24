@@ -79,7 +79,7 @@ TEST(NetOp, Clone) {
   ASSERT_NE(new_net_op, nullptr);
   ASSERT_TRUE(new_net_op->IsNetOp());
   auto* new_net = static_cast<NetOp*>(new_net_op.get());
-  ASSERT_EQ(2, new_net->ops_.size());
+  ASSERT_EQ(2UL, new_net->ops_.size());
   ASSERT_EQ(new_net->ops_[0]->Type(), "empty");
   ASSERT_EQ(new_net->ops_[1]->Type(), "empty2");
 }
