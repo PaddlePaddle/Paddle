@@ -63,12 +63,11 @@ cmake .. \
 cat <<EOF
 ============================================
 Building in /paddle/build ...
-   Build unit tests: ${WITH_TESTING:-OFF}
 ============================================
 EOF
 make -j `nproc`
 
-if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+if [ ${WITH_TESTING:-ON} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
 cat <<EOF
 ========================================
 Running unit tests ...
