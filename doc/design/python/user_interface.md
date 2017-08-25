@@ -23,12 +23,6 @@ one can use a name to get or create a `pd.Variable` by calling `pd.get_variable`
 v = pd.get_variable(name="v", shape=[20, 20])
 ```
 
-to get the value of the variable, one can call
-
-```python
-print v.val()
-```
-
 By default, Variables are model parameters, and will be updated after the network's back propagation.
 
 One can freeze a variable by setting `trainable` to `False` like:
@@ -37,14 +31,28 @@ One can freeze a variable by setting `trainable` to `False` like:
 v = pd.Variable(shape=[20,20], trainable=False)
 ```
 
+Some initizlization strategies may be applied to variables, for example, we may set a variable to zero or gaussian random.
+
+```
+v = pd.Variable(shape=[20,20], initializer=pd.zero_initializer())
+z = pd.Variable(shape=[20,20], initializer=pd.gaussian_initializer(mean=0., std=0.1))
+```
+
+to get the value of the variable, one can call
+
+```python
+print v.val()
+```
+
+
 ### Block
-Paddle use a `Block` to represent or execute user's program, 
+Paddle use a `Block` to represent and execute user's program, 
 this is a basic concept when user write a Paddle program.
 
 In computer programming, a block is a lexical structure of source code which is grouped together. 
 In most programming languages, block is useful when define a function or some conditional statements such as `if-else`, `while`.
 
-In Paddle, the function of `pd.Block` is to enable groups of operators to be treated as if they were one operator, to make `if_else_op` or RNNOp's declare simpler. Python's `with` statement is used to make the codes look much like a block.
+Similarlly, the function of `pd.Block` in Paddle is to enable groups of operators to be treated as if they were one operator to make `if_else_op` or RNNOp's declaration simpler and Python's `with` statement is used to make the codes look much like a block.
 
 For example, when defining a `RNNOp`, we can use `pd.Block` to help configure a step network:
 
@@ -133,7 +141,7 @@ g = pd.add_two(y, z)
 
 
 ### Op (short for Operator)
-`Op` defines basic operation unit of optimized computation graph in mxnet, one `Op` has several input and output variables, and some attributes.
+`Op` defines basic operation unit of optimized computation graph in Paddle, one `Op` has several input and output variables, and some attributes.
 
 Take `pd.matmul` for example, one can use it like this
 
@@ -151,15 +159,24 @@ Take `pd.fc` for example, one can use it like this
 out = pd.fc(in, param_names=['W'])
 ```
 which means that the `pd.fc` takes an variable `in`, and set its `param_names` attribute to `['W']`, 
-which can set it parameters'name.
+ which will determine the names of its parameters.
 
-Both `Op` and `Layer` will be appended to current `Block` when they are created,
+Both `Op` and `Layer` will be appended to current `pd.Block` when they are created,
 and there will be a sequene of Ops/Layers in the `pd.Block`,
-if the `pd.Block` is executed, all the Ops/Layers will be called one by one.
+if the `pd.Block` is executed, all the Ops/Layers in this `pd.Block` will be called in order.
 
 ### Special Ops
-#### Initialize Operator
-#### Optimizer Op
+#### Initializer Ops
+These ops will initialize variables, for example, we may have 
+
+- `pd.zero_initializer()`
+- `pd.gaussian_random_initializer(mean, std)`
+
+Each trainable variable has a initialize Op. 
+
+#### Optimizer Ops
+These ops will help to optimize trainable variables after backward propagation finished, 
+each variable will have a optimizer.
 
 ## Compatible with V2 Syntax
 
