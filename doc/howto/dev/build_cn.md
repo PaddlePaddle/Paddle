@@ -71,7 +71,7 @@
 
 - 学习 Docker 有多难？
 
-  理解 Docker 并不难，大概花十分钟看一遍 https://zhuanlan.zhihu.com/p/19902938 即可。这可以帮您省掉花一小时安装和配置各种开发工具，以及切换机器时需要新安装的辛苦。别忘了 PaddlePaddle 更新可能导致需要新的开发工具。更别提简化问题复现带来的好处了。
+  理解 Docker 并不难，大概花十分钟看一下[这篇文章](https://zhuanlan.zhihu.com/p/19902938)。这可以帮您省掉花一小时安装和配置各种开发工具，以及切换机器时需要新安装的辛苦。别忘了 PaddlePaddle 更新可能导致需要新的开发工具。更别提简化问题复现带来的好处了。
 
 - Docker 需要 sudo
 
@@ -93,8 +93,8 @@
 
 - 可以并行编译吗？
 
-  是的。我们的 Docker image 运行一个 Bash 脚本 https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh 。这个脚本调用 `make -j$(nproc)` 来启动和 CPU 核一样多的进程来并行编译。
+  是的。我们的 Docker image 运行一个 [Bash 脚本](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh)。这个脚本调用 `make -j$(nproc)` 来启动和 CPU 核一样多的进程来并行编译。
 
 - Docker on Windows/MacOS？
 
-  Docker 在 Windows 和 MacOS 都可以运行。不过实际上是运行在一个 Linux 虚拟机上。可能需要注意给这个虚拟机多分配一些 CPU 和内存，以保证编译高效。具体做法请参考 https://github.com/PaddlePaddle/Paddle/issues/627 。
+  Docker 在 Windows 和 MacOS 都可以运行。不过实际上是运行在一个 Linux 虚拟机上。可能需要注意给这个虚拟机多分配一些 CPU 和内存，以保证编译高效。具体做法请参考[这个issue](https://github.com/PaddlePaddle/Paddle/issues/627)。
