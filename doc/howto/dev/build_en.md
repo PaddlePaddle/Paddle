@@ -91,6 +91,10 @@ Nothing else.  Not even Python and GCC, because you can install all build tools 
 
   so they could type `Ctrl-C` and `c` to build PaddlePaddle from source.
 
-- How many parallel building processes does the Docker container run?
+- Does Docker do parallel building?
 
   Our building Docker image runs a Bash script https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh, which calls `make -j$(nproc)` to starts as many processes as the number of your processors.
+
+- Docker on Windows/MacOS?
+
+  On Windows and MacOS, Docker containers run in a Linux VM.  You might want to give this VM some more memory and CPUs so to make the building efficient.  Please refer to https://github.com/PaddlePaddle/Paddle/issues/627 for details.
