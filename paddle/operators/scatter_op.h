@@ -46,13 +46,13 @@ class ScatterGradientOpKernel : public framework::OpKernel {
     auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
     auto *Index = ctx.Input<Tensor>("Index");
-    auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     // In place gradient: dRef = dO
-    dRef->ShareDataWith<T>(*dO);
+    dRef->ShareDataWith<T>(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
     // Gradient by Gather: dUpdates += dO[Index]
-    Gather<T>(ctx.GetPlace(), dO, Index, dUpdates);
+    Gather<T>(ctx.GetPlace(), dOut, Index, dUpdates);
   }
 };
 

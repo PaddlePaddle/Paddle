@@ -30,7 +30,6 @@ class TestScatterGradOp(GradientChecker):
         output_np = numpy.copy(ref_np)
         output_np[index_np] += updates_np
         inputs = {'Ref': ref_np, 'Index': index_np, 'Updates': updates_np}
-        # check gradient
         self.check_grad(
             op, inputs, set(["Updates", "Ref"]), "Out", in_place=True)
 
