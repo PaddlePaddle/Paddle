@@ -65,8 +65,7 @@ and will be put into a `pd.Block`.
 
 another example is the definition of `if_else_op`:
 
-```
-
+```python
 # v0 is a output of some_op
 v0 = some_op()
 v1 = some_op()
