@@ -70,3 +70,5 @@ op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
 op_library(uniform_random_op
         SRCS uniform_random_op.cc uniform_random_op.cu)
 op_library(scale_op SRCS scale_op.cc scale_op.cu DEPS net_op)
+
+cc_test(elemwise_op_test SRCS elemwise_op_test.cc DEPS op_registry)
