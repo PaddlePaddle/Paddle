@@ -5,9 +5,9 @@
 A `Variable` represents shared, persistent state manipulated by a Paddle program.
 
 Variables are maintained by `pd.Variable` class,
-each `pd.Variable` represents a tensor whose value can be changed by running ops on it.
+each `pd.Variable` represents a tensor whose value can be changed by ops.
 
-A basic way to create a variable is:
+A basic way to create a variable is
 
 ```python
 import paddle as pd
@@ -50,7 +50,7 @@ Paddle use a `Block` to represent and execute user's program,
 this is a basic concept when user write a Paddle program.
 
 In computer programming, a block is a lexical structure of source code which is grouped together. 
-In most programming languages, block is useful when define a function or some conditional statements such as `if-else`, `while`.
+In most programming languages, block is useful when define a function or some conditional statements such as `if-else` and `while`.
 
 Similarlly, the function of `pd.Block` in Paddle is to enable groups of operators to be treated as if they were one operator to make `if_else_op` or RNNOp's declaration simpler and Python's `with` statement is used to make the codes look much like a block.
 
@@ -114,9 +114,9 @@ out = ifelseop()
 In most cases, user need not to create a `pd.Block` directly, but it is the basis of a Paddle program:
 
 - user's program is stored in `pd.Block`
-- when we want to run the codes, we just need to execute a corresponding `pd.Block`
+- when run the codes, just execute the corresponding `pd.Block`
 
-A `pd.Block` can has its own namespace, which makes it possible to hide the local variables from block block.
+A `pd.Block` can has its own namespace, which makes it possible to hide the local variables from block, for example:
 
 ```python
 W = pd.Variable(shape=[20, 20])
@@ -178,6 +178,15 @@ These ops will help to optimize trainable variables after backward propagation f
 each variable will have a optimizer.
 
 ## Compatible with V2 Syntax
+We have new concepts like Variable, Block and Op, which are very basic concepts, 
+and it should be possible to be compatible with V2 api as the underlying architecture.
+
+What's more, some recent models like GAN and tree-LSTM are hard to be expressed using just V2 api,
+so the new concepts are vital to enable user writing new models in the future.
+
+**In a word, the new user's python interface will keep compatible with V2 api, but must give a few new concepts like `Variable`, `Op` and several helper functions to express more complex models.**
+
+
 
 ## Some Demos
 ### MNist Task Demo
@@ -359,4 +368,3 @@ for i in range(10000):
             logger.info("batch %d, D loss: %f" % (batch_no, D_loss_cur))
             logger.info("batch %d, G loss: %f" % (batch_no, G_loss_cur))
 ```
-
