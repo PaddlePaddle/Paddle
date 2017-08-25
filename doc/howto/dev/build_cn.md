@@ -23,13 +23,17 @@
    cd paddle; docker build -t paddle:dev .
    ```
 
+   请注意这个命令结尾处的 `.`；它表示 `docker build` 应该读取当前目录下的 [`Dockerfile`文件](https://github.com/PaddlePaddle/Paddle/blob/develop/Dockerfile)，按照其内容创建一个名为 `paddle:dev` 的 Docker image，并且把各种开发工具安装进去。
+
 3. 编译
+
+   以下命令启动一个 Docker container 来执行 `paddle:dev` 这个 Docker image，同时把当前目录（源码树根目录）映射为 container 里的 `/paddle` 目录，并且运行 `Dockerfile` 描述的默认入口程序 [`build.sh`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh)。这个脚本调用 `cmake` 和 `make` 来编译 `/paddle` 里的源码，结果输出到 `/paddle/build`，也就是本地的源码树根目录里的 `build` 子目录。
 
    ```bash
    docker run -v $PWD:/paddle paddle:dev
    ```
 
-   这个命令编译出一个 CUDA-enabled 版本。所有二进制文件会被写到本机的 `./build` 目录，而不是写到 Docker container 里。如果我们只需要编译一个只支持 CPU 的版本，可以用
+   上述命令编译出一个 CUDA-enabled 版本。如果我们只需要编译一个只支持 CPU 的版本，可以用
 
    ```bash
    docker run -e WITH_GPU=OFF -v $PWD:/paddle paddle:dev
@@ -57,7 +61,7 @@
 
 - Docker 还是虚拟机？
 
-  有人用虚拟机来类比 Docker。需要强调的是：Docker 不会虚拟任何硬件，Docker container 里运行的编译工具实际上都是在本机的 CPU 和操作系统上直接运行的，性能和把编译工具安装在本机运行基本一样。
+  有人用虚拟机来类比 Docker。需要强调的是：Docker 不会虚拟任何硬件，Docker container 里运行的编译工具实际上都是在本机的 CPU 和操作系统上直接运行的，性能和把编译工具安装在本机运行一样。
 
 - 为什么用 Docker?
 
@@ -72,10 +76,6 @@
 - 学习 Docker 有多难？
 
   理解 Docker 并不难，大概花十分钟看一下[这篇文章](https://zhuanlan.zhihu.com/p/19902938)。这可以帮您省掉花一小时安装和配置各种开发工具，以及切换机器时需要新安装的辛苦。别忘了 PaddlePaddle 更新可能导致需要新的开发工具。更别提简化问题复现带来的好处了。
-
-- Docker 需要 sudo
-
-  如果用自己的电脑开发，自然也就有管理员权限（sudo）了。如果用公用的电脑开发，需要请管理员安装和配置好 Docker。此外，PaddlePaddle 项目在努力开始支持其他不需要 sudo 的集装箱技术，比如 rkt。
 
 - 我可以用 IDE 吗？
 
@@ -95,6 +95,12 @@
 
   是的。我们的 Docker image 运行一个 [Bash 脚本](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh)。这个脚本调用 `make -j$(nproc)` 来启动和 CPU 核一样多的进程来并行编译。
 
-- Docker on Windows/MacOS？
+## 可能碰到的问题
+
+- Docker 需要 sudo
+
+  如果用自己的电脑开发，自然也就有管理员权限（sudo）了。如果用公用的电脑开发，需要请管理员安装和配置好 Docker。此外，PaddlePaddle 项目在努力开始支持其他不需要 sudo 的集装箱技术，比如 rkt。
+
+- 在 Windows/MacOS 上编译很慢
 
   Docker 在 Windows 和 MacOS 都可以运行。不过实际上是运行在一个 Linux 虚拟机上。可能需要注意给这个虚拟机多分配一些 CPU 和内存，以保证编译高效。具体做法请参考[这个issue](https://github.com/PaddlePaddle/Paddle/issues/627)。
