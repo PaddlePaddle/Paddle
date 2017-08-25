@@ -30,6 +30,8 @@ const int MAX_SEQ_NUM = 17;
 const int MAX_SEQ_LEN = 23;
 const int MAX_BEAM_SIZE = 13;
 
+const size_t SEED = (size_t)(time(NULL));
+
 vector<real> randSampling(real range, int n) {
   CHECK_GE(range, n);
   vector<real> num(range);
@@ -46,7 +48,7 @@ void genSeqInfo(vector<int>& seqStartPos, vector<int>& subSeqStartPos) {
   seqStartPos.resize(1, 0);
   subSeqStartPos.resize(1, 0);
 
-  srand((size_t)(time(NULL)));
+  srand(SEED);
   int seqNum = 1 + (rand() % MAX_SEQ_NUM);
   for (int i = 0; i < seqNum; ++i) {
     int subSeqNum = 1 + (rand() % MAX_SEQ_NUM);
