@@ -60,9 +60,36 @@ with rnn0.stepnet(inputs=[v]) as net:
 acts, hs = rnn0()
 ```
 
-The operators inside the `with-group` defines the rnn's step network, 
+The operators inside the `with`-statement defines the rnn's step network, 
 and will be put into a `pd.Block`.
 
+another example is the definition of `if_else_op`:
+
+```
+
+# v0 is a output of some_op
+v0 = some_op()
+v1 = some_op()
+
+ifelseop = pd.if_else_op()
+with ifelseop.true_block() as net:
+    x0, x1 = net.add_input(v0, v1)
+    
+    y = pd.fc(x)
+    z = pd.add_two(x1, y)
+    
+    net.add_output(y)
+
+with ifelseop.false_block() as net:
+    x0, x1 = net.add_input(v0, v1)
+    
+    y = pd.add_two(x0, x1)
+    
+    net.add_output(y)
+    
+# output of ifelseop
+out = ifelseop()
+```
 
 ### Op (short for Operator)
 ### Layer
