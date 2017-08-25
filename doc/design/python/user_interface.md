@@ -35,7 +35,7 @@ this is a basic concept when user write a Paddle program.
 
 The function of `Block` is to enable groups of operators to be treated as if they were one operator, for example, when using a `RNNOp`, we can use block to help configure a step network:
 
-```
+```python
 v = some_op()
 m_boot = some_op()
 
