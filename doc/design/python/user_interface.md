@@ -30,10 +30,15 @@ v = pd.Variable(shape=[20,20], trainable=False)
 ```
 
 ### Block
-Paddle use a `Block` to represent user's program, 
+Paddle use a `Block` to represent or execute user's program, 
 this is a basic concept when user write a Paddle program.
 
-The function of `Block` is to enable groups of operators to be treated as if they were one operator, for example, when using a `RNNOp`, we can use block to help configure a step network:
+In computer programming, a block is a lexical structure of source code which is grouped together. 
+In most programming languages, block is useful when define a function or some conditional statements such as `if-else`, `while`.
+
+In Paddle, the function of `pd.Block` is to enable groups of operators to be treated as if they were one operator, to make `if_else_op` or RNNOp's declare simpler. Python's `with` statement is used to make the codes look much like a block.
+
+For example, when defining a `RNNOp`, we can use `pd.Block` to help configure a step network:
 
 ```python
 v = some_op()
@@ -89,6 +94,12 @@ with ifelseop.false_block() as net:
 # output of ifelseop
 out = ifelseop()
 ```
+
+In most cases, user need not to create a `pd.Block` directly, but it is the basis of a Paddle program:
+
+- user's program is stored in `pd.Block`
+- when we need to run the codes, we just need to execute a corressponding `pd.Block`
+
 
 ### Op (short for Operator)
 ### Layer
