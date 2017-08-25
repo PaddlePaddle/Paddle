@@ -61,39 +61,20 @@ void MKLDNNFcLayer::convertWeightsFromPaddle() {
     return;
   }
 
-  // TODO(TJ): dst format should get from wgtVal_
-  int dstFmt = PARAM_FORMAT_MKLDNN_OI;
-  int srcFmt = weight_->getParameterPtr()->getHeaderFormat();
-  if (srcFmt == dstFmt) {
-    return;
-  }
-
-  // The weight_ is transposed from initial paddle weight
-  MatrixPtr paddleWgt = Matrix::create(
-      weight_->getW()->getData(), iLayerSize_, oc_, false, false);
-
-  // TODO(TJ): remove this print when do not need differ weights
-  std::ostringstream ostr;
-  paddleWgt->print(ostr);
-  VLOG(MKLDNN_ALL) << "Initial Weight from paddle: " << std::endl << ostr.str();
-
-  // The mkldnn weight is transposed from initial paddle matrix
-  MatrixPtr paddleWgtT;
-  paddleWgt->transpose(paddleWgtT, true);
-  weight_->getW()->copyFrom(*paddleWgtT);
-  weight_->getParameterPtr()->setHeaderFormat(dstFmt);
+  CHECK(wgtVal_) << "should have been initialized";
+  bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
+  auto targetDim = wgtVal_->getDims();
+  auto srcFmt = hasNoSpatial_ ? memory::format::io : memory::format::ihwo;
+  wgtVal_->reorderDataFrom(wgtVal_, srcFmt, targetDim);
   hasInitedWgt_ = true;
 }
 
 void MKLDNNFcLayer::convertWeightsToPaddle() {
-  MatrixPtr dnnWgt = weight_->getW();
-  MatrixPtr paddleWgt;
-  dnnWgt->transpose(paddleWgt, true);
-
-  // copy paddle weight and override on weight_
-  MatrixPtr dnnWgtT = Matrix::create(
-      dnnWgt->getData(), dnnWgt->getWidth(), dnnWgt->getHeight(), false, false);
-  dnnWgtT->copyFrom(*paddleWgt);
+  CHECK(wgtVal_) << "should have been initialized";
+  bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
+  auto targetDim = wgtVal_->getDims();
+  auto dstFmt = hasNoSpatial_ ? memory::format::io : memory::format::ihwo;
+  wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
 void MKLDNNFcLayer::reshape() {

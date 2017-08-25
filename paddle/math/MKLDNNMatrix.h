@@ -21,9 +21,6 @@ limitations under the License. */
 
 namespace paddle {
 
-static const std::map<mkldnn::memory::format, PARAM_FORMAT> PARAM_FOARMAT_MAP =
-    {{mkldnn::memory::format::oi, PARAM_FORMAT_MKLDNN_OI}};
-
 class MKLDNNMatrix;
 typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
 
@@ -57,6 +54,26 @@ public:
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
 
 public:
+  /**
+   * Reorder this MKLDNNMatrix from other format.
+   * Support inplace reorder
+   * Pay attention: this function would only reorder the data layout.
+   *                will NOT change this original dim or format info
+   */
+  void reorderDataFrom(const MKLDNNMatrixPtr& m,
+                       memory::format srcFmt,
+                       memory::dims targetDim);
+
+  /**
+   * Reorder this MKLDNNMatrix to other format.
+   * Support inplace reorder
+   * Pay attention: this function would only reorder the data layout.
+   *                will NOT change the dst dim or format info
+   */
+  void reorderDataTo(const MKLDNNMatrixPtr& m,
+                     memory::format dstFmt,
+                     memory::dims targetDim);
+
   /**
    * Dimensionality reduction.
    * Change format "nchw --> nc" or "oihw --> oi" if the h and w are both 1
@@ -113,6 +130,16 @@ public:
    * Get engine.
    */
   mkldnn::engine getEngine() { return getPD().get_engine(); }
+
+protected:
+  /**
+   * Do once reorder supported inplace.
+   */
+  void reorderOnce(void* srcData,
+                   void* dstData,
+                   memory::format srcFmt,
+                   memory::format dstFmt,
+                   memory::dims dm);
 };
 
 }  // namespace paddle
