@@ -82,7 +82,7 @@ def get_numeric_gradient(op,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
-    def copy_tensor():
+    def restore_inputs():
         for var_name in input_values:
             tensor_ = local_scope.find_var(var_name).get_tensor()
             tensor_.set(numpy.copy(input_values[var_name]), core.CPUPlace())
@@ -97,7 +97,7 @@ def get_numeric_gradient(op,
     # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
         if in_place:
-            copy_tensor()
+            restore_inputs()
         # get one input element throw it's index i.
         origin = tensor_to_check.get_float_element(i)
 
@@ -108,7 +108,7 @@ def get_numeric_gradient(op,
 
         # plus delta to this element, run op and get the sum of the result tensor.
         if in_place:
-            copy_tensor()
+            restore_inputs()
         x_neg = origin - delta
         tensor_to_check.set_float_element(i, x_neg)
         y_neg = get_output()
