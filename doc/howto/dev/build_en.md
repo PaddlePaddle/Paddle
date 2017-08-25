@@ -53,6 +53,12 @@ Nothing else.  Not even Python and GCC, because you can install all build tools 
    docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
    ```
 
+   Sometimes we want to run a specific unit test, say `memory_test`, we can run
+
+   ```bash
+   docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
+   ```
+
 ## Docker, Or Not?
 
 - What is Docker?

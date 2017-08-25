@@ -53,6 +53,12 @@
    docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
    ```
 
+   有时候我们只想运行一个特定的单元测试，比如 `memory_test`，我们可以
+
+   ```bash
+   docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
+   ```
+
 ## 为什么要 Docker 呀？
 
 - 什么是 Docker?
