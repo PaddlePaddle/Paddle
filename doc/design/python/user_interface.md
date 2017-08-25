@@ -2,7 +2,7 @@
 
 ## Basic Concepts
 ### Variable
-A `Variable` represents shared, persistent state manipulated by a Paddle model program.
+A `Variable` represents shared, persistent state manipulated by a Paddle program.
 
 Variables are maintained by `pd.Variable` class,
 each `pd.Variable` represents a tensor whose value can be changed by running ops on it.
