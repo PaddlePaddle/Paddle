@@ -139,7 +139,6 @@ with pd.Block('namespace1'):
 g = pd.add_two(y, z)
 ```
 
-
 ### Op (short for Operator)
 `Op` defines basic operation unit of optimized computation graph in Paddle, one `Op` has several input and output variables, and some attributes.
 
@@ -182,4 +181,53 @@ each variable will have a optimizer.
 
 ## Some Demos
 ### MNist Task Demo
+```python
+import paddle as pd
+
+# the first shape is None, which means the batch size of variable is not known.
+image = pd.Variable(shape=[None, 128])
+label = pd.Variable(shape=[None, 1])
+
+# network config
+W1 = pd.Variable('W1', shape=[128, 64])
+
+fc_out = pd.matmul(image, W1)
+prediction = pd.softmax(fc_out, size=10)
+
+cost = pd.cross_entropy(prediction, label)
+
+optimizer = pd.SGDOptimizer().minimize(cost)
+
+# training details
+def data_provider(path):
+    images = []
+    labels = []
+    with open(path) as f:
+        for no, line in enumerate(f):
+            fs = line.split('\t')
+            assert len(fs) == 2
+            image_record = map(int, fs[0].split())
+            label_record = [int(fs[1])]
+            images.append(image_record)
+            labels.append(label_record)
+            if no > 0 and no % 100 == 0:
+                yield np.array(images), np.array(labels)
+            images = []
+            labels = []
+
+
+for pass_no in range(100):
+    for batch_no in enumerate(data_provider('./data.txt')):
+        # train mode
+        _, cost_ = pd.eval(optimizer, cost)
+        print '%dth pass train cost: %f' % (pass_no, cost_)
+        # test mode
+        if batch_no > 0 and batch_no % 10 == 0:
+            cost_ = pd.eval(cost)
+            print '%dth pass test cost' % (pass_no, cost_)
+```
+
 ### GAN Task Demo
+```python
+>>>Include(./gan.py)
+```
