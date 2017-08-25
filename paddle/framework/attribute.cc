@@ -24,6 +24,10 @@ AttrType AttrTypeID<int>() {
   return INT;
 }
 template <>
+AttrType AttrTypeID<unsigned>() {
+  return INT;
+}
+template <>
 AttrType AttrTypeID<float>() {
   return FLOAT;
 }
