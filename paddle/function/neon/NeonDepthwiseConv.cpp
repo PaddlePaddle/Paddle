@@ -155,6 +155,109 @@ struct DepthwiseConvKernel<3, 1> {
 
 /**
  * Each step calculates four elements of the output.
+ * First step:
+ *   R0[0, 2, 4, 6...] * K[0][0]
+ *   R0[1, 3, 5, 7...] * K[0][1]
+ *   R0[2, 4, 6, 8...] * K[0][2]
+ *   R1[0, 2, 4, 6...] * K[1][0]
+ *   R1[1, 3, 5, 7...] * K[1][1]
+ *   R1[2, 4, 6, 8...] * K[1][2]
+ *   R2[0, 2, 4, 6...] * K[2][0]
+ *   R2[1, 3, 5, 7...] * K[2][1]
+ *   R2[2, 4, 6, 8...] * K[2][2]
+ * ------------------------------
+ *     Output[0, 1, 2, 3]
+ */
+template <>
+struct DepthwiseConvKernel<3, 2> {
+  static void run(const float* inputData,
+                  const float* filterData,
+                  int inputHeight,
+                  int inputWidth,
+                  int outputChannels,
+                  int outputHeight,
+                  int outputWidth,
+                  int filterMultiplier,
+                  float* outputData) {
+    const int steps = outputWidth >> 2;
+    const int remain = outputWidth & 3;
+    for (int c = 0; c < outputChannels; c++, filterData += 9) {
+      // Load the filters
+      float32x4_t k[3];
+      k[0] = vld1q_f32(filterData);
+      k[1] = vld1q_f32(filterData + 3);
+      k[2] = vld1q_f32(filterData + 6);
+      k[0] = vsetq_lane_f32(0.f, k[0], 3);
+      k[1] = vsetq_lane_f32(0.f, k[1], 3);
+      k[2] = vsetq_lane_f32(0.f, k[2], 3);
+
+      const float* start =
+          inputData + (c / filterMultiplier) * (inputHeight * inputWidth);
+      float32x4_t input[3][3];
+      for (int h = 0; h < outputHeight; h++) {
+        const float* r0 = start + 2 * h * inputWidth;
+        const float* r1 = start + (2 * h + 1) * inputWidth;
+        const float* r2 = start + (2 * h + 2) * inputWidth;
+        for (int s = 0; s < steps; s++) {
+          // Load the inputs
+          float32x4_t data1;
+          float32x4x2_t data2;
+
+          data2 = vld2q_f32(r0);
+          input[0][0] = data2.val[0];
+          input[0][1] = data2.val[1];
+          data1 = vld1q_f32(r0 + 8);
+          input[0][2] = vextq_f32(data2.val[0], data1, 1);
+
+          data2 = vld2q_f32(r1);
+          input[1][0] = data2.val[0];
+          input[1][1] = data2.val[1];
+          data1 = vld1q_f32(r1 + 8);
+          input[1][2] = vextq_f32(data2.val[0], data1, 1);
+
+          data2 = vld2q_f32(r2);
+          input[2][0] = data2.val[0];
+          input[2][1] = data2.val[1];
+          data1 = vld1q_f32(r2 + 8);
+          input[2][2] = vextq_f32(data2.val[0], data1, 1);
+
+          float32x4_t tmp1 = vdupq_n_f32(0.f);
+          float32x4_t tmp2 = vdupq_n_f32(0.f);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][0], k[1], 0);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[1][1], k[1], 1);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][2], k[1], 2);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
+          tmp1 = vaddq_f32(tmp1, tmp2);
+
+          vst1q_f32(outputData, tmp1);
+          r0 += 8;
+          r1 += 8;
+          r2 += 8;
+          outputData += 4;
+        }
+
+        for (int r = 0; r < remain; r++) {
+          float32x4_t i0 = vld1q_f32(r0);
+          float32x4_t i1 = vld1q_f32(r1);
+          float32x4_t i2 = vld1q_f32(r2);
+          *outputData = conv3x3(i0, i1, i2, k[0], k[1], k[2]);
+          r0 += 2;
+          r1 += 2;
+          r2 += 2;
+          outputData++;
+        }
+      }
+    }
+  }
+};
+
+/**
+ * Each step calculates four elements of the output.
  */
 template <>
 struct DepthwiseConvKernel<4, 1> {
@@ -326,8 +429,18 @@ public:
     }
 
     for (size_t i = 0; i < batchSize; i++) {
-      if (filterWidth == 3) {
+      if (filterWidth == 3 && strideH() == 1) {
         DepthwiseConvKernel<3, 1>::run(inputPadding,
+                                       filterData,
+                                       inputHeight,
+                                       inputWidth,
+                                       outputChannels,
+                                       outputHeight,
+                                       outputWidth,
+                                       filterMultiplier,
+                                       outputData);
+      } else if (filterWidth == 3 && strideH() == 2) {
+        DepthwiseConvKernel<3, 2>::run(inputPadding,
                                        filterData,
                                        inputHeight,
                                        inputWidth,
