@@ -7,12 +7,20 @@ A `Variable` represents shared, persistent state manipulated by a Paddle model p
 Variables are maintained by `pd.Variable` class,
 each `pd.Variable` represents a tensor whose value can be changed by running ops on it.
 
-A basic way to create a variable:
+A basic way to create a variable is:
 
 ```python
 import paddle as pd
 
 v = pd.Variable(shape=[20, 20])
+```
+
+To make it more converient to share a variable, each `pd.Variable` has a name, 
+one can use a name to get or create a `pd.Variable` by calling `pd.get_variable`, for example:
+
+```python
+# same as 
+v = pd.get_variable(name="v", shape=[20, 20])
 ```
 
 to get the value of the variable, one can call
@@ -82,7 +90,7 @@ with ifelseop.true_block() as net:
     y = pd.fc(x)
     z = pd.add_two(x1, y)
     
-    net.add_output(y)
+    net.add_output(z)
 
 with ifelseop.false_block() as net:
     x0, x1 = net.add_input(v0, v1)
@@ -98,11 +106,57 @@ out = ifelseop()
 In most cases, user need not to create a `pd.Block` directly, but it is the basis of a Paddle program:
 
 - user's program is stored in `pd.Block`
-- when we need to run the codes, we just need to execute a corressponding `pd.Block`
+- when we want to run the codes, we just need to execute a corresponding `pd.Block`
+
+A `pd.Block` can has its own namespace, which makes it possible to hide the local variables from block block.
+
+```python
+W = pd.Variable(shape=[20, 20])
+
+# a and b are outputs of some_op
+a = some_op()
+b = some_op()
+
+with pd.Block('namespace0'):
+    # W is a local variable and has its own value
+    W = pd.Variable(shape=[20, 20])
+    x = pd.matmul(W, a)
+    y = x + b
+    
+with pd.Block('namespace1'):
+    # W is the global variable
+    z = pd.matmul(W, a)
+    
+# g use local variables in both namespace0 and namespace1
+g = pd.add_two(y, z)
+```
 
 
 ### Op (short for Operator)
+`Op` defines basic operation unit of optimized computation graph in mxnet, one `Op` has several input and output variables, and some attributes.
+
+Take `pd.matmul` for example, one can use it like this
+
+```python
+out = pd.matmul(a, b)
+```
+which means that a operator `pd.matmul` takes two variables `a` and `b` for input, 
+and return a variable `out`.
+
 ### Layer
+`Layer` defines a more complex operation which may combines several `Op`s, its usage is the same with `Op`.
+
+Take `pd.fc` for example, one can use it like this
+```python
+out = pd.fc(in, param_names=['W'])
+```
+which means that the `pd.fc` takes an variable `in`, and set its `param_names` attribute to `['W']`, 
+which can set it parameters'name.
+
+Both `Op` and `Layer` will be appended to current `Block` when they are created,
+and there will be a sequene of Ops/Layers in the `pd.Block`,
+if the `pd.Block` is executed, all the Ops/Layers will be called one by one.
+
 ### Special Ops
 #### Initialize Operator
 #### Optimizer Op
