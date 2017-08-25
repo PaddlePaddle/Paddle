@@ -29,12 +29,25 @@ Nothing else.  Not even Python and GCC, because you can install all build tools 
    docker run -v $PWD:/paddle paddle:dev
    ```
 
-4. Run unit tests.
+   This builds a CUDA-enabled version and writes all binary outputs to directory `./build` of the local computer, other than the Docker container.  If we want to build only the CPU part, we can type
 
    ```bash
-   docker run -v $PWD:/paddle paddle:dev "cd/build; ctest"
+   docker run -e WITH_GPU=OFF -v $PWD:/paddle paddle:dev
    ```
 
+4. Run unit tests.
+
+   To run all unit tests using the first GPU of a node:
+
+   ```bash
+   NV_GPU=0 nvidia-docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
+   ```
+
+   If we used `WITH_GPU=OFF` at build time, it generates only CPU-based unit tests, and we don't need nvidia-docker to run them.  We can just run
+
+   ```bash
+   docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
+   ```
 
 ## Docker, Or Not?
 
