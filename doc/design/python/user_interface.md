@@ -181,6 +181,7 @@ each variable will have a optimizer.
 
 ## Some Demos
 ### MNist Task Demo
+
 ```python
 import paddle as pd
 
@@ -197,6 +198,7 @@ prediction = pd.softmax(fc_out, size=10)
 cost = pd.cross_entropy(prediction, label)
 
 optimizer = pd.SGDOptimizer().minimize(cost)
+
 
 # training details
 def data_provider(path):
@@ -217,9 +219,11 @@ def data_provider(path):
 
 
 for pass_no in range(100):
-    for batch_no in enumerate(data_provider('./data.txt')):
+    for batch_no, batch in enumerate(data_provider('./data.txt')):
         # train mode
-        _, cost_ = pd.eval(optimizer, cost)
+        _, cost_ = pd.eval(
+            [optimizer, cost], feeds={image: batch[0],
+                                      label: batch[1]})
         print '%dth pass train cost: %f' % (pass_no, cost_)
         # test mode
         if batch_no > 0 and batch_no % 10 == 0:
@@ -228,6 +232,127 @@ for pass_no in range(100):
 ```
 
 ### GAN Task Demo
+
 ```python
->>>Include(./gan.py)
+import paddle as pd
+
+# input variable whose batch size is unknown now
+X = pd.Variable(shape=[None, 128])
+
+# Discriminator Net
+# define parameters
+
+# Generator Net
+Z = pd.data(pd.float_vector(100))
+
+theta_G = [G_W1, G_W2, G_b1, G_b2]
+
+
+def sample_Z(m, n):
+    return np.random.uniform(-1, 1., size=[m, n])
+
+
+def discriminator(x):
+    # use block with namespace to hide local variables
+    with pd.Block('discriminator') as block:
+        # declare model parameters
+        W1 = pd.get_variable(
+            'W1',
+            shape=[784, 128],
+            initializer=pd.gaussian_random_initializer(std=0.1))
+        b1 = pd.get_variable(
+            'b1', data=np.zeros(128)
+        )  # variable also support initialization using a  numpy data
+        W2 = pd.get_variable('W2', data=np.random.rand(128, 1))
+        b2 = pd.Variable('b2', data=np.zeros(128))
+
+        # network config
+        h1 = pd.relu(pd.matmul(x, W1) + b1)
+        fake = pd.matmul(h1, w2) + b2
+        prob = pd.sigmoid(fake)
+        return prob, fake
+
+
+theta_D = [D_W1, D_b1, D_W2, D_b2]
+
+
+def generator(z):
+    with pd.Block('generator') as block:
+        # declare model parameters
+        W1 = pd.get_variable(
+            'W1',
+            shape=[784, 128],
+            initializer=pd.gaussian_random_initializer())
+        b1 = pd.get_variable(
+            'b1', data=np.zeros(128)
+        )  # variable also support initialization using a  numpy data
+        W2 = pd.get_variable('W2', data=np.random.rand(128, 1))
+        b2 = pd.get_variable('b2', data=np.zeros(128))
+
+        # network config
+        h1 = pd.relu(pd.matmul(z, W1) + b1)
+        log_prob = pd.matmul(h1, W2) + b2
+        prob = pd.sigmoid(log_prob)
+        return prob
+
+
+# a mini-batch of 1. as probability 100%
+ones_label = pd.Variable(shape=[None, 1])
+# a mini-batch of 0. as probability 0%
+zeros_label = pd.Variable(shape=[None, 1])
+
+# model config
+G_sample = generator(Z)
+D_real_prob, D_real_image = discriminator(X)
+D_fake_prob, D_fake_image = discriminator(G_sample)
+
+D_loss_real = pd.reduce_mean(
+    pd.cross_entropy(data=D_real_prob, label=ones_label))
+D_loss_fake = pd.reduce_mean(
+    pd.cross_entropy(data=D_real_fake, label=zeros_label))
+D_loss = D_loss_real + D_loss_fake
+
+G_loss = pd.reduce_mean(pd.cross_entropy(data=D_loss_fake, label=ones_label))
+
+D_solver = pd.AdamOptimizer().minimize(D_loss, var_list=theta_D)
+G_solver = pd.AdamOptimizer().minimize(G_loss, var_list=theta_G)
+
+# init all parameters
+initializer = pd.variable_initialzier()
+# also ok: initializer = pd.variable_initialzier(vars=theta_D+theta_G)ize,
+pd.eval(initializer)
+
+
+def data_provier(path):
+    # ...
+    yield batch
+
+
+for i in range(10000):
+    for batch_no, batch in enumerate(data_provider('train_data.txt')):
+        # train Descrimator first
+        _, D_loss_cur = pd.eval(
+            [D_solver, D_loss],
+            feeds={
+                X: batch,
+                Z: sample_Z(batch.size, 10),
+                ones_label: np.ones([batch.size, 1]),
+                zeros_label: np.zeros([batch.size, 1])
+            })
+        # get Generator's fake samples
+        samples = pd.eval(G_sample, feeds={Z: sample_Z(16, 100)})
+
+        # train Generator latter
+        _, G_loss_cur = pd.eval(
+            [G_solver, G_loss],
+            feeds={
+                Z: sample_Z(batch.size, 10),
+                ones_label: np.ones([batch.size, 1]),
+                zeros_label: np.zeros([batch.size, 1])
+            })
+
+        if batch_no % 100:
+            logger.info("batch %d, D loss: %f" % (batch_no, D_loss_cur))
+            logger.info("batch %d, G loss: %f" % (batch_no, G_loss_cur))
 ```
+
