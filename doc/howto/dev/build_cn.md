@@ -56,7 +56,15 @@
    有时候我们只想运行一个特定的单元测试，比如 `memory_test`，我们可以
 
    ```bash
-   docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
+   nvidia-docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
+   ```
+
+5. 清理
+
+   有时候我们会希望清理掉已经下载的第三方依赖以及已经编译的二进制文件。此时只需要：
+
+   ```bash
+   rm -rf build
    ```
 
 ## 为什么要 Docker 呀？

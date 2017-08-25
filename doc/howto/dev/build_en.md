@@ -56,7 +56,15 @@ Nothing else.  Not even Python and GCC, because you can install all build tools 
    Sometimes we want to run a specific unit test, say `memory_test`, we can run
 
    ```bash
-   docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
+   nvidia-docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
+   ```
+
+5. Clean Build.
+
+   Sometimes, we might want to clean all thirt-party dependents and built binaries.  To do so, just
+
+   ```bash
+   rm -rf build
    ```
 
 ## Docker, Or Not?
