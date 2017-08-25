@@ -16,11 +16,13 @@ import functools
 import collections
 import inspect
 
+import paddle.trainer.config_parser as cp
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
     ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
-from .poolings import MaxPooling, AvgPooling, BasePoolingType
+from .poolings import MaxPooling, AvgPooling, BasePoolingType, \
+    CudnnAvgPooling, CudnnMaxPooling
 from .attrs import *
 from .default_decorators import *
 
@@ -132,6 +134,7 @@ __all__ = [
     'sub_nested_seq_layer',
     'clip_layer',
     'slice_projection',
+    'seq_slice_layer',
     'kmax_sequence_score_layer',
     'scale_shift_layer',
 ]
@@ -229,6 +232,7 @@ class LayerType(object):
     CROP_LAYER = 'crop'
     SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
+    SEQ_SLICE = 'seq_slice'
 
     KMAX_SEQ_SCORE = 'kmax_seq_score'
     SCALE_SHIFT_LAYER = 'scale_shift'
@@ -329,6 +333,14 @@ class LayerOutput(object):
             outputs = ['default']
         self.outputs = outputs
         self.reverse = reverse
+
+    @property
+    def width(self):
+        return cp.g_layer_map[self.full_name].width
+
+    @property
+    def height(self):
+        return cp.g_layer_map[self.full_name].height
 
     def set_input(self, input):
         """
@@ -911,7 +923,13 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
-    return LayerOutput(name, LayerType.DATA, size=size)
+    num_filters = None
+    if height is not None and width is not None:
+        num_filters = size / (width * height)
+        assert num_filters * width * height == size, \
+            "size=%s width=%s height=%s" % (size, width, height)
+
+    return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
 
 @wrap_name_default("embedding")
@@ -2324,6 +2342,7 @@ def img_conv_layer(input,
                    groups=1,
                    stride=1,
                    padding=0,
+                   dilation=1,
                    bias_attr=None,
                    param_attr=None,
                    shared_biases=True,
@@ -2331,6 +2350,7 @@ def img_conv_layer(input,
                    filter_size_y=None,
                    stride_y=None,
                    padding_y=None,
+                   dilation_y=None,
                    trans=False,
                    layer_type=None):
     """
@@ -2395,6 +2415,11 @@ def img_conv_layer(input,
     :type padding: int|tuple|list
     :param padding_y: The y dimension of the padding.
     :type padding_y: int
+    :param dilation: The x dimension of the dilation. Or input a tuple for two
+                    image dimension
+    :type dilation: int|tuple|list
+    :param dilation_y: The y dimension of the dilation.
+    :type dilation_y: int
     :param bias_attr: Convolution bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
@@ -2442,6 +2467,13 @@ def img_conv_layer(input,
         else:
             padding_y = padding
 
+    if dilation_y is None:
+        if isinstance(dilation, collections.Sequence):
+            assert len(dilation) == 2
+            dilation, dilation_y = dilation
+        else:
+            dilation_y = dilation
+
     if param_attr.attr.get('initial_smart'):
         # special initial for conv layers.
         init_w = (2.0 / (filter_size**2 * num_channels))**0.5
@@ -2451,6 +2483,8 @@ def img_conv_layer(input,
         param_attr.attr["initial_smart"] = False
 
     if layer_type:
+        if dilation > 1 or dilation_y > 1:
+            assert layer_type in ["cudnn_conv", "cudnn_convt"]
         if trans:
             assert layer_type in ["exconvt", "cudnn_convt"]
         else:
@@ -2466,11 +2500,13 @@ def img_conv_layer(input,
             conv=Conv(
                 filter_size=filter_size,
                 padding=padding,
+                dilation=dilation,
                 stride=stride,
                 channels=num_channels,
                 groups=groups,
                 filter_size_y=filter_size_y,
                 padding_y=padding_y,
+                dilation_y=dilation_y,
                 stride_y=stride_y),
             **param_attr.attr),
         active_type=act.name,
@@ -2571,6 +2607,10 @@ def img_pool_layer(input,
         assert input.num_filters is not None
         num_channels = input.num_filters
 
+    assert type(pool_type) in [AvgPooling, MaxPooling, CudnnAvgPooling,
+                               CudnnMaxPooling], \
+        "only (Cudnn)AvgPooling, (Cudnn)MaxPooling are supported"
+
     if pool_type is None:
         pool_type = MaxPooling()
     elif isinstance(pool_type, AvgPooling):
@@ -2580,7 +2620,6 @@ def img_pool_layer(input,
         if (
         isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
         else pool_type.name
-
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
     padding_y = padding if padding_y is None else padding_y
@@ -4204,8 +4243,7 @@ def conv_operator(img,
         num_channels = img.num_filters
 
     assert isinstance(filter, LayerOutput)
-    if filter.size is not None:
-        filter.size = filter_size * filter_size_y * num_filters * num_channels
+    assert filter.size is not None
 
     opCls = ConvTransOperator if trans else ConvOperator
 
@@ -4916,7 +4954,6 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
     assert groups > 1
     if num_channels is None:
@@ -6177,6 +6214,72 @@ def clip_layer(input, min, max, name=None):
 
 
 @wrap_name_default()
+def seq_slice_layer(input, starts, ends, name=None):
+    """
+    seq_slice_layer will return one or several sub-sequences from the
+    input sequence layer given start and end indices.
+
+        - If only start indices are given, and end indices are set to None,
+          this layer slices the input sequence from the given start indices
+          to its end.
+        - If only end indices are given, and start indices are set to None,
+          this layer slices the input sequence from its beginning to the
+          given end indices.
+        - If start and end indices are both given, they should have the same
+          number of elements.
+
+    If start or end indices contains more than one elements, the input sequence
+    will be sliced for multiple times.
+
+
+    .. code-block:: python
+
+        seq_silce = seq_slice_layer(input=input_seq,
+                                    starts=start_pos, ends=end_pos)
+
+    :param name: name of this layer.
+    :type name: basestring
+    :param input: input for this layer, it should be a sequence.
+    :type input: LayerOutput
+    :param starts: start indices to slice the input sequence.
+    :type starts: LayerOutput|None
+    :param ends: end indices to slice the input sequence.
+    :type ends: LayerOutput|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of seq_slice layer must be a PaddlePaddle layer.')
+
+    if starts is not None:
+        assert isinstance(starts, LayerOutput), (
+            'The start indices for seq_slice layer '
+            'must be a PaddlePaddle layer.')
+    if ends is not None:
+        assert isinstance(ends, LayerOutput), (
+            'The end indices for seq_slice layer must be a PaddlePaddle layer.')
+    assert starts is not None or ends is not None, (
+        'start and end indices '
+        'cannot be set to None at the same time, at least one of '
+        'them should be given.')
+    if starts is not None and ends is not None:
+        assert starts.size == ends.size, (
+            'If start and end indices are both given to seq_slice_layer, '
+            'they should have the same width.')
+
+    Layer(
+        name=name,
+        type=LayerType.SEQ_SLICE,
+        inputs=input.name,
+        starts=starts.name if starts is not None else None,
+        ends=ends.name if ends is not None else None)
+    return LayerOutput(
+        name, LayerType.SEQ_SLICE, parents=[input], size=input.size)
+
+
+@wrap_name_default()
 @layer_support()
 def kmax_sequence_score_layer(input, name=None, beam_size=1):
     """
@@ -6219,11 +6322,11 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 @wrap_bias_attr_default()
 def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
     """
-    A layer applies a linear transformation to each element in each row of 
-    the input matrix. For each element, the layer first re-scale it and then 
+    A layer applies a linear transformation to each element in each row of
+    the input matrix. For each element, the layer first re-scale it and then
     adds a bias to it.
 
-    This layer is very like the SlopeInterceptLayer, except the scale and 
+    This layer is very like the SlopeInterceptLayer, except the scale and
     bias are trainable.
 
     .. math::
