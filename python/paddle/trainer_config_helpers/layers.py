@@ -2344,6 +2344,7 @@ def img_conv_layer(input,
                    groups=1,
                    stride=1,
                    padding=0,
+                   dilation=1,
                    bias_attr=None,
                    param_attr=None,
                    shared_biases=True,
@@ -2351,6 +2352,7 @@ def img_conv_layer(input,
                    filter_size_y=None,
                    stride_y=None,
                    padding_y=None,
+                   dilation_y=None,
                    trans=False,
                    layer_type=None):
     """
@@ -2415,6 +2417,11 @@ def img_conv_layer(input,
     :type padding: int|tuple|list
     :param padding_y: The y dimension of the padding.
     :type padding_y: int
+    :param dilation: The x dimension of the dilation. Or input a tuple for two
+                    image dimension
+    :type dilation: int|tuple|list
+    :param dilation_y: The y dimension of the dilation.
+    :type dilation_y: int
     :param bias_attr: Convolution bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
@@ -2462,6 +2469,13 @@ def img_conv_layer(input,
         else:
             padding_y = padding
 
+    if dilation_y is None:
+        if isinstance(dilation, collections.Sequence):
+            assert len(dilation) == 2
+            dilation, dilation_y = dilation
+        else:
+            dilation_y = dilation
+
     if param_attr.attr.get('initial_smart'):
         # special initial for conv layers.
         init_w = (2.0 / (filter_size**2 * num_channels))**0.5
@@ -2471,6 +2485,8 @@ def img_conv_layer(input,
         param_attr.attr["initial_smart"] = False
 
     if layer_type:
+        if dilation > 1 or dilation_y > 1:
+            assert layer_type in ["cudnn_conv", "cudnn_convt"]
         if trans:
             assert layer_type in ["exconvt", "cudnn_convt"]
         else:
@@ -2486,11 +2502,13 @@ def img_conv_layer(input,
             conv=Conv(
                 filter_size=filter_size,
                 padding=padding,
+                dilation=dilation,
                 stride=stride,
                 channels=num_channels,
                 groups=groups,
                 filter_size_y=filter_size_y,
                 padding_y=padding_y,
+                dilation_y=dilation_y,
                 stride_y=stride_y),
             **param_attr.attr),
         active_type=act.name,

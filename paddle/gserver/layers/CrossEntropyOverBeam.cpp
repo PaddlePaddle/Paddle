@@ -331,6 +331,8 @@ void CrossEntropyOverBeam::splitBatchBeams() {
                          false,
                          false);
       beamPerSeq_[j].gold[i] = goldSequence_[i]->getData()[j];
+
+      CHECK_LE(beamPerSeq_[j].gold[i], seqStarts[j + 1] - seqStarts[j]);
     }
   }
 }

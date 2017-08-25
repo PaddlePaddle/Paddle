@@ -12,12 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/rowwise_add_op.h"
+#include "paddle/operators/minus_op.h"
 
-namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    rowwise_add, ops::RowwiseAddKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    rowwise_add_grad,
-    ops::RowwiseAddGradKernel<paddle::platform::GPUPlace, float>);
+    minus, paddle::operators::MinusKernel<paddle::platform::GPUPlace, float>);
