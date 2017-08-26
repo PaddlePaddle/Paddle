@@ -108,7 +108,7 @@ private:
    * if many(>failRate) wrong(abs(dnn-ref)/abs(ref)>thres) points return the
    * max(diff/ref)
    * else return sum(abs(a-b)) / sum(abs(b))
-   * The return value should smaller than eps when passing.
+   * The return value should be smaller than eps when passing.
    */
   double getDelta(const real* d1,
                   const real* d2,

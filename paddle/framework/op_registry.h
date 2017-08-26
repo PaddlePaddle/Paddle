@@ -23,132 +23,24 @@ limitations under the License. */
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/grad_op_builder.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
-// this class not only make proto but also init attribute checkers.
-class OpProtoAndCheckerMaker {
- public:
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : proto_(proto), op_checker_(op_checker) {}
-
-  ~OpProtoAndCheckerMaker() {
-    PADDLE_ENFORCE(validated_, "should call Validate after build");
-  }
-
-  void Validate() {
-    validated_ = true;
-    CheckNoDuplicatedInOutAttrs();
-  }
-
- protected:
-  struct VariableBuilder {
-    OpProto::Var* var_;
-
-    VariableBuilder& AsDuplicable() {
-      var_->set_duplicable(true);
-      return *this;
-    }
-
-    VariableBuilder& AsIntermediate() {
-      var_->set_intermediate(true);
-      return *this;
-    }
-
-    // TODO(FengJiayi, yuyang18): `AsNoGradient` is a very bad name, because it
-    // means that input/output is not needed when calculate gradient. It does
-    // not mean no gradient when backward. It should be changed soon.
-    VariableBuilder& AsNoGradient() {
-      var_->set_no_gradient(true);
-      return *this;
-    }
-  };
-
-  VariableBuilder AddInput(const std::string& name,
-                           const std::string& comment) {
-    auto* input = proto_->add_inputs();
-    input->set_name(name);
-    input->set_comment(comment);
-    return VariableBuilder{input};
-  }
-
-  VariableBuilder AddOutput(const std::string& name,
-                            const std::string& comment) {
-    auto* output = proto_->add_outputs();
-    output->set_name(name);
-    output->set_comment(comment);
-    return VariableBuilder{output};
-  }
-
-  template <typename T>
-  TypedAttrChecker<T>& AddAttr(const std::string& name,
-                               const std::string& comment,
-                               bool generated = false) {
-    auto* attr = proto_->add_attrs();
-    attr->set_name(name);
-    attr->set_comment(comment);
-    attr->set_generated(generated);
-    attr->set_type(AttrTypeID<T>());
-    return op_checker_->AddAttrChecker<T>(name);
-  }
-
-  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
-
- private:
-  void CheckNoDuplicatedInOutAttrs() {
-    std::unordered_set<std::string> names;
-    auto checker = [&](const std::string& name) {
-      PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
-      names.insert(name);
-    };
-    for (auto& attr : proto_->attrs()) {
-      checker(attr.name());
-    }
-    for (auto& input : proto_->inputs()) {
-      checker(input.name());
-    }
-    for (auto& output : proto_->outputs()) {
-      checker(output.name());
-    }
-  }
-
-  OpProto* proto_;
-  OpAttrChecker* op_checker_;
-  bool validated_{false};
-};
-
-class NOPMaker : public OpProtoAndCheckerMaker {
- public:
-  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
-};
-
 class OpRegistry {
-  using VarNameMap = OperatorBase::VarNameMap;
-  using OpCreator = std::function<OperatorBase*(
-      const std::string& /*type*/, const VarNameMap& /*inputs*/,
-      const VarNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
-
  public:
-  struct OpInfo {
-    OpCreator creator_;
-    std::string grad_op_type_;
-    OpProto* proto_;
-    OpAttrChecker* checker_;
-  };
-
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
                          const std::string& grad_op_type) {
-    PADDLE_ENFORCE(op_info_map().count(op_type) == 0,
+    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;
-    op_info.creator_ = [](const std::string& type, const VarNameMap& inputs,
-                          const VarNameMap& outputs,
-                          const AttributeMap& attrs) {
+    op_info.creator_ = [](
+        const std::string& type, const VariableNameMap& inputs,
+        const VariableNameMap& outputs, const AttributeMap& attrs) {
       return new OpType(type, inputs, outputs, attrs);
     };
     op_info.grad_op_type_ = grad_op_type;
@@ -167,60 +59,21 @@ class OpRegistry {
       op_info.proto_ = nullptr;
       op_info.checker_ = nullptr;
     }
-    op_info_map().insert(std::make_pair(op_type, op_info));
+    OpInfoMap::Instance().Insert(op_type, op_info);
     // register gradient op
     if (!grad_op_type.empty()) {
       RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "");
     }
   }
 
-  static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
-                                                const VarNameMap& inputs,
-                                                const VarNameMap& outputs,
-                                                AttributeMap attrs) {
-    auto it = op_info_map().find(type);
-    PADDLE_ENFORCE(it != op_info_map().end(),
-                   "Operator '%s' has not been registered.", type);
-    it->second.checker_->Check(attrs);
-    auto op = it->second.creator_(type, inputs, outputs, attrs);
-    return std::shared_ptr<OperatorBase>(op);
-  }
+  static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
+                                                const VariableNameMap& inputs,
+                                                const VariableNameMap& outputs,
+                                                AttributeMap attrs);
 
-  static VarNameMap ConvertOpDescVarsToVarNameMap(
-      const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars) {
-    VarNameMap ret_val;
-    for (auto& var : op_desc_vars) {
-      auto& var_names = ret_val[var.parameter()];
-      auto& var_names_in_proto = var.arguments();
-      var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
-      std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
-                std::back_inserter(var_names));
-    }
-    return ret_val;
-  }
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
-  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
-    VarNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
-    VarNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
-    AttributeMap attrs;
-    for (auto& attr : op_desc.attrs()) {
-      attrs[attr.name()] = GetAttrValue(attr);
-    }
-
-    return CreateOp(op_desc.type(), inputs, outputs, attrs);
-  }
-
-  static std::shared_ptr<OperatorBase> CreateGradOp(const OperatorBase& op) {
-    PADDLE_ENFORCE(!op.IsNetOp(),
-                   "Use framework::Backward to get backward ops");
-    std::shared_ptr<OperatorBase> grad_op(BuildGradOp(&op));
-    return grad_op;
-  }
-
-  static std::unordered_map<std::string, const OpInfo>& op_info_map() {
-    static std::unordered_map<std::string, const OpInfo> op_info_map_;
-    return op_info_map_;
-  }
+  static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
 };
 
 class Registrar {
@@ -272,8 +125,18 @@ class OpKernelRegistrar : public Registrar {
                     grad_op_class)                                            \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
       __reg_op__##op_type, "REGISTER_OP must be called in global namespace"); \
-  static ::paddle::framework::OpRegistrar<op_class, op_maker_class,           \
-                                          grad_op_class>                      \
+  class _OpClass_##op_type##_ : public op_class {                             \
+   public:                                                                    \
+    DEFINE_OP_CLONE_METHOD(_OpClass_##op_type##_);                            \
+    DEFINE_OP_CONSTRUCTOR(_OpClass_##op_type##_, op_class);                   \
+  };                                                                          \
+  class _OpGradClass_##op_type##_ : public grad_op_class {                    \
+   public:                                                                    \
+    DEFINE_OP_CLONE_METHOD(_OpGradClass_##op_type##_);                        \
+    DEFINE_OP_CONSTRUCTOR(_OpGradClass_##op_type##_, grad_op_class);          \
+  };                                                                          \
+  static ::paddle::framework::OpRegistrar<                                    \
+      _OpClass_##op_type##_, op_maker_class, _OpGradClass_##op_type##_>       \
       __op_registrar_##op_type##__(#op_type, #grad_op_type);                  \
   int TouchOpRegistrar_##op_type() {                                          \
     __op_registrar_##op_type##__.Touch();                                     \
@@ -304,7 +167,8 @@ class OpKernelRegistrar : public Registrar {
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
 /**
- * Macro to mark what Operator and Kernel we will use and tell the compiler to
+ * Macro to mark what Operator and Kernel
+ * we will use and tell the compiler to
  * link them into target.
  */
 #define USE_OP_ITSELF(op_type)                                    \
@@ -324,7 +188,8 @@ class OpKernelRegistrar : public Registrar {
       __attribute__((unused)) =                                  \
           TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
 
-// TODO(fengjiayi): The following macros seems ugly, do we have better method?
+// TODO(fengjiayi): The following macros
+// seems ugly, do we have better method?
 
 #ifdef PADDLE_ONLY_CPU
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)

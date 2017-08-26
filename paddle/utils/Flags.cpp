@@ -27,7 +27,6 @@ DEFINE_bool(use_mkldnn, false, "Default still keep use CPU training");
 DEFINE_bool(use_mkldnn, false, "Only support CPU training");
 #endif
 
-DEFINE_bool(use_mkldnn_wgt, false, "Init weight from CPU weight");
 DEFINE_bool(parallel_nn,
             false,
             "Whether to use multi-threads to calculate one neural network."

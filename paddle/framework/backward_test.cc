@@ -32,9 +32,9 @@ class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").AsNoGradient();
-    AddInput("b", "Bias of Add").AsNoGradient();
-    AddOutput("Out", "Out of Add").AsNoGradient();
+    AddInput("X", "Input X of Add").NotInGradient();
+    AddInput("b", "Bias of Add").NotInGradient();
+    AddOutput("Out", "Out of Add").NotInGradient();
     AddComment("Add Op");
   }
 };
@@ -72,16 +72,16 @@ class NoGradOpMaker : public OpProtoAndCheckerMaker {
 
 class FcOp : public operators::NetOp {
  public:
-  FcOp(const std::string &type, const VarNameMap &inputs,
-       const VarNameMap &outputs, const AttributeMap &attrs)
+  FcOp(const std::string &type, const VariableNameMap &inputs,
+       const VariableNameMap &outputs, const AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
-    AddOp(OpRegistry::CreateOp("mul",
-                               {{"X", {Input("X")}}, {"Y", {Input("W")}}},
-                               {{"Out", {Output("mul_result")}}}, {}));
+    AppendOp(OpRegistry::CreateOp("mul",
+                                  {{"X", {Input("X")}}, {"Y", {Input("W")}}},
+                                  {{"Out", {Output("mul_result")}}}, {}));
     auto input_b = Inputs("b");
     std::string before_act = "mul_result";
     if (input_b.size() != 0) {
-      AddOp(OpRegistry::CreateOp(
+      AppendOp(OpRegistry::CreateOp(
           "rowwise_add", {{"X", {Output("mul_result")}}, {"b", {input_b[0]}}},
           {{"Out", {Output("add_result")}}}, {}));
       before_act = "add_result";
@@ -92,8 +92,8 @@ class FcOp : public operators::NetOp {
       }
     }
 
-    AddOp(OpRegistry::CreateOp("sigmoid", {{"X", {Output(before_act)}}},
-                               {{"Out", {Output("Out")}}}, {}));
+    AppendOp(OpRegistry::CreateOp("sigmoid", {{"X", {Output(before_act)}}},
+                                  {{"Out", {Output("Out")}}}, {}));
     CompleteAddOp(false);
   }
 };
@@ -180,8 +180,7 @@ TEST(Backward, simple_op_not_need_grad) {
   auto no_input_gop = f::Backward(*fwd, {"x", "b"});
   ASSERT_NE(no_input_gop, nullptr);
   ASSERT_TRUE(no_input_gop->IsNetOp());
-  ASSERT_EQ(0UL,
-            std::static_pointer_cast<ops::NetOp>(no_input_gop)->ops_.size());
+  ASSERT_EQ(0UL, static_cast<ops::NetOp *>(no_input_gop.get())->ops_.size());
 }
 
 TEST(Backward, net_fc_backward_normal) {
@@ -235,13 +234,13 @@ TEST(Backward, net_fc_backward_not_have_b) {
 
 TEST(Backward, net_input_of_network_not_need_grad) {
   ops::NetOp net;
-  net.AddOp(f::OpRegistry::CreateOp(
+  net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"x"}}, {"W", {"W1"}}, {"b", {"b1"}}},
       {{"mul_result", {"mul_tmp_0"}},
        {"add_result", {"add_tmp_0"}},
        {"Out", {"hidden0"}}},
       {}));
-  net.AddOp(f::OpRegistry::CreateOp(
+  net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"hidden0"}}, {"W", {"W2"}}, {"b", {"b2"}}},
       {{"mul_result", {"mul_tmp_1"}},
        {"add_result", {"add_tmp_1"}},
@@ -274,10 +273,10 @@ TEST(Backward, net_input_of_network_not_need_grad) {
 
 TEST(Backward, net_shared_weight) {
   ops::NetOp net;
-  net.AddOp(f::OpRegistry::CreateOp("mul", {{"X", {"x"}}, {"Y", {"w"}}},
-                                    {{"Out", {"out"}}}, {}));
-  net.AddOp(f::OpRegistry::CreateOp("mul", {{"X", {"out"}}, {"Y", {"w"}}},
-                                    {{"Out", {"FinalOut"}}}, {}));
+  net.AppendOp(f::OpRegistry::CreateOp("mul", {{"X", {"x"}}, {"Y", {"w"}}},
+                                       {{"Out", {"out"}}}, {}));
+  net.AppendOp(f::OpRegistry::CreateOp("mul", {{"X", {"out"}}, {"Y", {"w"}}},
+                                       {{"Out", {"FinalOut"}}}, {}));
   net.CompleteAddOp();
 
   auto bwd = f::Backward(net, {});
@@ -358,19 +357,19 @@ TEST(Backward, op_part_of_input_are_not_need) {
 
 TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
   ops::NetOp net;
-  net.AddOp(f::OpRegistry::CreateOp(
+  net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"x1"}}, {"W", {"w1"}}, {"b", {"b1"}}},
       {{"mul_result", {"mul_out1"}},
        {"add_result", {"add_out1"}},
        {"Out", {"out1"}}},
       {}));
-  net.AddOp(f::OpRegistry::CreateOp(
+  net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"out1"}}, {"W", {"w2"}}, {"b", {"b2"}}},
       {{"mul_result", {"mul_out2"}},
        {"add_result", {"tmp_out2"}},
        {"Out", {"out2"}}},
       {}));
-  net.AddOp(f::OpRegistry::CreateOp(
+  net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"out2"}}, {"W", {"w3"}}, {"b", {"b3"}}},
       {{"mul_result", {"mul_out3"}},
        {"add_result", {"tmp_out3"}},

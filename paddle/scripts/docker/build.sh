@@ -38,7 +38,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
       -DCUDNN_ROOT=/usr/
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
-      -DWITH_TESTING=${WITH_TESTING:-OFF}
+      -DWITH_TESTING=${WITH_TESTING:-ON}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
 EOF
@@ -56,19 +56,18 @@ cmake .. \
       -DWITH_C_API=${WITH_C_API:-OFF} \
       -DWITH_PYTHON=${WITH_PYTHON:-ON} \
       -DCUDNN_ROOT=/usr/ \
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DWITH_TESTING=${WITH_TESTING:-OFF} \
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
+      -DWITH_TESTING=${WITH_TESTING:-ON} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
 ============================================
 Building in /paddle/build ...
-   Build unit tests: ${WITH_TESTING:-OFF}
 ============================================
 EOF
 make -j `nproc`
 
-if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+if [ ${WITH_TESTING:-ON} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
 cat <<EOF
 ========================================
 Running unit tests ...
@@ -120,25 +119,6 @@ EOF
     /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
 fi
 
-# generate deb package for current build
-# FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-if [[ ${WITH_DEB:-ON} == "ON" ]]; then
-    cat <<EOF
-========================================
-Generating .deb package ...
-========================================
-EOF
-    set +e
-    cpack -D CPACK_GENERATOR='DEB' -j `nproc` ..
-    err_code=$?
-    if [ ${err_code} -ne 0 ]; then
-        # cat error logs if cpack failed.
-        cat /paddle/build/_CPack_Packages/Linux/DEB/PreinstallOutput.log
-        exit ${err_code}
-    fi
-    set -e
-fi
-
 cat <<EOF
 ========================================
 Generate /paddle/build/Dockerfile ...
@@ -158,15 +138,15 @@ EOF
 fi
 
 cat >> /paddle/build/Dockerfile <<EOF
-# Use different deb file when building different type of images
-ADD *.deb /
+ADD python/dist/*.whl /
 # run paddle version to install python packages first
 RUN apt-get update &&\
     apt-get install -y wget python-pip && pip install -U pip && \
-    dpkg -i /*.deb ; apt-get install -f -y && \
+    pip install /*.whl; apt-get install -f -y && \
     apt-get clean -y && \
-    rm -f /*.deb && \
-    paddle version
+    rm -f /*.whl && \
+    paddle version && \
+    ldconfig
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 ADD go/cmd/pserver/pserver /usr/bin/
