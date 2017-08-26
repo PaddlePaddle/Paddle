@@ -7,7 +7,7 @@
 1. 一台电脑，可以装的是 Linux, BSD, Windows 或者 MacOS 操作系统，以及
 1. Docker。
 
-不需要其他任何软件了。即便是 Python 和 GCC 都不需要，因为我们会把所有编译工具都安装进一个 Docker image 里。
+不需要依赖其他任何软件了。即便是 Python 和 GCC 都不需要，因为我们会把所有编译工具都安装进一个 Docker image 里。
 
 ## 总体流程
 
@@ -17,7 +17,7 @@
    git clone https://github.com/paddlepaddle/paddle
    ```
 
-2. 安装工具
+2. 安装开发工具到 Docker image 里
 
    ```bash
    cd paddle; docker build -t paddle:dev .
@@ -30,13 +30,13 @@
    以下命令启动一个 Docker container 来执行 `paddle:dev` 这个 Docker image，同时把当前目录（源码树根目录）映射为 container 里的 `/paddle` 目录，并且运行 `Dockerfile` 描述的默认入口程序 [`build.sh`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh)。这个脚本调用 `cmake` 和 `make` 来编译 `/paddle` 里的源码，结果输出到 `/paddle/build`，也就是本地的源码树根目录里的 `build` 子目录。
 
    ```bash
-   docker run -v $PWD:/paddle paddle:dev
+   docker run --rm -v $PWD:/paddle paddle:dev
    ```
 
    上述命令编译出一个 CUDA-enabled 版本。如果我们只需要编译一个只支持 CPU 的版本，可以用
 
    ```bash
-   docker run -e WITH_GPU=OFF -v $PWD:/paddle paddle:dev
+   docker run --rm -e WITH_GPU=OFF -v $PWD:/paddle paddle:dev
    ```
 
 4. 运行单元测试
@@ -44,19 +44,19 @@
    用本机的第一个 GPU 来运行包括 GPU 单元测试在内的所有单元测试：
 
    ```bash
-   NV_GPU=0 nvidia-docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
+   NV_GPU=0 nvidia-docker run --rm -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
    ```
 
    如果编译的时候我们用了 `WITH_GPU=OFF` 选项，那么编译过程只会产生 CPU-based 单元测试，那么我们也就不需要 nvidia-docker 来运行单元测试了。我们只需要：
 
    ```bash
-   docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
+   docker run --rm -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest"
    ```
 
    有时候我们只想运行一个特定的单元测试，比如 `memory_test`，我们可以
 
    ```bash
-   nvidia-docker run -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
+   nvidia-docker run --rm -v $PWD:/paddle paddle:dev bash -c "cd /paddle/build; ctest -V -R memory_test"
    ```
 
 5. 清理
@@ -118,3 +118,7 @@
 - 在 Windows/MacOS 上编译很慢
 
   Docker 在 Windows 和 MacOS 都可以运行。不过实际上是运行在一个 Linux 虚拟机上。可能需要注意给这个虚拟机多分配一些 CPU 和内存，以保证编译高效。具体做法请参考[这个issue](https://github.com/PaddlePaddle/Paddle/issues/627)。
+
+- 磁盘不够
+
+  本文中的例子里，`docker run` 命令里都用了 `--rm` 参数，这样保证运行结束之后的 containers 不会保留在磁盘上。可以用 `docker ps -a` 命令看到停止后但是没有删除的 containers。`docker build` 命令有时候会产生一些中间结果，是没有名字的 images，也会占用磁盘。可以参考[这篇文章](https://zaiste.net/posts/removing_docker_containers/)来清理这些内容。

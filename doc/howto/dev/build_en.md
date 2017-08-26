@@ -118,3 +118,7 @@ Nothing else.  Not even Python and GCC, because you can install all build tools 
 - Docker on Windows/MacOS builds slowly
 
   On Windows and MacOS, Docker containers run in a Linux VM.  You might want to give this VM some more memory and CPUs so to make the building efficient.  Please refer to [this issue](https://github.com/PaddlePaddle/Paddle/issues/627) for details.
+
+- Not enough disk space
+
+  Examples in this article uses option `--rm` with the `docker run` command.  This option ensures that stopped containers do not exist on hard disks.  We can use `docker ps -a` to list all containers, including stopped.  Sometimes `docker build` generates some intermediate dangling images, which also take disk space.  To clean them, please refer to [this article](https://zaiste.net/posts/removing_docker_containers/).
