@@ -133,6 +133,7 @@ __all__ = [
     'clip_layer',
     'slice_projection',
     'kmax_sequence_score_layer',
+    'img_pool3d_layer',
 ]
 
 
@@ -161,6 +162,7 @@ class LayerType(object):
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
     POOL_LAYER = 'pool'
+    POOL3D_LAYER = 'pool3d'
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
     SUM_TO_ONE_NORM_LAYER = 'sum_to_one_norm'
@@ -878,7 +880,8 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, height=None, width=None, layer_attr=None):
+def data_layer(name, size, depth=None, height=None, width=None,
+               layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -905,6 +908,7 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         type=LayerType.DATA,
         name=name,
         size=size,
+        depth=depth,
         height=height,
         width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
@@ -2599,6 +2603,146 @@ def img_pool_layer(input,
                     size_y=pool_size_y,
                     stride_y=stride_y,
                     padding_y=padding_y))
+        ],
+        ceil_mode=ceil_mode,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        LayerType.POOL_LAYER,
+        parents=[input],
+        num_filters=num_channels,
+        size=l.config.size)
+
+
+@wrap_name_default("pool3d")
+@layer_support()
+def img_pool3d_layer(input,
+                     pool_size,
+                     name=None,
+                     num_channels=None,
+                     pool_type=None,
+                     stride=1,
+                     padding=0,
+                     layer_attr=None,
+                     pool_size_y=None,
+                     stride_y=None,
+                     padding_y=None,
+                     pool_size_z=None,
+                     stride_z=None,
+                     padding_z=None,
+                     ceil_mode=True):
+    """
+    Image pooling Layer.
+
+    The details of pooling layer, please refer ufldl's pooling_ .
+
+    .. _pooling: http://ufldl.stanford.edu/tutorial/supervised/Pooling/
+
+    - ceil_mode=True:
+
+    ..  math::
+
+        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
+        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        d = 1 + int(ceil(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+
+    - ceil_mode=False:
+
+    ..  math::
+
+        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
+        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        d = 1 + int(floor(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        maxpool = img_pool3d_layer(input=conv,
+                                 pool_size=3,
+                                 num_channels=8,
+                                 stride=1,
+                                 padding=1,
+                                 pool_type=MaxPooling())
+
+    :param padding: pooling padding width.
+    :type padding: int|tuple|list
+    :param name: name of pooling layer
+    :type name: basestring.
+    :param input: layer's input
+    :type input: LayerOutput
+    :param pool_size: pooling window width
+    :type pool_size: int|tuple|list
+    :param num_channels: number of input channel.
+    :type num_channels: int
+    :param pool_type: pooling type. MaxPooling or AvgPooling. Default is
+                      MaxPooling.
+    :type pool_type: BasePoolingType
+    :param stride: stride width of pooling.
+    :type stride: int|tuple|list
+    :param layer_attr: Extra Layer attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
+                      Defalut is True. If set false, Otherwise use floor.
+
+    :type ceil_mode: bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if pool_type is None:
+        pool_type = MaxPooling()
+    elif isinstance(pool_type, AvgPooling):
+        pool_type.name = 'avg'
+
+    type_name = pool_type.name + '-projection' \
+        if (
+        isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
+
+    if isinstance(pool_size, collections.Sequence):
+        assert len(pool_size) == 3
+        pool_size, pool_size_y, pool_size_z = pool_size
+    else:
+        pool_size_y = pool_size
+        pool_size_z = pool_size
+
+    if isinstance(stride, collections.Sequence):
+        assert len(stride) == 3
+        stride, stride_y, stride_z = stride
+    else:
+        stride_y = stride
+        stride_z = stride
+
+    if isinstance(padding, collections.Sequence):
+        assert len(padding) == 3
+        padding, padding_y, padding_y = padding
+    else:
+        padding_y = padding
+        padding_z = padding
+
+    l = Layer(
+        name=name,
+        type=LayerType.POOL3D_LAYER,
+        inputs=[
+            Input(
+                input.name,
+                pool=Pool3d(
+                    pool_type=type_name,
+                    channels=num_channels,
+                    size_x=pool_size,
+                    start=None,
+                    stride=stride,
+                    padding=padding,
+                    size_y=pool_size_y,
+                    stride_y=stride_y,
+                    padding_y=padding_y,
+                    size_z=pool_size_z,
+                    stride_z=stride_z,
+                    padding_z=padding_z))
         ],
         ceil_mode=ceil_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))

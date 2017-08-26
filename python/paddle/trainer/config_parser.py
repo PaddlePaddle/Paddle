@@ -904,6 +904,31 @@ class Pool(Cfg):
 
 
 @config_class
+class Pool3d(Cfg):
+    def __init__(
+            self,
+            pool_type,
+            channels,
+            size_x,
+            size_y=None,
+            size_z=None,
+            start=None,
+            stride=None,  # 1 by defalut in protobuf
+            stride_y=None,
+            stride_z=None,
+            padding=None,  # 0 by defalut in protobuf
+            padding_y=None,
+            padding_z=None):
+        self.add_keys(locals())
+        self.filter_size_y = size_y if size_y else size_x
+        self.filter_size_z = size_z if size_z else size_x
+        self.padding_y = padding_y if padding_y else padding
+        self.padding_z = padding_z if padding_z else padding
+        self.stride_y = stride_y if stride_y else stride
+        self.stride_z = stride_z if stride_z else stride
+
+
+@config_class
 class SpatialPyramidPool(Cfg):
     def __init__(self, pool_type, pyramid_height, channels):
         self.add_keys(locals())
@@ -1167,6 +1192,20 @@ def get_img_size(input_layer_name, channels):
     return img_size, img_size_y
 
 
+def get_img3d_size(input_layer_name, channels):
+    input = g_layer_map[input_layer_name]
+    img_pixels = input.size / channels
+    img_size = input.width
+    img_size_y = input.height
+    img_size_z = input.depth
+
+    config_assert(
+        img_size * img_size_y * img_size_z == img_pixels,
+        "Input layer %s: Incorrect input image size %d * %d * %d for input image pixels %d"
+        % (input_layer_name, img_size, img_size_y, img_size_z, img_pixels))
+    return img_size, img_size_y, img_size_z
+
+
 def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
     parse_image(bilinear, input_layer_name, bilinear_conf.image_conf)
     bilinear_conf.out_size_x = bilinear.out_size_x
@@ -1202,6 +1241,45 @@ def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
     pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                          pool_conf.padding_y,
                                          pool_conf.stride_y, not ceil_mode)
+
+
+def parse_pool3d(pool, input_layer_name, pool_conf, ceil_mode):
+    pool_conf.pool_type = pool.pool_type
+    config_assert(pool.pool_type in ['max-projection', 'avg-projection'],
+                  "pool-type %s is not in "
+                  "['max-projection', 'avg-projection']" % pool.pool_type)
+
+    pool_conf.channels = pool.channels
+
+    pool_conf.size_x = pool.size_x
+    pool_conf.stride = pool.stride
+    pool_conf.padding = pool.padding
+
+    pool_conf.size_y = default(pool.size_y, pool_conf.size_x)
+    pool_conf.size_z = default(pool.size_z, pool_conf.size_x)
+    pool_conf.stride_y = default(pool.stride_y, pool_conf.stride)
+    pool_conf.stride_z = default(pool.stride_z, pool_conf.stride)
+    pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
+    pool_conf.padding_z = default(pool.padding_z, pool_conf.padding)
+
+    pool_conf.img_size, pool_conf.img_size_y, pool_conf.img_size_z = \
+        get_img3d_size(input_layer_name, pool.channels)
+
+    config_assert(not pool.start, "start is deprecated in pooling.")
+
+    if pool.padding is not None:
+        pool_conf.padding = pool.padding
+    pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
+    pool_conf.padding_z = default(pool.padding_z, pool_conf.padding)
+    pool_conf.output_x = cnn_output_size(pool_conf.img_size, pool_conf.size_x,
+                                         pool_conf.padding, pool_conf.stride,
+                                         not ceil_mode)
+    pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
+                                         pool_conf.padding_y,
+                                         pool_conf.stride_y, not ceil_mode)
+    pool_conf.output_z = cnn_output_size(pool_conf.img_size_z, pool_conf.size_z,
+                                         pool_conf.padding_z,
+                                         pool_conf.stride_z, not ceil_mode)
 
 
 def parse_spp(spp, input_layer_name, spp_conf):
@@ -1580,6 +1658,9 @@ class LayerBase(object):
         self.config.height = height
         self.config.width = width
 
+    def set_layer_depth(self, depth):
+        self.config.depth = depth
+
     def set_cnn_layer(self,
                       input_layer_name,
                       height,
@@ -1763,11 +1844,19 @@ class DetectionOutputLayer(LayerBase):
 
 @config_layer('data')
 class DataLayer(LayerBase):
-    def __init__(self, name, size, height=None, width=None, device=None):
+    def __init__(self,
+                 name,
+                 size,
+                 depth=None,
+                 height=None,
+                 width=None,
+                 device=None):
         super(DataLayer, self).__init__(
             name, 'data', size, inputs=[], device=device)
         if height and width:
             self.set_layer_height_width(height, width)
+        if depth:
+            self.set_layer_depth(depth)
 
 
 '''
@@ -1993,6 +2082,35 @@ class PoolLayer(LayerBase):
                        pool_conf, ceil_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
+
+
+@config_layer('pool3d')
+class Pool3DLayer(LayerBase):
+    def __init__(self, name, inputs, ceil_mode=True, **xargs):
+        super(Pool3DLayer, self).__init__(
+            name, 'pool3d', 0, inputs=inputs, **xargs)
+        for input_index in xrange(len(self.inputs)):
+            input_layer = self.get_input_layer(input_index)
+            pool_conf = self.config.inputs[input_index].pool_conf
+            parse_pool3d(self.inputs[input_index].pool, input_layer.name,
+                         pool_conf, ceil_mode)
+            self.set_cnn_layer(name, pool_conf.output_z, pool_conf.output_y,
+                               pool_conf.output_x, pool_conf.channels)
+
+    def set_cnn_layer(self,
+                      input_layer_name,
+                      depth,
+                      height,
+                      width,
+                      channels,
+                      is_print=True):
+        size = depth * height * width * channels
+        self.set_layer_size(size)
+        self.set_layer_height_width(height, width)
+        self.set_layer_depth(depth)
+        if is_print:
+            print("output for %s: c = %d, d = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, depth, height, width, size))
 
 
 @config_layer('spp')

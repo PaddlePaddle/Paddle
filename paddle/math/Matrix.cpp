@@ -2255,9 +2255,7 @@ void CpuMatrix::maxPool3DBackward(Matrix& outGrad,
   real* tgtGrad = getData();
   real* otGrad = outGrad.getData();
   real* maxPoolIdxData = maxPoolIdx.getData();
-
   size_t outStride = outGrad.getStride();
-  ;
 
   for (size_t n = 0; n < num; ++n) {
     if (!outGrad.isContiguous()) {
