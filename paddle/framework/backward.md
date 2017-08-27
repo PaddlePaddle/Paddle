@@ -6,7 +6,7 @@ In Neural Network, the backpropagation algorithm follows the chain rule, so we n
  
 ## Backward Operator Registry
 
-A backward network is built up with several backward operators. Backward operators take forward operators' inputs, outputs and output gradients, and then calculate its input gradients. In most cases, there is a one-to-one correspondence between forward and backward operators. We use registry mechanism to save these correspondences, which is quite similar with operator registry itself.
+A backward network is built up with several backward operators. Backward operators take forward operators' inputs, outputs and output gradients and then calculate its input gradients. In most cases, there is a one-to-one correspondence between forward and backward operators. We use registry mechanism to save these correspondences, which is quite similar with operator registry itself.
 
 For example, we have got a `add_two_op`, and is registered by the following code:
 
