@@ -21,18 +21,32 @@ grad_op_builder(fengjiayi)
 
 given a forward network, it generates the backward network. We only care about the Gradients—`OutputGradients`,`InputGradients`.
 
-1. bla bla bla (yuyang)
+1. Op 
+
+   when the input forward network is a Op, return its gradient Operator Immediately.
 
 2. NetOp 
 
-   when the input forward network is a NetOp, it need to call the sub NetOp/Operators backward function recursively and ensure them done. During the process, we need to collect the `OutputGradients` name.
+   when the input forward network is a NetOp, it need to call the sub NetOp/Operators backward function recursively. During the process, we need to collect the `OutputGradients` name according to forward NetOp.
 
-   We share variable in the same scope, as a result, duplicate operator `OutputGradients` will overwirte then duplicate variable.  
+   **shared variable**. As illustrated in the pictures, two operator's `Output` `Gradient` will overwirte their shared input variable.  
 
-   ![./images/duplicate_op]()
+   <p align="center">
+   <img src="./images/duplicate_op.png" width="70%" ><br/>
 
-    Share variable between operators or same input variable used in multiple operators lead to a duplicate gradient variable. As demo show above, we need to rename gradient name recursively, and add a generic add operator instead. 
+   1. shared variable in two operators. 
 
-![./images/duplicate_op2]()
+   </p>
 
-​	Then collect the sub graph OutputGradients/InputGradients as the NetOp's and return it.
+   Share variable between operators or same input variable used in multiple operators lead to a duplicate gradient variable. As demo show above, we need to rename gradient name recursively, and add a generic add operator replace the overwirte links. 
+
+   <p align="center">
+   <img src="images/duplicate_op2.png" width="90%" ><br/>
+
+   2. replace shared variable gradient with `Add` Operator
+
+   </p>
+
+
+
+​	Then collect the sub graph `OutputGradients`/`InputGradients` as the NetOp's and return it.
