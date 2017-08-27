@@ -3,7 +3,34 @@
 ## Namespace vs Scope
 
 ## Namespace
-a global scope with name prefix to demonstrate a solf scope.
+`pd.namespace` is similar to `std::namespace` in C++, 
+it will add prefix to the names of all variables declared in a loca
+
+```python
+import paddle as pd
+
+def descriminator(x):
+    with pd.namespace('descriminator'):
+        prob = xxxop(x)
+        return prob
+
+def generator(z):
+    with pd.namespace('generator'):
+        sample = xxxop(z)
+        return sample
+
+image = pd.data('image')
+z = pd.data('z')
+
+prob_real = descriminator(image)
+sample = generator(z)
+prob_fake = descriminator(sample)
+
+
+```
+
+## Scope
+
 ```python
 import paddle as pd
 
@@ -27,29 +54,4 @@ z = pd.data('z')
 prob_real = descriminator(image)
 sample = generator(z)
 prob_fake = descriminator(sample)
-```
-
-## Scope
-
-```python
-import paddle as pd
-
-def descriminator(x):
-    with pd.namespace('descriminator'):
-        prob = xxxop(x)
-        return prob
-
-def generator(z):
-    with pd.namespace('generator'):
-        sample = xxxop(z)
-        return sample
-
-image = pd.data('image')
-z = pd.data('z')
-
-prob_real = descriminator(image)
-sample = generator(z)
-prob_fake = descriminator(sample)
-
-
 ```
