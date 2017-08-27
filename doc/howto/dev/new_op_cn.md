@@ -4,11 +4,13 @@
  - [实现C++类](#实现C++类)
    - [定义ProtoMaker类](#定义ProtoMaker类)
    - [定义Operator类](#定义Operator类)
-   - [定义`OpKernel`类](#定义`OpKernel`类)
+   - [定义OpKernel类](#定义OpKernel类)
    - [注册类](#注册类)
    - [编译](#编译)
  - [绑定Python](#绑定Python)
  - [实现单元测试](#实现单元测试)
+   - [前向Operator单测](#前向Operator单测)
+   - [反向Operator单测](#反向Operator单测)
 
 
 ## 概念简介
@@ -41,25 +43,23 @@ Forward Op需要包含：
 
 ### 1. 定义ProtoMaker类
 
-矩阵乘的公式：$$Out = X * Y$$ ，可见该计算由两个输入，一个输出组成。首先定义`ProtoMaker`来描述该Op的输入、输出及注释：
-
+矩阵乘的公式：$Out = X * Y$, 可见该计算由两个输入，一个输出组成。首先定义`ProtoMaker`来描述该Op的输入、输出及注释：
     
-
-    ```
-	class MulOpMaker : public framework::OpProtoAndCheckerMaker {
-	 public:
-	  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-	      : OpProtoAndCheckerMaker(proto, op_checker) {
-	    AddInput("X", "The first input of mul op");
-	    AddInput("Y", "The second input of mul op");
-	    AddOutput("Out", "The output of mul op");
-	    AddComment(R"DOC(
-	Two Element Mul Operator.
-	The equation is: Out = X * Y
-	)DOC");
-	  }
-	};
-    ```
+```
+class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "The first input of mul op");
+    AddInput("Y", "The second input of mul op");
+    AddOutput("Out", "The output of mul op");
+    AddComment(R"DOC(
+Two Element Mul Operator.
+The equation is: Out = X * Y
+)DOC");
+  }
+};
+```
    
 [`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)继承自`framework::OpProtoAndCheckerMaker`，构造函数包括2个：
 
@@ -73,8 +73,8 @@ Forward Op需要包含：
    
 再举个[`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37)的例子：
    
-```C++
-   template <typename AttrType>
+```
+template <typename AttrType>
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -98,42 +98,42 @@ The equation is: Out = scale*X
 ### 2. 定义Operator类
 
 
-	```C++
-	class MulOp : public framework::OperatorWithKernel {
-	 public:
-	  using framework::OperatorWithKernel::OperatorWithKernel;
-	
-	 protected:
-	  void InferShape(const framework::InferShapeContext &ctx) const override {
-	    auto dim0 = ctx.Input<Tensor>("X")->dims();
-	    auto dim1 = ctx.Input<Tensor>("Y")->dims();
-	    PADDLE_ENFORCE_EQ(dim0.size(), 2,
-	                      "input X(%s) should be a tensor with 2 dims, a matrix",
-	                      ctx.op_.Input("X"));
-	    PADDLE_ENFORCE_EQ(dim1.size(), 2,
-	                      "input Y(%s) should be a tensor with 2 dims, a matrix",
-	                      ctx.op_.Input("Y"));
-	    PADDLE_ENFORCE_EQ(
-	        dim0[1], dim1[0],
-	        "First matrix's width must be equal with second matrix's height.");
-	    ctx.Output<Tensor>("Out")->Resize({dim0[0], dim1[1]});
-	  }
-	};
-	```
+```c++
+class MulOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    auto dim0 = ctx.Input<Tensor>("X")->dims();
+    auto dim1 = ctx.Input<Tensor>("Y")->dims();
+    PADDLE_ENFORCE_EQ(dim0.size(), 2,
+                      "input X(%s) should be a tensor with 2 dims, a matrix",
+                      ctx.op_.Input("X"));
+    PADDLE_ENFORCE_EQ(dim1.size(), 2,
+                      "input Y(%s) should be a tensor with 2 dims, a matrix",
+                      ctx.op_.Input("Y"));
+    PADDLE_ENFORCE_EQ(
+        dim0[1], dim1[0],
+        "First matrix's width must be equal with second matrix's height.");
+    ctx.Output<Tensor>("Out")->Resize({dim0[0], dim1[1]});
+  }
+};
+```
 
 [`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L22)继承自`OperatorWithKernel`。`public`成员：
 	 
-```C++
+```c++
 using framework::OperatorWithKernel::OperatorWithKernel;
 ```
 
 这句表示使用基类`OperatorWithKernel`的构造函数，也可写成：
    
-```C++
-  MulOp(const std::string &type, const framework::VariableNameMap &inputs,
-        const framework::VariableNameMap &outputs,
-        const framework::AttributeMap &attrs)
-    : OperatorWithKernel(type, inputs, outputs, attrs) {}
+```c++
+MulOp(const std::string &type, const framework::VariableNameMap &inputs,
+      const framework::VariableNameMap &outputs,
+      const framework::AttributeMap &attrs)
+  : OperatorWithKernel(type, inputs, outputs, attrs) {}
 ```	
 	
 还需要重写`InferShape`接口。`InferShape`为const函数，不能修改Op的成员变量，参数为`const framework::InferShapeContext &ctx`，通过该参数可获取到输入输出以及属性。它的功能是：
@@ -142,7 +142,7 @@ using framework::OperatorWithKernel::OperatorWithKernel;
 
 通常`OpProtoMaker`和`Op`类的定义写在`.cc`文件中，和要讲到的注册函数一起放在`.cc`中
 
-### 3. 定义`OpKernel`类
+### 3. 定义OpKernel类
 
 ```C++
 template <typename Place, typename T>
@@ -176,13 +176,13 @@ class MulKernel : public framework::OpKernel {
 
 在`.cc`文件中注册前向、反向Op类，注册CPU Kernel。
 
-    ```C++
-	namespace ops = paddle::operators;
-	REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
-	REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
-	REGISTER_OP_CPU_KERNEL(mul_grad,
-                      ops::MulGradKernel<paddle::platform::CPUPlace, float>);
-    ```
+```c++
+namespace ops = paddle::operators;
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(mul_grad,
+              ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+```
     
   - `REGISTER_OP` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`，
   - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
@@ -190,32 +190,32 @@ class MulKernel : public framework::OpKernel {
 
 在 `.cu`文件中注册GPU Kernel。
    
-   ```
-	namespace ops = paddle::operators;
-	REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
-	REGISTER_OP_GPU_KERNEL(mul_grad,
-	                       ops::MulGradKernel<paddle::platform::GPUPlace, float>);
-   ```
+```c++
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(mul_grad,
+                       ops::MulGradKernel<paddle::platform::GPUPlace, float>);
+```
 
 ### 5. 编译
 
 在[paddle/operators/CMakeLists.txt](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/CMakeLists.txt)文件中添加编译。
    
-   ```
-   op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)
-   ```
+```
+op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)
+```
    
 下面命令可以编译：
    
-   ```
-   make mul_op
-   ```
+```
+make mul_op
+```
 
 ## 绑定Python
 
- - 绑定Python 
+- 绑定Python 
  
-   在 [`paddle/pybind/pybind.cc 
+    在 [`paddle/pybind/pybind.cc 
 `](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/pybind.cc)文件中添加该类：
 
     ```
@@ -232,23 +232,23 @@ class MulKernel : public framework::OpKernel {
     
  - 生成库
 
-   在 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件添加类到`DEPS`中。
+   在 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件添加类到`DEPS`中，使得该Op可以链接到生成的lib库中。
    
    ```
    if(WITH_PYTHON)
-cc_library(paddle_pybind SHARED
-    SRCS pybind.cc
-    DEPS pybind python backward
-    mul_op
-    minus_op)
-endif(WITH_PYTHON)
+     cc_library(paddle_pybind SHARED
+     SRCS pybind.cc
+     DEPS pybind python backward
+     mul_op
+     minus_op)
+   endif(WITH_PYTHON)
    ```
 
 ## 实现单元测试
 
 单测包括对比前向Op不同设备(CPU、GPU)的实现、对比反向OP不同设备(CPU、GPU)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单测](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
 
-- 前向Op单测
+### 前向Operator单测
 
 前向Op单测继承自`unittest.TestCase`，并定义元类`__metaclass__ = OpTestMeta`，具体单测流程在`OpTestMeta`里完成。需在`setUp`函数定义输入输出和属性参数，以及Python对比的输出值。
 
@@ -276,7 +276,7 @@ class TestMulOp(unittest.TestCase):
    - `self.outputs` : 定义输出，并得到Python结算结果。
 
  
- - 反向Op单测
+### 反向Operator单测
 
 反向Op单测继承自`GradientChecker`，而`GradientChecker`集成自`unittest.TestCase`，所以反向单测函数需要`test_`开头。
 
