@@ -184,15 +184,14 @@ void MKLDNNFcLayer::resetBwd() {
   const MatrixPtr& wgt = weight_->getWGrad();
   const MatrixPtr& bias = hasBias ? biases_->getWGrad() : nullptr;
 
+  // TODO(TJ): merge topdiffs
   if (nextIsMKLDNN()) {
     // can not directly cast outputgrad to mkldnnmatrix,
     // since each layer can not write the inputgrad to mkldnn inputgrad.
     // So just create from matrix with outputvalue format.
     const MatrixPtr& out = getOutput(MKLDNN_DEVICE).grad;
     outGrad_ = MKLDNNMatrix::create(out, outVal_->getPD());
-    // TODO: maybe need merge topdiffs
   } else {
-    // TODO: merge topdiffs
     const MatrixPtr& out = getOutput(CPU_DEVICE).grad;
     // fc do not need to convert from cpu device since output always nc
     // only need create from cpu device
@@ -234,8 +233,7 @@ void MKLDNNFcLayer::resetBwd() {
       return;
     }
     if (getInput(0, MKLDNN_DEVICE).getAllCount() > 1) {
-      // TODO: many mkldnn bots
-      // add sum handle
+      // TODO(TJ): use outputMaps_ ways when merge topdiff done
     } else {
       inGrad_ = MKLDNNMatrix::create(in, inVal_->getPD());
     }
@@ -245,8 +243,7 @@ void MKLDNNFcLayer::resetBwd() {
       return;
     }
     if (getInput(0, CPU_DEVICE).getAllCount() > 1) {
-      // TODO: many  bots
-      // add sum handle
+      // TODO(TJ): use outputMaps_ ways when merge topdiff done
     } else {
       inGrad_ = MKLDNNMatrix::create(in, inVal_->getPD());
     }
