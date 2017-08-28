@@ -1,5 +1,5 @@
 # RNN design
-This is the design doc of the recurrent neural network operator which takes fix-length sentences as inputs.
+This is the design doc of the recurrent neural network operator, input instances in each mini-batch must have the same length. 
 
 ## RNN Algorithm Implementation
 
