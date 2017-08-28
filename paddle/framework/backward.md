@@ -2,28 +2,28 @@
 
 ## Motivation
 
-In Neural Network, the backpropagation algorithm follows the chain rule, so we need to compound the fundmental gradient operators/expressions together with chain rule . Every forward network need a backward network to construct the full computation lineage, the operator/expression's backward pass will be generated respect to forward pass.
+In Neural Network, the backpropagation algorithm follows the chain rule, so we need to compound the fundmental gradient operators/expressions together with chain rule . Every forward network need a backward network to construct the full computation graph, the operator/expression's backward pass will be generated respect to forward pass.
   
 ## Backward Operator Registry
 
 A backward network is built up with several backward operators. Backward operators take forward operators' inputs, outputs and output gradients and then calculate its input gradients.
 
--|                        | forward operator | backward operator 
--| ---------------------- | ---------------- |------------------------- |		
--| **Operator::inputs_**  | Inputs       | Inputs, Outputs, OutputGradients |	
--| **Operator::outputs_** | Outputs          | InputGradients            |
+|                        | forward operator | backward operator 
+| ---------------------- | ---------------- |------------------------- |		
+| **Operator::inputs_**  | Inputs       | Inputs, Outputs, OutputGradients |	
+| **Operator::outputs_** | Outputs          | InputGradients            |
 
  In most cases, there is a one-to-one correspondence between forward and backward operators. These correspondences are recorded by a global hash map(`OpInfoMap`). To follow the philosophy of minimum core and make operators pluggable, the registry mechanism is introduced.
 
-For example, we have got a `add_two_op`, and we can register it's information and corresponding backward operator by the following macro:
+For example, we have got a `mul_op`, and we can register it's information and corresponding backward operator by the following macro:
 
 ```cpp
-REGISTER_OP(add_two, AddTwoOp, AddTwoOpMaker, add_two_grad, AddTwoGradOp);
+REGISTER_OP(mul, MulOp, MulOpMaker, mul_grad, MulOpGrad);
 ```
 
-`add_two` is the operator's type. `AddTwoOp` and `AddTwoOpMaker` are the operator class and the operator maker class respectively.
+`mul` is the operator's type. `MulOp` and `MulOpMaker` are the operator class and the operator maker class respectively.
 
-`add_two_grad` is the type of backward operator, and `AddTwoGradOp` is its class name.
+`mul_grad` is the type of backward operator, and `MulOpGrad` is its class name.
 
 ## Backward Opeartor Creating
 
