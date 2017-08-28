@@ -241,7 +241,7 @@ extern void hl_matrix_rotate(
  * @param[in]   paddingD   padding in the depth.
  * @param[in]   paddingH   padding in the height.
  * @param[in]   paddingW   padding in the width.
- * @param[out]   matDst     output matrix.
+ * @param[out]   dataDst     output matrix.
  *
  */
 extern void hl_matrix_vol2Col(const real* dataSrc,

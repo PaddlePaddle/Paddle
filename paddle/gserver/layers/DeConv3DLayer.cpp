@@ -53,9 +53,6 @@ bool DeConv3DLayer::init(const LayerMap &layerMap,
 
 size_t DeConv3DLayer::getSize() {
   CHECK_NE(inputLayers_.size(), 0UL);
-  // imgSizeH_.clear();
-  // imgSizeW_.clear();
-  // imgSizeD_.clear();
   outputH_.clear();
   outputW_.clear();
   outputD_.clear();
@@ -63,9 +60,6 @@ size_t DeConv3DLayer::getSize() {
   NOut_.clear();
   size_t layerSize = 0;
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
-    // imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-    // imgSizeW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-    // imgSizeD_.push_back(inputLayers_[i]->getOutput().getFrameDepth());
     outputW_.push_back(
         imageSize(imgSizeW_[i], filterSize_[i], padding_[i], stride_[i], true));
     outputH_.push_back(imageSize(
