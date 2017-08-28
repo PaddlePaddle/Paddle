@@ -55,6 +55,7 @@ option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
+option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -137,9 +138,9 @@ set(EXTERNAL_LIBS
 )
 
 if(WITH_GPU)
-    list(APPEND EXTERNAL_LIB ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
+    list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
     if(NOT WITH_DSO)
-        list(APPEND EXTERNAL_LIB ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 

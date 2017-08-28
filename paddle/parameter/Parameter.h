@@ -65,7 +65,10 @@ public:
   size_t getSize() const { return config_.size(); }
 
   bool isFullSize() const {
-    return this->getSize() == bufs_[PARAMETER_VALUE]->getSize();
+    if (bufs_[PARAMETER_VALUE]) {
+      return this->getSize() == bufs_[PARAMETER_VALUE]->getSize();
+    }
+    return false;
   }
 
   inline bool useGpu() const { return useGpu_; }

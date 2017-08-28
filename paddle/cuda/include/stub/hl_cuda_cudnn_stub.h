@@ -78,7 +78,9 @@ inline void hl_create_convolution_descriptor(hl_convolution_descriptor* conv,
                                              int padding_height,
                                              int padding_width,
                                              int stride_height,
-                                             int stride_width) {}
+                                             int stride_width,
+                                             int dilation_h,
+                                             int dilation_w) {}
 
 inline void hl_reset_convolution_descriptor(hl_convolution_descriptor conv,
                                             hl_tensor_descriptor image,
@@ -86,7 +88,9 @@ inline void hl_reset_convolution_descriptor(hl_convolution_descriptor conv,
                                             int padding_height,
                                             int padding_width,
                                             int stride_height,
-                                            int stride_width) {}
+                                            int stride_width,
+                                            int dilation_h,
+                                            int dilation_w) {}
 
 inline void hl_destroy_convolution_descriptor(hl_convolution_descriptor conv) {}
 
@@ -99,7 +103,8 @@ inline void hl_conv_workspace(hl_tensor_descriptor input,
                               int* convBwdDataAlgo,
                               size_t* bwdDataLimitBytes,
                               int* convBwdFilterAlgo,
-                              size_t* bwdFilterLimitBytes) {}
+                              size_t* bwdFilterLimitBytes,
+                              bool useDilation) {}
 
 inline void hl_convolution_forward(hl_tensor_descriptor input,
                                    real* input_data,
