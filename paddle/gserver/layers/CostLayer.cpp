@@ -611,22 +611,26 @@ void HuberRegressionLoss::forwardImp(Matrix& output,
                                      Matrix& target) {
   HuberCost::forwardImp(output, label, target);
   size_t numSamples = target.getHeight();
+  size_t dim = output.getWidth();
   CHECK(label.value);
   CHECK_EQ((*label.value).getHeight(), numSamples);
   CHECK_EQ(output.getHeight(), numSamples);
-  CHECK_EQ(output.getWidth(), (*label.value).getWidth());
+  CHECK_EQ(dim, (*label.value).getWidth());
   CHECK_EQ(target.getWidth(), (size_t)1);
 
   real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
   real* lbl =
       useGpu_ ? tmpCpuInput_[1].value->getData() : (*label.value).getData();
-  std::vector<real> cost(numSamples);
+  std::vector<real> cost(numSamples, 0);
   for (size_t i = 0; i < numSamples; ++i) {
-    real a = std::abs(lbl[i] - out[i]);
-    if (a <= delta_)
-      cost[i] = a * a / 2;
-    else
-      cost[i] = delta_ * (a - delta_ / 2);
+    for (size_t j = 0; j < dim; ++j) {
+      int index = i * dim + j;
+      real a = std::abs(lbl[index] - out[index]);
+      if (a <= delta_)
+        cost[i] += a * a / 2;
+      else
+        cost[i] += delta_ * (a - delta_ / 2);
+    }
   }
   target.copyFrom(cost.data(), numSamples);
 }
@@ -635,18 +639,22 @@ void HuberRegressionLoss::backwardImp(Matrix& output,
                                       Argument& label,
                                       Matrix& outputG) {
   size_t numSamples = output.getHeight();
+  size_t dim = output.getWidth();
   real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
   real* lbl =
       useGpu_ ? tmpCpuInput_[1].value->getData() : (*label.value).getData();
   real* grad = useGpu_ ? tmpCpuInput_[0].grad->getData() : outputG.getData();
   for (size_t i = 0; i < numSamples; ++i) {
-    real a = lbl[i] - out[i];
-    if (std::abs(a) <= delta_)
-      grad[i] += -a;
-    else
-      grad[i] += a > 0 ? -delta_ : delta_;
+    for (size_t j = 0; j < dim; ++j) {
+      int index = i * dim + j;
+      real a = lbl[index] - out[index];
+      if (std::abs(a) <= delta_)
+        grad[index] += -a;
+      else
+        grad[index] += a > 0 ? -delta_ : delta_;
+    }
   }
-  if (useGpu_) outputG.copyFrom(grad, numSamples);
+  if (useGpu_) outputG.copyFrom(grad, numSamples * dim);
 }
 
 //
@@ -664,23 +672,25 @@ void HuberTwoClassification::forwardImp(Matrix& output,
                                         Matrix& target) {
   HuberCost::forwardImp(output, label, target);
   size_t numSamples = target.getHeight();
+  size_t dim = output.getWidth();
   CHECK(label.ids);
   CHECK_EQ((*label.ids).getSize(), numSamples);
   CHECK_EQ(output.getHeight(), numSamples);
-  CHECK_EQ(output.getWidth(), (size_t)1);
   CHECK_EQ(target.getWidth(), (size_t)1);
 
   real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
   int* lbl = useGpu_ ? tmpCpuInput_[1].ids->getData() : (*label.ids).getData();
-  std::vector<real> cost(numSamples);
+  std::vector<real> cost(numSamples, 0);
   for (size_t i = 0; i < numSamples; ++i) {
     int y = 2 * lbl[i] - 1;
-    if (out[i] * y < -1)
-      cost[i] = -4 * out[i] * y;
-    else if (out[i] * y < 1)
-      cost[i] = (1 - out[i] * y) * (1 - out[i] * y);
-    else
-      cost[i] = 0;
+    for (size_t j = 0; j < dim; ++j) {
+      int index = i * dim + j;
+      real a = out[index] * y;
+      if (a < -1)
+        cost[i] += -4 * a;
+      else if (a < 1)
+        cost[i] += (1 - a) * (1 - a);
+    }
   }
   target.copyFrom(cost.data(), numSamples);
 }
@@ -689,17 +699,22 @@ void HuberTwoClassification::backwardImp(Matrix& output,
                                          Argument& label,
                                          Matrix& outputG) {
   size_t numSamples = output.getHeight();
+  size_t dim = output.getWidth();
   real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
   int* lbl = useGpu_ ? tmpCpuInput_[1].ids->getData() : (*label.ids).getData();
   real* grad = useGpu_ ? tmpCpuInput_[0].grad->getData() : outputG.getData();
   for (size_t i = 0; i < numSamples; ++i) {
     int y = 2 * lbl[i] - 1;
-    if (y * out[i] < -1)
-      grad[i] += -4 * y;
-    else if (y * out[i] < 1)
-      grad[i] += -2 * (1 - y * out[i]) * y;
+    for (size_t j = 0; j < dim; ++j) {
+      int index = i * dim + j;
+      real a = out[index] * y;
+      if (a < -1)
+        grad[index] += -4 * y;
+      else if (a < 1)
+        grad[index] += -2 * (1 - a) * y;
+    }
   }
-  if (useGpu_) outputG.copyFrom(grad, numSamples);
+  if (useGpu_) outputG.copyFrom(grad, numSamples * dim);
 }
 /**
  * This cost layer compute the sum of its input as loss.
