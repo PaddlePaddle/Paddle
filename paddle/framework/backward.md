@@ -6,9 +6,16 @@ In Neural Network, the backpropagation algorithm follows the chain rule, so we n
   
 ## Backward Operator Registry
 
-A backward network is built up with several backward operators. Backward operators take forward operators' inputs, outputs and output gradients and then calculate its input gradients. In most cases, there is a one-to-one correspondence between forward and backward operators. We use registry mechanism to save these correspondences.
+A backward network is built up with several backward operators. Backward operators take forward operators' inputs, outputs and output gradients and then calculate its input gradients.
 
-For example, we have got a `add_two_op`, and is registered by the following code:
+-|                        | forward operator | backward operator 
+-| ---------------------- | ---------------- |------------------------- |		
+-| **Operator::inputs_**  | Inputs       | Inputs, Outputs, OutputGradients |	
+-| **Operator::outputs_** | Outputs          | InputGradients            |
+
+ In most cases, there is a one-to-one correspondence between forward and backward operators. These correspondences are recorded by a global hash map(`OpInfoMap`). To follow the philosophy of minimum core and make operators pluggable, the registry mechanism is introduced.
+
+For example, we have got a `add_two_op`, and we can register it's information and corresponding backward operator by the following macro:
 
 ```cpp
 REGISTER_OP(add_two, AddTwoOp, AddTwoOpMaker, add_two_grad, AddTwoGradOp);
