@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_ONLY_CPU
+#include <cudnn.h>
+#endif
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
@@ -189,9 +192,15 @@ TEST(Projection, scaling) {
 void testProjectionConv(size_t groups, bool isDeconv) {
   const int NUM_FILTERS = 18;
   const int FILTER_SIZE = 2;
-  const int FILTER_SIZE_Y = 4;
+  const int FILTER_SIZE_Y = 2;
   const int CHANNELS = 3;
   const int IMAGE_SIZE = 16;
+
+#if CUDNN_VERSION >= 6000
+  const int DILATION = 2;
+#else
+  const int DILATION = 1;
+#endif
 
   ProjectionConfig conf;
   if (isDeconv) {
@@ -209,6 +218,8 @@ void testProjectionConv(size_t groups, bool isDeconv) {
   conv->set_padding_y(1);
   conv->set_stride(2);
   conv->set_stride_y(2);
+  conv->set_dilation(DILATION);
+  conv->set_dilation_y(DILATION);
   conv->set_groups(groups);
   if (isDeconv) {
     conv->set_filter_channels(NUM_FILTERS / conv->groups());
@@ -217,12 +228,12 @@ void testProjectionConv(size_t groups, bool isDeconv) {
   }
   conv->set_img_size(IMAGE_SIZE);
   int output_x = outputSize(conv->img_size(),
-                            conv->filter_size(),
+                            (conv->filter_size() - 1) * DILATION + 1,
                             conv->padding(),
                             conv->stride(),
                             /* caffeMode */ true);
   int output_y = outputSize(conv->img_size(),
-                            conv->filter_size_y(),
+                            (conv->filter_size_y() - 1) * DILATION + 1,
                             conv->padding_y(),
                             conv->stride_y(),
                             /* caffeMode */ true);
@@ -424,27 +435,38 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 384, 288});
+  int dilation = 1;
+  if (type == "cudnn_conv") {
+#if CUDNN_VERSION >= 6000
+    dilation = 2;
+#else
+    dilation = 1;
+#endif
+  }
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 768, 192});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(2);
-  conv->set_filter_size_y(3);
+  conv->set_filter_size_y(2);
   conv->set_channels(3);
   conv->set_padding(0);
   conv->set_padding_y(1);
   conv->set_stride(2);
   conv->set_stride_y(2);
+  conv->set_dilation(dilation);
+  conv->set_dilation_y(dilation);
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(16);
-  conv->set_img_size_y(8);
+  conv->set_img_size_y(16);
   conv->set_output_x(outputSize(conv->img_size(),
-                                conv->filter_size(),
+                                (conv->filter_size() - 1) * dilation + 1,
                                 conv->padding(),
                                 conv->stride(),
                                 /* caffeMode */ true));
   conv->set_output_y(outputSize(conv->img_size_y(),
-                                conv->filter_size_y(),
+                                (conv->filter_size_y() - 1) * dilation + 1,
                                 conv->padding_y(),
                                 conv->stride_y(),
                                 /* caffeMode */ true));

@@ -42,10 +42,12 @@ USE_OP(fill_zeros_like);
 USE_OP_ITSELF(recurrent_op);
 USE_OP(gaussian_random);
 USE_OP(uniform_random);
+USE_OP(lookup_table);
 USE_OP(scale);
 USE_OP_ITSELF(identity);
 USE_OP(minus);
 USE_CPU_ONLY_OP(gather);
+USE_CPU_ONLY_OP(scatter);
 
 namespace paddle {
 namespace framework {

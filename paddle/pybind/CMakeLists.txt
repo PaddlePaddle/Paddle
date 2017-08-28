@@ -4,6 +4,7 @@ cc_library(paddle_pybind SHARED
     DEPS pybind python backward
     sgd_op
     gather_op
+    scatter_op
     add_op
     mul_op
     rowwise_add_op
@@ -15,6 +16,7 @@ cc_library(paddle_pybind SHARED
     uniform_random_op
     gaussian_random_op
     fill_zeros_like_op
+    lookup_table_op
     scale_op
     minus_op)
 endif(WITH_PYTHON)

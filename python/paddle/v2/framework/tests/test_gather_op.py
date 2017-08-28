@@ -21,12 +21,9 @@ class TestGatherOp(unittest.TestCase):
 
 class TestGatherGradOp(GradientChecker):
     def test_gather_grad(self):
-        print 'creating op'
         op = create_op("gather")
-        print 'creating op done'
         xnp = numpy.random.random((10, 20)).astype("float32")
         inputs = {'X': xnp, 'Index': numpy.array([1, 3, 5]).astype("int32")}
-        print 'correct before check gradient'
         self.check_grad(op, inputs, set("X"), "Out")
 
 
