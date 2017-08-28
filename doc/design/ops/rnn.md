@@ -11,18 +11,19 @@ The above diagram shows an RNN being unrolled into a full network.
 
 There are several important concepts:
 
-- stepnet, the network execute every time step 
-- memory, a variable
-- pre-memory, the value of the memory's value of the previous step time
+- step-net, the network execute every time step 
+- memory, a variable of the memory of the current step.
+- pre-memory, the value of the memory's value in the previous step scope
 - init_memory, the variable to help initialize memory
 
 ### step scopes
-Each RNN has more than one step times, and the stepnet will be executed in every step time.
-We use `Scope` to help store the contexts of all the step times:
+Each RNN might run one or more steps. Each step runs the step net.
 
-- for each step time, create a new Scope
+We use `Scope` to store the contexts of all the steps:
+
+- for each step, create a step Scope
 - create all the temporary output variables in the Scope
-- execute the stepnet, and each step will have its temporary outputs
+- execute the step-net, and each step will have its temporary outputs
 
 After all steps finished, RNNOp will collect the specific outputs of each step and merge them to a larger tensor.
 
