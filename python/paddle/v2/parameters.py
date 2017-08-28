@@ -44,21 +44,20 @@ def create(layers):
 class Parameters(object):
     """
     `Parameters` manages all the learnable parameters in a neural network.
-    It stores parameters' information in an OrderedDict, key of which is
-    the name of a parameter, and value related to a key is a parameter's
-    configuration, such as initialization mean and std, its size, whether it is
-    a static parameter, and so on.
+    It stores parameters' information in an OrderedDict. The key is
+    the name of a parameter, and value is a parameter's configuration(in
+    protobuf format), such as initialization mean and std, its size, whether it
+    is a static parameter, and so on.
 
-    :param __param_conf__: this member stores the configurations of learnable
-        parameters in a network in an OrderedDict. The parameters are added by
-        following their creation order in the neural network one by one:
-        parameters of the previous layers in a network are careted first.
-        When a user iterates over this dict, he can visit parameters in the
-        network from button to up.
+    :param __param_conf__: store the configurations of learnable parameters in
+        the network in an OrderedDict. Parameter is added one by one into the
+        dict by following their created order in the network: parameters of
+        the previous layers in a network are careted first. You can visit the
+        parameters from bottom to top by iterating over this dict.
     :type __param_conf__: OrderedDict
     :param __gradient_machines__: all of the parameters in a neural network are
-        appended to a Paddle gradient machine, which is used internally to copy
-        the parameter values between the C++ and Python end.
+        appended to a PaddlePaddle gradient machine, which is used internally to
+        copy parameter values between C++ and Python end.
     :type __gradient_machines__: list
     :param __tmp_params__: a dict to store dummy parameters if no
         __gradient_machines__ is appended to `Parameters`.
@@ -271,7 +270,7 @@ class Parameters(object):
         append gradient machine to parameters. This method is used internally in
         Trainer.train.
 
-        :param gradient_machine: Paddle C++ GradientMachine object.
+        :param gradient_machine: PaddlePaddle C++ GradientMachine object.
         :type gradient_machine: api.GradientMachine
         :return:
         """
