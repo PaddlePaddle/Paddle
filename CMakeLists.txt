@@ -27,7 +27,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
     find_package(Boost QUIET)
 endif()
 
@@ -62,6 +62,21 @@ if(NOT CMAKE_BUILD_TYPE)
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
       FORCE)
 endif()
+
+if(IOS)
+    set(WITH_GPU OFF CACHE STRING
+        "Disable GPU when cross-compiling for Android" FORCE)
+    set(WITH_AVX OFF CACHE STRING
+        "Disable AVX when cross-compiling for Android" FORCE)
+    set(WITH_PYTHON OFF CACHE STRING
+        "Disable PYTHON when cross-compiling for Android" FORCE)
+    set(WITH_RDMA OFF CACHE STRING
+        "Disable RDMA when cross-compiling for Android" FORCE)
+    set(WITH_MKLDNN OFF CACHE STRING
+        "Disable MKLDNN when cross-compiling for Android" FORCE)
+    set(WITH_MKLML OFF CACHE STRING
+        "Disable MKLML package when cross-compiling for Android" FORCE)
+endif(IOS)
 
 if(ANDROID)
     if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
