@@ -1,5 +1,5 @@
 # RNN design
-This is the design doc of the recurrent neural network operator which takes fix-length sentences as inputs.
+This is the design doc of the recurrent neural network operator, input instances in each mini-batch must have the same length. 
 
 ## RNN Algorithm Implementation
 
@@ -7,22 +7,23 @@ This is the design doc of the recurrent neural network operator which takes fix-
 <img src="./images/rnn.jpg"/>
 </p>
 
-The above diagram shows a RNN being unrolled into a full network.
+The above diagram shows an RNN being unrolled into a full network.
 
 There are several important concepts:
 
-- stepnet, the network execute every time step 
-- memory, a variable
-- pre-memory, the value of the memory's value of the last step time
+- step-net, the network execute every time step 
+- memory, a variable of the memory of the current step.
+- pre-memory, the value of the memory's value in the previous step scope
 - init_memory, the variable to help initialize memory
 
 ### step scopes
-Each RNN has more than one step times, and the stepnet will be executed in every step time.
-We use `Scope` to help store the contexts of all the step times:
+Each RNN might run one or more steps. Each step runs the step net.
 
-- for each step time, create a new Scope
+We use `Scope` to store the contexts of all the steps:
+
+- for each step, create a step Scope
 - create all the temporary output variables in the Scope
-- execute the stepnet, and each step will has its temporary outputs
+- execute the step-net, and each step will have its temporary outputs
 
 After all steps finished, RNNOp will collect the specific outputs of each step and merge them to a larger tensor.
 
@@ -38,7 +39,7 @@ In step time $t$, $h_t$ is memory, $h_{t-1}$ is pre-memory (short for previous m
 
 In each step scope
 
-- each memory variable has a coresponding pre-memory variable
+- each memory variable has a corresponding pre-memory variable
 - before a time step executes, copy (or make a reference) the value of previous step scope's memory to the pre-memory variable in current step scope.
 
 ### API
@@ -50,7 +51,7 @@ In each step scope
   - create step scopes
   - will be called both in InferShape and Run
 - void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
-  - make reference between memory in previous step scope and memory in current one.
+  - make a reference to the memory in previous step scope and memory in the current one.
 
 - void Run(const framework::Scope& scope, const platform::DeviceContext& dev_ctx) const;
   - run all the time steps.
