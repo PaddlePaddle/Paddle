@@ -85,6 +85,8 @@ void GradientMachine::randParameters() {
   LOG(INFO) << "Initing parameters..";
 
   for (auto& para : parameters_) {
+    LOG(INFO) << "para->getName(): " << para->getName()
+              << "para->isFullSize(): " << para->isFullSize();
     if (para->isFullSize()) {
       para->randomize();
     }
