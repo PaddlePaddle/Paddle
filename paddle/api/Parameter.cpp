@@ -65,4 +65,10 @@ bool Parameter::load(const std::string& filename) const {
   return m->getPtr()->load(filename);
 }
 
+int Parameter::getHeaderFormat() { return m->getPtr()->getHeaderFormat(); }
+
+void Parameter::setHeaderFormat(int32_t fmt) {
+  return m->getPtr()->setHeaderFormat(fmt);
+}
+
 size_t Parameter::getSize() const { return m->getPtr()->getSize(); }

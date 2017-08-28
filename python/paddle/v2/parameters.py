@@ -43,8 +43,8 @@ def create(layers):
 class Parameters(object):
     """
     Parameters is a dictionary contains Paddle's parameter. The key of
-    Parameters is the name of parameter. The value of Parameters is a plain
-    :code:`numpy.ndarry` .
+    Parameters is the name of parameter. The value of Parameters is a int type 
+    and plain :code:`numpy.ndarry` .
 
     Basically usage is
 
@@ -57,14 +57,16 @@ class Parameters(object):
         parameters = paddle.parameters.create(out)
 
         parameter_names = parameters.names()
-        fc_mat = parameters.get('fc')
-        print fc_mat
+        fc_header, fc_mat = parameters.get('fc')
+        print fc_header, fc_mat
     """
 
     def __init__(self):
         self.__param_conf__ = dict()
         self.__gradient_machines__ = []
         self.__tmp_params__ = dict()
+        # The key is the name of parameter, the value is header format.
+        self.__tmp_params_header__ = dict()
 
     def __append_config__(self, param_conf):
         """
@@ -134,19 +136,21 @@ class Parameters(object):
         if len(self.__gradient_machines__) == 0:
             # create new parameter in python numpy.
             if key in self.__tmp_params__:
-                return self.__tmp_params__[key]
+                return self.__tmp_params_header__[key], self.__tmp_params__[key]
             else:
-                return np.ndarray(shape=shape, dtype=np.float32)
+                header_format = 0  # default
+                return header_format, np.ndarray(shape=shape, dtype=np.float32)
         else:
             for each_gradient_machine in self.__gradient_machines__:
                 param = __get_parameter_in_gradient_machine__(
                     each_gradient_machine, key)
                 # for simplify implementation now, we always copy from C++
                 assert isinstance(param, api.Parameter)
+                header_format = param.getHeaderFormat()
                 val = param.getBuf(param_type)
                 assert isinstance(val, api.Vector)
                 val = val.copyToNumpyArray()
-                return val
+                return header_format, val
                 # else continue
 
             raise RuntimeError("Unexpected branch")
@@ -181,15 +185,17 @@ class Parameters(object):
         dims = conf.dims if conf.dims else (1, conf.size)
         return tuple(map(int, dims))
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value, header_format=0):
         """
-        Set parameter by parameter name & value. It use Python dict syntax.
+        Set parameter by parameter name & header format & value. It use Python dict syntax.
 
         :note: It will always copy the parameter to C++ side.
         :param key: Parameter name
         :type key: basestring
         :param value: Parameter matrix.
         :type value: np.ndarray
+        :param header_format: Parameter header format, default is 0.
+        :type header_format: int
         :return: Nothing
         """
 
@@ -203,10 +209,11 @@ class Parameters(object):
 
         if len(self.__gradient_machines__) == 0:
             self.__tmp_params__[key] = value
+            self.__tmp_params_header__[key] = header_format
         else:
             for each_gradient_machine in self.__gradient_machines__:
-                __copy_parameter_to_gradient_machine__(each_gradient_machine,
-                                                       key, value)
+                __copy_parameter_to_gradient_machine__(
+                    each_gradient_machine, key, value, header_format)
 
     def get(self, parameter_name):
         """
@@ -215,8 +222,8 @@ class Parameters(object):
         :note: It will always copy the parameter from C++ side.
         :param parameter_name: parameter name
         :type parameter_name: basestring
-        :return: The parameter matrix.
-        :rtype: np.ndarray
+        :return: The parameter header format & matrix.
+        :rtype: [int, np.ndarray]
         """
         return self.__getitem__(key=parameter_name)
 
@@ -227,13 +234,13 @@ class Parameters(object):
         :note: It will always copy the parameter from C++ side.
         :param key: parameter name
         :type key: basestring
-        :return: The grandient matrix.
-        :rtype: np.ndarray
+        :return: The header format & gradient matrix.
+        :rtype: [int, np.ndarray]
         """
         import py_paddle.swig_paddle as api
         return self.__getter_inner(key, api.PARAMETER_GRADIENT)
 
-    def set(self, parameter_name, value):
+    def set(self, parameter_name, value, header_format=0):
         """
         Set parameter by parameter name & matrix.
 
@@ -241,9 +248,12 @@ class Parameters(object):
         :type parameter_name: basestring
         :param value: parameter matrix
         :type value: np.ndarray
+        :param header_format: parameter header format, default is 0
+        :type header_format: int
         :return: Nothing.
         """
-        self.__setitem__(key=parameter_name, value=value)
+        self.__setitem__(
+            key=parameter_name, value=value, header_format=header_format)
 
     def append_gradient_machine(self, gradient_machine):
         """
@@ -261,8 +271,9 @@ class Parameters(object):
         if len(self.__tmp_params__) != 0:
             for name, val in self.__tmp_params__.iteritems():
                 try:
-                    __copy_parameter_to_gradient_machine__(gradient_machine,
-                                                           name, val)
+                    header_format = self.__tmp_params_header__[name]
+                    __copy_parameter_to_gradient_machine__(
+                        gradient_machine, name, val, header_format)
                 except ValueError:
                     # If no such parameter in gradient machine, then don't copy
                     pass
@@ -277,9 +288,9 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        param = self.get(name)
+        header_format, param = self.get(name)
         size = reduce(lambda a, b: a * b, param.shape)
-        f.write(struct.pack("IIQ", 0, 4, size))
+        f.write(struct.pack("IIQ", header_format, 4, size))
         param = param.astype(np.float32)
         s = param.tostring()
         wrote_size = 0
@@ -297,9 +308,10 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        f.read(16)  # header
+        header_format = f.read(4)
+        f.read(12)
         arr = np.frombuffer(f.read(), dtype=np.float32)
-        self.set(name, arr.reshape(self.get_shape(name)))
+        self.set(name, arr.reshape(self.get_shape(name)), header_format)
 
     def to_tar(self, f):
         tar = tarfile.TarFile(fileobj=f, mode='w')
@@ -361,7 +373,8 @@ class Parameters(object):
         tar_param = Parameters.from_tar(f)
         for pname in tar_param.names():
             if pname in self.names():
-                self.set(pname, tar_param.get(pname))
+                header_format, param_value = tar_param.get(pname)
+                self.set(pname, param_value, header_format)
 
 
 def __get_parameter_in_gradient_machine__(gradient_machine, name):
@@ -384,20 +397,24 @@ def __get_parameter_in_gradient_machine__(gradient_machine, name):
         return params[0]
 
 
-def __copy_parameter_to_gradient_machine__(gradient_machine, name, arr):
+def __copy_parameter_to_gradient_machine__(gradient_machine, name, format, arr):
     """
     Copy a python ndarray into the gradient machine.
 
     :param gradient_machine:
     :type gradient_machine: api.GradientMachine
-    :param name:
-    :param arr:
+    :param name: parameter name 
+    :type name: basestring
+    :param format: parameter header format
+    :type name: int
+    :param arr: parameter matrix
     :type arr: np.ndarray
     :return:
     :rtype: api.Parameter
     """
     import py_paddle.swig_paddle as api
     param = __get_parameter_in_gradient_machine__(gradient_machine, name)
+    param.setHeaderFormat(format)
     vec = param.getBuf(api.PARAMETER_VALUE)
     assert isinstance(vec, api.Vector)
     vec.copyFromNumpyArray(arr.flatten())

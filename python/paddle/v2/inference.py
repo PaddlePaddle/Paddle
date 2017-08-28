@@ -34,7 +34,7 @@ class Inference(object):
             val = param.getBuf(api.PARAMETER_VALUE)
             name = param.getName()
             assert isinstance(val, api.Vector)
-            val.copyFromNumpyArray(parameters.get(name).flatten())
+            val.copyFromNumpyArray(parameters.get(name)[1].flatten())
             # the setValueUpdated function is called in randomize, zeroMem,
             # load function in paddle/parameter/Parameter.cpp. But in the
             # inference mode, the setValueUpdated is never called, it will
