@@ -312,7 +312,7 @@ class TestMulOp(unittest.TestCase):
 py_test(test_mul_op SRCS test_mul_op.py)
 ```
 
-编译完成之后即可执行单测：
+编译时需要打开`WITH_TESTING`, 即 `cmake paddle_dir -DWITH_TESTING=ON`，编译成功之后执行单测命令为：
 
 ```
 make test ARGS="-R test_mul_op -V"
