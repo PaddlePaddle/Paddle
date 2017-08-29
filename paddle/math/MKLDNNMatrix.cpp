@@ -31,7 +31,6 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m, memory::primitive_desc pd) {
   if (m == nullptr) {
     size_t height = dims[0];
     size_t width = cnts / dims[0];
-    // LOG(INFO) << height << "," << width;
     m = Matrix::create(height, width, false, false);
   }
 
@@ -40,10 +39,8 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m, memory::primitive_desc pd) {
   CHECK(cpuMatrix) << "Only support create from CPU matrix yet";
 
   CHECK_EQ(cnts, m->getElementCnt()) << "Count size does not match";
-  size_t width = m->getWidth();
-  size_t height = m->getHeight();
-  real* data = m->getData();
-  return std::make_shared<MKLDNNMatrix>(data, height, width, pd);
+  return std::make_shared<MKLDNNMatrix>(
+      m->getData(), m->getHeight(), m->getWidth(), pd);
 }
 
 MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
@@ -51,9 +48,7 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
                                      memory::format fmt,
                                      engine& eg,
                                      mkldnn::memory::data_type dtype) {
-  memory::desc md = memory::desc(dims, dtype, fmt);
-  memory::primitive_desc pd = memory::primitive_desc(md, eg);
-  return create(m, pd);
+  return create(m, memory::primitive_desc(memory::desc(dims, dtype, fmt), eg));
 }
 
 void MKLDNNMatrix::reorderDataFrom(const MKLDNNMatrixPtr& m,
@@ -64,9 +59,7 @@ void MKLDNNMatrix::reorderDataFrom(const MKLDNNMatrixPtr& m,
     return;
   }
   CHECK_EQ(getElementCnt(), m->getElementCnt()) << "size should equal";
-  real* srcData = getData();
-  real* dstData = m->getData();
-  reorderOnce(srcData, dstData, srcFmt, dstFmt, targetDim);
+  reorderOnce(getData(), m->getData(), srcFmt, dstFmt, targetDim);
 }
 
 void MKLDNNMatrix::reorderDataTo(const MKLDNNMatrixPtr& m,
@@ -77,9 +70,7 @@ void MKLDNNMatrix::reorderDataTo(const MKLDNNMatrixPtr& m,
     return;
   }
   CHECK_EQ(getElementCnt(), m->getElementCnt()) << "size should equal";
-  real* srcData = getData();
-  real* dstData = m->getData();
-  reorderOnce(srcData, dstData, srcFmt, dstFmt, targetDim);
+  reorderOnce(getData(), m->getData(), srcFmt, dstFmt, targetDim);
 }
 
 void MKLDNNMatrix::reorderOnce(void* srcData,
@@ -120,8 +111,9 @@ void MKLDNNMatrix::downSpatial() {
     return;
   }
 
-  memory::dims srcDims = getDims();
+  // TODO(TJ): change H(height) and W(width) if support nhwc or more
   const int H = 2, W = 3;
+  memory::dims srcDims = getDims();
   if (srcDims[H] != 1 || srcDims[W] != 1) {
     // can not down spatial
     return;
@@ -141,13 +133,12 @@ void MKLDNNMatrix::downSpatial() {
   }
   memory::desc md = memory::desc(dstDims, getDtype(), dstFmt);
   memory::primitive_desc pd = memory::primitive_desc(md, getEngine());
-  void* data = getData();
   mkldnn_primitive_t result;
   mkldnn::error::wrap_c_api(
       mkldnn_primitive_create(&result, pd.get(), nullptr, nullptr),
       "could not create a memory primitive");
   reset(result);
-  set_data_handle(data);
+  set_data_handle(getData());
 }
 
 }  // namespace paddle

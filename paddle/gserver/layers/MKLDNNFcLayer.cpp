@@ -77,6 +77,24 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
+void MKLDNNFcLayer::convertOutputToOtherDevice() {
+  copyOutputInfoToOtherDevice();
+  // find other cpu device and reorder output to cpu device
+  int cnt = 0;
+  for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+    if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
+      // fc cpu output value do not need convert
+      // just share point
+      outputOtherDevice_[i].value = output_.value;
+      ++cnt;
+    }
+  }
+
+  if (cnt > 1) {
+    LOG(WARNING) << "should not have more than one CPU devie";
+  }
+}
+
 void MKLDNNFcLayer::reshape() {
   const Argument& input = getInput(0, getPrev(0)->getDeviceId());
   int batchSize = input.getBatchSize();
@@ -116,7 +134,7 @@ void MKLDNNFcLayer::resetFwd() {
   const MatrixPtr& bias = hasBias ? biases_->getW() : nullptr;
   const MatrixPtr& out = output_.value;
 
-  if (prevIsMKLDNN()) {
+  if (prevIsOnlyMKLDNN()) {
     const MatrixPtr& in = getInputValue(0);
     inVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(in);
     CHECK(inVal_) << "Input should be MKLDNNMatrix";
@@ -136,30 +154,21 @@ void MKLDNNFcLayer::resetFwd() {
 
   // change original output value to mkldnn output value
   output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
-  if (!nextIsMKLDNN()) {
-    Argument cpuOutput;
-    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-      if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
-        cpuOutput = outputOtherDevice_[i];
-      }
-    }
-    cpuOutput.setFrameHeight(output_.getFrameHeight());
-    cpuOutput.setFrameWidth(output_.getFrameWidth());
-
-    // fc cpu output value do not need convert
-    cpuOutput.value = output_.value;
+  if (!nextIsOnlyMKLDNN()) {
+    convertOutputToOtherDevice();
   }
 
   // create forward handle
   prop_kind pk = prop_kind::forward;
-  fc_fwd::desc fwdDesc =
-      hasBias ? fc_fwd::desc(pk,
-                             inVal_->getMD(),
-                             wgtVal_->getMD(),
-                             biasVal_->getMD(),
-                             outVal_->getMD())
-              : fc_fwd::desc(
-                    pk, inVal_->getMD(), wgtVal_->getMD(), outVal_->getMD());
+  fc_fwd::desc fwdDesc = hasBias ? fc_fwd::desc(pk,
+                                                inVal_->getMemoryDesc(),
+                                                wgtVal_->getMemoryDesc(),
+                                                biasVal_->getMemoryDesc(),
+                                                outVal_->getMemoryDesc())
+                                 : fc_fwd::desc(pk,
+                                                inVal_->getMemoryDesc(),
+                                                wgtVal_->getMemoryDesc(),
+                                                outVal_->getMemoryDesc());
   fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
   if (hasBias) {
     fwd_.reset(new fc_fwd(fwdPD, *inVal_, *wgtVal_, *biasVal_, *outVal_));
@@ -184,36 +193,38 @@ void MKLDNNFcLayer::resetBwd() {
   const MatrixPtr& wgt = weight_->getWGrad();
   const MatrixPtr& bias = hasBias ? biases_->getWGrad() : nullptr;
 
-  // TODO(TJ): merge topdiffs
-  if (nextIsMKLDNN()) {
+  // TODO(TJ): merge outgrad
+  if (nextIsOnlyMKLDNN()) {
     // can not directly cast outputgrad to mkldnnmatrix,
     // since each layer can not write the inputgrad to mkldnn inputgrad.
     // So just create from matrix with outputvalue format.
     const MatrixPtr& out = getOutput(MKLDNN_DEVICE).grad;
-    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPD());
+    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPrimitiveDesc());
   } else {
     const MatrixPtr& out = getOutput(CPU_DEVICE).grad;
     // fc do not need to convert from cpu device since output always nc
     // only need create from cpu device
-    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPD());
+    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPrimitiveDesc());
   }
 
-  wgtGrad_ = MKLDNNMatrix::create(wgt, wgtVal_->getPD());
-  biasGrad_ = hasBias ? MKLDNNMatrix::create(bias, biasVal_->getPD()) : nullptr;
+  wgtGrad_ = MKLDNNMatrix::create(wgt, wgtVal_->getPrimitiveDesc());
+  biasGrad_ = hasBias ? MKLDNNMatrix::create(bias, biasVal_->getPrimitiveDesc())
+                      : nullptr;
 
   // create memory primitive desc
   fc_fwd::desc fwdDesc = fc_fwd::desc(prop_kind::forward,
-                                      inVal_->getMD(),
-                                      wgtGrad_->getMD(),
-                                      outGrad_->getMD());
+                                      inVal_->getMemoryDesc(),
+                                      wgtGrad_->getMemoryDesc(),
+                                      outGrad_->getMemoryDesc());
   fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
-  fc_bwdWgt::desc bwdWgtDesc =
-      hasBias ? fc_bwdWgt::desc(inVal_->getMD(),
-                                wgtGrad_->getMD(),
-                                biasGrad_->getMD(),
-                                outGrad_->getMD())
-              : fc_bwdWgt::desc(
-                    inVal_->getMD(), wgtGrad_->getMD(), outGrad_->getMD());
+  fc_bwdWgt::desc bwdWgtDesc = hasBias
+                                   ? fc_bwdWgt::desc(inVal_->getMemoryDesc(),
+                                                     wgtGrad_->getMemoryDesc(),
+                                                     biasGrad_->getMemoryDesc(),
+                                                     outGrad_->getMemoryDesc())
+                                   : fc_bwdWgt::desc(inVal_->getMemoryDesc(),
+                                                     wgtGrad_->getMemoryDesc(),
+                                                     outGrad_->getMemoryDesc());
   fc_bwdWgt::primitive_desc bwdWgtPD =
       fc_bwdWgt::primitive_desc(bwdWgtDesc, engine_, fwdPD);
 
@@ -227,30 +238,20 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdWgt_);
 
   /// backward data
-  if (prevIsMKLDNN()) {
-    const MatrixPtr& in = getInputGrad(0, MKLDNN_DEVICE);
-    if (in == nullptr) {
-      return;
-    }
-    if (getInput(0, MKLDNN_DEVICE).getAllCount() > 1) {
-      // TODO(TJ): use outputMaps_ ways when merge topdiff done
-    } else {
-      inGrad_ = MKLDNNMatrix::create(in, inVal_->getPD());
-    }
+  int device = prevIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
+  const MatrixPtr& in = getInputGrad(0, device);
+  if (in == nullptr) {
+    return;
+  }
+  if (getInput(0, device).getAllCount() > 1) {
+    // TODO(TJ): use outputMaps_ ways when merge outgrad done
   } else {
-    const MatrixPtr& in = getInputGrad(0, CPU_DEVICE);
-    if (in == nullptr) {
-      return;
-    }
-    if (getInput(0, CPU_DEVICE).getAllCount() > 1) {
-      // TODO(TJ): use outputMaps_ ways when merge topdiff done
-    } else {
-      inGrad_ = MKLDNNMatrix::create(in, inVal_->getPD());
-    }
+    inGrad_ = MKLDNNMatrix::create(in, inVal_->getPrimitiveDesc());
   }
 
-  fc_bwdData::desc bwdDataDesc =
-      fc_bwdData::desc(inVal_->getMD(), wgtGrad_->getMD(), outGrad_->getMD());
+  fc_bwdData::desc bwdDataDesc = fc_bwdData::desc(inVal_->getMemoryDesc(),
+                                                  wgtGrad_->getMemoryDesc(),
+                                                  outGrad_->getMemoryDesc());
   fc_bwdData::primitive_desc bwdDataPD =
       fc_bwdData::primitive_desc(bwdDataDesc, engine_, fwdPD);
 

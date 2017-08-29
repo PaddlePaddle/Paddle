@@ -86,10 +86,7 @@ public:
     CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
                             << "Please set WITH_MKLDNN=ON "
                             << "and set use_mkldnn=True";
-    if (useGpu_ == true) {
-      LOG(WARNING) << "Do not support GPU yet, will change to useGpu = false";
-      useGpu_ = false;
-    }
+    CHECK(!useGpu_) << "Do not support GPU yet";
 
     // set device id before Layer::init
     setDevice(MKLDNN_DEVICE);
@@ -115,6 +112,12 @@ public:
    * weight_ will be override
    */
   virtual void convertWeightsToPaddle() {}
+
+  /**
+   * convert MKLDNN output to other device.
+   * only support CPU device yet
+   */
+  virtual void convertOutputToOtherDevice() {}
 
   /**
    * print info about sizes
@@ -147,22 +150,25 @@ public:
 
 protected:
   /**
-   * If next layer only has MKLDNN type.
-   * Otherwise, only support otherdevice CPU device.
+   * copy image size and sequence info to other device
    */
-  bool nextIsMKLDNN() {
+  void copyOutputInfoToOtherDevice() {
     for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-      CHECK_EQ(outputOtherDevice_[i].deviceId, CPU_DEVICE)
-          << "Only support other device is CPU yet";
+      outputOtherDevice_[i].setFrameHeight(output_.getFrameHeight());
+      outputOtherDevice_[i].setFrameWidth(output_.getFrameWidth());
+      outputOtherDevice_[i].sequenceStartPositions =
+          output_.sequenceStartPositions;
+      outputOtherDevice_[i].subSequenceStartPositions =
+          output_.subSequenceStartPositions;
+      outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
     }
-    return outputOtherDevice_.size() == 0;
   }
 
   /**
-   * Is previous layer MKLDNN type.
-   * Otherwise, only support otherdevice CPU device.
+   * Is previous layer only has MKLDNN type.
+   * Otherwise, only support the previous layer using CPU device.
    */
-  bool prevIsMKLDNN(int index = 0) {
+  bool prevIsOnlyMKLDNN(int index = 0) {
     int prevDevice = getPrev(index)->getDeviceId();
     if (prevDevice == MKLDNN_DEVICE) {
       return true;
@@ -174,10 +180,22 @@ protected:
   }
 
   /**
+   * If output only has MKLDNN device.
+   * Otherwise, other devices should only using CPU device.
+   */
+  bool nextIsOnlyMKLDNN() {
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      CHECK_EQ(outputOtherDevice_[i].deviceId, CPU_DEVICE)
+          << "Only support other device is CPU yet";
+    }
+    return outputOtherDevice_.size() == 0;
+  }
+
+  /**
    * Sync input value data
    */
   void syncInputValue() {
-    if (prevIsMKLDNN()) {
+    if (prevIsOnlyMKLDNN()) {
       return;
     }
     real* iData = getInputValue(0, CPU_DEVICE)->getData();
@@ -190,7 +208,7 @@ protected:
    * Sync output grad data
    */
   void syncOutputGrad() {
-    if (nextIsMKLDNN()) {
+    if (nextIsOnlyMKLDNN()) {
       return;
     }
 

@@ -56,9 +56,9 @@ public:
 public:
   /**
    * Reorder this MKLDNNMatrix from other format.
-   * Support inplace reorder
-   * Pay attention: this function would only reorder the data layout.
-   *                will NOT change this original dim or format info
+   * Support inplace reorder.
+   * @note: this function would only reorder the data layout.
+   *        will NOT change this original dim or format info
    */
   void reorderDataFrom(const MKLDNNMatrixPtr& m,
                        memory::format srcFmt,
@@ -66,9 +66,9 @@ public:
 
   /**
    * Reorder this MKLDNNMatrix to other format.
-   * Support inplace reorder
-   * Pay attention: this function would only reorder the data layout.
-   *                will NOT change the dst dim or format info
+   * Support inplace reorder.
+   * @note: this function would only reorder the data layout.
+   *        will NOT change the dst dim or format info
    */
   void reorderDataTo(const MKLDNNMatrixPtr& m,
                      memory::format dstFmt,
@@ -90,18 +90,20 @@ public:
   /**
    * Get primitive descriptor.
    */
-  mkldnn::memory::primitive_desc getPD() { return this->get_primitive_desc(); }
+  mkldnn::memory::primitive_desc getPrimitiveDesc() {
+    return this->get_primitive_desc();
+  }
 
   /**
    * Get memory descriptor.
    */
-  mkldnn::memory::desc getMD() { return getPD().desc(); }
+  mkldnn::memory::desc getMemoryDesc() { return getPrimitiveDesc().desc(); }
 
   /**
    * Get dimensions.
    */
   mkldnn::memory::dims getDims() {
-    mkldnn::memory::desc md = getMD();
+    mkldnn::memory::desc md = getMemoryDesc();
     const int* src = md.data.dims;
     int ndims = md.data.ndims;
     mkldnn::memory::dims dst;
@@ -116,24 +118,25 @@ public:
    * Get format.
    */
   mkldnn::memory::format getFormat() {
-    return (mkldnn::memory::format)(getMD().data.format);
+    return (mkldnn::memory::format)(getMemoryDesc().data.format);
   }
 
   /**
    * Get memory data type.
    */
   mkldnn::memory::data_type getDtype() {
-    return (mkldnn::memory::data_type)(getMD().data.data_type);
+    return (mkldnn::memory::data_type)(getMemoryDesc().data.data_type);
   }
 
   /**
    * Get engine.
    */
-  mkldnn::engine getEngine() { return getPD().get_engine(); }
+  mkldnn::engine getEngine() { return getPrimitiveDesc().get_engine(); }
 
 protected:
   /**
-   * Do once reorder supported inplace.
+   * Do reorder once.
+   * Can support inplace.
    */
   void reorderOnce(void* srcData,
                    void* dstData,
