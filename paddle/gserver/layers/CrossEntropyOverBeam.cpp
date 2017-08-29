@@ -39,7 +39,6 @@ void CostForOneSequence::calValidExpandStep() {
     if (start + beamSize_ == findEnd) return;
     goldColIds_[i] = findEnd - start;
   }
-
   if (goldColIds_[beams_->expansionCount - 1] != -1) goldAsExtraPath_ = false;
 }
 
