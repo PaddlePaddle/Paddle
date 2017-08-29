@@ -39,11 +39,11 @@ communicate with each other. We will need these OPs: *send*, *recv*,
 Below is an example of converting the user defined graph to the
 sub-graphs for the trainer and the parameter server:
 
-<img src="src/local-graph.png"/>
+<img src="src/local-graph.png" width="300"/>
 
 After converting:
 
-<img src="src/dist-graph.png"/>
+<img src="src/dist-graph.png" width="500"/>
 
 1. The parameter variable W and it's optimizer subgraph are placed on the parameter server.
 1. Operators are added to the sub-graphs.
