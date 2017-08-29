@@ -5,12 +5,13 @@
    - [定义ProtoMaker类](#定义ProtoMaker类)
    - [定义Operator类](#定义Operator类)
    - [定义OpKernel类](#定义OpKernel类)
-   - [注册类](#注册类)
+   - [注册Operator](#注册Operator)
    - [编译](#编译)
  - [绑定Python](#绑定Python)
  - [实现单元测试](#实现单元测试)
    - [前向Operator单测](#前向Operator单测)
    - [反向Operator单测](#反向Operator单测)
+   - [编译和执行](#编译和执行)
 
 
 ## 概念简介
@@ -22,19 +23,17 @@
 - `framework::OperatorWithKernel`：继承自OperatorBase，Op有计算函数，称作有Kernel。
 - `class OpProtoAndCheckerMaker`：描述该Op的输入、输出、属性、注释,主要用于Python API接口生成
 
-依据是否包含kernel，将Op分为两种：包含Kernel的Op和不包含kernel的Op，前者Op的定义继承自`OperatorBase`，后者继承自`OperatorWithKernel`。本教程主要介绍带Kernel的Op如何写，简单总结如下：
+依据是否包含kernel，将Op分为两种：包含Kernel的Op和不包含kernel的Op，前者Op的定义继承自`OperatorBase`，后者继承自`OperatorWithKernel`。本教程主要介绍带Kernel的Op如何写，简单总结Op需要包含的内容如下：
 
-Forward Op需要包含：
-
-   - OpProtoMake定义
-   - Op定义
-   - Kernel实现
+  
+ 内容            | 定义位置         
+--------------  | :----------------------  
+OpProtoMake定义  | `.cc`文件，Backward Op不需要定义OpProtoMake
+Op定义           | `.cc`文件 
+Kernel实现       | CPU、GPU共享Kernel在`.h`文件，否则，CPU可以在`.cc`文件，GPU可在`.cu`文件。 
+注册Op           | Op注册在`.cc`文件；Kernel注册CPU在`.cc`文件，GPU在`.cu`文件
      
-与之对应的Backward Op包含：
-
-   - Op定义
-   - Kernel实现
-
+     
 下面以矩阵乘操作，即[MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc)为例来介绍如何写带Kernel的Operator。
 
 
@@ -137,8 +136,9 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 ```	
 	
 还需要重写`InferShape`接口。`InferShape`为const函数，不能修改Op的成员变量，参数为`const framework::InferShapeContext &ctx`，通过该参数可获取到输入输出以及属性。它的功能是：
-	 - 1). 做检查， 尽早报错：检查输入数据维度、类型等是否合法
-	 - 2). 设置输出Tensor的形状
+
+  - 1). 做检查， 尽早报错：检查输入数据维度、类型等是否合法。
+  - 2). 设置输出Tensor的形状。
 
 通常`OpProtoMaker`和`Op`类的定义写在`.cc`文件中，和要讲到的注册函数一起放在`.cc`中
 
@@ -172,7 +172,7 @@ class MulKernel : public framework::OpKernel {
    
 到此前向Op实现完成，需要在`.cc`文件中注册该op和kernel。反向Op类的定义和Kernel定义与前向Op类似，这里不再重复。但注意，反向Op没有`ProtoMaker`。
    
-### 4. 注册类
+### 4. 注册Operator
 
 在`.cc`文件中注册前向、反向Op类，注册CPU Kernel。
 
@@ -297,4 +297,28 @@ class TestMulOp(unittest.TestCase):
    - 调用`create_op("mul")`创建反向Op对应的前向Op。
    - 定义输入`inputs`。
    - 调用`compare_grad`函数对比CPU、GPU计算结果。
-   - 调用`check_grad`检查梯度稳定性。
+   - 调用`check_grad`检查梯度稳定性，这里采用数值法检测梯度正确性。
+      - 第一个参数`op` : 前向op。
+      - 第二个参数`inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
+      - 第三个参数`set(["X", "Y"])` : 指定对输入变量`X`、`Y`做梯度检测。
+      - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
+
+
+### 编译和执行 
+
+单测完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)里添加编译：
+
+```
+py_test(test_mul_op SRCS test_mul_op.py)
+```
+
+编译时需要打开`WITH_TESTING`, 即 `cmake paddle_dir -DWITH_TESTING=ON`，编译成功之后执行单测命令为：
+
+```
+make test ARGS="-R test_mul_op -V"
+```
+或者:
+
+```
+ctest -R test_mul_op
+```
