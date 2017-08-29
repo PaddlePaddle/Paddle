@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/operators/gather.h"
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/tensor.h"
 #include "paddle/platform/place.h"
 
 #include <gtest/gtest.h>

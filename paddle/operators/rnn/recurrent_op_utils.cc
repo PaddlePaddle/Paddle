@@ -20,6 +20,7 @@ namespace rnn {
 
 namespace f = paddle::framework;
 
+using LODTensor = framework::LODTensor;
 using Tensor = framework::Tensor;
 
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
@@ -31,7 +32,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     PADDLE_ENFORCE(input_var != nullptr, "input link [%s] is not in scope.",
                    inlinks[i].external);
 
-    Tensor* input = input_var->GetMutable<Tensor>();
+    LODTensor* input = input_var->GetMutable<LODTensor>();
     f::DDim dims = input->dims();
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
                    "all the inlinks must have same length");
@@ -54,13 +55,14 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
     auto output_var = step_scopes[0]->FindVar(outlinks[i].external);
     PADDLE_ENFORCE(output_var != nullptr, "output link [%s] is not in scope.",
                    outlinks[i].external);
-    Tensor* output = output_var->GetMutable<Tensor>();
+    LODTensor* output = output_var->GetMutable<LODTensor>();
 
     if (infer_shape_mode) {
       auto step_scope_var = step_scopes[0]->FindVar(outlinks[i].internal);
       PADDLE_ENFORCE(step_scope_var != nullptr, "%s not in scope",
                      outlinks[i].internal);
-      f::DDim step_dims = step_scope_var->template GetMutable<Tensor>()->dims();
+      f::DDim step_dims =
+          step_scope_var->template GetMutable<LODTensor>()->dims();
       std::vector<int> dims_vec = vectorize(step_dims);
       dims_vec.insert(dims_vec.begin(), seq_len);
       output->Resize(f::make_ddim(dims_vec));
@@ -94,8 +96,8 @@ void LinkMemories(const std::vector<Scope*>& scopes,
   auto scope = scopes[step_id];
   auto linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
-    auto mem = scope->FindVar(attr.pre_var)->GetMutable<Tensor>();
-    auto linked_mem = linked_scope->FindVar(attr.var)->GetMutable<Tensor>();
+    auto mem = scope->FindVar(attr.pre_var)->GetMutable<LODTensor>();
+    auto linked_mem = linked_scope->FindVar(attr.var)->GetMutable<LODTensor>();
     if (infer_shape_mode) {
       mem->Resize(linked_mem->dims());
     } else {

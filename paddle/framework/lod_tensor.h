@@ -99,7 +99,7 @@ class LODTensor : public Tensor {
   /*
    * Copy other's lod_'s content, free to mutate.
    */
-  void CopyLOD(const LODTensor &other) { lod_ = other.lod_; }
+  void CopyLOD(const LODTensor &other) { lod_ = other.lod(); }
   /*
    * Determine whether LODTensor has a valid LOD info.
    */

@@ -23,9 +23,9 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &context) const override {
-    auto table_t = context.Input<Tensor>("W");
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto output_t = context.Output<Tensor>("Out");
+    auto table_t = context.Input<LODTensor>("W");
+    auto ids_t = context.Input<LODTensor>("Ids");
+    auto output_t = context.Output<LODTensor>("Out");
 
     output_t->Resize({ids_t->dims()[0], table_t->dims()[1]});
   }
@@ -55,8 +55,8 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &context) const override {
-    auto table = context.Input<Tensor>("W");
-    auto d_table = context.Output<Tensor>(framework::GradVarName("W"));
+    auto table = context.Input<LODTensor>("W");
+    auto d_table = context.Output<LODTensor>(framework::GradVarName("W"));
     d_table->Resize(table->dims());
   }
 };

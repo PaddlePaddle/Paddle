@@ -46,13 +46,13 @@ USE_OP(lookup_table);
 USE_OP(scale);
 USE_OP_ITSELF(identity);
 USE_OP(minus);
-USE_CPU_ONLY_OP(gather);
-USE_CPU_ONLY_OP(scatter);
+// USE_CPU_ONLY_OP(gather);
+// USE_CPU_ONLY_OP(scatter);
 
 namespace paddle {
 namespace framework {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
@@ -70,44 +70,45 @@ bool IsCompileGPU() {
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
-  py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+  py::class_<LODTensor>(m, "LODTensor", py::buffer_protocol())
+      .def_buffer([](LODTensor &self) -> py::buffer_info {
+        return CastToPyBuffer(self);
+      })
       .def("get_dims",
-           [](const Tensor &self) { return vectorize(self.dims()); })
+           [](const LODTensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
-           [](Tensor &self, const std::vector<int> &dim) {
+           [](LODTensor &self, const std::vector<int> &dim) {
              self.Resize(make_ddim(dim));
            })
       .def("alloc_float",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](LODTensor &self, paddle::platform::GPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_float",
-           [](Tensor &self, paddle::platform::CPUPlace &place) {
+           [](LODTensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_int",
-           [](Tensor &self, paddle::platform::CPUPlace &place) {
+           [](LODTensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("alloc_int",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](LODTensor &self, paddle::platform::GPUPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("set", PyCPUTensorSetFromArray<float>)
-      .def("set", PyCPUTensorSetFromArray<int>)
+      .def("set", PyCPULODTensorSetFromArray<float>)
+      .def("set", PyCPULODTensorSetFromArray<int>)
 #ifndef PADDLE_ONLY_CPU
-      .def("set", PyCUDATensorSetFromArray<float>)
-      .def("set", PyCUDATensorSetFromArray<int>)
+      .def("set", PyCUDALODTensorSetFromArray<float>)
+      .def("set", PyCUDALODTensorSetFromArray<int>)
 #endif
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("shape", [](LODTensor &self) { return vectorize(self.dims()); })
       .def("set_float_element",
-           [](Tensor &self, size_t offset, float f) {
+           [](LODTensor &self, size_t offset, float f) {
              // TODO(yuyang18): Only support GPU now.
              self.data<float>()[offset] = f;
            })
-      .def("get_float_element", [](Tensor &self, size_t offset) -> float {
+      .def("get_float_element", [](LODTensor &self, size_t offset) -> float {
         // TODO(yuyang18): Only support GPU now.
         return self.data<float>()[offset];
       });
@@ -121,7 +122,9 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
       .def("get_tensor",
-           [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
+           [](Variable &self) -> LODTensor * {
+             return self.GetMutable<LODTensor>();
+           },
            py::return_value_policy::reference)
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {

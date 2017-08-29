@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
+using framework::LODTensor;
 
 class MulOp : public framework::OperatorWithKernel {
  public:
@@ -25,8 +25,8 @@ class MulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto dim0 = ctx.Input<Tensor>("X")->dims();
-    auto dim1 = ctx.Input<Tensor>("Y")->dims();
+    auto dim0 = ctx.Input<LODTensor>("X")->dims();
+    auto dim1 = ctx.Input<LODTensor>("Y")->dims();
     PADDLE_ENFORCE_EQ(dim0.size(), 2,
                       "input X(%s) should be a tensor with 2 dims, a matrix",
                       ctx.op_.Input("X"));
@@ -36,7 +36,7 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         dim0[1], dim1[0],
         "First matrix's width must be equal with second matrix's height.");
-    ctx.Output<Tensor>("Out")->Resize({dim0[0], dim1[1]});
+    ctx.Output<LODTensor>("Out")->Resize({dim0[0], dim1[1]});
   }
 };
 
@@ -65,11 +65,11 @@ class MulOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto y_dims = ctx.Input<Tensor>("Y")->dims();
-    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto x_dims = ctx.Input<LODTensor>("X")->dims();
+    auto y_dims = ctx.Input<LODTensor>("Y")->dims();
+    auto out_dims = ctx.Input<LODTensor>(framework::GradVarName("Out"))->dims();
+    auto *x_grad = ctx.Output<LODTensor>(framework::GradVarName("X"));
+    auto *y_grad = ctx.Output<LODTensor>(framework::GradVarName("Y"));
     PADDLE_ENFORCE(x_dims[0] == out_dims[0],
                    "Out@GRAD M X N must equal to X dims 0, M ");
     PADDLE_ENFORCE(y_dims[1] == out_dims[1],

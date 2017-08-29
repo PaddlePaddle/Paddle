@@ -14,7 +14,7 @@
 
 #pragma once
 #include <string>
-#include "paddle/framework/tensor.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/memory/memcpy.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -32,7 +32,7 @@ struct CastToPyBufferImpl;
 
 template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<false, I, ARGS...> {
-  py::buffer_info operator()(framework::Tensor &tensor) {
+  py::buffer_info operator()(framework::LODTensor &tensor) {
     PADDLE_THROW("This type of tensor cannot be expose to Python");
     return py::buffer_info();
   }
@@ -41,7 +41,7 @@ struct CastToPyBufferImpl<false, I, ARGS...> {
 template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<true, I, ARGS...> {
   using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
-  py::buffer_info operator()(framework::Tensor &tensor) {
+  py::buffer_info operator()(framework::LODTensor &tensor) {
     if (std::type_index(typeid(CUR_TYPE)) == tensor.holder_->type()) {
       auto dim_vec = framework::vectorize(tensor.dims());
       std::vector<size_t> dims_outside;
@@ -55,7 +55,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         strides[i - 1] = sizeof(CUR_TYPE) * prod;
         prod *= dims_outside[i - 1];
       }
-      framework::Tensor dst_tensor;
+      framework::LODTensor dst_tensor;
       if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
         dst_tensor.CopyFrom<CUR_TYPE>(tensor, platform::CPUPlace());
       } else if (paddle::platform::is_cpu_place(tensor.holder_->place())) {
@@ -75,14 +75,14 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
   }
 };
 }  // namespace details
-inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
+inline py::buffer_info CastToPyBuffer(framework::LODTensor &tensor) {
   auto buffer_info = details::CastToPyBufferImpl<true, 0, float, int>()(tensor);
   return buffer_info;
 }
 
 template <typename T>
-void PyCPUTensorSetFromArray(
-    framework::Tensor &self,
+void PyCPULODTensorSetFromArray(
+    framework::LODTensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
     paddle::platform::CPUPlace &place) {
   std::vector<int> dims;
@@ -98,8 +98,8 @@ void PyCPUTensorSetFromArray(
 
 #ifndef PADDLE_ONLY_CPU
 template <typename T>
-void PyCUDATensorSetFromArray(
-    framework::Tensor &self,
+void PyCUDALODTensorSetFromArray(
+    framework::LODTensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
     paddle::platform::GPUPlace &place) {
   std::vector<int> dims;

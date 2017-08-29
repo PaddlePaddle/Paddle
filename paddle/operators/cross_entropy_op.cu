@@ -18,7 +18,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 
 template <typename T>
 __host__ __device__ T clipping_log(const T x) {
@@ -75,10 +75,10 @@ class OnehotCrossEntropyOpCUDAKernel : public framework::OpKernel {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
 
-    auto X = ctx.Input<Tensor>("X");
+    auto X = ctx.Input<LODTensor>("X");
     const T* Xdata = X->data<T>();
-    const int* label_data = ctx.Input<Tensor>("label")->data<int>();
-    auto Y = ctx.Output<Tensor>("Y");
+    const int* label_data = ctx.Input<LODTensor>("label")->data<int>();
+    auto Y = ctx.Output<LODTensor>("Y");
     Y->mutable_data<T>(ctx.GetPlace());
     T* Ydata = Y->data<T>();
 
@@ -99,10 +99,10 @@ class OnehotCrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
 
-    auto X = ctx.Input<Tensor>("X");
-    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto label = ctx.Input<Tensor>("label");
+    auto X = ctx.Input<LODTensor>("X");
+    auto dX = ctx.Output<LODTensor>(framework::GradVarName("X"));
+    auto dY = ctx.Input<LODTensor>(framework::GradVarName("Y"));
+    auto label = ctx.Input<LODTensor>("label");
 
     auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());
     auto* dYdata = dY->template data<T>();

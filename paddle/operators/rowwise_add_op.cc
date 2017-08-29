@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
+using framework::LODTensor;
 
 class RowwiseAddOp : public framework::OperatorWithKernel {
  public:
@@ -25,14 +25,14 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto dim0 = ctx.Input<Tensor>("X")->dims();
-    auto dim1 = ctx.Input<Tensor>("b")->dims();
+    auto dim0 = ctx.Input<LODTensor>("X")->dims();
+    auto dim1 = ctx.Input<LODTensor>("b")->dims();
 
     PADDLE_ENFORCE(dim0.size() == 2, "Input 0 must be matrix");
     PADDLE_ENFORCE(dim1.size() == 1, "The second input must be vector");
     PADDLE_ENFORCE(dim0[1] == dim1[0], "The width of two input must be same");
     PADDLE_ENFORCE(ctx.OutputSize("Out") == 1, "The output size must be 1");
-    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("X")->dims());
+    ctx.Output<LODTensor>("Out")->Resize(ctx.Input<LODTensor>("X")->dims());
   }
 };
 
@@ -61,11 +61,11 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("b"), "b should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto dims0 = ctx.Input<Tensor>("X")->dims();
-    auto dims1 = ctx.Input<Tensor>("b")->dims();
+    auto dims0 = ctx.Input<LODTensor>("X")->dims();
+    auto dims1 = ctx.Input<LODTensor>("b")->dims();
     PADDLE_ENFORCE_EQ(1, dims1.size(), "b dims should be 1")
-    ctx.Output<Tensor>(framework::GradVarName("X"))->Resize(dims0);
-    ctx.Output<Tensor>(framework::GradVarName("b"))->Resize(dims1);
+    ctx.Output<LODTensor>(framework::GradVarName("X"))->Resize(dims0);
+    ctx.Output<LODTensor>(framework::GradVarName("b"))->Resize(dims1);
   }
 };
 

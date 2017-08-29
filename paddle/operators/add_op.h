@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -28,9 +28,9 @@ template <typename Place, typename T>
 class AddKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input0 = context.Input<Tensor>("X");
-    auto* input1 = context.Input<Tensor>("Y");
-    auto* output = context.Output<Tensor>("Out");
+    auto* input0 = context.Input<LODTensor>("X");
+    auto* input1 = context.Input<LODTensor>("Y");
+    auto* output = context.Output<LODTensor>("Out");
 
     output->mutable_data<T>(context.GetPlace());
 

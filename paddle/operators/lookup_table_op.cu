@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void LookupTable(T* output, const T* table, const int32_t* ids,
@@ -64,9 +64,9 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto table_t = context.Input<Tensor>("W");
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto output_t = context.Output<Tensor>("Out");
+    auto table_t = context.Input<LODTensor>("W");
+    auto ids_t = context.Input<LODTensor>("Ids");
+    auto output_t = context.Output<LODTensor>("Out");
 
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
@@ -85,9 +85,9 @@ template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto d_table_t = context.Output<Tensor>(framework::GradVarName("W"));
+    auto ids_t = context.Input<LODTensor>("Ids");
+    auto d_output_t = context.Input<LODTensor>(framework::GradVarName("Out"));
+    auto d_table_t = context.Output<LODTensor>(framework::GradVarName("W"));
 
     int N = d_table_t->dims()[0];
     int D = d_table_t->dims()[1];

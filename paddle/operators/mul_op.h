@@ -22,7 +22,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -31,9 +31,9 @@ template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<Tensor>("X");
-    auto* Y = context.Input<Tensor>("Y");
-    auto* Z = context.Output<Tensor>("Out");
+    auto* X = context.Input<LODTensor>("X");
+    auto* Y = context.Input<LODTensor>("Y");
+    auto* Z = context.Output<LODTensor>("Out");
     Z->mutable_data<T>(context.GetPlace());
     auto* device_context =
         const_cast<platform::DeviceContext*>(context.device_context_);
@@ -45,12 +45,12 @@ template <typename Place, typename T>
 class MulGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* X = ctx.Input<LODTensor>("X");
+    auto* Y = ctx.Input<LODTensor>("Y");
+    auto* dOut = ctx.Input<LODTensor>(framework::GradVarName("Out"));
 
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* dX = ctx.Output<LODTensor>(framework::GradVarName("X"));
+    auto* dY = ctx.Output<LODTensor>(framework::GradVarName("Y"));
     dX->mutable_data<T>(ctx.GetPlace());
     dY->mutable_data<T>(ctx.GetPlace());
     auto* device_context =

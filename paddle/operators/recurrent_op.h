@@ -21,7 +21,8 @@
 namespace paddle {
 namespace operators {
 
-// The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
+// The sequence format in RecurrentOp is
+// LODTensor<seq_len, batch_size, dim> now.
 // TODO(Yan Chunwei):
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.

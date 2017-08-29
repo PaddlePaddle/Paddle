@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -28,9 +28,9 @@ template <typename Place, typename T>
 class SGDOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param = ctx.Input<Tensor>("param");
-    auto grad = ctx.Input<Tensor>("grad");
-    auto param_out = ctx.Output<Tensor>("param_out");
+    auto param = ctx.Input<LODTensor>("param");
+    auto grad = ctx.Input<LODTensor>("grad");
+    auto param_out = ctx.Output<LODTensor>("param_out");
     float lr = ctx.op_.GetAttr<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());

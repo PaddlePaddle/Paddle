@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
@@ -31,8 +31,8 @@ template <typename Place, typename T>
 class MeanKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto* input = context.Input<LODTensor>("X");
+    auto* output = context.Output<LODTensor>("Out");
 
     output->mutable_data<T>(context.GetPlace());
 
@@ -48,10 +48,10 @@ template <typename Place, typename T>
 class MeanGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto OG = context.Input<LODTensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE(framework::product(OG->dims()) == 1,
                    "Mean Gradient should be scalar");
-    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
+    auto IG = context.Output<LODTensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
     T ig_size = (T)framework::product(IG->dims());
