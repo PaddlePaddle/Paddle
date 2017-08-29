@@ -110,7 +110,8 @@ __all__ = [
     'sum_cost',
     'rank_cost',
     'lambda_cost',
-    'huber_cost',
+    'huber_regression_cost',
+    'huber_classification_cost',
     'block_expand_layer',
     'maxout_layer',
     'out_prod_layer',
@@ -220,7 +221,8 @@ class LayerType(object):
 
     RANK_COST = 'rank-cost'
     LAMBDA_COST = 'lambda_cost'
-    HUBER = 'huber'
+    HUBER_REGRESSION = 'huber_regression'
+    HUBER_CLASSIFICATION = 'huber_classification'
     CROSS_ENTROPY = 'multi-class-cross-entropy'
     CROSS_ENTROPY_WITH_SELFNORM = 'multi_class_cross_entropy_with_selfnorm'
     SOFT_BIN_CLASS_CROSS_ENTROPY = 'soft_binary_class_cross_entropy'
@@ -5644,16 +5646,77 @@ def sum_cost(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
+def huber_regression_cost(input,
+                          label,
+                          name=None,
+                          delta=1.0,
+                          coeff=1.0,
+                          layer_attr=None):
     """
-    A loss layer for huber loss.
+    In statistics, the Huber loss is a loss function used in robust regression, 
+    that is less sensitive to outliers in data than the squared error loss. 
+    Given a prediction f(x), a label y and :math:`\delta`, the loss function 
+    is defined as:
+
+    .. math:
+       loss = 0.5*\left ( y-f(x) \right )^2, \left | y-f(x) \right |\leq \delta
+       loss = \delta \left | y-f(x) \right |-0.5\delta ^2, otherwise
 
     The example usage is:
 
     .. code-block:: python
 
-       cost = huber_cost(input=input_layer,
-                         label=label_layer)
+       cost = huber_regression_cost(input=input_layer, label=label_layer)
+
+    :param input: The first input layer.
+    :type input: LayerOutput.
+    :param label: The input label.
+    :type input: LayerOutput.
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring.
+    :param delta: The difference between the observed and predicted values.
+    :type delta: float.
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput.
+    """
+    assert isinstance(input, LayerOutput)
+    Layer(
+        name=name,
+        type=LayerType.HUBER_REGRESSION,
+        inputs=[input.name, label.name],
+        delta=delta,
+        coeff=coeff,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.HUBER_REGRESSION, parents=[input, label], size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def huber_classification_cost(input,
+                              label,
+                              name=None,
+                              coeff=1.0,
+                              layer_attr=None):
+    """
+    For classification purposes, a variant of the Huber loss called modified Huber 
+    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and 
+    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber 
+    loss is defined as:
+
+    .. math:
+       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1 
+       loss = -4yf(x), \text{otherwise}
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = huber_classification_cost(input=input_layer, label=label_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput.
@@ -5673,11 +5736,12 @@ def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
         assert input.size == 1
     Layer(
         name=name,
-        type=LayerType.HUBER,
+        type=LayerType.HUBER_CLASSIFICATION,
         inputs=[input.name, label.name],
         coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.HUBER, parents=[input, label], size=1)
+    return LayerOutput(
+        name, LayerType.HUBER_CLASSIFICATION, parents=[input, label], size=1)
 
 
 @wrap_name_default()
