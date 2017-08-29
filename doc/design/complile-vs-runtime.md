@@ -27,11 +27,12 @@ VarDesc创建的时候无需Scope，只需要在一个全局map中保存VarDesc�
 1. 切换Scope简单，只需在Op Run的时候传入一个新的Scope，框架根据全局的VarDesc Map在其中创建对应的Var即可运行。
 2. 用VarDesc存储元信息，方便做图的优化。
 3. InferShape就可以不需要传入Scope这个参数，因为修改的VarDesc都存在于全局的map中
+4. 在分布式场景下，需要将图序列化之后发送给别的机器执行，这个终归是需要将Variable的相关属性也序列化的。这个点带来一个好处是，云端执行任务是可控的，用户发过来的是一个序列化的图，而不是一个脚本的源代码，有利于数据安全。
 
 #### 缺点
-1. InferShape实现复杂，编译时InferShape是基于VarDesc，但是运行时也同样需要做InferShape和resize()，因为  
-	a. 运行时size可能会被用户修改.  
-	b. Op实现也要求运行时需要做InferShape(例如RNN)  
+1. InferShape实现复杂，编译时InferShape是基于VarDesc，但是运行时也同样需要做InferShape和resize()，因为
+	a. 运行时size可能会被用户修改.
+	b. Op实现也要求运行时需要做InferShape(例如RNN)
 
 这两种InferShape一个基于VarDesc，一个基于Scope中的Variable进行，代码上会有一定的重复(需要想清楚有多复杂，一种想法是封装在InferContext和Executioncontext中)。
 
@@ -44,3 +45,4 @@ Var必须创建在某个已经存在的Scope中，切换Scope之前，需要clon
 
 #### 缺点
 1. Clone的实现可能并不简单，比如多种设备类型之间内存如何同步(Scope for CPU vs Scope for GPU)
+1. 实现Graph的序列化，最终还是需要一个类似VarDesc的角色。
