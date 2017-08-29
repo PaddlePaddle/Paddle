@@ -17,6 +17,20 @@ PaddlePaddle是一个基于graph of operator的神经网络计算框架，正常
   - 构建图的时候就在Scope中创建相关Tensor，InferShape需要接受Scope作为参数，并修改Scope中的tensor的shape属性。
   - 运行的时候直接接受同样的Scope作为参数，并为所有Tensor分配内存。
 
+### InferShape调用时机
+目前的想法中，InferShape因为涉及到编译时和运行时两个阶段，对设计有较大影响。
+
+一个问题是: InferShape调用几次，什么时机调用？
+
+1. 编译时调用。为了实现边配置网络边检查shape的正确性，在创建Operator之后，必须做一次InferShape，这是没有争议的。
+2. 运行是调用。运行时调用InferShape有以下几种原因：
+   - 编译时某些维度没有设置，比如batch_size，只有在运行时设置了数据的维度才能正确Infer出来。
+   - 编译完之后，用户手动修改了某些参数的维度，如果不做check，将无法发现错误。
+   - 有些维度，必须在看到真实数据之后才能确定，例如condition op(if else while)等，他们的分支选择之后的数据size，必须知道真实数据之后才能确定。
+
+**结论是**：InferShape需要在编译时和运行时都被调用，编译时主要用于check size的配置是否正确，运行时一方面要check size是否正确，还要根据真实数据来做一些resize.
+
+
 下面分析两种情况的优缺点：
 
 ### 1. VarDesc作为编译时，Scope/Variable作为运行时
