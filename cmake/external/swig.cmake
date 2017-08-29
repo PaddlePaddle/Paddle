@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+IF(NOT WITH_SWIG_PY)
+    return()
+ENDIF()
+
 FIND_PACKAGE(SWIG)
 
 IF(NOT SWIG_FOUND)

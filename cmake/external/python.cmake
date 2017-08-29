@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE(ExternalProject)
+IF(NOT WITH_PYTHON)
+    return()
+ENDIF()
+
 INCLUDE(python_module)
 
-FIND_HOST_PACKAGE(PythonInterp 2.7)
-IF(WITH_PYTHON)
-    FIND_HOST_PACKAGE(PythonLibs 2.7)
-    # Fixme: Maybe find a static library. Get SHARED/STATIC by FIND_PACKAGE.
-    ADD_LIBRARY(python SHARED IMPORTED GLOBAL)
-    SET_PROPERTY(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})
-ENDIF(WITH_PYTHON)
+FIND_PACKAGE(PythonInterp 2.7)
+FIND_PACKAGE(PythonLibs 2.7)
+# Fixme: Maybe find a static library. Get SHARED/STATIC by FIND_PACKAGE.
+ADD_LIBRARY(python SHARED IMPORTED GLOBAL)
+SET_PROPERTY(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})
 
 SET(py_env "")
 IF(PYTHONINTERP_FOUND)
@@ -29,16 +30,12 @@ IF(PYTHONINTERP_FOUND)
     find_python_module(numpy REQUIRED)
     find_python_module(wheel REQUIRED)
     find_python_module(google.protobuf REQUIRED)
-    FIND_HOST_PACKAGE(NumPy REQUIRED)
+    FIND_PACKAGE(NumPy REQUIRED)
     IF(${PY_GOOGLE.PROTOBUF_VERSION} AND ${PY_GOOGLE.PROTOBUF_VERSION} VERSION_LESS "3.0.0")
         MESSAGE(FATAL_ERROR "Found Python Protobuf ${PY_GOOGLE.PROTOBUF_VERSION} < 3.0.0, "
         "please use pip to upgrade protobuf. pip install -U protobuf")
     ENDIF()
 ENDIF(PYTHONINTERP_FOUND)
 
-IF(WITH_PYTHON)
-    INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIR})
-    INCLUDE_DIRECTORIES(${PYTHON_NUMPY_INCLUDE_DIR})
-ELSE()
-    SET(PYTHON_LIBRARIES "")
-ENDIF()
+INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(${PYTHON_NUMPY_INCLUDE_DIR})
