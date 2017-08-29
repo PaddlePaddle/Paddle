@@ -167,11 +167,16 @@ if(USE_NNPACK)
     list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
 endif(USE_NNPACK)
 
+message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+
 add_subdirectory(proto)
 
-# "add_subdirectory(go)" should be placed after the following loine,
-# because it depends on paddle/optimizer.
-add_subdirectory(paddle/optimizer)
+if(NOT ANDROID AND NOT IOS)
+    # "add_subdirectory(go)" should be placed after the following loine,
+    # because it depends on paddle/optimizer.
+    add_subdirectory(paddle/optimizer)
+endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.

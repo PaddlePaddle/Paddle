@@ -289,6 +289,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
 message(STATUS "iOS: Targeting iOS '${CMAKE_SYSTEM_VERSION}', "
         "building for '${IOS_PLATFORM}' platform, with architecture '${CMAKE_OSX_ARCHITECTURES}'")
+message(STATUS "System CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "System CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 # This little macro lets you set any XCode specific property
 macro(set_xcode_property TARGET XCODE_PROPERTY XCODE_VALUE)
