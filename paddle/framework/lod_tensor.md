@@ -1,4 +1,4 @@
-# LoD (Level-of-Detail) Tensor
+# Design Doc: LoD (Level-of-Detail) Tensor
 
 PaddlePaddle's RNN doesn't require that all instances have the same length.  To do so, we introduce an extension to Tensor, namely, LoD Tensor.
 
