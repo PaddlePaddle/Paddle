@@ -17,6 +17,11 @@ There are several important concepts:
 - init_memory, the variable to help initialize memory
 
 ### step scopes
+
+<p aligh="center">
+<img src="./images/rnn.png"/>
+</p>
+
 Each RNN might run one or more steps. Each step runs the step net.
 
 We use `Scope` to store the contexts of all the steps:
