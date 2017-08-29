@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/framework/operator.h"
+#include "paddle/operators/net_op.h"
 #include "paddle/operators/rnn/recurrent_op_utils.h"
 
 namespace paddle {
@@ -33,7 +34,12 @@ class RecurrentAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
+  void Init(rnn::Argument* arg,
+            std::unique_ptr<framework::OperatorBase>* stepnet) {
+    PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
+    arg_ = arg;
+    stepnet_ = stepnet;
+  }
 
   /**
    * InferShape must be called before Run.
@@ -58,7 +64,8 @@ class RecurrentAlgorithm {
   void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
 
  private:
-  std::unique_ptr<rnn::Argument> arg_;
+  std::unique_ptr<framework::OperatorBase>* stepnet_;
+  rnn::Argument* arg_;
   mutable size_t seq_len_;
 };
 
@@ -74,7 +81,12 @@ class RecurrentGradientAlgorithm {
    * operator.
    */
  public:
-  void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
+  void Init(rnn::Argument* arg,
+            std::unique_ptr<framework::OperatorBase>* stepnet) {
+    PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
+    arg_ = std::move(arg);
+    stepnet_ = stepnet;
+  }
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
@@ -95,14 +107,23 @@ class RecurrentGradientAlgorithm {
   }
 
  private:
-  std::unique_ptr<rnn::Argument> arg_;
+  rnn::Argument* arg_;
   mutable size_t seq_len_;
+  std::unique_ptr<framework::OperatorBase>* stepnet_;
 };
 
-class RecurrentOp final : public framework::OperatorBase {
+class RecurrentOp : public framework::OperatorBase {
  public:
-  void Init() override;
+  RecurrentOp(const std::string& type, const framework::VariableNameMap& inputs,
+              const framework::VariableNameMap& outputs,
+              const framework::AttributeMap& attrs);
 
+  RecurrentOp(const RecurrentOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    // TODO(yuyang18): Implement copy ctor well.
+    PADDLE_THROW("Not implemented");
+  }
   /**
    * InferShape must be called before Run.
    */
@@ -114,16 +135,33 @@ class RecurrentOp final : public framework::OperatorBase {
            const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
+
+  void set_stepnet(std::unique_ptr<OperatorBase> net) {
+    stepnet_ = std::move(net);
+  }
+  const OperatorBase& stepnet() const { return *stepnet_; }
 
   static const rnn::ArgumentName kArgName;
 
  private:
   RecurrentAlgorithm alg_;
+  rnn::Argument arg_;
+  std::unique_ptr<OperatorBase> stepnet_;
 };
 
-class RecurrentGradientOp final : public framework::OperatorBase {
+class RecurrentGradientOp : public framework::OperatorBase {
  public:
-  void Init() override;
+  RecurrentGradientOp(const std::string& type,
+                      const framework::VariableNameMap& inputs,
+                      const framework::VariableNameMap& outputs,
+                      const framework::AttributeMap& attrs);
+
+  RecurrentGradientOp(const RecurrentGradientOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    // TODO(yuyang18): Implement Copy ctor.
+    PADDLE_THROW("Not Implemented");
+  }
 
   /**
    * InferShape must be called before Run.
@@ -139,8 +177,15 @@ class RecurrentGradientOp final : public framework::OperatorBase {
 
   static const rnn::ArgumentName kArgName;
 
+  void set_stepnet(std::unique_ptr<OperatorBase> net) {
+    stepnet_ = std::move(net);
+  }
+  const OperatorBase& stepnet() const { return *stepnet_; }
+
  private:
   RecurrentGradientAlgorithm alg_;
+  std::unique_ptr<OperatorBase> stepnet_;
+  rnn::Argument arg_;
 };
 
 }  // namespace operators

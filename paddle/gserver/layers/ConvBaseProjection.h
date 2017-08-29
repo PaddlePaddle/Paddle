@@ -63,6 +63,7 @@ protected:
   int configChannels_, configNumFilters_;
   int paddingH_, paddingW_;
   int strideH_, strideW_;
+  int dilationH_, dilationW_;
   int filterH_, filterW_;
   /// One group offset of input data.
   int inputOffset_;

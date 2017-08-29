@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/platform/gpu_info.h"
+
 #include "gflags/gflags.h"
+
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/environment.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
               "Default use 95% of GPU memory for PaddlePaddle,"
@@ -69,6 +72,13 @@ size_t GpuMaxChunkSize() {
   size_t available = 0;
 
   GpuMemoryUsage(available, total);
+
+  if (IsEnvVarDefined(kEnvFractionGpuMemoryToUse)) {
+    auto val = std::stod(GetEnvValue(kEnvFractionGpuMemoryToUse));
+    PADDLE_ENFORCE_GT(val, 0.0);
+    PADDLE_ENFORCE_LE(val, 1.0);
+    FLAGS_fraction_of_gpu_memory_to_use = val;
+  }
 
   // Reserving the rest memory for page tables, etc.
   size_t reserving = (1 - FLAGS_fraction_of_gpu_memory_to_use) * total;

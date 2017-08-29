@@ -283,6 +283,5 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 DDim::DDim(std::initializer_list<int> init_list) {
   *this = make_ddim(init_list);
 }
-
 }  // namespace framework
 }  // namespace paddle
