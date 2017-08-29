@@ -2,8 +2,8 @@
 
 ## Abstract
 
-We propose an approach to implment the parameter server. In this
-approach, there is no fundimental difference between the trainer and
+We propose an approach to implement the parameter server. In this
+approach, there is no fundamental difference between the trainer and
 the parameter server: they both run sub-graphs, but sub-graphs of
 different purposes.
 
@@ -16,7 +16,7 @@ trainer and the parameter server.
 
 It would be great if we can write code once and use them on both the
 trainer and the parameter server: reduces code duplication and
-improves extensibility. Given during the current refactor, we are
+improves extensibility. Given that after the current refactor, we are
 representing everything as a computing graph on the
 trainer. Representing everything as a computing graph on the parameter
 server becomes a natural extension.
@@ -25,8 +25,8 @@ server becomes a natural extension.
 
 ### Graph Converter
 
-The *graph converter* converts user-defined operation (OP) graph into
-sub-graphs to be scheduled on different nodes.
+The *graph converter* converts the user-defined operation (OP) graph
+into sub-graphs to be scheduled on different nodes.
 
 1. The user-defined OP graph will be cut into sub-graphs of
 different purposes (e.g., trainer, parameter server) to run on
@@ -66,7 +66,7 @@ After converting:
   a subgraph.
 
 - No more duplication logic inside the trainer and the parameter
-  server in the background section.
+  server mentioned in the background section.
 
 ### Challenges
 
