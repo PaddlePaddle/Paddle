@@ -40,7 +40,7 @@ IF(NOT ${CBLAS_FOUND})
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
             ENDIF()
         ELSEIF(IOS)
-            # FIXME: support multiple architectures
+            # FIXME(liuyiqun): support multiple architectures
             SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
             SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
             IF(CMAKE_OSX_ARCHITECTURES MATCHES "armv7")

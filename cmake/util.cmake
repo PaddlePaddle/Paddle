@@ -71,20 +71,25 @@ function(link_paddle_exe TARGET_NAME)
         generate_rdma_links()
     endif()
 
+    if(NOT ANDROID AND NOT IOS)
+        set(PADDLE_TRAIN_LIBS
+            paddle_pserver
+            paddle_network
+            paddle_trainer_lib
+            paddle_optimizer)
+    endif()
+
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver
         paddle_function
         ARCHIVE_END
-        paddle_pserver
-        paddle_trainer_lib
-        paddle_network
         paddle_math
         paddle_utils
         paddle_parameter
         paddle_proto
         paddle_cuda
-        paddle_optimizer
+        ${PADDLE_TRAIN_LIBS}
         ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}

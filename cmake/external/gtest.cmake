@@ -48,15 +48,16 @@ IF(WITH_TESTING)
         PREFIX          ${GTEST_SOURCES_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        CMAKE_ARGS      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        CMAKE_ARGS      -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-        CMAKE_ARGS      -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-        CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR}
-        CMAKE_ARGS      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-        CMAKE_ARGS      -DBUILD_GMOCK=ON
-        CMAKE_ARGS      -Dgtest_disable_pthreads=ON
-        CMAKE_ARGS      -Dgtest_force_shared_crt=ON
-        CMAKE_ARGS      -DCMAKE_BUILD_TYPE=Release
+                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                        -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR}
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DBUILD_GMOCK=ON
+                        -Dgtest_disable_pthreads=ON
+                        -Dgtest_force_shared_crt=ON
+                        -DCMAKE_BUILD_TYPE=Release
+                        ${EXTERNAL_OPTIONAL_ARGS}
         CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}
                          -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                          -DCMAKE_BUILD_TYPE:STRING=Release

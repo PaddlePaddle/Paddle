@@ -30,7 +30,7 @@ add_dependencies(paddle_capi paddle_proto)
 
 # combine all paddle static libraries together, into libpaddle_capi_whole.a
 # user should use PaddleCAPI as -lpaddle_capi_whole
-set(PADDLE_INFER_LIBS
+set(PADDLE_CAPI_INFER_LIBS
     paddle_utils
     paddle_parameter
     paddle_math
@@ -40,9 +40,9 @@ set(PADDLE_INFER_LIBS
     paddle_proto
     )
 
-set(PADDLE_TRAIN_LIBS paddle_pserver paddle_network)
+set(PADDLE_CAPI_TRAIN_LIBS paddle_pserver paddle_network)
 
-cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_INFER_LIBS})
+cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
 
 # No shared library for iOS
 if(NOT IOS)

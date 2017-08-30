@@ -77,7 +77,7 @@ set(IOS_PLATFORM ${IOS_PLATFORM} CACHE STRING "Type of iOS Platform")
 # Set the architecture for iOS
 if(NOT DEFINED IOS_ARCH)
   if(IOS_PLATFORM STREQUAL "OS")
-    # FIXME: support "armv7;armv7s;arm64" future
+    # FIXME(liuyiqun): support "armv7;armv7s;arm64" future
     set(IOS_ARCH "arm64")
   elseif(IOS_PLATFORM STREQUAL "SIMULATOR")
     set(IOS_ARCH "i386;x86_64")
