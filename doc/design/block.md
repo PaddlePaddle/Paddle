@@ -84,6 +84,110 @@ We may rename `NetOp` in cpp code to `Block`, but whether to add more functions 
 In my opition, Block is very basic concept in underlying implementation, so a python wrapper and a cpp minimal implementation is enough now.
 It is free to change if other module needs more complex supports such as `VarDesc` is added.
 
+```c++
+struct VarDesc;
+struct BlockDesc;
+
+// VarDescLib is similar to Scope, but offer a simpler map with the same value type.
+class VarDescLib {
+ public:
+  VarDescLib();
+  // lookup a variable description, recursively or not.
+  VarDesc* Lookup(const std::string& name, bool recursive=true);
+  // create a new description in local namescope.
+  VarDesc* New(const std::string& name);
+  // delete a local variable's description
+  void Delete(const std::string& name);
+ private:
+  std::map<std::string, VarDesc> map_;
+  VarDescLib* father_{nullptr};
+};
+
+/*
+ * Block represents a group of operators.
+ */
+class Block : public OperatorBase {
+ public:
+  // Block which will create its own scope when run
+  Block(Block* father) : father_block_(father) {}
+
+  // Block with a given scope
+  Block(Block* father, Scope* scope) : father_block_(father), scope_(scope) {}
+
+  // NOTE Block has its own scope, so the argument scope here is not needed.
+  virtual void Run(const Scope& scope,
+                   const platform::DeviceContext& dev_ctx) const;
+
+  // Evaluate some specific variables.
+  void Eval(std::vector<std::string> vars);
+
+  // TODO most interfaces of NetOp
+
+  // initial scope, create if scope_ is empty.
+  void InitScope();
+
+  BlockDesc Serialize();
+  void Deserialize(const BlockDesc& desc);
+
+ private:
+  Block* father_block_;
+  // All the VarDescs are store in var_desc_lib_;
+  std::unique_ptr<VarDescLib> var_desc_lib_;
+
+  Scope* scope_;
+  bool scope_owner_{false};
+
+  std::vector<OperatorBase> ops_;
+};
+```
+
+python wrapper
+
+```python
+import paddle as pd
+import paddle.v2.framework.core as core
+
+class Block(pd.Op):
+    '''
+    Block is a group of operators.
+    '''
+    def __init__(self):
+        self._block = core.Block()
+
+    def append(cmd):
+        '''
+        a cmd can be a op or a soft block which is implemented by python.
+        '''
+        if isinstance(cmd, Op):
+            self._block.AppendOp(Op.core_op)
+        else:
+            pass
+
+    def run(self, device=None):
+        '''
+        device: device context
+        '''
+        self.scope = core.Scope()
+        self._block.run(self.scope, device)
+
+    def eval(self, targets):
+        '''
+        targets: list of Variable
+        '''
+        var_names = [v.name for v in targets]
+        self._block.eval(var_names)
+        return targets
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+```
+
+
+
 ## `with` statement
 Currently Block concept is invisible to users, but some usage are embedded in python interface.
 
