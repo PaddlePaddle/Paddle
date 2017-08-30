@@ -52,13 +52,21 @@ message VarDesc {
     LOD_TENSOR = 6;
   }
   Type type = 1;
-  optional LODTesnorDesc lod_tensor = 2; // when type==LOD_TENSOR
+  optional LodTesnorDesc lod_tensor = 2; // when type==LOD_TENSOR
 }
 
-message LODTensorDesc {
-  repeated int dims = 1; // [UNK, UNK, 6000] is saved as [-1, -1, 6000]
-  Type element_type = 2;
+message LoDTensorDesc {
   optional int lod_level [default=0] = 3;
+  repeated int dims = 1; // [UNK, UNK, 6000] is saved as [-1, -1, 6000]
+  enum Type {
+    INT8 = 0;
+    INT16 = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FP16 = 4;
+    FP32 = 5;
+  }
+  Type element_type = 2;
 }
 ```
 
@@ -99,3 +107,57 @@ class OperatorBase {
   virtual InferShape(Block* block) = 0;
 };
 ```
+
+
+
+## Block as a proto message
+
+```protobuf
+message BlockDesc {
+  repeated VarDesc vars = 1;
+  repeated OperatorDesc ops = 2;
+}
+
+message OperatorDesc {
+  required string type = 1;
+  repeated name inputs = 2;
+  repeated name outputs = 3;
+  repeated AttrDesc attrs = 4;
+}
+
+message VarDesc {
+  required name string = 1;
+  enum Type { .. }
+  Type type = 2;
+  optional LoDTensorDesc lod_tensor = 3;
+  optional BlockDesc block = 4;
+}
+
+message AttrDesc {
+    required string name = 1;
+    required AttrType type = 2;
+    optional int32 i = 3;
+    optional float f = 4;
+    optional string s = 5;
+    repeated int32 ints = 6;
+    repeated float floats = 7;
+    repeated string strings = 8;
+    optional BlockDesc block = 9;
+};
+
+enum AttrType {
+  INT = 0;
+  FLOAT = 1;
+  STRING = 2;
+  INTS = 3;
+  FLOATS = 4;
+  STRINGS = 5;
+  BLOCK = 6;
+}
+```
+
+```python
+a = Var()
+b = Var()
+c = layer.rnn(
+      step_net={
