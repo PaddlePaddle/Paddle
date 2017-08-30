@@ -29,40 +29,40 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  *
  * \param imData   Image data.
  * \param imShape  The shape of imData,
- *                 [inputChannels, inputHeight, inputWidth].
+ *                 [input_channels, input_height, input_width].
  * \param colData  Column data.
  * \param colShape The shape of colData.
  *
  * If the template argument Format is kCFO, the shape of colData is:
- * [inputChannels, filterHeight, filterWidth, outputHeight, outputWidth]
+ * [input_channels, filter_height, filter_width, output_height, output_width]
  * So, it is easy to reshape into a convolution matrix for convolution
  * calculation based on matrix multiplication.
  * The shape of convolution matrix is [height, width], where the height is equal
- * inputChannels * filterHeight * filterWidth, and the width is equal
- * outputHeight * outputWidth.
+ * input_channels * filter_height * filter_width, and the width is equal
+ * output_height * output_width.
  *
  * Reshape:
  *     shape of colData           shape of convolution matrix
- *     [inputChannels,
- *      filterHeight,
- *      filterWidth,      ======>      [height, width]
- *      outputHeight,
- *      outputWidth]
+ *     [input_channels,
+ *      filter_height,
+ *      filter_width,      ======>      [height, width]
+ *      output_height,
+ *      output_width]
  *
  * If the template argument Format is kOCF, the shape of colData is:
- * [outputHeight, outputWidth, inputChannels, filterHeight, filterWidth]
+ * [output_height, output_width, input_channels, filter_height, filter_width]
  * So, it is easy to reshape into a sequence matrix for rnn calculation.
- * The shape of sequence matrix is [seqLength, stepSize], where the seqLength
- * is equal outputHeight * outputWidth, and the stepSize is equal
- * inputChannels * filterHeight * filterWidth.
+ * The shape of sequence matrix is [seq_length, step_size], where the seq_length
+ * is equal output_height * output_width, and the step_size is equal
+ * input_channels * filter_height * filter_width.
  *
  * Reshape:
  *     shape of colData             shape of sequence matrix
- *     [outputHeight,
- *      outputWidth,
- *      inputChannels,    ======>    [seqLength, stepSize]
- *      filterHeight,
- *      filterWidth]
+ *     [output_height,
+ *      output_width,
+ *      input_channels,    ======>    [seqLength, stepSize]
+ *      filter_height,
+ *      filter_width]
  *
  * \note The caller needs to ensure that imShape.inputChannels is equal to
  *       colShape.inputChannels.
