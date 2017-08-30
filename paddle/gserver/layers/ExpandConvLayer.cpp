@@ -29,6 +29,10 @@ namespace paddle {
 REGISTER_LAYER(exconv, ExpandConvLayer);
 REGISTER_LAYER(exconvt, ExpandConvLayer);
 
+inline bool isDepthwiseConv(int channels, int groups) {
+  return channels == groups;
+}
+
 bool ExpandConvLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
@@ -47,14 +51,27 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
     std::vector<size_t> paddings = {(size_t)paddingY_[i], (size_t)padding_[i]};
     std::vector<size_t> strides = {(size_t)strideY_[i], (size_t)stride_[i]};
 
-    if (useGpu_ && (size_t)groups_[i] == (size_t)channels_[i] && !isDeconv_) {
+    // Convolution Layer uses the GemmConv function by default.
+    convType = "GemmConv";
+    convGradInputType = "GemmConvGradInput";
+    convGradFilterType = "GemmConvGradFilter";
+
+    // If depth wise convolution and useGpu == true
+    if (useGpu_ && isDepthwiseConv(channels_[i], groups_[i]) && !isDeconv_) {
       convType = "DepthwiseConv";
       convGradInputType = "DepthwiseConvGradInput";
       convGradFilterType = "DepthwiseConvGradFilter";
-    } else {
-      convType = "GemmConv";
-      convGradInputType = "GemmConvGradInput";
-      convGradFilterType = "GemmConvGradFilter";
+    }
+
+    // If depth wise convolution and useGpu == false and ARM-NEON
+    if (!useGpu_ && isDepthwiseConv(channels_[i], groups_[i]) && !isDeconv_) {
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+      if ((filterSize_[i] == filterSizeY_[i]) &&
+          (filterSize_[i] == 3 || filterSize_[i] == 4) &&
+          (stride_[i] == strideY_[i]) && (stride_[i] == 1 || stride_[i] == 2)) {
+        convType = "NeonDepthwiseConv";
+      }
+#endif
     }
 
     if (FLAGS_use_nnpack && !isDeconv_) {
