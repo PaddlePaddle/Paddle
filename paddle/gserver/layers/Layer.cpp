@@ -41,7 +41,7 @@ namespace paddle {
 Layer::Layer(const LayerConfig& config, bool useGpu)
     : config_(config),
       useGpu_(useGpu),
-      deviceId_(-1),
+      deviceId_(CPU_DEVICE),
       needSequenceInfo_(true) {}
 
 bool Layer::init(const LayerMap& layerMap, const ParameterMap& parameterMap) {

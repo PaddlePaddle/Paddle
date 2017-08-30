@@ -44,7 +44,7 @@ AttrType AttrTypeID<std::vector<std::string>>() {
   return STRINGS;
 }
 
-Attribute GetAttrValue(const AttrDesc& attr_desc) {
+Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
     case paddle::framework::AttrType::INT: {
       return attr_desc.i();

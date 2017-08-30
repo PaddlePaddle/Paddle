@@ -28,6 +28,10 @@ if(NOT WITH_TIMER)
     add_definitions(-DPADDLE_DISABLE_TIMER)
 endif(NOT WITH_TIMER)
 
+if(USE_EIGEN_FOR_BLAS)
+    add_definitions(-DPADDLE_USE_EIGEN_FOR_BLAS)
+endif(USE_EIGEN_FOR_BLAS)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
@@ -129,7 +133,7 @@ if(WITH_GOLANG)
     add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/glide
       COMMAND env GOPATH=${GOPATH} ${GLIDE} install
       COMMAND touch ${CMAKE_BINARY_DIR}/glide
-      DEPENDS ${PROJ_ROOT}/go/glide.lock
+      DEPENDS ${PADDLE_SOURCE_DIR}/go/glide.lock
       WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go"
       )
 
