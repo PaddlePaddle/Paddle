@@ -17,5 +17,5 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(topk,
+REGISTER_OP_GPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::GPUPlace, float>);

@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/mean_op.h"
+#include "paddle/operators/top_k_op.h"
+#include <iostream>
 
 namespace paddle {
 namespace operators {
@@ -25,19 +26,39 @@ class TopkOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
                             "Input of TopkOP must be initialized.");
-    const int beam = static_cast<T>(context.op_.GetAttr<AttrType>("k"));
-    ctx.Output<Tensor>("Out")->Resize({beam});
+    auto *input = ctx.Input<framework::Tensor>("X");
+    const int k = static_cast<int>(ctx.op_.GetAttr<int>("k"));
+
+    // k must >= 1
+    PADDLE_ENFORCE_GE(k, 1);
+    // input must have >= 1d shape.
+    PADDLE_ENFORCE_GE(input->dims().size(), 1);
+    // input must have >= k columns.
+    PADDLE_ENFORCE_GE(input->dims()[input->dims().size() - 1], k);
+
+    framework::DDim dims = input->dims();
+    dims[dims.size() - 1] = k;
+    ctx.Output<Tensor>("Out")->Resize(dims);
+    ctx.Output<Tensor>("Indices")->Resize(dims);
   }
 };
 
+template <typename AttrType>
 class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   TopkOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of Topk op");
-    AddOutput("Out", "The output of Topk op");
-    AddComment("Get top k elements of 2d tensor(matrix) for each row.");
-    AddAttr<AttrType>("k", "The k of top k elements.").SetDefault(1);
+    AddOutput("Out", "The output tensor of Topk op");
+    AddOutput("Indices", "The indices of Topk elements of input");
+    AddComment(
+        R"DOC(If the input is a vector (1d tensor), finds the k largest entries in the vector and outputs their values and indices as vectors. Thus values[j] is the j-th largest entry in input, and its index is indices[j].
+
+    For matrices, computes the top k entries in each row. )DOC");
+    AddAttr<AttrType>("k",
+                      "Number of top elements to look for along the last "
+                      "dimension (along each row for matrices).")
+        .SetDefault(1);
   }
 };
 
@@ -45,6 +66,6 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(topk, ops::TopkOp, ops::TopkOpMaker);
-REGISTER_OP_CPU_KERNEL(topk,
+REGISTER_OP_WITHOUT_GRADIENT(top_k, ops::TopkOp, ops::TopkOpMaker<int>);
+REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>);

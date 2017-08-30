@@ -21,14 +21,12 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename Place, typename T, typename AttrType = int>
 class TopkKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -36,51 +34,44 @@ class TopkKernel : public framework::OpKernel {
     // FIXME: only deal with matrix(2d tensor).
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
+    auto* indices = ctx.Output<Tensor>("Indices");
+    // k is determined by Attr
+    const unsigned int k =
+        static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("k"));
 
     output->mutable_data<T>(ctx.GetPlace());
+    indices->mutable_data<T>(ctx.GetPlace());
 
     auto X = EigenMatrix<T>::From(*input);
     auto Out = EigenMatrix<T>::From(*output);
-    // k is determined by Attr
-    const int beam = static_cast<T>(context.op_.GetAttr<AttrType>("k"));
+    auto Indices = EigenMatrix<T>::From(*indices);
 
-    const int height = X.dimension(0);
-    const int width = X.dimension(1);
-    T* s = Out.device(ctx.GetEigenDevice<Place>()).data();
+    // reshape input to a flattern matrix(like flat_inner_dims)
+    framework::DDim inputdims = input->dims();
+    const unsigned int row = framework::product(
+        framework::slice_ddim(inputdims, 0, inputdims.size() - 1));
+    const unsigned int col = inputdims[inputdims.size() - 1];
+    Eigen::DSizes<int, 2> flat2dims(row, col);
+    X.reshape(flat2dims);
 
-    for (size_t i = 0; i < height; i++) {
-      std::vector<std::pair<real, size_t>> vec;
-      for (size_t j = 0; j < width; j++) {
-        vec.push_back(std::pair<real, size_t>(a[i * width + j], j));
+    for (size_t i = 0; i < row; i++) {
+      // TODO(typhoonzero): make this more efficient
+      std::vector<std::pair<T, size_t>> vec;
+      for (size_t j = 0; j < col; j++) {
+        vec.push_back(std::pair<T, size_t>(X(i, j), j));
       }
 
       std::partial_sort(
-          vec.begin(), vec.begin() + beam, vec.end(),
-          [](const std::pair<real, size_t>& l,
-             const std::pair<real, size_t>& r) { return l.first > r.first; });
-      for (size_t j = 0; j < beam; j++) {
-        // t[i * beam + j] = vec[j].first;
-        s[i * beam + j] = vec[j].second;
+          vec.begin(), vec.begin() + k, vec.end(),
+          [](const std::pair<T, size_t>& l, const std::pair<T, size_t>& r) {
+            return l.first > r.first;
+          });
+      for (size_t j = 0; j < k; j++) {
+        Out(i, j) = vec[j].first;
+        Indices(i, j) = vec[j].second;
       }
     }
-  }
-};
-
-template <typename Place, typename T>
-class MeanGradKernel : public framework::OpKernel {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto OG = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(framework::product(OG->dims()) == 1,
-                   "Mean Gradient should be scalar");
-    auto IG = ctx.Output<Tensor>(framework::GradVarName("X"));
-    IG->mutable_data<T>(ctx.GetPlace());
-
-    T ig_size = (T)framework::product(IG->dims());
-    Eigen::DSizes<int, 1> bcast(ig_size);
-
-    EigenVector<T>::Flatten(*IG).device(ctx.GetEigenDevice<Place>()) =
-        (EigenVector<T>::From(*OG) / ig_size).broadcast(bcast);
+    // FIXME: Resize back to the original input shape
   }
 };
 
