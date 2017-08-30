@@ -40,6 +40,10 @@ protected:
   IntV stride_;
   /// The y dimension of the stride.
   IntV strideY_;
+  /// The x dimension of the dilation.
+  IntV dilation_;
+  /// The y dimension of the dilation.
+  IntV dilationY_;
   /// The x dimension of a filter kernel.
   IntV filterSize_;
   /// The y dimension of a filter kernel.

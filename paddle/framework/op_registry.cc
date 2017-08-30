@@ -17,5 +17,45 @@ limitations under the License. */
 #include <vector>
 
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {
+
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
+    const std::string& type, const VariableNameMap& inputs,
+    const VariableNameMap& outputs, AttributeMap attrs) {
+  auto& info = OpInfoMap::Instance().Get(type);
+  info.Checker().Check(attrs);
+  auto op = info.Creator()(type, inputs, outputs, attrs);
+  return std::unique_ptr<OperatorBase>(op);
+}
+
+static VariableNameMap ConvertOpDescVarsToVarNameMap(
+    const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars) {
+  VariableNameMap ret_val;
+  for (auto& var : op_desc_vars) {
+    auto& var_names = ret_val[var.parameter()];
+    auto& var_names_in_proto = var.arguments();
+    var_names.reserve(static_cast<size_t>(var_names_in_proto.size()));
+    std::copy(var_names_in_proto.begin(), var_names_in_proto.end(),
+              std::back_inserter(var_names));
+  }
+  return ret_val;
+}
+
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+  VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
+  VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
+  AttributeMap attrs;
+  for (auto& attr : op_desc.attrs()) {
+    attrs[attr.name()] = GetAttrValue(attr);
+  }
+
+  return CreateOp(op_desc.type(), inputs, outputs, attrs);
+}
+
+std::unique_ptr<OperatorBase> OpRegistry::CreateGradOp(const OperatorBase& op) {
+  PADDLE_ENFORCE(!op.IsNetOp(), "Use framework::Backward to get backward ops");
+  return std::unique_ptr<OperatorBase>(BuildGradOp(&op));
+}
+
+}  // namespace framework
 }  // namespace paddle

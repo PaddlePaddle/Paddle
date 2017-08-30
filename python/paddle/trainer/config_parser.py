@@ -338,7 +338,8 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
         in_links_count += 1
         layer_name = MakeLayerNameInParentSubmodel(name)
         layer = g_layer_map[layer_name]
-        ScatterAgentLayer(name=name, size=layer.size)
+        ScatterAgentLayer(
+            name=name, size=layer.size, width=layer.width, height=layer.height)
 
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
@@ -869,12 +870,16 @@ class Conv(Cfg):
                  caffe_mode=True,
                  filter_size_y=None,
                  padding_y=None,
-                 stride_y=None):
+                 stride_y=None,
+                 dilation=None,
+                 dilation_y=None):
         self.add_keys(locals())
         if filter_size_y is None:
             self.filter_size_y = filter_size
         if padding_y is None:
             self.padding_y = padding
+        if dilation_y is None:
+            self.dilation_y = dilation
         if stride_y is None:
             self.stride_y = stride
         if output_x is not None:
@@ -1685,6 +1690,8 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
+    layer_type = 'fc'
+
     def __init__(self,
                  name,
                  size,
@@ -1692,14 +1699,27 @@ class FCLayer(LayerBase):
                  bias=True,
                  error_clipping_threshold=None,
                  **xargs):
-        super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        use_mkldnn_wgt = bool(
+            int(g_command_config_args.get("use_mkldnn_wgt", 0)))
+        if use_mkldnn:
+            self.layer_type = 'mkldnn_fc'
+            config_assert(
+                len(inputs) == 1,
+                "MkldnnFCLayer support one and only one input!")
+        super(FCLayer, self).__init__(
+            name, self.layer_type, size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
             dims = [input_layer.size, self.config.size]
             format = self.inputs[input_index].format
             sparse = format == "csr" or format == "csc"
-
+            if use_mkldnn:
+                config_assert(not sparse,
+                              "MkldnnFCLayer do not support sparse format yet")
+                if use_mkldnn_wgt:
+                    dims = [self.config.size, input_layer.size]
             if sparse:
                 psize = self.inputs[input_index].nnz
             else:
@@ -1710,6 +1730,11 @@ class FCLayer(LayerBase):
         self.create_bias_parameter(bias, self.config.size)
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
+
+
+@config_layer('mkldnn_fc')
+class MkldnnFcLayer(FCLayer):
+    layer_type = 'mkldnn_fc'
 
 
 @config_layer('selective_fc')
@@ -2295,8 +2320,8 @@ class MaxOutLayer(LayerBase):
         maxout_conf = self.config.inputs[0].maxout_conf
         parse_maxout(self.inputs[0].maxout, input_layer.name, maxout_conf)
         out_channels = maxout_conf.image_conf.channels / maxout_conf.groups
-        self.set_cnn_layer(name, g_layer_map[input_layer.name].height,
-                           g_layer_map[input_layer.name].width, out_channels)
+        self.set_cnn_layer(name, maxout_conf.image_conf.img_size_y,
+                           maxout_conf.image_conf.img_size, out_channels)
 
 
 @config_layer('row_conv')
@@ -2330,6 +2355,20 @@ class ClipLayer(LayerBase):
         self.config.inputs[0].clip_conf.max = max
 
 
+@config_layer('scale_shift')
+class ScaleShiftLayer(LayerBase):
+    def __init__(self, name, inputs, bias=True, **xargs):
+        super(ScaleShiftLayer, self).__init__(
+            name, 'scale_shift', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ScaleShiftLayer must have one and only one input.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.create_input_parameter(0, 1, [1, 1])
+        self.create_bias_parameter(bias, 1)
+
+
 # key: cost type
 # value: cost class
 g_cost_map = {}
@@ -2353,7 +2392,7 @@ define_cost('PnpairValidation', 'pnpair-validation')
 define_cost('SumOfSquaresCostLayer', 'square_error')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
-define_cost('HuberTwoClass', 'huber')
+define_cost('HuberTwoClassification', 'huber_classification')
 define_cost('SumCost', 'sum_cost')
 define_cost('SmoothL1Cost', 'smooth_l1')
 
@@ -2413,6 +2452,17 @@ class LambdaCost(LayerBase):
                 NDCG_num <= max_sort_size,
                 'NDCG_num must be less than or equal to max_sort_size')
         self.config.max_sort_size = max_sort_size
+
+
+@config_layer('huber_regression')
+class HuberRegressionLoss(LayerBase):
+    def __init__(self, name, inputs, delta=1., coeff=1., device=None):
+        super(HuberRegressionLoss, self).__init__(
+            name, 'huber_regression', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2, 'HuberRegression must have 2 inputs')
+        self.config.delta = delta
+        self.config.coeff = coeff
 
 
 @config_layer('nce')
@@ -2489,9 +2539,11 @@ class GatherAgentLayer(LayerBase):
 
 @config_layer('scatter_agent')
 class ScatterAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
+    def __init__(self, name, size, width=None, height=None, device=None):
         super(ScatterAgentLayer, self).__init__(
             name, 'scatter_agent', size, inputs=[], device=device)
+        if height and width:
+            self.set_layer_height_width(height, width)
 
 
 @config_layer('multiplex')
@@ -2773,6 +2825,49 @@ class SubSequenceLayer(LayerBase):
         size = input_layer0.size
         self.set_layer_size(size)
         self.create_bias_parameter(bias, size)
+
+
+@config_layer('seq_slice')
+class SeqSliceLayer(LayerBase):
+    def __init__(self, name, inputs, starts, ends, bias=False, **xargs):
+        if isinstance(inputs, list):
+            assert len(inputs) == 1, ('the first input of sequence slice layer '
+                                      'is a single sequence input.')
+        else:
+            inputs = [inputs]
+
+        if starts is not None:
+            if isinstance(starts, list):
+                assert len(starts) == 1, (
+                    'the start indices for sequence slice layer cannot '
+                    'be a list having more than one element.')
+                starts = starts[0]
+            inputs.append(starts)
+
+        if ends is not None:
+            if isinstance(ends, list):
+                assert len(ends) == 1, (
+                    'the end indices for sequence slice layer cannot '
+                    'be a list having more than one element.')
+                ends = ends[0]
+            inputs.append(ends)
+        assert len(inputs) >= 2, (
+            'the sequence slice layer has at least two inputs.')
+
+        super(SeqSliceLayer, self).__init__(
+            name, 'seq_slice', 0, inputs=inputs, **xargs)
+
+        input_layer0 = self.get_input_layer(0)
+        size = input_layer0.size
+        self.set_layer_size(size)
+
+        if len(inputs) == 3:
+            assert (
+                self.get_input_layer(1).size == self.get_input_layer(2).size), (
+                    'If start and end indices are both given to'
+                    'sequence slice layer, they should have the same width.')
+        elif len(inputs) == 2:
+            self.config.select_first = (starts is not None)
 
 
 @config_layer('sub_nested_seq')

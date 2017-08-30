@@ -14,8 +14,8 @@
 
 cmake_minimum_required(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(PROJ_BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR})
+set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
@@ -55,6 +55,7 @@ option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
+option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -121,8 +122,8 @@ include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 
 
-include_directories("${PROJ_ROOT}")
-include_directories("${PROJ_ROOT}/paddle/cuda/include")
+include_directories("${PADDLE_SOURCE_DIR}")
+include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 include_directories(${Boost_INCLUDE_DIRS})
@@ -137,14 +138,14 @@ set(EXTERNAL_LIBS
 )
 
 if(WITH_GPU)
-    list(APPEND EXTERNAL_LIB ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
+    list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
     if(NOT WITH_DSO)
-        list(APPEND EXTERNAL_LIB ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 
 if(WITH_MKLDNN)
-    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIBRARY} ${MKLDNN_IOMP_LIB})
+    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB} ${MKLDNN_IOMP_LIB})
 endif()
 
 if(USE_NNPACK)
@@ -164,10 +165,12 @@ if(WITH_GOLANG)
     add_subdirectory(go)
 endif(WITH_GOLANG)
 
+set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 add_subdirectory(paddle)
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
+
 if(WITH_DOC)
     add_subdirectory(doc)
 endif()
