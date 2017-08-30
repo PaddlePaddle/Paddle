@@ -926,16 +926,18 @@ def data_layer(name, size, height=None, width=None, depth=None,
         type=LayerType.DATA,
         name=name,
         size=size,
+        depth=depth,
         height=height,
         width=width,
-        depth=depth,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
+    if depth is None:
+        depth = 1
     num_filters = None
     if height is not None and width is not None:
-        num_filters = size / (width * height)
-        assert num_filters * width * height == size, \
-            "size=%s width=%s height=%s" % (size, width, height)
+        num_filters = size / (width * height * depth)
+        assert num_filters * width * height*depth == size, \
+            "size=%s width=%s height=%s depth=%s" % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
