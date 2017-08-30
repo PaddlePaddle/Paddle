@@ -17,7 +17,8 @@ limitations under the License. */
 
 #include <fenv.h>
 
-#if defined(__APPLE__) || defined(__OSX__)
+#if (defined(__APPLE__) || defined(__OSX__)) && !defined(__arm__) && \
+    !defined(__aarch64__)
 
 int fegetexcept(void);
 int feenableexcept(unsigned int excepts);

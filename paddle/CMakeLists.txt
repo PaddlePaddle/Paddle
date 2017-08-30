@@ -5,8 +5,12 @@ add_subdirectory(testing)
 add_subdirectory(math)
 add_subdirectory(parameter)
 add_subdirectory(gserver)
-add_subdirectory(pserver)
-add_subdirectory(trainer)
+
+if(NOT ANDROID AND NOT IOS)
+  add_subdirectory(pserver)
+  add_subdirectory(trainer)
+endif()
+
 add_subdirectory(scripts)
 add_subdirectory(string)
 

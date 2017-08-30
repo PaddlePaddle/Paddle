@@ -25,23 +25,32 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
-    SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_SHARED=1 NO_LAPACK=1 libs)
-
+    SET(OPENBLAS_CC "${CMAKE_C_COMPILER}")
     IF(CMAKE_CROSSCOMPILING)
+        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER})
         IF(ANDROID)
             # arm_soft_fp_abi branch of OpenBLAS to support softfp
             #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
             SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
             IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
-                SET(TARGET "ARMV7")
+                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
             ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
-                SET(TARGET "ARMV8")
+                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
             ENDIF()
-            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=${TARGET} ARM_SOFTFP_ABI=1 USE_THREAD=0)
+        ELSEIF(IOS)
+            # FIXME: support multiple architectures
+            SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
+            IF(CMAKE_OSX_ARCHITECTURES MATCHES "armv7")
+                SET(OPENBLAS_CC "${OPENBLAS_CC} -isysroot ${CMAKE_OSX_SYSROOT} -arch armv7")
+                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
+            ELSEIF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
+                SET(OPENBLAS_CC "${OPENBLAS_CC} -isysroot ${CMAKE_OSX_SYSROOT} -arch arm64")
+                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
+            ENDIF()
         ELSEIF(RPI)
             # use hardfp
             SET(OPENBLAS_COMMIT "v0.2.19")
-            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0)
+            SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 USE_THREAD=0)
         ENDIF()
     ELSE()
         SET(OPENBLAS_COMMIT "v0.2.19")
@@ -50,6 +59,8 @@ IF(NOT ${CBLAS_FOUND})
             SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
         ENDIF()
     ENDIF()
+
+    SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
 
     ExternalProject_Add(
         extern_openblas
