@@ -66,7 +66,11 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
     // If depth wise convolution and useGpu == false and ARM-NEON
     if (!useGpu_ && isDepthwiseConv(channels_[i], groups_[i]) && !isDeconv_) {
 #if defined(__ARM_NEON__) || defined(__ARM_NEON)
-      convType = "NeonDepthwiseConv";
+      if ((filterSize_[i] == filterSizeY_[i]) &&
+          (filterSize_[i] == 3 || filterSize_[i] == 4) &&
+          (stride_[i] == strideY_[i]) && (stride_[i] == 1 || stride_[i] == 2)) {
+        convType = "NeonDepthwiseConv";
+      }
 #endif
     }
 
