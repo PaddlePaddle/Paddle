@@ -1172,6 +1172,20 @@ def get_img_size(input_layer_name, channels):
     return img_size, img_size_y
 
 
+def get_img3d_size(input_layer_name, channels):
+    input = g_layer_map[input_layer_name]
+    img_pixels = input.size / channels
+    img_size = input.width
+    img_size_y = input.height
+    img_size_z = input.depth
+
+    config_assert(
+        img_size * img_size_y * img_size_z == img_pixels,
+        "Input layer %s: Incorrect input image size %d * %d * %d for input image pixels %d"
+        % (input_layer_name, img_size, img_size_y, img_size_z, img_pixels))
+    return img_size, img_size_y, img_size_z
+
+
 def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
     parse_image(bilinear, input_layer_name, bilinear_conf.image_conf)
     bilinear_conf.out_size_x = bilinear.out_size_x
@@ -1222,6 +1236,12 @@ def parse_image(image, input_layer_name, image_conf):
     image_conf.channels = image.channels
     image_conf.img_size, image_conf.img_size_y = \
         get_img_size(input_layer_name, image_conf.channels)
+
+
+def parse_image3d(image, input_layer_name, image_conf):
+    image_conf.channels = image.channels
+    image_conf.img_size, image_conf.img_size_y, image_conf.img_size_z = \
+        get_img3d_size(input_layer_name, image_conf.channels)
 
 
 def parse_norm(norm, input_layer_name, norm_conf):
@@ -1585,6 +1605,9 @@ class LayerBase(object):
         self.config.height = height
         self.config.width = width
 
+    def set_layer_depth(self, depth):
+        self.config.depth = depth
+
     def set_cnn_layer(self,
                       input_layer_name,
                       height,
@@ -1788,11 +1811,19 @@ class DetectionOutputLayer(LayerBase):
 
 @config_layer('data')
 class DataLayer(LayerBase):
-    def __init__(self, name, size, height=None, width=None, device=None):
+    def __init__(self,
+                 name,
+                 size,
+                 depth=None,
+                 height=None,
+                 width=None,
+                 device=None):
         super(DataLayer, self).__init__(
             name, 'data', size, inputs=[], device=device)
         if height and width:
             self.set_layer_height_width(height, width)
+        if depth:
+            self.set_layer_depth(depth)
 
 
 '''
@@ -2077,6 +2108,7 @@ class BatchNormLayer(LayerBase):
                  name,
                  inputs,
                  bias=True,
+                 img3D=False,
                  use_global_stats=True,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
@@ -2121,15 +2153,33 @@ class BatchNormLayer(LayerBase):
 
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
-        parse_image(self.inputs[0].image, input_layer.name, image_conf)
-
-        # Only pass the width and height of input to batch_norm layer
-        # when either of it is non-zero.
-        if input_layer.width != 0 or input_layer.height != 0:
-            self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                               image_conf.channels, False)
+        if img3D:
+            parse_image3d(self.inputs[0].image, input_layer.name, image_conf)
+            # Only pass the width and height of input to batch_norm layer
+            # when either of it is non-zero.
+            if input_layer.width != 0 or input_layer.height != 0:
+                self.set_cnn_layer(
+                    input_layer_name=name,
+                    depth=image_conf.img_size_z,
+                    height=image_conf.img_size_y,
+                    width=image_conf.img_size,
+                    channels=image_conf.channels,
+                    is_print=True)
+            else:
+                self.set_layer_size(input_layer.size)
         else:
-            self.set_layer_size(input_layer.size)
+            parse_image(self.inputs[0].image, input_layer.name, image_conf)
+            # Only pass the width and height of input to batch_norm layer
+            # when either of it is non-zero.
+            if input_layer.width != 0 or input_layer.height != 0:
+                self.set_cnn_layer(
+                    input_layer_name=name,
+                    height=image_conf.img_size_y,
+                    width=image_conf.img_size,
+                    channels=image_conf.channels,
+                    is_print=True)
+            else:
+                self.set_layer_size(input_layer.size)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
@@ -2138,6 +2188,28 @@ class BatchNormLayer(LayerBase):
         self.create_input_parameter(2, psize, dims)
 
         self.create_bias_parameter(bias, psize)
+
+    def set_cnn_layer(self,
+                      input_layer_name,
+                      depth=None,
+                      height=None,
+                      width=None,
+                      channels=None,
+                      is_print=True):
+        depthIsNone = False
+        if depth is None:
+            depth = 1
+            depthIsNone = True
+        size = depth * height * width * channels
+        self.set_layer_size(size)
+        self.set_layer_height_width(height, width)
+        self.set_layer_depth(depth)
+        if is_print and depthIsNone:
+            print("output for %s: c = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, height, width, size))
+        elif is_print:
+            print("output for %s: c = %d, d = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, depth, height, width, size))
 
     def calc_parameter_size(self, image_conf):
         return image_conf.channels

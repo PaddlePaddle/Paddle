@@ -166,6 +166,7 @@ class LayerType(object):
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
     POOL_LAYER = 'pool'
+    POOL3D_LAYER = 'pool3d'
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
     SUM_TO_ONE_NORM_LAYER = 'sum_to_one_norm'
@@ -894,7 +895,8 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, height=None, width=None, layer_attr=None):
+def data_layer(name, size, depth=None, height=None, width=None,
+               layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -921,15 +923,18 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         type=LayerType.DATA,
         name=name,
         size=size,
+        depth=depth,
         height=height,
         width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
+    if depth is None:
+        depth = 1
     num_filters = None
     if height is not None and width is not None:
-        num_filters = size / (width * height)
-        assert num_filters * width * height == size, \
-            "size=%s width=%s height=%s" % (size, width, height)
+        num_filters = size / (width * height * depth)
+        assert num_filters * width * height * depth == size, \
+            "size=%s width=%s height=%s depth=%s" % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
@@ -2799,6 +2804,7 @@ def img_cmrnorm_layer(input,
 def batch_norm_layer(input,
                      act=None,
                      name=None,
+                     img3D=False,
                      num_channels=None,
                      bias_attr=None,
                      param_attr=None,
@@ -2885,6 +2891,7 @@ def batch_norm_layer(input,
            (batch_norm_type == "cudnn_batch_norm")
     l = Layer(
         name=name,
+        img3D=img3D,
         inputs=Input(
             input.name, image=Image(channels=num_channels), **param_attr.attr),
         active_type=act.name,
