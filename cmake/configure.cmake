@@ -28,6 +28,10 @@ if(NOT WITH_TIMER)
     add_definitions(-DPADDLE_DISABLE_TIMER)
 endif(NOT WITH_TIMER)
 
+if(USE_EIGEN_FOR_BLAS)
+    add_definitions(-DPADDLE_USE_EIGEN_FOR_BLAS)
+endif(USE_EIGEN_FOR_BLAS)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)

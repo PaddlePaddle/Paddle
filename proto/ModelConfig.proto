@@ -82,6 +82,9 @@ message ConvConfig {
 
   // if not set, use img_size
   optional uint32 img_size_y = 14;
+
+  optional uint32 dilation = 15 [ default = 1 ];
+  optional uint32 dilation_y = 16 [ default = 1 ];
 }
 
 message PoolConfig {
@@ -496,6 +499,9 @@ message LayerConfig {
   optional int32 axis = 54 [ default = 2 ];
   repeated uint32 offset = 55;
   repeated uint32 shape = 56;
+
+  // for HuberRegressionLoss
+  optional double delta = 57 [ default = 1.0 ];
 }
 
 message EvaluatorConfig {

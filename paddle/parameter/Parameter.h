@@ -65,7 +65,10 @@ public:
   size_t getSize() const { return config_.size(); }
 
   bool isFullSize() const {
-    return this->getSize() == bufs_[PARAMETER_VALUE]->getSize();
+    if (bufs_[PARAMETER_VALUE]) {
+      return this->getSize() == bufs_[PARAMETER_VALUE]->getSize();
+    }
+    return false;
   }
 
   inline bool useGpu() const { return useGpu_; }
@@ -278,7 +281,11 @@ public:
   /**
    * @brief Set the format in header.
    */
-  void setHeaderFormat(int32_t fmt) { headerFormat_ = fmt; }
+  void setHeaderFormat(int32_t fmt) {
+    CHECK(isHeaderFormatSupported(fmt)) << "Unsupported format version: "
+                                        << fmt;
+    headerFormat_ = fmt;
+  }
 
   /**
    * @brief  Parameter Update Hook.

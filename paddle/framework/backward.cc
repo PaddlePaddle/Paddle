@@ -110,7 +110,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                        dup_output_ops[out].emplace_back(local_op_id);
                        return false;
                      });
-      net->AddOp(std::move(bwd));
+      net->AppendOp(std::move(bwd));
     }
     // Get unique ID for this method.
     auto uid = uniq_id++;
@@ -124,6 +124,9 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
     std::list<Pos> insert_position;
     for (auto& dup_output_op : dup_output_ops) {
       const std::string& name = dup_output_op.first;
+      // duplicate @Empty@ don't need to be added
+      if (name == kEmptyVarName) continue;
+
       auto& dup_op = dup_output_op.second;
       // no duplicate output
       if (dup_op.size() == 1) continue;
@@ -163,8 +166,9 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
 
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
-        net->AddOp(OpRegistry::CreateOp("fill_zeros_like", {{"Src", {prefix}}},
-                                        {{"Dst", {grad_input}}}, {}));
+        net->AppendOp(OpRegistry::CreateOp("fill_zeros_like",
+                                           {{"Src", {prefix}}},
+                                           {{"Dst", {grad_input}}}, {}));
       }
       return false;
     });
@@ -195,7 +199,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
     if (net->ops_.empty()) {  // Current no aux op is added to network
       return grad_op;
     }
-    net->AddOp(std::move(grad_op));
+    net->AppendOp(std::move(grad_op));
   }
   net->SetType("@GENERATED_BACKWARD@");
   net->CompleteAddOp();
@@ -208,7 +212,7 @@ std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars) {
   std::unordered_set<std::string> no_grad_names;
-  no_grad_names.reserve(no_grad_vars.size());
+  no_grad_names.reserve(no_grad_vars.size() + 1);
 
   no_grad_names.insert(std::string(kEmptyVarName) + kGradVarSuffix);
 

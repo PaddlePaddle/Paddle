@@ -16,11 +16,13 @@ import functools
 import collections
 import inspect
 
+import paddle.trainer.config_parser as cp
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
     ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
-from .poolings import MaxPooling, AvgPooling, BasePoolingType
+from .poolings import MaxPooling, AvgPooling, BasePoolingType, \
+    CudnnAvgPooling, CudnnMaxPooling
 from .attrs import *
 from .default_decorators import *
 
@@ -108,7 +110,8 @@ __all__ = [
     'sum_cost',
     'rank_cost',
     'lambda_cost',
-    'huber_cost',
+    'huber_regression_cost',
+    'huber_classification_cost',
     'block_expand_layer',
     'maxout_layer',
     'out_prod_layer',
@@ -132,7 +135,9 @@ __all__ = [
     'sub_nested_seq_layer',
     'clip_layer',
     'slice_projection',
+    'seq_slice_layer',
     'kmax_sequence_score_layer',
+    'scale_shift_layer',
 ]
 
 
@@ -216,7 +221,8 @@ class LayerType(object):
 
     RANK_COST = 'rank-cost'
     LAMBDA_COST = 'lambda_cost'
-    HUBER = 'huber'
+    HUBER_REGRESSION = 'huber_regression'
+    HUBER_CLASSIFICATION = 'huber_classification'
     CROSS_ENTROPY = 'multi-class-cross-entropy'
     CROSS_ENTROPY_WITH_SELFNORM = 'multi_class_cross_entropy_with_selfnorm'
     SOFT_BIN_CLASS_CROSS_ENTROPY = 'soft_binary_class_cross_entropy'
@@ -228,8 +234,10 @@ class LayerType(object):
     CROP_LAYER = 'crop'
     SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
+    SEQ_SLICE = 'seq_slice'
 
     KMAX_SEQ_SCORE = 'kmax_seq_score'
+    SCALE_SHIFT_LAYER = 'scale_shift'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -327,6 +335,14 @@ class LayerOutput(object):
             outputs = ['default']
         self.outputs = outputs
         self.reverse = reverse
+
+    @property
+    def width(self):
+        return cp.g_layer_map[self.full_name].width
+
+    @property
+    def height(self):
+        return cp.g_layer_map[self.full_name].height
 
     def set_input(self, input):
         """
@@ -909,7 +925,13 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
-    return LayerOutput(name, LayerType.DATA, size=size)
+    num_filters = None
+    if height is not None and width is not None:
+        num_filters = size / (width * height)
+        assert num_filters * width * height == size, \
+            "size=%s width=%s height=%s" % (size, width, height)
+
+    return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
 
 @wrap_name_default("embedding")
@@ -2322,6 +2344,7 @@ def img_conv_layer(input,
                    groups=1,
                    stride=1,
                    padding=0,
+                   dilation=1,
                    bias_attr=None,
                    param_attr=None,
                    shared_biases=True,
@@ -2329,6 +2352,7 @@ def img_conv_layer(input,
                    filter_size_y=None,
                    stride_y=None,
                    padding_y=None,
+                   dilation_y=None,
                    trans=False,
                    layer_type=None):
     """
@@ -2393,6 +2417,11 @@ def img_conv_layer(input,
     :type padding: int|tuple|list
     :param padding_y: The y dimension of the padding.
     :type padding_y: int
+    :param dilation: The x dimension of the dilation. Or input a tuple for two
+                    image dimension
+    :type dilation: int|tuple|list
+    :param dilation_y: The y dimension of the dilation.
+    :type dilation_y: int
     :param bias_attr: Convolution bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
@@ -2440,6 +2469,13 @@ def img_conv_layer(input,
         else:
             padding_y = padding
 
+    if dilation_y is None:
+        if isinstance(dilation, collections.Sequence):
+            assert len(dilation) == 2
+            dilation, dilation_y = dilation
+        else:
+            dilation_y = dilation
+
     if param_attr.attr.get('initial_smart'):
         # special initial for conv layers.
         init_w = (2.0 / (filter_size**2 * num_channels))**0.5
@@ -2449,6 +2485,8 @@ def img_conv_layer(input,
         param_attr.attr["initial_smart"] = False
 
     if layer_type:
+        if dilation > 1 or dilation_y > 1:
+            assert layer_type in ["cudnn_conv", "cudnn_convt"]
         if trans:
             assert layer_type in ["exconvt", "cudnn_convt"]
         else:
@@ -2464,11 +2502,13 @@ def img_conv_layer(input,
             conv=Conv(
                 filter_size=filter_size,
                 padding=padding,
+                dilation=dilation,
                 stride=stride,
                 channels=num_channels,
                 groups=groups,
                 filter_size_y=filter_size_y,
                 padding_y=padding_y,
+                dilation_y=dilation_y,
                 stride_y=stride_y),
             **param_attr.attr),
         active_type=act.name,
@@ -2574,11 +2614,14 @@ def img_pool_layer(input,
     elif isinstance(pool_type, AvgPooling):
         pool_type.name = 'avg'
 
+    assert type(pool_type) in [AvgPooling, MaxPooling, CudnnAvgPooling,
+                               CudnnMaxPooling], \
+        "only (Cudnn)AvgPooling, (Cudnn)MaxPooling are supported"
+
     type_name = pool_type.name + '-projection' \
         if (
         isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
         else pool_type.name
-
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
     padding_y = padding if padding_y is None else padding_y
@@ -4202,8 +4245,7 @@ def conv_operator(img,
         num_channels = img.num_filters
 
     assert isinstance(filter, LayerOutput)
-    if filter.size is not None:
-        filter.size = filter_size * filter_size_y * num_filters * num_channels
+    assert filter.size is not None
 
     opCls = ConvTransOperator if trans else ConvOperator
 
@@ -4914,7 +4956,6 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
     assert groups > 1
     if num_channels is None:
@@ -5605,16 +5646,77 @@ def sum_cost(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
+def huber_regression_cost(input,
+                          label,
+                          name=None,
+                          delta=1.0,
+                          coeff=1.0,
+                          layer_attr=None):
     """
-    A loss layer for huber loss.
+    In statistics, the Huber loss is a loss function used in robust regression, 
+    that is less sensitive to outliers in data than the squared error loss. 
+    Given a prediction f(x), a label y and :math:`\delta`, the loss function 
+    is defined as:
+
+    .. math:
+       loss = 0.5*\left ( y-f(x) \right )^2, \left | y-f(x) \right |\leq \delta
+       loss = \delta \left | y-f(x) \right |-0.5\delta ^2, otherwise
 
     The example usage is:
 
     .. code-block:: python
 
-       cost = huber_cost(input=input_layer,
-                         label=label_layer)
+       cost = huber_regression_cost(input=input_layer, label=label_layer)
+
+    :param input: The first input layer.
+    :type input: LayerOutput.
+    :param label: The input label.
+    :type input: LayerOutput.
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring.
+    :param delta: The difference between the observed and predicted values.
+    :type delta: float.
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput.
+    """
+    assert isinstance(input, LayerOutput)
+    Layer(
+        name=name,
+        type=LayerType.HUBER_REGRESSION,
+        inputs=[input.name, label.name],
+        delta=delta,
+        coeff=coeff,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.HUBER_REGRESSION, parents=[input, label], size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def huber_classification_cost(input,
+                              label,
+                              name=None,
+                              coeff=1.0,
+                              layer_attr=None):
+    """
+    For classification purposes, a variant of the Huber loss called modified Huber 
+    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and 
+    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber 
+    loss is defined as:
+
+    .. math:
+       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1 
+       loss = -4yf(x), \text{otherwise}
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = huber_classification_cost(input=input_layer, label=label_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput.
@@ -5634,11 +5736,12 @@ def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
         assert input.size == 1
     Layer(
         name=name,
-        type=LayerType.HUBER,
+        type=LayerType.HUBER_CLASSIFICATION,
         inputs=[input.name, label.name],
         coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.HUBER, parents=[input, label], size=1)
+    return LayerOutput(
+        name, LayerType.HUBER_CLASSIFICATION, parents=[input, label], size=1)
 
 
 @wrap_name_default()
@@ -6175,6 +6278,72 @@ def clip_layer(input, min, max, name=None):
 
 
 @wrap_name_default()
+def seq_slice_layer(input, starts, ends, name=None):
+    """
+    seq_slice_layer will return one or several sub-sequences from the
+    input sequence layer given start and end indices.
+
+        - If only start indices are given, and end indices are set to None,
+          this layer slices the input sequence from the given start indices
+          to its end.
+        - If only end indices are given, and start indices are set to None,
+          this layer slices the input sequence from its beginning to the
+          given end indices.
+        - If start and end indices are both given, they should have the same
+          number of elements.
+
+    If start or end indices contains more than one elements, the input sequence
+    will be sliced for multiple times.
+
+
+    .. code-block:: python
+
+        seq_silce = seq_slice_layer(input=input_seq,
+                                    starts=start_pos, ends=end_pos)
+
+    :param name: name of this layer.
+    :type name: basestring
+    :param input: input for this layer, it should be a sequence.
+    :type input: LayerOutput
+    :param starts: start indices to slice the input sequence.
+    :type starts: LayerOutput|None
+    :param ends: end indices to slice the input sequence.
+    :type ends: LayerOutput|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of seq_slice layer must be a PaddlePaddle layer.')
+
+    if starts is not None:
+        assert isinstance(starts, LayerOutput), (
+            'The start indices for seq_slice layer '
+            'must be a PaddlePaddle layer.')
+    if ends is not None:
+        assert isinstance(ends, LayerOutput), (
+            'The end indices for seq_slice layer must be a PaddlePaddle layer.')
+    assert starts is not None or ends is not None, (
+        'start and end indices '
+        'cannot be set to None at the same time, at least one of '
+        'them should be given.')
+    if starts is not None and ends is not None:
+        assert starts.size == ends.size, (
+            'If start and end indices are both given to seq_slice_layer, '
+            'they should have the same width.')
+
+    Layer(
+        name=name,
+        type=LayerType.SEQ_SLICE,
+        inputs=input.name,
+        starts=starts.name if starts is not None else None,
+        ends=ends.name if ends is not None else None)
+    return LayerOutput(
+        name, LayerType.SEQ_SLICE, parents=[input], size=input.size)
+
+
+@wrap_name_default()
 @layer_support()
 def kmax_sequence_score_layer(input, name=None, beam_size=1):
     """
@@ -6210,3 +6379,43 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 
     return LayerOutput(
         name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)
+
+
+@wrap_name_default("scale_shift")
+@wrap_param_attr_default()
+@wrap_bias_attr_default()
+def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
+    """
+    A layer applies a linear transformation to each element in each row of
+    the input matrix. For each element, the layer first re-scale it and then
+    adds a bias to it.
+
+    This layer is very like the SlopeInterceptLayer, except the scale and
+    bias are trainable.
+
+    .. math::
+
+        y = w * x + b
+
+    .. code-block:: python
+
+        scale_shift = scale_shift_layer(input=input_layer, bias_attr=False)
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput.
+    :param param_attr: The parameter attribute of scaling.
+    :type param_attr: ParameterAttribute
+    :param bias_attr: The parameter attribute of shifting.
+    :type bias_attr: ParameterAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.SCALE_SHIFT_LAYER,
+        inputs=Input(input.name, **param_attr.attr),
+        bias=ParamAttr.to_bias(bias_attr))
+    return LayerOutput(
+        name, LayerType.SCALE_SHIFT_LAYER, parents=[input], size=input.size)
