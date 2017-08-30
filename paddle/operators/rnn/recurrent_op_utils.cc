@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
    http://www.apache.org/licenses/LICENSE-2.0
-
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +17,6 @@ namespace rnn {
 
 namespace f = paddle::framework;
 
-using LODTensor = framework::LODTensor;
 using Tensor = framework::Tensor;
 
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
@@ -32,7 +28,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     PADDLE_ENFORCE(input_var != nullptr, "input link [%s] is not in scope.",
                    inlinks[i].external);
 
-    LODTensor* input = input_var->GetMutable<LODTensor>();
+    Tensor* input = input_var->GetMutable<Tensor>();
     f::DDim dims = input->dims();
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
                    "all the inlinks must have same length");
@@ -55,14 +51,13 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
     auto output_var = step_scopes[0]->FindVar(outlinks[i].external);
     PADDLE_ENFORCE(output_var != nullptr, "output link [%s] is not in scope.",
                    outlinks[i].external);
-    LODTensor* output = output_var->GetMutable<LODTensor>();
+    Tensor* output = output_var->GetMutable<Tensor>();
 
     if (infer_shape_mode) {
       auto step_scope_var = step_scopes[0]->FindVar(outlinks[i].internal);
       PADDLE_ENFORCE(step_scope_var != nullptr, "%s not in scope",
                      outlinks[i].internal);
-      f::DDim step_dims =
-          step_scope_var->template GetMutable<LODTensor>()->dims();
+      f::DDim step_dims = step_scope_var->template GetMutable<Tensor>()->dims();
       std::vector<int> dims_vec = vectorize(step_dims);
       dims_vec.insert(dims_vec.begin(), seq_len);
       output->Resize(f::make_ddim(dims_vec));
@@ -96,8 +91,8 @@ void LinkMemories(const std::vector<Scope*>& scopes,
   auto scope = scopes[step_id];
   auto linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
-    auto mem = scope->FindVar(attr.pre_var)->GetMutable<LODTensor>();
-    auto linked_mem = linked_scope->FindVar(attr.var)->GetMutable<LODTensor>();
+    auto mem = scope->FindVar(attr.pre_var)->GetMutable<Tensor>();
+    auto linked_mem = linked_scope->FindVar(attr.var)->GetMutable<Tensor>();
     if (infer_shape_mode) {
       mem->Resize(linked_mem->dims());
     } else {

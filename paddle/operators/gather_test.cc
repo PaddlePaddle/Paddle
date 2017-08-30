@@ -25,9 +25,9 @@ TEST(Gather, GatherData) {
   using namespace paddle::platform;
   using namespace paddle::operators;
 
-  Tensor* src = new Tensor();
-  Tensor* index = new Tensor();
-  Tensor* output = new Tensor();
+  LODTensor* src = new LODTensor();
+  LODTensor* index = new LODTensor();
+  LODTensor* output = new LODTensor();
 
   int* p_src = nullptr;
   int* p_index = nullptr;

@@ -18,7 +18,7 @@
 
 但对变长序列的支持，需要对目前框架做一些修改，下面讨论如何在最小修改下支持变长序列。
 
-## 多层序列数据格式 `LODLODTensor`
+## 多层序列数据格式 `LODTensor`
 目前 Paddle 会将一个mini-batch内的数据存储在一维的内存上，
 额外使用 `Argument.sequenceStartPositions` 来存储每个句子的信息。
 
@@ -39,15 +39,15 @@ std::vector<level_t> lod_start_pos;
 
 这里的每一个 `level_t` 存储一个粒度(level)的偏移信息，和paddle目前做法一致。
 
-为了更透明地传递序列信息，我们引入了一种新的tensor 称为 `LODLODTensor`[4]，
-其关于tensor相关的接口都直接继承自 `LODTensor`，但另外添加了序列相关接口。
-如此，在操作一个 `LODLODTensor` 时，普通 `Op` 直接当成 `LODTensor` 使用，
-而操作序列的 `Op` 会额外操作 `LODLODTensor` 的变长序列操作的相关接口。
+为了更透明地传递序列信息，我们引入了一种新的tensor 称为 `LODTensor`[4]，
+其关于tensor相关的接口都直接继承自 `Tensor`，但另外添加了序列相关接口。
+如此，在操作一个 `LODTensor` 时，普通 `Op` 直接当成 `Tensor` 使用，
+而操作序列的 `Op` 会额外操作 `LODTensor` 的变长序列操作的相关接口。
 
-`LODLODTensor` 具体定义如下：
+`LODTensor` 具体定义如下：
 
 ```c++
-class LODLODTensor : public LODTensor {
+class LODTensor : public Tensor {
 public:
   size_t Levels() const { return seq_start_positions_.size(); }
   size_t Elements(int level = 0) const {
@@ -55,19 +55,19 @@ public:
   }
   // slice of level[elem_begin: elem_end]
   // NOTE low performance in slice seq_start_positions_.
-  // TODO should call LODTensor's Slice.
-  LODLODTensor LODSlice(int level, int elem_begin, int elem_end) const;
+  // TODO should call Tensor's Slice.
+  LODTensor LODSlice(int level, int elem_begin, int elem_end) const;
 
   // slice with tensor's data shared with this.
-  LODLODTensor LODSliceShared(int level, int elem_begin, int elem_end) const;
+  LODTensor LODSliceShared(int level, int elem_begin, int elem_end) const;
 
   // copy other's lod_start_pos_, to share LOD info.
   // NOTE the LOD info sould not be changed.
-  void ShareConstLODFrom(const LODLODTensor &other) {
+  void ShareConstLODFrom(const LODTensor &other) {
     lod_start_pos_ = other.lod_start_pos_;
   }
   // copy other's lod_start_pos_'s content, free to mutate.
-  void ShareMutableLODFrom(const LODLODTensor &other) {
+  void ShareMutableLODFrom(const LODTensor &other) {
     lod_start_pos_ = std::make_shared <
                      std::vector<std::vector<int>>(other.lod_start_pos_.begin(),
                                                    other.lod_start_pos_.end());
@@ -79,12 +79,12 @@ private:
 ```
 
 其中， `lod_start_pos_` 使用了 `shared_ptr` 来减少存储和复制的代价，
-可以认为 `LODLODTensor` 是 `LODTensor` 的扩展，几乎完全兼容原始 `LODTensor` 的使用。
+可以认为 `LODTensor` 是 `Tensor` 的扩展，几乎完全兼容原始 `Tensor` 的使用。
 
 ## 框架支持
-### 框架现有的 `LODTensor` 调用替换为 `LODLODTensor`
-为了实现 `LODLODTensor` 的传递，框架里很多 `LODTensor` 都需要变成 `LODLODTensor`，
-简单实现，直接 **把之前所有的`LODTensor` 全部替换成 `LODLODTensor`，这里可以直接修改 `pybind.cc` 里面创建`LODTensor`的接口**。
+### 框架现有的 `Tensor` 调用替换为 `LODTensor`
+为了实现 `LODTensor` 的传递，框架里很多 `Tensor` 都需要变成 `LODTensor`，
+简单实现，直接 **把之前所有的`Tensor` 全部替换成 `LODTensor`，这里可以直接修改 `pybind.cc` 里面创建`Tensor`的接口**。
 
 此外，用户有可能需要感知序列的存在（比如序列的可视化需要解析模型中输出的序列），因此一些序列操作的API也需要暴露到 python 层。
 
@@ -105,7 +105,7 @@ private:
 
 #### `load_start_pos` 的传递
 
-- 对于不需要修改 `lod_start_pos` 的情况，调用 LODLODTensor的 `ShareConstLODFrom` 接口实现复制
+- 对于不需要修改 `lod_start_pos` 的情况，调用 LODTensor的 `ShareConstLODFrom` 接口实现复制
 - 需要修改的，调用`ShareMutableLODFrom` 接口自己分配内存以存储修改
 
 #### 框架透明
@@ -113,7 +113,7 @@ private:
 
 - 在 Op 的 `attrs` 中添加一项 `do_mutate_lod_info` 的属性，默认为 `false`
   - 有需要修改 `lod_start_pos` 的Op需要在定义 `OpProto` 时设置为 `true`
-- `OperatorBase` 的 `InferShape` 中会读取 `do_mutate_lod_info` ，并且调用 `LODLODTensor` 相关的方法实现 `lod_start_pos` 的复制。
+- `OperatorBase` 的 `InferShape` 中会读取 `do_mutate_lod_info` ，并且调用 `LODTensor` 相关的方法实现 `lod_start_pos` 的复制。
 - `OperatorBase` 中添加一个 member `is_lod_inited{false}` 来保证传递只进行一次
 
 一些逻辑如下
@@ -192,7 +192,7 @@ std::vector<SortedSeqItem> sorted_seqs;
 来追踪序列排序后的位置，并添加一个新的接口 
 
 ```c++
-std::vector<SortedSeqItem> SortBySeqLen(const LODLODTensor& tensor);
+std::vector<SortedSeqItem> SortBySeqLen(const LODTensor& tensor);
 ```
 
 由于输入序列的顺序变化，以下现有的接口需要针对性地修改：
@@ -233,7 +233,7 @@ x    x
 - 将每个序列concat 为规则的mini-batch表示
 
 ## 参考文献
-1. [LODTensorflow Bucketing](https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.training/bucketing)
+1. [Tensorflow Bucketing](https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.training/bucketing)
 2. [mxnet Bucketing](http://mxnet.io/how_to/bucketing.html)
 3. [variable length input in RNN scenario](https://discuss.pytorch.org/t/about-the-variable-length-input-in-rnn-scenario/345/5)
 4. [Level of details](https://en.wikipedia.org/wiki/Level_of_detail)

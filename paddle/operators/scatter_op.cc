@@ -24,18 +24,19 @@ class ScatterOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Index")->dims().size(), 1,
+    PADDLE_ENFORCE_EQ(ctx.Input<LODTensor>("Index")->dims().size(), 1,
                       "Update Index should be 1-D.");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Ref")->dims().size(),
-                      ctx.Input<Tensor>("Updates")->dims().size(),
+    PADDLE_ENFORCE_EQ(ctx.Input<LODTensor>("Ref")->dims().size(),
+                      ctx.Input<LODTensor>("Updates")->dims().size(),
                       "Reference and Updates should have the same shape size");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Updates")->dims()[0],
-                      ctx.Input<Tensor>("Index")->dims()[0],
+    PADDLE_ENFORCE_EQ(ctx.Input<LODTensor>("Updates")->dims()[0],
+                      ctx.Input<LODTensor>("Index")->dims()[0],
                       "Updates and Index should have same batch-size.");
-    framework::DDim data_dim(ctx.Input<Tensor>("Updates")->dims());
+    framework::DDim data_dim(ctx.Input<LODTensor>("Updates")->dims());
     for (int i = 1; i < data_dim.size(); ++i)
-      PADDLE_ENFORCE_EQ(data_dim[i], ctx.Input<Tensor>("Updates")->dims()[i]);
-    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("Ref")->dims());
+      PADDLE_ENFORCE_EQ(data_dim[i],
+                        ctx.Input<LODTensor>("Updates")->dims()[i]);
+    ctx.Output<LODTensor>("Out")->Resize(ctx.Input<LODTensor>("Ref")->dims());
   }
 };
 
@@ -45,10 +46,10 @@ class ScatterGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
-    auto *Updates = ctx.Input<Tensor>("Updates");
-    auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));
-    auto *Ref = ctx.Input<Tensor>("Ref");
+    auto *dUpdates = ctx.Output<LODTensor>(framework::GradVarName("Updates"));
+    auto *Updates = ctx.Input<LODTensor>("Updates");
+    auto *dRef = ctx.Output<LODTensor>(framework::GradVarName("Ref"));
+    auto *Ref = ctx.Input<LODTensor>("Ref");
 
     dRef->Resize(Ref->dims());
     dUpdates->Resize(Updates->dims());

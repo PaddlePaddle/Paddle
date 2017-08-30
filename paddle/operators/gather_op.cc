@@ -24,11 +24,11 @@ class GatherOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    int batch_size = ctx.Input<Tensor>("Index")->dims()[0];
+    int batch_size = ctx.Input<LODTensor>("Index")->dims()[0];
     PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
-    framework::DDim output_dims(ctx.Input<Tensor>("X")->dims());
+    framework::DDim output_dims(ctx.Input<LODTensor>("X")->dims());
     output_dims[0] = batch_size;
-    ctx.Output<Tensor>("Out")->Resize(output_dims);
+    ctx.Output<LODTensor>("Out")->Resize(output_dims);
   }
 };
 
@@ -38,8 +38,8 @@ class GatherGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto X_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto X = ctx.Input<Tensor>("X");
+    auto X_grad = ctx.Output<LODTensor>(framework::GradVarName("X"));
+    auto X = ctx.Input<LODTensor>("X");
 
     X_grad->Resize(X->dims());
   }
