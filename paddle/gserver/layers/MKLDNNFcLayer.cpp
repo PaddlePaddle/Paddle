@@ -134,7 +134,7 @@ void MKLDNNFcLayer::resetFwd() {
   const MatrixPtr& bias = hasBias ? biases_->getW() : nullptr;
   const MatrixPtr& out = output_.value;
 
-  if (prevIsOnlyMKLDNN()) {
+  if (inputIsOnlyMKLDNN()) {
     const MatrixPtr& in = getInputValue(0);
     inVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(in);
     CHECK(inVal_) << "Input should be MKLDNNMatrix";
@@ -154,7 +154,7 @@ void MKLDNNFcLayer::resetFwd() {
 
   // change original output value to mkldnn output value
   output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
-  if (!nextIsOnlyMKLDNN()) {
+  if (!outputIsOnlyMKLDNN()) {
     convertOutputToOtherDevice();
   }
 
@@ -194,19 +194,16 @@ void MKLDNNFcLayer::resetBwd() {
   const MatrixPtr& bias = hasBias ? biases_->getWGrad() : nullptr;
 
   // TODO(TJ): merge outgrad
-  if (nextIsOnlyMKLDNN()) {
-    // can not directly cast outputgrad to mkldnnmatrix,
-    // since each layer can not write the inputgrad to mkldnn inputgrad.
-    // So just create from matrix with outputvalue format.
-    const MatrixPtr& out = getOutput(MKLDNN_DEVICE).grad;
-    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPrimitiveDesc());
-  } else {
-    const MatrixPtr& out = getOutput(CPU_DEVICE).grad;
-    // fc do not need to convert from cpu device since output always nc
-    // only need create from cpu device
-    outGrad_ = MKLDNNMatrix::create(out, outVal_->getPrimitiveDesc());
-  }
-
+  int device = outputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
+  // for MKLDNN device:
+  // can not directly cast outputgrad to mkldnnmatrix,
+  // since each layer can not write the inputgrad to mkldnn inputgrad.
+  // So just create from matrix with outputvalue format.
+  // for CPU device:
+  // fc do not need to convert from cpu device since output is always nc format
+  // only need create from cpu device
+  const MatrixPtr& out = getOutput(device).grad;
+  outGrad_ = MKLDNNMatrix::create(out, outVal_->getPrimitiveDesc());
   wgtGrad_ = MKLDNNMatrix::create(wgt, wgtVal_->getPrimitiveDesc());
   biasGrad_ = hasBias ? MKLDNNMatrix::create(bias, biasVal_->getPrimitiveDesc())
                       : nullptr;
@@ -238,7 +235,7 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdWgt_);
 
   /// backward data
-  int device = prevIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
+  device = inputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
   const MatrixPtr& in = getInputGrad(0, device);
   if (in == nullptr) {
     return;

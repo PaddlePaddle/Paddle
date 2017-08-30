@@ -151,6 +151,8 @@ public:
 protected:
   /**
    * copy image size and sequence info to other device
+   * @note: can not directly use Layer::copyOutputToOtherDevice since here only
+   *        copy base info and do not copy data value
    */
   void copyOutputInfoToOtherDevice() {
     for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
@@ -165,10 +167,10 @@ protected:
   }
 
   /**
-   * Is previous layer only has MKLDNN type.
+   * If input only has MKLDNN device.
    * Otherwise, only support the previous layer using CPU device.
    */
-  bool prevIsOnlyMKLDNN(int index = 0) {
+  bool inputIsOnlyMKLDNN(int index = 0) {
     int prevDevice = getPrev(index)->getDeviceId();
     if (prevDevice == MKLDNN_DEVICE) {
       return true;
@@ -183,7 +185,7 @@ protected:
    * If output only has MKLDNN device.
    * Otherwise, other devices should only using CPU device.
    */
-  bool nextIsOnlyMKLDNN() {
+  bool outputIsOnlyMKLDNN() {
     for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
       CHECK_EQ(outputOtherDevice_[i].deviceId, CPU_DEVICE)
           << "Only support other device is CPU yet";
@@ -195,7 +197,7 @@ protected:
    * Sync input value data
    */
   void syncInputValue() {
-    if (prevIsOnlyMKLDNN()) {
+    if (inputIsOnlyMKLDNN()) {
       return;
     }
     real* iData = getInputValue(0, CPU_DEVICE)->getData();
@@ -208,7 +210,7 @@ protected:
    * Sync output grad data
    */
   void syncOutputGrad() {
-    if (nextIsOnlyMKLDNN()) {
+    if (outputIsOnlyMKLDNN()) {
       return;
     }
 
