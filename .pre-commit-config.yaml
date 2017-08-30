@@ -22,7 +22,7 @@
     -   id: clang-format-with-version-check
         name: clang-format
         description: Format files with ClangFormat.
-        entry: ./.clang_format.hook -i
+        entry: bash ./.clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
 -   repo: https://github.com/PaddlePaddle/pre-commit-golang

@@ -23,12 +23,17 @@ def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
+def empty_var_name():
+    return "@EMPTY@"
+
+
 def get_numeric_gradient(op,
                          input_values,
                          output_name,
                          input_to_check,
                          delta=0.005,
-                         local_scope=None):
+                         local_scope=None,
+                         in_place=False):
     """
     Get Numeric Gradient for an operator's input.
     
@@ -77,6 +82,11 @@ def get_numeric_gradient(op,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
+    def restore_inputs():
+        for var_name in input_values:
+            tensor_ = local_scope.find_var(var_name).get_tensor()
+            tensor_.set(numpy.copy(input_values[var_name]), core.CPUPlace())
+
     # get the input tensor that we want to get it's numeric gradient.
     tensor_to_check = local_scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
@@ -86,6 +96,8 @@ def get_numeric_gradient(op,
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
+        if in_place:
+            restore_inputs()
         # get one input element throw it's index i.
         origin = tensor_to_check.get_float_element(i)
 
@@ -95,6 +107,8 @@ def get_numeric_gradient(op,
         y_pos = get_output()
 
         # plus delta to this element, run op and get the sum of the result tensor.
+        if in_place:
+            restore_inputs()
         x_neg = origin - delta
         tensor_to_check.set_float_element(i, x_neg)
         y_neg = get_output()
@@ -176,7 +190,7 @@ class GradientChecker(unittest.TestCase):
         ]
         return outs
 
-    def compare_grad(self, forward_op, input_value):
+    def compare_grad(self, forward_op, input_value, no_grad_set=None):
         """ Compare the input gradients between CPU and GPU for the given forward
         operator.
 
@@ -184,15 +198,20 @@ class GradientChecker(unittest.TestCase):
         :type forward_op: Operator
         :param input_value: input values.
         :type input_value: dict{string:numpy.array}
+        :param no_grad_set: the set of variables names without gradients.
+        :type no_grad_set: a set of string
         :raises: AssertionError, there is different gradient value.
         """
-        backward_op = core.Operator.backward(forward_op, set())
+        if no_grad_set is None:
+            no_grad_set = set()
+        backward_op = core.Operator.backward(forward_op, no_grad_set)
         # return if not compile with GPU or not implementing GPU kernel
         if not (core.is_compile_gpu() and backward_op.support_gpu()):
             return
 
         outputs = backward_op.outputs()
         out_names = [item for k in outputs for item in outputs[k]]
+        out_names = filter(lambda x: x != empty_var_name(), out_names)
         cpu_grads = self.__get_gradient(forward_op, backward_op, input_value,
                                         out_names, core.CPUPlace())
         gpu_grads = self.__get_gradient(forward_op, backward_op, input_value,
@@ -242,13 +261,14 @@ class GradientChecker(unittest.TestCase):
                    output_name,
                    no_grad_set=None,
                    only_cpu=False,
+                   in_place=False,
                    max_relative_error=0.005):
         """
         :param forward_op: used to create backward_op
         :param input_vars: numpy value of input variable. The following
             computation will use these variables.
         :param inputs_to_check: inputs var names that should check gradient.
-        :param output_name: output name that used to
+        :param output_name: the output variable name of forward network.
         :param max_relative_error: The relative tolerance parameter.
         :param no_grad_set: used when create backward ops
         :param only_cpu: only compute and check gradient on cpu kernel.
@@ -274,7 +294,8 @@ class GradientChecker(unittest.TestCase):
 
         # get numerical gradients
         numeric_grads = [
-            get_numeric_gradient(forward_op, input_vars, output_name, name)
+            get_numeric_gradient(
+                forward_op, input_vars, output_name, name, in_place=in_place)
             for name in inputs_to_check
         ]
 
