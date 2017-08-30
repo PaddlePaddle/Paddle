@@ -63,38 +63,23 @@ if(NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif()
 
-if(IOS)
-    set(WITH_GPU OFF CACHE STRING
-        "Disable GPU when cross-compiling for Android" FORCE)
-    set(WITH_AVX OFF CACHE STRING
-        "Disable AVX when cross-compiling for Android" FORCE)
-    set(WITH_PYTHON OFF CACHE STRING
-        "Disable PYTHON when cross-compiling for Android" FORCE)
-    set(WITH_RDMA OFF CACHE STRING
-        "Disable RDMA when cross-compiling for Android" FORCE)
-    set(WITH_MKLDNN OFF CACHE STRING
-        "Disable MKLDNN when cross-compiling for Android" FORCE)
-    set(WITH_MKLML OFF CACHE STRING
-        "Disable MKLML package when cross-compiling for Android" FORCE)
-endif(IOS)
-
-if(ANDROID)
-    if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
+if(ANDROID OR IOS)
+    if(ANDROID AND ${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
         message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 21")
     endif()
 
     set(WITH_GPU OFF CACHE STRING
-        "Disable GPU when cross-compiling for Android" FORCE)
+        "Disable GPU when cross-compiling for Android and iOS" FORCE)
     set(WITH_AVX OFF CACHE STRING
-        "Disable AVX when cross-compiling for Android" FORCE)
+        "Disable AVX when cross-compiling for Android and iOS" FORCE)
     set(WITH_PYTHON OFF CACHE STRING
-        "Disable PYTHON when cross-compiling for Android" FORCE)
+        "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
     set(WITH_RDMA OFF CACHE STRING
-        "Disable RDMA when cross-compiling for Android" FORCE)
+        "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLDNN OFF CACHE STRING
-        "Disable MKLDNN when cross-compiling for Android" FORCE)
+        "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLML OFF CACHE STRING
-        "Disable MKLML package when cross-compiling for Android" FORCE)
+        "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
 endif(ANDROID)
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -166,9 +151,6 @@ if(USE_NNPACK)
     include(external/nnpack)
     list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
 endif(USE_NNPACK)
-
-message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
-message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 add_subdirectory(proto)
 

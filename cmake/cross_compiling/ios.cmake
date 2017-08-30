@@ -160,7 +160,7 @@ if(NOT DEFINED IOS_SDK_ROOT)
   endif(IOS_SDK_LISTS)
 endif()
 if(EXISTS ${IOS_SDK_ROOT})
-  set(CMAKE_IOS_SDK_ROOT ${CMAKE_IOS_SDK_ROOT} CACHE PATH "Location of the selected iOS SDK")
+  set(IOS_SDK_ROOT ${IOS_SDK_ROOT} CACHE PATH "Location of the selected iOS SDK")
   message(STATUS "iOS toolchain: ${IOS_SDK_ROOT}")
 else()
   message(FATAL_ERROR "Invalid IOS_SDK_ROOT: ${IOS_SDK_ROOT} does not exist.")
@@ -291,6 +291,12 @@ message(STATUS "iOS: Targeting iOS '${CMAKE_SYSTEM_VERSION}', "
         "building for '${IOS_PLATFORM}' platform, with architecture '${CMAKE_OSX_ARCHITECTURES}'")
 message(STATUS "System CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 message(STATUS "System CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+
+# Used in ExternalProject command
+string(REPLACE ";" "\\$<SEMICOLON>" EXTERNAL_IOS_ARCHITECTURES "${CMAKE_OSX_ARCHITECTURES}")
+set(EXTERNAL_OPTIONAL_ARGS
+    -DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
+    -DCMAKE_OSX_ARCHITECTURES=${EXTERNAL_IOS_ARCHITECTURES})
 
 # This little macro lets you set any XCode specific property
 macro(set_xcode_property TARGET XCODE_PROPERTY XCODE_VALUE)
