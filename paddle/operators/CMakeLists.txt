@@ -73,3 +73,5 @@ op_library(uniform_random_op SRCS uniform_random_op.cc uniform_random_op.cu)
 op_library(lookup_table_op SRCS lookup_table_op.cc lookup_table_op.cu)
 op_library(scale_op SRCS scale_op.cc scale_op.cu DEPS net_op)
 op_library(minus_op SRCS minus_op.cc minus_op.cu DEPS scale_op)
+
+op_library(squared_l2_distance_op SRCS squared_l2_distance_op.cc squared_l2_distance_op.cu)
