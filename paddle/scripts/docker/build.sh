@@ -37,7 +37,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_PYTHON=${WITH_PYTHON:-ON}
       -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
       -DCUDNN_ROOT=/usr/
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
       -DWITH_TESTING=${WITH_TESTING:-ON}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
@@ -49,8 +49,6 @@ EOF
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
-      -DWITH_MKLML=OFF \
-      -DWITH_MKLDNN=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
       -DWITH_GOLANG=${WITH_GOLANG:-ON} \
@@ -58,11 +56,10 @@ cmake .. \
       -DWITH_C_API=${WITH_C_API:-OFF} \
       -DWITH_PYTHON=${WITH_PYTHON:-ON} \
       -DCUDNN_ROOT=/usr/ \
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
       -DWITH_TESTING=${WITH_TESTING:-ON} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-exit 1
 cat <<EOF
 ============================================
 Building in /paddle/build ...
