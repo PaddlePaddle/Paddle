@@ -84,6 +84,11 @@ We may rename `NetOp` in cpp code to `Block`, but whether to add more functions 
 In my opition, Block is very basic concept in underlying implementation, so a python wrapper and a cpp minimal implementation is enough now.
 It is free to change if other module needs more complex supports such as `VarDesc` is added.
 
+If `VerDesc` is added into the framework, Block will be implemented based on NetOp.
+
+**Each Block will have its own Scope, a child-block's scope will inherit father-block's scope.**
+
+
 ```c++
 struct VarDesc;
 struct BlockDesc;
@@ -185,7 +190,6 @@ class Block(pd.Op):
         pass
 
 ```
-
 
 
 ## `with` statement
