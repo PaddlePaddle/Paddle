@@ -21,15 +21,12 @@ class DeviceContextManager {
   DeviceContextManager();
   ~DeviceContextManager();
 
-  DeviceContext& GetDeviceContext(Place& place);
-  DeviceContext& GetIODeviceContext(Place& place);
+  DeviceContext& GetDeviceContext(Place& place, int stream_id);
 
  private:
   CPUDeviceContext* cpu_context_{nullptr};
 #ifndef PADDLE_ONLY_CPU
   std::vector<std::vector<CUDADeviceContext*>> cuda_contexts_;
-  std::vector<CUDADeviceContext*> cuda_io_contexts_;
-  std::vector<int> gpu_cnt_;
   int device_count_;
 #endif
 };

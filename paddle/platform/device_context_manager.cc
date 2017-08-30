@@ -17,16 +17,15 @@ namespace platform {
 DeviceContextManager::DeviceContextManager() {
 #ifndef PADDLE_ONLY_CPU
   device_count_ = GetDeviceCount();
-  gpu_cnt_.reserve(device_count_);
   cuda_contexts_.reserve(device_count_);
-  cuda_io_contexts_.reserve(device_count_);
-  for (size_t i = 0; i < device_count_; i++) {
-    gpu_cnt_.at(i) = -1;
+  for (int i = 0; i < device_count_; i++) {
+    cuda_contexts_[i].reserve(kNUM_STREAMS);
   }
 #endif
 }
 
-DeviceContext& DeviceContextManager::GetDeviceContext(Place& place) {
+DeviceContext& DeviceContextManager::GetDeviceContext(Place& place,
+                                                      int stream_id) {
   if (is_cpu_place(place)) {
     if (!cpu_context_) {
       cpu_context_ = new CPUDeviceContext();
@@ -39,40 +38,33 @@ DeviceContext& DeviceContextManager::GetDeviceContext(Place& place) {
     PADDLE_ENFORCE(gpu_id < device_count_,
                    "GPU device id must less than device count");
     SetDeviceId(gpu_id);
-    if (gpu_cnt_[gpu_id] == -1) {
-      cuda_contexts_[gpu_id].reserve(kNUM_STREAMS);
-      for (auto&& ctx : cuda_contexts_[gpu_id]) {
-        ctx = new CUDADeviceContext(gpu_place);
-      }
-      gpu_cnt_[gpu_id] = 0;
+    auto* ctx = cuda_contexts_[gpu_id][stream_id];
+    if (!ctx) {
+      ctx = new CUDADeviceContext(gpu_place);
     }
-    return *cuda_contexts_[gpu_id][0];
+    return *ctx;
 #else
     PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #endif
   }
 }
 
-DeviceContext& DeviceContextManager::GetIODeviceContext(Place& place) {
-  PADDLE_ENFORCE(is_gpu_place(place), "IODeviceContext must in GPU device");
-  auto gpu_place = boost::get<GPUPlace>(place);
-  auto gpu_id = gpu_place.device;
-  PADDLE_ENFORCE(gpu_id < device_count_,
-                 "GPU device id must less than device count");
-  if () }
-
 DeviceContextManager::~DeviceContextManager() {
   delete cpu_context_;
 #ifndef PADDLE_ONLY_CPU
-  for (size_t i = 0; i < kNUM_GPUS; i++) {
-    if (gpu_cnt_.at(i) != -1) {
-      for (auto&& ctx : cuda_contexts_.at(i)) {
+  for (int i = 0; i < device_count_; i++) {
+    for (auto& ctx : cuda_contexts_[i]) {
+      if (ctx) {
         delete ctx;
       }
-      gpu_cnt_.at(i) = -1;
     }
   }
 #endif
+
+  DeviceContextManager* Get() {
+    static std::unique_ptr<DeviceContextManager> inst;
+    return inst.get();
+  }
 }
 }  // namespace platform
 }  // namespace paddle
