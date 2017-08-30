@@ -66,7 +66,7 @@ As most C++ operators do, `batch_norm_op` is defined by inputs, outputs, attribu
 
 The following graph showes the training computational process of `batch_norm_op`:
 
-<img src="./batch_norm_op.png" width="800"/>
+<img src="./images/batch_norm_op.png" width="800"/>
 
 cudnn provides APIs to finish the whole series of computation, we can use them in our GPU kernel.
 
