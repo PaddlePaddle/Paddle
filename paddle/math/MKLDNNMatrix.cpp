@@ -138,7 +138,7 @@ void MKLDNNMatrix::downSpatial() {
       mkldnn_primitive_create(&result, pd.get(), nullptr, nullptr),
       "could not create a memory primitive");
   reset(result);
-  set_data_handle(getData());
+  set_data_handle(data_);
 }
 
 }  // namespace paddle

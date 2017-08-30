@@ -85,7 +85,24 @@ public:
    * Caution: This will not check the buffer size of the data,
    *          it should be coverd by user.
    */
-  void updateData(void* data) { set_data_handle(data); }
+  void updateData(void* data) {
+    set_data_handle(data);
+    CpuMatrix::setData((real*)data);
+  }
+
+  /**
+   * override Matrix::getData
+   * check data before return
+   */
+  real* getData() override {
+    CHECK_EQ((void*)data_, get_data_handle());
+    return data_;
+  }
+
+  const real* getData() const override {
+    CHECK_EQ((void*)data_, get_data_handle());
+    return data_;
+  }
 
   /**
    * Get primitive descriptor.
