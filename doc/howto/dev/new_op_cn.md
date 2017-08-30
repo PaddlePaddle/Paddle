@@ -169,6 +169,8 @@ class MulKernel : public framework::OpKernel {
 `MulKernel`需要重写`Compute`接口，该接口参数为`const framework::ExecutionContext& context`, `ExecutionContext`相比`InferShapeContext`增加了设备类型，同样可获取到输入输出和属性参数，`Compute`函数里写具体实现时。
    
 注意，不同设备(CPU、GPU)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。`MulOp`的CPU、GPU实现共享同一个`Kernel`，`OpKernel`不共享的例子可以参考[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。 
+
+为了使得`OpKernel`的计算过程书写较为简单，CPU、GPU的代码可以复用，我们通常借助Eigen unsupported Tensor模块来实现。关于在paddle中如何使用Eigen库，请参考对应的使用[文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)
    
 到此前向Op实现完成，需要在`.cc`文件中注册该op和kernel。反向Op类的定义和Kernel定义与前向Op类似，这里不再重复。但注意，反向Op没有`ProtoMaker`。
    
@@ -188,9 +190,12 @@ REGISTER_OP_CPU_KERNEL(mul_grad,
   - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
   - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulKernel`类。
 
-在 `.cu`文件中注册GPU Kernel。
+在 `.cu`文件中注册GPU Kernel。请注意，如果GPU Kernel的实现是基于Eigen unsupported模块，那么在 `.cu`的最前面请加上宏定义 `#define EIGEN_USE_GPU`
    
 ```c++
+// if use Eigen unsupported module before include head files
+#define EIGEN_USE_GPU
+
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(mul_grad,
