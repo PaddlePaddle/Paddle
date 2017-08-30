@@ -120,8 +120,8 @@ message BlockDesc {
 
 message OperatorDesc {
   required string type = 1;
-  repeated name inputs = 2;
-  repeated name outputs = 3;
+  repeated string inputs = 2;
+  repeated string outputs = 3;
   repeated AttrDesc attrs = 4;
 }
 
@@ -130,7 +130,6 @@ message VarDesc {
   enum Type { .. }
   Type type = 2;
   optional LoDTensorDesc lod_tensor = 3;
-  optional BlockDesc block = 4;
 }
 
 message AttrDesc {
