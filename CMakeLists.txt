@@ -81,7 +81,7 @@ if(ANDROID OR IOS)
         "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLML OFF CACHE STRING
         "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
-endif(ANDROID)
+endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")

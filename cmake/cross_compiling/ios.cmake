@@ -68,10 +68,6 @@ endif()
 # Required as of cmake 2.8.10
 set(CMAKE_OSX_DEPLOYMENT_TARGET "" CACHE STRING "Force unset of the deployment target for iOS" FORCE)
 
-set(CMAKE_AR ar CACHE FILEPATH "" FORCE)
-set(CMAKE_RANLIB ranlib CACHE FILEPATH "" FORCE)
-set(PKG_CONFIG_EXECUTABLE pkg-config CACHE FILEPATH "" FORCE)
-
 # Setup iOS platform unless specified manually with IOS_PLATFORM
 if(NOT DEFINED IOS_PLATFORM)
   set(IOS_PLATFORM "OS")
@@ -81,7 +77,8 @@ set(IOS_PLATFORM ${IOS_PLATFORM} CACHE STRING "Type of iOS Platform")
 # Set the architecture for iOS
 if(NOT DEFINED IOS_ARCH)
   if(IOS_PLATFORM STREQUAL "OS")
-    set(IOS_ARCH "armv7;armv7s;arm64")
+    # FIXME: support "armv7;armv7s;arm64" future
+    set(IOS_ARCH "arm64")
   elseif(IOS_PLATFORM STREQUAL "SIMULATOR")
     set(IOS_ARCH "i386;x86_64")
   elseif(IOS_PLATFORM STREQUAL "WATCHOS")
