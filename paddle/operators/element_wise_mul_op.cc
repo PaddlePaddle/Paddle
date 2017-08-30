@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/sigmoid_op.h"
+#include "paddle/operators/element_wise_mul_op.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ class ElemWiseMulOp : public framework::OperatorWithKernel {
   }
 };
 
-class ElemWiseOpMaker : public framework::OpProtoAndCheckerMaker {
+class ElemWiseMulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ElemWiseMulOpMaker(framework::OpProto *proto,
                      framework::OpAttrChecker *op_checker)
@@ -65,21 +65,20 @@ class ElemWiseMulOpGrad : public framework::OperatorWithKernel {
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
     PADDLE_ENFORCE(x_dims == out_dims, "Out@GRAD must equal to X dims");
-    PADDLE_ENFORCE(y_dim == out_dims, "Out@GRAD must equal to Y dims");
+    PADDLE_ENFORCE(y_dims == out_dims, "Out@GRAD must equal to Y dims");
 
     x_grad->Resize(x_dims);
     y_grad->Resize(y_dims);
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sigmoid, ops::ElemWiseMulOp, ops::ElemWiseMulOpMaker, sigmoid_grad,
-            ops::ElemWiseMulOpGrad);
+REGISTER_OP(elemwisemul, ops::ElemWiseMulOp, ops::ElemWiseMulOpMaker,
+            elemwisemul_grad, ops::ElemWiseMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    sigmoid, ops::ElemWiseMulKernel<paddle::platform::CPUPlace, float>);
+    elemwisemul, ops::ElemWiseMulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    sigmoid_grad,
+    elemwisemul_grad,
     ops::ElemWiseMulGradKernel<paddle::platform::CPUPlace, float>);

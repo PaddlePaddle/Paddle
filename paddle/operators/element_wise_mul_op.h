@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/operators/math/math_function.h"
+
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
@@ -26,22 +28,20 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class ElemWiseMulOPKernel : public framework::OpKernel {
+class ElemWiseMulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<Tensor>("X");
     auto* Y = context.Input<Tensor>("Y");
     auto* Z = context.Output<Tensor>("Out");
     Z->mutable_data<T>(context.GetPlace());
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(context.device_context_);
 
-    auto X_e = EigenMatrix<T>::From(*X);
-    auto Y_e = EigenMatrix<T>::From(*Y);
-    auto Z_e = EigenMatrix<T>::From(*Z);
+    auto X_e = framework::EigenVector<T>::Flatten(*X);
+    auto Y_e = framework::EigenVector<T>::Flatten(*Y);
+    auto Z_e = framework::EigenVector<T>::Flatten(*Z);
 
-    // TODO: gpu?
-    Z_e.device(context.GetEigenDevice<place>()) = X_e.cwiseProduct(Y_e);
+    // TODO(gongweibao): gpu?
+    Z_e.device(context.GetEigenDevice<Place>()) = X_e * Y_e;
   }
 };
 
@@ -57,20 +57,18 @@ class ElemWiseMulGradKernel : public framework::OpKernel {
     auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
     dX->mutable_data<T>(ctx.GetPlace());
     dY->mutable_data<T>(ctx.GetPlace());
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(ctx.device_context_);
 
-    auto X_e = EigenMatrix<T>::From(*X);
-    auto Y_e = EigenMatrix<T>::From(*Y);
-    auto dX_e = EigenMatrix<T>::From(*dX);
-    auto dY_e = EigenMatrix<T>::From(*dY);
-    auto dOut_e = EigenMatrix<T>::From(*dOut);
+    auto X_e = framework::EigenVector<T>::Flatten(*X);
+    auto Y_e = framework::EigenVector<T>::Flatten(*Y);
+    auto dX_e = framework::EigenVector<T>::Flatten(*dX);
+    auto dY_e = framework::EigenVector<T>::Flatten(*dY);
+    auto dOut_e = framework::EigenVector<T>::Flatten(*dOut);
 
-    // TODO: gpu?
-    dX.device(context.GetEigenDevice<place>()) = dOut_e.cwiseProduct(Y_e);
-    dY.device(context.GetEigenDevice<place>()) = dOut_e.cwiseProduct(X_e);
+    // TODO(gongweibao): gpu?
+    dX_e.device(ctx.GetEigenDevice<Place>()) = dOut_e * Y_e;
+    dY_e.device(ctx.GetEigenDevice<Place>()) = dOut_e * X_e;
   }
 };
 
 }  // namespace operators
-}
+}  // namespace paddle
