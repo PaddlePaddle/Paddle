@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "TensorShape.h"
-#include "TensorType.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 
@@ -67,20 +67,20 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  * \note The caller needs to ensure that imShape.inputChannels is equal to
  *       colShape.inputChannels.
  */
-template <ColFormat Format, DeviceType Device, class T>
+template <ColFormat Format, typename Place, typename T>
 class Im2ColFunctor {
  public:
-  void operator()(const T* imData, const TensorShape& imShape, T* colData,
-                  const TensorShape& colShape, int strideHeight,
-                  int strideWidth, int paddingHeight, int paddingWidth);
+  void operator()(const framework::Tensor& im, framework::Tensor& col,
+                  int stride_height, int stride_width, int padding_height,
+                  int padding_width);
 };
 
-template <ColFormat Format, DeviceType Device, class T>
+template <ColFormat Format, typename Place, typename T>
 class Col2ImFunctor {
  public:
-  void operator()(T* imData, const TensorShape& imShape, const T* colData,
-                  const TensorShape& colShape, int strideHeight,
-                  int strideWidth, int paddingHeight, int paddingWidth);
+  void operator()(framework::Tensor& im, const framework::Tensor& col,
+                  int stride_height, int stride_width, int padding_height,
+                  int padding_width);
 };
 
 }  // namespace paddle
