@@ -120,7 +120,7 @@ for (int i = 0; i < 1 * 2 * 3; i++) {
 EigenTensor<float, 3>::Type et = EigenTensor<float, 3>::From(t);
 ```
 
-From是EigenTensor模板struct提供的一个接口，可以实现从paddle::framework::Tensor到对EigenTensor的转换。由于Tensor的rank是模板参数，因此在转换时需要显示的指定。
+From是EigenTensor模板提供的一个接口，可以实现从paddle::framework::Tensor到对EigenTensor的转换。由于Tensor的rank是模板参数，因此在转换时需要显示的指定。
 
 需要额外注意的是，EigenVector<T>::From方法是把paddle中的一维Tensor转为Eigen的一维Tensor，在这里用EigenVector来表示；而EigenVector<T>::Flatten方法是把paddle中的一个Tensor进行reshape操作，压扁成为Eigen的一维Tensor，类型仍然为EigenVector。
 
@@ -130,11 +130,16 @@ From是EigenTensor模板struct提供的一个接口，可以实现从paddle::fra
 
 ### 实现计算
 
-当需要完成计算时，我们需要等式左边的EigenTensor调用device接口：
+当需要完成计算时，我们需要等式左边的EigenTensor调用device接口。在这里需要注意的是，这里的EigenTensor之间的运算只是改变了原有Tensor中的数据，而不会改变原有Tensor的shape信息。
 
 ```
+auto X = EigenVector<T>::Flatten(*input0);
+auto Y = EigenVector<T>::Flatten(*input1);
+auto Z = EigenVector<T>::Flatten(*output);
 auto place = context.GetEigenDevice<Place>();
 Z.device(place) = X + Y;
 ```
+
+在这段代码中，input0/input1/output可以是任意维度的Tensor。我们调用了EigenVector的Flatten接口，把任意维度的Tensor转为了一维的EigenVector。而在计算结束之后，input0/input1/output的原有shape信息不变。如果想改变原有Tensor的shape信息，可以调用Resize接口进行改变。
 
 由于Eigen Tensor模块的文档较少，我们可以参考TensorFlow的[kernels](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/core/kernels)模块下的相关`OpKernel`的计算代码。
