@@ -318,7 +318,9 @@ public:
 
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
-  void backwardImp(Matrix& outputValue, Argument& label, Matrix& outputGrad) {}
+  void backwardImp(Matrix& outputValue,
+                   Argument& label,
+                   Matrix& outputGrad) override {}
 };
 
 /**
