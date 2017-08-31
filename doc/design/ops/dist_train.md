@@ -4,13 +4,13 @@
 
 We propose an approach to implement the parameter server. In this
 approach, there is no fundamental difference between the trainer and
-the parameter server: they both run sub-graphs, but sub-graphs of
+the parameter server: they both run subgraphs, but subgraphs of
 different purposes.
 
 ## Background
 
 The previous implementations of the parameter server does not run a
-sub-graph. parameter initialization, optimizer computation, network
+subgraph. parameter initialization, optimizer computation, network
 communication and checkpointing are implemented twice on both the
 trainer and the parameter server.
 
@@ -26,35 +26,40 @@ server becomes a natural extension.
 ### Graph Converter
 
 The *graph converter* converts the user-defined operation (OP) graph
-into sub-graphs to be scheduled on different nodes.
+into subgraphs to be scheduled on different nodes with the following
+steps:
 
-1. The user-defined OP graph will be cut into sub-graphs of
-different purposes (e.g., trainer, parameter server) to run on
-different workers.
+1. OP placement: the OPs will be placed on different nodes according
+   to heuristic that minimizes estimated total computation
+   time. Currently we will use a simple heuristic that puts parameter
+   varable on parameter server workers and everything else on trainer
+   workers.
 
-1. OPs will be added to the subgraphs, so the subgraphs can
-communicate with each other. We will need these OPs: *send*, *recv*,
-*gradient accumulator*, *string accumulator*, *loop forever*.
+1. Add communication OPs to enable the communication between nodes.
+
+We will need these OPs: *Send*, *Recv*, *Enqueue*, *Dequeue*.
 
 Below is an example of converting the user defined graph to the
-sub-graphs for the trainer and the parameter server:
+subgraphs for the trainer and the parameter server:
 
 <img src="src/local-graph.png" width="300"/>
 
 After converting:
 
-<img src="src/dist-graph.png" width="500"/>
+<img src="src/dist-graph.png" width="700"/>
 
 1. The parameter variable W and it's optimizer subgraph are placed on the parameter server.
-1. Operators are added to the sub-graphs.
-   - *send* operator sends data and sender's address to the destination.
-   - *recv* operator receives data and sender's address from the
-     destination. It will block until data has been received.
-   - *gradient accumulator* operator accumulates *N* pieces of
-     gradients. N=1 in Async-SGD, N>1 in Sync-SGD.
-   - *string accumulator* accumulates *N* pieces of strings into a
-     list of strings. N=1 in Async-SGD, N>1 in Sync-SGD.
-   - *loop forever* runs itself as a target forever.
+1. Operators are added to the subgraphs.
+   - *Send* sends data to the connected *Recv* operator.  The
+	 scheduler on the receive node will only schedule *Recv* operator
+	 to run when the *Send* operator has ran (the *Send* OP will mark
+	 the *Recv* OP runnable automatically).
+   - *Enueue* enqueues the input variable, it can block until space
+     become available in the queue.
+   - *Dequeue* outputs configurable numbers of tensors from the
+     queue. It will block until the queue have the required number of
+     tensors.
+
 
 ### Benefits
 
@@ -71,8 +76,8 @@ After converting:
 ### Challenges
 
 - It might be hard for the graph converter to cut a general graph
-  (without any hint for which sub-graph is the optimizer). We may need
-  to label which sub-graph inside the OP graph is the optimizer.
+  (without any hint for which subgraph is the optimizer). We may need
+  to label which subgraph inside the OP graph is the optimizer.
 
 - It's important to balance the parameter shards of on multiple
   parameter server. If a single parameter is very big (some
@@ -80,3 +85,19 @@ After converting:
   automatically partition the single parameter onto different
   parameter servers when possible (only element-wise optimizer depends
   on the parameter variable).
+
+### Discussion
+
+- In the "Aync SGD" figure, the "W" variable on the parameter server
+  could be read and wrote concurrently, what is our locking strategy?
+
+- Does our current tensor design supports enqueue (put the input tensor
+  into the queue tensor)?
+
+- *Dequeue* OP will have variable numbers of output (depends on the
+  `min_count` attribute), does our current design support it? (similar
+  question for the *Add* OP)
+
+
+References:
+[1] (TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems)[https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45166.pdf]
