@@ -20,9 +20,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -31,64 +28,39 @@ template <typename Place, typename T>
 class SquaredL2DistanceKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input0 = context.Input<Tensor>("X");
-    const int rank = framework::arity(input0->dims());
-    switch (rank) {
-      case 2:
-        Operate<2>(context);
-        break;
-      case 3:
-        Operate<3>(context);
-        break;
-      case 4:
-        Operate<4>(context);
-        break;
-      case 5:
-        Operate<5>(context);
-        break;
-      case 6:
-        Operate<6>(context);
-        break;
-      default:
-        // already asserted in SquaredL2DistanceOpMaker
-        break;
-    }
-  }
+    auto* in0 = context.Input<Tensor>("X");
+    auto* in1 = context.Input<Tensor>("Y");
+    auto* out0 = context.Output<Tensor>("sub_result");
+    auto* out1 = context.Output<Tensor>("Out");
 
- private:
-  template <int Dims>
-  void Operate(const framework::ExecutionContext& context) const {
-    auto* input0 = context.Input<Tensor>("X");
-    auto* input1 = context.Input<Tensor>("Y");
-    auto* output0 = context.Output<Tensor>("sub_result");
-    auto* output1 = context.Output<Tensor>("Out");
+    auto in0_dims = in0->dims();
+    auto in1_dims = in1->dims();
 
-    output0->mutable_data<T>(context.GetPlace());
-    output1->mutable_data<T>(context.GetPlace());
+    int cols = framework::product(in0_dims) / in0_dims[0];
+    // reduce dimensions except the first
+    auto x =
+        EigenMatrix<T>::From(*in0, framework::make_ddim({in0_dims[0], cols}));
+    auto y =
+        EigenMatrix<T>::From(*in1, framework::make_ddim({in1_dims[0], cols}));
 
-    auto X = EigenTensor<T, Dims>::From(*input0);
-    auto Y = EigenTensor<T, Dims>::From(*input1);
-    auto subResult = EigenTensor<T, Dims>::From(*output0);
-    auto Z = EigenMatrix<T>::From(*output1);
-
-    auto xDims = X.dimensions();
-    auto yDims = Y.dimensions();
+    out0->mutable_data<T>(context.GetPlace());
+    out1->mutable_data<T>(context.GetPlace());
+    auto sub_result = EigenMatrix<T>::From(*out0);
+    auto z = EigenMatrix<T>::From(*out1);
 
     auto place = context.GetEigenDevice<Place>();
-
+    auto x_dims = x.dimensions();
+    auto y_dims = y.dimensions();
     // buffer the substraction result
-    if (yDims[0] == 1 && xDims[0] != yDims[0]) {
-      auto yBroadcastDims = yDims;
-      yBroadcastDims[0] = xDims[0];
-      subResult.device(place) = X - Y.broadcast(yBroadcastDims);
+    if (y_dims[0] == 1 && x_dims[0] > y_dims[0]) {
+      auto y_broadcast_dims = y_dims;
+      y_broadcast_dims[0] = x_dims[0];
+      sub_result.device(place) = x - y.broadcast(y_broadcast_dims);
     } else {
-      subResult.device(place) = X - Y;
+      sub_result.device(place) = x - y;
     }
 
-    // create matrix view for substraction result
-    const auto& subResMat = subResult.reshape(Eigen::array<int, 2>(
-        {static_cast<int>(xDims[0]), static_cast<int>(X.size() / xDims[0])}));
-    Z.device(place) = subResMat.pow(2).sum(Eigen::array<int, 1>({1}));
+    z.device(place) = sub_result.pow(2).sum(Eigen::array<int, 1>({1}));
   }
 };
 
@@ -96,77 +68,47 @@ template <typename Place, typename T>
 class SquaredL2DistanceGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input0 = context.Input<Tensor>("sub_result");
-    const int rank = framework::arity(input0->dims());
-    switch (rank) {
-      case 2:
-        Operate<2>(context);
-        break;
-      case 3:
-        Operate<3>(context);
-        break;
-      case 4:
-        Operate<4>(context);
-        break;
-      case 5:
-        Operate<5>(context);
-        break;
-      case 6:
-        Operate<6>(context);
-        break;
-      default:
-        // already asserted in SquaredL2DistanceOpMaker
-        break;
-    }
-  }
+    auto* in0 = context.Input<Tensor>("sub_result");
+    auto* in1 = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x_g = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* y_g = context.Output<Tensor>(framework::GradVarName("Y"));
 
- private:
-  template <int Dims>
-  void Operate(const framework::ExecutionContext& context) const {
-    auto* input0 = context.Input<Tensor>("sub_result");
-    auto* OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* XG = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* YG = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto sub_result = EigenMatrix<T>::From(*in0);
+    auto out_grad = EigenMatrix<T>::From(*in1);
 
-    auto subResult = EigenTensor<T, Dims>::From(*input0);
-    auto outGrad = EigenMatrix<T>::From(*OG);
+    auto x_dims = x_g->dims();
+    auto y_dims = y_g->dims();
 
-    auto subResDims = subResult.dimensions();
-    int firstDim = static_cast<int>(subResDims[0]);
-    int cols = subResult.size() / firstDim;
-    const auto subResMat =
-        subResult.reshape(Eigen::array<int, 2>({firstDim, cols}));
-
+    int cols = framework::product(x_dims) / x_dims[0];
     // calculate gradient
-    auto gradMat =
-        2 * (outGrad.broadcast(Eigen::array<int, 2>({1, cols}))) * subResMat;
+    auto grad_mat =
+        2 * (out_grad.broadcast(Eigen::array<int, 2>({1, cols}))) * sub_result;
 
     // propagate back to input
-    auto eigenPlace = context.GetEigenDevice<Place>();
-    if (XG != nullptr) {
-      XG->mutable_data<T>(context.GetPlace());
-      auto xGrad = EigenTensor<T, Dims>::From(*XG);
+    auto eigen_place = context.GetEigenDevice<Place>();
+    if (x_g != nullptr) {
+      x_g->mutable_data<T>(context.GetPlace());
+      // eigen matrix
+      auto x_grad =
+          EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
       // dimensions are same with subResult
-      auto xGradMat = xGrad.reshape(Eigen::array<int, 2>({firstDim, cols}));
-      xGradMat.device(eigenPlace) = gradMat;
+      x_grad.device(eigen_place) = grad_mat;
     }
-    if (YG != nullptr) {
-      YG->mutable_data<T>(context.GetPlace());
-      auto yGrad = EigenTensor<T, Dims>::From(*YG);
-      auto dimsYGrad = yGrad.dimensions();
-      auto yGradMat = yGrad.reshape(Eigen::array<int, 2>(
-          {static_cast<int>(dimsYGrad[0]),
-           static_cast<int>(yGrad.size() / dimsYGrad[0])}));
 
-      PADDLE_ENFORCE(dimsYGrad[0] <= firstDim,
+    if (y_g != nullptr) {
+      y_g->mutable_data<T>(context.GetPlace());
+      auto y_grad =
+          EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
+
+      PADDLE_ENFORCE(sub_result.dimensions()[0] >= y_dims[0],
                      "First dimension of gradient must be greater or "
                      "equal than first dimension of target");
 
-      if (dimsYGrad[0] == firstDim) {
-        yGradMat.device(eigenPlace) = -1 * gradMat;
+      if (sub_result.dimensions()[0] == y_dims[0]) {
+        y_grad.device(eigen_place) = -1 * grad_mat;
       } else {
-        yGradMat.device(eigenPlace) =
-            -1 * (gradMat.sum(Eigen::array<int, 2>({0})));
+        y_grad.device(eigen_place) =
+            -1 * (grad_mat.sum(Eigen::array<int, 2>({0})));
       }
     }
   }

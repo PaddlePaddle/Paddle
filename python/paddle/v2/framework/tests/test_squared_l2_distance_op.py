@@ -21,5 +21,15 @@ class TestSquaredL2DistanceOp(unittest.TestCase):
         }
 
 
+class TestSquaredL2DistanceGradOp(GradientChecker):
+    def test_squared_l2_distance(self):
+        op = create_op("squared_l2_distance")
+        inputs = {
+            'X': np.random.uniform(0.1, 1., (2, 3)).astype('float32'),
+            'Y': np.random.uniform(0.1, 1., (2, 3)).astype('float32')
+        }
+        self.check_grad(op, inputs, set(["X", "Y"]), "Out")
+
+
 if __name__ == '__main__':
     unittest.main()
