@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#ifndef PADDLE_ONLY_CPU
 #include <cudnn.h>
+#include "glog/logging.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/macros.h"
@@ -93,11 +95,11 @@ class ScopedTensorDescriptor {
     // the format is not used now, but it maybe useful feature
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
-    for (int i = dims.size() - 1; i >= 0; i++) {
-      strides[i] = dims[i + 1] * strides[i];
+    for (int i = dims.size() - 2; i >= 0; i--) {
+      strides[i] = dims[i + 1] * strides[i + 1];
     }
-    PADDLE_ENFORCE(cudnnSetTensorNdDescriptor(desc_, type, dims.size(),
-                                              dims.data(), strides.data()));
+    PADDLE_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
+        desc_, type, dims.size(), dims.data(), strides.data()));
     return desc_;
   }
 
@@ -126,8 +128,8 @@ class ScopedFilterDescriptor {
                                             const cudnnDataType_t type,
                                             const std::vector<int>& kernel) {
     // filter layout: output input spatial_dim_y spatial_dim_x
-    PADDLE_ENFORCE(cudnnSetFilterNdDescriptor(desc_, type, format,
-                                              kernel.size(), kernel.data()));
+    PADDLE_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
+        desc_, type, format, kernel.size(), kernel.data()));
     return desc_;
   }
 
@@ -157,9 +159,21 @@ class ScopedConvolutionDescriptor {
       const std::vector<int>& strides, const std::vector<int>& dilations) {
     PADDLE_ENFORCE_EQ(pads.size(), strides.size());
     PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
-    PADDLE_ENFORCE(cudnnSetConvolutionNdDescriptor(
+
+#if CUDNN_VERSION < 6000
+    // cudnn v5 does not support dilation conv, the argument is called upscale
+    // instead of dilations and it is must be one.
+    for (size_t i = 0; i < dilations.size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          dilations[i], 1,
+          "Dilations conv is not supported in this cuDNN version");
+    }
+#endif
+
+    PADDLE_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
         CUDNN_CROSS_CORRELATION, type));
+    return desc_;
   }
 
   template <typename T>
@@ -184,26 +198,18 @@ class ScopedPoolingDescriptor {
   }
 
   inline cudnnPoolingDescriptor_t descriptor(const PoolingMode& mode,
-                                             cudnnDataType_t type,
                                              const std::vector<int>& kernel,
                                              const std::vector<int>& pads,
                                              const std::vector<int>& strides) {
     PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
     PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
-    PADDLE_ENFORCE(cudnnSetPoolingNdDescriptor(
+    PADDLE_ENFORCE(dynload::cudnnSetPoolingNdDescriptor(
         desc_, (mode == PoolingMode::kMaximum
                     ? CUDNN_POOLING_MAX
                     : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
         kernel.size(), kernel.data(), pads.data(), strides.data()));
-  }
-
-  template <typename T>
-  inline cudnnPoolingDescriptor_t descriptor(const PoolingMode& mode,
-                                             const std::vector<int>& kernel,
-                                             const std::vector<int>& pads,
-                                             const std::vector<int>& strides) {
-    return descriptor(mode, CudnnDataType<T>::type, kernel, pads, strides);
+    return desc_;
   }
 
  private:
@@ -213,3 +219,4 @@ class ScopedPoolingDescriptor {
 
 }  // namespace platform
 }  // namespace paddle
+#endif
