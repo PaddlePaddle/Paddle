@@ -5,12 +5,8 @@ add_subdirectory(testing)
 add_subdirectory(math)
 add_subdirectory(parameter)
 add_subdirectory(gserver)
-
-if(NOT ANDROID AND NOT IOS)
-  add_subdirectory(pserver)
-  add_subdirectory(trainer)
-endif()
-
+add_subdirectory(pserver)
+add_subdirectory(trainer)
 add_subdirectory(scripts)
 add_subdirectory(string)
 
@@ -23,7 +19,7 @@ if(Boost_FOUND)
 endif()
 
 if(WITH_C_API)
-    add_subdirectory(capi)
+  add_subdirectory(capi)
 endif()
 
 if(WITH_SWIG_PY)

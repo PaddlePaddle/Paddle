@@ -49,8 +49,6 @@ if(NOT IOS)
 endif()
 
 set(CMAKE_SYSTEM_NAME Darwin)
-#set(UNIX ON)
-#set(APPLE ON)
 
 # Get the Xcode version being used.
 execute_process(COMMAND xcodebuild -version

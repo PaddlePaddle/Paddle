@@ -155,11 +155,9 @@ endif(USE_NNPACK)
 
 add_subdirectory(proto)
 
-if(NOT ANDROID AND NOT IOS)
-    # "add_subdirectory(go)" should be placed after the following loine,
-    # because it depends on paddle/optimizer.
-    add_subdirectory(paddle/optimizer)
-endif()
+# "add_subdirectory(go)" should be placed after the following loine,
+# because it depends on paddle/optimizer.
+add_subdirectory(paddle/optimizer)
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.
