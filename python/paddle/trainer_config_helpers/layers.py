@@ -5065,17 +5065,6 @@ def warp_ctc_layer(input,
     building process, PaddlePaddle will clone the source codes, build and
     install it to :code:`third_party/install/warpctc` directory.
 
-    To use warp_ctc layer, you need to specify the path of :code:`libwarpctc.so`,
-    using following methods:
-
-    1. Set it in :code:`paddle.init` (python api) or :code:`paddle_init` (c api),
-    such as :code:`paddle.init(use_gpu=True,
-    warpctc_dir=your_paddle_source_dir/third_party/install/warpctc/lib)`.
-
-    2. Set environment variable LD_LIBRARY_PATH on Linux or DYLD_LIBRARY_PATH
-    on Mac OS. For instance, :code:`export
-    LD_LIBRARY_PATH=your_paddle_source_dir/third_party/install/warpctc/lib:$LD_LIBRARY_PATH`.
-
     More details of CTC can be found by referring to `Connectionist Temporal
     Classification: Labelling Unsegmented Sequence Data with Recurrent
     Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/
