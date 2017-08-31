@@ -65,7 +65,8 @@ After converting:
 
 - Model parallelism become easier to implement: it's an extension to
   the trainer - parameter server approach. we already have the
-  communication OPs, but need to extend the graph converter.
+  communication OPs, but need to extend the graph converter's
+  placement functionality.
 
 - User-defined optimizer is easier to add - user can now express it as
   a subgraph.
@@ -90,14 +91,16 @@ After converting:
 
 - In the "Aync SGD" figure, the "W" variable on the parameter server
   could be read and wrote concurrently, what is our locking strategy?
+  E.g., each variable have a lock cpp method to be invoked by every
+  OP, or, have a lock OP.
 
-- Does our current tensor design supports enqueue (put the input tensor
-  into the queue tensor)?
+- Can the Enqueue OP be implemented under our current tensor design
+  (puts the input tensor into the queue tensor)?
 
 - *Dequeue* OP will have variable numbers of output (depends on the
   `min_count` attribute), does our current design support it? (similar
   question for the *Add* OP)
 
 
-References:
-[1] (TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems)[https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45166.pdf]
+### References:
+[1] [TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45166.pdf)
