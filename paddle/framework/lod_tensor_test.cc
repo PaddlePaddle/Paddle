@@ -21,25 +21,6 @@
 namespace paddle {
 namespace framework {
 
-// TEST(LODTensor, test) {
-//   LOD lod;
-//   lod.push_back(std::vector<size_t>{0, 10, 20});
-//   lod.push_back(std::vector<size_t>{0, 5, 10, 15, 20});
-//   lod.push_back(std::vector<size_t>{0, 2, 5, 7, 10, 12, 15, 17, 20});
-
-//   ASSERT_EQ(lod.size(), 3UL);
-
-//   Tensor tensor;
-//   tensor.Resize({20 /*batch size*/, 128 /*dim*/});
-//   // malloc memory
-//   platform::CPUPlace place;
-//   tensor.mutable_data<float>(place);
-
-//   LODTensor lod_tensor(lod, &tensor);
-
-//   ASSERT_EQ(lod_tensor.NumLevels(), 3UL);
-// }
-
 class LODTensorTester : public ::testing::Test {
  public:
   virtual void SetUp() override {
