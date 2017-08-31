@@ -20,15 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T, typename AttrType>
+template <typename Place, typename T>
 class ConcatKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Y");
-    auto axis = static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("axis"));
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    const int axis = static_cast<int>(ctx.op_.GetAttr<int>("axis"));
     int N = ins.size();
-    out->mutable_data<T>(ctx.GetPlace());
     std::vector<int> offset_dim(N);
     offset_dim[0] = 0;
     for (int i = 1; i < N; i++) {

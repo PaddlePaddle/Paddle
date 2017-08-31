@@ -46,9 +46,9 @@ USE_OP(lookup_table);
 USE_OP(scale);
 USE_OP_ITSELF(identity);
 USE_OP(minus);
-USE_OP(concat);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
+USE_OP(concat);
 
 namespace paddle {
 namespace framework {

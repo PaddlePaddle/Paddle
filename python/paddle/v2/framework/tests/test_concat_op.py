@@ -11,15 +11,16 @@ class TestConcatOp(unittest.TestCase):
         self.type = "concat"
         self.inputs = {
             'X': [
-                np.random.random((32, 16)).astype("float32"), np.random.random(
-                    (32, 32)).astype("float32"), np.random.random(
-                        (32, 64)).astype("float32")
+                np.random.random((16, 32)).astype("float32"), np.random.random(
+                    (8, 32)).astype("float32"), np.random.random(
+                        (2, 32)).astype("float32")
             ]
         }
         self.attrs = {'axis': 0}
         self.outpus = {
-            'Out': np.concatenate((self.inputs[0], self.inputs[1],
-                                   self.inputs[2]))
+            'Out': np.concatenate(
+                (self.inputs['X'][0], self.inputs['X'][1], self.inputs['X'][2]),
+                axis=0)
         }
 
 

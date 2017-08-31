@@ -19,7 +19,6 @@ namespace paddle {
 namespace operators {
 using framework::Tensor;
 
-template <typename AttrType>
 class ConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -27,8 +26,8 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Y");
-    auto axis = static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("axis"));
+    auto *out = ctx.Output<framework::Tensor>("Out");
+    const int axis = static_cast<int>(ctx.op_.GetAttr<int>("axis"));
     int N = ins.size();
 
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should >= 1.");
@@ -53,18 +52,16 @@ class ConcatOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename AttrType>
 class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ConcatOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    // TODO(Yancey1989)
     AddInput("X", "the input tensors of concat operator.");
-    AddOutput("Y", "the output tensor of concat operator.");
+    AddOutput("Out", "the output tensor of concat operator.");
     AddComment(R"DOC(
             Join the input tensors alone the with the axis.
         )DOC");
-    AddAttr<AttrType>("axis", "The axis alone which the inputs will be joined")
+    AddAttr<int>("axis", "The axis alone which the inputs will be joined")
         .SetDefault(0);
   }
 };
@@ -73,7 +70,6 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(concat, ops::ConcatOp<int>,
-                             ops::ConcatOpMaker<int>)
-REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUPlace, float, int>)
+REGISTER_OP_WITHOUT_GRADIENT(concat, ops::ConcatOp, ops::ConcatOpMaker)
+REGISTER_OP_CPU_KERNEL(concat,
+                       ops::ConcatKernel<paddle::platform::CPUPlace, float>)
