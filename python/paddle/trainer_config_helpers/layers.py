@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import functools
 import collections
 import inspect
@@ -106,11 +105,14 @@ __all__ = [
     'nce_layer',
     'cross_entropy_with_selfnorm',
     'cross_entropy',
+    'BeamInput',
+    'cross_entropy_over_beam',
     'multi_binary_label_cross_entropy',
     'sum_cost',
     'rank_cost',
     'lambda_cost',
-    'huber_cost',
+    'huber_regression_cost',
+    'huber_classification_cost',
     'block_expand_layer',
     'maxout_layer',
     'out_prod_layer',
@@ -220,9 +222,11 @@ class LayerType(object):
 
     RANK_COST = 'rank-cost'
     LAMBDA_COST = 'lambda_cost'
-    HUBER = 'huber'
+    HUBER_REGRESSION = 'huber_regression'
+    HUBER_CLASSIFICATION = 'huber_classification'
     CROSS_ENTROPY = 'multi-class-cross-entropy'
     CROSS_ENTROPY_WITH_SELFNORM = 'multi_class_cross_entropy_with_selfnorm'
+    CROSS_ENTROPY_OVER_BEAM = 'cross_entropy_over_beam'
     SOFT_BIN_CLASS_CROSS_ENTROPY = 'soft_binary_class_cross_entropy'
     MULTI_BIN_LABEL_CROSS_ENTROPY = 'multi_binary_label_cross_entropy'
     SUM_COST = 'sum_cost'
@@ -4069,8 +4073,12 @@ def __cost_input__(input, label, weight=None):
     """
     inputs and parents for cost layers.
     """
-    ipts = [Input(input.name), Input(label.name)]
-    parents = [input, label]
+    if isinstance(input, LayerOutput):
+        input = [input]
+    if isinstance(label, LayerOutput):
+        label = [label]
+    ipts = [Input(ipt.name) for ipt in (input + label)]
+    parents = [ipt for ipt in (input + label)]
     if weight is not None:
         assert weight.size == 1
         ipts.append(Input(weight.name))
@@ -5644,16 +5652,77 @@ def sum_cost(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
+def huber_regression_cost(input,
+                          label,
+                          name=None,
+                          delta=1.0,
+                          coeff=1.0,
+                          layer_attr=None):
     """
-    A loss layer for huber loss.
+    In statistics, the Huber loss is a loss function used in robust regression, 
+    that is less sensitive to outliers in data than the squared error loss. 
+    Given a prediction f(x), a label y and :math:`\delta`, the loss function 
+    is defined as:
+
+    .. math:
+       loss = 0.5*\left ( y-f(x) \right )^2, \left | y-f(x) \right |\leq \delta
+       loss = \delta \left | y-f(x) \right |-0.5\delta ^2, otherwise
 
     The example usage is:
 
     .. code-block:: python
 
-       cost = huber_cost(input=input_layer,
-                         label=label_layer)
+       cost = huber_regression_cost(input=input_layer, label=label_layer)
+
+    :param input: The first input layer.
+    :type input: LayerOutput.
+    :param label: The input label.
+    :type input: LayerOutput.
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring.
+    :param delta: The difference between the observed and predicted values.
+    :type delta: float.
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput.
+    """
+    assert isinstance(input, LayerOutput)
+    Layer(
+        name=name,
+        type=LayerType.HUBER_REGRESSION,
+        inputs=[input.name, label.name],
+        delta=delta,
+        coeff=coeff,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.HUBER_REGRESSION, parents=[input, label], size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def huber_classification_cost(input,
+                              label,
+                              name=None,
+                              coeff=1.0,
+                              layer_attr=None):
+    """
+    For classification purposes, a variant of the Huber loss called modified Huber 
+    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and 
+    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber 
+    loss is defined as:
+
+    .. math:
+       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1 
+       loss = -4yf(x), \text{otherwise}
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = huber_classification_cost(input=input_layer, label=label_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput.
@@ -5673,11 +5742,12 @@ def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
         assert input.size == 1
     Layer(
         name=name,
-        type=LayerType.HUBER,
+        type=LayerType.HUBER_CLASSIFICATION,
         inputs=[input.name, label.name],
         coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.HUBER, parents=[input, label], size=1)
+    return LayerOutput(
+        name, LayerType.HUBER_CLASSIFICATION, parents=[input, label], size=1)
 
 
 @wrap_name_default()
@@ -5713,10 +5783,10 @@ def multi_binary_label_cross_entropy(input,
 
     if input.activation is None or \
             not isinstance(input.activation, SigmoidActivation):
-        logger.log(
-            logging.WARN,
-            "%s is not recommend for multi_binary_label_cross_entropy's activation, "
-            "maybe the sigmoid is better" % repr(input.activation))
+        logger.log(logging.WARN,
+                   ("%s is not a recommended activation for "
+                    "multi_binary_label_cross_entropy, sigmoid is better") %
+                   repr(input.activation))
 
     Layer(
         name=name,
@@ -5729,6 +5799,113 @@ def multi_binary_label_cross_entropy(input,
         LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,
         parents=[input, label],
         size=1)
+
+
+class BeamInput(object):
+    """
+    Define the input for cross_entropy_over_beam layer.
+
+    A beam is made up of a triple: the first one is scores over all
+    candidates; the second one is indices of top k selected candidates; the
+    third one is the index of ground truth, which is also always called
+    gold.
+    """
+
+    def __init__(self, candidate_scores, selected_candidates, gold):
+        assert isinstance(candidate_scores, LayerOutput)
+        self.candidate_scores = candidate_scores
+        assert candidate_scores.size == 1
+
+        assert isinstance(selected_candidates, LayerOutput)
+        self.selected_candidates = selected_candidates
+
+        assert isinstance(gold, LayerOutput)
+        self.gold = gold
+
+
+@wrap_name_default()
+@layer_support()
+def cross_entropy_over_beam(input, name=None):
+    """
+    This layer is used in learning to search models, which is to solve complex
+    joint prediction problems based on learning to search through a
+    problem-defined search space.
+
+    Specifically, the learning to search process for this layer begins with
+    searching a target sequence from a nested sequence. In the first search
+    step, top beam size sequences with highest scores, indices of these top k
+    sequences in the original nested sequence, and the ground truth (also
+    called gold) altogether (a triple) make up of the first beam.
+
+    Then, several special positions, for example, start and end positions
+    that define meaningful segments are searched. In these searches, top k
+    positions with highest scores are selected, and then sequence, starting
+    from the selected starts till ends of the sequences (or a fixed position)
+    are taken to search next.
+
+    We call the possible top k results returned in one search the beam. This
+    search process can be repeated for pre-defined turns and leads to several
+    beam expansions.
+
+    Finally, the layer cross_entropy_over_beam takes all the beam expansions
+    which contain several candidate targets found along the multi-step search.
+    cross_entropy_over_beam calculates cross entropy over the expanded beams
+    which all the candidates in the beam as the normalized factor.
+
+    Note that, if gold falls off the beam at search step t, then the cost is
+    calculated over the beam at step t.
+
+    This cost layer always works together with kmax_sequence_score_layer,
+    sub_nested_seq_layer, and sequence_slice_layer to trim the input to form a
+    sub-search space.
+
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = cross_entropy_over_beam(input=[
+           BeamInput(
+               candidate_scores=beam1_candidates,
+               selected_candidates=beam1_topk,
+               gold=gold1),
+           BeamInput(
+               candidate_scores=beam2_candidates,
+               selected_candidates=beam2_topk,
+               gold=gold2),
+       ])
+
+
+    :param input: input beams for this layer.
+    :type input: BeamInput
+    :param name: input beams for this layer.
+    :type name: basestring
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    if isinstance(input, BeamInput):
+        input = [input]
+    else:
+        assert isinstance(input, list), (
+            'input for cross_entropy_over_beam shold be a python list '
+            'of BeamInput object.')
+        for ipt in input:
+            assert isinstance(ipt, BeamInput), (
+                'input for cross_entropy_over_beam '
+                'should be a BeamInput object.')
+
+    ipts = []
+    parents = []
+    for beam in input:
+        parents += [beam.candidate_scores, beam.selected_candidates, beam.gold]
+        ipts += [
+            beam.candidate_scores.name, beam.selected_candidates.name,
+            beam.gold.name
+        ]
+
+    Layer(name=name, type=LayerType.CROSS_ENTROPY_OVER_BEAM, inputs=ipts)
+    return LayerOutput(name, LayerType.CROSS_ENTROPY, parents=parents, size=1)
 
 
 @wrap_name_default()

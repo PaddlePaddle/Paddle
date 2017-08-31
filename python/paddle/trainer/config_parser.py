@@ -1607,6 +1607,21 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
         self.config.softmax_selfnorm_alpha = softmax_selfnorm_alpha
 
 
+@config_layer('cross_entropy_over_beam')
+class CrossEntropyOverBeamLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        config_assert(len(inputs) % 3 == 0, "Error input number.")
+        super(CrossEntropyOverBeamLayer, self).__init__(
+            name, 'cross_entropy_over_beam', 0, inputs, **xargs)
+        input_num = len(inputs) / 3
+        for i in range(input_num):
+            input_layer = self.get_input_layer(i * 3)
+            config_assert(input_layer.size == 1, (
+                "Inputs for this layer are made up of "
+                "several triples, in which the first one is scores over "
+                "all candidate paths, whose size should be equal to 1."))
+
+
 @config_layer('fc')
 class FCLayer(LayerBase):
     layer_type = 'fc'
@@ -2268,13 +2283,14 @@ def define_cost(class_name, cost_type):
 
 
 define_cost('MultiClassCrossEntropy', 'multi-class-cross-entropy')
+define_cost('CrossEntropyOverBeamCostLayer', 'cross_entropy_over_beam')
 define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')
 define_cost('SumOfSquaresCostLayer', 'square_error')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
-define_cost('HuberTwoClass', 'huber')
+define_cost('HuberTwoClassification', 'huber_classification')
 define_cost('SumCost', 'sum_cost')
 define_cost('SmoothL1Cost', 'smooth_l1')
 
@@ -2334,6 +2350,17 @@ class LambdaCost(LayerBase):
                 NDCG_num <= max_sort_size,
                 'NDCG_num must be less than or equal to max_sort_size')
         self.config.max_sort_size = max_sort_size
+
+
+@config_layer('huber_regression')
+class HuberRegressionLoss(LayerBase):
+    def __init__(self, name, inputs, delta=1., coeff=1., device=None):
+        super(HuberRegressionLoss, self).__init__(
+            name, 'huber_regression', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2, 'HuberRegression must have 2 inputs')
+        self.config.delta = delta
+        self.config.coeff = coeff
 
 
 @config_layer('nce')
