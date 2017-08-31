@@ -22,36 +22,52 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
                             "Input of SquaredL2DistanceOp "
                             "must be initialized.");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
-                      ctx.Input<Tensor>("Y")->dims(),
-                      "Dimensions of SquaredL2DistanceOp's two inputs "
-                      "must be same.")
-    framework::DDim dims = ctx.Input<Tensor>("X")->dims();
-    ctx.Output<Tensor>("sub_result")->Resize(dims);
-    ctx.Output<Tensor>("Out")->Resize(framework::make_ddim({dims[0], 1}));
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Target of SquaredL2DistanceOp "
+                            "must be initialized.");
+
+    auto* X = ctx.Input<Tensor>("X");
+    auto xDims = X->dims();
+    auto* Y = ctx.Input<Tensor>("Y");
+    auto yDims = Y->dims();
+
+    PADDLE_ENFORCE_EQ(framework::arity(xDims), framework::arity(yDims),
+                      "Tensor rank of both SquaredL2DistanceOp's "
+                      "inputs must be same.");
+    int rank = framework::arity(xDims);
+    PADDLE_ENFORCE(rank >= 2 || rank <= 6, "Tensor rank should be in [2, 6].");
+    PADDLE_ENFORCE(yDims[0] == 1 || yDims[0] == xDims[0],
+                   "First dimension of target must be equal to input "
+                   "or to 1.");
+
+    ctx.Output<Tensor>("sub_result")->Resize(xDims);
+    ctx.Output<Tensor>("Out")->Resize({xDims[0], 1});
   }
 };
 
 class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SquaredL2DistanceOpMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  SquaredL2DistanceOpMaker(framework::OpProto* proto,
+                           framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input value.");
-    AddInput("Y", "Target value.");
+    AddInput("X", "Input of SquaredL2DistanceOp.");
+    AddInput("Y", "Target of SquaredL2DistanceOp.");
     AddOutput("sub_result",
               "Buffering substraction result which "
               "will be reused in backward.")
         .AsIntermediate();
     AddOutput("Out", "Squared l2 distance between input and target.");
     AddComment(R"DOC(
-    SquaredL2DistanceOp will cacluate the squared L2 distances for
+    SquaredL2DistanceOp will cacluate the squared L2 distance for
     input and target. Number of distance value equals to the
-    first dimension of input.
+    first dimension of input. First dimension of target could be equal to
+    input or to 1. If the first dimension of target is 1, SquaredL2DistanceOp
+    will broadcast the first dimension to the first dimension of input.
+    You can decide whether calculate the gradient of target.
     )DOC");
   }
 };
@@ -61,9 +77,23 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<Tensor>("X")->dims());
+  void InferShape(const framework::InferShapeContext& ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Gradient of Out should not be null");
+    // check out grad dimensions
+    auto outDims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
+    auto xDims = ctx.Input<Tensor>("X")->dims();
+    auto yDims = ctx.Input<Tensor>("Y")->dims();
+    PADDLE_ENFORCE_EQ(outDims[0], xDims[0],
+                      "First dimension of output gradient and "
+                      "input value must be equal.");
+    PADDLE_ENFORCE_EQ(outDims[1], 1,
+                      "Second dimension of output gradient "
+                      "must be 1.");
+    auto* xGrad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* yGrad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    if (xGrad != nullptr) xGrad->Resize(xDims);
+    if (yGrad != nullptr) yGrad->Resize(yDims);
   }
 };
 

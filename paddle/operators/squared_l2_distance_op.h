@@ -20,17 +20,44 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
 class SquaredL2DistanceKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    auto* input0 = context.Input<Tensor>("X");
+    const int rank = framework::arity(input0->dims());
+    switch (rank) {
+      case 2:
+        Operate<2>(context);
+        break;
+      case 3:
+        Operate<3>(context);
+        break;
+      case 4:
+        Operate<4>(context);
+        break;
+      case 5:
+        Operate<5>(context);
+        break;
+      case 6:
+        Operate<6>(context);
+        break;
+      default:
+        // already asserted in SquaredL2DistanceOpMaker
+        break;
+    }
+  }
+
+ private:
+  template <int Dims>
+  void Operate(const framework::ExecutionContext& context) const {
     auto* input0 = context.Input<Tensor>("X");
     auto* input1 = context.Input<Tensor>("Y");
     auto* output0 = context.Output<Tensor>("sub_result");
@@ -39,17 +66,28 @@ class SquaredL2DistanceKernel : public framework::OpKernel {
     output0->mutable_data<T>(context.GetPlace());
     output1->mutable_data<T>(context.GetPlace());
 
-    auto X = EigenMatrix<T>::From(*input0);
-    auto Y = EigenMatrix<T>::From(*input1);
-    auto subResult = EigenMatrix<T>::From(*output0);
+    auto X = EigenTensor<T, Dims>::From(*input0);
+    auto Y = EigenTensor<T, Dims>::From(*input1);
+    auto subResult = EigenTensor<T, Dims>::From(*output0);
     auto Z = EigenMatrix<T>::From(*output1);
 
+    auto xDims = X.dimensions();
+    auto yDims = Y.dimensions();
+
     auto place = context.GetEigenDevice<Place>();
+
     // buffer the substraction result
-    subResult.device(place) = X - Y;
-    const auto& inDims = X.dimensions();
+    if (yDims[0] == 1 && xDims[0] != yDims[0]) {
+      auto yBroadcastDims = yDims;
+      yBroadcastDims[0] = xDims[0];
+      subResult.device(place) = X - Y.broadcast(yBroadcastDims);
+    } else {
+      subResult.device(place) = X - Y;
+    }
+
+    // create matrix view for substraction result
     const auto& subResMat = subResult.reshape(Eigen::array<int, 2>(
-        {static_cast<int>(inDims[0]), static_cast<int>(X.size() / inDims[0])}));
+        {static_cast<int>(xDims[0]), static_cast<int>(X.size() / xDims[0])}));
     Z.device(place) = subResMat.pow(2).sum(Eigen::array<int, 1>({1}));
   }
 };
@@ -59,24 +97,78 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* input0 = context.Input<Tensor>("sub_result");
+    const int rank = framework::arity(input0->dims());
+    switch (rank) {
+      case 2:
+        Operate<2>(context);
+        break;
+      case 3:
+        Operate<3>(context);
+        break;
+      case 4:
+        Operate<4>(context);
+        break;
+      case 5:
+        Operate<5>(context);
+        break;
+      case 6:
+        Operate<6>(context);
+        break;
+      default:
+        // already asserted in SquaredL2DistanceOpMaker
+        break;
+    }
+  }
+
+ private:
+  template <int Dims>
+  void Operate(const framework::ExecutionContext& context) const {
+    auto* input0 = context.Input<Tensor>("sub_result");
     auto* OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* IG = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* XG = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* YG = context.Output<Tensor>(framework::GradVarName("Y"));
 
-    IG->mutable_data<T>(context.GetPlace());
-
-    auto subResult = EigenMatrix<T>::From(*input0);
+    auto subResult = EigenTensor<T, Dims>::From(*input0);
     auto outGrad = EigenMatrix<T>::From(*OG);
-    auto inGrad = EigenMatrix<T>::From(*IG);
 
-    const auto& subResDims = subResult.dimensions();
+    auto subResDims = subResult.dimensions();
     int firstDim = static_cast<int>(subResDims[0]);
     int cols = subResult.size() / firstDim;
     const auto subResMat =
         subResult.reshape(Eigen::array<int, 2>({firstDim, cols}));
-    // create a matrix view for input gradient tensor
-    auto inGradMat = inGrad.reshape(Eigen::array<int, 2>({firstDim, cols}));
-    inGradMat.device(context.GetEigenDevice<Place>()) =
+
+    // calculate gradient
+    auto gradMat =
         2 * (outGrad.broadcast(Eigen::array<int, 2>({1, cols}))) * subResMat;
+
+    // propagate back to input
+    auto eigenPlace = context.GetEigenDevice<Place>();
+    if (XG != nullptr) {
+      XG->mutable_data<T>(context.GetPlace());
+      auto xGrad = EigenTensor<T, Dims>::From(*XG);
+      // dimensions are same with subResult
+      auto xGradMat = xGrad.reshape(Eigen::array<int, 2>({firstDim, cols}));
+      xGradMat.device(eigenPlace) = gradMat;
+    }
+    if (YG != nullptr) {
+      YG->mutable_data<T>(context.GetPlace());
+      auto yGrad = EigenTensor<T, Dims>::From(*YG);
+      auto dimsYGrad = yGrad.dimensions();
+      auto yGradMat = yGrad.reshape(Eigen::array<int, 2>(
+          {static_cast<int>(dimsYGrad[0]),
+           static_cast<int>(yGrad.size() / dimsYGrad[0])}));
+
+      PADDLE_ENFORCE(dimsYGrad[0] <= firstDim,
+                     "First dimension of gradient must be greater or "
+                     "equal than first dimension of target");
+
+      if (dimsYGrad[0] == firstDim) {
+        yGradMat.device(eigenPlace) = -1 * gradMat;
+      } else {
+        yGradMat.device(eigenPlace) =
+            -1 * (gradMat.sum(Eigen::array<int, 2>({0})));
+      }
+    }
   }
 };
 
