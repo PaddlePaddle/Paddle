@@ -186,6 +186,7 @@ void Argument::resizeAndCopyFrom(const Argument& src,
   resizeAndCopy(strs, src.strs, useGpu, stream);
   frameWidth = src.frameWidth;
   frameHeight = src.frameHeight;
+  frameDepth = src.frameDepth;
 }
 
 int32_t Argument::resizeAndCopyFrom(const Argument& src,
@@ -206,6 +207,7 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
   dataId = src.dataId;
   frameWidth = src.frameWidth;
   frameHeight = src.frameHeight;
+  frameDepth = src.frameDepth;
 
   if (!src.sequenceStartPositions) {
     // non-sequence input, copy samples directly
@@ -677,6 +679,7 @@ void Argument::reorganizeSeqInfo(
     const ICpuGpuVectorPtr subSeqStartPos,
     std::vector<std::vector<int>>& reorganizedSeqInfo) {
   CHECK(seqStartPos);
+  reorganizedSeqInfo.clear();
 
   int seqNum = seqStartPos->getSize() - 1;
   int* seqStarts = seqStartPos->getMutableData(false);

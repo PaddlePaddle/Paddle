@@ -85,6 +85,12 @@ message ConvConfig {
 
   optional uint32 dilation = 15 [ default = 1 ];
   optional uint32 dilation_y = 16 [ default = 1 ];
+
+  optional uint32 filter_size_z = 17 [ default = 1 ];
+  optional uint32 padding_z = 18 [ default = 1 ];
+  optional uint32 stride_z = 19 [ default = 1 ];
+  optional uint32 output_z = 20 [ default = 1 ];
+  optional uint32 img_size_z = 21 [ default = 1 ];
 }
 
 message PoolConfig {
@@ -502,6 +508,8 @@ message LayerConfig {
 
   // for HuberRegressionLoss
   optional double delta = 57 [ default = 1.0 ];
+
+  optional uint64 depth = 58 [ default = 1 ];
 }
 
 message EvaluatorConfig {
