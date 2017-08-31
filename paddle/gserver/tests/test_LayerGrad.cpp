@@ -2116,6 +2116,159 @@ TEST(Layer, RowL2NormLayer) {
   }
 }
 
+void test3DConvLayer(const string& type, bool trans, bool useGpu) {
+  // filter size
+  const int NUM_FILTERS = 6;
+  // const int CHANNELS = 3;
+  const int FILTER_SIZE = 3;
+  const int FILTER_SIZE_Y = 3;
+  const int FILTER_SIZE_Z = 3;
+
+  // input image
+  const int CHANNELS = 3;
+  const int IMAGE_SIZE = 9;
+  const int IMAGE_SIZE_Y = 9;
+  const int IMAGE_SIZE_Z = 9;
+
+  TestConfig config;
+  config.biasSize = NUM_FILTERS;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_num_filters(NUM_FILTERS);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  // Setting up conv3D-trans layer
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+
+  conv->set_channels(CHANNELS);
+  conv->set_filter_size(FILTER_SIZE);
+  conv->set_filter_size_y(FILTER_SIZE_Y);
+  conv->set_filter_size_z(FILTER_SIZE_Z);
+  conv->set_padding(0);
+  conv->set_padding_y(0);
+  conv->set_padding_z(0);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_stride_z(2);
+  conv->set_img_size(IMAGE_SIZE);
+  conv->set_img_size_y(IMAGE_SIZE_Y);
+  conv->set_img_size_z(IMAGE_SIZE_Z);
+  conv->set_output_x(outputSize(conv->img_size(),
+                                conv->filter_size(),
+                                conv->padding(),
+                                conv->stride(),
+                                /*  caffeMode */ true));
+  conv->set_output_y(outputSize(conv->img_size_y(),
+                                conv->filter_size_y(),
+                                conv->padding_y(),
+                                conv->stride_y(),
+                                /*  caffeMode */ true));
+  conv->set_output_z(outputSize(conv->img_size_z(),
+                                conv->filter_size_z(),
+                                conv->padding_z(),
+                                conv->stride_z(),
+                                /*  caffeMode */ true));
+
+  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
+                              conv->output_z() * NUM_FILTERS);
+  conv->set_groups(1);
+  conv->set_filter_channels(conv->channels() / conv->groups());
+  config.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       CHANNELS * IMAGE_SIZE * IMAGE_SIZE_Y * IMAGE_SIZE_Z,
+       conv->filter_channels() * FILTER_SIZE * FILTER_SIZE_Y * FILTER_SIZE_Z *
+           NUM_FILTERS});
+
+  testLayerGrad(config, "conv3D", 10, trans, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "conv3D", 2, trans, useGpu, true, 0.02);
+}
+
+TEST(Layer, test3DConvLayer) {
+  test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ true);
+#endif
+}
+
+void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
+  // filter size
+  const int NUM_FILTERS = 6;
+  // const int CHANNELS = 3;
+  const int FILTER_SIZE = 3;
+  const int FILTER_SIZE_Y = 3;
+  const int FILTER_SIZE_Z = 3;
+
+  // input image
+  const int CHANNELS = 3;
+  const int IMAGE_SIZE = 4;
+  const int IMAGE_SIZE_Y = 6;
+  const int IMAGE_SIZE_Z = 6;
+
+  // Setting up conv-trans layer
+  TestConfig config;
+  config.biasSize = NUM_FILTERS;
+  config.layerConfig.set_type("deconv3d");
+  config.layerConfig.set_num_filters(NUM_FILTERS);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+
+  conv->set_channels(CHANNELS);
+  conv->set_filter_size(FILTER_SIZE);
+  conv->set_filter_size_y(FILTER_SIZE_Y);
+  conv->set_filter_size_z(FILTER_SIZE_Z);
+  conv->set_padding(0);
+  conv->set_padding_y(0);
+  conv->set_padding_z(0);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_stride_z(2);
+  conv->set_img_size(IMAGE_SIZE);
+  conv->set_img_size_y(IMAGE_SIZE_Y);
+  conv->set_img_size_z(IMAGE_SIZE_Z);
+  conv->set_output_x(imageSize(conv->img_size(),
+                               conv->filter_size(),
+                               conv->padding(),
+                               conv->stride(),
+                               true));
+  conv->set_output_y(imageSize(conv->img_size_y(),
+                               conv->filter_size_y(),
+                               conv->padding_y(),
+                               conv->stride_y(),
+                               true));
+  conv->set_output_z(imageSize(conv->img_size_z(),
+                               conv->filter_size_z(),
+                               conv->padding_z(),
+                               conv->stride_z(),
+                               true));
+  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
+                              conv->output_z() * NUM_FILTERS);
+  conv->set_groups(1);
+  conv->set_filter_channels(conv->channels() / conv->groups());
+  config.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       CHANNELS * IMAGE_SIZE * IMAGE_SIZE_Y * IMAGE_SIZE_Z,
+       conv->filter_channels() * FILTER_SIZE * FILTER_SIZE_Y * FILTER_SIZE_Z *
+           NUM_FILTERS});
+
+  testLayerGrad(config, "deconv3D", 10, trans, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "deconv3D", 2, trans, useGpu, true, 0.02);
+}
+
+TEST(Layer, test3DDeConvLayer) {
+  test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ true);
+#endif
+}
+
 TEST(Layer, ScaleShiftLayer) {
   const size_t batchSize = 16;
   const size_t size = 32;
