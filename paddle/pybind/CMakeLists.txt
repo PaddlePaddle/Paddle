@@ -7,6 +7,7 @@ cc_library(paddle_pybind SHARED
     scatter_op
     add_op
     mul_op
+    element_wise_mul_op
     rowwise_add_op
     sigmoid_op
     softmax_op
