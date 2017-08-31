@@ -40,8 +40,8 @@ class LODTensorTester : public ::testing::Test {
     // malloc memory
     tensor.mutable_data<float>(place);
 
-    lod_tensor.lod_ = lod;
-    lod_tensor.tensor_ = &tensor;
+    lod_tensor.set_lod(lod);
+    lod_tensor.set_tensor(&tensor);
   }
 
  protected:
@@ -65,8 +65,8 @@ TEST_F(LODTensorTester, SliceLevels) {
     new_lod_tensor.SliceLevels(level, level + 1);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor.NumElements(level));
-    ASSERT_EQ(new_lod_tensor.tensor_->data<float>(),
-              lod_tensor.tensor_->data<float>());
+    ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
+              lod_tensor.tensor().data<float>());
   }
   // slice 2 level
   for (size_t level = 0; level < 2UL; ++level) {
@@ -75,8 +75,8 @@ TEST_F(LODTensorTester, SliceLevels) {
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor.NumElements(level));
     ASSERT_EQ(new_lod_tensor.NumElements(1), lod_tensor.NumElements(level + 1));
-    ASSERT_EQ(new_lod_tensor.tensor_->data<float>(),
-              lod_tensor.tensor_->data<float>());
+    ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
+              lod_tensor.tensor().data<float>());
   }
 }
 
@@ -88,8 +88,8 @@ TEST_F(LODTensorTester, SliceInLevel) {
   EXPECT_EQ(new_lod_tensor.NumElements(0), 2UL);
   EXPECT_EQ(new_lod_tensor.NumElements(1), 4UL);
   EXPECT_EQ(new_lod_tensor.NumElements(2), 8UL);
-  ASSERT_EQ(new_lod_tensor.tensor_->data<float>(),
-            lod_tensor.tensor_->data<float>());
+  ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
+            lod_tensor.tensor().data<float>());
 
   level = 1;
   new_lod_tensor = lod_tensor;
@@ -97,8 +97,8 @@ TEST_F(LODTensorTester, SliceInLevel) {
   ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);
-  ASSERT_EQ(new_lod_tensor.tensor_->data<float>(),
-            lod_tensor.tensor_->data<float>());
+  ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
+            lod_tensor.tensor().data<float>());
 }
 
 }  // namespace framework

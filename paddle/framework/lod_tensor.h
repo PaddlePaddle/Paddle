@@ -48,10 +48,18 @@ bool operator==(const LOD& a, const LOD& b);
  * LODTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */
-struct LODTensor {
+class LODTensor {
  public:
   LODTensor() {}
   LODTensor(const LOD& lod, Tensor* t) : lod_(lod), tensor_(t) {}
+
+  void set_lod(const LOD& lod) { lod_ = lod; }
+
+  void set_tensor(Tensor* tensor) { tensor_ = tensor; }
+
+  Tensor& tensor() { return *tensor_; }
+
+  LOD lod() { return lod_; }
 
   /*
    * Get a element from LOD.
@@ -91,7 +99,7 @@ struct LODTensor {
    */
   void SliceInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
- public:
+ private:
   LOD lod_;
   Tensor* tensor_;  // not owned
 };
