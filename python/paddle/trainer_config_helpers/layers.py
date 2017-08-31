@@ -139,6 +139,7 @@ __all__ = [
     'seq_slice_layer',
     'kmax_sequence_score_layer',
     'scale_shift_layer',
+    'img_conv3d_layer',
 ]
 
 
@@ -219,6 +220,9 @@ class LayerType(object):
     CRF_LAYER = 'crf'
     CRF_DECODING_LAYER = 'crf_decoding'
     NCE_LAYER = 'nce'
+
+    CONV3D_LAYER = 'conv3d'
+    DECONV3D_LAYER = 'deconv3d'
 
     RANK_COST = 'rank-cost'
     LAMBDA_COST = 'lambda_cost'
@@ -896,7 +900,8 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, height=None, width=None, layer_attr=None):
+def data_layer(name, size, height=None, width=None, depth=None,
+               layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -923,15 +928,18 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         type=LayerType.DATA,
         name=name,
         size=size,
+        depth=depth,
         height=height,
         width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
+    if depth is None:
+        depth = 1
     num_filters = None
     if height is not None and width is not None:
-        num_filters = size / (width * height)
-        assert num_filters * width * height == size, \
-            "size=%s width=%s height=%s" % (size, width, height)
+        num_filters = size / (width * height * depth)
+        assert num_filters * width * height*depth == size, \
+            "size=%s width=%s height=%s depth=%s" % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
@@ -6481,6 +6489,149 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 
     return LayerOutput(
         name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)
+
+
+@wrap_name_default("conv3d")
+@wrap_param_attr_default()
+@wrap_bias_attr_default()
+@wrap_act_default(act=ReluActivation())
+@layer_support(DROPOUT)
+def img_conv3d_layer(input,
+                     filter_size,
+                     num_filters,
+                     name=None,
+                     num_channels=None,
+                     act=None,
+                     groups=1,
+                     stride=1,
+                     padding=0,
+                     bias_attr=None,
+                     param_attr=None,
+                     shared_biases=True,
+                     layer_attr=None,
+                     trans=False,
+                     layer_type=None):
+    """
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        conv = img_conv3d_layer(input=data, filter_size=1,
+                              num_channels=8,
+                              num_filters=16, stride=1,
+                              bias_attr=False,
+                              act=ReluActivation())
+
+    :param name: Layer name.
+    :type name: basestring
+    :param input: Layer Input.
+    :type input: LayerOutput
+    :param filter_size: The x dimension of a filter kernel. Or input a list.
+    :type filter_size: int|tuple|list
+    :param num_filters: Each filter group's number of filter
+    :param act: Activation type. Default is tanh
+    :type act: BaseActivation
+    :param groups: Group size of filters.
+    :type groups: int
+    :param stride: The x dimension of the stride. Or input a tuple for two image
+                   dimension.
+    :type stride: int|tuple|list
+    :param padding: The x dimension of the padding. Or input a tuple for two
+                    image dimension
+    :type padding: int|tuple|list
+    :param bias_attr: Convolution bias attribute. None means default bias.
+                      False means no bias.
+    :type bias_attr: ParameterAttribute|False
+    :param num_channels: number of input channels. If None will be set
+                        automatically from previous output.
+    :type num_channels: int
+    :param param_attr: Convolution param attribute. None means default attribute
+    :type param_attr: ParameterAttribute
+    :param shared_biases: Is biases will be shared between filters or not.
+    :type shared_biases: bool
+    :param layer_attr: Layer Extra Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :type trans: bool
+    :param layer_type: specify the layer_type, default is None. If trans=True,
+                       layer_type has to be "exconvt" or "cudnn_convt",
+                       otherwise layer_type has to be either "exconv" or
+                       "cudnn_conv"
+    :type layer_type: String
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if isinstance(filter_size, collections.Sequence):
+        assert len(filter_size) == 3
+        filter_size, filter_size_y, filter_size_z = filter_size
+    else:
+        filter_size_y = filter_size
+        filter_size_z = filter_size
+
+    if isinstance(stride, collections.Sequence):
+        assert len(stride) == 3
+        stride, stride_y, stride_z = stride
+    else:
+        stride_y = stride
+        stride_z = stride
+
+    if isinstance(padding, collections.Sequence):
+        assert len(padding) == 3
+        padding, padding_y, padding_z = padding
+    else:
+        padding_y = padding
+        padding_z = padding
+
+    if param_attr.attr.get('initial_smart'):
+        # special initial for conv layers.
+        init_w = (2.0 / (filter_size**2 * num_channels))**0.5
+        param_attr.attr["initial_mean"] = 0.0
+        param_attr.attr["initial_std"] = init_w
+        param_attr.attr["initial_strategy"] = 0
+        param_attr.attr["initial_smart"] = False
+
+    if layer_type:
+        if trans:
+            assert layer_type in ["deconv3d"]
+        lt = layer_type
+    else:
+        lt = LayerType.DECONV3D_LAYER if trans else LayerType.CONV3D_LAYER
+
+    l = Layer(
+        name=name,
+        inputs=Input(
+            input.name,
+            conv=Conv3D(
+                filter_size=filter_size,
+                padding=padding,
+                stride=stride,
+                channels=num_channels,
+                groups=groups,
+                filter_size_y=filter_size_y,
+                padding_y=padding_y,
+                stride_y=stride_y,
+                filter_size_z=filter_size_z,
+                padding_z=padding_z,
+                stride_z=stride_z),
+            **param_attr.attr),
+        active_type=act.name,
+        num_filters=num_filters,
+        bias=ParamAttr.to_bias(bias_attr),
+        shared_biases=shared_biases,
+        type=lt,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        lt,
+        parents=[input],
+        activation=act,
+        num_filters=num_filters,
+        size=l.config.size)
 
 
 @wrap_name_default("scale_shift")
