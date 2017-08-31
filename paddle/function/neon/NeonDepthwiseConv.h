@@ -477,39 +477,40 @@ struct DepthwiseConvKernel<4, 2> {
 
 template <class T>
 struct Padding {
-  static void run(const T* src,
-                  T* dest,
+  static void run(const T* input,
+                  T* inputPadding,
                   int channels,
                   int inputHeight,
                   int inputWidth,
-                  int paddingHeight,
-                  int paddingWidth) {
-    const int destWidth = inputWidth + 2 * paddingWidth;
+                  int padInputHeight,
+                  int padInputWidth) {
+    const int paddingHeight = (padInputHeight - inputHeight) / 2;
+    const int paddingWidth = (padInputWidth - inputWidth) / 2;
     for (int c = 0; c < channels; c++) {
       if (paddingHeight > 0) {
-        memset(dest, 0, destWidth * paddingHeight * sizeof(T));
-        dest += destWidth * paddingHeight;
+        memset(inputPadding, 0, padInputWidth * paddingHeight * sizeof(T));
+        inputPadding += padInputWidth * paddingHeight;
       }
 
       for (int i = 0; i < inputHeight; i++) {
         // padding head
         for (int j = 0; j < paddingWidth; j++) {
-          *dest++ = T(0);
+          *inputPadding++ = T(0);
         }
 
-        memcpy(dest, src, inputWidth * sizeof(T));
-        dest += inputWidth;
-        src += inputWidth;
+        memcpy(inputPadding, input, inputWidth * sizeof(T));
+        inputPadding += inputWidth;
+        input += inputWidth;
 
         // padding tail
         for (int j = 0; j < paddingWidth; j++) {
-          *dest++ = T(0);
+          *inputPadding++ = T(0);
         }
       }
 
       if (paddingHeight > 0) {
-        memset(dest, 0, destWidth * paddingHeight * sizeof(T));
-        dest += destWidth * paddingHeight;
+        memset(inputPadding, 0, padInputWidth * paddingHeight * sizeof(T));
+        inputPadding += padInputWidth * paddingHeight;
       }
     }
   }
@@ -518,47 +519,48 @@ struct Padding {
 #if defined(__ARM_NEON__) || defined(__ARM_NEON)
 template <>
 struct Padding<float> {
-  static void run(const float* src,
-                  float* dest,
+  static void run(const float* input,
+                  float* inputPadding,
                   int channels,
                   int inputHeight,
                   int inputWidth,
-                  int paddingHeight,
-                  int paddingWidth) {
-    const int destWidth = inputWidth + 2 * paddingWidth;
+                  int padInputHeight,
+                  int padInputWidth) {
+    const int paddingHeight = (padInputHeight - inputHeight) / 2;
+    const int paddingWidth = (padInputWidth - inputWidth) / 2;
     for (int c = 0; c < channels; c++) {
       if (paddingHeight > 0) {
-        memset(dest, 0, destWidth * paddingHeight * sizeof(float));
-        dest += destWidth * paddingHeight;
+        memset(inputPadding, 0, padInputWidth * paddingHeight * sizeof(float));
+        inputPadding += padInputWidth * paddingHeight;
       }
 
       for (int i = 0; i < inputHeight; i++) {
         // padding head
         for (int j = 0; j < paddingWidth; j++) {
-          *dest++ = float(0);
+          *inputPadding++ = float(0);
         }
 
         int step = inputWidth >> 2;
         int remain = inputWidth & 3;
         for (int s = 0; s < step; s++) {
-          float32x4_t s0 = vld1q_f32(src);
-          vst1q_f32(dest, s0);
-          src += 4;
-          dest += 4;
+          float32x4_t s0 = vld1q_f32(input);
+          vst1q_f32(inputPadding, s0);
+          input += 4;
+          inputPadding += 4;
         }
         for (int r = 0; r < remain; r++) {
-          *dest++ = *src++;
+          *inputPadding++ = *input++;
         }
 
         // padding tail
         for (int j = 0; j < paddingWidth; j++) {
-          *dest++ = float(0);
+          *inputPadding++ = float(0);
         }
       }
 
       if (paddingHeight > 0) {
-        memset(dest, 0, destWidth * paddingHeight * sizeof(float));
-        dest += destWidth * paddingHeight;
+        memset(inputPadding, 0, padInputWidth * paddingHeight * sizeof(float));
+        inputPadding += padInputWidth * paddingHeight;
       }
     }
   }
