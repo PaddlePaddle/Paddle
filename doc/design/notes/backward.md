@@ -96,3 +96,16 @@ For example, there are two operators in the computational graph, `FC1` and `FC2`
 ![alt](./pic/backward_on_same_graph.png)
 
 ### explicitly representing a backward graph
+
+Instead of back-propagation on the same graph, another way to implement back-propagation is explicitly expanding the computation graph of the backward stage and representing a backward graph. The backward computation graph is usually combined with the forward graph for a better optimization of memory or computation. An example computation graph is shown below.
+
+![alt](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/d7cf706a188b734f3cc82db8f7298b93/raw/763cc0a77c6ffc0fad40c3de270df67ff66675f0/backward_in_whole_graph.dot)
+
+In that computational graph, circles are variables and boxes are operators. The forward operator and the backward operator are different operators. The interface of `Operator` just contains one method for execution. It could be
+
+```cpp
+class Operator {
+public:
+  virtual void Run(...) = 0;
+}
+```
