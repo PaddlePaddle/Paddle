@@ -14,16 +14,27 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename Place, typename T, typename AttrType>
 class ConcatKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    // TODO(Yancey1989)
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Y");
+    auto axis = static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("axis"));
+    int N = ins.size();
+    out->mutable_data<T>(ctx.GetPlace());
+    std::vector<int> offset_dim(N);
+    offset_dim[0] = 0;
+    for (int i = 1; i < N; i++) {
+      offset_dim[i] = ins[i]->dims()[axis] + offset_dim[i - 1];
+    }
+    // TODO(Yancey1989): concat tensors along with specify axis
   }
 };
 
