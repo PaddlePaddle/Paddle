@@ -31,7 +31,7 @@ struct BeamExpansion {
 
   size_t expansionCount;
 
-  BeamExpansion(int n) {
+  explicit BeamExpansion(int n) {
     expansionCount = n;
     scores.resize(expansionCount);
     seqInfo.resize(expansionCount);
@@ -39,7 +39,7 @@ struct BeamExpansion {
     scoreGrad.resize(expansionCount);
 
     gold.resize(expansionCount);
-  };
+  }
 };
 typedef std::shared_ptr<BeamExpansion> BeamExpansionPtr;
 
@@ -74,7 +74,7 @@ private:
     CHECK_GT(beams_->seqInfo[beamId]->getSize() - 1, rowId);
     int* starts = beams_->seqInfo[beamId]->getData();
     return starts[rowId] - starts[0];
-  };
+  }
 
   size_t beamSize_;
   size_t validExpansionCount_;

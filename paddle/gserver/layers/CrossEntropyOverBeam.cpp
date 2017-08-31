@@ -28,8 +28,9 @@ void CostForOneSequence::calValidExpandStep() {
           start,
           start + goldRowIds_[i - 1] * beamSize_ + goldColIds_[i - 1],
           [](const real& val) { return val != -1.; });
-    } else
+    } else {
       goldRowIds_[i] = 0;
+    }
 
     real* start =
         beams_->candidateIds[i]->getData() + goldRowIds_[i] * beamSize_;
@@ -288,7 +289,7 @@ void CrossEntropyOverBeam::copyInputsToCpu() {
 
 void CrossEntropyOverBeam::splitBatchBeams() {
   beamCosts_.resize(batchSize_);
-  beamPerSeq_.resize(batchSize_, beamExpanCount_);
+  beamPerSeq_.resize(batchSize_, BeamExpansion(beamExpanCount_));
 
   for (size_t i = 0; i < beamExpanCount_; ++i) {
     int* seqStarts =
@@ -300,8 +301,9 @@ void CrossEntropyOverBeam::splitBatchBeams() {
       subSeqStarts =
           getInput(i * 3).subSequenceStartPositions->getMutableData(false);
       maxLen = getInput(i * 3).subSequenceStartPositions->getSize() - 1;
-    } else
+    } else {
       maxLen = getInput(i).sequenceStartPositions->getSize() - 1;
+    }
 
     for (size_t j = 0; j < batchSize_; ++j) {
       beamPerSeq_[j].scores[i] =
@@ -348,8 +350,9 @@ void CrossEntropyOverBeam::resizeOutput() {
                              inGrad->getWidth(),
                              false,
                              false);
-    } else
+    } else {
       candidateScoreGrad_[i] = std::move(inGrad);
+    }
     candidateScoreGrad_[i]->zeroMem();
   }
 }
