@@ -34,4 +34,13 @@ TEST(DepthwiseConv, BackwardFilter) {
 }
 #endif
 
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+
+TEST(DepthwiseConv, Forward) {
+  DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>(
+      "GemmConv-CPU", "NeonDepthwiseConv-CPU", forward);
+}
+
+#endif
+
 }  // namespace paddle

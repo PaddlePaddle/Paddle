@@ -281,7 +281,11 @@ public:
   /**
    * @brief Set the format in header.
    */
-  void setHeaderFormat(int32_t fmt) { headerFormat_ = fmt; }
+  void setHeaderFormat(int32_t fmt) {
+    CHECK(isHeaderFormatSupported(fmt)) << "Unsupported format version: "
+                                        << fmt;
+    headerFormat_ = fmt;
+  }
 
   /**
    * @brief  Parameter Update Hook.
