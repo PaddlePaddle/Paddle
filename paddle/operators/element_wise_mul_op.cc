@@ -26,9 +26,9 @@ class ElemWiseMulOp : public framework::OperatorWithKernel {
     auto dim0 = ctx.Input<Tensor>("X")->dims();
     auto dim1 = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_EQ(
-        dim0[1], dim1[0],
-        "First matrix's width must be equal with second matrix's height.");
-    ctx.Output<Tensor>("Out")->Resize({dim0[0]});
+        dim0, dim1,
+        "First matrix's dims must be equal with second matrix's dims.");
+    ctx.Output<Tensor>("Out")->Resize(dim0);
   }
 };
 

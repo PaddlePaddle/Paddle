@@ -40,7 +40,6 @@ class ElemWiseMulKernel : public framework::OpKernel {
     auto Y_e = framework::EigenVector<T>::Flatten(*Y);
     auto Z_e = framework::EigenVector<T>::Flatten(*Z);
 
-    // TODO(gongweibao): gpu?
     Z_e.device(context.GetEigenDevice<Place>()) = X_e * Y_e;
   }
 };
@@ -64,9 +63,8 @@ class ElemWiseMulGradKernel : public framework::OpKernel {
     auto dY_e = framework::EigenVector<T>::Flatten(*dY);
     auto dOut_e = framework::EigenVector<T>::Flatten(*dOut);
 
-    // TODO(gongweibao): gpu?
     dX_e.device(ctx.GetEigenDevice<Place>()) = dOut_e * Y_e;
-    dY_e.device(ctx.GetEigenDevice<Place>()) = dOut_e * X_e;
+    dY_e.device(ctx.GetEigenDevice<Place>()) = X_e * dOut_e;
   }
 };
 
