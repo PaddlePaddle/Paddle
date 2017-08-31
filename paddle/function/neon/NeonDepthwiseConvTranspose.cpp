@@ -74,13 +74,25 @@ public:
       int newSize = batchSize * inputChannels * padInputHeight * padInputWidth;
       resizeBuffer<Device>(newSize);
       inputPadding = reinterpret_cast<float*>(memory_->getBuf());
-      neon::Padding<float>::run(inputData,
-                                inputPadding,
-                                batchSize * inputChannels,
-                                inputHeight,
-                                inputWidth,
-                                padInputHeight,
-                                padInputWidth);
+      if (strideH() == 1) {
+        neon::Padding<float>::run(inputData,
+                                  inputPadding,
+                                  batchSize * inputChannels,
+                                  inputHeight,
+                                  inputWidth,
+                                  padInputHeight,
+                                  padInputWidth);
+      } else if (strideH() == 2) {
+        neon::StridePadding::run(inputData,
+                                 inputPadding,
+                                 batchSize * inputChannels,
+                                 inputHeight,
+                                 inputWidth,
+                                 padInputHeight,
+                                 padInputWidth);
+      } else {
+        LOG(FATAL) << "Not supported";
+      }
     }
 
     std::function<void(

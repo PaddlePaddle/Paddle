@@ -566,6 +566,63 @@ struct Padding<float> {
   }
 };
 
+// for stride is 2
+struct StridePadding {
+  static void run(const float* input,
+                  float* inputPadding,
+                  int channels,
+                  int inputHeight,
+                  int inputWidth,
+                  int padInputHeight,
+                  int padInputWidth) {
+    const int paddingHeight = (padInputHeight - (inputHeight * 2 - 1)) / 2;
+    const int paddingWidth = (padInputWidth - (inputWidth * 2 - 1)) / 2;
+    for (int c = 0; c < channels; c++) {
+      if (paddingHeight > 0) {
+        memset(inputPadding, 0, padInputWidth * paddingHeight * sizeof(float));
+        inputPadding += padInputWidth * paddingHeight;
+      }
+
+      for (int i = 0; i < inputHeight; i++) {
+        // padding head
+        for (int j = 0; j < paddingWidth; j++) {
+          *inputPadding++ = float(0);
+        }
+
+        int step = inputWidth >> 2;
+        int remain = inputWidth & 3;
+        float32x4_t s1 = vdupq_n_f32(0.f);
+        for (int s = 0; s < step; s++) {
+          float32x4_t s0 = vld1q_f32(input);
+          float32x4x2_t v = {s0, s1};
+          vst2q_f32(inputPadding, v);
+          input += 4;
+          inputPadding += 8;
+        }
+        for (int r = 0; r < remain; r++) {
+          *inputPadding++ = *input++;
+          *inputPadding++ = float(0);
+        }
+        inputPadding--;
+
+        // padding tail
+        for (int j = 0; j < paddingWidth; j++) {
+          *inputPadding++ = float(0);
+        }
+        if (i != inputHeight - 1) {
+          memset(inputPadding, 0, padInputWidth * sizeof(float));
+          inputPadding += padInputWidth;
+        }
+      }
+
+      if (paddingHeight > 0) {
+        memset(inputPadding, 0, padInputWidth * paddingHeight * sizeof(float));
+        inputPadding += padInputWidth * paddingHeight;
+      }
+    }
+  }
+};
+
 #endif
 
 #endif
