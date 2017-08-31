@@ -677,6 +677,7 @@ void Argument::reorganizeSeqInfo(
     const ICpuGpuVectorPtr subSeqStartPos,
     std::vector<std::vector<int>>& reorganizedSeqInfo) {
   CHECK(seqStartPos);
+  reorganizedSeqInfo.clear();
 
   int seqNum = seqStartPos->getSize() - 1;
   int* seqStarts = seqStartPos->getMutableData(false);
