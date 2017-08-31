@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "NeonDepthwiseConv.h"
 #include "paddle/function/ConvOp.h"
-#include "paddle/function/Im2Col.h"
 
 namespace paddle {
 
@@ -70,13 +69,13 @@ public:
                     (inputWidth + 2 * paddingW());
       resizeBuffer<Device>(newSize);
       inputPadding = reinterpret_cast<float*>(memory_->getBuf());
-      Padding<float>::run(inputData,
-                          inputPadding,
-                          batchSize * inputChannels,
-                          inputHeight,
-                          inputWidth,
-                          paddingH(),
-                          paddingW());
+      neon::Padding<float>::run(inputData,
+                                inputPadding,
+                                batchSize * inputChannels,
+                                inputHeight,
+                                inputWidth,
+                                paddingH(),
+                                paddingW());
 
       // height and width of padding data
       inputHeight += 2 * paddingH();
