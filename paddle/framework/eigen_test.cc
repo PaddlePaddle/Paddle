@@ -46,6 +46,29 @@ TEST(Eigen, Tensor) {
   }
 }
 
+TEST(Eigen, TensorSum) {
+  Tensor t_in;
+  float* in =
+      t_in.mutable_data<float>(make_ddim({2, 3, 4}), platform::CPUPlace());
+  for (int i = 0; i < 2 * 3 * 4; i++) {
+    in[i] = static_cast<float>(i);
+  }
+
+  Tensor t_out;
+  float* out = t_out.mutable_data<float>({2}, platform::CPUPlace());
+
+  EigenTensor<float, 3>::Type et_in = EigenTensor<float, 3>::From(t_in);
+  EigenTensor<float, 1>::Type et_out = EigenTensor<float, 1>::From(t_out);
+
+  Eigen::DSizes<int, 2> along_class(1, 2);
+
+  Eigen::DefaultDevice dd;
+  et_out.device(dd) = et_in.sum(along_class);
+
+  ASSERT_NEAR(66, out[0], 1e-6f);
+  ASSERT_NEAR(210, out[1], 1e-6f);
+}
+
 TEST(Eigen, ScalarFrom) {
   Tensor t;
   int* p = t.mutable_data<int>(make_ddim({1}), platform::CPUPlace());
