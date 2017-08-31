@@ -2290,7 +2290,7 @@ define_cost('PnpairValidation', 'pnpair-validation')
 define_cost('SumOfSquaresCostLayer', 'square_error')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
-define_cost('HuberTwoClass', 'huber')
+define_cost('HuberTwoClassification', 'huber_classification')
 define_cost('SumCost', 'sum_cost')
 define_cost('SmoothL1Cost', 'smooth_l1')
 
@@ -2350,6 +2350,17 @@ class LambdaCost(LayerBase):
                 NDCG_num <= max_sort_size,
                 'NDCG_num must be less than or equal to max_sort_size')
         self.config.max_sort_size = max_sort_size
+
+
+@config_layer('huber_regression')
+class HuberRegressionLoss(LayerBase):
+    def __init__(self, name, inputs, delta=1., coeff=1., device=None):
+        super(HuberRegressionLoss, self).__init__(
+            name, 'huber_regression', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2, 'HuberRegression must have 2 inputs')
+        self.config.delta = delta
+        self.config.coeff = coeff
 
 
 @config_layer('nce')

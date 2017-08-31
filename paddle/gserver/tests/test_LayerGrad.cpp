@@ -850,9 +850,27 @@ TEST(Layer, square_error_weighted) {
   }
 }
 
+TEST(Layer, huber_regression_loss) {
+  TestConfig config;
+  config.layerConfig.set_type("huber_regression");
+  config.biasSize = 0;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 10, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    for (auto delta : {1, 3, 5}) {
+      config.layerConfig.set_delta(delta);
+      testLayerGrad(config, "huber_regression", 100, /* trans */ false, useGpu);
+    }
+  }
+}
+
 TEST(Layer, huber_two_class) {
   TestConfig config;
-  config.layerConfig.set_type("huber");
+  config.layerConfig.set_type("huber_classification");
   config.biasSize = 0;
 
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
@@ -861,7 +879,7 @@ TEST(Layer, huber_two_class) {
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "huber", 100, /* trans */ false, useGpu);
+    testLayerGrad(config, "huber_two_class", 100, /* trans */ false, useGpu);
   }
 }
 
