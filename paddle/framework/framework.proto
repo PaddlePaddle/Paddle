@@ -22,32 +22,38 @@ enum AttrType {
   INTS = 3;
   FLOATS = 4;
   STRINGS = 5;
+  BLOCK = 6;
 }
 
-// OpDesc describes an instance of a C++ framework::OperatorBase
-// derived class type.
-message OpDesc {
+message BlockDesc {
+  repeated VarDesc vars = 1;
+  repeated OperatorDesc ops = 2;
+}
 
-  message Attr {
-    required string name = 1;
-    required AttrType type = 2;
-    optional int32 i = 3;
-    optional float f = 4;
-    optional string s = 5;
-    repeated int32 ints = 6;
-    repeated float floats = 7;
-    repeated string strings = 8;
-  };
+message OperatorDesc {
+  required string type = 1;
+  repeated string inputs = 2;
+  repeated string outputs = 3;
+  repeated AttrDesc attrs = 4;
+}
 
-  message Var {
-    required string parameter = 1;
-    repeated string arguments = 2;
-  };
+message VarDesc {
+  required name string = 1;
+  enum Type { .. }
+  Type type = 2;
+  optional LoDTensorDesc lod_tensor = 3;
+}
 
-  required string type = 3;
-  repeated Var inputs = 1;
-  repeated Var outputs = 2;
-  repeated Attr attrs = 4;
+message AttrDesc {
+  required string name = 1;
+  required AttrType type = 2;
+  optional int32 i = 3;
+  optional float f = 4;
+  optional string s = 5;
+  repeated int32 ints = 6;
+  repeated float floats = 7;
+  repeated string strings = 8;
+  optional BlockDesc block = 9;
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
