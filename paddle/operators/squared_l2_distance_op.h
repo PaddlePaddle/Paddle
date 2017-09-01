@@ -53,14 +53,16 @@ class SquaredL2DistanceKernel : public framework::OpKernel {
     auto y_dims = y.dimensions();
     // buffer the substraction result
     if (y_dims[0] == 1 && x_dims[0] > y_dims[0]) {
-      auto y_broadcast_dims = y_dims;
-      y_broadcast_dims[0] = x_dims[0];
-      sub_result.device(place) = x - y.broadcast(y_broadcast_dims);
+      sub_result.device(place) =
+          x -
+          y.broadcast(Eigen::array<int, 2>({static_cast<int>(x_dims[0]), 1}));
     } else {
       sub_result.device(place) = x - y;
     }
-
-    z.device(place) = sub_result.pow(2).sum(Eigen::array<int, 1>({1}));
+    auto sub_res_pow2 = sub_result * sub_result;
+    z.device(place) =
+        sub_res_pow2.sum(Eigen::array<int, 1>({1}))
+            .reshape(Eigen::array<int, 2>({static_cast<int>(x_dims[0]), 1}));
   }
 };
 
@@ -86,7 +88,7 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
 
     // propagate back to input
     auto eigen_place = context.GetEigenDevice<Place>();
-    if (x_g != nullptr) {
+    if (x_g) {
       x_g->mutable_data<T>(context.GetPlace());
       // eigen matrix
       auto x_grad =
@@ -95,7 +97,7 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
       x_grad.device(eigen_place) = grad_mat;
     }
 
-    if (y_g != nullptr) {
+    if (y_g) {
       y_g->mutable_data<T>(context.GetPlace());
       auto y_grad =
           EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
@@ -107,8 +109,9 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
       if (sub_result.dimensions()[0] == y_dims[0]) {
         y_grad.device(eigen_place) = -1 * grad_mat;
       } else {
+        auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({0})));
         y_grad.device(eigen_place) =
-            -1 * (grad_mat.sum(Eigen::array<int, 2>({0})));
+            col_sum_res.reshape(Eigen::array<int, 2>({1, cols}));
       }
     }
   }

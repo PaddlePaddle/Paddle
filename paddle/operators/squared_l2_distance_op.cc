@@ -49,7 +49,9 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
                    "First dimension of target must be equal to input "
                    "or to 1.");
 
-    ctx.Output<Tensor>("sub_result")->Resize(x_dims);
+    ctx.Output<Tensor>("sub_result")
+        ->Resize({static_cast<int>(x_dims[0]),
+                  static_cast<int>(framework::product(x_dims) / x_dims[0])});
     ctx.Output<Tensor>("Out")->Resize({x_dims[0], 1});
   }
 };
@@ -97,8 +99,8 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
                       "must be 1.");
     auto* x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    if (x_grad != nullptr) x_grad->Resize(x_dims);
-    if (y_grad != nullptr) y_grad->Resize(y_dims);
+    if (x_grad) x_grad->Resize(x_dims);
+    if (y_grad) y_grad->Resize(y_dims);
   }
 };
 
