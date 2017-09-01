@@ -53,6 +53,23 @@ public:
       mkldnn::engine& eg,
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
 
+  /**
+   * Create Memory descriptor.
+   * default with any format and f32 dtype
+   */
+  static mkldnn::memory::desc createMemoryDesc(
+      const mkldnn::memory::dims& dims,
+      const mkldnn::memory::format& fmt = mkldnn::memory::format::any,
+      const mkldnn::memory::data_type& dtype = mkldnn::memory::data_type::f32) {
+    return mkldnn::memory::desc(dims, dtype, fmt);
+  }
+
+  /**
+   * Create reorder primitive.
+   */
+  static std::shared_ptr<mkldnn::reorder> createReorder(
+      const MKLDNNMatrixPtr& src, const MKLDNNMatrixPtr& dst);
+
 public:
   /**
    * Reorder this MKLDNNMatrix from other format.
