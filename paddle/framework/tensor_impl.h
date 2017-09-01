@@ -117,6 +117,8 @@ inline void Tensor::CopyFrom(const Tensor& src,
     memory::Copy(boost::get<platform::GPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::GPUPlace>(src_place), src_ptr, size, 0);
   }
+  PADDLE_ENFORCE(cudaStreamSynchronize(0),
+                 "cudaStreamSynchronize failed in Tensor CopyFrom");
 
 #endif
 }
