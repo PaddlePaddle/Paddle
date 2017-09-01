@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include <iostream>
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
@@ -36,8 +37,7 @@ class TopkKernel : public framework::OpKernel {
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
     // k is determined by Attr
-    const unsigned int k =
-        static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("k"));
+    const size_t k = static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("k"));
 
     output->mutable_data<T>(ctx.GetPlace());
     indices->mutable_data<T>(ctx.GetPlace());
@@ -45,14 +45,17 @@ class TopkKernel : public framework::OpKernel {
     auto X = EigenMatrix<T>::From(*input);
     auto Out = EigenMatrix<T>::From(*output);
     auto Indices = EigenMatrix<T>::From(*indices);
-
     // reshape input to a flattern matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
-    const unsigned int row = framework::product(
+    const size_t row = framework::product(
         framework::slice_ddim(inputdims, 0, inputdims.size() - 1));
-    const unsigned int col = inputdims[inputdims.size() - 1];
+    const size_t col = inputdims[inputdims.size() - 1];
     Eigen::DSizes<int, 2> flat2dims(row, col);
     X.reshape(flat2dims);
+
+    auto place = ctx.GetEigenDevice<Place>();
+    Out.device(place);
+    Indices.device(place);
 
     for (size_t i = 0; i < row; i++) {
       // TODO(typhoonzero): make this more efficient
