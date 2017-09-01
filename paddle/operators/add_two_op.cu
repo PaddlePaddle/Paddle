@@ -14,7 +14,7 @@
 
 #define EIGEN_USE_GPU
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/add_op.h"
+#include "paddle/operators/add_two_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(add_two,
