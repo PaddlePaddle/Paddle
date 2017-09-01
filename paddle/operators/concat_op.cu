@@ -15,6 +15,6 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #include "paddle/operators/concat_op.h"
 
-namespace ops = framework::operators;
+namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(concat,
                        ops::ConcatKernel<paddle::platform::GPUPlace, float>)

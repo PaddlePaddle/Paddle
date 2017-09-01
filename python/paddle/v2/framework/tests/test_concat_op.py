@@ -9,19 +9,12 @@ class TestConcatOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "concat"
-        self.inputs = {
-            'X': [
-                np.random.random((16, 32)).astype("float32"), np.random.random(
-                    (8, 32)).astype("float32"), np.random.random(
-                        (2, 32)).astype("float32")
-            ]
-        }
+        x0 = np.random.random((3, 4)).astype('float32')
+        x1 = np.random.random((4, 4)).astype('float32')
+        x2 = np.random.random((5, 4)).astype('float32')
+        self.inputs = {'X': np.asarray([x0, x1, x2])}
         self.attrs = {'axis': 0}
-        self.outpus = {
-            'Out': np.concatenate(
-                (self.inputs['X'][0], self.inputs['X'][1], self.inputs['X'][2]),
-                axis=0)
-        }
+        self.outpus = {'Out': np.concatenate((x0, x1, x2), axis=0)}
 
 
 if __name__ == '__main__':

@@ -25,7 +25,8 @@ class ConcatKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    // auto* out = ctx.Output<framework::Tensor>("Out");
+
     const int axis = static_cast<int>(ctx.op_.GetAttr<int>("axis"));
     int N = ins.size();
     std::vector<int> offset_dim(N);

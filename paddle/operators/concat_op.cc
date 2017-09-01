@@ -30,14 +30,12 @@ class ConcatOp : public framework::OperatorWithKernel {
     const int axis = static_cast<int>(ctx.op_.GetAttr<int>("axis"));
     int N = ins.size();
 
-    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should >= 1.");
+    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
 
     auto dim_zero = ins[0]->dims();
     auto dim_zero_size = dim_zero.size();
     auto concat_dim = dim_zero;
     for (int i = 1; i < N; i++) {
-      PADDLE_ENFORCE_EQ(dim_zero_size, ins[i]->dims().size(),
-                        "input tensors should have the same dim size.");
       for (int j = 0; j < dim_zero_size; j++) {
         if (j == axis) {
           concat_dim[axis] += ins[i]->dims()[j];
@@ -56,7 +54,7 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ConcatOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of concat operator.");
+    AddInput("X", "the input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of concat operator.");
     AddComment(R"DOC(
             Join the input tensors alone the with the axis.
