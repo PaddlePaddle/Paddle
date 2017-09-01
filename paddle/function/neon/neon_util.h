@@ -33,10 +33,10 @@ inline float32_t vaddvq_f32(float32x4_t a) {
   return vget_lane_f32(vpadd_f32(v, v), 0);
 }
 
+template <int lane>
 inline float32x4_t vmlaq_laneq_f32(float32x4_t a,
                                    float32x4_t b,
-                                   float32x4_t v,
-                                   const int lane) {
+                                   float32x4_t v) {
   return vmlaq_n_f32(a, b, vgetq_lane_f32(v, lane));
 }
 #endif
