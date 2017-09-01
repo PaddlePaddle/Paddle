@@ -1,9 +1,10 @@
-set(OP_LIBRARY PARENT_SCOPE)
+file(GLOB GENERAL_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
+string(REPLACE ".cc" "" GENERAL_OPS "${GENERAL_OPS}")
 function(op_library TARGET)
     # op_library is a function to create op library. The interface is same as
     # cc_library. But it handle split GPU/CPU code and link some common library
     # for ops.
-    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} CACHE INTERNAL "")
+    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
     set(cc_srcs)
     set(cu_srcs)
     set(op_common_deps operator op_registry)
@@ -45,31 +46,25 @@ endfunction()
 
 add_subdirectory(math)
 
-set(OP_WITHOUT_DEPS
-    add_op
-    cross_entropy_op
-    fill_zeros_like_op
-    gather_op
-    gaussian_random_op
-    scatter_op
-    mean_op
-    rowwise_add_op
-    sigmoid_op
-    softmax_op
-    sgd_op
-    lookup_table_op
-    uniform_random_op)
-
-foreach(src ${OP_WITHOUT_DEPS})
-    op_library(${src} SRCS ${src}.cc ${src}.cu)
-endforeach()
+list(REMOVE_ITEM GENERAL_OPS
+     net_op
+     minus_op
+     mul_op
+     recurrent_op
+     scale_op)
 
 op_library(net_op SRCS net_op.cc)
 op_library(minus_op SRCS minus_op.cc minus_op.cu DEPS scale_op)
 op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)
-op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
-    DEPS framework_proto tensor op_registry operator net_op)
+op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc 
+  DEPS framework_proto tensor operator net_op)
 op_library(scale_op SRCS scale_op.cc scale_op.cu DEPS net_op)
+
+foreach(src ${GENERAL_OPS})
+    op_library(${src} SRCS ${src}.cc ${src}.cu)
+endforeach()
+
+set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
