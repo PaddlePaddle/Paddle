@@ -223,7 +223,7 @@ void CrossEntropyOverBeam::checkInputs() {
                                 << inputLayers_[i * 3]->getName()
                                 << " should be a nested sequence";
       CHECK_EQ(getInputValue(i * 3 + 1)->getWidth(), beamSize_);
-      CHECK_EQ(scores.getNumSequences(), batchSize_);
+      CHECK_EQ(batchSize_, static_cast<size_t>(scores.getNumSequences()));
       CHECK_EQ(scores.getNumSubSequences(), selCandidates.getBatchSize());
     } else {
       CHECK(scores.hasSeq()) << "input " << i << " "
@@ -231,10 +231,10 @@ void CrossEntropyOverBeam::checkInputs() {
                              << " should be a sequence";
       batchSize_ = scores.getNumSequences();
       beamSize_ = getInputValue(i * 3 + 1)->getWidth();
-      CHECK_EQ(batchSize_, selCandidates.getBatchSize());
+      CHECK_EQ(batchSize_, static_cast<size_t>(selCandidates.getBatchSize()));
     }
     CHECK_EQ(1U, scores.value->getWidth());
-    CHECK_EQ(batchSize_, goldSeq.getBatchSize());
+    CHECK_EQ(batchSize_, static_cast<size_t>(goldSeq.getBatchSize()));
   }
 }
 
@@ -377,8 +377,8 @@ void CrossEntropyOverBeam::forward(PassType passType) {
 
   MatrixPtr outputValue = getOutputValue();
   for (size_t i = 0; i < batchSize_; ++i) {
-    beamCosts_[i].setData(
-        std::move(std::make_shared<BeamExpansion>(beamPerSeq_[i])), beamSize_);
+    BeamExpansionPtr ptr = std::make_shared<BeamExpansion>(beamPerSeq_[i]);
+    beamCosts_[i].setData(std::move(ptr), beamSize_);
     outputValue->getData()[i] = beamCosts_[i].forward();
   }
 }
