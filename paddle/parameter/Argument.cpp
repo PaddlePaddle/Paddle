@@ -186,6 +186,7 @@ void Argument::resizeAndCopyFrom(const Argument& src,
   resizeAndCopy(strs, src.strs, useGpu, stream);
   frameWidth = src.frameWidth;
   frameHeight = src.frameHeight;
+  frameDepth = src.frameDepth;
 }
 
 int32_t Argument::resizeAndCopyFrom(const Argument& src,
@@ -206,6 +207,7 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
   dataId = src.dataId;
   frameWidth = src.frameWidth;
   frameHeight = src.frameHeight;
+  frameDepth = src.frameDepth;
 
   if (!src.sequenceStartPositions) {
     // non-sequence input, copy samples directly
@@ -276,17 +278,21 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
 void Argument::concat(const std::vector<Argument>& args,
                       const std::vector<int>& selectRows,
                       const std::vector<int>& seqStartPos,
+                      const std::vector<int>& copySize,
                       bool useGpu,
                       hl_stream_t stream,
                       PassType passType) {
   CHECK(!subSequenceStartPositions)
       << "undefined behavior for subsequence positions";
 
-  size_t batchSize = selectRows.size();
+  size_t batchSize = 0;
+  for (size_t i = 0; i < copySize.size(); ++i)
+    batchSize += copySize[i] * (seqStartPos[i + 1] - seqStartPos[i]);
+
   auto copyArg = [batchSize, stream](MatrixPtr& dst,
                                      MatrixPtr src,
-                                     int startRow,
-                                     int pos,
+                                     int desStartRow,
+                                     int srcStartRow,
                                      int size,
                                      bool useGpu) {
     if (!src) {
@@ -300,14 +306,14 @@ void Argument::concat(const std::vector<Argument>& args,
       dst->resize(batchSize, width);
     }
 
-    MatrixPtr tmpMatrix = dst->subMatrix(startRow, size);
-    tmpMatrix->copyFrom(*src->subMatrix(pos, size), stream);
+    MatrixPtr tmpMatrix = dst->subMatrix(desStartRow, size);
+    tmpMatrix->copyFrom(*src->subMatrix(srcStartRow, size), stream);
   };
 
   auto copyIds = [batchSize, stream](IVectorPtr& dst,
                                      const IVectorPtr& src,
-                                     int startRow,
-                                     int pos,
+                                     int desStartRow,
+                                     int srcStartRow,
                                      int size,
                                      bool useGpu) {
     if (!src) {
@@ -315,13 +321,14 @@ void Argument::concat(const std::vector<Argument>& args,
       return;
     }
     IVector::resizeOrCreate(dst, batchSize, useGpu);
-    dst->subVec(startRow, size)->copyFrom(*src->subVec(pos, size), stream);
+    dst->subVec(desStartRow, size)
+        ->copyFrom(*src->subVec(srcStartRow, size), stream);
   };
 
   auto copyStrs = [batchSize, stream](SVectorPtr& dst,
                                       const SVectorPtr& src,
-                                      int startRow,
-                                      int pos,
+                                      int desStartRow,
+                                      int srcStartRow,
                                       int size,
                                       bool useGpu) {
     if (!src) {
@@ -333,30 +340,31 @@ void Argument::concat(const std::vector<Argument>& args,
     } else {
       dst->resize(batchSize);
     }
-    std::copy(
-        src->begin() + pos, src->begin() + pos + size, dst->begin() + startRow);
+    std::copy(src->begin() + srcStartRow,
+              src->begin() + srcStartRow + size,
+              dst->begin() + desStartRow);
   };
 
   dataId = args[0].dataId;
   CHECK_NE(seqStartPos.size(), 0UL);
-  size_t sampleNum = seqStartPos.size() - 1;
-  for (size_t i = 0; i < sampleNum; ++i) {
+  int desStartRow = 0;
+  for (size_t i = 0; i < copySize.size(); ++i) {
     int startPos = seqStartPos[i];
     int endPos = seqStartPos[i + 1];
     CHECK_GE(args.size(), static_cast<size_t>(endPos - startPos));
     for (int j = startPos; j < endPos; ++j) {
       const Argument& arg = args[j - startPos];
-      CHECK_EQ(arg.dataId, dataId) << "Arguments in concat should have"
-                                   << " same dataId";
-      const int copySize = 1;
-      const int rowIdx = selectRows[j];
-      copyArg(in, arg.in, j, rowIdx, copySize, useGpu);
-      copyArg(value, arg.value, j, rowIdx, copySize, useGpu);
+      CHECK_EQ(arg.dataId, dataId) << "Arguments to concatenate should have "
+                                   << "the same dataId.";
+      const int srcStartRow = selectRows[j];
+      copyArg(in, arg.in, desStartRow, srcStartRow, copySize[i], useGpu);
+      copyArg(value, arg.value, desStartRow, srcStartRow, copySize[i], useGpu);
       if (passType != PASS_TEST) {
-        copyArg(grad, arg.grad, j, rowIdx, copySize, useGpu);
+        copyArg(grad, arg.grad, desStartRow, srcStartRow, copySize[i], useGpu);
       }
-      copyIds(ids, arg.ids, j, rowIdx, copySize, useGpu);
-      copyStrs(strs, arg.strs, j, rowIdx, copySize, useGpu);
+      copyIds(ids, arg.ids, desStartRow, srcStartRow, copySize[i], useGpu);
+      copyStrs(strs, arg.strs, desStartRow, srcStartRow, copySize[i], useGpu);
+      desStartRow += copySize[i];
     }
   }
   ICpuGpuVector::resizeOrCreate(
@@ -670,19 +678,29 @@ void Argument::reorganizeSeqInfo(
     const ICpuGpuVectorPtr seqStartPos,
     const ICpuGpuVectorPtr subSeqStartPos,
     std::vector<std::vector<int>>& reorganizedSeqInfo) {
-  int* seqStarts = seqStartPos->getMutableData(false);
-  int* subSeqStarts = subSeqStartPos->getMutableData(false);
+  CHECK(seqStartPos);
+  reorganizedSeqInfo.clear();
 
   int seqNum = seqStartPos->getSize() - 1;
-  reorganizedSeqInfo.resize(seqNum, std::vector<int>());
-  int seqIdx = 0;
-  for (size_t i = 0; i < subSeqStartPos->getSize(); ++i) {
-    reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
-    if (subSeqStarts[i] == seqStarts[seqIdx + 1]) {
-      seqIdx++;
-      if (seqIdx == seqNum) return;
+  int* seqStarts = seqStartPos->getMutableData(false);
+
+  if (subSeqStartPos) {
+    int* subSeqStarts = subSeqStartPos->getMutableData(false);
+    reorganizedSeqInfo.resize(seqNum, std::vector<int>());
+    int seqIdx = 0;
+    for (size_t i = 0; i < subSeqStartPos->getSize(); ++i) {
       reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
+      if (subSeqStarts[i] == seqStarts[seqIdx + 1]) {
+        seqIdx++;
+        if (seqIdx == seqNum) return;
+        reorganizedSeqInfo[seqIdx].push_back(subSeqStarts[i]);
+      }
     }
+  } else {
+    reorganizedSeqInfo.resize(1, std::vector<int>(seqNum + 1, 0));
+    memcpy(reorganizedSeqInfo[0].data(),
+           seqStarts,
+           sizeof(int) * seqStartPos->getSize());
   }
 }
 

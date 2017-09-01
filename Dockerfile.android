@@ -47,8 +47,8 @@ RUN mkdir /opt/android-ndk-tmp && \
     wget -q https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip && \
     unzip -q android-ndk-r14b-linux-x86_64.zip && \
     mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm --platform=android-21 --install-dir=${ANDROID_ARM_STANDALONE_TOOLCHAIN} && \
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm64 --platform=android-21 --install-dir=${ANDROID_ARM64_STANDALONE_TOOLCHAIN} && \
+    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm --platform=android-23 --install-dir=${ANDROID_ARM_STANDALONE_TOOLCHAIN} && \
+    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm64 --platform=android-23 --install-dir=${ANDROID_ARM64_STANDALONE_TOOLCHAIN} && \
     rm -rf /opt/android-ndk-tmp && \
     rm -rf ${ANDROID_NDK_HOME}
 

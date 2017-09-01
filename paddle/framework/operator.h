@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "op_info.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/scope.h"
@@ -62,10 +63,8 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
-  using VarNameMap = std::map<std::string, std::vector<std::string>>;
-
-  OperatorBase(const std::string& type, const VarNameMap& inputs,
-               const VarNameMap& outputs, const AttributeMap& attrs);
+  OperatorBase(const std::string& type, const VariableNameMap& inputs,
+               const VariableNameMap& outputs, const AttributeMap& attrs);
 
   virtual ~OperatorBase() {}
 
@@ -93,8 +92,8 @@ class OperatorBase {
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
-  const VarNameMap& Inputs() const { return inputs_; }
-  const VarNameMap& Outputs() const { return outputs_; }
+  const VariableNameMap& Inputs() const { return inputs_; }
+  const VariableNameMap& Outputs() const { return outputs_; }
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
   //! Get a input which has multiple variables.
@@ -122,30 +121,32 @@ class OperatorBase {
   // I (Inputs)opear
   // O (Outputs)
   // OG (Output Gradients)
-  VarNameMap inputs_;
+  VariableNameMap inputs_;
 
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  VarNameMap outputs_;
+  VariableNameMap outputs_;
   AttributeMap attrs_;
 };
 
 // Macro for define a clone method.
 // If you are writing an kernel operator, `Clone` will be defined when you
 // register it. i.e. `Clone` method is not needed to define by yourself.
-#define DEFINE_OP_CLONE_METHOD(CLS)                       \
+#define DEFINE_OP_CLONE_METHOD(cls)                       \
   std::unique_ptr<OperatorBase> Clone() const final {     \
-    return std::unique_ptr<OperatorBase>(new CLS(*this)); \
+    return std::unique_ptr<OperatorBase>(new cls(*this)); \
   }
 
 // Macro for define a default constructor for Operator.
 // You can also use
 //   using PARENT_CLASS::PARENT_CLASS;
 // to use parent's constructor.
-#define DEFINE_OP_CONSTRUCTOR(CLS, PARENT_CLS)                                 \
-  CLS(const std::string& type, const VarNameMap& inputs,                       \
-      const VarNameMap& outputs, const paddle::framework::AttributeMap& attrs) \
-      : PARENT_CLS(type, inputs, outputs, attrs) {}
+#define DEFINE_OP_CONSTRUCTOR(cls, parent_cls)             \
+  cls(const std::string& type,                             \
+      const ::paddle::framework::VariableNameMap& inputs,  \
+      const ::paddle::framework::VariableNameMap& outputs, \
+      const paddle::framework::AttributeMap& attrs)        \
+      : parent_cls(type, inputs, outputs, attrs) {}
 
 class NOP : public OperatorBase {
  public:
@@ -389,8 +390,8 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  OperatorWithKernel(const std::string& type, const VarNameMap& inputs,
-                     const VarNameMap& outputs, const AttributeMap& attrs)
+  OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
+                     const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(const Scope& scope) const override {
