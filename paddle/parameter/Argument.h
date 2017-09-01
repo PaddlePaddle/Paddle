@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,6 +32,7 @@ struct Argument {
         strs(nullptr),
         frameHeight(0),
         frameWidth(0),
+        frameDepth(0),
         sequenceStartPositions(nullptr),
         subSequenceStartPositions(nullptr),
         cpuSequenceDims(nullptr),
@@ -64,6 +62,7 @@ struct Argument {
     allCount = argument.allCount;
     frameHeight = argument.frameHeight;
     frameWidth = argument.frameWidth;
+    frameDepth = argument.frameDepth;
     dataId = argument.dataId;
   }
 
@@ -76,6 +75,7 @@ struct Argument {
   // A dataBatch includes batchSize frames, one frame maybe not only vector
   size_t frameHeight;
   size_t frameWidth;
+  size_t frameDepth;
 
   // If NULL, each position is treated independently.
   // Otherwise, its size should be #NumberOfSequences + 1.
@@ -136,8 +136,10 @@ struct Argument {
   }
   size_t getFrameHeight() const { return frameHeight; }
   size_t getFrameWidth() const { return frameWidth; }
+  size_t getFrameDepth() const { return frameDepth; }
   void setFrameHeight(size_t h) { frameHeight = h; }
   void setFrameWidth(size_t w) { frameWidth = w; }
+  void setFrameDepth(size_t d) { frameDepth = d; }
 
   int64_t getNumSequences() const {
     return sequenceStartPositions ? sequenceStartPositions->getSize() - 1
@@ -240,6 +242,7 @@ struct Argument {
   void concat(const std::vector<Argument>& args,
               const std::vector<int>& selectRows,
               const std::vector<int>& seqStartPos,
+              const std::vector<int>& copySize,
               bool useGpu,
               hl_stream_t stream,
               PassType passType);

@@ -38,8 +38,10 @@ class NetOp : public framework::OperatorBase {
  public:
   static const char kAll[];
   NetOp() : framework::OperatorBase("plain_net", {}, {}, {}) {}
-  NetOp(const std::string& type, const VarNameMap& inputs,
-        const VarNameMap& outputs, const framework::AttributeMap& attrs);
+
+  NetOp(const std::string& type, const framework::VariableNameMap& inputs,
+        const framework::VariableNameMap& outputs,
+        const framework::AttributeMap& attrs);
 
   NetOp(const NetOp& o) : framework::OperatorBase(o.type_, {}, {}, o.attrs_) {
     this->ops_.reserve(o.ops_.size());
