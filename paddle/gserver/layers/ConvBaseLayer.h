@@ -62,6 +62,13 @@ protected:
   IntV outputH_;
   /// The spatial dimensions of output feature map width.
   IntV outputW_;
+
+  IntV outputD_;
+  IntV imgSizeD_;
+  IntV filterSizeZ_;
+  IntV strideZ_;
+  IntV paddingZ_;
+
   /// Group size, refer to grouped convolution in
   /// Alex Krizhevsky's paper: when group=2, the first half of the
   /// filters are only connected to the first half of the input channels,
