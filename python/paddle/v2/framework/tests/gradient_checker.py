@@ -36,13 +36,13 @@ def get_numeric_gradient(op,
                          in_place=False):
     """
     Get Numeric Gradient for an operator's input.
-    
-    :param op: C++ operator instance, could be an network 
-    :param input_values: The input variables. Should be an dictionary, key is 
+
+    :param op: C++ operator instance, could be an network
+    :param input_values: The input variables. Should be an dictionary, key is
     variable name. Value is numpy array.
-    :param output_name: The final output variable name. 
+    :param output_name: The final output variable name.
     :param input_to_check: The input variable need to get gradient.
-    :param delta: The perturbation value for numeric gradient method. The 
+    :param delta: The perturbation value for numeric gradient method. The
     smaller delta is, the more accurate result will get. But if that delta is
      too small, it could occur numerical stability problem.
     :param local_scope: The local scope used for get_numeric_gradient.
@@ -229,9 +229,9 @@ class GradientChecker(unittest.TestCase):
         """Use relative error for the comparison.
 
         :param numeric_grads: the numerical graidents.
-        :type numeric_grads: a list of numpy.array 
+        :type numeric_grads: a list of numpy.array
         :param analytic_grads: the analytical graidents.
-        :type analytic_grads: a list of numpy.array 
+        :type analytic_grads: a list of numpy.array
         :param name: the names of gradients, used to print for debug.
         :type names: a list of string
         :param msg_prefix: string info, used to print for debug.
@@ -304,6 +304,13 @@ class GradientChecker(unittest.TestCase):
             # get analytical gradients according to different device
             analytic_grads = self.__get_gradient(forward_op, backward_op,
                                                  input_vars, check_names, place)
+            #print(numeric_grads[0], numeric_grads[0].shape)
+            print("dim0: ", numeric_grads[0], numeric_grads[0].shape)
+            print("dim0: ", analytic_grads[0], analytic_grads[0].shape)
+            print("---------------------")
+            print("dim1: ", numeric_grads[1], numeric_grads[1].shape)
+            print("dim1: ", analytic_grads[1], analytic_grads[1].shape)
+            assert False
             self.__assert_is_close(numeric_grads, analytic_grads, check_names,
                                    max_relative_error,
                                    "Gradient Check On %s" % str(place))
