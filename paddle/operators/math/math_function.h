@@ -52,7 +52,7 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 
 #include <cmath>
 
-#include "paddle/framework/tensor.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 
@@ -72,9 +72,9 @@ void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
 
 // matrix multiply with continuous memory
 template <typename Place, typename T>
-void matmul(const framework::Tensor& matrix_a, bool trans_a,
-            const framework::Tensor& matrix_b, bool trans_b, T alpha,
-            framework::Tensor* matrix_out, T beta,
+void matmul(const framework::LODTensor& matrix_a, bool trans_a,
+            const framework::LODTensor& matrix_b, bool trans_b, T alpha,
+            framework::LODTensor* matrix_out, T beta,
             platform::DeviceContext* context);
 
 }  // namespace math

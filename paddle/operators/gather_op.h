@@ -21,15 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 
 template <typename Place, typename T>
 class GatherOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *Index = ctx.Input<Tensor>("Index");
-    auto *Y = ctx.Output<Tensor>("Out");
+    auto *X = ctx.Input<LODTensor>("X");
+    auto *Index = ctx.Input<LODTensor>("Index");
+    auto *Y = ctx.Output<LODTensor>("Out");
 
     Y->mutable_data<T>(ctx.GetPlace());
     Gather<T>(ctx.GetPlace(), X, Index, Y);
@@ -40,9 +40,9 @@ template <typename Place, typename T>
 class GatherGradientOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *Index = ctx.Input<Tensor>("Index");
-    auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *Index = ctx.Input<LODTensor>("Index");
+    auto *dX = ctx.Output<LODTensor>(framework::GradVarName("X"));
+    auto *dO = ctx.Input<LODTensor>(framework::GradVarName("Out"));
 
     dX->mutable_data<T>(ctx.GetPlace());
     ScatterUpdate<T>(ctx.GetPlace(), dO, Index, dX);

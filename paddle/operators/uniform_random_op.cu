@@ -36,14 +36,14 @@ struct UniformGenerator {
   }
 };
 
-// It seems that Eigen::Tensor::random in GPU will SEGFAULT.
+// It seems that Eigen::LODTensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
 template <typename T>
 class GPUUniformRandomKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<framework::LODTensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed =
         static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));

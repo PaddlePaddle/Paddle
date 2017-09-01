@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -28,8 +28,8 @@ template <typename Place, typename T>
 class SoftmaxKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>("X");
-    auto output = context.Output<Tensor>("Y");
+    auto input = context.Input<LODTensor>("X");
+    auto output = context.Output<LODTensor>("Y");
     output->mutable_data<T>(context.GetPlace());
 
     auto logits = EigenMatrix<T>::From(*input);
@@ -67,11 +67,11 @@ template <typename Place, typename T>
 class SoftmaxGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
+    std::shared_ptr<LODTensor> scale_ = std::make_shared<LODTensor>();
 
-    auto Y = context.Input<Tensor>("Y");
-    auto dY = context.Input<Tensor>(framework::GradVarName("Y"));
-    auto dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto Y = context.Input<LODTensor>("Y");
+    auto dY = context.Input<LODTensor>(framework::GradVarName("Y"));
+    auto dX = context.Output<LODTensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
 
     const int batch_size = Y->dims()[0];

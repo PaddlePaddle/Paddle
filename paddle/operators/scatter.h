@@ -17,22 +17,22 @@ limitations under the License. */
 
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/tensor.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 // Implementation of CPU copy
 template <typename T>
-void CPUScatterUpdate(const paddle::framework::Tensor* src, const int* index,
+void CPUScatterUpdate(const paddle::framework::LODTensor* src, const int* index,
                       const size_t index_size,
-                      paddle::framework::Tensor* output) {
+                      paddle::framework::LODTensor* output) {
   paddle::framework::DDim output_dims = output->dims();
 
   for (size_t i = 0; i < index_size; ++i) {
@@ -56,17 +56,18 @@ void GPUScatterUpdate(const T* src, const int* index, const int slice_size,
                       const int index_size, T* output);
 
 /**
- * Return a updated tensor from source tensor, scattered according to index:
+ * Return a updated LODTensor from source LODTensor, scattered according to
+ * index:
  * dst[i] += src[index[i]]
- * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
- * return: output tensor
+ * input[src]: type-T source LODTensor
+ * input[index]: type-int index LODTensor (1-D)
+ * return: output LODTensor
  */
 template <typename T>
 void ScatterUpdate(const platform::Place& place,
-                   const paddle::framework::Tensor* src,
-                   const paddle::framework::Tensor* index,
-                   paddle::framework::Tensor* output) {
+                   const paddle::framework::LODTensor* src,
+                   const paddle::framework::LODTensor* index,
+                   paddle::framework::LODTensor* output) {
   // check index of shape 1-D
   PADDLE_ENFORCE(index->dims().size() == 1);
   int index_size = index->dims()[0];

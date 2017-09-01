@@ -23,10 +23,10 @@ class AddOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
-                      ctx.Input<Tensor>("Y")->dims(),
+    PADDLE_ENFORCE_EQ(ctx.Input<LODTensor>("X")->dims(),
+                      ctx.Input<LODTensor>("Y")->dims(),
                       "Two input of Add Op's dimension must be same.");
-    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("X")->dims());
+    ctx.Output<LODTensor>("Out")->Resize(ctx.Input<LODTensor>("X")->dims());
   }
 };
 

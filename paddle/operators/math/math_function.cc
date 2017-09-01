@@ -48,11 +48,11 @@ void gemm<platform::CPUPlace, double>(const CBLAS_TRANSPOSE transA,
 }
 
 template <>
-void matmul<platform::CPUPlace, float>(const framework::Tensor& matrix_a,
+void matmul<platform::CPUPlace, float>(const framework::LODTensor& matrix_a,
                                        bool trans_a,
-                                       const framework::Tensor& matrix_b,
+                                       const framework::LODTensor& matrix_b,
                                        bool trans_b, float alpha,
-                                       framework::Tensor* matrix_out,
+                                       framework::LODTensor* matrix_out,
                                        float beta,
                                        platform::DeviceContext* context) {
   auto dim_a = matrix_a.dims();
@@ -79,11 +79,11 @@ void matmul<platform::CPUPlace, float>(const framework::Tensor& matrix_a,
 }
 
 template <>
-void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
+void matmul<platform::CPUPlace, double>(const framework::LODTensor& matrix_a,
                                         bool trans_a,
-                                        const framework::Tensor& matrix_b,
+                                        const framework::LODTensor& matrix_b,
                                         bool trans_b, double alpha,
-                                        framework::Tensor* matrix_out,
+                                        framework::LODTensor* matrix_out,
                                         double beta,
                                         platform::DeviceContext* context) {
   auto dim_a = matrix_a.dims();

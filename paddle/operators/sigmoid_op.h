@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -28,8 +28,8 @@ template <typename Place, typename T>
 class SigmoidKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>("X");
-    auto output = context.Output<Tensor>("Y");
+    auto input = context.Input<LODTensor>("X");
+    auto output = context.Output<LODTensor>("Y");
     output->mutable_data<T>(context.GetPlace());
 
     // The clipping is used in Paddle's raw implenmention
@@ -45,9 +45,9 @@ template <typename Place, typename T>
 class SigmoidGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto Y_t = context.Input<Tensor>("Y");
-    auto dY_t = context.Input<Tensor>(framework::GradVarName("Y"));
-    auto dX_t = context.Output<Tensor>(framework::GradVarName("X"));
+    auto Y_t = context.Input<LODTensor>("Y");
+    auto dY_t = context.Input<LODTensor>(framework::GradVarName("Y"));
+    auto dX_t = context.Output<LODTensor>(framework::GradVarName("X"));
 
     dX_t->mutable_data<T>(context.GetPlace());
 

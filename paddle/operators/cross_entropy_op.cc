@@ -23,13 +23,13 @@ class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *label = ctx.Input<Tensor>("label");
+    auto *X = ctx.Input<LODTensor>("X");
+    auto *label = ctx.Input<LODTensor>("label");
 
     PADDLE_ENFORCE_EQ(X->dims().size(), 2, "X's dimension must be 2.");
     PADDLE_ENFORCE_EQ(label->dims().size(), 1, "label's dimension must be 1.");
     PADDLE_ENFORCE_EQ(X->dims()[0], label->dims()[0]);
-    ctx.Output<Tensor>("Y")->Resize({X->dims()[0]});
+    ctx.Output<LODTensor>("Y")->Resize({X->dims()[0]});
   }
 };
 
@@ -39,8 +39,8 @@ class OnehotCrossEntropyGradientOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto X = ctx.Input<Tensor>("X");
+    auto dX = ctx.Output<LODTensor>(framework::GradVarName("X"));
+    auto X = ctx.Input<LODTensor>("X");
 
     dX->Resize(X->dims());
   }

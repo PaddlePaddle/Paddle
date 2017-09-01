@@ -27,14 +27,14 @@ class MinusOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *left_tensor = ctx.Input<framework::Tensor>("X");
-    auto *right_tensor = ctx.Input<framework::Tensor>("Y");
+    auto *left_tensor = ctx.Input<framework::LODTensor>("X");
+    auto *right_tensor = ctx.Input<framework::LODTensor>("Y");
 
     PADDLE_ENFORCE_EQ(
         framework::product(left_tensor->dims()),
         framework::product(right_tensor->dims()),
         "Minus operator must take two tensor with same num of elements");
-    ctx.Output<framework::Tensor>("Out")->Resize(left_tensor->dims());
+    ctx.Output<framework::LODTensor>("Out")->Resize(left_tensor->dims());
   }
 };
 

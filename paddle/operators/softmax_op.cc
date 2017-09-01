@@ -23,9 +23,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
+    PADDLE_ENFORCE(ctx.Input<LODTensor>("X")->dims().size() == 2UL,
                    "The input of softmax op must be matrix");
-    ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
+    ctx.Output<LODTensor>("Y")->Resize(ctx.Input<LODTensor>("X")->dims());
   }
 };
 
@@ -49,11 +49,12 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(Y) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
                             "Input(Y@GRAD) should not be null");
-    PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
-                       ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
-                   "the shape of Input(0) and Input(1) should be the same");
-    ctx.Output<Tensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<Tensor>("Y")->dims());
+    PADDLE_ENFORCE(
+        ctx.Input<LODTensor>("Y")->dims() ==
+            ctx.Input<LODTensor>(framework::GradVarName("Y"))->dims(),
+        "the shape of Input(0) and Input(1) should be the same");
+    ctx.Output<LODTensor>(framework::GradVarName("X"))
+        ->Resize(ctx.Input<LODTensor>("Y")->dims());
   }
 };
 

@@ -21,7 +21,7 @@ class CPUGaussianRandomKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.op_.GetAttr<float>("mean");
     float std = context.op_.GetAttr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<framework::LODTensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed =
@@ -45,7 +45,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<framework::LODTensor>("Out");
     auto dims = GetAttr<std::vector<int>>("dims");
     PADDLE_ENFORCE(dims.size() > 0UL,
                    "dims can be one int or array. dims must be set.");

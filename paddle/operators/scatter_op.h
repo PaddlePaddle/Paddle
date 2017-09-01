@@ -21,16 +21,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 
 template <typename Place, typename T>
 class ScatterOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *Ref = ctx.Input<Tensor>("Ref");
-    auto *Index = ctx.Input<Tensor>("Index");
-    auto *Updates = ctx.Input<Tensor>("Updates");
-    auto *Out = ctx.Output<Tensor>("Out");
+    auto *Ref = ctx.Input<LODTensor>("Ref");
+    auto *Index = ctx.Input<LODTensor>("Index");
+    auto *Updates = ctx.Input<LODTensor>("Updates");
+    auto *Out = ctx.Output<LODTensor>("Out");
 
     // In place output: Out = Ref, Out[Index] += Updates
     Out->ShareDataWith<T>(*Ref);
@@ -43,10 +43,10 @@ template <typename Place, typename T>
 class ScatterGradientOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));
-    auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
-    auto *Index = ctx.Input<Tensor>("Index");
-    auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *dRef = ctx.Output<LODTensor>(framework::GradVarName("Ref"));
+    auto *dUpdates = ctx.Output<LODTensor>(framework::GradVarName("Updates"));
+    auto *Index = ctx.Input<LODTensor>("Index");
+    auto *dOut = ctx.Input<LODTensor>(framework::GradVarName("Out"));
 
     // In place gradient: dRef = dO
     dRef->ShareDataWith<T>(*dOut);

@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -31,11 +31,11 @@ template <typename Place, typename T>
 class RowwiseAddKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto out = context.Output<Tensor>("Out");
+    auto out = context.Output<LODTensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    auto input = EigenMatrix<T>::From(*context.Input<Tensor>("X"));
-    auto bias = EigenVector<T>::From(*context.Input<Tensor>("b"));
+    auto input = EigenMatrix<T>::From(*context.Input<LODTensor>("X"));
+    auto bias = EigenVector<T>::From(*context.Input<LODTensor>("b"));
     auto output = EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);
@@ -51,9 +51,9 @@ template <typename Place, typename T>
 class RowwiseAddGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* db = context.Output<Tensor>(framework::GradVarName("b"));
+    auto* dOut = context.Input<LODTensor>(framework::GradVarName("Out"));
+    auto* dX = context.Output<LODTensor>(framework::GradVarName("X"));
+    auto* db = context.Output<LODTensor>(framework::GradVarName("b"));
     dX->mutable_data<T>(context.GetPlace());
     db->mutable_data<T>(context.GetPlace());
 
@@ -61,7 +61,7 @@ class RowwiseAddGradKernel : public framework::OpKernel {
     auto place = context.GetEigenDevice<Place>();
     EigenMatrix<T>::From(*dX).device(place) = OutGrad;
 
-    // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
+    // https://eigen.tuxfamily.org/dox/unsupported/LODTensorBase_8h_source.html
     // colwise add
     Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
     EigenVector<T>::Flatten(*db).device(place) = OutGrad.sum(dims);

@@ -23,9 +23,9 @@ template <typename Place, typename T>
 class MinusKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* left_tensor = context.Input<framework::Tensor>("X");
-    auto* right_tensor = context.Input<framework::Tensor>("Y");
-    auto* out_tensor = context.Output<framework::Tensor>("Out");
+    auto* left_tensor = context.Input<framework::LODTensor>("X");
+    auto* right_tensor = context.Input<framework::LODTensor>("Y");
+    auto* out_tensor = context.Output<framework::LODTensor>("Out");
 
     out_tensor->mutable_data<T>(context.GetPlace());
     auto& dev = context.GetEigenDevice<Place>();

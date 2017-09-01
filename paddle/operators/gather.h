@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/tensor.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
@@ -42,15 +42,16 @@ void GPUGather(const T* src, const int* index, const int slice_size,
                const int index_size, T* output);
 
 /**
- * Return a new tensor from source tensor, gathered according to index
- * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
- * return: output tensor
+ * Return a new LODTensor from source LODTensor, gathered according to index
+ * input[src]: type-T source LODTensor
+ * input[index]: type-int index LODTensor (1-D)
+ * return: output LODTensor
  */
 template <typename T>
-void Gather(const platform::Place& place, const paddle::framework::Tensor* src,
-            const paddle::framework::Tensor* index,
-            paddle::framework::Tensor* output) {
+void Gather(const platform::Place& place,
+            const paddle::framework::LODTensor* src,
+            const paddle::framework::LODTensor* index,
+            paddle::framework::LODTensor* output) {
   // check index of shape 1-D
   PADDLE_ENFORCE(index->dims().size() == 1);
   int index_size = index->dims()[0];

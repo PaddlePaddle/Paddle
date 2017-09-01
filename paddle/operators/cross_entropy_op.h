@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 
 template <typename T>
 inline T tolerable_value(const T x) {
@@ -46,10 +46,10 @@ class OnehotCrossEntropyOpKernel : public framework::OpKernel {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
 
-    auto X = ctx.Input<Tensor>("X");
+    auto X = ctx.Input<LODTensor>("X");
     const T* Xdata = X->data<T>();
-    const int* label_data = ctx.Input<Tensor>("label")->data<int>();
-    auto Y = ctx.Output<Tensor>("Y");
+    const int* label_data = ctx.Input<LODTensor>("label")->data<int>();
+    auto Y = ctx.Output<LODTensor>("Y");
 
     Y->mutable_data<T>(ctx.GetPlace());
 
@@ -72,10 +72,10 @@ class OnehotCrossEntropyGradientOpKernel : public framework::OpKernel {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
 
-    auto X = ctx.Input<Tensor>("X");
-    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto label = ctx.Input<Tensor>("label");
+    auto X = ctx.Input<LODTensor>("X");
+    auto dX = ctx.Output<LODTensor>(framework::GradVarName("X"));
+    auto dY = ctx.Input<LODTensor>(framework::GradVarName("Y"));
+    auto label = ctx.Input<LODTensor>("label");
 
     auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());
     auto* dYdata = dY->template data<T>();

@@ -3,11 +3,11 @@
 
 #ifndef PADDLE_ONLY_CPU
 TEST(math_function, notrans_mul_trans) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor out_gpu;
-  paddle::framework::Tensor out;
+  paddle::framework::LODTensor input1;
+  paddle::framework::LODTensor input1_gpu;
+  paddle::framework::LODTensor input2_gpu;
+  paddle::framework::LODTensor out_gpu;
+  paddle::framework::LODTensor out;
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* input1_ptr = input1.mutable_data<float>({2, 3}, *cpu_place);
@@ -36,11 +36,11 @@ TEST(math_function, notrans_mul_trans) {
 }
 
 TEST(math_function, trans_mul_notrans) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor out_gpu;
-  paddle::framework::Tensor out;
+  paddle::framework::LODTensor input1;
+  paddle::framework::LODTensor input1_gpu;
+  paddle::framework::LODTensor input2_gpu;
+  paddle::framework::LODTensor out_gpu;
+  paddle::framework::LODTensor out;
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* input1_ptr = input1.mutable_data<float>({2, 3}, *cpu_place);

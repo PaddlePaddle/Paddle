@@ -19,7 +19,7 @@ proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope)
+cc_library(operator SRCS operator.cc DEPS op_info device_context lod_tensor scope)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
 cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS operator)

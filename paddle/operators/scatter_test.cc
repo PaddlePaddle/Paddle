@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/operators/scatter.h"
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/tensor.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/place.h"
 
 #include <gtest/gtest.h>
@@ -26,9 +26,9 @@ TEST(scatter, ScatterUpdate) {
   using namespace paddle::platform;
   using namespace paddle::operators;
 
-  Tensor* src = new Tensor();
-  Tensor* index = new Tensor();
-  Tensor* output = new Tensor();
+  LODTensor* src = new LODTensor();
+  LODTensor* index = new LODTensor();
+  LODTensor* output = new LODTensor();
 
   float* p_src = nullptr;
   int* p_index = nullptr;

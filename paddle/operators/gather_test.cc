@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/operators/gather.h"
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/tensor.h"
 #include "paddle/platform/place.h"
 
 #include <gtest/gtest.h>
@@ -26,9 +25,9 @@ TEST(Gather, GatherData) {
   using namespace paddle::platform;
   using namespace paddle::operators;
 
-  Tensor* src = new Tensor();
-  Tensor* index = new Tensor();
-  Tensor* output = new Tensor();
+  LODTensor* src = new LODTensor();
+  LODTensor* index = new LODTensor();
+  LODTensor* output = new LODTensor();
 
   int* p_src = nullptr;
   int* p_index = nullptr;
