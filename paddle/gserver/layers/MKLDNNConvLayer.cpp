@@ -89,26 +89,35 @@ void MKLDNNConvLayer::convertWeightsToPaddle() {
   LOG(FATAL) << "not implemented";
 }
 
+void MKLDNNConvLayer::printSizeInfo() {
+  MKLDNNLayer::printSizeInfo();
+  VLOG(MKLDNN_SIZES) << getName() << ": fh: " << fh_ << ", fw: " << fw_
+                     << ": ph: " << ph_ << ", pw: " << pw_ << ", sh: " << sh_
+                     << ", sw: " << sw_ << ", dh: " << dh_ << ", dw: " << dw_;
+}
 void MKLDNNConvLayer::reshape() {
-  const Argument& input = getInput(0, getPrev(0)->getDeviceId());
+  const Argument& input = inputLayers_[0]->getOutput();
   int batchSize = input.getBatchSize();
   if (bs_ == batchSize) {
     return;
   }
   bs_ = batchSize;
-  ih_ = input.getFrameHeight();
-  iw_ = input.getFrameWidth();
-  if (ih_ == 0) {
-    ih_ = 1;
+
+  int height = input.getFrameHeight();
+  int width = input.getFrameWidth();
+  if (height != 0) {
+    ih_ = height;
   }
-  if (iw_ == 0) {
-    iw_ = 1;
+  if (width != 0) {
+    iw_ = width;
   }
 
   // cal output sizes
   // oc can not be changed
-  oh_ = outputSize(ih_, fh_, ph_, sh_, caffeMode_);
-  ow_ = outputSize(iw_, fw_, pw_, sw_, caffeMode_);
+  int fh = (fh_ - 1) * dh_ + 1;
+  int fw = (fw_ - 1) * dw_ + 1;
+  oh_ = outputSize(ih_, fh, ph_, sh_, caffeMode_);
+  ow_ = outputSize(iw_, fw, pw_, sw_, caffeMode_);
   printSizeInfo();
 
   // reset output
@@ -135,6 +144,7 @@ void MKLDNNConvLayer::resetFwd() {
                  : memory::dims{gp_, oc_ / gp_, ic_ / gp_, fh_, fw_};
   memory::dims biasDim = memory::dims{oc_};
   memory::dims strides = {sh_, sw_};
+  memory::dims dilations = {dh_, dw_};
   memory::dims padding = {ph_, pw_};
   std::vector<int> padR = {ph_, pw_};
   for (int i = 0; i < 2; ++i) {
@@ -156,6 +166,7 @@ void MKLDNNConvLayer::resetFwd() {
                                MKLDNNMatrix::createMemoryDesc(biasDim),
                                MKLDNNMatrix::createMemoryDesc(outDims),
                                strides,
+                               dilations,
                                padding,
                                padR,
                                padKind)
@@ -165,6 +176,7 @@ void MKLDNNConvLayer::resetFwd() {
                                MKLDNNMatrix::createMemoryDesc(wgtDims),
                                MKLDNNMatrix::createMemoryDesc(outDims),
                                strides,
+                               dilations,
                                padding,
                                padR,
                                padKind);
@@ -201,6 +213,7 @@ void MKLDNNConvLayer::resetFwd() {
   // add fwd handle
   if (hasBias) {
     fwd_.reset(new conv_fwd(fwdPD, *inVal_, *wgtVal_, *biasVal_, *outVal_));
+
   } else {
     fwd_.reset(new conv_fwd(fwdPD, *inVal_, *wgtVal_, *outVal_));
   }

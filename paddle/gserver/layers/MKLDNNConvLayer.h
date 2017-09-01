@@ -102,6 +102,8 @@ protected:
    * only would be called when needed
    */
   void resetBwd();
+
+  void printSizeInfo();
 };
 
 }  // namespace paddle
