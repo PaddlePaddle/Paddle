@@ -106,6 +106,7 @@ T dotProduct(const int n, const T* x, const T* y) {
   for (int i = 0; i < n; i++) {
     result += x[i] * y[i];
   }
+  return result;
 }
 
 template <class T>
