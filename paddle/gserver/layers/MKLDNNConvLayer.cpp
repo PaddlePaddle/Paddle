@@ -58,7 +58,7 @@ bool MKLDNNConvLayer::init(const LayerMap& layerMap,
 
   // create weight
   size_t height = oc_ / gp_;
-  size_t width = ic_ * ih_ * iw_;
+  size_t width = ic_ * fh_ * fw_;
   CHECK_EQ(parameters_[0]->getSize(), height * width);
   weight_ =
       std::unique_ptr<Weight>(new Weight(height, width, parameters_[0], 0));
