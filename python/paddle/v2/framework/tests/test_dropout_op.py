@@ -14,7 +14,7 @@ class TestDropoutOpProbZero(unittest.TestCase):
         self.outputs = {'Out': self.inputs['X'], 'Mask': np.ones((32, 64))}
 
 
-class TestDropoutOpAllProbOne(unittest.TestCase):
+class TestDropoutOpProbOne(unittest.TestCase):
     __metaclass__ = OpTestMeta
 
     def setUp(self):
@@ -24,7 +24,7 @@ class TestDropoutOpAllProbOne(unittest.TestCase):
         self.outputs = {'Out': np.zeros((32, 64)), 'Mask': np.zeros((32, 64))}
 
 
-class DropoutGradOpTest(GradientChecker):
+class TestDropoutGradOp(GradientChecker):
     def test_dropout_2d(self):
         op = create_op("dropout")
         inputs = {'X': np.random.random((10, 5)).astype("float32")}

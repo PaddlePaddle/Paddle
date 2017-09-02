@@ -62,7 +62,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     auto mask_dims = ctx.Input<Tensor>("Mask")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
     PADDLE_ENFORCE_EQ(x_dims, out_dims,
-                      "Dimensions of Input(X) and Out must be the same.");
+                      "Dimensions of Input(X) and Out@Grad must be the same.");
     PADDLE_ENFORCE_EQ(x_dims, mask_dims,
                       "Dimensions of Input(X) and Mask must be the same.");
 
