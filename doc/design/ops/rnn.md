@@ -1,4 +1,4 @@
-# RNN design
+# RNNOp design
 This is the design doc of the recurrent neural network operator, 
 and this operator requires that input instances in each mini-batch must have the same length. 
 
