@@ -76,7 +76,7 @@ with `pd.namespace`, user create 3 different namespaces and in each one, the par
   - operator inside a block can make operation on global variables
   
 ## Block Implementation
-Currentlly, there is a simple implementation in [User Interface Design](), which has the most function of a Block when user writes a program. 
+Currentlly, there is a simple implementation of blockin [User Interface Design](), which has the most functions of a Block when user writes a program. 
 
 When compiling user's program, Block will store both `VarDesc` and `OperatorDesc`. During execution, Block will first create all `Variable`s and `Operator`s according the descriptions of `VarDesc`s and `OperatorDesc`s, then executes all the operators.
 
