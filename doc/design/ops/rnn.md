@@ -12,62 +12,54 @@ The above diagram shows an RNN being unrolled into a full network.
 
 There are several important concepts:
 
-- stepnet, the network execute in every time step 
+- sep-net, the network to be executed in each step
 - memory, a variable storing state in the current step, which is denoted as $h_t$.
 - pre-memory, the value of state in the previous time step, it can be denoted as $h_{t-1}$.
 - init-memory, the variable to help initialize state in the first time step.
 
-### step scopes
+### Step Scope
+The step-net could have local variables defined.
+In each step of RNN scope is created to hold corresponding variables.
+Such a scope is known as a *step scope*.
 
 <p aligh="center">
 <img src="./images/rnn.png"/><br/>
-fig 2 the RNN's data flow
+Figure 2 the RNN's data flow
 </p>
 
-Each RNN might run one or more steps, each step runs the same step net.
+All steps run the same step-net.
 
-We use `Scope` to store the contexts of all the step times:
+Each step runs the following procedure:
 
-- for each step, create a step Scope
-- create all the temporary output variables in the Scope
-- execute the step-net, and each step will have its temporary outputs
+1. create the step scope,
+2. create local variables in the step scope, and
+3. execute the step-net, which whould use these variables.
 
-After all steps finished, RNNOp will collect the specific outputs of each step and merge them to a larger tensor.
+After the execution of all steps, the RNNOp would compose its output from step outputs in those step scopes.
 
-### memory and pre-memory
-a basic RNN is like:
+### Memory and Ex-memory
+An RNN step often has some status which needs to be passed to the next step.
+These status are known as the memory,
+which is often referred by the step-net as variables.
+A step often needs to refer to the memory value changed by the previous step.
+We call it *ex-memory*.
+
+Let's use a simply RNN as an example to explain memory and ex-memory.
 
 $$
 h_t = U h_{t-1} + W x_t
-$$
+$$,
 
-Here, $h_t$ is time $t$'s state, $h_t$ is time $t-1$'s state, in implementation, we call the a variable that store a state memory.
-In step time $t$, $h_t$ is memory, $h_{t-1}$ is pre-memory (short for previous memory).
+where $h_t$ is the memory of step $t$'s, $h_{t-1}$ is the ex-memory, or the memory of step $t-1$.
 
-In each step scope
+In the implementation, we can make an ex-memory variable either "refers to" the memory variable of the previous step, 
+or copy the value of the previous memory variable to the current ex-memory variable.
 
-- each memory variable has a corresponding pre-memory variable
-- before a time step executes, copy (or make a reference) the value of previous step scope's memory to the pre-memory variable in current step scope.
-
-### C++ API
-- void InferShape(const framework::Scope& scope) const;
-  - shape check for inputs and outputs
-  - infer the shapes of outputs
-  
-- void CreateScopes(const framework::Scope& scope) const;
-  - create step scopes
-  - will be called both in InferShape and Run
-- void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
-  - make a reference to the memory in previous step scope and memory in the current one.
-
-- void Run(const framework::Scope& scope, const platform::DeviceContext& dev_ctx) const;
-  - run all the time steps.
-
-### User interface
+### The Python Interface
 In Paddle's macro design, 
 the concept Block represents a sequence of operators.
 
-We can define a RNN's stepnet based on Block as follows
+We can define a RNN's step-net based on Block as follows
 
 ```python
 import paddle as pd
