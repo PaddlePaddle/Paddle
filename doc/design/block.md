@@ -122,6 +122,9 @@ class Block : public OperatorBase {
   // Block with a given scope
   Block(Block* father, Scope* scope) : father_block_(father), scope_(scope) {}
 
+  // For RNN's step scopes.
+  void SetScope(Scope* scope);
+
   // NOTE Block has its own scope, so the argument scope here is not needed.
   virtual void Run(const Scope& scope,
                    const platform::DeviceContext& dev_ctx) const;
