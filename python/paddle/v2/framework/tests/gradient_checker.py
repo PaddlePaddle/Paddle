@@ -11,9 +11,11 @@ __all__ = ['get_numeric_gradient']
 def create_op(op_type):
     # TODO need to set attrs
     kwargs = dict()
-    for in_name in Operator.get_op_input_names(op_type):
+    for ins in Operator.get_op_inputs(op_type):
+        in_name = ins[0]
         kwargs[in_name] = in_name
-    for out_name in Operator.get_op_output_names(op_type):
+    for outs in Operator.get_op_outputs(op_type):
+        out_name = outs[0]
         kwargs[out_name] = out_name
 
     return Operator(op_type, **kwargs)
