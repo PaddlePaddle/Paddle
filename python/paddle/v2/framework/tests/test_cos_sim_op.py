@@ -10,30 +10,40 @@ class TestCosSimOp(unittest.TestCase):
     def setUp(self):
         self.type = "cos_sim"
         self.inputs = {
-            'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((32, 84)).astype("float32")
+            'X': np.random.random((32, 64)).astype("float32"),
+            'Y': np.random.random((32, 64)).astype("float32")
         }
-        expect = (self.inputs['X'] * self.inputs['Y']).sum(axis=1) / \
-                 np.linalg.norm(self.inputs['X'], axis=1) / \
-                 np.linalg.norm(self.inputs['Y'], axis=1)
-        expect = np.expand_dims(expect, 1)
-        self.outputs = {'Out': expect}
+        expect_x_norm = np.linalg.norm(self.inputs['X'], axis=1)
+        expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=1)
+        expect_out = (self.inputs['X'] * self.inputs['Y']).sum(axis=1) / \
+            expect_x_norm / expect_y_norm
+        self.outputs = {
+            'XNorm': np.expand_dims(expect_x_norm, 1),
+            'YNorm': np.expand_dims(expect_y_norm, 1),
+            'Out': np.expand_dims(expect_out, 1)
+        }
 
 
 class CosSimGradOpTest(GradientChecker):
-    def test_cos_sim(self):
+    def test_cos_sim_2d(self):
         op = create_op("cos_sim")
-        #inputs = {
-        #'X': np.random.random((2, 2)).astype("float32"),
-        #'Y': np.random.random((2, 2)).astype("float32")
-        #}
         inputs = {
-            'X': np.array([[0.9, 0.6], [1.9, 1.6]]).astype("float32"),
-            'Y': np.array([[0.7, 0.8], [1.7, 1.8]]).astype("float32")
+            'X': np.random.random((10, 5)).astype("float32"),
+            'Y': np.random.random((10, 5)).astype("float32")
         }
-        print(inputs)
+        self.compare_grad(op, inputs)
         self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.5)
+            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.05)
+
+    def test_cos_sim_3d(self):
+        op = create_op("cos_sim")
+        inputs = {
+            'X': np.random.random((10, 5, 2)).astype("float32"),
+            'Y': np.random.random((10, 5, 2)).astype("float32")
+        }
+        self.compare_grad(op, inputs)
+        self.check_grad(
+            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.05)
 
 
 if __name__ == '__main__':

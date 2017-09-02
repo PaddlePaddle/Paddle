@@ -304,13 +304,6 @@ class GradientChecker(unittest.TestCase):
             # get analytical gradients according to different device
             analytic_grads = self.__get_gradient(forward_op, backward_op,
                                                  input_vars, check_names, place)
-            #print(numeric_grads[0], numeric_grads[0].shape)
-            print("dim0: ", numeric_grads[0], numeric_grads[0].shape)
-            print("dim0: ", analytic_grads[0], analytic_grads[0].shape)
-            print("---------------------")
-            print("dim1: ", numeric_grads[1], numeric_grads[1].shape)
-            print("dim1: ", analytic_grads[1], analytic_grads[1].shape)
-            assert False
             self.__assert_is_close(numeric_grads, analytic_grads, check_names,
                                    max_relative_error,
                                    "Gradient Check On %s" % str(place))

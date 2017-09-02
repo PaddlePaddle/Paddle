@@ -25,14 +25,16 @@ class CosSimOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) must not be null.");
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
                       ctx.Input<Tensor>("Y")->dims(),
                       "Dimensions of Input(X) and Input(Y) must be the same.");
 
     auto dims = ctx.Input<Tensor>("X")->dims();
     ctx.Output<Tensor>("Out")->Resize({dims[0], 1});
+    ctx.Output<Tensor>("XNorm")->Resize({dims[0], 1});
+    ctx.Output<Tensor>("YNorm")->Resize({dims[0], 1});
   }
 };
 
@@ -43,6 +45,9 @@ class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The first input of cos_sim op.");
     AddInput("Y", "The second input of cos_sim op.");
     AddOutput("Out", "The output of cos_sim op.");
+    AddOutput("XNorm", "Row norm of the first input.").AsIntermediate();
+    AddOutput("YNorm", "Row norm of the second input.").AsIntermediate();
+
     AddComment(R"DOC(
 Cosine Similarity Operator.
 
@@ -57,20 +62,31 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("XNorm"),
+                            "Input(XNorm) must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("YNorm"),
+                            "Input(YNorm) must not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null.");
+                            "Input(Out@GRAD) must not be null.");
 
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto y_dims = ctx.Input<Tensor>("Y")->dims();
+    auto xnorm_dims = ctx.Input<Tensor>("XNorm")->dims();
+    auto ynorm_dims = ctx.Input<Tensor>("YNorm")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
     PADDLE_ENFORCE_EQ(x_dims, y_dims,
                       "Dimensions of Input(X) and Input(Y) must be the same.");
+    PADDLE_ENFORCE_EQ(xnorm_dims[0], x_dims[0],
+                      "1st dimension of XNorm must equal that of Input(X).");
+    PADDLE_ENFORCE_EQ(xnorm_dims[1], 1, "2st dimension of XNorm must be one.");
+    PADDLE_ENFORCE_EQ(ynorm_dims[0], y_dims[0],
+                      "1st dimension of YNorm must equal that of Input(Y).");
+    PADDLE_ENFORCE_EQ(ynorm_dims[1], 1, "2st dimension of YNorm must be one.");
     PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
-                      "1st dimension of Out@GRAD must equal to Input(X)");
-    PADDLE_ENFORCE_EQ(out_dims[1], 1,
-                      "1st dimension of Out@GRAD must equal to Input(X)");
+                      "1st dimension of Out@GRAD must equal that of Input(X)");
+    PADDLE_ENFORCE_EQ(out_dims[1], 1, "1st dimension of Out@GRAD must be one.");
 
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
