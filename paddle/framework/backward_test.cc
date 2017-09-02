@@ -18,6 +18,12 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 
+USE_OP(sum);
+USE_OP(rowwise_add);
+USE_OP(fill_zeros_like);
+USE_OP(mul);
+USE_OP(sigmoid);
+
 namespace paddle {
 namespace framework {
 
@@ -27,38 +33,6 @@ using OpProto = framework::OpProto;
 using OpAttrChecker = framework::OpAttrChecker;
 using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
-
-class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
- public:
-  RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").NotInGradient();
-    AddInput("b", "Bias of Add").NotInGradient();
-    AddOutput("Out", "Out of Add").NotInGradient();
-    AddComment("Add Op");
-  }
-};
-
-class MulOpMaker : public OpProtoAndCheckerMaker {
- public:
-  MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "A");
-    AddInput("Y", "B");
-    AddOutput("Out", "Out");
-    AddComment("Mul");
-  }
-};
-
-class SigmoidOpMaker : public OpProtoAndCheckerMaker {
- public:
-  SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "X");
-    AddOutput("Out", "Y");
-    AddComment("Sigmoid");
-  }
-};
 
 class NoGradOpMaker : public OpProtoAndCheckerMaker {
  public:
@@ -93,7 +67,7 @@ class FcOp : public operators::NetOp {
     }
 
     AppendOp(OpRegistry::CreateOp("sigmoid", {{"X", {Output(before_act)}}},
-                                  {{"Out", {Output("Out")}}}, {}));
+                                  {{"Y", {Output("Out")}}}, {}));
     CompleteAddOp(false);
   }
 };
@@ -123,38 +97,14 @@ class ManyOutputOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class FillZeroOpMaker : public OpProtoAndCheckerMaker {
- public:
-  FillZeroOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("x", "x");
-    AddOutput("out", "out");
-    AddComment("");
-  }
-};
-
-class AddOpMaker : public OpProtoAndCheckerMaker {
- public:
-  AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "x").AsDuplicable();
-    AddOutput("Y", "y");
-    AddComment("");
-  }
-};
 }  // namespace framework
 }  // namespace paddle
 
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
-REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, rowwise_add_grad,
-            f::NOP);
-REGISTER_OP(mul, f::NOP, f::MulOpMaker, mul_grad, f::NOP);
-REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, sigmoid_grad, f::NOP);
+
 REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
-REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, f::NOP, f::FillZeroOpMaker);
-REGISTER_OP(add, f::NOP, f::AddOpMaker, add_grad, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
 REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
             f::NOP);
@@ -164,7 +114,7 @@ TEST(Backward, simple_op_grad) {
       "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
   ASSERT_NE(fwd, nullptr);
   auto gop = f::OpRegistry::CreateGradOp(*fwd);
-  ASSERT_EQ(1UL, gop->Inputs().size());
+  ASSERT_EQ(4UL, gop->Inputs().size());
   ASSERT_EQ("rowwise_add_grad", gop->Type());
   ASSERT_EQ(f::GradVarName("x"), gop->Output(f::GradVarName("X")));
   ASSERT_EQ(f::GradVarName("b"), gop->Output(f::GradVarName("b")));
@@ -283,7 +233,7 @@ TEST(Backward, net_shared_weight) {
   ASSERT_TRUE(bwd->IsNetOp());
   auto bwd_net = static_cast<ops::NetOp *>(bwd.get());
   ASSERT_EQ(3UL, bwd_net->ops_.size());
-  ASSERT_EQ("add", bwd_net->ops_[2]->Type());
+  ASSERT_EQ("sum", bwd_net->ops_[2]->Type());
 }
 
 TEST(Backward, op_register_grad_not_for_network) {
@@ -385,7 +335,7 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
 
   const char *all = paddle::operators::NetOp::kAll;
   EXPECT_EQ(grad_fc.Inputs(all).size(),
-            2UL       /* external input number */
+            3UL       /* external input number */
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
                 + 2U /* internal variable number*/);

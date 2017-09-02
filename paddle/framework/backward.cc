@@ -20,6 +20,7 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
+#include "paddle/operators/sum_op.h"
 
 namespace paddle {
 namespace framework {
@@ -118,13 +119,13 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
     // multiple operators which have the same output (y for example) may
     // overwrite the same y variable when backward, special operations are token
     // to handle this case. For each duplicate output, rename it to an alias
-    // (original name with a offset), append an `add` op for its operator,
+    // (original name with a offset), append an `sum` op for its operator,
     // and finally sum all the alias variable to the final output variable y.
     using Pos = std::pair<size_t, std::unique_ptr<OperatorBase>>;
     std::list<Pos> insert_position;
     for (auto& dup_output_op : dup_output_ops) {
       const std::string& name = dup_output_op.first;
-      // duplicate @Empty@ don't need to be added
+      // duplicate @Empty@ don't need to be sumed
       if (name == kEmptyVarName) continue;
 
       auto& dup_op = dup_output_op.second;
@@ -140,13 +141,13 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                               std::to_string(i));
         net->ops_[op_offset]->Rename(name, dup_outputs.back());
       }
-      // collect all the offset to append `add` op for each alias
+      // collect all the offset to append `sum` op for each alias
       insert_position.push_back(
           {dup_op.back(), OpRegistry::CreateOp("sum", {{"X", {dup_outputs}}},
                                                {{"Out", {name}}}, {})});
     }
 
-    // make sure the inserted `add` ops follow the BFS order.
+    // make sure the inserted `sum` ops follow the BFS order.
     insert_position.sort(
         [](const Pos& l, const Pos& r) { return l.first > r.first; });
 
