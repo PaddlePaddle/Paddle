@@ -60,9 +60,8 @@ class SquaredL2DistanceKernel : public framework::OpKernel {
       sub_result.device(place) = x - y;
     }
     auto sub_res_pow2 = sub_result * sub_result;
-    z.device(place) =
-        sub_res_pow2.sum(Eigen::array<int, 1>({1}))
-            .reshape(Eigen::array<int, 2>({static_cast<int>(x_dims[0]), 1}));
+    // z is TensorMap, no need reshape
+    z.device(place) = sub_res_pow2.sum(Eigen::array<int, 1>({1}));
   }
 };
 
@@ -110,8 +109,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
         y_grad.device(eigen_place) = -1 * grad_mat;
       } else {
         auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({0})));
-        y_grad.device(eigen_place) =
-            col_sum_res.reshape(Eigen::array<int, 2>({1, cols}));
+        // y_grad is TensorMap, no need reshape
+        y_grad.device(eigen_place) = col_sum_res;
       }
     }
   }

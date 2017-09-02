@@ -137,7 +137,7 @@ __all__ = [
     'clip_layer',
     'slice_projection',
     'seq_slice_layer',
-    'kmax_sequence_score_layer',
+    'kmax_seq_score_layer',
     'img_pool3d_layer',
     'scale_shift_layer',
     'img_conv3d_layer',
@@ -5994,7 +5994,7 @@ def cross_entropy_over_beam(input, name=None):
     Note that, if gold falls off the beam at search step t, then the cost is
     calculated over the beam at step t.
 
-    This cost layer always works together with kmax_sequence_score_layer,
+    This cost layer always works together with kmax_seq_score_layer,
     sub_nested_seq_layer, and sequence_slice_layer to trim the input to form a
     sub-search space.
 
@@ -6597,14 +6597,14 @@ def seq_slice_layer(input, starts, ends, name=None):
 
 @wrap_name_default()
 @layer_support()
-def kmax_sequence_score_layer(input, name=None, beam_size=1):
+def kmax_seq_score_layer(input, name=None, beam_size=1):
     """
     This layer accepts one input which are scores over a sequence or a nested
     sequence, and returns indices of beam_size sequences with highest scores.
 
     .. code-block:: python
 
-        kmax_indices = kmax_sequence_score_layer(input=input_layer, beam_size)
+        kmax_indices = kmax_seq_score_layer(input=input_layer, beam_size)
 
 
     :param name: The Layer Name.
@@ -6617,10 +6617,10 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert isinstance(input, LayerOutput), ("kmax_sequence_score_layer "
+    assert isinstance(input, LayerOutput), ("kmax_seq_score_layer "
                                             "accepts only one input.")
     assert input.size == 1, (
-        "input of kmax_sequence_score_layer is a score"
+        "input of kmax_seq_score_layer is a score "
         "over a sequence or a nested sequence, so its width must be 1.")
 
     Layer(
