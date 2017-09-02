@@ -90,13 +90,16 @@ If `VerDesc` is added into the framework, Block will be implemented based on Net
 
 
 ```c++
+#include <map>
+#include <memory>
+
 struct VarDesc;
 struct BlockDesc;
 
-// VarDescLib is similar to Scope, but offer a simpler map with the same value type.
-class VarDescLib {
+// VarDescScope is similar to Scope, but offer a simpler map with the same value type.
+class VarDescScope {
  public:
-  VarDescLib();
+  VarDescScope();
   // lookup a variable description, recursively or not.
   VarDesc* Lookup(const std::string& name, bool recursive=true);
   // create a new description in local namescope.
@@ -105,7 +108,7 @@ class VarDescLib {
   void Delete(const std::string& name);
  private:
   std::map<std::string, VarDesc> map_;
-  VarDescLib* father_{nullptr};
+  VarDescScope* father_{nullptr};
 };
 
 /*
@@ -137,7 +140,7 @@ class Block : public OperatorBase {
  private:
   Block* father_block_;
   // All the VarDescs are store in var_desc_lib_;
-  std::unique_ptr<VarDescLib> var_desc_lib_;
+  std::unique_ptr<VarDescScope> var_desc_lib_;
 
   Scope* scope_;
   bool scope_owner_{false};
