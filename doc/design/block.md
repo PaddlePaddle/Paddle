@@ -1,10 +1,12 @@
 # Block design
 
-In computer programming, a block is a lexical structure of source code which is grouped together.
-In most programming languages, block is useful when define a function or some conditional statements such as `if` and `while`.
+In C++ and Java, a block is a lexical structure of source code which is grouped together.
+
+Blocks do not only group source code, but also narrow the lexical scope of variables so that they do not conflict with variables having the same name used elsewhere in a program.
 
 In Paddle, we need a similar concept to support following scenes:
 
+- definition of a deep learning program, such as store the definition or description of variables and operators.
 - the basic unit of execution, just like the original `NetOp`, block can group multiple operators and make them behave just like a single operator. Unlike `NetOp`, a network should not be an operator, but a block can be treated as a operator.
   - Block should have a `Exec` method, which will execute the operators grouped in the block.
 - store the context for operators, including the information of variables they will operator on. 
@@ -12,7 +14,8 @@ In Paddle, we need a similar concept to support following scenes:
   - Block will help to define and execute thouse operators.
   
 ## when need a block
-Blocks are needed in following code snippets
+Blocks are needed in control structures and namespace definition.
+
 ```c++
 if(cond) { block_true } else { block_false }
 ```
@@ -31,9 +34,9 @@ namespace xxxx {
 }
 ```
 
-Paddle will have `if_else_op`, `switch_op`, `while_op` and some other operators that need a function block such as RNNOp, and enable definition and execution of a block is vital to those operators.
+Similarly, we propose to use Block with `IfOp`, `IfElseOp`, `SwitchOp`, `WhileOp`, `RNNOp`.
 
-What's more, Paddle should has a `pd.namespace`, which will help to preventing name conflicts of variables in large model.
+We'd also like to introduce a namespace API for PaddlePaddle, which likes the C++ namespace, names a Block and prefixs the names of variables defined in it.
 
 For example:
 
@@ -67,7 +70,7 @@ d_model_a_out = submodel("model_a", d)
 
 with `pd.namespace`, user create 3 different namespaces and in each one, the parameters those have specific name will be reused.
 
-## Why use Block to replace NetOp
+## Why use Block instead of NetOp
 - It is weird to treat Network as an operator, but Block in programming language means grouping multiple operators and acts like a single operator, treat a Block as an operator seems more reasonable.
 - The basic concepts including`Variable`, `Operator` and `Block` are concepts in programming language, but `NetOp` is not.
 - Block is a concept in programming language, it behaves similar to current NetOp, but much concrete, and can guide our futher design.
@@ -76,9 +79,9 @@ with `pd.namespace`, user create 3 different namespaces and in each one, the par
   - operator inside a block can make operation on global variables
   
 ## Block Implementation
-Currentlly, there is a simple implementation of blockin [User Interface Design](), which has the most functions of a Block when user writes a program. 
+Currentlly, there is a simple implementation of block in [User Interface Design](), which has the most functions of a Block when user writes a program. 
 
-When compiling user's program, Block will store both `VarDesc` and `OperatorDesc`. During execution, Block will first create all `Variable`s and `Operator`s according the descriptions of `VarDesc`s and `OperatorDesc`s, then executes all the operators.
+When compiling user's program, Block will store both `VarDesc` and `OperatorDesc`. During execution, Block will first create all `Variable`s and `Operator`s according the description of `VarDesc`s and `OperatorDesc`s, then executes all the operators.
 
 
 
