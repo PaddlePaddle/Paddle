@@ -13,7 +13,7 @@ In Paddle, we need a similar concept to support following scenes:
 - Support the definition and execution of special operators such as `RNNOp`, `switch_op`, `while_op`, `if_else_op`, which needs one or more code-blocks.
   - Block will help to define and execute thouse operators.
   
-## when need a block
+## When is Block needed
 Blocks are needed in control structures and namespace definition.
 
 ```c++
