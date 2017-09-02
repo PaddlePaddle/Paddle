@@ -4,6 +4,7 @@ py_test(test_scope SRCS test_scope.py)
 
 py_test(test_tensor SRCS test_tensor.py)
 py_test(test_mul_op SRCS test_mul_op.py)
+py_test(test_dropout_op SRCS test_dropout_op.py)
 
 py_test(test_mean_op SRCS test_mean_op.py)
 

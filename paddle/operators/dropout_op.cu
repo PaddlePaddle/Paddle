@@ -16,7 +16,7 @@
 #include "paddle/operators/dropout_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(dropout,
-                       ops::DropoutKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    dropout, ops::GPUDropoutKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
     dropout_grad, ops::DropoutGradKernel<paddle::platform::GPUPlace, float>);

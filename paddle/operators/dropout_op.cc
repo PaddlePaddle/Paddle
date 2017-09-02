@@ -37,6 +37,8 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
   DropoutOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddAttr<float>("dropout_prob", "Dropout probability.").SetDefault(.5f);
+    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The dropout mask.").AsIntermediate();
@@ -75,7 +77,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(dropout, ops::DropoutOp, ops::DropoutOpMaker, dropout_grad,
             ops::DropoutOpGrad);
-REGISTER_OP_CPU_KERNEL(dropout,
-                       ops::DropoutKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    dropout, ops::CPUDropoutKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad, ops::DropoutGradKernel<paddle::platform::CPUPlace, float>);
