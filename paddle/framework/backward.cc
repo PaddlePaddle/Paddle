@@ -142,7 +142,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       }
       // collect all the offset to append `add` op for each alias
       insert_position.push_back(
-          {dup_op.back(), OpRegistry::CreateOp("add", {{"X", {dup_outputs}}},
+          {dup_op.back(), OpRegistry::CreateOp("sum", {{"X", {dup_outputs}}},
                                                {{"Out", {name}}}, {})});
     }
 
