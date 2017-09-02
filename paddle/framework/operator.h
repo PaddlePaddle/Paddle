@@ -229,6 +229,10 @@ class InferShapeContext {
   InferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
+  const OperatorBase& op() const { return op_; }
+
+  const Scope& scope() const { return scope_; }
+
   size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
   }
@@ -312,6 +316,7 @@ class InferShapeContext {
     return res;
   }
 
+ private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
