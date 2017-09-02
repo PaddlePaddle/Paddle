@@ -43,13 +43,13 @@ class GPUGaussianRandomKernel : public framework::OpKernel {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed =
-        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+        static_cast<unsigned int>(context.op().GetAttr<int>("seed"));
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
     }
-    T mean = static_cast<T>(context.op_.GetAttr<float>("mean"));
-    T std = static_cast<T>(context.op_.GetAttr<float>("std"));
+    T mean = static_cast<T>(context.op().GetAttr<float>("mean"));
+    T std = static_cast<T>(context.op().GetAttr<float>("std"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     ssize_t N = framework::product(tensor->dims());
     thrust::transform(index_sequence_begin, index_sequence_begin + N,
