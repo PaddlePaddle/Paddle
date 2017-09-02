@@ -181,7 +181,7 @@ images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
 labels = data_layer(name='label', dims=[BATCH_SIZE])
 fc1 = fc_layer(net=forward_net, input=images, size=100, act="sigmoid")
 fc2 = fc_layer(net=forward_net, input=fc1, size=100, act="sigmoid")
-predict = fc_layer(net=forward_net, input=fc2, size=100, act="softmax")
+predict = fc_layer(net=forward_net, input=fc2, size=10, act="softmax")
 cost = cross_entropy_layer(net=forward_net, input=predict, label=labels)
 
 init_net.complete_add_op(True)

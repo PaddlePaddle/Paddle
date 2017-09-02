@@ -38,7 +38,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
       -DCUDNN_ROOT=/usr/
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
-      -DWITH_TESTING=${WITH_TESTING:-OFF}
+      -DWITH_TESTING=${WITH_TESTING:-ON}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
 EOF
@@ -56,19 +56,18 @@ cmake .. \
       -DWITH_C_API=${WITH_C_API:-OFF} \
       -DWITH_PYTHON=${WITH_PYTHON:-ON} \
       -DCUDNN_ROOT=/usr/ \
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DWITH_TESTING=${WITH_TESTING:-OFF} \
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
+      -DWITH_TESTING=${WITH_TESTING:-ON} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
 ============================================
 Building in /paddle/build ...
-   Build unit tests: ${WITH_TESTING:-OFF}
 ============================================
 EOF
 make -j `nproc`
 
-if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+if [ ${WITH_TESTING:-ON} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
 cat <<EOF
 ========================================
 Running unit tests ...

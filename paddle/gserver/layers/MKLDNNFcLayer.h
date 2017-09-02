@@ -32,16 +32,13 @@ protected:
   // if has already init the weight
   bool hasInitedWgt_;
 
-  // if input layer has image size info (ih>1 && iw>1)
-  bool hasSpatial_;
-
   // fc weight and bias
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> biases_;
 
 public:
   explicit MKLDNNFcLayer(const LayerConfig& config)
-      : MKLDNNLayer(config), hasInitedWgt_(false), hasSpatial_(true) {}
+      : MKLDNNLayer(config), hasInitedWgt_(false) {}
 
   ~MKLDNNFcLayer() {}
 
@@ -75,6 +72,8 @@ protected:
    * only would be called when needed
    */
   void resetBwd();
+
+  void convertOutputToOtherDevice() override;
 };
 
 }  // namespace paddle
