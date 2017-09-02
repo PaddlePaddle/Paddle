@@ -75,18 +75,11 @@ with `pd.namespace`, user create 3 different namespaces and in each one, the par
   - a block will contains its operators(just like NetOp) and some local variables
   - operator inside a block can make operation on global variables
   
-## Implementation
+## Block Implementation
 Currentlly, there is a simple implementation in [User Interface Design](), which has the most function of a Block when user writes a program. 
-But it relays on `NetOp` when executes and that works.
 
-We may rename `NetOp` in cpp code to `Block`, but whether to add more functions of a real block into that implementation depends on whether we want to have a `VarDesc` and split the compilation and execution period.
+When compiling user's program, Block will store both `VarDesc` and `OperatorDesc`. During execution, Block will first create all `Variable`s and `Operator`s according the descriptions of `VarDesc`s and `OperatorDesc`s, then executes all the operators.
 
-In my opition, Block is very basic concept in underlying implementation, so a python wrapper and a cpp minimal implementation is enough now.
-It is free to change if other module needs more complex supports such as `VarDesc` is added.
-
-If `VerDesc` is added into the framework, Block will be implemented based on NetOp.
-
-**Each Block will have its own Scope, a child-block's scope will inherit father-block's scope.**
 
 
 ```c++
