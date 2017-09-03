@@ -244,7 +244,13 @@ void MKLDNNFcLayer::resetBwd() {
 }
 
 void MKLDNNFcLayer::forward(PassType passType) {
-  Layer::forward(passType);
+  passType_ = passType;
+  if (!inputLayers_.empty() && needSequenceInfo_) {
+    const Argument& input = inputLayers_[0]->getOutput();
+    output_.sequenceStartPositions = input.sequenceStartPositions;
+    output_.subSequenceStartPositions = input.subSequenceStartPositions;
+    output_.cpuSequenceDims = input.cpuSequenceDims;
+  }
   reshape();
 
   {

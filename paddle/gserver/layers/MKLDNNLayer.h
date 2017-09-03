@@ -33,6 +33,8 @@ typedef std::shared_ptr<MKLDNNLayer> MKLDNNLayerPtr;
  */
 class MKLDNNLayer : public Layer {
 protected:
+  // input value element count
+  size_t inputElemenCnt_;
   // batch size
   int bs_;
   // input image channel, height and width
@@ -65,6 +67,7 @@ protected:
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
+        inputElemenCnt_(0),
         bs_(0),
         ic_(0),
         ih_(0),

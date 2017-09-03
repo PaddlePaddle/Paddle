@@ -95,14 +95,28 @@ void MKLDNNConvLayer::printSizeInfo() {
                      << ": ph: " << ph_ << ", pw: " << pw_ << ", sh: " << sh_
                      << ", sw: " << sw_ << ", dh: " << dh_ << ", dw: " << dw_;
 }
+
+memory::dims MKLDNNConvLayer::getPaddingR() const {
+  memory::dims padR = {ph_, pw_};
+  for (int i = 0; i < 2; ++i) {
+    if ((ih_ - ((fh_ - 1) * dh_ + 1) + ph_ + padR[0]) / sh_ + 1 != oh_) {
+      ++padR[0];
+    }
+    if ((iw_ - ((fw_ - 1) * dw_ + 1) + pw_ + padR[1]) / sw_ + 1 != ow_) {
+      ++padR[1];
+    }
+  }
+  return padR;
+}
+
 void MKLDNNConvLayer::reshape() {
   const Argument& input = inputLayers_[0]->getOutput();
-  int batchSize = input.getBatchSize();
-  if (bs_ == batchSize) {
+  // TODO(TJ): move to MKLDNNLayer
+  if (inputElemenCnt_ == input.value->getElementCnt()) {
     return;
   }
-  bs_ = batchSize;
-
+  inputElemenCnt_ = input.value->getElementCnt();
+  bs_ = input.getBatchSize();
   int height = input.getFrameHeight();
   int width = input.getFrameWidth();
   if (height != 0) {
@@ -135,6 +149,7 @@ void MKLDNNConvLayer::reshape() {
 void MKLDNNConvLayer::resetFwd() {
   pipelineFwd_.clear();
   bool hasBias = biases_ && biases_->getW();
+  biasVal_ = nullptr;
 
   // dims for conv
   memory::dims inDims = memory::dims{bs_, ic_, ih_, iw_};
@@ -142,17 +157,12 @@ void MKLDNNConvLayer::resetFwd() {
   memory::dims wgtDims =
       (gp_ == 1) ? memory::dims{oc_, ic_, fh_, fw_}
                  : memory::dims{gp_, oc_ / gp_, ic_ / gp_, fh_, fw_};
-  memory::dims biasDim = memory::dims{oc_};
+  memory::dims biasDims = memory::dims{oc_};
   memory::dims strides = {sh_, sw_};
-  memory::dims dilations = {dh_, dw_};
+  // note: mkldnn dilation start from 0
+  memory::dims dilations = {dh_ - 1, dw_ - 1};
   memory::dims padding = {ph_, pw_};
-  std::vector<int> padR = {ph_, pw_};
-  for (int i = 0; i < 2; ++i) {
-    if ((ih_ - ((fh_ - 1) * (dh_ + 1) + 1) + ph_ + padR[0]) / sh_ + 1 != oh_)
-      ++padR[0];
-    if ((iw_ - ((fw_ - 1) * (dw_ + 1) + 1) + pw_ + padR[1]) / sw_ + 1 != ow_)
-      ++padR[1];
-  }
+  memory::dims padR = getPaddingR();
 
   // create forward handle
   prop_kind pk = prop_kind::forward;
@@ -163,7 +173,7 @@ void MKLDNNConvLayer::resetFwd() {
                                algo,
                                MKLDNNMatrix::createMemoryDesc(inDims),
                                MKLDNNMatrix::createMemoryDesc(wgtDims),
-                               MKLDNNMatrix::createMemoryDesc(biasDim),
+                               MKLDNNMatrix::createMemoryDesc(biasDims),
                                MKLDNNMatrix::createMemoryDesc(outDims),
                                strides,
                                dilations,
@@ -188,10 +198,11 @@ void MKLDNNConvLayer::resetFwd() {
   inVal_ = MKLDNNMatrix::create(nullptr, fwdPD.src_primitive_desc());
   outVal_ = MKLDNNMatrix::create(nullptr, fwdPD.dst_primitive_desc());
   wgtVal_ = MKLDNNMatrix::create(wgt, fwdPD.weights_primitive_desc());
-  biasVal_ = hasBias ? MKLDNNMatrix::create(bias, fwdPD.bias_primitive_desc())
-                     : nullptr;
-  CHECK_EQ(fwdPD.bias_primitive_desc().desc().data.format, format::x)
-      << "bias format should always be x";
+  if (hasBias) {
+    biasVal_ = MKLDNNMatrix::create(bias, biasDims, format::x, engine_);
+    CHECK(biasVal_->getPrimitiveDesc() == fwdPD.bias_primitive_desc())
+        << "bias primitive desc should always be equal";
+  }
 
   // add reorder if has user input value
   bool onlyMKLDNN = inputIsOnlyMKLDNN();
@@ -319,7 +330,13 @@ pipelineBwd_.push_back(*bwdData_);*/
 }
 
 void MKLDNNConvLayer::forward(PassType passType) {
-  Layer::forward(passType);
+  passType_ = passType;
+  if (!inputLayers_.empty() && needSequenceInfo_) {
+    const Argument& input = inputLayers_[0]->getOutput();
+    output_.sequenceStartPositions = input.sequenceStartPositions;
+    output_.subSequenceStartPositions = input.subSequenceStartPositions;
+    output_.cpuSequenceDims = input.cpuSequenceDims;
+  }
   reshape();
 
   {
@@ -328,6 +345,7 @@ void MKLDNNConvLayer::forward(PassType passType) {
 
     // just submit forward pipeline
     stream_->submit(pipelineFwd_);
+    copyOutputInfoToOtherDevice();
   }
 
   /* activation */ {

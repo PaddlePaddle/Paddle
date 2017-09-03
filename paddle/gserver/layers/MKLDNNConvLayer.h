@@ -104,6 +104,15 @@ protected:
   void resetBwd();
 
   void printSizeInfo();
+
+private:
+  /**
+   * get padding_r according to
+   * https://github.com/01org/mkl-dnn/blob/master/tests/gtests/
+   * test_convolution_forward_common.hpp
+   * @note: mkldnn dilation start from 0 while paddle start from 1
+   */
+  mkldnn::memory::dims getPaddingR() const;
 };
 
 }  // namespace paddle
