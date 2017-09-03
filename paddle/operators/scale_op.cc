@@ -97,7 +97,7 @@ class IdentityOp : public NetOp {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(scale, ops::ScaleOp, ops::ScaleOpMaker<float>, scale_grad,
+REGISTER_OP(scale, ops::ScaleOp, ops::ScaleOpMaker<float>,
             ops::ScaleGradOp<float>);
 REGISTER_OP_CPU_KERNEL(scale,
                        ops::ScaleKernel<paddle::platform::CPUPlace, float>);
