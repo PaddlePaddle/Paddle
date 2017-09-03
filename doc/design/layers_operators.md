@@ -1,3 +1,5 @@
+# Design Doc: Layers and Operators
+
 In a DL system, we can compose one or more fine grained operators into a coarse grained one.  For example, the FC layer can be composed of a multiplication operator and an add operator.
 
 Historically, some fine grained operations are known as operators, and some coarse level ones are known as layers.  But we need a well-defined separation.
