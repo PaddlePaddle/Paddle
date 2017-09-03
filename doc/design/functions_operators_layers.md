@@ -42,7 +42,7 @@ class FCOp : public OperatorBase {
   void Run(...) {
     add(mul(Input<T>("X"), Input<T>("W")), Input<T>("b");
   }
-};d
+};
 REGISTER_OP(FCOp, "fc");
 ```
 
@@ -52,23 +52,36 @@ Let's explain using an example.  Suppose that we are going to compose the FC usi
 
 ```python
 def operator.mul(X1, X2):
-    O = Var
+    O = Var()
     paddle.cpp.create_operator("mul", input={X1, Y1], output=O)
     return O
 
 def operator.add(X1, X2):
-    O = Var
+    O = Var()
     paddle.cpp.create_operator("add", input={X1, X2], output=O)
     return O
 ```
 
-so that we can define
+Above code snippets are automatically generated.  Given them, users can define
 
 ```python
 def layer.fc(X):
     W = Var()
     b = Var()
     return operator.add(operator.mul(X, W), b)
+```
+
+If we don't have `operator.mul` and `operator.add`, the definiton of `layer.fc` would be complicated:
+
+```python
+def layer.fc(X):
+    W = Var()
+    b = Var()
+    O1 = Var()
+    paddle.cpp.create_operator("mul", input=[X, W], output=O1)
+    O2 = Var()
+    paddle.cpp.create_operator("add", input=[O1, b], output=O2)
+    return O2
 ```
 
 We'd like to have Python bindings to operators in package `paddle.operator`, and Python compositions of operators in package `paddle.layer`.  So we have the following concepts in above illustrative example:
