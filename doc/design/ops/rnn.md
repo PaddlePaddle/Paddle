@@ -107,12 +107,10 @@ def level2_rnn(paragraph):
     '''
     rnn = pd.RNNOp()
     with rnn.stepnet():
-        sentence = rnn.segment_input(paragraph)
-        h = rnn.memory(shape=[20, 30])
+        sentence = rnn.add_input(paragraph)
+        h = rnn.add_memory(shape=[20, 30])
         h.update(
             pd.matmul(W, sentence) + pd.matmul(U, h.pre_state()))
         # get the last state as sentence's info
-        h_ = rnn.collect_output(h)
-        last_h = pd.lod_last_element(h_)
-        return last_h
+        rnn.add_output(h)
 ```
