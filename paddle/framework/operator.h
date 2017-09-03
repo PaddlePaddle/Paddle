@@ -127,6 +127,10 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+
+ private:
+  void GenerateTemporaryNames();
+  void CheckAllInputOutputSet() const;
 };
 
 // Macro for define a clone method.
