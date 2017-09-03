@@ -1,54 +1,60 @@
-In an if_op, only inputs with condition satisfied will be run. The op could have multiple inputs and multiple outputs.
-We should have the following design:
+IfOp should have only one branch. An IfOp operator takes a `cond` variable whose value must be a vector of N boolean elements. Its return value has M (M<=N) instances, each corresponds to a true element in `cond`.
 
 ```python
-# A 1-d bool vector
-cond = Var()
-# create an op
-if = pd.if_op()
+import paddle as pd
 
-with if.true_block() as block:
-  x1 = if.input(x1)
-  x2 = if.input(x2)
-  y = pd.add(x1, x2)
-  y2 = pd.fc(x1) # contains (w,b)
-  if.output(y)
-  if.output(y2)
-  
-o1, o2 = if(cond)
+x = var()
+y = var()
+cond = var()
+
+b = pd.create_ifop_builder(inputs=[x], output_num=1)
+with b.true_block():
+    x = b.inputs(0)
+    z = operator.add(x, y)
+    b.set_output(0, operator.softmax(z))
+
+out = b(cond)
 ```
 
-In an if_op, only inputs with condition satisfied will be run.
-We should have the following design:
+If we want the output still has N instances, we can use IfElseOp with a default value, whose minibatch size must be N:
+
 ```python
-# A 1-d bool vector
-cond = Var()
-# create an op
-if = pd.if_op()
+import paddle as pd
 
-with if.true_block() as block:
-  x1 = if.input(x1)
-  x2 = if.input(x2)
-  y = pd.add(x1, x2)
-  y2 = pd.fc(x1) # contains (w,b)
-  if.output(y, name="y")
-  if.output(y2, name="y2")
+x = var()
+y = var()
+cond = var()
+default_value = var()
+b = pd.create_ifelseop_builder(inputs=[x], output_num=1)
+with b.true_block():
+    x = b.inputs(0)
+    z = operator.add(x, y)
+    b.set_output(0, operator.softmax(z))
 
-with if.false_block() as block:
-  x1 = if.input(x1)
-  x2 = if.input(x2)
-  y = pd.fc(x2)
-  y2 = pd.softmax(x1) 
-  if.output(y, name="y")
-  if.output(y2, name="y2")
-  
-o1, o2 = if(cond)
+with b.false_block():
+    x = b.inputs(0)
+    z = layer.fc(x)
+    b.set_output(0, operator.softmax(z))
+
+out = b(cond)
 ```
 
-Some questions:
- 1. how to know which inputs will be selected by condition?
- e.g. True_block():
-  y = pd.fc(x)
-  # we will have x, w, b all as inputs
-  # but only x will be selected by cond, how can the block know?
+If only true_block is set in an IfElseOp, we can have a default value for false as:
+```python
+import paddle as pd
+
+x = var()
+y = var()
+cond = var()
+default_value = var()
+b = pd.create_ifelseop_builder(inputs=[x], output_num=1, default_value)
+
+with b.true_block():
+    x = b.inputs(0)
+    z = operator.add(x, y)
+    b.set_output(0, operator.softmax(z))
+
+out = b(cond)
+```
+where default_value is a list of vars for `cond` == False.
 
