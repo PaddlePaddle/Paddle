@@ -57,4 +57,3 @@ with b.true_block():
 out = b(cond)
 ```
 where default_value is a list of vars for `cond` == False.
-
