@@ -239,20 +239,12 @@ class InferShapeContext {
 
   const Variable* InputVar(const std::string& name) const {
     auto ipt = op_.Input(name);
-    if (ipt == kEmptyVarName) {
-      return nullptr;
-    } else {
-      return scope_.FindVar(ipt);
-    }
+    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
   }
 
   Variable* OutputVar(const std::string& name) const {
     auto opt = op_.Output(name);
-    if (opt == kEmptyVarName) {
-      return nullptr;
-    } else {
-      return scope_.FindVar(opt);
-    }
+    return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
   }
 
   const std::vector<const Variable*> MultiInputVar(
@@ -262,8 +254,8 @@ class InferShapeContext {
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
-                     return name != kEmptyVarName ? scope_.FindVar(name)
-                                                  : nullptr;
+                     return name == kEmptyVarName ? nullptr
+                                                  : scope_.FindVar(name);
                    });
     return res;
   }
@@ -274,8 +266,8 @@ class InferShapeContext {
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
-                     return name != kEmptyVarName ? scope_.FindVar(name)
-                                                  : nullptr;
+                     return name == kEmptyVarName ? nullptr
+                                                  : scope_.FindVar(name);
                    });
     return res;
   }

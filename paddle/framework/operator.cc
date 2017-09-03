@@ -35,16 +35,10 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
-  switch (ins.size()) {
-    case 0:
-      return kEmptyVarName;
-    case 1:
-      return ins[0];
-    default:
-      PADDLE_THROW("Op %s input %s should contain only one variable", type_,
-                   name);
-      return "";
-  }
+  PADDLE_ENFORCE_LE(ins.size(), 1UL,
+                    "Op %s input %s should contain only one variable", type_,
+                    name);
+  return ins.empty() ? kEmptyVarName : ins[0];
 }
 
 const std::vector<std::string>& OperatorBase::Inputs(
@@ -57,16 +51,10 @@ const std::vector<std::string>& OperatorBase::Inputs(
 
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
-  switch (outs.size()) {
-    case 0:
-      return kEmptyVarName;
-    case 1:
-      return outs[0];
-    default:
-      PADDLE_THROW("Op %s output %s should contain only one variable", type_,
-                   name);
-      return "";
-  }
+  PADDLE_ENFORCE_LE(outs.size(), 1UL,
+                    "Op %s output %s should contain only one variable", type_,
+                    name);
+  return outs.empty() ? kEmptyVarName : outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
