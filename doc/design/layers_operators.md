@@ -50,12 +50,12 @@ We need to support such composition in Python as well.  To do so, we need a high
 Let's explain using an example.  Suppose that we are going to compose the FC using mul and add in Python, we'd like to have Python functions `mul` and `add` defined in module `operator`:
 
 ```python
-def mul(X1, X2):
+def operator.mul(X1, X2):
     O = Var
     paddle.cpp.create_operator("mul", input={X1, Y1], output=O)
     return O
 
-def add(X1, X2):
+def operator.add(X1, X2):
     O = Var
     paddle.cpp.create_operator("add", input={X1, X2], output=O)
     return O
@@ -70,4 +70,14 @@ def layer.fc(X):
     return operator.add(operator.mul(X, W), b)
 ```
 
-We'd like to have Python bindings to operators in package `paddle.operator`, and Python compositions of operators in package `paddle.layer`.  This is how we differentiate layer and operators in PaddlePaddle.
+We'd like to have Python bindings to operators in package `paddle.operator`, and Python compositions of operators in package `paddle.layer`.  So we have the following concepts in above illustrative example:
+
+| C++ functions/functors | mul          | add          |             |          |
+| C++ operator class     | mulOp        | addOp        | FCOp        |          |
+| Python binding         | operator.mul | operator.add | operator.fc |          |
+| Python function        |              |              |             | layer.fc |
+
+This is how we differentiate layer and operators in PaddlePaddle:
+
+- those defined in C++ and have a lightweighted Python wrapper in module `operators` are operators; whereas
+- those who don't have C++ implementations but a Python implementation that compose C++ operators are known as layers.
