@@ -75,33 +75,17 @@ public:
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
+  void reshape() override;
+
+  void resetFwd() override;
+
+  void resetBwd() override;
+
+  void updateWeights(const UpdateCallback& callback) override;
+
   void convertWeightsFromPaddle() override;
 
   void convertWeightsToPaddle() override;
-
-  void forward(PassType passType) override;
-
-  void backward(const UpdateCallback& callback) override;
-
-protected:
-  /**
-   * reshape the input image sizes
-   * and reset output buffer size
-   * and reset mkldnn forward
-   */
-  void reshape();
-
-  /**
-   * reset the forward primitve and memory
-   * only would be called when input size changes
-   */
-  void resetFwd();
-
-  /**
-   * reset the backward primitve and memory for mkldnn fc
-   * only would be called when needed
-   */
-  void resetBwd();
 
   void printSizeInfo();
 

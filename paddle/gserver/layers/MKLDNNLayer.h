@@ -19,6 +19,7 @@ limitations under the License. */
 #include "MKLDNNBase.h"
 #include "mkldnn.hpp"
 #include "paddle/math/MKLDNNMatrix.h"
+#include "paddle/utils/Stat.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -53,6 +54,10 @@ protected:
   std::shared_ptr<mkldnn::primitive> bwdData_;
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
+
+  // cpu output Argument index of outputOtherDevice_, set -1 if none
+  // TODO(TJ): remove me if unused
+  int cpuOutputIndex_;
 
   // MKLDNNMatrixPtr
   MKLDNNMatrixPtr inVal_;
@@ -98,11 +103,84 @@ public:
     if (!Layer::init(layerMap, parameterMap)) {
       return false;
     }
+    cpuOutputIndex_ = getCPUOutputIndex();
 
     stream_.reset(new MKLDNNStream());
     engine_ = CPUEngine::Instance().getEngine();
     return true;
   }
+
+  void forward(PassType passType) override {
+    passType_ = passType;
+    copySeqInfoToOutputs();
+
+    CHECK(!inputLayers_.empty());
+    size_t elemenCnt = inputLayers_[0]->getOutput().value->getElementCnt();
+    if (inputElemenCnt_ != elemenCnt) {
+      inputElemenCnt_ = elemenCnt;
+      reshape();
+      resetFwd();
+      convertWeightsFromPaddle();
+      needResetBwd_ = true;
+    }
+
+    {
+      REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
+      syncInputValue();
+
+      // just submit forward pipeline
+      stream_->submit(pipelineFwd_);
+    }
+
+    /* activation */ {
+      REGISTER_TIMER_INFO("FwActTimer", getName().c_str());
+      forwardActivation();
+    }
+  }
+
+  void backward(const UpdateCallback& callback) override {
+    /* Do derivation */ {
+      REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
+      backwardActivation();
+    }
+
+    {
+      REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
+      if (needResetBwd_) {
+        resetBwd();
+        needResetBwd_ = false;
+      }
+
+      syncOutputGrad();
+      // just sumbmit backward pipeline
+      stream_->submit(pipelineBwd_);
+    }
+
+    {
+      REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
+      updateWeights(callback);
+    }
+  }
+
+  /**
+   * reshape the input image sizes
+   * and reset output image and buffer size
+   */
+  virtual void reshape() = 0;
+
+  /**
+   * reset the mkldnn forward primitve and memory
+   * only would be called when input size changes
+   */
+  virtual void resetFwd() = 0;
+
+  /**
+   * reset the mkldnn backward primitve and memory for mkldnn fc
+   * only would be called when needed
+   */
+  virtual void resetBwd() = 0;
+
+  virtual void updateWeights(const UpdateCallback& callback) {}
 
   /**
    * convert weight from paddle format to mkldnn format
@@ -115,6 +193,35 @@ public:
    * weight_ will be override
    */
   virtual void convertWeightsToPaddle() {}
+
+protected:
+  /**
+   * reshape the input image sizes and input batchsize
+   */
+  virtual void reshapeInput() {
+    const Argument& input = inputLayers_[0]->getOutput();
+    bs_ = input.getBatchSize();
+    int height = input.getFrameHeight();
+    int width = input.getFrameWidth();
+    if (height != 0) {
+      ih_ = height;
+    }
+    if (width != 0) {
+      iw_ = width;
+    }
+  }
+
+  /**
+   * reshape output image sizes
+   */
+  virtual void reshapeOutput(size_t height, size_t width) {
+    output_.setFrameHeight(height);
+    output_.setFrameWidth(width);
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      outputOtherDevice_[i].setFrameHeight(height);
+      outputOtherDevice_[i].setFrameWidth(width);
+    }
+  }
 
   /**
    * print info about sizes
@@ -146,30 +253,6 @@ public:
   }
 
 protected:
-  /**
-   * copy image size and sequence info to other device
-   * @note: can not directly use Layer::copyOutputToOtherDevice since here only
-   *        copy base info and do not copy data value
-   */
-  void copyOutputInfoToOtherDevice() {
-    int cnt = 0;
-    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-      outputOtherDevice_[i].setFrameHeight(output_.getFrameHeight());
-      outputOtherDevice_[i].setFrameWidth(output_.getFrameWidth());
-      outputOtherDevice_[i].sequenceStartPositions =
-          output_.sequenceStartPositions;
-      outputOtherDevice_[i].subSequenceStartPositions =
-          output_.subSequenceStartPositions;
-      outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
-      if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
-        ++cnt;
-      }
-    }
-    if (cnt > 1) {
-      LOG(WARNING) << "should not have more than one CPU devie";
-    }
-  }
-
   /**
    * If input only has MKLDNN device.
    * Otherwise, only support the previous layer using CPU device.
@@ -228,6 +311,7 @@ protected:
    */
   void setDevice(int id) { deviceId_ = id; }
 
+private:
   /**
    * Set deviceId of the params used in this layer.
    */
@@ -249,6 +333,45 @@ protected:
           << "Cannot find bias parameter " << name << " for layer "
           << getName();
       parameter->setDevice(id);
+    }
+  }
+
+  /**
+   * get cpu output Argument index of outputOtherDevice_.
+   * return -1 if none.
+   */
+  int getCPUOutputIndex() {
+    int index = -1;
+    int cnt = 0;
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
+        ++cnt;
+        index = i;
+      }
+    }
+    CHECK_LE(cnt, 1) << "should not have more than one CPU devie";
+    return index;
+  }
+
+  /**
+   * copy SeqInfo from input layer to this output and other output devices.
+   * @note: do not use getInput(0) since it used this deviceId_,
+   *        use "inputLayers_[0]->getOutput()" instead.
+   */
+  void copySeqInfoToOutputs() {
+    if (inputLayers_.empty() || !needSequenceInfo_) {
+      return;
+    }
+    const Argument& input = inputLayers_[0]->getOutput();
+    output_.sequenceStartPositions = input.sequenceStartPositions;
+    output_.subSequenceStartPositions = input.subSequenceStartPositions;
+    output_.cpuSequenceDims = input.cpuSequenceDims;
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      outputOtherDevice_[i].sequenceStartPositions =
+          output_.sequenceStartPositions;
+      outputOtherDevice_[i].subSequenceStartPositions =
+          output_.subSequenceStartPositions;
+      outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
     }
   }
 };
