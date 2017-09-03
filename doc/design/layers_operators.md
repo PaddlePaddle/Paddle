@@ -72,12 +72,12 @@ def layer.fc(X):
 
 We'd like to have Python bindings to operators in package `paddle.operator`, and Python compositions of operators in package `paddle.layer`.  So we have the following concepts in above illustrative example:
 
-| implementation         | mul          | add          | fc          | fc       |
----------------------------------------------------------------------------------
+```
 | C++ functions/functors | mul          | add          |             |          |
 | C++ operator class     | mulOp        | addOp        | FCOp        |          |
 | Python binding         | operator.mul | operator.add | operator.fc |          |
 | Python function        |              |              |             | layer.fc |
+```
 
 This is how we differentiate layer and operators in PaddlePaddle:
 
