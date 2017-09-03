@@ -7,7 +7,7 @@ x = var()
 y = var()
 cond = var()
 
-b = pd.create_ifop_builder(inputs=[x], output_num=1)
+b = pd.create_ifop(inputs=[x], output_num=1)
 with b.true_block():
     x = b.inputs(0)
     z = operator.add(x, y)
@@ -25,7 +25,7 @@ x = var()
 y = var()
 cond = var()
 default_value = var()
-b = pd.create_ifelseop_builder(inputs=[x], output_num=1)
+b = pd.create_ifelseop(inputs=[x], output_num=1)
 with b.true_block():
     x = b.inputs(0)
     z = operator.add(x, y)
@@ -47,7 +47,7 @@ x = var()
 y = var()
 cond = var()
 default_value = var()
-b = pd.create_ifelseop_builder(inputs=[x], output_num=1, default_value)
+b = pd.create_ifelseop(inputs=[x], output_num=1, default_value)
 
 with b.true_block():
     x = b.inputs(0)
