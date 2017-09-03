@@ -233,6 +233,11 @@ class InferShapeContext {
 
   const Scope& scope() const { return scope_; }
 
+  template <typename T>
+  inline const T& GetAttr(const std::string& name) const {
+    return op_.GetAttr<T>(name);
+  }
+
   size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
   }

@@ -19,13 +19,12 @@ template <typename T>
 class CPUGaussianRandomKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    float mean = context.op().GetAttr<float>("mean");
-    float std = context.op().GetAttr<float>("std");
+    float mean = context.GetAttr<float>("mean");
+    float std = context.GetAttr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    unsigned int seed =
-        static_cast<unsigned int>(context.op().GetAttr<int>("seed"));
+    unsigned int seed = static_cast<unsigned int>(context.GetAttr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
