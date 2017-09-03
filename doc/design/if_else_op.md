@@ -47,8 +47,9 @@ o1, o2 = if(cond)
 
 Some questions:
  1. how to know which inputs will be selected by condition?
- e.g. True_block():
+ ```python
+ True_block():
   y = pd.fc(x)
   # we will have x, w, b all as inputs
   # but only x will be selected by cond, how can the block know?
-
+```
