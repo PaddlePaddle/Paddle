@@ -148,16 +148,14 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
-REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, rowwise_add_grad,
-            f::NOP);
-REGISTER_OP(mul, f::NOP, f::MulOpMaker, mul_grad, f::NOP);
-REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, sigmoid_grad, f::NOP);
+REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, f::NOP);
+REGISTER_OP(mul, f::NOP, f::MulOpMaker, f::NOP);
+REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
 REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, f::NOP, f::FillZeroOpMaker);
-REGISTER_OP(add, f::NOP, f::AddOpMaker, add_grad, f::NOP);
+REGISTER_OP(add, f::NOP, f::AddOpMaker, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
-REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
-            f::NOP);
+REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, f::NOP);
 
 TEST(Backward, simple_op_grad) {
   auto fwd = f::OpRegistry::CreateOp(
