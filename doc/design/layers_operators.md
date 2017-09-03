@@ -1,4 +1,4 @@
-# Design Doc: Layers and Operators
+# Design Doc: Functions, Operators, and Layers
 
 In a DL system, we can compose one or more fine grained operators into a coarse grained one.  For example, the FC layer can be composed of a multiplication operator and an add operator.
 
@@ -20,8 +20,8 @@ Then we can wrap them into operators which are C++ classes and can be created fr
 generates
 
 ```c++
-class mulOp : public OperatorBase {...};
-REGISTER_OP(mulOp, "mul");
+template <typename T> class mulOp : public OperatorBase {...};
+REGISTER_OP(mulOp<float32>, "mul");
 ```
 
 so that in Python we can create operator mul by:
@@ -36,12 +36,13 @@ paddle.cpp.create_operator("mul", input=[X1, X2], output=Y)
 Also, at the same time, we can compose a coarse level C++ operator class by composing functions `mul` and `add`:
 
 ```c++
+template <typename T>
 class FCOp : public OperatorBase {
  public:
   void Run(...) {
-    add(mul(Input("X"), Input("W")), Input("b");
+    add(mul(Input<T>("X"), Input<T>("W")), Input<T>("b");
   }
-};
+};d
 REGISTER_OP(FCOp, "fc");
 ```
 
