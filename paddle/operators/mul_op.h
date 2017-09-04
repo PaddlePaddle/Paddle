@@ -31,13 +31,13 @@ template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<Tensor>("X");
-    auto* Y = context.Input<Tensor>("Y");
-    auto* Z = context.Output<Tensor>("Out");
-    Z->mutable_data<T>(context.GetPlace());
+    auto* x = context.Input<Tensor>("X");
+    auto* y = context.Input<Tensor>("Y");
+    auto* z = context.Output<Tensor>("Out");
+    z->mutable_data<T>(context.GetPlace());
     auto* device_context =
         const_cast<platform::DeviceContext*>(context.device_context_);
-    math::matmul<Place, T>(*X, false, *Y, false, 1, Z, 0, device_context);
+    math::matmul<Place, T>(*x, false, *y, false, 1, z, 0, device_context);
   }
 };
 
@@ -45,20 +45,24 @@ template <typename Place, typename T>
 class MulGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    dX->mutable_data<T>(ctx.GetPlace());
-    dY->mutable_data<T>(ctx.GetPlace());
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     auto* device_context =
         const_cast<platform::DeviceContext*>(ctx.device_context_);
-    // dX = dOut * Y'. dX: M x K, dOut : M x N, Y : K x N
-    math::matmul<Place, T>(*dOut, false, *Y, true, 1, dX, 0, device_context);
-    // dY = X' * dOut. dY: K x N, dOut : M x N, X : M x K
-    math::matmul<Place, T>(*X, true, *dOut, false, 1, dY, 0, device_context);
+    if (dx) {
+      // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
+      dx->mutable_data<T>(ctx.GetPlace());
+      math::matmul<Place, T>(*dout, false, *y, true, 1, dx, 0, device_context);
+    }
+    if (dy) {
+      dy->mutable_data<T>(ctx.GetPlace());
+      // dy = x' * dout. dy K x N, dout : M x N, x : M x K
+      math::matmul<Place, T>(*x, true, *dout, false, 1, dy, 0, device_context);
+    }
   }
 };
 

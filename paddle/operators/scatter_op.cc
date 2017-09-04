@@ -50,8 +50,8 @@ class ScatterGradOp : public framework::OperatorWithKernel {
     auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));
     auto *Ref = ctx.Input<Tensor>("Ref");
 
-    dRef->Resize(Ref->dims());
-    dUpdates->Resize(Updates->dims());
+    if (dRef) dRef->Resize(Ref->dims());
+    if (dUpdates) dUpdates->Resize(Updates->dims());
   }
 };
 

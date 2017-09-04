@@ -64,8 +64,10 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
     auto dims0 = ctx.Input<Tensor>("X")->dims();
     auto dims1 = ctx.Input<Tensor>("b")->dims();
     PADDLE_ENFORCE_EQ(1, dims1.size(), "b dims should be 1")
-    ctx.Output<Tensor>(framework::GradVarName("X"))->Resize(dims0);
-    ctx.Output<Tensor>(framework::GradVarName("b"))->Resize(dims1);
+    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *db = ctx.Output<Tensor>(framework::GradVarName("b"));
+    if (dx) dx->Resize(dims0);
+    if (db) db->Resize(dims1);
   }
 };
 
