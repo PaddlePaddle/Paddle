@@ -50,7 +50,7 @@ message LoDTensorDesc {
 In Python API, layer will take Variable as Input, and return Variable as Output.
 
 ```python
-image = Variable()
+image = Variable(dims=[-1, 640, 480])
 # fc1 and fc2 are both Variable
 fc1 = layer.fc(input=image, output_size=10)
 fc2 = layer.fc(input=fc1, output_size=20)
@@ -90,14 +90,14 @@ def flatten_size(X, num_flatten_dims):
   return prod
 
 def layer.fc(X, output_size, num_flatten_dims):
-  W = Var(type=FP32, dims=[flatten_size(X, num_flatten_dims), output_size])
+  W = Variable(type=FP32, dims=[flatten_size(X, num_flatten_dims), output_size])
   b = Variable(type=FP32, dims=[output_size])
   out = Variable(type=FP32)
   y = operator.fc(X, W, b, output=out) # fc will put fc op input into out
   pd.InferShape(y)
   return out
 
-x = var(dim=[-1, 640, 480])
+x = Variable(dims=[-1, 640, 480])
 y = layer.fc(x, output_size=100)
 z = layer.fc(y, output_size=200)
 
