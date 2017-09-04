@@ -4,7 +4,7 @@ PaddlePaddle divides the description of neural network computation graph into tw
 PaddlePaddle use proto message to describe compile time graph for
 
 1. Computation graph should be able to be saved to a file.
-1. In distributed trianing, graph will be serialized and send to multiple workers.
+1. In distributed training, the graph will be serialized and send to multiple workers.
 
 The computation graph is constructed by Data Node and Operation Node. The concept to represent them is in the table below.
 
@@ -40,7 +40,7 @@ message LoDTensorDesc {
   }
 
   Type data_type = 1;
-  repeated int dims = 2; // [UNK, 6000] is saved as [-1, 6000]
+  repeated int dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   optional int lod_level [default=0] = 3;
 }
 ```
@@ -78,7 +78,7 @@ class Variable(object):
        return self._var.data_type()
 ```
 
-Then we can use this Variable to create an fc layer in Python.
+Then we can use this Variable to create a fc layer in Python.
 
 ```python
 import paddle as pd
