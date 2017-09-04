@@ -53,7 +53,7 @@ __all__ = [
     'cos_sim',
     'hsigmoid',
     'conv_projection',
-    'mse_cost',
+    'square_error_cost',
     'regression_cost',
     'classification_cost',
     'LayerOutput',
@@ -4238,13 +4238,18 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
+def square_error_cost(input,
+                      label,
+                      weight=None,
+                      name=None,
+                      coeff=1.0,
+                      layer_attr=None):
     """
-    mean squared error cost:
+    sum of square error cost:
 
     ..  math::
 
-        \\frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
+        cost = \\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
@@ -4273,7 +4278,7 @@ def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
 
 
-regression_cost = mse_cost
+regression_cost = square_error_cost
 
 
 @wrap_name_default("cost")
@@ -5798,9 +5803,9 @@ def huber_regression_cost(input,
                           coeff=1.0,
                           layer_attr=None):
     """
-    In statistics, the Huber loss is a loss function used in robust regression, 
-    that is less sensitive to outliers in data than the squared error loss. 
-    Given a prediction f(x), a label y and :math:`\delta`, the loss function 
+    In statistics, the Huber loss is a loss function used in robust regression,
+    that is less sensitive to outliers in data than the squared error loss.
+    Given a prediction f(x), a label y and :math:`\delta`, the loss function
     is defined as:
 
     .. math:
@@ -5848,13 +5853,13 @@ def huber_classification_cost(input,
                               coeff=1.0,
                               layer_attr=None):
     """
-    For classification purposes, a variant of the Huber loss called modified Huber 
-    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and 
-    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber 
+    For classification purposes, a variant of the Huber loss called modified Huber
+    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and
+    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber
     loss is defined as:
 
     .. math:
-       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1 
+       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1
        loss = -4yf(x), \text{otherwise}
 
     The example usage is:
