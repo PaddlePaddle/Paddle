@@ -1,90 +1,106 @@
 ## Background
 PaddlePaddle divides the description of neural network computation graph into two stages: compile time and runtime.
 
-The data structure to describe the compile time graph should be able to be serialized for distributed training. So we use proto message to describe the graph: OpDesc to describe computation and VarDesc to describe data.
+PaddlePaddle use proto message to describe compile time graph for
 
-PaddlePaddle will generate these data structure according to user's description and do some optimization, such as:
+1. Computation graph should be able to be saved to a file.
+1. In distributed trianing, graph will be serialized and send to multiple workers.
 
-1. InferShape. Infer the Output size according to Input size and set them into VarDesc.
-1. memory optimise and reuse. Scan all the memory that will be used and reuse some memory that is allocated before but will not be used anymore to reduce memory.
+The computation graph is constructed by Data Node and Operation Node. The concept to represent them is in the table below.
 
-VarDesc is used to describe different kinds of Variable value, such as Tensor, scalar, and scope:
+| |compile time|runtime|
+|---|---|---|
+|Data|VarDesc(proto)|Variable(cpp)|
+|Operation|OpDesc(proto)|Operator(cpp)|
 
-## Definition of VarDesc in Proto
 
+## Definition of VarDesc
+
+A VarDesc should have a name and value, in PaddlePaddle, the value will always be a tensor. Since we use LoDTensor most of the time. We add a LoDTesnorDesc to represent it.
+
+```proto
+message VarDesc {
+  required string name = 1;
+  optional LoDTesnorDesc lod_tensor = 2; //
+}
 ```
+
+## Definition of LodTensorDesc
+
+```proto
 message LoDTensorDesc {
   enum Type {
+    BOOL = 0;
     INT16 = 1;
     INT32 = 2;
     INT64 = 3;
     FP16 = 4;
     FP32 = 5;
-    DOUBLE = 6
-    BOOL = 7;
+    FP64 = 6
   }
 
-  Type element_type = 1;
-  repeated int dims = 2; // [UNK, UNK, 6000] is saved as [-1, -1, 6000]
+  Type data_type = 1;
+  repeated int dims = 2; // [UNK, 6000] is saved as [-1, 6000]
   optional int lod_level [default=0] = 3;
-  repeated int32 int16_val = 4 [packed = true]; // INT16
-  repeated int32 int32_val = 5 [packed = true]; // INT32
-  repeated int64 int64_val = 6 [packed = true]; // INT64
-  repeated float float_val = 7 [packed = true]; // FP32
-  repeated double double_val = 8 [packed = true]; // DOUBLE
-  repeated bool bool_val = 9 [packed = true];  // BOOL
 }
-
-message VarDesc {
-  enum Type {
-    INT = 0;
-    FLOAT = 1;
-    STRING = 2;
-    INTS = 3;
-    FLOATS = 4;
-    STRINGS = 5;
-    LOD_TENSOR = 6;
-  }
-
-  message Value {
-    optional int32 i = 1;
-    optional float f = 2;
-    optional string s = 3;
-    repeated int32 ints = 4;
-    repeated float floats = 5;
-    repeated string strings = 6;
-    optional LodTesnorDesc lod_tensor = 7; // when type==LOD_TENSOR
-  }
-
-  required string name = 1;
-  required Type type = 2;
-  required Value value = 3;
-}
-
 ```
 
 ## Definition of Variable in Python
 
-There is a class `Variable` in python to help create Variable.
+In Python API, layer will take Variable as Input, and return Variable as Output.
 
 ```python
+image = Variable()
+# fc1 and fc2 are both Variable
+fc1 = layer.fc(input=image, output_size=10)
+fc2 = layer.fc(input=fc1, output_size=20)
+```
+
+There should be a class `Variable` in python to help create and manage Variable.
+
+```python
+import VarDesc
+import LoDTensorDesc
+import framework
+
 class Variable(object):
-  def __init__(self,
-               name=None,
-               data_type=None,
-               shape=None,
-               value=None,
-               trainable=True):
+   def __init__(self, name, dims, type):
+      self._name = name
+      self.op = None
+      tensor_desc = LoDTensorDesc(data_type=type, dims=dims)
+      _var_desc = VarDesc(name=name, lod_tensor=tensor_desc)
+      self._var = framework.CreateVar(_var_desc)
+
+   def dims(self):
+      return self._var.dims()
+
+   def data_type(self):
+       return self._var.data_type()
 ```
 
-create a variable with a tensor value.
+Then we can use this Variable to create an fc layer in Python.
 
 ```python
-a = Variable("X", shape=[784, 10], data_type=pd.INT32, value=0)
-```
+import paddle as pd
 
-or create a Variable with a string value
+def flatten_size(X, num_flatten_dims):
+  prod = 1 # of last num_flatten_dims
+  for i in xrange(num_flatten_dims):
+    prod = prod * X.dims[-i-1]
+  return prod
 
-```python
-a = Variable("X", data_type=pd.STRING, value="aa")
+def layer.fc(X, output_size, num_flatten_dims):
+  W = Var(type=FP32, dims=[flatten_size(X, num_flatten_dims), output_size])
+  b = Variable(type=FP32, dims=[output_size])
+  out = Variable(type=FP32)
+  y = operator.fc(X, W, b, output=out) # fc will put fc op input into out
+  pd.InferShape(y)
+  return out
+
+x = var(dim=[-1, 640, 480])
+y = layer.fc(x, output_size=100)
+z = layer.fc(y, output_size=200)
+
+paddle.train(z, ...)
+print(y)
 ```
