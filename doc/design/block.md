@@ -109,13 +109,13 @@ public:
     }
   }
 
+protected:
   void LocalScopeInit(const framework::Scope &scope) {
     if (!scope_) {
       scope_ = Scope.NewScope();
     }
   }
 
-protected:
   // create all variables and operators according to Protobuf description.
   RuntimeInit() {
     if (ops_.empty()) {
