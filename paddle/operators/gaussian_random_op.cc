@@ -24,8 +24,7 @@ class CPUGaussianRandomKernel : public framework::OpKernel {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    unsigned int seed =
-        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+    unsigned int seed = context.op_.GetAttr<int>("seed");
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
@@ -67,9 +66,9 @@ Use to initialize tensor with gaussian random generator.
     AddAttr<std::vector<int>>("dims", "The dimension of random tensor.");
     AddAttr<float>("mean", "mean of random tensor.").SetDefault(.0f);
     AddAttr<float>("std", "std of random tensor.").SetDefault(1.0f);
-    AddAttr<int>("seed",
-                 "Random seed of generator."
-                 "0 means use system wide seed")
+    AddAttr<unsigned>("seed",
+                      "Random seed of generator."
+                      "0 means use system wide seed")
         .SetDefault(0);
   }
 };
