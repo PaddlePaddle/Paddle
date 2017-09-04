@@ -66,7 +66,7 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
-            lookup_table_grad, ops::LookupTableOpGrad);
+            ops::LookupTableOpGrad);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>);

@@ -106,8 +106,7 @@ using EnforceNotMet = paddle::platform::EnforceNotMet;
 
 REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
 REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
-REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
-            f::NOP);
+REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, f::NOP);
 
 TEST(Backward, simple_op_grad) {
   auto fwd = f::OpRegistry::CreateOp(

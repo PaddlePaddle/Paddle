@@ -63,8 +63,7 @@ Out = X[Index]
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(gather, ops::GatherOp, ops::GatherOpMaker, gather_grad,
-            ops::GatherGradOp);
+REGISTER_OP(gather, ops::GatherOp, ops::GatherOpMaker, ops::GatherGradOp);
 REGISTER_OP_CPU_KERNEL(gather,
                        ops::GatherOpKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
