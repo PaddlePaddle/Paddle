@@ -83,8 +83,9 @@ class Im2ColFunctor<kCFO, platform::GPUPlace, T> {
     int block_y = (blocks + 512 - 1) / 512;
     dim3 threads(1024, 1);
     dim3 grid(block_x, block_y);
-    // TODO(hedaoyuan): launch kernel on specified stream
-    im2col<T><<<grid, threads>>>(
+    im2col<T><<<
+        grid, threads, 0,
+        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
         im.data<T>(), num_outputs, input_height, input_width, filter_height,
         filter_width, stride_height, stride_width, padding_height,
         padding_width, output_height, output_width, col.data<T>());
@@ -171,8 +172,9 @@ class Col2ImFunctor<kCFO, platform::GPUPlace, T> {
 
     // To avoid involving atomic operations, we will launch one kernel per
     // bottom dimension, and then in the kernel add up the top dimensions.
-    // TODO(hedaoyuan): launch kernel on specified stream
-    col2im<T><<<grid, threads>>>(
+    col2im<T><<<
+        grid, threads, 0,
+        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
         num_kernels, col.data<T>(), input_height + 2 * padding_height,
         input_width + 2 * padding_width, input_channels, filter_height,
         filter_width, stride_height, stride_width, padding_height,
@@ -259,8 +261,9 @@ class Im2ColFunctor<kOCF, platform::GPUPlace, T> {
     dim3 threads(block_dim_x, block_dim_y,
                  std::min(block_dim_z, input_channels));
     dim3 grid(output_width, output_height);
-    // TODO(hedaoyuan): launch kernel on specified stream
-    im2colOCF<T><<<grid, threads>>>(
+    im2colOCF<T><<<
+        grid, threads, 0,
+        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
         im.data<T>(), col.data<T>(), input_channels, input_height, input_width,
         filter_height, filter_width, stride_height, stride_width,
         padding_height, padding_width, output_height, output_width);
@@ -340,8 +343,9 @@ class Col2ImFunctor<kOCF, platform::GPUPlace, T> {
     dim3 threads(block_dim_x, block_dim_y,
                  std::min(block_dim_z, input_channels));
     dim3 grid(output_width, output_height);
-    // TODO(hedaoyuan): launch kernel on specified stream
-    col2imOCF<T><<<grid, threads>>>(
+    col2imOCF<T><<<
+        grid, threads, 0,
+        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
         im.data<T>(), col.data<T>(), input_channels, input_height, input_width,
         filter_height, filter_width, stride_height, stride_width,
         padding_height, padding_width, output_height, output_width);
