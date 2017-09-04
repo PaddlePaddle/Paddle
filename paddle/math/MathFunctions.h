@@ -26,7 +26,7 @@ limitations under the License. */
 #include <mkl_lapacke.h>
 #endif
 
-#ifdef PADDLE_USE_ATLAS
+#if defined(PADDLE_USE_ATLAS) || defined(PADDLE_USE_VECLIB)
 extern "C" {
 #include <cblas.h>
 #include <clapack.h>
