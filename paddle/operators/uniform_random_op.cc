@@ -26,16 +26,15 @@ class CPUUniformRandomKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed =
-        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+    unsigned int seed = static_cast<unsigned int>(context.GetAttr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
     }
     engine.seed(seed);
     std::uniform_real_distribution<T> dist(
-        static_cast<T>(context.op_.GetAttr<float>("min")),
-        static_cast<T>(context.op_.GetAttr<float>("max")));
+        static_cast<T>(context.GetAttr<float>("min")),
+        static_cast<T>(context.GetAttr<float>("max")));
     ssize_t size = framework::product(tensor->dims());
     for (ssize_t i = 0; i < size; ++i) {
       data[i] = dist(engine);

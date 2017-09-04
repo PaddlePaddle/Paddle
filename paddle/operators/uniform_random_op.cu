@@ -45,14 +45,13 @@ class GPUUniformRandomKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed =
-        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+    unsigned int seed = static_cast<unsigned int>(context.GetAttr<int>("seed"));
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
     }
-    T min = static_cast<T>(context.op_.GetAttr<float>("min"));
-    T max = static_cast<T>(context.op_.GetAttr<float>("max"));
+    T min = static_cast<T>(context.GetAttr<float>("min"));
+    T max = static_cast<T>(context.GetAttr<float>("max"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     ssize_t N = framework::product(tensor->dims());
     thrust::transform(index_sequence_begin, index_sequence_begin + N,
