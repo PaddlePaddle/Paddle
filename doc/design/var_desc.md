@@ -57,7 +57,7 @@ fc2 = layer.fc(input=fc1, output_size=20)
 ```
 ### what should class `Variable` Have
 1. `name`.a name of string type is used to mark the value of the Variable.
-1. `initializer`. Since our Tensor does not have value. we will always use some Operator to fullfill it when run. So we should have a inialize method to help add the init operator.
+1. `initializer`. Since our Tensor does not have value. we will always use some Operator to fullfill it when run. So we should have a initialize method to help add the init operator.
 1. `operator`. Variable should record which operator produce itself. The reaon is:
   - we use pd.eval(targets=[var1, var2]) to run the related ops to get the value of var1 and var2. var.op is used to trace the dependency of the current variable.
 
