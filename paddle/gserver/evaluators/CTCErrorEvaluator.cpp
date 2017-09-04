@@ -21,7 +21,7 @@ namespace paddle {
 /**
  * calculate sequence-to-sequence edit distance
  */
-class CTCErrorEvaluator : public NotGetableEvaluator {
+class CTCErrorEvaluator : public Evaluator {
 private:
   MatrixPtr outActivations_;
   int numTimes_, numClasses_, numSequences_, blank_;
@@ -307,8 +307,10 @@ public:
   }
 
   std::string getType(const std::string& name, Error* err) const {
-    getValue(name, err);
-    if (!err->isOK()) return "";
+    this->getValue(name, err);
+    if (!err->isOK()) {
+      return "";
+    }
     return "ctc_edit_distance";
   }
 };
