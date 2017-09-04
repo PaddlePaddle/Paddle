@@ -26,22 +26,24 @@ m_boot = some_op()
 W = pd.Variable(shape=[20, 20])
 U = pd.Varable(shape=[20, 20])
 
-rnn = RNNOp()
+rnn = create_RNNOp()
 with rnn.stepnet() as net:
+  # declare the input variables that need to be segmented into steps
   x = net.add_input(v)
+  # declare rnn's memory (state)
   h = net.add_memory(init=m_boot)
   
   fc_out = pd.matmul(W, x)
   hidden_out = pd.matmul(U, h)
   sum = pd.add_two(fc_out, hidden_out)
   act = pd.sigmoid(sum)
-  # declare outputs
+  # declare outputs that needs to be merged across all the steps
   net.add_output(act, hidden_out)
 
 acts, hs = rnn()
 ```
 
-This python program will be transformed into Protobuf messages which describe the model, a C++ Block class will create the corresponding Variables and Operators, and execute all the operators.
+Above Python program builds a protobuf message which describe the model, a C++ Block class will create the corresponding Variables and Operators, and execute all the operators.
 
 ## Block Implementation
 
@@ -70,18 +72,18 @@ We can implement this idea in the following approach
 ```c++
 class Block {
 public:
-  Block(Block* father) : father_block_{father} {}
+  Block(Block* parent) : parent_{parent} {}
   // add a new VarDesc, return the pointer to enable other functions.
   // NOTE Will check whether some variable called the same name.
   VarDesc* AddVarDesc();
   OpDesc* AddOpDesc();
 
   // name: variable's name
-  // recursive: whether to find the variable in father's scope recursively.
+  // recursive: whether to find the variable in parent's scope recursively.
   VarDesc* FindVarDesc(const string& name, bool recursive=true);
 
 private:
-  Block* father_block_;
+  Block* parent_;
   // descriptions
   map<VarDesc> var_descs_;
   map<OpDesc> op_descs_;
@@ -101,26 +103,18 @@ public:
   // ...
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const {
-    RuntimeInit();
-    LocalScopeInit(scope);
 
-    for (auto* op : ops_) {
-      op->Run(scope, dev_ctx);
-    }
-  }
-
-protected:
-  void LocalScopeInit(const framework::Scope &scope) {
     if (!scope_) {
       scope_ = Scope.NewScope();
     }
-  }
 
-  // create all variables and operators according to Protobuf description.
-  RuntimeInit() {
     if (ops_.empty()) {
       // create ops
       // create vars
+    }
+
+    for (auto* op : ops_) {
+      op->Run(scope, dev_ctx);
     }
   }
 
