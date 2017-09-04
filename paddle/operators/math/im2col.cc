@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/operators/math/im2col.h"
 
 namespace paddle {
+namespace operators {
 namespace math {
 
 /*
@@ -243,4 +244,5 @@ template class Col2ImFunctor<kOCF, platform::CPUPlace, float>;
 template class Col2ImFunctor<kOCF, platform::CPUPlace, double>;
 
 }  // namespace math
+}  // namespace operators
 }  // namespace paddle

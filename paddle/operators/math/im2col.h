@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
+namespace operators {
 namespace math {
 
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
@@ -85,4 +86,5 @@ class Col2ImFunctor {
 };
 
 }  // namespace math
+}  // namespace operators
 }  // namespace paddle

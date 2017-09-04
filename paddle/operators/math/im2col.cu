@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
+namespace operators {
 namespace math {
 
 template <class T>
@@ -353,4 +354,5 @@ template class Col2ImFunctor<kOCF, platform::GPUPlace, float>;
 template class Col2ImFunctor<kOCF, platform::GPUPlace, double>;
 
 }  // namespace math
+}  // namespace operators
 }  // namespace paddle
