@@ -137,8 +137,10 @@ __all__ = [
     'clip_layer',
     'slice_projection',
     'seq_slice_layer',
-    'kmax_sequence_score_layer',
+    'kmax_seq_score_layer',
+    'img_pool3d_layer',
     'scale_shift_layer',
+    'img_conv3d_layer',
 ]
 
 
@@ -167,6 +169,7 @@ class LayerType(object):
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
     POOL_LAYER = 'pool'
+    POOL3D_LAYER = 'pool3d'
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
     SUM_TO_ONE_NORM_LAYER = 'sum_to_one_norm'
@@ -219,6 +222,9 @@ class LayerType(object):
     CRF_LAYER = 'crf'
     CRF_DECODING_LAYER = 'crf_decoding'
     NCE_LAYER = 'nce'
+
+    CONV3D_LAYER = 'conv3d'
+    DECONV3D_LAYER = 'deconv3d'
 
     RANK_COST = 'rank-cost'
     LAMBDA_COST = 'lambda_cost'
@@ -896,7 +902,8 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, height=None, width=None, layer_attr=None):
+def data_layer(name, size, depth=None, height=None, width=None,
+               layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -923,15 +930,18 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         type=LayerType.DATA,
         name=name,
         size=size,
+        depth=depth,
         height=height,
         width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
+    if depth is None:
+        depth = 1
     num_filters = None
     if height is not None and width is not None:
-        num_filters = size / (width * height)
-        assert num_filters * width * height == size, \
-            "size=%s width=%s height=%s" % (size, width, height)
+        num_filters = size / (width * height * depth)
+        assert num_filters * width * height * depth == size, \
+                "size=%s width=%s height=%s depth=%s"  % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
@@ -2644,6 +2654,146 @@ def img_pool_layer(input,
                     size_y=pool_size_y,
                     stride_y=stride_y,
                     padding_y=padding_y))
+        ],
+        ceil_mode=ceil_mode,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        LayerType.POOL_LAYER,
+        parents=[input],
+        num_filters=num_channels,
+        size=l.config.size)
+
+
+@wrap_name_default("pool3d")
+@layer_support()
+def img_pool3d_layer(input,
+                     pool_size,
+                     name=None,
+                     num_channels=None,
+                     pool_type=None,
+                     stride=1,
+                     padding=0,
+                     layer_attr=None,
+                     pool_size_y=None,
+                     stride_y=None,
+                     padding_y=None,
+                     pool_size_z=None,
+                     stride_z=None,
+                     padding_z=None,
+                     ceil_mode=True):
+    """
+    Image pooling Layer.
+
+    The details of pooling layer, please refer ufldl's pooling_ .
+
+    .. _pooling: http://ufldl.stanford.edu/tutorial/supervised/Pooling/
+
+    - ceil_mode=True:
+
+    ..  math::
+
+        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
+        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        d = 1 + int(ceil(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+
+    - ceil_mode=False:
+
+    ..  math::
+
+        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
+        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        d = 1 + int(floor(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        maxpool = img_pool3d_layer(input=conv,
+                                 pool_size=3,
+                                 num_channels=8,
+                                 stride=1,
+                                 padding=1,
+                                 pool_type=MaxPooling())
+
+    :param padding: pooling padding width.
+    :type padding: int|tuple|list
+    :param name: name of pooling layer
+    :type name: basestring.
+    :param input: layer's input
+    :type input: LayerOutput
+    :param pool_size: pooling window width
+    :type pool_size: int|tuple|list
+    :param num_channels: number of input channel.
+    :type num_channels: int
+    :param pool_type: pooling type. MaxPooling or AvgPooling. Default is
+                      MaxPooling.
+    :type pool_type: BasePoolingType
+    :param stride: stride width of pooling.
+    :type stride: int|tuple|list
+    :param layer_attr: Extra Layer attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
+                      Defalut is True. If set false, Otherwise use floor.
+
+    :type ceil_mode: bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if pool_type is None:
+        pool_type = MaxPooling()
+    elif isinstance(pool_type, AvgPooling):
+        pool_type.name = 'avg'
+
+    type_name = pool_type.name + '-projection' \
+        if (
+        isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
+
+    if isinstance(pool_size, collections.Sequence):
+        assert len(pool_size) == 3
+        pool_size, pool_size_y, pool_size_z = pool_size
+    else:
+        pool_size_y = pool_size
+        pool_size_z = pool_size
+
+    if isinstance(stride, collections.Sequence):
+        assert len(stride) == 3
+        stride, stride_y, stride_z = stride
+    else:
+        stride_y = stride
+        stride_z = stride
+
+    if isinstance(padding, collections.Sequence):
+        assert len(padding) == 3
+        padding, padding_y, padding_y = padding
+    else:
+        padding_y = padding
+        padding_z = padding
+
+    l = Layer(
+        name=name,
+        type=LayerType.POOL3D_LAYER,
+        inputs=[
+            Input(
+                input.name,
+                pool=Pool3d(
+                    pool_type=type_name,
+                    channels=num_channels,
+                    size_x=pool_size,
+                    start=None,
+                    stride=stride,
+                    padding=padding,
+                    size_y=pool_size_y,
+                    stride_y=stride_y,
+                    padding_y=padding_y,
+                    size_z=pool_size_z,
+                    stride_z=stride_z,
+                    padding_z=padding_z))
         ],
         ceil_mode=ceil_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
@@ -5844,7 +5994,7 @@ def cross_entropy_over_beam(input, name=None):
     Note that, if gold falls off the beam at search step t, then the cost is
     calculated over the beam at step t.
 
-    This cost layer always works together with kmax_sequence_score_layer,
+    This cost layer always works together with kmax_seq_score_layer,
     sub_nested_seq_layer, and sequence_slice_layer to trim the input to form a
     sub-search space.
 
@@ -6447,14 +6597,14 @@ def seq_slice_layer(input, starts, ends, name=None):
 
 @wrap_name_default()
 @layer_support()
-def kmax_sequence_score_layer(input, name=None, beam_size=1):
+def kmax_seq_score_layer(input, name=None, beam_size=1):
     """
     This layer accepts one input which are scores over a sequence or a nested
     sequence, and returns indices of beam_size sequences with highest scores.
 
     .. code-block:: python
 
-        kmax_indices = kmax_sequence_score_layer(input=input_layer, beam_size)
+        kmax_indices = kmax_seq_score_layer(input=input_layer, beam_size)
 
 
     :param name: The Layer Name.
@@ -6467,10 +6617,10 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert isinstance(input, LayerOutput), ("kmax_sequence_score_layer "
+    assert isinstance(input, LayerOutput), ("kmax_seq_score_layer "
                                             "accepts only one input.")
     assert input.size == 1, (
-        "input of kmax_sequence_score_layer is a score"
+        "input of kmax_seq_score_layer is a score "
         "over a sequence or a nested sequence, so its width must be 1.")
 
     Layer(
@@ -6481,6 +6631,149 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
 
     return LayerOutput(
         name, LayerType.KMAX_SEQ_SCORE, parents=[input], size=input.size)
+
+
+@wrap_name_default("conv3d")
+@wrap_param_attr_default()
+@wrap_bias_attr_default()
+@wrap_act_default(act=ReluActivation())
+@layer_support(DROPOUT)
+def img_conv3d_layer(input,
+                     filter_size,
+                     num_filters,
+                     name=None,
+                     num_channels=None,
+                     act=None,
+                     groups=1,
+                     stride=1,
+                     padding=0,
+                     bias_attr=None,
+                     param_attr=None,
+                     shared_biases=True,
+                     layer_attr=None,
+                     trans=False,
+                     layer_type=None):
+    """
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        conv = img_conv3d_layer(input=data, filter_size=1,
+                              num_channels=8,
+                              num_filters=16, stride=1,
+                              bias_attr=False,
+                              act=ReluActivation())
+
+    :param name: Layer name.
+    :type name: basestring
+    :param input: Layer Input.
+    :type input: LayerOutput
+    :param filter_size: The x dimension of a filter kernel. Or input a list.
+    :type filter_size: int|tuple|list
+    :param num_filters: Each filter group's number of filter
+    :param act: Activation type. Default is tanh
+    :type act: BaseActivation
+    :param groups: Group size of filters.
+    :type groups: int
+    :param stride: The x dimension of the stride. Or input a tuple for two image
+                   dimension.
+    :type stride: int|tuple|list
+    :param padding: The x dimension of the padding. Or input a tuple for two
+                    image dimension
+    :type padding: int|tuple|list
+    :param bias_attr: Convolution bias attribute. None means default bias.
+                      False means no bias.
+    :type bias_attr: ParameterAttribute|False
+    :param num_channels: number of input channels. If None will be set
+                        automatically from previous output.
+    :type num_channels: int
+    :param param_attr: Convolution param attribute. None means default attribute
+    :type param_attr: ParameterAttribute
+    :param shared_biases: Is biases will be shared between filters or not.
+    :type shared_biases: bool
+    :param layer_attr: Layer Extra Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :type trans: bool
+    :param layer_type: specify the layer_type, default is None. If trans=True,
+                       layer_type has to be "exconvt" or "cudnn_convt",
+                       otherwise layer_type has to be either "exconv" or
+                       "cudnn_conv"
+    :type layer_type: String
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if isinstance(filter_size, collections.Sequence):
+        assert len(filter_size) == 3
+        filter_size, filter_size_y, filter_size_z = filter_size
+    else:
+        filter_size_y = filter_size
+        filter_size_z = filter_size
+
+    if isinstance(stride, collections.Sequence):
+        assert len(stride) == 3
+        stride, stride_y, stride_z = stride
+    else:
+        stride_y = stride
+        stride_z = stride
+
+    if isinstance(padding, collections.Sequence):
+        assert len(padding) == 3
+        padding, padding_y, padding_z = padding
+    else:
+        padding_y = padding
+        padding_z = padding
+
+    if param_attr.attr.get('initial_smart'):
+        # special initial for conv layers.
+        init_w = (2.0 / (filter_size**2 * num_channels))**0.5
+        param_attr.attr["initial_mean"] = 0.0
+        param_attr.attr["initial_std"] = init_w
+        param_attr.attr["initial_strategy"] = 0
+        param_attr.attr["initial_smart"] = False
+
+    if layer_type:
+        if trans:
+            assert layer_type in ["deconv3d"]
+        lt = layer_type
+    else:
+        lt = LayerType.DECONV3D_LAYER if trans else LayerType.CONV3D_LAYER
+
+    l = Layer(
+        name=name,
+        inputs=Input(
+            input.name,
+            conv=Conv3D(
+                filter_size=filter_size,
+                padding=padding,
+                stride=stride,
+                channels=num_channels,
+                groups=groups,
+                filter_size_y=filter_size_y,
+                padding_y=padding_y,
+                stride_y=stride_y,
+                filter_size_z=filter_size_z,
+                padding_z=padding_z,
+                stride_z=stride_z),
+            **param_attr.attr),
+        active_type=act.name,
+        num_filters=num_filters,
+        bias=ParamAttr.to_bias(bias_attr),
+        shared_biases=shared_biases,
+        type=lt,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        lt,
+        parents=[input],
+        activation=act,
+        num_filters=num_filters,
+        size=l.config.size)
 
 
 @wrap_name_default("scale_shift")
