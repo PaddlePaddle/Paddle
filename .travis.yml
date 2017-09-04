@@ -4,6 +4,7 @@ cache:
     - $HOME/.ccache
     - $HOME/.cache/pip
     - $TRAVIS_BUILD_DIR/build/third_party
+    - $TRAVIS_BUILD_DIR/build/third_party_android
 sudo: required
 dist: trusty
 os:
