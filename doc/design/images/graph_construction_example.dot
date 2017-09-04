@@ -44,6 +44,8 @@ digraph ImageClassificationGraph {
         OPT_W [label="SGD", color=green, shape=box];
         OPT_b [label="SGD", color=green, shape=box];
 
+        W -> OPT_W [color=green];
+        b -> OPT_b [color=green];
         d_W -> OPT_W -> W [color=green];
         d_b -> OPT_b -> b [color=green];
 
