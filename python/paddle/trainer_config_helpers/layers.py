@@ -352,6 +352,10 @@ class LayerOutput(object):
     def height(self):
         return cp.g_layer_map[self.full_name].height
 
+    @property
+    def depth(self):
+        return cp.g_layer_map[self.full_name].depth
+
     def set_input(self, input):
         """
         Set the input for a memory layer. Can only be used for memory layer

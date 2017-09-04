@@ -2735,9 +2735,21 @@ class AddToLayer(LayerBase):
         super(AddToLayer, self).__init__(
             name, 'addto', 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            self.set_layer_size(input_layer.size)
+
+        if len(self.inputs) > 1:
+            assert len(self.inputs) == 2
+            assert self.get_input_layer(0).size == self.get_input_layer(1).size
+            assert self.get_input_layer(0).depth == self.get_input_layer(
+                1).depth
+            assert self.get_input_layer(0).height == self.get_input_layer(
+                1).height
+            assert self.get_input_layer(0).width == self.get_input_layer(
+                1).width
+
+        self.set_layer_size(self.get_input_layer(0).size)
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                        self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
         self.create_bias_parameter(bias, self.config.size)
 
 
@@ -3422,6 +3434,9 @@ class ConcatenateLayer(LayerBase):
             if self.config.size == 0:
                 size += input_layer.size
 
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                    self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
         self.set_layer_size(size)
 
 
