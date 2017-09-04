@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
+namespace math {
 
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
 enum ColFormat { kCFO = 0, kOCF = 1 };
@@ -72,7 +73,7 @@ class Im2ColFunctor {
  public:
   void operator()(const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width);
+                  int padding_width, platform::DeviceContext* context);
 };
 
 template <ColFormat Format, typename Place, typename T>
@@ -80,7 +81,8 @@ class Col2ImFunctor {
  public:
   void operator()(framework::Tensor& im, const framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width);
+                  int padding_width, platform::DeviceContext* context);
 };
 
+}  // namespace math
 }  // namespace paddle

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/operators/math/im2col.h"
 
 namespace paddle {
+namespace math {
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -26,7 +27,7 @@ class Im2ColFunctor<kCFO, platform::CPUPlace, T> {
  public:
   void operator()(const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width) {
+                  int padding_width, platform::DeviceContext* context) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
 
@@ -77,7 +78,7 @@ class Col2ImFunctor<kCFO, platform::CPUPlace, T> {
  public:
   void operator()(framework::Tensor& im, const framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width) {
+                  int padding_width, platform::DeviceContext* context) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -130,7 +131,7 @@ class Im2ColFunctor<kOCF, platform::CPUPlace, T> {
  public:
   void operator()(const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width) {
+                  int padding_width, platform::DeviceContext* context) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -189,7 +190,7 @@ class Col2ImFunctor<kOCF, platform::CPUPlace, T> {
  public:
   void operator()(framework::Tensor& im, const framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width) {
+                  int padding_width, platform::DeviceContext* context) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -241,4 +242,5 @@ template class Im2ColFunctor<kOCF, platform::CPUPlace, double>;
 template class Col2ImFunctor<kOCF, platform::CPUPlace, float>;
 template class Col2ImFunctor<kOCF, platform::CPUPlace, double>;
 
+}  // namespace math
 }  // namespace paddle
