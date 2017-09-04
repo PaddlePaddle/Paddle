@@ -22,7 +22,7 @@ namespace operators {
 namespace math {
 
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
-enum ColFormat { kCFO = 0, kOCF = 1 };
+enum class ColFormat { kCFO = 0, kOCF = 1 };
 
 /*
  * \brief Converts the image data of three dimensions(CHW) into a colData of
