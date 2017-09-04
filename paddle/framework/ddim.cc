@@ -195,18 +195,6 @@ std::vector<int> vectorize(const DDim& ddim) {
   return result;
 }
 
-struct ProductVisitor : public boost::static_visitor<ssize_t> {
-  template <int D>
-  ssize_t operator()(const Dim<D>& dim) {
-    return product(dim);
-  }
-};
-
-ssize_t product(const DDim& ddim) {
-  ProductVisitor visitor;
-  return boost::apply_visitor(visitor, ddim);
-}
-
 struct SliceVectorizeVisitor : public boost::static_visitor<> {
   std::vector<int>& vector;
   int begin;
@@ -245,6 +233,24 @@ DDim slice_ddim(const DDim& dim, int begin, int end) {
   SliceVectorizeVisitor visitor(vec, begin, end);
   boost::apply_visitor(visitor, dim);
   return make_ddim(vec);
+}
+
+struct ProductVisitor : public boost::static_visitor<ssize_t> {
+  template <int D>
+  ssize_t operator()(const Dim<D>& dim) {
+    return product(dim);
+  }
+};
+
+ssize_t product(const DDim& ddim) {
+  ProductVisitor visitor;
+  return boost::apply_visitor(visitor, ddim);
+}
+
+ssize_t product(const DDim& ddim, int begin, int end) {
+  ProductVisitor visitor;
+  DDim sliced_ddim = slice_ddim(ddim, begin, end);
+  return boost::apply_visitor(visitor, sliced_ddim);
 }
 
 /// \cond HIDDEN

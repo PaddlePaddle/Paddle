@@ -96,6 +96,8 @@ std::vector<int> vectorize(const DDim& ddim);
 
 ssize_t product(const DDim& ddim);
 
+ssize_t product(const DDim& ddim, int begin, int end);
+
 /**
  * \brief Slice a ddim
  *

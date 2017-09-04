@@ -51,6 +51,18 @@ class LargerThanChecker {
   T lower_bound_;
 };
 
+template <typename T>
+class EqualLargerThanChecker {
+ public:
+  explicit EqualLargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
+  void operator()(T& value) const {
+    PADDLE_ENFORCE(value >= lower_bound_, "equal_larger_than check fail");
+  }
+
+ private:
+  T lower_bound_;
+};
+
 // we can provide users more common Checker, like 'LessThanChecker',
 // 'BetweenChecker'...
 
@@ -111,6 +123,11 @@ class TypedAttrChecker {
 
   TypedAttrChecker& LargerThan(const T& lower_bound) {
     value_checkers_.push_back(LargerThanChecker<T>(lower_bound));
+    return *this;
+  }
+
+  TypedAttrChecker& EqualLargerThan(const T& lower_bound) {
+    value_checkers_.push_back(EqualLargerThanChecker<T>(lower_bound));
     return *this;
   }
 

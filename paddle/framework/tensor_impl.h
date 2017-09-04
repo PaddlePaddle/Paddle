@@ -148,5 +148,17 @@ inline Tensor& Tensor::Resize(const DDim& dims) {
 
 inline const DDim& Tensor::dims() const { return dims_; }
 
+template <typename T>
+inline Tensor FlattenToMatrix(const Tensor& src, int num_row_dims) {
+  Tensor res;
+  res.ShareDataWith<T>(src);
+  DDim src_dim = src.dims();
+  int rank = src_dim.size();
+  res.Resize(make_ddim(
+      {static_cast<int>(product(src_dim, 0, rank - num_row_dims)),
+       static_cast<int>(product(src_dim, rank - num_row_dims, rank))}));
+  return res;
+}
+
 }  // namespace framework
 }  // namespace paddle

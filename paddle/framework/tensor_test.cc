@@ -262,3 +262,16 @@ TEST(Tensor, CopyFrom) {
   }
 #endif
 }
+
+TEST(Tensor, FlattenToMatrix) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  int* src_ptr = src.mutable_data<int>(make_ddim({2, 3, 4, 9}), CPUPlace());
+  for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
+    src_ptr[i] = i;
+  }
+  Tensor res = FlattenToMatrix<int>(src, 2);
+  ASSERT_EQ(res.dims()[0], 2 * 3);
+  ASSERT_EQ(res.dims()[1], 4 * 9);
+}
