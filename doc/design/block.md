@@ -1,132 +1,173 @@
-# Block design
+# Design Doc: Use Block in RNNOp, While Op, IfElseOp
 
-In computer programming, a block is a lexical structure of source code which is grouped together.
-In most programming languages, block is useful when define a function or some conditional statements such as `if` and `while`.
+In C++ and Java programming language, a block is a lexical structure of source code which is grouped as one line of code.
 
-In Paddle, we need a similar concept to support following scenes:
+RNNOp looks like the loop structure in programming languages.
+And similarly, WhileOp and IfElseOp are like loop and conditions respectively.
+So we want to verify if we should have a class Block in PaddlePaddle that works like a pair of curly braces in the loop and condition structures of programming languages.
 
-- the basic unit of execution, just like the original `NetOp`, block can group multiple operators and make them behave just like a single operator. Unlike `NetOp`, a network should not be an operator, but a block can be treated as a operator.
-  - Block should have a `Exec` method, which will execute the operators grouped in the block.
-- store the context for operators, including the information of variables they will operator on. 
-- Support the definition and execution of special operators such as `RNNOp`, `switch_op`, `while_op`, `if_else_op`, which needs one or more code-blocks.
-  - Block will help to define and execute thouse operators.
+Blocks do not only group source code, but also narrow the lexical scope of variables so that they do not conflict with variables having the same name used elsewhere in a program.
+
+In Paddle, we need a similar concept called Block to support following scenes:
+
+- define a PaddlePaddle program by writing blocks of codes, which includes the definitions of variables and operators.
+  - `RNNOp`, `SwitchOp`, `WhileOp` and `IfElseOp` needs Block to help to define sub-block. 
+- help to execute multiple operators, blocks should group operators and runs like a single operator.
+
+## How to use Block
+In `RNNOp`, `SwitchOp`, `WhileOp` and `IfElseOp`, a sub-block should be used to help to define a sub-block.
+
+Let's start from how a RNNOp is described using Block:
+
+```python
+v = some_op()
+m_boot = some_op()
+
+W = pd.Variable(shape=[20, 20])
+U = pd.Varable(shape=[20, 20])
+
+rnn = RNNOp()
+with rnn.stepnet() as net:
+  x = net.add_input(v)
+  h = net.add_memory(init=m_boot)
   
-## when need a block
-Blocks are needed in following code snippets
-```c++
-if(cond) { block_true } else { block_false }
+  fc_out = pd.matmul(W, x)
+  hidden_out = pd.matmul(U, h)
+  sum = pd.add_two(fc_out, hidden_out)
+  act = pd.sigmoid(sum)
+  # declare outputs
+  net.add_output(act, hidden_out)
+
+acts, hs = rnn()
 ```
 
-```c++
-while(cond){ block }
+This python program will be transformed into a Protobuf messages which describe the model,  passes it to a C++ framework and creates the corresponding Variables and Operators, and execute all the operators.
+
+## Block Implementation
+
+During the Protobuf message generation, the Block should store VarDesc (the Protobuf message which describes Variable) and OpDesc (the Protobuf message which describes Operator).
+
+VarDesc in a block should have its name scope to avoid local variables affect father block's name scope. 
+Child block's name scopes should inherit the father's so that OpDesc in child block can reference a VarDesc that stored in father block. For example
+
+```python
+a = pd.Varaible(shape=[20, 20])
+b = pd.fc(a, params=["fc.w", "fc.b"])
+
+rnn = pd.create_RNNOp()
+with rnn.stepnet() as net:
+    x = net.add_input(a)
+    # reuse fc's parameter
+    fc_without_b = pd.get_variable("fc.w")
+    net.add_output(fc_without_b)
+
+out = rnn()
 ```
+the method `pd.get_variable` can help retrieve a Variable by a name, a Variable may store in a father block, but might be retrieved in a child block, so block should have a variable scope that supports inheritance.
+
+We can implement this idea in the following approach
 
 ```c++
-int func(inputs) { block with outputs }
-```
+class Block {
+public:
+  Block(Block* father) : father_block_{father} {}
+  // add a new VarDesc, return the pointer to enable other functions.
+  // NOTE Will check whether some variable called the same name.
+  VarDesc* AddVarDesc();
+  OpDesc* AddOpDesc();
 
-```c++
-namespace xxxx {
-  block
+  // name: variable's name
+  // recursive: whether to find the variable in father's scope recursively.
+  VarDesc* FindVarDesc(const string& name, bool recursive=true);
+
+private:
+  Block* father_block_;
+  // descriptions
+  map<VarDesc> var_descs_;
+  map<OpDesc> op_descs_;
 }
 ```
 
-Paddle will have `if_else_op`, `switch_op`, `while_op` and some other operators that need a function block such as RNNOp, and enable definition and execution of a block is vital to those operators.
+after all the VarDescs and OpDescs are added into Block, the block is ready to run.
+During the running of Block, it first creates all Variables according to VarDescs and Operators according to OpDescs.
 
-What's more, Paddle should has a `pd.namespace`, which will help to preventing name conflicts of variables in large model.
+What's more, each block will have its scope.
 
-For example:
+The codes are as follows:
+
+```c++
+class Block : public OperatorBase {
+public:
+  // ...
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const {
+    RuntimeInit();
+    LocalScopeInit(scope);
+
+    for (auto* op : ops_) {
+      op->Run(scope, dev_ctx);
+    }
+  }
+
+  void LocalScopeInit(const framework::Scope &scope) {
+    if (!scope_) {
+      scope_ = Scope.NewScope();
+    }
+  }
+
+protected:
+  // create all variables and operators according to Protobuf description.
+  RuntimeInit() {
+    if (ops_.empty()) {
+      // create ops
+      // create vars
+    }
+  }
+
+private:
+  // ...
+  vector<Operator*> ops_;
+  vector<Variable*> vars_;
+  // local scope
+  Scope* scope_;
+};
+```
+## Run and Eval targets
+Block inherits from OperatorBase, which has a Run method. 
+Block's Run method will run its operators sequentially.
+
+There is another important interface called Eval, which passed in some variables called targets, and Eval will generate a minimal graph which takes targets as the end points and creates a new Block, 
+after Run, Eval will get the latest value and return the targets.
+
+The definition of Eval is as follows:
+
+```c++
+class Block : public OperatorBase {
+public:
+  // ...
+  vector<Variable*> Eval(const vector<string>& targets) {
+    // 1. generate a minimal graph which takes targets as end points
+
+    // 2. extract all operators in this graph and generate a new block which
+    // take this as the father block
+
+    // 3. return all the variables of the targets
+  }
+  // ...
+}
+```
+
+In Python binding, there is a default Block called `g_block` which is hidden from users.
+Most of time, user should not feel the existence of Block, so a function is provided as `pd.eval([targets])`,
+let's take a example:
 
 ```python
 import paddle as pd
+a = pd.Variable(shape=[20, 30])
+b = pd.Variable(shape=[20, 30])
 
-def submodel(namespace, x):
-    # begin a namespace
-    with pd.namespace(namespace):
-        # should be complex network, here easy one for demo
-        # variable W's name is namespace + "W"
-        # so in different namespace, there is a W without conflicts
-        W = pd.get_variable("W", shape=[30, 30], reuse=True)
-        y = pd.matmul(W, x)
-        return y
+c = pd.fc(a)
+d = pd.fc(c)
 
-inputs = [a, b, c]
-
-# create 3 submodels and each one has its own parameters.
-a_out = submodel("model_a", a)
-b_out = submodel("model_b", b)
-c_out = submodel("model_c", c)
-
-
-# d is some op's output
-d = someop()
-
-# reuse model_a
-d_model_a_out = submodel("model_a", d)
-```
-
-with `pd.namespace`, user create 3 different namespaces and in each one, the parameters those have specific name will be reused.
-
-## Why use Block to replace NetOp
-- It is weird to treat Network as an operator, but Block in programming language means grouping multiple operators and acts like a single operator, treat a Block as an operator seems more reasonable.
-- The basic concepts including`Variable`, `Operator` and `Block` are concepts in programming language, but `NetOp` is not.
-- Block is a concept in programming language, it behaves similar to current NetOp, but much concrete, and can guide our futher design.
-  - a block looks like something with a pair of curly bracket `{}`, in python we can use `with` statement to make a dramatic code block.
-  - a block will contains its operators(just like NetOp) and some local variables
-  - operator inside a block can make operation on global variables
-  
-## Implementation
-Currentlly, there is a simple implementation in [User Interface Design](), which has the most function of a Block when user writes a program. 
-But it relays on `NetOp` when executes and that works.
-
-We may rename `NetOp` in cpp code to `Block`, but whether to add more functions of a real block into that implementation depends on whether we want to have a `VarDesc` and split the compilation and execution period.
-
-In my opition, Block is very basic concept in underlying implementation, so a python wrapper and a cpp minimal implementation is enough now.
-It is free to change if other module needs more complex supports such as `VarDesc` is added.
-
-If `VerDesc` is added into the framework, Block will be implemented based on NetOp.
-
-**Each Block will have its own Scope, a child-block's scope will inherit father-block's scope.**
-
-## `with` statement
-Currently Block concept is invisible to users, but some usage are embedded in python interface.
-
-```python
-op = pd.ifelseop()
-
-with op.true_block():
-    # declare inputs
-    a = op.add_input(x)
-    # some complex net
-    b = pd.fc(a)
-    # declare output
-    op.add_output(b)
-    
-with op.false_block():
-    # declare inputs
-    a = op.add_input(x)
-    # some complex net
-    b = pd.fc(a)
-    # declare output
-    op.add_output(b)
-```
-
-```python
-rnn = pd.rnn_op()
-
-with rnn.stepnet():
-    # declare inputs
-    a = op.add_input(x)
-    b = op.add_input(y)
-    # some complex net
-    c = pd.fc(a)
-    # declare output
-    op.add_output(c)
-```
-
-```python
-op = pd.while_op()
-with op.stepnet():
-    # do not need to declare inputs or outputs
-    c = pd.fc(a)
+c_val, d_val = pd.eval([c, d])
 ```
