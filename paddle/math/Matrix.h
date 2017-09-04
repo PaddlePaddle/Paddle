@@ -928,15 +928,102 @@ public:
                                size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
+  /**
+   * Pooling 3D forward operation, pick out the largest element
+   * in the sizeX of value
+   */
+  virtual void maxPool3DForward(Matrix& inputMat,
+                                Matrix& maxPoolIdx,
+                                size_t channels,
+                                size_t imgSizeD,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t outputD,
+                                size_t outputH,
+                                size_t outputW,
+                                size_t sizeZ,
+                                size_t sizeY,
+                                size_t sizeX,
+                                size_t strideD,
+                                size_t strideH,
+                                size_t strideW,
+                                size_t paddingD,
+                                size_t paddingH,
+                                size_t paddingW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void maxPool3DBackward(Matrix& outGrad,
+                                 Matrix& maxPoolIdx,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW,
+                                 real scaleTargets,
+                                 real scaleOutput) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void avgPool3DForward(Matrix& input,
+                                size_t channels,
+                                size_t imgSizeD,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t outputD,
+                                size_t outputH,
+                                size_t outputW,
+                                size_t sizeZ,
+                                size_t sizeY,
+                                size_t sizeX,
+                                size_t strideD,
+                                size_t strideH,
+                                size_t strideW,
+                                size_t paddingD,
+                                size_t paddingH,
+                                size_t paddingW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void avgPool3DBackward(Matrix& input,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW,
+                                 real scaleTargets,
+                                 real scaleOutput) {
+    LOG(FATAL) << "Not implemeted";
+  }
 
   /**
-   * Input: one or more sequences. Each sequence contains some instances.
-   *
-   * Output: output size is the number of input sequences (NOT input
-   * instances).
-   *
-   * output[i] is set to max_input[i].
-   */
+ * Input: one or more sequences. Each sequence contains some instances.
+ *
+ * Output: output size is the number of input sequences (NOT input
+ * instances).
+ *
+ * output[i] is set to max_input[i].
+ */
   virtual void maxSequenceForward(Matrix& input,
                                   const IVector& sequence,
                                   IVector& index) {
@@ -1384,6 +1471,82 @@ public:
                        size_t paddingH,
                        size_t paddingW);
 
+  void maxPool3DForward(Matrix& inputMat,
+                        Matrix& maxPoolIdx,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void maxPool3DBackward(Matrix& outGrad,
+                         Matrix& maxPoolIdx,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
+
+  void avgPool3DForward(Matrix& input,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void avgPool3DBackward(Matrix& input,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
+
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,
                           IVector& index);
@@ -1574,6 +1737,82 @@ public:
                        real scaleOutput,
                        size_t paddingH,
                        size_t paddingW);
+
+  void maxPool3DForward(Matrix& inputMat,
+                        Matrix& maxPoolIdx,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void maxPool3DBackward(Matrix& outGrad,
+                         Matrix& maxPoolIdx,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
+
+  void avgPool3DForward(Matrix& input,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void avgPool3DBackward(Matrix& input,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
 
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,
