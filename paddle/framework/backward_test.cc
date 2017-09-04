@@ -127,8 +127,8 @@ class FillZeroOpMaker : public OpProtoAndCheckerMaker {
  public:
   FillZeroOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("x", "x");
-    AddOutput("out", "out");
+    AddInput("Src", "x");
+    AddOutput("Dst", "out");
     AddComment("");
   }
 };
@@ -138,7 +138,7 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
   AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "x").AsDuplicable();
-    AddOutput("Y", "y");
+    AddOutput("Out", "out");
     AddComment("");
   }
 };
