@@ -33,12 +33,12 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 }
 #endif
 
-const std::string& OperatorBase::Input(const std::string& name) const {
+std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
-  PADDLE_ENFORCE_EQ(ins.size(), 1UL,
+  PADDLE_ENFORCE_LE(ins.size(), 1UL,
                     "Op %s input %s should contain only one variable", type_,
                     name);
-  return ins[0];
+  return ins.empty() ? kEmptyVarName : ins[0];
 }
 
 const std::vector<std::string>& OperatorBase::Inputs(
@@ -49,12 +49,12 @@ const std::vector<std::string>& OperatorBase::Inputs(
   return it->second;
 }
 
-const std::string& OperatorBase::Output(const std::string& name) const {
+std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
-  PADDLE_ENFORCE_EQ(outs.size(), 1UL,
+  PADDLE_ENFORCE_LE(outs.size(), 1UL,
                     "Op %s output %s should contain only one variable", type_,
                     name);
-  return outs[0];
+  return outs.empty() ? kEmptyVarName : outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
@@ -119,16 +119,8 @@ OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& outputs,
                            const AttributeMap& attrs)
     : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
-  static std::atomic<size_t> gUniqId(0UL);
-  for (auto& output : outputs_) {
-    for (auto& output_name : output.second) {
-      if (output_name == kTempVarName) {
-        output_name += type_;
-        output_name += "@";
-        output_name += std::to_string(gUniqId.fetch_add(1));
-      }
-    }
-  }
+  GenerateTemporaryNames();
+  CheckAllInputOutputSet();
 }
 
 std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
@@ -154,6 +146,35 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
   }
   return ret_val;
+}
+
+void OperatorBase::CheckAllInputOutputSet() const {
+  auto& info_map = OpInfoMap::Instance();
+  auto* op_info = info_map.GetNullable(Type());
+  if (op_info == nullptr || op_info->proto_ == nullptr) return;
+
+  for (auto& in : op_info->Proto().inputs()) {
+    PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
+                   "Type %s's input %s is not set", Type(), in.name());
+  }
+
+  for (auto& out : op_info->Proto().outputs()) {
+    PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
+                   "Type %s's output %s is not set", Type(), out.name());
+  }
+}
+
+void OperatorBase::GenerateTemporaryNames() {
+  static std::atomic<size_t> gUniqId(0UL);
+  for (auto& output : outputs_) {
+    for (auto& output_name : output.second) {
+      if (output_name == kTempVarName) {
+        output_name += type_;
+        output_name += "@";
+        output_name += std::to_string(gUniqId.fetch_add(1));
+      }
+    }
+  }
 }
 
 void OpProtoAndCheckerMaker::Validate() {
