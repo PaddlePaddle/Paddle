@@ -152,3 +152,7 @@ chapter_out = top_level_rnn()
 in above example, the `lower_level_rnn` will be embedded in the step-net of `top_level_rnn` as a RNNOp operator, 
 with a LoD Tensor, the top rnn will segment the original chapter data into paragraph records, 
 and the lower rnn will segment paragraph records into sentence records.
+
+<p align="center">
+<img src="images/rnn_2level_data.png"/>
+</p>
