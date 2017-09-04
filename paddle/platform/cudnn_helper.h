@@ -14,9 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifndef PADDLE_ONLY_CPU
-#include <cudnn.h>
-#include "glog/logging.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/macros.h"
@@ -42,30 +39,12 @@ template <>
 class CudnnDataType<float> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_FLOAT;
-  typedef const float ScalingParamType;
-  static ScalingParamType* kOne() {
-    static ScalingParamType v = 1.0;
-    return &v;
-  }
-  static const ScalingParamType* kZero() {
-    static ScalingParamType v = 0.0;
-    return &v;
-  }
 };
 
 template <>
 class CudnnDataType<double> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_DOUBLE;
-  typedef const double ScalingParamType;
-  static ScalingParamType* kOne() {
-    static ScalingParamType v = 1.0;
-    return &v;
-  }
-  static ScalingParamType* kZero() {
-    static ScalingParamType v = 0.0;
-    return &v;
-  }
 };
 
 inline cudnnTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
@@ -219,4 +198,3 @@ class ScopedPoolingDescriptor {
 
 }  // namespace platform
 }  // namespace paddle
-#endif
