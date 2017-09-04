@@ -41,7 +41,7 @@ with rnn.stepnet() as net:
 acts, hs = rnn()
 ```
 
-This python program will be transformed into Protobuf messages which describe the model,  passes it to a C++ framework and creates the corresponding Variables and Operators, and execute all the operators.
+This python program will be transformed into Protobuf messages which describe the model, a C++ Block class will create the corresponding Variables and Operators, and execute all the operators.
 
 ## Block Implementation
 
