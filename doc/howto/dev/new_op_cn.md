@@ -227,6 +227,12 @@ make mul_op
     USE_CPU_ONLY_OP(gather);
     ```
     
+    如果OP不带Kernel，则使用`USE_NO_KENREL_OP`:
+    
+    ```
+    USE_NO_KENREL_OP(recurrent);
+    ```
+    
     使用`USE_OP`告知编译器需要链接该Op的目标文件，具体解释参考[代码注释](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/op_registry.h#L81)。
     
     
