@@ -31,10 +31,13 @@ void NetOp::CompleteAddOp(bool calc) {
   for (auto& op : ops_) {
     for (auto& ipt : op->Inputs()) {
       for (auto& var_name : ipt.second) {
-        if (!Contains(output_set, var_name)) {  // Not other op's output
-          input_set.insert(var_name);
-        } else {
+        // If input variable has been in output set, then it will be
+        // added into intermediate_outputs_. Otherwise, it will be
+        // added into input set.
+        if (Contains(output_set, var_name)) {
           intermediate_outputs_.insert(var_name);
+        } else {
+          input_set.insert(var_name);
         }
       }
     }

@@ -268,7 +268,7 @@ class GradientChecker(unittest.TestCase):
         :param input_vars: numpy value of input variable. The following
             computation will use these variables.
         :param inputs_to_check: inputs var names that should check gradient.
-        :param output_name: output name that used to
+        :param output_name: the output variable name of forward network.
         :param max_relative_error: The relative tolerance parameter.
         :param no_grad_set: used when create backward ops
         :param only_cpu: only compute and check gradient on cpu kernel.

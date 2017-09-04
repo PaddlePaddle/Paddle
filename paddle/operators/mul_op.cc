@@ -29,10 +29,10 @@ class MulOp : public framework::OperatorWithKernel {
     auto dim1 = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_EQ(dim0.size(), 2,
                       "input X(%s) should be a tensor with 2 dims, a matrix",
-                      ctx.op_.Input("X"));
+                      ctx.op().Input("X"));
     PADDLE_ENFORCE_EQ(dim1.size(), 2,
                       "input Y(%s) should be a tensor with 2 dims, a matrix",
-                      ctx.op_.Input("Y"));
+                      ctx.op().Input("Y"));
     PADDLE_ENFORCE_EQ(
         dim0[1], dim1[0],
         "First matrix's width must be equal with second matrix's height.");
