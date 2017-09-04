@@ -2774,28 +2774,23 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   CHECK(!isTransposed()) << "Not supported";
 
   size_t a_col, b_col, a_row, b_row;
-  // CBLAS_TRANSPOSE a_trans, b_trans;
   bool a_trans, b_trans;
   if (!a->isTransposed()) {
     a_col = a->getWidth();
     a_row = a->getHeight();
-    // a_trans = CblasNoTrans;
     a_trans = false;
   } else {
     a_col = a->getHeight();
     a_row = a->getWidth();
-    // a_trans = CblasTrans;
     a_trans = true;
   }
   if (!b->isTransposed()) {
     b_col = b->getWidth();
     b_row = b->getHeight();
-    // b_trans = CblasNoTrans;
     b_trans = false;
   } else {
     b_col = b->getHeight();
     b_row = b->getWidth();
-    // b_trans = CblasTrans;
     b_trans = true;
   }
 
