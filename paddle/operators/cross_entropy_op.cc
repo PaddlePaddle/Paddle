@@ -67,8 +67,7 @@ OnehotCrossEntropy Operator.
 
 namespace ops = paddle::operators;
 REGISTER_OP(onehot_cross_entropy, ops::OnehotCrossEntropyOp,
-            ops::OnehotCrossEntropyOpMaker, onehot_cross_entropy_grad,
-            ops::OnehotCrossEntropyGradientOp);
+            ops::OnehotCrossEntropyOpMaker, ops::OnehotCrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(onehot_cross_entropy,
                        ops::OnehotCrossEntropyOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(onehot_cross_entropy_grad,
