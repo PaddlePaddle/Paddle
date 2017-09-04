@@ -25,7 +25,9 @@ The first four lines of above program build the forward part of the graph.
 
 ![](images/graph_construction_example_forward_only.png)
 
-In particular, the first line `x = layer.data("images")` creates variable x and a Feed operator that copies a column from the minibatch to x.  `y = layer.fc(x)` creates not only the FC operator and output variable y, but also two parameters, W and b.
+In particular, the first line `x = layer.data("images")` creates variable x and a Feed operator that copies a column from the minibatch to x.  `y = layer.fc(x)` creates not only the FC operator and output variable y, but also two parameters, W and b, and the initialization operators.
+
+Initialization operators are kind of "run-once" operators -- the `Run` method increments a class data member counter so to run at most once.  By doing so, a parameter wouldn't be initialized repeatedly, say, in every minibatch.
 
 In this example, all operators are created as `OpDesc` protobuf messages, and all variables are `VarDesc`.  These protobuf messages are saved in a `BlockDesc` protobuf message.
 
