@@ -48,12 +48,14 @@ add_subdirectory(math)
 
 list(REMOVE_ITEM GENERAL_OPS
      net_op
+     identity_op
      minus_op
      mul_op
      recurrent_op
      scale_op)
 
 op_library(net_op SRCS net_op.cc)
+op_library(identity_op SRCS identity_op.cc DEPS scale_op)
 op_library(minus_op SRCS minus_op.cc minus_op.cu DEPS scale_op)
 op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc 
