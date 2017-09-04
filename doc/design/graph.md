@@ -1,4 +1,4 @@
-# Design Doc: Computations as Graphs
+# Design Doc: Computations as a Graph
 
 A primary goal of the refactorization of PaddlePaddle is a more flexible representation of deep learning computation, in particular, a graph of operators and variables, instead of sequences of layers as before.
 
@@ -7,6 +7,8 @@ This document explains that the construction of a graph as three steps:
 - construct the forward part
 - construct the backward part
 - construct the optimization part
+
+## The Construction of a Graph
 
 Let us take the problem of image classification as a simple example.  The application program that trains the model looks like:
 
@@ -51,3 +53,18 @@ According to the chain rule of gradient computation, `ConstructBackwardGraph` wo
 For each parameter, like W and b created by `layer.fc`, marked as double circles in above graphs, `ConstructOptimizationGraph` creates an optimization operator to apply its gradient.  Here results in the complete graph:
 
 ![](images/graph_construction_example_all.png)
+
+## Block and Graph
+
+The word block and graph are interchangable in the desgin of PaddlePaddle.  A [Block[(https://github.com/PaddlePaddle/Paddle/pull/3708) is a metaphore of the code and local variables in a pair of curly braces in programming languages, where operators are like statements or instructions.  A graph of operators and variables is a representation of the block.
+
+A Block keeps operators in an array `BlockDesc::ops`
+
+```protobuf
+message BlockDesc {
+  repeated OpDesc ops = 1;
+  repeated VarDesc vars = 2;
+}
+```
+
+in the order that there appear in user programs, like the Python program at the beginning of this article.  We can imagine that in `ops`,  we have some forward operators, followed by some gradient operators, and then some optimization operators.
