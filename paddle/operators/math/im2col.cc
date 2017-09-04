@@ -24,7 +24,8 @@ namespace math {
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class T>
-class Im2ColFunctor<kCFO, platform::CPUPlace, T> {
+class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                    platform::CPUPlace, T> {
  public:
   void operator()(const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
@@ -75,7 +76,8 @@ class Im2ColFunctor<kCFO, platform::CPUPlace, T> {
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class T>
-class Col2ImFunctor<kCFO, platform::CPUPlace, T> {
+class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                    platform::CPUPlace, T> {
  public:
   void operator()(framework::Tensor& im, const framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
@@ -117,10 +119,14 @@ class Col2ImFunctor<kCFO, platform::CPUPlace, T> {
   }
 };
 
-template class Im2ColFunctor<kCFO, platform::CPUPlace, float>;
-template class Im2ColFunctor<kCFO, platform::CPUPlace, double>;
-template class Col2ImFunctor<kCFO, platform::CPUPlace, float>;
-template class Col2ImFunctor<kCFO, platform::CPUPlace, double>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                             platform::CPUPlace, float>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                             platform::CPUPlace, double>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                             platform::CPUPlace, float>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                             platform::CPUPlace, double>;
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -128,7 +134,8 @@ template class Col2ImFunctor<kCFO, platform::CPUPlace, double>;
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class T>
-class Im2ColFunctor<kOCF, platform::CPUPlace, T> {
+class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+                    platform::CPUPlace, T> {
  public:
   void operator()(const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
@@ -187,7 +194,8 @@ class Im2ColFunctor<kOCF, platform::CPUPlace, T> {
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class T>
-class Col2ImFunctor<kOCF, platform::CPUPlace, T> {
+class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+                    platform::CPUPlace, T> {
  public:
   void operator()(framework::Tensor& im, const framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
@@ -238,10 +246,14 @@ class Col2ImFunctor<kOCF, platform::CPUPlace, T> {
   }
 };
 
-template class Im2ColFunctor<kOCF, platform::CPUPlace, float>;
-template class Im2ColFunctor<kOCF, platform::CPUPlace, double>;
-template class Col2ImFunctor<kOCF, platform::CPUPlace, float>;
-template class Col2ImFunctor<kOCF, platform::CPUPlace, double>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+                             platform::CPUPlace, float>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+                             platform::CPUPlace, double>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+                             platform::CPUPlace, float>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+                             platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators
