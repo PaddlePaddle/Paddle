@@ -156,3 +156,6 @@ and the lower rnn will segment paragraph records into sentence records.
 <p align="center">
 <img src="images/rnn_2level_data.png"/>
 </p>
+
+After data are segmented, run `lower-level-rnn` first, then the `up-level-rnn`, 
+finally the `up-level-rnn` will output the hidden state learned from the whole chapter data.
