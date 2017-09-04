@@ -33,11 +33,11 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(x_dim.size() > x_num_row_dims,
                    "The rank of input tensor X(%s) should be larger than "
                    "`mul_op`'s `X_num_raw_dims`.",
-                   ctx.op_.Input("X"));
+                   ctx.op().Input("X"));
     PADDLE_ENFORCE(y_dim.size() > y_num_row_dims,
                    "The rank of input tensor Y(%s) should be larger than "
                    "`mul_op`'s `Y_num_raw_dims`.",
-                   ctx.op_.Input("Y"));
+                   ctx.op().Input("Y"));
     PADDLE_ENFORCE_EQ(
         product(x_dim, x_dim.size() - x_num_row_dims, x_dim.size()),
         product(y_dim, 0, y_dim.size() - y_num_row_dims),
@@ -113,7 +113,7 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpGrad);
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mul_grad,
                        ops::MulGradKernel<paddle::platform::CPUPlace, float>);
