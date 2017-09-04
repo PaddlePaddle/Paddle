@@ -59,8 +59,17 @@ class OpTestMeta(type):
                     if out_name not in self.outputs:
                         raise ValueError("The %s is not in self.outputs dict." %
                                          (out_name))
-                    kwargs[out_name] = out_name
-                    scope.new_var(out_name).get_tensor()
+                    kwargs[out_name] = []
+                    if out_dup:
+                        arrays = self.outputs[out_name]
+                        for index, arr in enumerate(arrays):
+                            var = scope.new_var(out_name + str(index))
+                            tensor = var.get_tensor()
+                            kwargs[out_name].append(out_name + str(index))
+                    else:
+                        var = scope.new_var(out_name)
+                        tensor = var.get_tensor()
+                        kwargs[out_name] = out_name
 
                 for attr_name in Operator.get_op_attr_names(self.type):
                     if hasattr(self, "attrs") and attr_name in self.attrs:
@@ -78,12 +87,25 @@ class OpTestMeta(type):
                 for outs in Operator.get_op_outputs(self.type):
                     out_name = outs[0]
                     out_dup = outs[1]
-                    actual = numpy.array(scope.find_var(out_name).get_tensor())
-                    expect = self.outputs[out_name]
-                    self.assertTrue(
-                        numpy.allclose(
-                            actual, expect, atol=1e-05),
-                        "output name: " + out_name + "has diff")
+                    if out_dup:
+                        arrays = self.outputs[out_name]
+                        for index, arr in enumerate(arrays):
+                            actual = numpy.array(
+                                scope.find_var(out_name + str(index))
+                                .get_tensor())
+                            expect = self.outputs[out_name + str(index)]
+                            self.assertTrue(
+                                numpy.allclose(
+                                    actual, expect, atol=1e-05),
+                                "output name: " + out_name + "has diff")
+                    else:
+                        actual = numpy.array(
+                            scope.find_var(out_name).get_tensor())
+                        expect = self.outputs[out_name]
+                        self.assertTrue(
+                            numpy.allclose(
+                                actual, expect, atol=1e-05),
+                            "output name: " + out_name + "has diff")
 
         obj.test_all = test_all
         return obj
