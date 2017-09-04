@@ -13,7 +13,7 @@ digraph ImageClassificationGraph {
         cost [label="cost", color=blue, shape=oval];
 
         FeedX -> x -> FC -> y -> MSE -> cost [color=blue];
-        FeedY -> l -> FC [color=blue];
+        FeedY -> l [color=blue];
         W -> FC [color=blue];
         b -> FC [color=blue];
         l -> MSE [color=blue];
