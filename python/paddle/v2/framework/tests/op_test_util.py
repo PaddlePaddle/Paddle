@@ -1,7 +1,6 @@
-import paddle.v2.framework.core as core
-import unittest
 import numpy
-import paddle.v2.framework.create_op_creation_methods as creation
+import paddle.v2.framework.core as core
+from paddle.v2.framework.op import Operator
 
 
 class OpTestMeta(type):
@@ -21,42 +20,53 @@ class OpTestMeta(type):
         obj = super(OpTestMeta, cls).__new__(cls, name, bases, attrs)
 
         def test_all(self):
-            func = getattr(creation.op_creations, self.type, None)
-            self.assertIsNotNone(func)
-
-            scope = core.Scope(None)
+            scope = core.Scope()
             kwargs = dict()
+            places = [core.CPUPlace()]
+            if core.is_compile_gpu():
+                places.append(core.GPUPlace(0))
 
-            for in_name in func.all_input_args:
-                if hasattr(self, in_name):
-                    kwargs[in_name] = in_name
-                    var = scope.create_var(in_name).get_tensor()
-                    arr = getattr(self, in_name)
-                    var.set_dims(arr.shape)
-                    var.set(arr)
-                else:
-                    kwargs[in_name] = "@EMPTY@"
+            for place in places:
+                for in_name in Operator.get_op_input_names(self.type):
+                    if hasattr(self, "inputs") and in_name in self.inputs:
+                        kwargs[in_name] = in_name
+                        var = scope.new_var(in_name).get_tensor()
+                        arr = self.inputs[in_name]
+                        var.set_dims(arr.shape)
+                        var.set(arr, place)
+                    else:
+                        kwargs[in_name] = "@EMPTY@"
 
-            for out_name in func.all_output_args:
-                if hasattr(self, out_name):
+                for out_name in Operator.get_op_output_names(self.type):
+                    if not hasattr(self, "outputs"):
+                        raise ValueError(
+                            "The test op must set self.outputs dict.")
+                    if out_name not in self.outputs:
+                        raise ValueError("The %s is not in self.outputs dict." %
+                                         (out_name))
                     kwargs[out_name] = out_name
-                    scope.create_var(out_name).get_tensor()
+                    scope.new_var(out_name).get_tensor()
 
-            for attr_name in func.all_attr_args:
-                if hasattr(self, attr_name):
-                    kwargs[attr_name] = getattr(self, attr_name)
+                for attr_name in Operator.get_op_attr_names(self.type):
+                    if hasattr(self, "attrs") and attr_name in self.attrs:
+                        kwargs[attr_name] = self.attrs[attr_name]
 
-            op = func(**kwargs)
+                op = Operator(self.type, **kwargs)
+                if isinstance(place, core.GPUPlace) and not op.support_gpu():
+                    return
 
-            op.infer_shape(scope)
+                op.infer_shape(scope)
 
-            ctx = core.DeviceContext.cpu_context()
-            op.run(scope, ctx)
+                ctx = core.DeviceContext.create(place)
+                op.run(scope, ctx)
 
-            for out_name in func.all_output_args:
-                actual = numpy.array(scope.get_var(out_name).get_tensor())
-                expect = getattr(self, out_name)
-                numpy.testing.assert_almost_equal(actual, expect)
+                for out_name in Operator.get_op_output_names(self.type):
+                    actual = numpy.array(scope.find_var(out_name).get_tensor())
+                    expect = self.outputs[out_name]
+                    self.assertTrue(
+                        numpy.allclose(
+                            actual, expect, atol=1e-05),
+                        "output name: " + out_name + "has diff")
 
         obj.test_all = test_all
         return obj

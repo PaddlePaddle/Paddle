@@ -16,10 +16,16 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 
+#include <cuda_runtime.h>
 #include <stddef.h>
+#include <string>
 
 namespace paddle {
 namespace platform {
+
+//! Environment variable: fraction of GPU memory to use on each device.
+const std::string kEnvFractionGpuMemoryToUse =
+    "PADDLE_FRACTION_GPU_MEMORY_TO_USE";
 
 //! Get the total number of GPU devices in system.
 int GetDeviceCount();
@@ -31,7 +37,7 @@ int GetCurrentDeviceId();
 void SetDeviceId(int device_id);
 
 //！Get the memory usage of current GPU device.
-void GpuMemoryUsage(size_t& available, size_t& total);
+void GpuMemoryUsage(size_t &available, size_t &total);
 
 //! Get the maximum allocation size of current GPU device.
 size_t GpuMaxAllocSize();
@@ -41,6 +47,18 @@ size_t GpuMinChunkSize();
 
 //! Get the maximum chunk size for GPU buddy allocator.
 size_t GpuMaxChunkSize();
+
+//! Copy memory from address src to dst asynchronously.
+void GpuMemcpyAsync(void *dst, const void *src, size_t count,
+                    enum cudaMemcpyKind kind, cudaStream_t stream);
+
+//! Copy memory from address src to dst synchronously.
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   enum cudaMemcpyKind kind);
+
+//! Copy memory from one device to another device.
+void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
+                   size_t count, cudaStream_t stream);
 
 }  // namespace platform
 }  // namespace paddle

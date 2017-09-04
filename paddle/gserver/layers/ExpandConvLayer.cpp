@@ -29,6 +29,10 @@ namespace paddle {
 REGISTER_LAYER(exconv, ExpandConvLayer);
 REGISTER_LAYER(exconvt, ExpandConvLayer);
 
+inline bool isDepthwiseConv(int channels, int groups) {
+  return channels == groups;
+}
+
 bool ExpandConvLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
@@ -38,12 +42,39 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
   inputShape_.resize(numInputs);
   filterShape_.resize(numInputs);
   outputShape_.resize(numInputs);
+
+  std::string convType;
+  std::string convGradInputType;
+  std::string convGradFilterType;
+
   for (int i = 0; i < config_.inputs_size(); i++) {
     std::vector<size_t> paddings = {(size_t)paddingY_[i], (size_t)padding_[i]};
     std::vector<size_t> strides = {(size_t)strideY_[i], (size_t)stride_[i]};
 
-    if (FLAGS_use_nnpack) {
-      CHECK_EQ(isDeconv_, false);
+    // Convolution Layer uses the GemmConv function by default.
+    convType = "GemmConv";
+    convGradInputType = "GemmConvGradInput";
+    convGradFilterType = "GemmConvGradFilter";
+
+    // If depth wise convolution and useGpu == true
+    if (useGpu_ && isDepthwiseConv(channels_[i], groups_[i]) && !isDeconv_) {
+      convType = "DepthwiseConv";
+      convGradInputType = "DepthwiseConvGradInput";
+      convGradFilterType = "DepthwiseConvGradFilter";
+    }
+
+    // If depth wise convolution and useGpu == false and ARM-NEON
+    if (!useGpu_ && isDepthwiseConv(channels_[i], groups_[i]) && !isDeconv_) {
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+      if ((filterSize_[i] == filterSizeY_[i]) &&
+          (filterSize_[i] == 3 || filterSize_[i] == 4) &&
+          (stride_[i] == strideY_[i]) && (stride_[i] == 1 || stride_[i] == 2)) {
+        convType = "NeonDepthwiseConv";
+      }
+#endif
+    }
+
+    if (FLAGS_use_nnpack && !isDeconv_) {
       createFunction(forward_,
                      "NNPACKConv",
                      FuncConfig()
@@ -53,21 +84,21 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
                          .set("algo", std::string("auto")));
     } else {
       createFunction(forward_,
-                     !isDeconv_ ? "GemmConv" : "GemmConvGradInput",
+                     !isDeconv_ ? convType : convGradInputType,
                      FuncConfig()
                          .set("paddings", paddings)
                          .set("strides", strides)
                          .set("groups", (size_t)groups_[i]));
 
       createFunction(backward_,
-                     !isDeconv_ ? "GemmConvGradInput" : "GemmConv",
+                     !isDeconv_ ? convGradInputType : convType,
                      FuncConfig()
                          .set("paddings", paddings)
                          .set("strides", strides)
                          .set("groups", (size_t)groups_[i]));
 
       createFunction(backward_,
-                     "GemmConvGradFilter",
+                     convGradFilterType,
                      FuncConfig()
                          .set("paddings", paddings)
                          .set("strides", strides)

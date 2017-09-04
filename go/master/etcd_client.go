@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package master
 
 import (
@@ -25,15 +39,12 @@ type EtcdClient struct {
 	statePath string
 	client    *clientv3.Client
 	lock      *concurrency.Mutex
+	sess      *concurrency.Session
 }
 
 // NewEtcdClient creates a new EtcdClient.
 func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
-	// TODO(helin): gracefully shutdown etcd store. Because etcd
-	// store holds a etcd lock, even though the lock will expire
-	// when the lease timeout, we need to implement graceful
-	// shutdown to release the lock.
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
@@ -53,12 +64,12 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	// one master running, but split-brain problem may cause
 	// multiple master servers running), and the cluster management
 	// software will kill one of them.
-	log.Debugf("Trying to acquire lock at %s.", lockPath)
+	log.Infof("Trying to acquire lock at %s.", lockPath)
 	err = lock.Lock(context.TODO())
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Successfully acquired lock at %s.", lockPath)
+	log.Infof("Successfully acquired lock at %s.", lockPath)
 
 	put := clientv3.OpPut(addrPath, addr)
 	resp, err := cli.Txn(context.Background()).If(lock.IsOwner()).Then(put).Commit()
@@ -75,6 +86,7 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 		statePath: statePath,
 		client:    cli,
 		lock:      lock,
+		sess:      sess,
 	}
 
 	return e, nil
@@ -143,9 +155,24 @@ func (e *EtcdClient) Load() ([]byte, error) {
 	return state, nil
 }
 
+// Shutdown shuts down the etcd client gracefully.
+func (e *EtcdClient) Shutdown() error {
+	err := e.sess.Close()
+	newErr := e.client.Close()
+	if newErr != nil {
+		if err == nil {
+			err = newErr
+		} else {
+			log.Errorln(newErr)
+		}
+	}
+
+	return err
+}
+
 // GetKey gets the value by the specify key.
-func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+func GetKey(c *clientv3.Client, key string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	resp, err := c.Get(ctx, key)
 	cancel()
 	if err != nil {
@@ -159,8 +186,8 @@ func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
 	return string(v), nil
 }
 
-// WatchKey watches the specify key and send to valChan if there is some event.
-func WatchKey(c *clientv3.Client, key string, valChan chan<- string) {
+// watchKey watches the specify key and send to valChan if there is some event.
+func watchKey(c *clientv3.Client, key string, valChan chan<- string) {
 	rch := c.Watch(context.Background(), key)
 	for wresp := range rch {
 		for _, ev := range wresp.Events {

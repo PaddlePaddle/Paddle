@@ -28,6 +28,10 @@ if(NOT WITH_TIMER)
     add_definitions(-DPADDLE_DISABLE_TIMER)
 endif(NOT WITH_TIMER)
 
+if(USE_EIGEN_FOR_BLAS)
+    add_definitions(-DPADDLE_USE_EIGEN_FOR_BLAS)
+endif(USE_EIGEN_FOR_BLAS)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
@@ -66,6 +70,28 @@ else()
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
 endif(NOT WITH_GPU)
+
+if(WITH_MKLDNN)
+    add_definitions(-DPADDLE_USE_MKLDNN)
+    if (WITH_MKLML AND MKLDNN_IOMP_DIR)
+        message(STATUS "Enable Intel OpenMP at ${MKLDNN_IOMP_DIR}")
+        set(OPENMP_FLAGS "-fopenmp")
+        set(CMAKE_C_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
+        set(CMAKE_CXX_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_FLAGS}")
+    else()
+        find_package(OpenMP)
+        if(OPENMP_FOUND)
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        else()
+            message(WARNING "Can not find OpenMP."
+                 "Some performance features in MKLDNN may not be available")
+        endif()
+    endif()
+
+endif(WITH_MKLDNN)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SIMD_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
@@ -107,7 +133,7 @@ if(WITH_GOLANG)
     add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/glide
       COMMAND env GOPATH=${GOPATH} ${GLIDE} install
       COMMAND touch ${CMAKE_BINARY_DIR}/glide
-      DEPENDS ${PROJ_ROOT}/go/glide.lock
+      DEPENDS ${PADDLE_SOURCE_DIR}/go/glide.lock
       WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go"
       )
 

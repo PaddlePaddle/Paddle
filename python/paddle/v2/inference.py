@@ -35,6 +35,13 @@ class Inference(object):
             name = param.getName()
             assert isinstance(val, api.Vector)
             val.copyFromNumpyArray(parameters.get(name).flatten())
+            # the setValueUpdated function is called in randomize, zeroMem,
+            # load function in paddle/parameter/Parameter.cpp. But in the
+            # inference mode, the setValueUpdated is never called, it will
+            # cause the parameter will not be dispatched
+            # in MultiGradientMachine for multi-GPU. So setValueUpdated is
+            # called here, but it's better to call this function in one place.
+            param.setValueUpdated()
         self.__gradient_machine__ = gm
         self.__data_types__ = topo.data_type()
 
@@ -63,7 +70,7 @@ class Inference(object):
                 item = [each_result[each_field] for each_field in field]
                 yield item
 
-    def infer(self, input, field='value', **kwargs):
+    def infer(self, input, field='value', flatten_result=True, **kwargs):
         """
         Infer a data by model.
         :param input: input data batch. Should be python iterable object.
@@ -76,7 +83,10 @@ class Inference(object):
                 retv = [[] for i in xrange(len(result))]
             for i, item in enumerate(result):
                 retv[i].append(item)
-        retv = [numpy.concatenate(out) for out in retv]
+
+        if flatten_result:
+            retv = [numpy.concatenate(out) for out in retv]
+
         if len(retv) == 1:
             return retv[0]
         else:

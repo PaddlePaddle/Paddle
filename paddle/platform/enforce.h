@@ -14,10 +14,20 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/string/printf.h>
+#include <dlfcn.h>     // for dladdr
+#include <execinfo.h>  // for backtrace
+#include <iomanip>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+
+#include "paddle/string/printf.h"
+#include "paddle/string/to_string.h"
+
+#ifdef __GNUC__
+#include <cxxabi.h>  // for __cxa_demangle
+#endif
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -36,6 +46,58 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+namespace {
+#ifdef __GNUC__
+inline std::string demangle(std::string name) {
+  int status = -4;  // some arbitrary value to eliminate the compiler warning
+  std::unique_ptr<char, void (*)(void*)> res{
+      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+  return (status == 0) ? res.get() : name;
+}
+#else
+inline std::string demangle(std::string name) { return name; }
+#endif
+}
+
+struct EnforceNotMet : public std::exception {
+  std::exception_ptr exp_;
+  std::string err_str_;
+  EnforceNotMet(std::exception_ptr e, const char* f, int l) : exp_(e) {
+    static constexpr int TRACE_STACK_LIMIT = 100;
+    try {
+      std::rethrow_exception(exp_);
+    } catch (const std::exception& exp) {
+      std::ostringstream sout;
+
+      sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
+      sout << "PaddlePaddle Call Stacks: " << std::endl;
+
+      void* call_stack[TRACE_STACK_LIMIT];
+      auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+      auto symbols = backtrace_symbols(call_stack, size);
+
+      Dl_info info;
+      for (int i = 0; i < size; ++i) {
+        if (dladdr(call_stack[i], &info)) {
+          auto demangled = demangle(info.dli_sname);
+          auto addr_offset = static_cast<char*>(call_stack[i]) -
+                             static_cast<char*>(info.dli_saddr);
+          sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
+                                  2 + sizeof(void*) * 2, call_stack[i],
+                                  demangled, addr_offset);
+        } else {
+          sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
+                                  call_stack[i]);
+        }
+      }
+      free(symbols);
+      err_str_ = sout.str();
+    }
+  }
+
+  const char* what() const noexcept { return err_str_.c_str(); }
+};
+
 // Because most enforce conditions would evaluate to true, we can use
 // __builtin_expect to instruct the C++ compiler to generate code that
 // always forces branch prediction of true.
@@ -43,48 +105,48 @@ namespace platform {
 // For more details, please check https://stackoverflow.com/a/43870188/724872.
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    int stat, const Args&... args) {
+  if (UNLIKELY(!(stat))) {
+    throw std::runtime_error(string::Sprintf(args...));
+  }
+}
+
 #ifndef PADDLE_ONLY_CPU
 
 template <typename... Args>
-inline void throw_on_error(cudaError_t e, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cudaError_t e, const Args&... args) {
   if (UNLIKELY(e)) {
-    // clang-format off
-    throw thrust::system_error(
-        e, thrust::cuda_category(),
-        string::Sprintf(args...) +
-        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
-    // clang-format on
+    throw thrust::system_error(e, thrust::cuda_category(),
+                               string::Sprintf(args...));
   }
 }
 
 template <typename... Args>
-inline void throw_on_error(curandStatus_t stat, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    curandStatus_t stat, const Args&... args) {
   if (stat != CURAND_STATUS_SUCCESS) {
-    // clang-format off
-    throw thrust::system_error(
-        cudaErrorLaunchFailure, thrust::cuda_category(),
-        string::Sprintf(args...) +
-        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
-    // clang-format on
+    throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
+                               string::Sprintf(args...));
   }
 }
 
 template <typename... Args>
-inline void throw_on_error(cudnnStatus_t stat, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cudnnStatus_t stat, const Args&... args) {
   if (stat == CUDNN_STATUS_SUCCESS) {
     return;
   } else {
-    // clang-format off
-    throw std::runtime_error(
-        platform::dynload::cudnnGetErrorString(stat) +
-        string::Sprintf(args...) +
-        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
-    // clang-format on
+    throw std::runtime_error(platform::dynload::cudnnGetErrorString(stat) +
+                             string::Sprintf(args...));
   }
 }
 
 template <typename... Args>
-inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cublasStatus_t stat, const Args&... args) {
   std::string err;
   if (stat == CUBLAS_STATUS_SUCCESS) {
     return;
@@ -107,35 +169,69 @@ inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
   } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
     err = "CUBLAS: license error, ";
   }
-  throw std::runtime_error(err + string::Sprintf(args...) +
-                           string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
+  throw std::runtime_error(err + string::Sprintf(args...));
 }
 
 #endif  // PADDLE_ONLY_CPU
 
-template <typename... Args>
-inline void throw_on_error(int stat, const Args&... args) {
-  if (UNLIKELY(!(stat))) {
-    throw std::runtime_error(
-        string::Sprintf(args...) +
-        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
-  }
+template <typename T>
+inline void throw_on_error(T e) {
+  throw_on_error(e, "");
 }
 
-#define PADDLE_THROW(...)                                     \
-  do {                                                        \
-    throw std::runtime_error(                                 \
-        string::Sprintf(__VA_ARGS__) +                        \
-        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__)); \
+#define PADDLE_THROW(...)                                              \
+  do {                                                                 \
+    throw ::paddle::platform::EnforceNotMet(                           \
+        std::make_exception_ptr(                                       \
+            std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
+        __FILE__, __LINE__);                                           \
   } while (0)
 
-/**
- * @brief Enforce a condition, otherwise throw an EnforceNotMet
- */
-#define PADDLE_ENFORCE(condition, ...)                          \
-  do {                                                          \
-    ::paddle::platform::throw_on_error(condition, __VA_ARGS__); \
+#define PADDLE_ENFORCE(...)                                             \
+  do {                                                                  \
+    try {                                                               \
+      ::paddle::platform::throw_on_error(__VA_ARGS__);                  \
+    } catch (...) {                                                     \
+      throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
+                                              __FILE__, __LINE__);      \
+    }                                                                   \
   } while (0)
+
+/*
+ * Some enforce helpers here, usage:
+ *    int a = 1;
+ *    int b = 2;
+ *    PADDLE_ENFORCE_EQ(a, b);
+ *
+ *    will raise an expression described as follows:
+ *    "enforce a == b failed, 1 != 2" with detailed stack information.
+ *
+ *    extra messages is also supported, for example:
+ *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
+ */
+
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
+#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
+#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
+#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
+#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
+#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                            \
+  PADDLE_ENFORCE(nullptr != (__VAL), #__VAL " should not be null\n%s", \
+                 paddle::string::Sprintf("" __VA_ARGS__));
+
+#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)        \
+  PADDLE_ENFORCE(__VAL0 __CMP __VAL1,                                         \
+                 "enforce %s " #__CMP " %s failed, %s " #__INV_CMP " %s\n%s", \
+                 #__VAL0, #__VAL1, paddle::string::to_string(__VAL0),         \
+                 paddle::string::to_string(__VAL1),                           \
+                 paddle::string::Sprintf("" __VA_ARGS__));
 
 }  // namespace platform
 }  // namespace paddle

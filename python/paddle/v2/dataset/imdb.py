@@ -173,5 +173,5 @@ def convert(path):
     Converts dataset to recordio format
     """
     w = word_dict()
-    paddle.v2.dataset.common.convert(path, lambda: train(w), 10, "imdb_train")
-    paddle.v2.dataset.common.convert(path, lambda: test(w), 10, "imdb_test")
+    paddle.v2.dataset.common.convert(path, lambda: train(w), 1000, "imdb_train")
+    paddle.v2.dataset.common.convert(path, lambda: test(w), 1000, "imdb_test")

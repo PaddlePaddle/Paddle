@@ -63,6 +63,7 @@ protected:
   int configChannels_, configNumFilters_;
   int paddingH_, paddingW_;
   int strideH_, strideW_;
+  int dilationH_, dilationW_;
   int filterH_, filterW_;
   /// One group offset of input data.
   int inputOffset_;
@@ -101,12 +102,6 @@ protected:
   size_t bwdFilterLimitBytes_;
   /// Size of total work space.
   size_t workSpaceInBytes_;
-
-  /// Whether to call cuDNN api to choose conv algorithm.
-  bool isSelectAlgo_;
-  /// batchNum is used to record batch size. If the batch size is changed,
-  /// the selection algorithm will be called.
-  int batchNum_;
   bool bias_;
 
   std::unique_ptr<Weight> weight_;

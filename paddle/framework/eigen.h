@@ -63,22 +63,38 @@ struct EigenTensor {
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
+struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {};
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
-  // Flatten is to reshape a Tensor into a one dimension EigenVector
-  static typename EigenTensor<T, 1>::Type Flatten(Tensor& tensor) {
-    return EigenTensor<T, 1>::From(
+  // Flatten reshapes a Tensor into an EigenVector.
+  static typename EigenVector::Type Flatten(Tensor& tensor) {
+    return EigenVector::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 
-  static typename EigenTensor<T, 1>::ConstType Flatten(const Tensor& tensor) {
-    return EigenTensor<T, 1>::From(
+  static typename EigenVector::ConstType Flatten(const Tensor& tensor) {
+    return EigenVector::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 };
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = EigenTensor<T, 2, MajorType, IndexType>;
+struct EigenScalar {
+  // Scalar tensor (implemented as a rank-0 tensor) of scalar type T.
+  using Type = Eigen::TensorMap<
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, MajorType, IndexType>>;
+  using ConstType = Eigen::TensorMap<
+      Eigen::TensorFixedSize<const T, Eigen::Sizes<>, MajorType, IndexType>>;
+
+  static Type From(Tensor& tensor) { return Type(tensor.data<T>()); }
+
+  static ConstType From(const Tensor& tensor) {
+    return ConstType(tensor.data<T>());
+  }
+};
 
 }  // namespace framework
 }  // namespace paddle

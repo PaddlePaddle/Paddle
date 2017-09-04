@@ -109,6 +109,13 @@ protected:
     return filter[filter.ndims() - 1];
   }
 
+  // determine whether im2col needs to be performed
+  inline bool isNeedIm2col(const TensorShape& filter) const {
+    return !(getFilterHeight(filter) == 1 && getFilterWidth(filter) == 1 &&
+             strideH() == 1 && strideW() == 1 && paddingH() == 0 &&
+             paddingW() == 0);
+  }
+
   std::vector<size_t> strides_;
   std::vector<size_t> paddings_;
 
