@@ -268,7 +268,13 @@ public:
   }
 
   // get type of evaluator
-  std::string getTypeImpl() const { return "chunk"; }
+  std::string getType(const std::string& name, Error* err) const {
+    this->getValue(name, err);
+    if (!err->isOK()) {
+      return "";
+    }
+    return "chunk";
+  }
 
 private:
   void storeLocalValues() const {

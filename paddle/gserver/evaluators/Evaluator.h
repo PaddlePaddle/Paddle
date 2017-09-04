@@ -211,6 +211,7 @@ public:
     *err = Error("Not implemented");
     return .0f;
   }
+
   std::string getType(const std::string& name, Error* err) const {
     *err = Error("Not implemented");
     return "";
@@ -331,6 +332,7 @@ private:
 protected:
   std::string getTypeImpl() const;
 };
+
 /**
  * @brief precision, recall and f1 score Evaluator
  * \f[
@@ -357,6 +359,12 @@ public:
   virtual void printStats(std::ostream& os) const;
 
   virtual void distributeEval(ParameterClient2* client);
+
+  void getNames(std::vector<std::string>* names);
+
+  real getValue(const std::string& name, Error* err) const;
+
+  std::string getType(const std::string& name, Error* err) const;
 
   struct StatsInfo {
     /// numbers of true positives
@@ -428,11 +436,6 @@ private:
   mutable std::unordered_map<std::string, real> values_;
 
   void storeLocalValues() const;
-  // Evaluator interface
-public:
-  void getNames(std::vector<std::string>* names);
-  real getValue(const std::string& name, Error* err) const;
-  std::string getType(const std::string& name, Error* err) const;
 };
 
 /*
