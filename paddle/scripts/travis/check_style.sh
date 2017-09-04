@@ -8,6 +8,12 @@ function abort(){
 trap 'abort' 0
 set -e
 
+# install glide
+curl https://glide.sh/get | bash
+eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+go get -u github.com/alecthomas/gometalinter
+gometalinter --install
+
 cd $TRAVIS_BUILD_DIR
 export PATH=/usr/bin:$PATH
 pre-commit install
