@@ -107,8 +107,8 @@ class MulOpGrad : public framework::OperatorWithKernel {
         "The second dimension of Out@GRAD must equal to the second "
         "dimension of the second operand.");
 
-    x_grad->Resize(x_dims);
-    y_grad->Resize(y_dims);
+    if (x_grad) x_grad->Resize(x_dims);
+    if (y_grad) y_grad->Resize(y_dims);
   }
 };
 
