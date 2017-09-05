@@ -5,7 +5,7 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
 
 
-def create_op(scope, op_type, inputs, outputs, attrs):
+def create_op(scope, op_type, inputs, outputs, attrs=None):
     kwargs = dict()
 
     for ins in Operator.get_op_inputs(op_type):
@@ -40,8 +40,8 @@ def create_op(scope, op_type, inputs, outputs, attrs):
                 tensor = var.get_tensor()
                 kwargs[out_name].append(out_name)
 
-    for attr_name in Operator.get_op_attr_names(op_type):
-        kwargs[attr_name] = attrs[attr_name]
+    # for attr_name in Operator.get_op_attr_names(op_type):
+    #     kwargs[attr_name] = attrs[attr_name]
     return Operator(op_type, **kwargs)
 
 
@@ -50,7 +50,6 @@ def set_input(scope, op, inputs, place):
         in_name = ins[0]
         in_dup = ins[1]
         if in_name in inputs:
-            kwargs[in_name] = []
             if in_dup:
                 sub_in = inputs[in_name]
                 for sub_in_name in sub_in:
@@ -62,7 +61,7 @@ def set_input(scope, op, inputs, place):
             else:
                 var = scope.find_var(in_name)
                 tensor = var.get_tensor()
-                arr = self.inputs[in_name]
+                arr = inputs[in_name]
                 tensor.set_dims(arr.shape)
                 tensor.set(arr, place)
 
@@ -168,24 +167,17 @@ def remove_grad_var_name(var_name):
 
 
 class OpTest(unittest.TestCase):
-    def __init__(self, op_type, inputs, outputs, attrs):
-        self.op_type = op_type
-        self.inputs = inputs
-        self.outputs = outputs
-        self.attrs = attrs
-
     def check_output(self, place):
         self.scope = core.Scope()
-        self.op = create_op(self.scope, self.op_type, self.inputs, self.outputs,
-                            self.attrs)
-        if isinstance(place, core.GPUPlace) and not op.support_gpu():
+        self.op = create_op(self.scope, self.op_type, self.inputs, self.outputs)
+        if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
             return
         set_input(self.scope, self.op, self.inputs, place)
-        op.infer_shape(scope)
+        self.op.infer_shape(self.scope)
         ctx = core.DeviceContext.create(place)
-        op.run(scope, ctx)
+        self.op.run(self.scope, ctx)
 
-        for outs in Operator.get_op_outputs(op.type()):
+        for outs in Operator.get_op_outputs(self.op.type()):
             out_name = outs[0]
             out_dup = outs[1]
             if out_dup:
@@ -202,39 +194,37 @@ class OpTest(unittest.TestCase):
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
                 expect = self.outputs[out_name]
                 self.assertTrue(
-                    numpy.allclose(
+                    np.allclose(
                         actual, expect, atol=1e-05),
                     "output name: " + out_name + "has diff")
 
         def check_grad(self,
-                       input_to_checl,
+                       input_to_check,
                        output_name,
                        no_grad_set=None,
                        in_place=False):
             self.scope = core.Scope()
+            self.op = create_op(self.scope, self.op_type, self.inputs,
+                                self.outputs)
+            if no_grad_set is None:
+                no_grad_set = set()
 
-        self.op = create_op(self.scope, self.op_type, self.inputs, self.outputs,
-                            self.attrs)
+            numeric_grad = get_numeric_gradient(
+                self.scope,
+                self.op,
+                self.inputs,
+                input_to_check,
+                output_name,
+                in_place=in_place)
 
-        if no_grad_set is None:
-            no_grad_set = set()
+            grad_name = grad_var_name(input_to_check)
 
-        numeric_grad = get_numeric_gradient(
-            self.scope,
-            self.op,
-            self.inputs,
-            input_to_check,
-            output_name,
-            in_place=in_place)
+            places = [core.CPUPlace()]
+            if core.is_compile_gpu() and op.support_gpu():
+                places.append(core.GPUPlace(0))
 
-        grad_name = grad_var_name(input_to_check)
+            for place in places:
+                analytic_grads = get_gradient(self.scope, self.op, self.inputs,
+                                              grad_name, place, no_grad_set)
 
-        places = [core.CPUPlace()]
-        if core.is_compile_gpu() and op.support_gpu():
-            places.append(core.GPUPlace(0))
-
-        for place in places:
-            analytic_grads = get_gradient(self.scope, self.op, self.inputs,
-                                          grad_name, place, no_grad_set)
-
-        self.assertTrue(np.allclose(numeric_grad, analytic_grads))
+            self.assertTrue(np.allclose(numeric_grad, analytic_grads))

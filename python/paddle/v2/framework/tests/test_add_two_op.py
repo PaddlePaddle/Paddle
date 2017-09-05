@@ -11,13 +11,13 @@ from op_test import OpTest
 
 class TestAddOp(OpTest):
     def setUp(self):
-        self.type = "add_two"
+        self.op_type = "add_two"
 
-    self.inputs = {
-        'X': numpy.random.random((102, 105)).astype("float32"),
-        'Y': numpy.random.random((102, 105)).astype("float32")
-    }
-    self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
+        self.inputs = {
+            'X': numpy.random.random((102, 105)).astype("float32"),
+            'Y': numpy.random.random((102, 105)).astype("float32")
+        }
+        self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
 
     def test_check_output(self):
         self.check_output(core.CPUPlace())
