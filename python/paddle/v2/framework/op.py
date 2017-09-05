@@ -42,8 +42,8 @@ class OpDescCreationMethod(object):
         if len(args) != 0:
             raise ValueError("Only keyword arguments is supported by Paddle")
         op_desc = framework_pb2.OpDesc()
-
         for input_parameter in self.__op_proto__.inputs:
+
             input_arguments = kwargs.get(input_parameter.name, [])
             if is_str(input_arguments):
                 input_arguments = [input_arguments]
@@ -133,8 +133,8 @@ def create_op_creation_method(op_proto):
     return OpInfo(
         method=__impl__,
         name=op_proto.type,
-        inputs=[var.name for var in op_proto.inputs],
-        outputs=[var.name for var in op_proto.outputs],
+        inputs=[(var.name, var.duplicable) for var in op_proto.inputs],
+        outputs=[(var.name, var.duplicable) for var in op_proto.outputs],
         attrs=[attr.name for attr in op_proto.attrs])
 
 
