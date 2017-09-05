@@ -49,16 +49,6 @@ class OpTestMeta(type):
                             var.set(arr, place)
                     else:
                         kwargs[in_name] = '@EMPTY@'
-                #for in_name in Operator.get_op_input_names(self.type):
-                #    if hasattr(self, "inputs") and in_name in self.inputs:
-                #kwargs[in_name] = in_name
-                #var = scope.new_var(in_name).get_tensor()
-                #arr = self.inputs[in_name]
-                #var.set_dims(arr.shape)
-                #var.set(arr, place)
-                #kwargs[in_name] = []
-                #    else:
-                #        kwargs[in_name] = "@EMPTY@"
 
                 for out_name, out_dup in Operator.get_op_output_names(
                         self.type):
