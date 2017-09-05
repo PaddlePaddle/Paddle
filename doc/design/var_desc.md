@@ -61,24 +61,26 @@ fc2 = layer.fc(input=fc1, output_size=20)
 1. `operator`. Variable should record which operator produce itself. The reaon is:
   - we use pd.eval(targets=[var1, var2]) to run the related ops to get the value of var1 and var2. var.op is used to trace the dependency of the current variable.
 
+In PaddlePaddle, we use Block to describe Computation Graph, so in the code we will use Block but not Graph.
+
 ```python
 import VarDesc
 import LoDTensorDesc
 import framework
 
 def AddInitialOperator(variable, initializer):
-	# add an initialize Operator to graph to init this Variable
+	# add an initialize Operator to block to init this Variable
 
 class Variable(object):
    def __init__(self, name, dims, type, initializer):
-      self._graph = get_default_graph()
+      self._block = get_default_block()
       self._name = name
       self.op = None
 
       tensor_desc = LoDTensorDesc(data_type=type, dims=dims)
       _var_desc = VarDesc(name=name, lod_tensor=tensor_desc)
       self._var = framework.CreateVar(_var_desc)
-      self._graph.add_var(self)
+      self._block.add_var(self)
 
       # add initial op according to initializer
       if initializer is not None:
@@ -117,6 +119,6 @@ x = Variable(dims=[-1, 640, 480])
 y = layer.fc(x, output_size=100)
 z = layer.fc(y, output_size=200)
 
-paddle.train(z, ...)
-print(y)
+paddle.eval(targets=[z], ...)
+print(z)
 ```
