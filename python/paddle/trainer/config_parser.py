@@ -2737,14 +2737,13 @@ class AddToLayer(LayerBase):
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
 
         if len(self.inputs) > 1:
-            assert len(self.inputs) == 2
-            assert self.get_input_layer(0).size == self.get_input_layer(1).size
-            assert self.get_input_layer(0).depth == self.get_input_layer(
-                1).depth
-            assert self.get_input_layer(0).height == self.get_input_layer(
-                1).height
-            assert self.get_input_layer(0).width == self.get_input_layer(
-                1).width
+            for input_index in xrange(len(self.inputs)):
+                assert self.get_input_layer(0).height == self.get_input_layer(
+                    input_index).height
+                assert self.get_input_layer(0).width == self.get_input_layer(
+                    input_index).width
+                assert self.get_input_layer(0).depth == self.get_input_layer(
+                    input_index).depth
 
         self.set_layer_size(self.get_input_layer(0).size)
         self.set_layer_height_width(self.get_input_layer(0).height, \
@@ -3429,6 +3428,12 @@ class ConcatenateLayer(LayerBase):
             name, 'concat', 0, inputs=inputs, **xargs)
         size = 0
         for input_index in xrange(len(self.inputs)):
+            assert self.get_input_layer(0).height == self.get_input_layer(
+                input_index).height
+            assert self.get_input_layer(0).width == self.get_input_layer(
+                input_index).width
+            assert self.get_input_layer(0).depth == self.get_input_layer(
+                input_index).depth
             input_layer = self.get_input_layer(input_index)
             input = self.inputs[input_index]
             if self.config.size == 0:
