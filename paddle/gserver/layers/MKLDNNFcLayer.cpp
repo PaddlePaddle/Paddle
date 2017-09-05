@@ -201,13 +201,12 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdWgt_);
 
   /// backward data
-  device = inputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
-  const MatrixPtr& in = getInputGrad(0, device);
+  const MatrixPtr& in = inputLayers_[0]->getOutput().grad;
   if (in == nullptr) {
     return;
   }
-  if (getInput(0, device).getAllCount() > 1) {
-    // TODO(TJ): use outputMaps_ ways when merge outgrad done
+  if (getInput(0, MKLDNN_DEVICE).getAllCount() > 1) {
+    // TODO(TJ): use outputMaps_ ways to get the inGrad_ when merge outgrad done
   } else {
     inGrad_ = MKLDNNMatrix::create(in, inVal_->getPrimitiveDesc());
   }
@@ -222,6 +221,14 @@ void MKLDNNFcLayer::resetBwd() {
   bwdData_.reset(new fc_bwdData(bwdDataPD, *outGrad_, *wgtVal_, *inGrad_));
   printGradFormatFlow();
   pipelineBwd_.push_back(*bwdData_);
+}
+
+void MKLDNNFcLayer::updateInputData() {
+  if (inputLayers_[0]->getType() != "data") {
+    return;
+  }
+  real* iData = getInputValue(0, CPU_DEVICE)->getData();
+  inVal_->updateData(iData);
 }
 
 void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {

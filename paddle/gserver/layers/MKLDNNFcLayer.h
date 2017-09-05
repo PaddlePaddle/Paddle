@@ -51,6 +51,8 @@ public:
 
   void resetBwd() override;
 
+  void updateInputData() override;
+
   void updateWeights(const UpdateCallback& callback) override;
 
   void convertWeightsFromPaddle() override;

@@ -59,7 +59,7 @@ protected:
   // TODO(TJ): remove me if unused
   int cpuOutputIndex_;
 
-  // MKLDNNMatrixPtr
+  // MKLDNNMatrixPtr with internal format
   MKLDNNMatrixPtr inVal_;
   MKLDNNMatrixPtr inGrad_;
   MKLDNNMatrixPtr outVal_;
@@ -112,23 +112,21 @@ public:
 
   void forward(PassType passType) override {
     passType_ = passType;
-    copySeqInfoToOutputs();
-
-    CHECK(!inputLayers_.empty());
-    size_t elemenCnt = inputLayers_[0]->getOutput().value->getElementCnt();
-    if (inputElemenCnt_ != elemenCnt) {
-      inputElemenCnt_ = elemenCnt;
-      reshape();
-      resetFwd();
-      convertWeightsFromPaddle();
-      needResetBwd_ = true;
-    }
 
     {
       REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
-      syncInputValue();
+      copySeqInfoToOutputs();
+      CHECK(!inputLayers_.empty());
+      size_t elemenCnt = inputLayers_[0]->getOutput().value->getElementCnt();
+      if (inputElemenCnt_ != elemenCnt) {
+        inputElemenCnt_ = elemenCnt;
+        reshape();
+        resetFwd();
+        convertWeightsFromPaddle();
+        needResetBwd_ = true;
+      }
 
-      // just submit forward pipeline
+      updateInputData();
       stream_->submit(pipelineFwd_);
     }
 
@@ -151,8 +149,6 @@ public:
         needResetBwd_ = false;
       }
 
-      syncOutputGrad();
-      // just sumbmit backward pipeline
       stream_->submit(pipelineBwd_);
     }
 
@@ -180,6 +176,15 @@ public:
    */
   virtual void resetBwd() = 0;
 
+  /**
+   * Update input value data when input layer is "data" type.
+   * Since the input value data address might be changed.
+   */
+  virtual void updateInputData() {}
+
+  /**
+   * Update weights and biases if necessary.
+   */
   virtual void updateWeights(const UpdateCallback& callback) {}
 
   /**
@@ -278,32 +283,6 @@ protected:
           << "Only support other device is CPU yet";
     }
     return outputOtherDevice_.size() == 0;
-  }
-
-  /**
-   * Sync input value data
-   */
-  void syncInputValue() {
-    if (inputIsOnlyMKLDNN()) {
-      return;
-    }
-    real* iData = getInputValue(0, CPU_DEVICE)->getData();
-    // update input data
-    // since it might be changed if this is after data layer
-    inVal_->updateData(iData);
-  }
-
-  /**
-   * Sync output grad data
-   */
-  void syncOutputGrad() {
-    if (outputIsOnlyMKLDNN()) {
-      return;
-    }
-
-    // update diff
-    real* oDiff = getOutput(CPU_DEVICE).grad->getData();
-    outGrad_->updateData(oDiff);
   }
 
   /**
