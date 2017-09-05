@@ -28,15 +28,17 @@
 
  内容            | 定义位置
 --------------  | :----------------------
-OpProtoMake定义  | `*_op.cc`文件，Backward Op不需要定义OpProtoMake
-Op定义           | `*_op.cc`文件
-Kernel实现       | CPU、GPU共享Kernel在`*_op.h`文件，否则，CPU可以在`*_op.cc`文件，GPU可在`*_op.cu`文件。
-注册Op           | Op注册在`*_op.cc`文件；Kernel注册CPU在`*_op.cc`文件，GPU在`*_op.cu`文件
+OpProtoMake定义  | `.cc`文件，Backward Op不需要定义OpProtoMake
+Op定义           | `.cc`文件
+Kernel实现       | CPU、GPU共享Kernel在`.h`文件，否则，CPU可以在`.cc`文件，GPU可在`.cu`文件。
+注册Op           | Op注册在`.cc`文件；Kernel注册CPU在`.cc`文件，GPU在`.cu`文件
+
 
 实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。
 
 
 下面以矩阵乘操作，即[MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc)为例来介绍如何写带Kernel的Operator。
+
 
 ## 实现C++类
 
@@ -200,13 +202,18 @@ REGISTER_OP_GPU_KERNEL(mul_grad,
 
 ### 5. 编译
 
-无需修改[paddle/operators/CMakeLists.txt](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/CMakeLists.txt)文件，`paddle/operators` 目录下新增的 `*_op.cc` 文件会被自动加入编译。
+- 简单**无特殊依赖**的OP无需修改CMakeList.txt文件。[paddle/operators/CMakeLists.txt](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/CMakeLists.txt) 会自动将 `paddle/operators` 目录下新增的 `*_op.cc` 文件加入编译。
+- 较为复杂、**有额外依赖** 的operator仍需要修改[paddle/operators/CMakeLists.txt](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/CMakeLists.txt)。如，`mul_op` 依赖 `math_function`，需要在`CMakeLists.txt`中添加如下内容：
 
-直接执行下面命令可进行编译：
+    ```
+    op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)		 +
+    ```
 
-```
-make mul_op
-```
+- 运行下面命令可以进行编译：
+
+    ```
+    make mul_op
+    ```
 
 ## 绑定Python
 
@@ -235,13 +242,13 @@ make mul_op
 
  - 生成库
 
-   无需修改 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件，`paddle/operators` 目录下新增的 `*_op.cc` 文件会被自动被添加链接至生成的lib库中。
+   无需修改 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件，`paddle/operators` 目录下新增的 `*_op.cc` 文件会自动被添加链接到生成的lib库中。
 
 ## 实现单元测试
 
 单测包括对比前向Op不同设备(CPU、GPU)的实现、对比反向OP不同设备(CPU、GPU)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单测](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
 
-### 前向Operator单测
+### 前向Operator单元测试
 
 前向Op单测继承自`unittest.TestCase`，并定义元类`__metaclass__ = OpTestMeta`，具体单测流程在`OpTestMeta`里完成。需在`setUp`函数定义输入输出和属性参数，以及Python对比的输出值。
 
@@ -269,7 +276,7 @@ class TestMulOp(unittest.TestCase):
    - `self.outputs` : 定义输出，并得到Python结算结果。
 
 
-### 反向Operator单测
+### 反向Operator单元测试
 
 反向Op单测继承自`GradientChecker`，而`GradientChecker`集成自`unittest.TestCase`，所以反向单测函数需要`test_`开头。
 
@@ -297,21 +304,22 @@ class TestMulOp(unittest.TestCase):
       - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
 
 
-### 编译和执行
+### 编译和执行单元测试
 
-单测完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)里添加编译：
+单测完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)里添加以下内容将单测加入工程中：
 
 ```
 py_test(test_mul_op SRCS test_mul_op.py)
 ```
 
-编译时需要打开`WITH_TESTING`, 即 `cmake paddle_dir -DWITH_TESTING=ON`，编译成功之后执行单测命令为：
+请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单测：
 
-```
+```bash
 make test ARGS="-R test_mul_op -V"
 ```
+
 或者:
 
-```
+```bash
 ctest -R test_mul_op
 ```
