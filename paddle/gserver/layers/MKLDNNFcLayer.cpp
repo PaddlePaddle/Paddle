@@ -87,7 +87,7 @@ void MKLDNNFcLayer::reshape() {
   CHECK_EQ(size_t(oc_), getSize());
 
   reshapeOutput(oh_, ow_);
-  resetOutput(bs_, oc_);
+  resizeOutput(bs_, oc_);
 
   printSizeInfo();
 }

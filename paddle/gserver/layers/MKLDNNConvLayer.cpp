@@ -99,7 +99,7 @@ void MKLDNNConvLayer::reshape() {
   ow_ = outputSize(iw_, fw, pw_, sw_, caffeMode_);
 
   reshapeOutput(oh_, ow_);
-  resetOutput(bs_, oc_ * oh_ * ow_);
+  resizeOutput(bs_, oc_ * oh_ * ow_);
 
   printSizeInfo();
 }
