@@ -21,7 +21,7 @@ class TestSumOp(OpTest):
         self.check_output(core.GPUPlace(0))
 
     def test_check_grad(self):
-        self.check_grad("x0", "Out")
+        self.check_grad(["x0"], "Out")
 
 
 # class TestSumOp(unittest.TestCase):

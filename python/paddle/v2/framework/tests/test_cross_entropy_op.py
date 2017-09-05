@@ -24,7 +24,7 @@ class TestCrossEntropy(OpTest):
         self.check_output(core.GPUPlace(0))
 
     def test_check_grad(self):
-        self.check_grad("X", "Y")
+        self.check_grad(["X"], "Y")
 
     # class TestCrossEntropy(unittest.TestCase):
     #     __metaclass__ = OpTestMeta

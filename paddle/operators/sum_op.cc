@@ -63,7 +63,7 @@ class SumGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradOp);
+REGISTER_OP(sum, ops::SumOp, ops::SumOpMaker, sum_grad, ops::SumGradOp);
 REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(sum_grad,
                        ops::SumGradKernel<paddle::platform::CPUPlace, float>);

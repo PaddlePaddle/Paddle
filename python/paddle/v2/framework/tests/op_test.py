@@ -212,22 +212,26 @@ class OpTest(unittest.TestCase):
                         actual, expect, atol=1e-05),
                     "output name: " + out_name + "has diff")
 
-    def __assert_is_close(self, numeric_grad, analytic_grad, name,
+    def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):
-        abs_a = np.abs(numeric_grad)
-        abs_a[abs_a < 1e-3] = 1
 
-        diff_mat = np.abs(numeric_grad - analytic_grad) / abs_a
-        max_diff = np.max(diff_mat)
+        for a, b, name in itertools.izip(numeric_grads, analytic_grads, names):
+            abs_a = np.abs(a)
+            abs_a[abs_a < 1e-3] = 1
 
-        def err_msg():
-            offset = np.argmax(diff_mat > max_relative_error)
-            return "%s Variable %s max gradient diff %f over limit %f, the first " \
+            diff_mat = np.abs(a - b) / abs_a
+            max_diff = np.max(diff_mat)
+
+            def err_msg():
+                offset = np.argmax(diff_mat > max_relative_error)
+                return "%s Variable %s max gradient diff %f over limit %f, the first " \
                   "error element is %d" % (
                    msg_prefix, name, max_diff, max_relative_error, offset)
 
+            self.assertLessEqual(max_diff, max_relative_error, err_msg())
+
     def check_grad(self,
-                   input_to_check,
+                   inputs_to_check,
                    output_name,
                    no_grad_set=None,
                    in_place=False,
@@ -237,27 +241,31 @@ class OpTest(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
 
-        numeric_grad = get_numeric_gradient(
-            self.scope,
-            self.op,
-            self.inputs,
-            input_to_check,
-            output_name,
-            in_place=in_place)
-        print numeric_grad
+        numeric_grads = [
+            get_numeric_gradient(
+                self.scope,
+                self.op,
+                self.inputs,
+                input_to_check,
+                output_name,
+                in_place=in_place) for input_to_check in inputs_to_check
+        ]
 
-        grad_name = grad_var_name(input_to_check)
+        grad_names = [
+            grad_var_name(input_to_check) for input_to_check in inputs_to_check
+        ]
 
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and op.support_gpu():
             places.append(core.GPUPlace(0))
 
         for place in places:
-            analytic_grad = get_gradient(self.scope, self.op, self.inputs,
-                                         self.outputs, grad_name, place,
-                                         no_grad_set)
-            print analytic_grad
+            analytic_grads = [
+                get_gradient(self.scope, self.op, self.inputs, self.outputs,
+                             grad_name, place, no_grad_set)
+                for grad_name in grad_names
+            ]
 
-            self.__assert_is_close(numeric_grad, analytic_grad, grad_name,
+            self.__assert_is_close(numeric_grads, analytic_grads, grad_names,
                                    max_relative_error,
                                    "Gradient Check On %s" % str(place))
