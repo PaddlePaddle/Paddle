@@ -30,11 +30,10 @@ typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
  */
 class MKLDNNMatrix : public CpuMatrix, public mkldnn::memory {
 public:
-  MKLDNNMatrix(real* data,
-               size_t height,
-               size_t width,
-               mkldnn::memory::primitive_desc pd)
-      : CpuMatrix(data, height, width, false), mkldnn::memory(pd, data) {}
+  MKLDNNMatrix(CpuMatrixPtr m, mkldnn::memory::primitive_desc pd)
+      : CpuMatrix(m->getData(), m->getHeight(), m->getWidth(), false),
+        mkldnn::memory(pd, m->getData()),
+        m_(m) {}
 
   ~MKLDNNMatrix() {}
 
@@ -68,7 +67,9 @@ public:
    * Create reorder primitive.
    */
   static std::shared_ptr<mkldnn::reorder> createReorder(
-      const MKLDNNMatrixPtr& src, const MKLDNNMatrixPtr& dst);
+      const MKLDNNMatrixPtr& src,
+      const MKLDNNMatrixPtr& dst,
+      bool checkData = true);
 
 public:
   /**
@@ -177,6 +178,10 @@ protected:
                    memory::format srcFmt,
                    memory::format dstFmt,
                    memory::dims dm);
+
+private:
+  // save the CpuMatrixPtr in case the buffer released outside
+  CpuMatrixPtr m_;
 };
 
 }  // namespace paddle
