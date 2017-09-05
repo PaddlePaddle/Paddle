@@ -286,28 +286,50 @@ class TestMulOp(unittest.TestCase):
 
 反向Op单测继承自`GradientChecker`，而`GradientChecker`集成自`unittest.TestCase`，所以反向单测函数需要`test_`开头。
 
- ```
- class MulGradOpTest(GradientChecker):
-    def test_mul(self):
-        op = create_op("mul")
-        inputs = {
+```
+class TestMulGradOp(GradientChecker):
+    def setUp(self):
+        self.op = create_op("mul")
+        self.inputs = {
             'X': np.random.random((32, 84)).astype("float32"),
             'Y': np.random.random((84, 100)).astype("float32")
         }
-        self.compare_grad(op, inputs)      
+
+    def test_cpu_gpu_compare(self):
+        self.compare_grad(self.op, self.inputs)
+
+    def test_normal(self):
         # mul op will enlarge the relative error
         self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.5)
- ```
+            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+
+    def test_ignore_x(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["Y"],
+            "Out",
+            max_relative_error=0.5,
+            no_grad_set={"X"})
+
+    def test_ignore_y(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["X"],
+            "Out",
+            max_relative_error=0.5,
+            no_grad_set={"Y"})
+```
+
+下面解释一些关键的地方:
 
    - 调用`create_op("mul")`创建反向Op对应的前向Op。
-   - 定义输入`inputs`。
    - 调用`compare_grad`函数对比CPU、GPU计算结果。
-   - 调用`check_grad`检查梯度稳定性，这里采用数值法检测梯度正确性。
-      - 第一个参数`op` : 前向op。
-      - 第二个参数`inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
-      - 第三个参数`set(["X", "Y"])` : 指定对输入变量`X`、`Y`做梯度检测。
+   - `test_normal`中调用`check_grad`检查梯度稳定性，这里采用数值法检测梯度正确性。
+      - 第一个参数`self.op` : 前向Op。
+      - 第二个参数`self.inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
+      - 第三个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
       - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
+   - `test_ignore_x`和`test_ignore_y`分支测试只需要计算一个输入梯度的情况。
 
 
 ### 编译和执行 

@@ -51,20 +51,24 @@ template <typename Place, typename T>
 class RowwiseAddGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* db = context.Output<Tensor>(framework::GradVarName("b"));
-    dX->mutable_data<T>(context.GetPlace());
-    db->mutable_data<T>(context.GetPlace());
 
-    auto OutGrad = EigenMatrix<T>::From(*dOut);
+    auto out_grad = EigenMatrix<T>::From(*dout);
     auto place = context.GetEigenDevice<Place>();
-    EigenMatrix<T>::From(*dX).device(place) = OutGrad;
+    if (dx) {
+      dx->mutable_data<T>(context.GetPlace());
+      EigenMatrix<T>::From(*dx).device(place) = out_grad;
+    }
 
-    // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
-    // colwise add
-    Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
-    EigenVector<T>::Flatten(*db).device(place) = OutGrad.sum(dims);
+    if (db) {
+      db->mutable_data<T>(context.GetPlace());
+      // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
+      // colwise add
+      Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
+      EigenVector<T>::Flatten(*db).device(place) = out_grad.sum(dims);
+    }
   }
 };
 }  // namespace operators
