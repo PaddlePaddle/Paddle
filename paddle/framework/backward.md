@@ -18,7 +18,7 @@ A backward network is built up with several backward operators. Backward operato
 For example, we have got a `mul_op`, and we can register it's information and corresponding backward operator by the following macro:
 
 ```cpp
-REGISTER_OP(mul, MulOp, MulOpMaker, MulOpGrad);
+REGISTER_OP(mul, MulOp, MulOpMaker, mul_grad, MulOpGrad);
 ```
 
 `mul` is the operator's type. `MulOp` and `MulOpMaker` are the operator class and the operator maker class respectively.
