@@ -94,9 +94,14 @@ class OpDescCreationMethod(object):
                     new_attr.floats.extend(user_defined_attr)
                 elif attr.type == framework_pb2.STRINGS:
                     new_attr.strings.extend(user_defined_attr)
+                elif attr.type == framework_pb2.INT_PAIRS:
+                    for p in user_defined_attr:
+                        pair = new_attr.pairs.add()
+                        pair.first = p[0]
+                        pair.second = p[1]
                 else:
                     raise NotImplementedError("Not support attribute type " +
-                                              attr.type)
+                                              str(attr.type))
 
         return op_desc
 
