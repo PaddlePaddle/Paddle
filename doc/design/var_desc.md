@@ -21,27 +21,27 @@ A VarDesc should have a name and value, in PaddlePaddle, the value will always b
 ```proto
 message VarDesc {
   required string name = 1;
-  optional LoDTesnorDesc lod_tensor = 2; //
+  optional LoDTensorDesc lod_tensor = 2;
 }
 ```
 
 ## Definition of LodTensorDesc
 
 ```proto
-message LoDTensorDesc {
-  enum Type {
-    BOOL = 0;
-    INT16 = 1;
-    INT32 = 2;
-    INT64 = 3;
-    FP16 = 4;
-    FP32 = 5;
-    FP64 = 6;
-  }
+enum DataType {
+  BOOL = 0;
+  INT16 = 1;
+  INT32 = 2;
+  INT64 = 3;
+  FP16 = 4;
+  FP32 = 5;
+  FP64 = 6;
+}
 
-  Type data_type = 1;
-  repeated int dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
-  optional int lod_level [default=0] = 3;
+message LoDTensorDesc {
+  required DataType data_type = 1;
+  repeated int32 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
+  optional int32 lod_level = 3 [default=0];
 }
 ```
 
