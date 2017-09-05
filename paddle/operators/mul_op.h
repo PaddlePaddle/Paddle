@@ -54,8 +54,8 @@ class MulGradKernel : public framework::OpKernel {
     auto* device_context =
         const_cast<platform::DeviceContext*>(ctx.device_context_);
     if (dx) {
-      // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
       dx->mutable_data<T>(ctx.GetPlace());
+      // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
       math::matmul<Place, T>(*dout, false, *y, true, 1, dx, 0, device_context);
     }
     if (dy) {

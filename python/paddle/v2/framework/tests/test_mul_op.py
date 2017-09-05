@@ -24,6 +24,9 @@ class TestMulGradOp(GradientChecker):
             'Y': np.random.random((84, 100)).astype("float32")
         }
 
+    def test_cpu_gpu_compare(self):
+        self.compare_grad(self.op, self.inputs)
+
     def test_normal(self):
         # mul op will enlarge the relative error
         self.check_grad(

@@ -16,7 +16,7 @@ class TestRowwiseAddOp(unittest.TestCase):
         self.outputs = {'Out': np.add(self.inputs['X'], self.inputs['b'])}
 
 
-class RowwiseAddGradOpTest(GradientChecker):
+class TestRowwiseAddGradOp(GradientChecker):
     def setUp(self):
         self.op = create_op("rowwise_add")
         self.inputs = {
