@@ -104,8 +104,10 @@ public:
    *          it should be coverd by user.
    */
   void updateData(void* data) {
+    // TODO(TJ): change name to setData
     set_data_handle(data);
     CpuMatrix::setData((real*)data);
+    // TODO(TJ): release the initial CpuMatrix and m_ when data changed
   }
 
   /**

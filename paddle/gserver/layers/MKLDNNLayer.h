@@ -199,6 +199,11 @@ public:
    */
   virtual void convertWeightsToPaddle() {}
 
+  /**
+   * add this interface as public for unit test
+   */
+  void addOutputArgument(int deviceId) { Layer::addOutputArgument(deviceId); }
+
 protected:
   /**
    * reshape the input image sizes and input batchsize
@@ -242,8 +247,8 @@ protected:
    */
   virtual void printValueFormatFlow() {
     if (inVal_ && outVal_) {
-      VLOG(MKLDNN_FMTS) << "value format flow --- " << inVal_->getFormat()
-                        << " >>> " << outVal_->getFormat();
+      VLOG(MKLDNN_FMTS) << inVal_->getFormat() << " >>> "
+                        << outVal_->getFormat();
     }
   }
 
@@ -252,8 +257,8 @@ protected:
    */
   virtual void printGradFormatFlow() {
     if (inGrad_ && outGrad_) {
-      VLOG(MKLDNN_FMTS) << "grad format flow --- " << inGrad_->getFormat()
-                        << " <<< " << outGrad_->getFormat();
+      VLOG(MKLDNN_FMTS) << inGrad_->getFormat() << " <<< "
+                        << outGrad_->getFormat();
     }
   }
 

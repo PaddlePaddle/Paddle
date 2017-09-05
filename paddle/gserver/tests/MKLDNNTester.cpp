@@ -63,8 +63,12 @@ void MKLDNNTester::reset(const TestConfig& dnn,
     initTestLayer(
         configs_[i], &(layerMaps_[i]), &(parameters_[i]), &(testLayers_[i]));
   }
-  dnnLayer_ = testLayers_[DNN];
   refLayer_ = testLayers_[REF];
+  dnnLayer_ = std::dynamic_pointer_cast<MKLDNNLayer>(testLayers_[DNN]);
+  CHECK(dnnLayer_);
+  // for comparison with Paddle reference results,
+  // need manually add cpu device output for test
+  dnnLayer_->addOutputArgument(-1);
   EXPECT_EQ(dataLayers_[DNN].size(), dataLayers_[REF].size());
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
 
@@ -109,20 +113,21 @@ void MKLDNNTester::randomBotDatas() {
 
 void MKLDNNTester::randomTopDiffs() {
   refLayer_->getOutputGrad()->randomizeUniform();
-  dnnLayer_->getOutputGrad()->copyFrom(*(refLayer_->getOutputGrad()));
-  VLOG(lvl_) << "Random dom Backward Input, TopDiff: ";
+  dnnLayer_->getOutput(-1).grad->copyFrom(*(refLayer_->getOutputGrad()));
+  VLOG(lvl_) << "Random Backward Input, TopDiff: ";
   printMatrix(refLayer_->getOutputGrad());
 }
 
 void MKLDNNTester::checkForward() {
-  printTopDatas();
-  double delta = compareMatrix(testLayers_[DNN]->getOutputValue(),
-                               testLayers_[REF]->getOutputValue());
   VLOG(MKLDNN_ALL) << "Check Forward";
+  printTopDatas();
+  double delta = compareMatrix(dnnLayer_->getOutput(-1).value,
+                               refLayer_->getOutputValue());
   EXPECT_LE(fabs(delta), eps_);
 }
 
 void MKLDNNTester::checkBackwardData() {
+  VLOG(MKLDNN_ALL) << "Check Backward Data";
   // TODO(TJ): uncomment me when batch norm ready
   // const bool isBN = dnnLayer_->getType() == "mkldnn_batch_norm";
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
@@ -144,14 +149,12 @@ void MKLDNNTester::checkBackwardData() {
 }
 
 void MKLDNNTester::checkBackwardWgts() {
+  VLOG(MKLDNN_ALL) << "Check Backward Weight";
   CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
   vector<VectorPtr> dnnWgts;  // used to temply save mkldnn weights
   saveWgt(parameters_[DNN], dnnWgts);
 
-  const MKLDNNLayerPtr dnnlayer =
-      std::dynamic_pointer_cast<MKLDNNLayer>(dnnLayer_);
-  CHECK(dnnlayer);
-  dnnlayer->convertWeightsToPaddle();
+  dnnLayer_->convertWeightsToPaddle();
   for (size_t i = 0; i < parameters_[DNN].size(); ++i) {
     const VectorPtr& dnn = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& ref = parameters_[REF][i]->getBuf(PARAMETER_VALUE);

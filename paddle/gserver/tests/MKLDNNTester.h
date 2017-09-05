@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "LayerGradUtil.h"
 #include "paddle/gserver/layers/MKLDNNBase.h"
+#include "paddle/gserver/layers/MKLDNNLayer.h"
 
 namespace paddle {
 
@@ -40,7 +41,8 @@ protected:
   vector<LayerMap> layerMaps_;
   vector<vector<ParameterPtr>> parameters_;
   vector<LayerPtr> testLayers_;
-  LayerPtr dnnLayer_, refLayer_;
+  LayerPtr refLayer_;
+  MKLDNNLayerPtr dnnLayer_;
 
   /// run some iterations, all the result should pass
   size_t iter_;

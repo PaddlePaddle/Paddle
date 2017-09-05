@@ -37,10 +37,20 @@ protected:
   // group number
   int gp_;
 
+  // in backward data the format is different with wgtVal_
+  MKLDNNMatrixPtr wgtValBwdData_;
+  std::shared_ptr<mkldnn::reorder> cvtWgtVal_;
+
+  // MKLDNNMatrixPtr with user format
+  // in case for conversion with CPU device or MKLDNN device with other format
   MKLDNNMatrixPtr userInVal_;
   MKLDNNMatrixPtr userOutVal_;
+  MKLDNNMatrixPtr userInGrad_;
+  MKLDNNMatrixPtr userOutGrad_;
   std::shared_ptr<mkldnn::reorder> cvtInVal_;
   std::shared_ptr<mkldnn::reorder> cvtOutVal_;
+  std::shared_ptr<mkldnn::reorder> cvtInGrad_;
+  std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
 
   // if has already init the weight
   bool hasInitedWgt_;
@@ -81,6 +91,8 @@ public:
 
   void resetBwd() override;
 
+  void updateInputData() override;
+
   void updateWeights(const UpdateCallback& callback) override;
 
   void convertWeightsFromPaddle() override;
@@ -88,6 +100,26 @@ public:
   void convertWeightsToPaddle() override;
 
   void printSizeInfo();
+
+protected:
+  void printValueFormatFlow() override {
+    if (userInVal_) {
+      VLOG(MKLDNN_FMTS) << userInVal_->getFormat() << " >>>";
+    }
+    MKLDNNLayer::printValueFormatFlow();
+    if (userOutVal_) {
+      VLOG(MKLDNN_FMTS) << " >>> " << userOutVal_->getFormat();
+    }
+  }
+  void printGradFormatFlow() override {
+    if (userInGrad_) {
+      VLOG(MKLDNN_FMTS) << userInGrad_->getFormat() << " <<<";
+    }
+    MKLDNNLayer::printGradFormatFlow();
+    if (userOutGrad_) {
+      VLOG(MKLDNN_FMTS) << " <<< " << userOutGrad_->getFormat();
+    }
+  }
 
 private:
   /**
