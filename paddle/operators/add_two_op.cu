@@ -13,8 +13,9 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/gather_op.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/operators/add_two_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gather,
-                       ops::GatherOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(add_two,
+                       ops::AddKernel<paddle::platform::GPUPlace, float>);
