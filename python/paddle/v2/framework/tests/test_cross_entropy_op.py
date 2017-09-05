@@ -9,25 +9,22 @@ import paddle.v2.framework.core as core
 class TestCrossEntropy(OpTest):
     def setUp(self):
         self.op_type = "onehot_cross_entropy"
-        batch_size = 30
-        class_num = 10
+        batch_size = 4
+        class_num = 4
         X = numpy.random.random((batch_size, class_num)).astype("float32")
-        label = 5 * numpy.ones(batch_size).astype("int32")
+        label = (class_num / 2) * numpy.ones(batch_size).astype("int32")
         self.inputs = {'X': X, 'label': label}
         Y = []
         for i in range(0, batch_size):
             Y.append(-numpy.log(X[i][label[i]]))
         self.outputs = {'Y': numpy.array(Y).astype("float32")}
 
-    def test_check_grad(self):
-        self.check_grad("X", "Y")
-
     # def test_check_output(self):
     #     self.check_output(core.CPUPlace())
     #     self.check_output(core.GPUPlace(0))
 
-    # def test_check_grad(self):
-    #     self.check_grad("X", "Y")
+    def test_check_grad(self):
+        self.check_grad("X", "Y")
 
     # class TestCrossEntropy(unittest.TestCase):
     #     __metaclass__ = OpTestMeta
