@@ -19,9 +19,9 @@ class TestCrossEntropy(OpTest):
             Y.append(-numpy.log(X[i][label[i]]))
         self.outputs = {'Y': numpy.array(Y).astype("float32")}
 
-    # def test_check_output(self):
-    #     self.check_output(core.CPUPlace())
-    #     self.check_output(core.GPUPlace(0))
+    def test_check_output(self):
+        self.check_output(core.CPUPlace())
+        self.check_output(core.GPUPlace(0))
 
     def test_check_grad(self):
         self.check_grad("X", "Y")
