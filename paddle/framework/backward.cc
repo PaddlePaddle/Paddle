@@ -183,7 +183,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                    });
 
     // process recurrent gradient op as a special operator.
-    if (forwardOp.Type() == "recurrent_op") {
+    if (forwardOp.Type() == "recurrent") {
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself), or
       // this will result in infinite loop.
       const auto& rnnop =

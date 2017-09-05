@@ -29,10 +29,10 @@ class MulOp : public framework::OperatorWithKernel {
     auto dim1 = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_EQ(dim0.size(), 2,
                       "input X(%s) should be a tensor with 2 dims, a matrix",
-                      ctx.op_.Input("X"));
+                      ctx.op().Input("X"));
     PADDLE_ENFORCE_EQ(dim1.size(), 2,
                       "input Y(%s) should be a tensor with 2 dims, a matrix",
-                      ctx.op_.Input("Y"));
+                      ctx.op().Input("Y"));
     PADDLE_ENFORCE_EQ(
         dim0[1], dim1[0],
         "First matrix's width must be equal with second matrix's height.");
@@ -84,7 +84,7 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpGrad);
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mul_grad,
                        ops::MulGradKernel<paddle::platform::CPUPlace, float>);

@@ -10,7 +10,7 @@ fc = fc_layer(input=data, size=10, act=SoftmaxActivation())
 outputs(
     classification_cost(
         input=fc, label=lbl, weight=wt),
-    mse_cost(
+    square_error_cost(
         input=fc, label=lbl, weight=wt),
     nce_layer(
         input=fc,

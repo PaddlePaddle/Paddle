@@ -235,5 +235,5 @@ RecurrentGradientOp::RecurrentGradientOp(
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    recurrent_op, paddle::operators::RecurrentOp,
+    recurrent, paddle::operators::RecurrentOp,
     paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);

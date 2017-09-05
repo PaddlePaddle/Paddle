@@ -45,7 +45,7 @@ layers {
   coeff: 1.0
 }
 layers {
-  name: "__mse_cost_0__"
+  name: "__square_error_cost_0__"
   type: "square_error"
   size: 1
   active_type: ""
@@ -130,7 +130,7 @@ input_layer_names: "label"
 input_layer_names: "weight"
 input_layer_names: "multi_class_label"
 output_layer_names: "__cost_0__"
-output_layer_names: "__mse_cost_0__"
+output_layer_names: "__square_error_cost_0__"
 output_layer_names: "__nce_layer_0__"
 evaluators {
   name: "classification_error_evaluator"
@@ -146,7 +146,7 @@ sub_models {
   layer_names: "weight"
   layer_names: "__fc_layer_0__"
   layer_names: "__cost_0__"
-  layer_names: "__mse_cost_0__"
+  layer_names: "__square_error_cost_0__"
   layer_names: "multi_class_label"
   layer_names: "__nce_layer_0__"
   input_layer_names: "input"
@@ -154,7 +154,7 @@ sub_models {
   input_layer_names: "weight"
   input_layer_names: "multi_class_label"
   output_layer_names: "__cost_0__"
-  output_layer_names: "__mse_cost_0__"
+  output_layer_names: "__square_error_cost_0__"
   output_layer_names: "__nce_layer_0__"
   evaluator_names: "classification_error_evaluator"
   is_recurrent_layer_group: false
