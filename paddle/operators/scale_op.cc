@@ -89,6 +89,7 @@ class IdentityOp : public NetOp {
     AppendOp(framework::OpRegistry::CreateOp(
         "scale", {{"X", {Input("X")}}}, {{"Out", {Output("Out")}}},
         {{"scale", static_cast<AttrType>(1)}}));
+    CompleteAddOp(false);
   }
 };
 

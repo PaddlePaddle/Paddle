@@ -45,6 +45,7 @@ USE_OP(uniform_random);
 USE_OP(lookup_table);
 USE_OP(scale);
 USE_NO_KERNEL_OP(identity);
+USE_NO_KERNEL_OP(fc);
 USE_OP(minus);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
