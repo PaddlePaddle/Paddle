@@ -17,5 +17,4 @@
 #include "paddle/operators/add_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(add_two,
-                       ops::AddKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(add, ops::AddKernel<paddle::platform::GPUPlace, float>);
