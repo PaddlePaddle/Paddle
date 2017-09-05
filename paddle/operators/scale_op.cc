@@ -14,37 +14,23 @@
 
 #include "paddle/operators/scale_op.h"
 #include "paddle/operators/net_op.h"
+#include "paddle/operators/unary_operator.h"
 
 namespace paddle {
 namespace operators {
-
-class ScaleOp : public framework::OperatorWithKernel {
- public:
-  ScaleOp(const std::string &type, const framework::VariableNameMap &inputs,
-          const framework::VariableNameMap &outputs,
-          const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *in = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    out->Resize(in->dims());
-  }
-};
-
 template <typename AttrType>
-class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
+class ScaleOpInfo : public UnaryOpInformation {
  public:
-  ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input tensor of scale operator.").NotInGradient();
-    AddOutput("Out", "The output tensor of scale operator.").NotInGradient();
-    AddComment(R"DOC(Scale operator
+  std::string Name() const override { return "Scale"; }
+  std::string Comment() const override {
+    return R"DOC(Scale operator
 
 The equation is: Out = scale*X
-)DOC");
-    AddAttr<AttrType>("scale", "scale of scale operator.").SetDefault(1.0);
+)DOC";
+  }
+  void AddAttrs(framework::OpProtoAndCheckerMaker *maker) const override {
+    maker->AddAttr<AttrType>("scale", "scale of scale operator.")
+        .SetDefault(1.0);
   }
 };
 
@@ -65,17 +51,11 @@ class ScaleGradOp : public NetOp {
   }
 };
 
-// identity is a alias of scale op. This is also a example for creating a alias
-// operator.
-template <typename AttrType>
-class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
+class IdentityOpInfo : public operators::UnaryOpInformation {
  public:
-  IdentityOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "input tensor of identity op");
-    AddOutput("Out", "output tensor of identity op");
-    AddComment("identity operator. Just a alias of scale op which scale = 1.0");
+  std::string Name() const override { return "identity"; }
+  std::string Comment() const override {
+    return "identity operator. Just a alias of scale op which scale = 1.0";
   }
 };
 
@@ -97,9 +77,9 @@ class IdentityOp : public NetOp {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(scale, ops::ScaleOp, ops::ScaleOpMaker<float>, scale_grad,
-            ops::ScaleGradOp<float>);
+REGISTER_OP(scale, ops::UnaryOp, ops::UnaryOpMaker<ops::ScaleOpInfo<float>>,
+            scale_grad, ops::ScaleGradOp<float>);
 REGISTER_OP_CPU_KERNEL(scale,
                        ops::ScaleKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_WITHOUT_GRADIENT(identity, ops::IdentityOp<float>,
-                             ops::IdentityOpMaker<float>);
+                             ops::UnaryOpMaker<ops::IdentityOpInfo>);

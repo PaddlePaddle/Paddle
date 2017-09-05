@@ -14,17 +14,25 @@
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/functors/functor_kernel.h"
-#include "paddle/operators/functors/scale_functor.h"
+#include "paddle/operators/functors/functor_base.h"
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T, typename AttrType = T>
-using ScaleKernel = functors::FunctorKernel<
-    Place, functors::UnaryFunctor<
-               functors::ScaleFunctor<framework::OperatorBase, T, AttrType>>>;
+namespace functors {
 
+template <typename AttrReader, typename T, typename AttrType>
+struct ScaleFunctor : public FunctorBase<AttrReader, T> {
+  ScaleFunctor(const AttrReader& reader)
+      : scale_(static_cast<T>(reader.template GetAttr<AttrType>("scale"))) {}
+
+  template <typename LHS, typename RHS>
+  void apply(LHS left, RHS right) const {
+    left = scale_ * right;
+  }
+
+  T scale_;
+};
+
+}  // namespace functors
 }  // namespace operators
 }  // namespace paddle

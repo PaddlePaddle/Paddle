@@ -171,7 +171,6 @@ class OpProtoAndCheckerMaker {
 
   void Validate();
 
- protected:
   struct VariableBuilder {
     OpProto::Var* var_;
 

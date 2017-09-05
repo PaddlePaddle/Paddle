@@ -14,17 +14,27 @@
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/functors/functor_kernel.h"
-#include "paddle/operators/functors/scale_functor.h"
-
+#include "paddle/framework/operator.h"
+#include "paddle/operators/functors/functor_base.h"
 namespace paddle {
 namespace operators {
-template <typename Place, typename T, typename AttrType = T>
-using ScaleKernel = functors::FunctorKernel<
-    Place, functors::UnaryFunctor<
-               functors::ScaleFunctor<framework::OperatorBase, T, AttrType>>>;
+namespace functors {
+template <typename Place, typename Functor>
+class FunctorKernel : public framework::OpKernel {
+ public:
+  virtual void Compute(const framework::ExecutionContext& context) const {
+    if (Functor::IN_NUM == 1) {  // unary functor
+      auto* in = context.Input<framework::Tensor>("X");
+      auto* out = context.Output<framework::Tensor>("Out");
+      out->mutable_data<typename Functor::ElemType>(context.GetPlace());
+      Functor func(context.op_);
+      func(context.GetEigenDevice<Place>(), *in, out);
+    } else {
+      PADDLE_THROW("Not implemented");
+    }
+  }
+};
 
+}  // namespace functors
 }  // namespace operators
 }  // namespace paddle

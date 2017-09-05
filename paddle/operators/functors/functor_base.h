@@ -15,16 +15,33 @@
 #pragma once
 
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/functors/functor_kernel.h"
-#include "paddle/operators/functors/scale_functor.h"
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T, typename AttrType = T>
-using ScaleKernel = functors::FunctorKernel<
-    Place, functors::UnaryFunctor<
-               functors::ScaleFunctor<framework::OperatorBase, T, AttrType>>>;
+namespace functors {
 
+template <typename AttrReaderType, typename T>
+struct FunctorBase {
+  using ElemType = T;
+  using AttrReader = AttrReaderType;
+};
+
+template <typename Derived>
+struct UnaryFunctor : public Derived {
+  static constexpr size_t IN_NUM = 1;
+  static constexpr size_t OUT_NUM = 1;
+
+  UnaryFunctor(const typename Derived::AttrReader& reader) : Derived(reader) {}
+
+  template <typename Device>
+  void operator()(Device& dev, const framework::Tensor& in,
+                  framework::Tensor* out) const {
+    auto i = framework::EigenVector<typename Derived::ElemType>::Flatten(in);
+    auto o = framework::EigenVector<typename Derived::ElemType>::Flatten(*out);
+    this->apply(o.device(dev), i);
+  }
+};
+
+}  // namespace functors
 }  // namespace operators
 }  // namespace paddle
