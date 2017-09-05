@@ -96,8 +96,6 @@ std::vector<int> vectorize(const DDim& ddim);
 
 ssize_t product(const DDim& ddim);
 
-ssize_t product(const DDim& ddim, int begin, int end);
-
 /**
  * \brief Slice a ddim
  *
@@ -116,6 +114,8 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
 int arity(const DDim& ddim);
 
 std::ostream& operator<<(std::ostream&, const DDim&);
+
+DDim flatten_to_2d(const DDim& src, int num_row_dims);
 
 }  // namespace framework
 }  // namespace paddle

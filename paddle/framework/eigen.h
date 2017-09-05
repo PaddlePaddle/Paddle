@@ -68,11 +68,8 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
     int rank = tensor.dims_.size();
     PADDLE_ENFORCE(num_row_dims > 0 && num_row_dims < rank,
                    "`num_row_dims` must be between (0, rank_of_tensor).");
-    return EigenMatrix::From(
-        tensor, make_ddim({static_cast<int>(
-                               product(tensor.dims_, 0, rank - num_row_dims)),
-                           static_cast<int>(product(
-                               tensor.dims_, rank - num_row_dims, rank))}));
+    return EigenMatrix::From(tensor,
+                             flatten_to_2d(tensor.dims(), num_row_dims));
   }
 };
 

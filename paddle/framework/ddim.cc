@@ -247,12 +247,6 @@ ssize_t product(const DDim& ddim) {
   return boost::apply_visitor(visitor, ddim);
 }
 
-ssize_t product(const DDim& ddim, int begin, int end) {
-  ProductVisitor visitor;
-  DDim sliced_ddim = slice_ddim(ddim, begin, end);
-  return boost::apply_visitor(visitor, sliced_ddim);
-}
-
 /// \cond HIDDEN
 
 struct ArityVisitor : boost::static_visitor<int> {
@@ -289,5 +283,13 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 DDim::DDim(std::initializer_list<int> init_list) {
   *this = make_ddim(init_list);
 }
+
+DDim flatten_to_2d(const DDim& src, int num_row_dims) {
+  int rank = src.size();
+  return make_ddim(
+      {static_cast<int>(product(slice_ddim(src, 0, rank - num_row_dims))),
+       static_cast<int>(product(slice_ddim(src, rank - num_row_dims, rank)))});
+}
+
 }  // namespace framework
 }  // namespace paddle
