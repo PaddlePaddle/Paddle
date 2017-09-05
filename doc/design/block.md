@@ -34,9 +34,11 @@ with rnn.stepnet() as net:
   h = net.add_memory(init=m_boot)
   
   fc_out = pd.matmul(W, x)
-  hidden_out = pd.matmul(U, h)
+  hidden_out = pd.matmul(U, h.pre_memory())
   sum = pd.add_two(fc_out, hidden_out)
   act = pd.sigmoid(sum)
+  h.update(act) # update memory
+
   # declare outputs that needs to be merged across all the steps
   net.add_output(act, hidden_out)
 
