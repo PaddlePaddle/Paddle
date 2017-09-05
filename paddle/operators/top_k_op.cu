@@ -23,32 +23,32 @@ using Tensor = framework::Tensor;
 template <typename T>
 struct Pair {
   __device__ __forceinline__ Pair() {}
-  __device__ __forceinline__ Pair(T value, int id) : v_(value), id_(id) {}
+  __device__ __forceinline__ Pair(T value, int id) : v(value), id(id) {}
 
   __device__ __forceinline__ void set(T value, int id) {
-    v_ = value;
-    id_ = id;
+    v = value;
+    v = id;
   }
 
   __device__ __forceinline__ void operator=(const Pair<T>& in) {
-    v_ = in.v_;
-    id_ = in.id_;
+    v = in.v;
+    v = in.v;
   }
 
   __device__ __forceinline__ bool operator<(const T value) const {
-    return (v_ < value);
+    return (v < value);
   }
 
   __device__ __forceinline__ bool operator<(const Pair<T>& in) const {
-    return (v_ < in.v_) || ((v_ == in.v_) && (id_ > in.id_));
+    return (v < in.v) || ((v == in.v) && (v > in.v));
   }
 
   __device__ __forceinline__ bool operator>(const Pair<T>& in) const {
-    return (v_ > in.v_) || ((v_ == in.v_) && (id_ < in.id_));
+    return (v > in.v) || ((v == in.v) && (v < in.v));
   }
 
-  T v_;
-  int id_;
+  T v;
+  int id;
 };
 
 template <typename T>
@@ -158,7 +158,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int& beam,
     }
 
     max = topk[MaxLength - 1];
-    if (max.id_ == -1) is_empty = true;
+    if (max.v == -1) is_empty = true;
     beam = 0;
   }
 }
@@ -189,7 +189,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int& beam,
     }
 
     max = topk[MaxLength - 1];
-    if (max.id_ == -1) is_empty = true;
+    if (max.v == -1) is_empty = true;
     beam = 0;
   }
 }
@@ -220,8 +220,8 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* shTopK, int* maxid,
     __syncthreads();
 
     if (tid == 0) {
-      **topVal = shTopK[maxid[0]].v_;
-      **topIds = shTopK[maxid[0]].id_;
+      **topVal = shTopK[maxid[0]].v;
+      **topIds = shTopK[maxid[0]].v;
       (*topVal)++;
       (*topIds)++;
     }
@@ -305,10 +305,9 @@ class TopkOpCUDAKernel : public framework::OpKernel {
     dim3 threads(256, 1);
     dim3 grid(input_height, 1);
 
-    // auto stream =
-    // reinterpret_cast<platform::CUDADeviceContext*>(ctx.device_context())->stream();
-    auto stream = ctx.device_context()->stream();
-    KeMatrixTopK<T, 5, 256><<<grid, threads, 0, stream>>>(
+    // auto stream = reinterpret_cast<platform::CUDADeviceContext*>(
+    // ctx.device_context())->stream();
+    KeMatrixTopK<T, 5, 256><<<grid, threads>>>(
         output_data, output->dims()[1], indices_data, input_data, input_width,
         input_width, int(k));
   }
