@@ -256,7 +256,7 @@ class OpTest(unittest.TestCase):
         ]
 
         places = [core.CPUPlace()]
-        if core.is_compile_gpu() and op.support_gpu():
+        if core.is_compile_gpu() and self.op.support_gpu():
             places.append(core.GPUPlace(0))
 
         for place in places:
