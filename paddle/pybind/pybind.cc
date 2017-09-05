@@ -48,6 +48,7 @@ USE_NO_KERNEL_OP(identity);
 USE_OP(minus);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
+USE_OP(sum);
 
 namespace paddle {
 namespace framework {
@@ -213,7 +214,15 @@ All parameter, weight, gradient are variables in Paddle.
                -> std::map<std::string, std::vector<std::string>> {
                  return op.Outputs();
                })
+      .def("outputs_names",
+           [](const OperatorBase &op) -> std::vector<std::string> {
+             return op.OutputsNames();
+           })
       .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
+      .def("inputs_names",
+           [](const OperatorBase &op) -> std::vector<std::string> {
+             return op.InputsNames();
+           })
       .def("__str__", &OperatorBase::DebugString)
       .def("no_intermediate_outputs",
            [](const OperatorBase &op) { return op.OutputVars(false); })
