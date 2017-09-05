@@ -36,7 +36,7 @@ message LoDTensorDesc {
     INT64 = 3;
     FP16 = 4;
     FP32 = 5;
-    FP64 = 6
+    FP64 = 6;
   }
 
   Type data_type = 1;
