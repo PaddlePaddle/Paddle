@@ -52,8 +52,9 @@ class SumGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto outputs = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
-    for (auto output in outputs) {
-      output->Resize(ctx.Input<Tensor>(framework::GradVarName("Out"))->dims());
+    auto dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
+    for (auto output : outputs) {
+      output->Resize(dims);
     }
   }
 };
@@ -63,7 +64,6 @@ class SumGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradOp);
-REGISTER_OP_WITHOUT_GRADIENT(sum_grad, ops::SumGradOp, ops::SumGradOpMaker);
 REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(sum_grad,
                        ops::SumGradKernel<paddle::platform::CPUPlace, float>);

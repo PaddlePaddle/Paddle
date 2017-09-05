@@ -302,9 +302,9 @@ class InferShapeContext {
   }
 
   template <typename T>
-  std::vector<const T*> MultiOutput(const std::string& name) const {
+  std::vector<T*> MultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
-    std::vector<const T*> res;
+    std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {

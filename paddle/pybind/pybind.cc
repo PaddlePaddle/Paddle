@@ -214,7 +214,15 @@ All parameter, weight, gradient are variables in Paddle.
                -> std::map<std::string, std::vector<std::string>> {
                  return op.Outputs();
                })
+      .def("outputs",
+           [](const OperatorBase &op, std::string name) {
+             return op.Outputs(name);
+           })
       .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
+      .def("inputs",
+           [](const OperatorBase &op, std::string name) {
+             return op.Inputs(name);
+           })
       .def("__str__", &OperatorBase::DebugString)
       .def("no_intermediate_outputs",
            [](const OperatorBase &op) { return op.OutputVars(false); })
