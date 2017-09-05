@@ -179,7 +179,7 @@ class OperatorFactory(object):
 
 class __RecurrentOp__(object):
     __proto__ = None
-    type = 'recurrent_op'
+    type = 'recurrent'
 
     def __init__(self):
         # cache recurrent_op's proto
