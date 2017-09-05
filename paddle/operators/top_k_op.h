@@ -27,7 +27,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T, typename AttrType = int>
+template <typename Place, typename T>
 class TopkKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -37,14 +37,13 @@ class TopkKernel : public framework::OpKernel {
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
     // k is determined by Attr
-    const size_t k = static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("k"));
+    const size_t k = static_cast<int>(ctx.op().GetAttr<int>("k"));
 
-    output->mutable_data<T>(ctx.GetPlace());
-    indices->mutable_data<T>(ctx.GetPlace());
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    int* indices_data = indices->mutable_data<int>(ctx.GetPlace());
 
     auto X = EigenMatrix<T>::From(*input);
-    auto Out = EigenMatrix<T>::From(*output);
-    auto Indices = EigenMatrix<T>::From(*indices);
+
     // reshape input to a flattern matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
     const size_t row = framework::product(
@@ -52,10 +51,6 @@ class TopkKernel : public framework::OpKernel {
     const size_t col = inputdims[inputdims.size() - 1];
     Eigen::DSizes<int, 2> flat2dims(row, col);
     X.reshape(flat2dims);
-
-    auto place = ctx.GetEigenDevice<Place>();
-    Out.device(place);
-    Indices.device(place);
 
     for (size_t i = 0; i < row; i++) {
       // TODO(typhoonzero): make this more efficient
@@ -70,8 +65,8 @@ class TopkKernel : public framework::OpKernel {
             return l.first > r.first;
           });
       for (size_t j = 0; j < k; j++) {
-        Out(i, j) = vec[j].first;
-        Indices(i, j) = vec[j].second;
+        output_data[i * k + j] = vec[j].first;
+        indices_data[i * k + j] = vec[j].second;
       }
     }
     // FIXME: Resize back to the original input shape

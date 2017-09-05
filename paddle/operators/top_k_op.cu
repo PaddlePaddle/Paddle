@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <iostream>
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/assert.h"
 
@@ -279,24 +278,22 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int* indices,
   }
 }
 
-template <typename T, typename AttrType = int>
+template <typename T>
 class TopkOpCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
-    std::cout << "in TopkOpCUDAKernel" << std::endl;
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
-    size_t k = static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("k"));
+    size_t k = static_cast<int>(ctx.op().GetAttr<int>("k"));
 
     const T* input_data = input->data<T>();
 
-    output->mutable_data<T>(ctx.GetPlace());
-    indices->mutable_data<int>(ctx.GetPlace());
-    T* output_data = output->data<T>();
-    int* indices_data = indices->data<int>();
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    int* indices_data = indices->mutable_data<int>(ctx.GetPlace());
+
     size_t input_height = input->dims()[0];
     size_t input_width = input->dims()[1];
     if (k > input_width) k = input_width;
@@ -308,7 +305,10 @@ class TopkOpCUDAKernel : public framework::OpKernel {
     dim3 threads(256, 1);
     dim3 grid(input_height, 1);
 
-    KeMatrixTopK<T, 5, 256><<<grid, threads>>>(
+    // auto stream =
+    // reinterpret_cast<platform::CUDADeviceContext*>(ctx.device_context())->stream();
+    auto stream = ctx.device_context()->stream();
+    KeMatrixTopK<T, 5, 256><<<grid, threads, 0, stream>>>(
         output_data, output->dims()[1], indices_data, input_data, input_width,
         input_width, int(k));
   }
@@ -317,4 +317,4 @@ class TopkOpCUDAKernel : public framework::OpKernel {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float, int>);
+REGISTER_OP_GPU_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float>);

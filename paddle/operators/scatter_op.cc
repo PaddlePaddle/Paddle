@@ -77,8 +77,7 @@ Out[Index] = Ref[Index] + Updates
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(scatter, ops::ScatterOp, ops::ScatterOpMaker, scatter_grad,
-            ops::ScatterGradOp);
+REGISTER_OP(scatter, ops::ScatterOp, ops::ScatterOpMaker, ops::ScatterGradOp);
 REGISTER_OP_CPU_KERNEL(scatter,
                        ops::ScatterOpKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(

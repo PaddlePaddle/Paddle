@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/top_k_op.h"
-#include <iostream>
 
 namespace paddle {
 namespace operators {
@@ -27,7 +26,7 @@ class TopkOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
                             "Input of TopkOP must be initialized.");
     auto *input = ctx.Input<framework::Tensor>("X");
-    const int k = static_cast<int>(ctx.op_.GetAttr<int>("k"));
+    const int k = static_cast<int>(ctx.op().GetAttr<int>("k"));
 
     // k must >= 1
     PADDLE_ENFORCE_GE(k, 1);
@@ -43,7 +42,6 @@ class TopkOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename AttrType>
 class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   TopkOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -55,9 +53,9 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC(If the input is a vector (1d tensor), finds the k largest entries in the vector and outputs their values and indices as vectors. Thus values[j] is the j-th largest entry in input, and its index is indices[j].
 
     For matrices, computes the top k entries in each row. )DOC");
-    AddAttr<AttrType>("k",
-                      "Number of top elements to look for along the last "
-                      "dimension (along each row for matrices).")
+    AddAttr<int>("k",
+                 "Number of top elements to look for along the last "
+                 "dimension (along each row for matrices).")
         .SetDefault(1);
   }
 };
@@ -66,6 +64,6 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(top_k, ops::TopkOp, ops::TopkOpMaker<int>);
+REGISTER_OP_WITHOUT_GRADIENT(top_k, ops::TopkOp, ops::TopkOpMaker);
 REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>);

@@ -54,8 +54,8 @@ TEST(GradOpBuilder, AddTwo) {
   EXPECT_EQ(grad_add_op->Output(f::GradVarName("Y")), f::GradVarName("y"));
 }
 
-REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, mult_io_grad, f::NOP);
-REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker, io_ignored_grad, f::NOP);
+REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, f::NOP);
+REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker, f::NOP);
 
 TEST(GradOpBuilder, MutiInOut) {
   std::shared_ptr<f::OperatorBase> test_op(f::OpRegistry::CreateOp(
