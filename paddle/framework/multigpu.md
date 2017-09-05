@@ -53,6 +53,10 @@ These two operators need the Multi-GPU context support.
 
 Need to notice that Allreduce operator force GPUs synchronized at that point. Every device only need runs sub-graph in a loop style forever, the whole training process in asynchronous or synchronous mode depends on the Allreduce point in the graph.
 
+For the simplest implement, when each GPU compute the gradient of `W`, followed with a `AllReduce` operator, accumulate the `dW` to full batch of data, then run the optimize process individually and apply the gradient to its `W`.
+
+In fact, in the way of every GPU optimized full batch of data, wasted (n-1) GPU compute resources. We will enhance it in the next stage.
+
 ### Benefits
 
 - can easily move the optimize sub-graph to parameter server,  multi-GPU feature can be  compatible with distributed support design.
