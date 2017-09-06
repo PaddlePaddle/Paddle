@@ -8,7 +8,7 @@ __global__ void test(paddle::framework::Dim<2>* o) {
   o[0] = paddle::framework::make_dim(5, 6);
 }
 
-__global__ void dyn_idx_gpu(int* o) {
+__global__ void dyn_idx_gpu(int64_t* o) {
   auto d = paddle::framework::make_dim(5, 6);
   o[0] = d[1];
 }
