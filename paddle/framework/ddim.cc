@@ -291,5 +291,9 @@ DDim flatten_to_2d(const DDim& src, int num_row_dims) {
        static_cast<int>(product(slice_ddim(src, rank - num_row_dims, rank)))});
 }
 
+DDim flatten_to_1d(const DDim& src) {
+  return make_ddim({static_cast<int>(product(src))});
+}
+
 }  // namespace framework
 }  // namespace paddle

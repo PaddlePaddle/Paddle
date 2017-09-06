@@ -117,6 +117,8 @@ std::ostream& operator<<(std::ostream&, const DDim&);
 
 DDim flatten_to_2d(const DDim& src, int num_row_dims);
 
+DDim flatten_to_1d(const DDim& src);
+
 }  // namespace framework
 }  // namespace paddle
 
