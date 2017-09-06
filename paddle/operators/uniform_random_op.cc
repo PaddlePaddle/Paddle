@@ -52,7 +52,8 @@ class UniformRandomOp : public framework::OperatorWithKernel {
                    "uniform_random's min must less then max");
     auto* tensor = ctx.Output<framework::Tensor>("Out");
     auto dims = GetAttr<std::vector<int>>("dims");
-    std::vector<int64_t> temp(dims.size());
+    std::vector<int64_t> temp;
+    temp.reserve(dims.size());
     for (auto dim : dims) {
       temp.push_back(static_cast<int64_t>(dim));
     }
