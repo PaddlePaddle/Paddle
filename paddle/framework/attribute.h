@@ -44,7 +44,7 @@ class LargerThanChecker {
  public:
   explicit LargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(T& value) const {
-    PADDLE_ENFORCE(value > lower_bound_, "larger_than check fail");
+    PADDLE_ENFORCE(value > lower_bound_, "larger_than check fails.");
   }
 
  private:
@@ -56,7 +56,7 @@ class EqualLargerThanChecker {
  public:
   explicit EqualLargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(T& value) const {
-    PADDLE_ENFORCE(value >= lower_bound_, "equal_larger_than check fail");
+    PADDLE_ENFORCE(value >= lower_bound_, "equal_larger_than check fails.");
   }
 
  private:

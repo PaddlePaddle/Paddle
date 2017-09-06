@@ -33,11 +33,12 @@ class RowwiseAddKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-    int num_row_dims = context.Input<Tensor>("b")->dims().size();
+    int num_col_dims = context.Input<Tensor>("X")->dims().size() -
+                       context.Input<Tensor>("b")->dims().size();
     auto input =
-        EigenMatrix<T>::Reshape(*context.Input<Tensor>("X"), num_row_dims);
+        EigenMatrix<T>::Reshape(*context.Input<Tensor>("X"), num_col_dims);
     auto bias = EigenVector<T>::Flatten(*context.Input<Tensor>("b"));
-    auto output = EigenMatrix<T>::Reshape(*out, num_row_dims);
+    auto output = EigenMatrix<T>::Reshape(*out, num_col_dims);
 
     const int bias_size = bias.dimension(0);
     const int rest_size = input.size() / bias_size;
@@ -55,14 +56,15 @@ class RowwiseAddGradKernel : public framework::OpKernel {
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* db = context.Output<Tensor>(framework::GradVarName("b"));
-    int num_row_dims = context.Input<Tensor>("b")->dims().size();
+    int num_col_dims = context.Input<Tensor>("X")->dims().size() -
+                       context.Input<Tensor>("b")->dims().size();
 
-    auto out_grad = EigenMatrix<T>::Reshape(*dout, num_row_dims);
+    auto out_grad = EigenMatrix<T>::Reshape(*dout, num_col_dims);
     auto place = context.GetEigenDevice<Place>();
 
     if (dx) {
       dx->mutable_data<T>(context.GetPlace());
-      EigenMatrix<T>::Reshape(*dx, num_row_dims).device(place) = out_grad;
+      EigenMatrix<T>::Reshape(*dx, num_col_dims).device(place) = out_grad;
     }
 
     if (db) {

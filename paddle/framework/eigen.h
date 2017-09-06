@@ -64,21 +64,21 @@ struct EigenTensor {
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
-  static typename EigenMatrix::Type Reshape(Tensor& tensor, int num_row_dims) {
+  static typename EigenMatrix::Type Reshape(Tensor& tensor, int num_col_dims) {
     int rank = tensor.dims_.size();
-    PADDLE_ENFORCE(num_row_dims > 0 && num_row_dims < rank,
-                   "`num_row_dims` must be between (0, rank_of_tensor).");
+    PADDLE_ENFORCE(num_col_dims > 0 && num_col_dims < rank,
+                   "`num_col_dims` must be between (0, rank_of_tensor).");
     return EigenMatrix::From(tensor,
-                             flatten_to_2d(tensor.dims(), num_row_dims));
+                             flatten_to_2d(tensor.dims(), num_col_dims));
   }
 
   static typename EigenMatrix::ConstType Reshape(const Tensor& tensor,
-                                                 int num_row_dims) {
+                                                 int num_col_dims) {
     int rank = tensor.dims_.size();
-    PADDLE_ENFORCE(num_row_dims > 0 && num_row_dims < rank,
-                   "`num_row_dims` must be between (0, rank_of_tensor).");
+    PADDLE_ENFORCE(num_col_dims > 0 && num_col_dims < rank,
+                   "`num_col_dims` must be between (0, rank_of_tensor).");
     return EigenMatrix::From(tensor,
-                             flatten_to_2d(tensor.dims(), num_row_dims));
+                             flatten_to_2d(tensor.dims(), num_col_dims));
   }
 };
 

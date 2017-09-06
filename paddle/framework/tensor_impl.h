@@ -149,10 +149,10 @@ inline Tensor& Tensor::Resize(const DDim& dims) {
 inline const DDim& Tensor::dims() const { return dims_; }
 
 template <typename T>
-inline Tensor FlattenToMatrix(const Tensor& src, int num_row_dims) {
+inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   Tensor res;
   res.ShareDataWith<T>(src);
-  res.Resize(flatten_to_2d(src.dims(), num_row_dims));
+  res.Resize(flatten_to_2d(src.dims(), num_col_dims));
   return res;
 }
 

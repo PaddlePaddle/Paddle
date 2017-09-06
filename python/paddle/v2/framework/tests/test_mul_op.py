@@ -26,7 +26,7 @@ class TestMulOp2(unittest.TestCase):
             'X': np.random.random((15, 4, 12, 10)).astype("float32"),
             'Y': np.random.random((4, 30, 8, 2, 9)).astype("float32")
         }
-        self.attrs = {'x_num_row_dims': 2, 'y_num_row_dims': 3}
+        self.attrs = {'x_num_col_dims': 2, 'y_num_col_dims': 2}
         self.outputs = {
             'Out': np.dot(self.inputs['X'].reshape(15 * 4, 12 * 10),
                           self.inputs['Y'].reshape(4 * 30, 8 * 2 * 9))
@@ -69,7 +69,7 @@ class TestMulGradOp(GradientChecker):
 class TestMulGradTest2(GradientChecker):
     def setUp(self):
         self.op = Operator(
-            "mul", X="X", Y="Y", Out="Out", x_num_row_dims=2, y_num_row_dims=3)
+            "mul", X="X", Y="Y", Out="Out", x_num_col_dims=2, y_num_col_dims=2)
         self.inputs = {
             "X": np.random.random((15, 4, 12, 10)).astype("float32"),
             "Y": np.random.random((4, 30, 8, 2, 9)).astype("float32")

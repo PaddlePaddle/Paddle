@@ -31,11 +31,11 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
         x_dims.size(), b_dims.size(),
         "The rank of input `X` must be larger than the one of input `b`.");
 
-    int num_row_dims = b_dims.size();
+    int num_col_dims = x_dims.size() - b_dims.size();
 
-    PADDLE_ENFORCE_EQ(framework::slice_ddim(
-                          x_dims, x_dims.size() - num_row_dims, x_dims.size()),
-                      b_dims, "The width of two operands must be same");
+    PADDLE_ENFORCE_EQ(
+        framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
+        "The width of two operands must be same");
     PADDLE_ENFORCE_EQ(ctx.OutputSize("Out"), 1, "The output size must be 1");
     ctx.Output<Tensor>("Out")->Resize(x_dims);
   }
@@ -72,10 +72,10 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
         x_dims.size(), b_dims.size(),
         "The rank of input `X` must be larger than the one of input `b`.");
 
-    int num_row_dims = b_dims.size();
-    PADDLE_ENFORCE_EQ(framework::slice_ddim(
-                          x_dims, x_dims.size() - num_row_dims, x_dims.size()),
-                      b_dims, "The width of two operands must be same");
+    int num_col_dims = x_dims.size() - b_dims.size();
+    PADDLE_ENFORCE_EQ(
+        framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
+        "The width of two operands must be same");
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *db = ctx.Output<Tensor>(framework::GradVarName("b"));
     if (dx) dx->Resize(x_dims);
