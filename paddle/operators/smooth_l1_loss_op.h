@@ -1,0 +1,184 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
+#pragma once
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
+
+namespace paddle {
+namespace operators {
+
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename T>
+struct SmoothL1LossFoward {
+  __host__ __device__ SmoothL1LossFoward(const T& sigma2) : sigma2(sigma2) {}
+
+  __host__ __device__ T operator()(const T& val) const {
+    T abs_val = std::abs(val);
+    if (abs_val < 1.0 / sigma2) {
+      return 0.5 * val * val * sigma2;
+    } else {
+      return abs_val - 0.5 / sigma2;
+    }
+  }
+
+  T sigma2;
+};
+
+template <typename Place, typename T, typename AttrType = T>
+class SmoothL1LossKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in0 = context.Input<Tensor>("X");
+    auto* in1 = context.Input<Tensor>("Y");
+    auto* in2 = context.Input<Tensor>("InsideWeight");
+    auto* in3 = context.Input<Tensor>("OutsideWeight");
+    auto* out0 = context.Output<Tensor>("diff");
+    auto* out1 = context.Output<Tensor>("Out");
+
+    out0->mutable_data<T>(context.GetPlace());
+    out1->mutable_data<T>(context.GetPlace());
+    auto place = context.GetEigenDevice<Place>();
+
+    auto sigma = static_cast<T>(context.op_.GetAttr<AttrType>("sigma"));
+    T sigma2 = sigma * sigma;
+    bool has_weight = (in2 != nullptr) && (in3 != nullptr);
+
+    auto x = EigenVector<T>::Flatten(*in0);
+    auto y = EigenVector<T>::Flatten(*in1);
+    auto diff = EigenVector<T>::Flatten(*out0);
+
+    diff.device(place) = x - y;
+    // multiply inside weight
+    if (has_weight) {
+      auto inside_weight = EigenVector<T>::Flatten(*in2);
+      // cache diff, reused in bp
+      diff.device(place) = diff * inside_weight;
+    }
+
+    auto in_counts = framework::product(in0->dims());
+    Tensor paddle_errors;
+    paddle_errors.mutable_data<T>({static_cast<int>(in_counts)},
+                                  context.GetPlace());
+    auto errors = EigenVector<T>::Flatten(paddle_errors);
+    // apply smooth l1 forward
+    errors.device(place) = diff.unaryExpr(SmoothL1LossFoward<T>(sigma2));
+
+    // multiply outside weight
+    if (has_weight) {
+      auto outside_weight = EigenVector<T>::Flatten(*in3);
+      errors.device(place) = errors * outside_weight;
+    }
+    auto loss = EigenMatrix<T>::From(*out1, {in0->dims()[0], 1});
+    // first dimension of 'X' is the number of samples
+    auto errors_mat_view = EigenMatrix<T>::From(paddle_errors, in0->dims());
+    loss.device(place) = errors_mat_view.sum(Eigen::array<int, 1>({1}));
+  }
+};
+
+template <typename T>
+struct SmoothL1LossBackward {
+  __host__ __device__ SmoothL1LossBackward(const T& sigma2) : sigma2(sigma2) {}
+
+  __host__ __device__ T operator()(const T& val) const {
+    T abs_val = std::abs(val);
+    if (abs_val < 1.0 / sigma2) {
+      return sigma2 * val;
+    } else {
+      return (0 < val) - (val < 0);
+    }
+  }
+
+  T sigma2;
+};
+
+template <typename Place, typename T, typename AttrType = T>
+class SmoothL1LossGradKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in0 = context.Input<Tensor>("InsideWeight");
+    auto* in1 = context.Input<Tensor>("OutsideWeight");
+    auto* in2 = context.Input<Tensor>("diff");
+    auto* og = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto sigma = static_cast<T>(context.op_.GetAttr<AttrType>("sigma"));
+    T sigma2 = sigma * sigma;
+    bool has_weight = (in0 != nullptr) && (in1 != nullptr);
+
+    auto place = context.GetEigenDevice<Place>();
+
+    auto in_dims = in2->dims();
+    auto counts = framework::product(in_dims);
+    auto cols = counts / in_dims[0];
+    auto mat_dims = framework::make_ddim(
+        {static_cast<int>(in_dims[0]), static_cast<int>(cols)});
+
+    Tensor paddle_diff;
+    paddle_diff.mutable_data<T>({static_cast<int>(counts)}, context.GetPlace());
+    auto diff = EigenVector<T>::Flatten(paddle_diff);
+    // apply smooth l1 backwoard
+    diff.device(place) = EigenVector<T>::Flatten(*in2).unaryExpr(
+        SmoothL1LossBackward<T>(sigma2));
+
+    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
+
+    // compute weights
+    Tensor paddle_weights;
+    paddle_weights.mutable_data<T>(mat_dims, context.GetPlace());
+    auto weights = EigenMatrix<T>::From(paddle_weights);
+    // initialize to 1.0
+    if (platform::is_cpu_place(context.GetPlace())) {
+      weights.setConstant(static_cast<T>(1.0));
+    } else {
+      Tensor paddle_cpu_weights;
+      paddle_cpu_weights.mutable_data<T>(mat_dims, platform::CPUPlace());
+      EigenMatrix<T>::From(paddle_cpu_weights).setConstant(static_cast<T>(1.0));
+      paddle_weights.CopyFrom<T>(paddle_cpu_weights, context.GetPlace());
+    }
+    if (has_weight) {
+      auto inside_weight = EigenMatrix<T>::From(*in0, mat_dims);
+      auto outside_weight = EigenMatrix<T>::From(*in1, mat_dims);
+      weights.device(place) = inside_weight * outside_weight;
+    }
+
+    // compute gradients
+    auto out_grad = EigenMatrix<T>::From(*og);
+    auto diff_mat_view = EigenMatrix<T>::From(paddle_diff, mat_dims);
+    auto gradients =
+        out_grad.broadcast(Eigen::array<int, 2>({1, static_cast<int>(cols)})) *
+        weights * diff_mat_view;
+
+    if (out0) {
+      out0->mutable_data<T>(context.GetPlace());
+      auto x_grad = EigenMatrix<T>::From(*out0, mat_dims);
+      x_grad.device(place) = gradients;
+    }
+
+    if (out1) {
+      out1->mutable_data<T>(context.GetPlace());
+      auto y_grad = EigenMatrix<T>::From(*out1, mat_dims);
+      y_grad.device(place) = -1 * gradients;
+    }
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
