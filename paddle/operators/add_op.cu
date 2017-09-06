@@ -12,10 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/framework/op_registry.h"
 #include "paddle/operators/add_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(add_two,
-                       ops::AddKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(add, ops::AddKernel<paddle::platform::GPUPlace, float>);
