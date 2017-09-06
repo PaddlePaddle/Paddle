@@ -44,7 +44,11 @@ The equation is: Out = X + Y
 )DOC");
   }
 
-  void InferShape(const framework::InferShapeContextBase &ctx) {}
+  void InferShape(const framework::InferShapeContextBase &ctx) const {
+    PADDLE_ENFORCE_EQ(ctx.get_input_dim("X"), ctx.get_input_dim("Y"),
+                      "Two input of Add Op's dimension must be same.");
+    ctx.set_output_dim("Out", ctx.get_input_dim("X"));
+  }
 };
 
 class AddOpGrad : public framework::OperatorWithKernel {

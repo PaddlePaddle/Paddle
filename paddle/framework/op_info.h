@@ -33,8 +33,16 @@ using OpCreator = std::function<OperatorBase*(
 class InferShapeContextBase {
  public:
   virtual ~InferShapeContextBase() {}
-  virtual const DDim get_dim(const std::string& name) = 0;
-  virtual void set_dim(const std::string& name, const DDim& dim) = 0;
+  virtual const DDim get_input_dim(const std::string& name) const = 0;
+  virtual void set_input_dim(const std::string& name,
+                             const DDim& dim) const = 0;
+  virtual const DDim get_output_dim(const std::string& name) const = 0;
+  virtual void set_output_dim(const std::string& name,
+                              const DDim& dim) const = 0;
+
+ protected:
+  virtual const DDim get_dim(const std::string& name) const = 0;
+  virtual void set_dim(const std::string& name, const DDim& dim) const = 0;
 };
 
 // this class not only make proto but also init attribute checkers.
@@ -43,13 +51,13 @@ class OpProtoAndCheckerMaker {
   OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : proto_(proto), op_checker_(op_checker) {}
 
-  ~OpProtoAndCheckerMaker() {
+  virtual ~OpProtoAndCheckerMaker() {
     PADDLE_ENFORCE(validated_, "should call Validate after build");
   }
 
   void Validate();
 
-  void InferShape(const InferShapeContextBase& ctx);
+  virtual void InferShape(const InferShapeContextBase& ctx) const = 0;
 
  protected:
   struct VariableBuilder {

@@ -168,8 +168,25 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
   CompileTimeInferShapeContext(const OpDesc& op_desc,
                                std::map<std::string, VarDesc*>& var_descs);
 
-  const DDim get_dim(const std::string& name) {
-    VarDesc* desc = var_descs_.at(op_->Input(name));
+  const DDim get_input_dim(const std::string& name) const {
+    return get_dim(op_->Input(name));
+  }
+
+  void set_input_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_->Input(name), dim);
+  }
+
+  const DDim get_output_dim(const std::string& name) const {
+    return get_dim(op_->Output(name));
+  }
+
+  void set_output_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_->Output(name), dim);
+  }
+
+ private:
+  const DDim get_dim(const std::string& name) const {
+    VarDesc* desc = var_descs_.at(name);
     std::vector<int> dim;
     int length = desc->lod_tensor().dims().size();
     dim.reserve(length);
@@ -178,15 +195,14 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
     return make_ddim(dim);
   }
 
-  void set_dim(const std::string& name, const DDim& dim) {
-    VarDesc* desc = var_descs_.at(op_->Input(name));
+  void set_dim(const std::string& name, const DDim& dim) const {
+    VarDesc* desc = var_descs_.at(name);
     size_t length = dim.size();
     for (size_t i = 0; i < length; ++i) {
       desc->mutable_lod_tensor()->set_dims(i, dim[i]);
     }
   }
 
- private:
   std::unique_ptr<OperatorBase> op_;
   std::map<std::string, VarDesc*>& var_descs_;
 };
@@ -195,17 +211,34 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
  public:
   RunTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
-  const DDim get_dim(const std::string& name) {
+
+  const DDim get_input_dim(const std::string& name) const {
+    return get_dim(op_.Input(name));
+  }
+
+  const DDim get_output_dim(const std::string& name) const {
+    return get_dim(op_.Output(name));
+  }
+
+  void set_input_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_.Input(name), dim);
+  }
+
+  void set_output_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_.Output(name), dim);
+  }
+
+ private:
+  const DDim get_dim(const std::string& name) const {
     Tensor* t = scope_.FindVar(op_.Input(name))->GetMutable<Tensor>();
     return t->dims();
   }
 
-  void set_dim(const std::string& name, const DDim& dim) {
+  void set_dim(const std::string& name, const DDim& dim) const {
     Tensor* t = scope_.FindVar(name)->GetMutable<Tensor>();
     t->Resize(dim);
   }
 
- private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
