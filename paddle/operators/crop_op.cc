@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/crop_op.h"
+#include <boost/lexical_cast.hpp>
 
 namespace paddle {
 namespace operators {
@@ -32,7 +33,12 @@ class CropOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           shape.size(), dim0.size(),
           "Shape size should be equal to dimention size of input tensor.");
-      ctx.Output<Tensor>("Out")->Resize(paddle::framework::make_ddim(shape));
+      std::vector<int64_t> tensor_shape(shape.size());
+      for (int i = 0; i < shape.size(); ++i) {
+        tensor_shape[i] = (int64_t)shape[i];
+      }
+      ctx.Output<Tensor>("Out")->Resize(
+          paddle::framework::make_ddim(tensor_shape));
     } else {
       ctx.Output<Tensor>("Out")->Resize(Y->dims());
     }
