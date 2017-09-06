@@ -83,8 +83,8 @@ void PadGradFunction(const framework::ExecutionContext& context) {
       context.op().GetAttr<std::vector<std::pair<int, int>>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
   for (int i = 0; i < pads.size(); ++i) {
-    paddings[0].first = -paddings[0].first;
-    paddings[1].second = -paddings[1].second;
+    paddings[i].first = -pads[i].first;
+    paddings[i].second = -pads[i].second;
   }
   auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
   auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
