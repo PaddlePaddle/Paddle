@@ -106,17 +106,45 @@ struct LoDTensor {
   float* tensor_;
 };
 
-LoDTensor Slice(const LoDTensor& lodt, int level, int sequence) {
-
-}
+LoDTensor Slice(const LoDTensor& lodt, int level, int sequence);
 ```
 
-### Slicing the Top Level
+### Performance Improvement with Offset
+LoD index is crutial to random access performance, for example, a 4 level LoD tensor
 
-Please be aware that an RNN operator only slices the top level of a LoD Tensor to get the step inputs.
+```
+         3
+3           1  2
+3   2  4    1  2  3
+||| || |||| |  || |||
+```
+the elements in the upper-level represent the number of elements in the lower-level,
+for example, the `3` in the first level means it has three elements `3, 1, 2` in the second level,
+the `2` in the second level means it has two elements in the third level `2, 3`.
 
-```c++
-LoDTensor Slice(const LoDTensor& lodt, int sequence) {
 
-}
+if we want to access the memory of third element of level 2 (let's name it `elem`), which is a `2`, several operations should be done to get the offset of the tensor memory.
+
+1. sum all the elements ahead `elem` in second level, `3 + 1 = 4`, that means in the third level, there are 4 elements ahead of `elem`.
+2. in third level, we get the start offset of `elem` which is `3 + 1 = 4`, and end offset is `3 + 1 + 2 = 6`
+3. the forth level is tensor, let's get the start and end offsets, first sum the 4 numbers and get `10`, sum the first 6 numbers and get `15`
+
+finally we get `elem`'s  start and end offset in the tensor level, and access the element's memory.
+
+The above example shows that if the LoD index with number of elements is expensive to access elements's tensor memory.
+
+This can be solved by directly store each element's start offsets from tensor's memory, the uppder LoD can be expressed like
+
+```
+0
+0             9  10
+0   3  5      9  10 12 
+```
+If we want to get the `elem`'s offset, we can directly get `10` and because the tensor's batch_size is 15, the start and end offsets are directly got without calculation.
+
+the `0` in the first level is useless, so we can delete it and the final format as follows
+
+```
+0             9  10
+0   3  5      9  10 12 
 ```
