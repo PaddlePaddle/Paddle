@@ -19,12 +19,12 @@ template <typename T>
 class CPUGaussianRandomKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    float mean = context.GetAttr<float>("mean");
-    float std = context.GetAttr<float>("std");
+    float mean = context.Attr<float>("mean");
+    float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    unsigned int seed = static_cast<unsigned int>(context.GetAttr<int>("seed"));
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
@@ -45,7 +45,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
-    auto dims = GetAttr<std::vector<int>>("dims");
+    auto dims = Attr<std::vector<int>>("dims");
     PADDLE_ENFORCE(dims.size() > 0UL,
                    "dims can be one int or array. dims must be set.");
     tensor->Resize(framework::make_ddim(dims));
