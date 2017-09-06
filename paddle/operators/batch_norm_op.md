@@ -57,7 +57,7 @@ As most C++ operators do, `batch_norm_op` is defined by inputs, outputs, attribu
 
 #### Attributes
 
-- `is_infer`: *bool*. If true, run `batch_norm_op` in inferencing model.
+- `is_infer`: *bool*. If true, run `batch_norm_op` in inferencing mode.
 - `use_global_est`: *bool*. If true, use `saved_mean` and `saved_var` instead of `E[x]` and `STD[x]` in trainning.
 - `epsilon`: *float*. The epsilon value to avoid division by zero.
 - `momentum`: *float*. Factor used in `estimated_mean` and `estimated_var` updating. The usage is shown above.
@@ -66,7 +66,7 @@ As most C++ operators do, `batch_norm_op` is defined by inputs, outputs, attribu
 
 The following graph showes the training computational process of `batch_norm_op`:
 
-<img src="./images/batch_norm_op.png" width="800"/>
+<img src="./images/batch_norm_op_kernel.png" width="800"/>
 
 cudnn provides APIs to finish the whole series of computation, we can use them in our GPU kernel.
 
@@ -110,7 +110,7 @@ Because Python API has not been finally decided, the code above can be regarded 
 
 1. `estimated_mean` and `estimated_var` are assigned the same variables with `saved_mean` and `saved_var` respectively. So they share same the memories. The output mean and variance values(`saved_mean` and `saved_var`) of a certain batch will be the inputs(`estimated_mean` and `estimated_var`) of the next batch.
 
-2. `is_infer` decided whether `batch_norm_op` will run in training model or inferencing model. However, a model may contains both training and inferencing parts. And user may switch `batch_norm_op`'s running model in Python `for` loop like this:
+2. `is_infer` decided whether `batch_norm_op` will run in training mode or inferencing mode. However, a network may contains both training and inferencing parts. And user may switch `batch_norm_op`'s running mode in Python `for` loop like this:
 
 ```python
 for pass_id in range(PASS_NUM):
@@ -121,4 +121,14 @@ for pass_id in range(PASS_NUM):
     # ...
 ``` 
 
-`is_infer` is an attribute. Once an operator is created, its attributes can not be changed. It suggests us that we shall maintain two `batch_norm_op` in the model, one's `is_infer` is `True`(we call it `infer_batch_norm_op`) and the other one's is `False`(we call it `train_batch_norm_op`). They share all parameters and variables. How to organize them is related with Python API design, so I leave it here for further discussion.
+`is_infer` is an attribute. Once an operator is created, its attributes can not be changed. It suggests us that we shall maintain two `batch_norm_op` in the model, one's `is_infer` is `True`(we call it `infer_batch_norm_op`) and the other one's is `False`(we call it `train_batch_norm_op`). They share all parameters and variables, but be placed in two different branches. That is to say, if a network contains a `batch_norm_op`, it will fork into two branches, one go through `train_batch_norm_op` and the other one go through `infer_batch_norm_op`:
+
+<div align=center>
+<img src="./images/batch_norm_fork.png" width="500"/>
+</div>
+
+Just like what is shown in the above graph, the net forks before `batch_norm_op` and will never merge again. All the operators after `batch_norm_op` will duplicate. 
+
+When the net runs in training mode, the end of the left branch will be set as the running target, so the dependency tracking process will ignore right branch automatically. When the net runs in inferencing mode, the process is reversed.
+
+How to set a target is related to Python API design, so I will leave it here waiting for more discussions.
