@@ -22,6 +22,9 @@ namespace operators {
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
@@ -46,7 +49,7 @@ class SquaredL2DistanceKernel : public framework::OpKernel {
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
     auto sub_result = EigenMatrix<T>::From(*out0);
-    auto z = EigenMatrix<T>::From(*out1);
+    auto z = EigenVector<T>::Flatten(*out1);
 
     auto place = context.GetEigenDevice<Place>();
     auto x_dims = x.dimensions();
@@ -55,13 +58,12 @@ class SquaredL2DistanceKernel : public framework::OpKernel {
     if (y_dims[0] == 1 && x_dims[0] > y_dims[0]) {
       sub_result.device(place) =
           x -
-          y.broadcast(Eigen::array<int, 2>({static_cast<int>(x_dims[0]), 1}));
+          y.broadcast(Eigen::array<int, 2>({{static_cast<int>(x_dims[0]), 1}}));
     } else {
       sub_result.device(place) = x - y;
     }
     auto sub_res_pow2 = sub_result * sub_result;
-    // z is TensorMap, no need reshape
-    z.device(place) = sub_res_pow2.sum(Eigen::array<int, 1>({1}));
+    z.device(place) = sub_res_pow2.sum(Eigen::array<int, 1>({{1}}));
   }
 };
 
@@ -82,8 +84,9 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
 
     int cols = framework::product(x_dims) / x_dims[0];
     // calculate gradient
-    auto grad_mat =
-        2 * (out_grad.broadcast(Eigen::array<int, 2>({1, cols}))) * sub_result;
+    auto grad_mat = 2 *
+                    (out_grad.broadcast(Eigen::array<int, 2>({{1, cols}}))) *
+                    sub_result;
 
     // propagate back to input
     auto eigen_place = context.GetEigenDevice<Place>();
@@ -98,18 +101,18 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
 
     if (y_g) {
       y_g->mutable_data<T>(context.GetPlace());
-      auto y_grad =
-          EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
 
       PADDLE_ENFORCE_GE(sub_result.dimensions()[0], y_dims[0],
                         "First dimension of gradient must be greater or "
                         "equal than first dimension of target.");
 
       if (sub_result.dimensions()[0] == y_dims[0]) {
+        auto y_grad =
+            EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
         y_grad.device(eigen_place) = -1 * grad_mat;
       } else {
-        auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({0})));
-        // y_grad is TensorMap, no need reshape
+        auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
+        auto y_grad = EigenVector<T>::Flatten(*y_g);
         y_grad.device(eigen_place) = col_sum_res;
       }
     }
