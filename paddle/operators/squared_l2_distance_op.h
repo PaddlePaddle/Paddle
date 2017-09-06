@@ -101,9 +101,9 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
       auto y_grad =
           EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
 
-      PADDLE_ENFORCE(sub_result.dimensions()[0] >= y_dims[0],
-                     "First dimension of gradient must be greater or "
-                     "equal than first dimension of target");
+      PADDLE_ENFORCE_GE(sub_result.dimensions()[0], y_dims[0],
+                        "First dimension of gradient must be greater or "
+                        "equal than first dimension of target.");
 
       if (sub_result.dimensions()[0] == y_dims[0]) {
         y_grad.device(eigen_place) = -1 * grad_mat;
