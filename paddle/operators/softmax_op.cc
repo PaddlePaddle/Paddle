@@ -23,9 +23,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.Input<Tensor>("logits")->dims().size() == 2UL,
+    PADDLE_ENFORCE(ctx.Input<Tensor>("Logits")->dims().size() == 2UL,
                    "The input of softmax op must be a matrix.");
-    ctx.Output<Tensor>("softmax")->Resize(ctx.Input<Tensor>("logits")->dims());
+    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("Logits")->dims());
   }
 };
 
@@ -34,10 +34,10 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
   SoftmaxOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("logits",
+    AddInput("Logits",
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
-    AddOutput("softmax", "The normalized values with the same shape as X.");
+    AddOutput("Out", "The normalized values with the same shape as the input.");
     AddComment(R"DOC(
 The input of softmax operator is a 2-D tensor with shape N x K (N is the
 batch_size, K is the dimension of input feature). The output tensor has the
@@ -51,8 +51,8 @@ the other dimensions in the K-dimensional vector input. Then the ratio of the
 exponential of the given dimension and the sum of exponential values of all
 the other dimensions is the output of the softmax operator.
 
-For each row `i` and each column `j` in X, we have:
-    Y[i, j] = exp(X[i, j]) / sum_j(exp(X[i, j]))
+For each row `i` and each column `j` in the input: Logits, we have:
+    Out[i, j] = exp(Logits[i, j]) / sum_j(exp(Logits[i, j]))
 
 )DOC");
   }
@@ -64,17 +64,16 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("softmax"),
-                            "Input(softmax) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("softmax")),
-                            "Input(softmax@GRAD) should be not null.");
-    PADDLE_ENFORCE_EQ(
-        ctx.Input<Tensor>("softmax")->dims(),
-        ctx.Input<Tensor>(framework::GradVarName("softmax"))->dims(),
-        "Input(softmax) and its gradients should have a same shape.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Out"),
+                            "Input(Out) should be not null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Out")->dims(),
+                      ctx.Input<Tensor>(framework::GradVarName("Out"))->dims(),
+                      "Input(Out) and its gradients should have a same shape.");
 
-    ctx.Output<Tensor>(framework::GradVarName("logits"))
-        ->Resize(ctx.Input<Tensor>("logits")->dims());
+    ctx.Output<Tensor>(framework::GradVarName("Logits"))
+        ->Resize(ctx.Input<Tensor>("Logits")->dims());
   }
 };
 

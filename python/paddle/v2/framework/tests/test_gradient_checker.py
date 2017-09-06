@@ -7,11 +7,11 @@ from gradient_checker import get_numeric_gradient
 
 class GetNumericGradientTest(unittest.TestCase):
     def test_add_op(self):
-        add_op = Operator('add_two', X="X", Y="Y", Out="Z")
+        add_op = Operator("add", X="X", Y="Y", Out="Z")
         x = numpy.random.random((10, 1)).astype("float32")
         y = numpy.random.random((10, 1)).astype("float32")
 
-        arr = get_numeric_gradient(add_op, {'X': x, "Y": y}, 'Z', 'X')
+        arr = get_numeric_gradient(add_op, {"X": x, "Y": y}, "Z", "X")
         self.assertAlmostEqual(arr.mean(), 1.0, delta=1e-4)
 
     def test_softmax_op(self):
@@ -28,16 +28,16 @@ class GetNumericGradientTest(unittest.TestCase):
                 dX[i, :] = Y[i, :] * (dY[i, :] - d)
             return dX
 
-        softmax_op = Operator("softmax", X="X", Y="Y")
+        softmax_op = Operator("softmax", Logits="Logits", Out="Out")
 
         X = numpy.random.random((2, 2)).astype("float32")
         Y = numpy.apply_along_axis(stable_softmax, 1, X)
         dY = numpy.ones(Y.shape)
         dX = label_softmax_grad(Y, dY)
 
-        arr = get_numeric_gradient(softmax_op, {"X": X}, 'Y', 'X')
+        arr = get_numeric_gradient(softmax_op, {"Logits": X}, "Out", "Logits")
         numpy.testing.assert_almost_equal(arr, dX, decimal=1e-2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

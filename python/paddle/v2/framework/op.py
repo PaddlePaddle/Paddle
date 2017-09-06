@@ -4,7 +4,7 @@ import paddle.v2.framework.proto.framework_pb2 as framework_pb2
 
 def get_all_op_protos():
     """
-    Get all registered op proto from Paddle C++
+    Get all registered op proto from PaddlePaddle C++ end.
     :return: list of OpProto
     """
     protostrs = core.get_all_op_protos()
@@ -21,8 +21,8 @@ def is_str(s):
 
 class OpDescCreationMethod(object):
     """
-    A Functor object to convert user input(use key word args) to OpDesc based on
-    OpProto.
+    A Functor object converting the user's input(only keyword arguments are
+    supported) to OpDesc based on the OpProto.
 
     :param op_proto: The OpProto object.
     :type op_proto: op_proto_pb2.OpProto
@@ -30,17 +30,18 @@ class OpDescCreationMethod(object):
 
     def __init__(self, op_proto):
         if not isinstance(op_proto, framework_pb2.OpProto):
-            raise TypeError("Argument should be OpProto")
+            raise TypeError(
+                "Type of op_proto should be OpProto in PaddlePaddle.")
         self.__op_proto__ = op_proto
 
     def __call__(self, *args, **kwargs):
         """
-        Convert user input to OpDesc. Only key-word args are supported. 
+        Convert user's input to OpDesc. Only keyword arguments are supported.
         :return: OpDesc based on user input
         :rtype: op_desc_pb2.OpDesc
         """
         if len(args) != 0:
-            raise ValueError("Only keyword arguments is supported by Paddle")
+            raise ValueError("Only keyword arguments are supported.")
         op_desc = framework_pb2.OpDesc()
 
         for input_parameter in self.__op_proto__.inputs:
@@ -49,10 +50,11 @@ class OpDescCreationMethod(object):
                 input_arguments = [input_arguments]
 
             if not input_parameter.duplicable and len(input_arguments) > 1:
-                raise ValueError("Input %s only accepts one input, but give %d"
-                                 % (input_parameter.name, len(input_arguments)))
+                raise ValueError(
+                    "Input %s expects only one input, but %d are given." %
+                    (input_parameter.name, len(input_arguments)))
 
-            ipt = op_desc.inputs.add()
+                ipt = op_desc.inputs.add()
             ipt.parameter = input_parameter.name
             ipt.arguments.extend(input_arguments)
 
@@ -63,10 +65,10 @@ class OpDescCreationMethod(object):
 
             if not output_parameter.duplicable and len(output_arguments) > 1:
                 raise ValueError(
-                    "Output %s only accepts one output, but give %d" %
+                    "Output %s expects only one output, but %d are given." %
                     (output_parameter.name, len(output_arguments)))
 
-            out = op_desc.outputs.add()
+                out = op_desc.outputs.add()
             out.parameter = output_parameter.name
             out.arguments.extend(output_arguments)
 
@@ -100,10 +102,11 @@ class OpDescCreationMethod(object):
                         pair.first = p[0]
                         pair.second = p[1]
                 else:
-                    raise NotImplementedError("Not support attribute type " +
-                                              str(attr.type))
+                    raise NotImplementedError(
+                        "A not supported attribute type: %s." % (
+                            str(attr.type)))
 
-        return op_desc
+                    return op_desc
 
     @staticmethod
     def any_is_true(generator):
@@ -142,10 +145,10 @@ def create_op_creation_method(op_proto):
         outputs=[var.name for var in op_proto.outputs],
         attrs=[attr.name for attr in op_proto.attrs])
 
+    class OperatorFactory(object):
+        def __init__(self):
+            self.op_methods = dict()
 
-class OperatorFactory(object):
-    def __init__(self):
-        self.op_methods = dict()
         for op_proto in get_all_op_protos():
             method = create_op_creation_method(op_proto)
             self.op_methods[method.name] = method
@@ -153,14 +156,16 @@ class OperatorFactory(object):
     def __call__(self, *args, **kwargs):
         if 'type' in kwargs:
             if len(args) != 0:
-                raise ValueError("All Paddle argument should be key-word "
-                                 "argument except type")
-            t = kwargs.pop('type')
+                raise ValueError(
+                    ("All PaddlePaddle arguments should be keyword "
+                     "arguments except the argument \"type\"."))
+                t = kwargs.pop('type')
         else:
             if len(args) != 1:
-                raise ValueError("All Paddle argument should be key-word "
-                                 "argument except type")
-            t = args[0]
+                raise ValueError(
+                    ("All PaddlePaddle arguments should be keyword "
+                     "arguments except the argument \"type\"."))
+                t = args[0]
 
         return self.get_op_info(t).method(**kwargs)
 
@@ -169,7 +174,7 @@ class OperatorFactory(object):
 
     def get_op_info(self, t):
         if t not in self.op_methods:
-            raise ValueError("operator %s is not registered", t)
+            raise ValueError("The operator: %s is not registered." % t)
         return self.op_methods.get(t)
 
     def get_op_input_names(self, type):
