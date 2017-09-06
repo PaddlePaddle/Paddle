@@ -35,8 +35,8 @@ class CPUUniformRandomKernel : public framework::OpKernel {
     std::uniform_real_distribution<T> dist(
         static_cast<T>(context.GetAttr<float>("min")),
         static_cast<T>(context.GetAttr<float>("max")));
-    ssize_t size = framework::product(tensor->dims());
-    for (ssize_t i = 0; i < size; ++i) {
+    int64_t size = framework::product(tensor->dims());
+    for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
   }
@@ -52,7 +52,12 @@ class UniformRandomOp : public framework::OperatorWithKernel {
                    "uniform_random's min must less then max");
     auto* tensor = ctx.Output<framework::Tensor>("Out");
     auto dims = GetAttr<std::vector<int>>("dims");
-    tensor->Resize(framework::make_ddim(dims));
+    std::vector<int64_t> temp;
+    temp.reserve(dims.size());
+    for (auto dim : dims) {
+      temp.push_back(static_cast<int64_t>(dim));
+    }
+    tensor->Resize(framework::make_ddim(temp));
   }
 };
 
