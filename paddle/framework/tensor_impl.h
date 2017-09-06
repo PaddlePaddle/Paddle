@@ -58,7 +58,7 @@ inline T* Tensor::mutable_data(platform::Place place) {
                     "Tensor's numel must be larger than zero to call "
                     "Tensor::mutable_data. Call Tensor::set_dim first.");
   /* some versions of boost::variant don't have operator!= */
-  size_t size = product(dims_) * sizeof(T);
+  int64_t size = product(dims_) * sizeof(T);
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
     if (platform::is_cpu_place(place)) {
@@ -117,6 +117,8 @@ inline void Tensor::CopyFrom(const Tensor& src,
     memory::Copy(boost::get<platform::GPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::GPUPlace>(src_place), src_ptr, size, 0);
   }
+  PADDLE_ENFORCE(cudaStreamSynchronize(0),
+                 "cudaStreamSynchronize failed in Tensor CopyFrom");
 
 #endif
 }
@@ -129,7 +131,7 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   PADDLE_ENFORCE_LT(begin_idx, end_idx,
                     "Begin index must be less than end index.");
   PADDLE_ENFORCE_NE(dims_[0], 1, "Can not slice a tensor with dims_[0] = 1.");
-  int base = product(dims_) / dims_[0];
+  size_t base = product(dims_) / dims_[0];
   Tensor dst;
   dst.holder_ = holder_;
   DDim dst_dims = dims_;
