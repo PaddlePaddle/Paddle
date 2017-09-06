@@ -28,7 +28,7 @@ struct EigenDim {
   static Type From(const DDim& dims) {
     PADDLE_ENFORCE(arity(dims) == D, "D must match arity(DDim)");
     Type ret;
-    for (int d = 0; d < arity(dims); d++) {
+    for (int64_t d = 0; d < arity(dims); d++) {
       ret[d] = dims[d];
     }
     return ret;

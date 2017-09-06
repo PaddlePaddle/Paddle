@@ -61,7 +61,7 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
       PADDLE_ENFORCE(step_scope_var != nullptr, "%s not in scope",
                      outlinks[i].internal);
       f::DDim step_dims = step_scope_var->template GetMutable<Tensor>()->dims();
-      std::vector<int> dims_vec = vectorize(step_dims);
+      std::vector<int64_t> dims_vec = vectorize(step_dims);
       dims_vec.insert(dims_vec.begin(), seq_len);
       output->Resize(f::make_ddim(dims_vec));
     } else {
@@ -109,7 +109,7 @@ void InitArgument(const ArgumentName& name, Argument* arg,
   arg->step_scopes = op.Output(name.step_scopes);
 
   auto inlinks = op.Inputs(name.inlinks);
-  auto inlink_alias = op.GetAttr<std::vector<std::string>>(name.inlink_alias);
+  auto inlink_alias = op.Attr<std::vector<std::string>>(name.inlink_alias);
   PADDLE_ENFORCE(inlinks.size() == inlink_alias.size(),
                  "the size of inlinks and inlink_alias don't match:%d,%d",
                  inlinks.size(), inlink_alias.size());
@@ -121,7 +121,7 @@ void InitArgument(const ArgumentName& name, Argument* arg,
   }
 
   auto outlinks = op.Outputs(name.outlinks);
-  auto outlink_alias = op.GetAttr<std::vector<std::string>>(name.outlink_alias);
+  auto outlink_alias = op.Attr<std::vector<std::string>>(name.outlink_alias);
   PADDLE_ENFORCE(outlinks.size() == outlink_alias.size(),
                  "the size of outlinks and outlink_alias don't match:%d,%d",
                  outlinks.size(), outlink_alias.size());
@@ -135,8 +135,8 @@ void InitArgument(const ArgumentName& name, Argument* arg,
   auto boot_memories = op.Inputs(name.boot_memories);
 
   // attributes
-  auto memories = op.GetAttr<std::vector<std::string>>(name.memories);
-  auto pre_memories = op.GetAttr<std::vector<std::string>>(name.pre_memories);
+  auto memories = op.Attr<std::vector<std::string>>(name.memories);
+  auto pre_memories = op.Attr<std::vector<std::string>>(name.pre_memories);
 
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "the size of memories, boot_memories don't match:%d,%d",

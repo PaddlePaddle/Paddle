@@ -94,7 +94,7 @@ Let's go on slicing this slice.  Its <1,1>-slice is
 |||
 ```
 
-### The General Slicing Algorithm
+### The Slicing Algorithm
 
 The algorithm, with over-simplified data structure, is defined as
 
@@ -106,17 +106,41 @@ struct LoDTensor {
   float* tensor_;
 };
 
-LoDTensor Slice(const LoDTensor& lodt, int level, int sequence) {
-
-}
+LoDTensor Slice(const LoDTensor& lodt, int level, int sequence);
 ```
 
-### Slicing the Top Level
+Let us revisit the example above
 
-Please be aware that an RNN operator only slices the top level of a LoD Tensor to get the step inputs.
+```
+         3
+3           1  2
+3   2  4    1  2  3
+||| || |||| |  || |||
+```
 
-```c++
-LoDTensor Slice(const LoDTensor& lodt, int sequence) {
+Suppose that we want to retrieve the <1,2>-slice
 
-}
+```
+2
+2  3
+|| |||
+```
+
+we will need to find out the starting position of this slice by summing over all leaf nodes in `LoD` to the left of the slice, i.e., 3 + 2 + 4 + 1 = 10.
+
+To avoid the traversal of the LoD tree at slcing time,  we can do it at the construction time -- instead of saving the lengths of the next level in the LoD tree, we can save the starting offset of the next level.  For example, above LoD Tensor can be transformed into
+
+```
+        0
+0           9  10
+0   3  5    9  10 12
+||| || |||| |  || |||
+```
+
+We don't really need the 0 on top, so the LoD Tensor could be
+
+```
+0           9  10
+0   3  5    9  10 12
+||| || |||| |  || |||
 ```
