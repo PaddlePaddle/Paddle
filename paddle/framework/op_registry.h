@@ -48,8 +48,9 @@ class OpRegistry {
         std::type_index(typeid(NOPMaker))) {
       op_info.proto_ = new OpProto;
       op_info.checker_ = new OpAttrChecker;
-      auto maker = ProtoMakerType(op_info.proto_, op_info.checker_);
-      maker.Validate();
+      auto maker = new ProtoMakerType(op_info.proto_, op_info.checker_);
+      maker->Validate();
+      op_info.maker_ = maker;
       op_info.proto_->set_type(op_type);
       PADDLE_ENFORCE(
           op_info.proto_->IsInitialized(),
@@ -58,6 +59,7 @@ class OpRegistry {
     } else {
       op_info.proto_ = nullptr;
       op_info.checker_ = nullptr;
+      op_info.maker_ = nullptr;
     }
     OpInfoMap::Instance().Insert(op_type, op_info);
     // register gradient op
@@ -74,6 +76,19 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
   static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
+
+  // compile time InferShape
+  static void InferShape(const OpDesc& op_desc,
+                         std::map<std::string, VarDesc*>& var_descs) {
+    auto& info = OpInfoMap::Instance().Get(op_desc.type());
+    info.maker_->InferShape(CompileTimeInferShapeContext(op_desc, var_descs));
+  }
+
+  // runtime InferShape
+  static void InferShape(const OperatorBase& op, const Scope& scope) {
+    auto& info = OpInfoMap::Instance().Get(op.Type());
+    info.maker_->InferShape(RunTimeInferShapeContext(op, scope));
+  }
 };
 
 class Registrar {

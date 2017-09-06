@@ -43,6 +43,8 @@ Two Element Add Operator.
 The equation is: Out = X + Y
 )DOC");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) {}
 };
 
 class AddOpGrad : public framework::OperatorWithKernel {
