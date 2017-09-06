@@ -44,6 +44,7 @@ USE_OP(gaussian_random);
 USE_OP(uniform_random);
 USE_OP(lookup_table);
 USE_OP(scale);
+USE_OP(scaling);
 USE_NO_KERNEL_OP(identity);
 USE_OP(minus);
 USE_OP(cos_sim);
