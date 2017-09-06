@@ -215,5 +215,11 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   }
 }
 
+CompileTimeInferShapeContext::CompileTimeInferShapeContext(
+    const OpDesc& op_desc, std::map<std::string, VarDesc*>& var_descs)
+    : var_descs_(var_descs) {
+  op_ = OpRegistry::CreateOp(op_desc);
+}
+
 }  // namespace framework
 }  // namespace paddle

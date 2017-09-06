@@ -163,6 +163,64 @@ class NOP : public OperatorBase {
   }
 };
 
+class InferShapeContextBase {
+ public:
+  virtual ~InferShapeContextBase() {}
+  virtual const DDim get_dim(const std::string& name) = 0;
+  virtual void set_dim(const std::string& name, const DDim& dim) = 0;
+};
+
+class CompileTimeInferShapeContext : public InferShapeContextBase {
+ public:
+  CompileTimeInferShapeContext(const OpDesc& op_desc,
+                               std::map<std::string, VarDesc*>& var_descs);
+
+  const DDim get_dim(const std::string& name) {
+    VarDesc* desc = var_descs_.at(op_->Input(name));
+    std::vector<int> dim;
+    int length = desc->lod_tensor().dims().size();
+    dim.reserve(length);
+    std::copy(desc->lod_tensor().dims().begin(),
+              desc->lod_tensor().dims().end(), std::back_inserter(dim));
+    return make_ddim(dim);
+  }
+
+  void set_dim(const std::string& name, const DDim& dim) {
+    VarDesc* desc = var_descs_.at(op_->Input(name));
+    size_t length = dim.size();
+    for (size_t i = 0; i < length; ++i) {
+      desc->mutable_lod_tensor()->set_dims(i, dim[i]);
+    }
+  }
+
+ private:
+  std::unique_ptr<OperatorBase> op_;
+  std::map<std::string, VarDesc*>& var_descs_;
+};
+
+class RunTimeInferShapeContext : public InferShapeContextBase {
+ public:
+  RunTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
+  const DDim get_dim(const std::string& name) {
+    Tensor* t = scope_.FindVar(op_.Input(name))->GetMutable<Tensor>();
+    return t->dims();
+  }
+
+  void set_dim(const std::string& name, const DDim& dim) {
+    Tensor* t = scope_.FindVar(name)->GetMutable<Tensor>();
+    t->Resize(dim);
+  }
+
+ private:
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
+
+// compile time infer shape
+static void InferShape(const OpDesc& op_desc,
+                       std::map<std::string, VarDesc*>& var_descs) {}
+
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
@@ -213,6 +271,8 @@ class OpProtoAndCheckerMaker {
   }
 
   void AddComment(const std::string& comment) { proto_->set_comment(comment); }
+
+  void InferShape(const InferShapeContextBase& ctx);
 
  private:
   void CheckNoDuplicatedInOutAttrs();
