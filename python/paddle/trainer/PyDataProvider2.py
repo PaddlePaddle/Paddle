@@ -87,7 +87,8 @@ class InputType(object):
 
     def __repr__(self):
         """
-        Return a human readable representation like 'InputType(dim=25921, seq_type=SequenceType.NO_SEQUENCE, type=DataType.Dense)'
+        Return a human readable representation like 'InputType(dim=25921, 
+            seq_type=SequenceType.NO_SEQUENCE, type=DataType.Dense)'
         """
         repr_str = type(self).__name__
         repr_str += '('
