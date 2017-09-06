@@ -61,7 +61,7 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
       PADDLE_ENFORCE(step_scope_var != nullptr, "%s not in scope",
                      outlinks[i].internal);
       f::DDim step_dims = step_scope_var->template GetMutable<Tensor>()->dims();
-      std::vector<int> dims_vec = vectorize(step_dims);
+      std::vector<int64_t> dims_vec = vectorize(step_dims);
       dims_vec.insert(dims_vec.begin(), seq_len);
       output->Resize(f::make_ddim(dims_vec));
     } else {
