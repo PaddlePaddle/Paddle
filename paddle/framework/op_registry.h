@@ -199,6 +199,8 @@ class OpKernelRegistrar : public Registrar {
   USE_OP_DEVICE_KERNEL(op_type, GPU)
 #endif
 
+#define USE_NO_KERNEL_OP(op_type) USE_OP_ITSELF(op_type);
+
 #define USE_CPU_ONLY_OP(op_type) \
   USE_OP_ITSELF(op_type);        \
   USE_OP_DEVICE_KERNEL(op_type, CPU);
