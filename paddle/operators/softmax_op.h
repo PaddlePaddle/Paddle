@@ -28,12 +28,12 @@ template <typename Place, typename T>
 class SoftmaxKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>("X");
-    auto output = context.Output<Tensor>("Y");
-    output->mutable_data<T>(context.GetPlace());
+    auto X = context.Input<Tensor>("logits");
+    auto Y = context.Output<Tensor>("softmax");
+    Y->mutable_data<T>(context.GetPlace());
 
-    auto logits = EigenMatrix<T>::From(*input);
-    auto softmax = EigenMatrix<T>::From(*output);
+    auto logits = EigenMatrix<T>::From(*X);
+    auto softmax = EigenMatrix<T>::From(*Y);
 
     const int kBatchDim = 0;
     const int kClassDim = 1;
@@ -69,9 +69,9 @@ class SoftmaxGradKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
 
-    auto Y = context.Input<Tensor>("Y");
-    auto dY = context.Input<Tensor>(framework::GradVarName("Y"));
-    auto dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto Y = context.Input<Tensor>("softmax");
+    auto dY = context.Input<Tensor>(framework::GradVarName("softmax"));
+    auto dX = context.Output<Tensor>(framework::GradVarName("logits"));
     dX->mutable_data<T>(context.GetPlace());
 
     const int batch_size = Y->dims()[0];

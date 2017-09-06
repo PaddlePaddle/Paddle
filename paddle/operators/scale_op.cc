@@ -44,11 +44,12 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
 
 The equation is: Out = scale*X
 )DOC");
-    AddAttr<AttrType>("scale", "scale of scale operator.").SetDefault(1.0);
+    AddAttr<AttrType>("scale", "The scaling factor of the scale operator.")
+        .SetDefault(1.0);
   }
 };
 
-// Identity Op's gradient is identity op, too.
+// IdentityOp's gradient is IdentityOp, too.
 // Grad(Out=scale(X)) => Grad(X) = scale(Grad(Out))
 template <typename AttrType>
 class ScaleGradOp : public NetOp {
@@ -65,17 +66,20 @@ class ScaleGradOp : public NetOp {
   }
 };
 
-// identity is a alias of scale op. This is also a example for creating a alias
-// operator.
+// IdentityOp is an alias of the ScaleOp. This is also an example for creating
+// an alias of an existing operator.
 template <typename AttrType>
 class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   IdentityOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "input tensor of identity op");
-    AddOutput("Out", "output tensor of identity op");
-    AddComment("identity operator. Just a alias of scale op which scale = 1.0");
+    AddInput("X", "The input tensor of identity op.");
+    AddOutput("Out", "The output tensor of identity op.");
+    AddComment(R"DOC(
+The identity operator is just an alias of the scale operator with the
+attribute scale is fixed to 1.0.
+)DOC");
   }
 };
 
