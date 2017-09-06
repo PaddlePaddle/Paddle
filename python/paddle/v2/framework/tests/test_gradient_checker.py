@@ -7,7 +7,7 @@ from gradient_checker import get_numeric_gradient
 
 class GetNumericGradientTest(unittest.TestCase):
     def test_add_op(self):
-        add_op = Operator('add_two', X="X", Y="Y", Out="Z")
+        add_op = Operator('add', X="X", Y="Y", Out="Z")
         x = numpy.random.random((10, 1)).astype("float32")
         y = numpy.random.random((10, 1)).astype("float32")
 

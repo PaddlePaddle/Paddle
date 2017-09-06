@@ -40,8 +40,8 @@ class CPUDropoutKernel : public framework::OpKernel {
     T* y_data = y->mutable_data<T>(context.GetPlace());
     const T* x_data = x->data<T>();
 
-    float dropout_prob = context.op_.GetAttr<float>("dropout_prob");
-    int seed = context.op_.GetAttr<int>("seed");
+    float dropout_prob = context.GetAttr<float>("dropout_prob");
+    int seed = context.GetAttr<int>("seed");
 
     std::minstd_rand engine;
     engine.seed(seed);
@@ -53,26 +53,27 @@ class CPUDropoutKernel : public framework::OpKernel {
         y_data[i] = 0;
       } else {
         mask_data[i] = 1;
-        y_data[i] = (1 - dropout_prob) * x_data[i];
+        y_data[i] = x_data[i];
       }
     }
+    // TODO: add test time logits.
   }
 };
 
 template <typename T>
 struct MaskGenerator {
-  float dropout_prob_;
-  int seed_;
+  float dropout_prob;
+  int seed;
 
   __host__ __device__ MaskGenerator(float dropout_prob, int seed)
-      : dropout_prob_(dropout_prob), seed_(seed) {}
+      : dropout_prob(dropout_prob), seed(seed) {}
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
-    rng.seed(seed_);
+    rng.seed(seed);
     thrust::uniform_real_distribution<T> dist(0, 1);
     rng.discard(n);
-    if (dist(rng) < dropout_prob_) {
+    if (dist(rng) < dropout_prob) {
       return static_cast<T>(0);
     } else {
       return static_cast<T>(1);
@@ -92,8 +93,8 @@ class GPUDropoutKernel : public framework::OpKernel {
     auto* mask = context.Output<Tensor>("Mask");
     y->mutable_data<T>(context.GetPlace());
 
-    float dropout_prob = context.op_.GetAttr<float>("dropout_prob");
-    int seed = context.op_.GetAttr<int>("seed");
+    float dropout_prob = context.GetAttr<float>("dropout_prob");
+    int seed = context.GetAttr<int>("seed");
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int size = framework::product(mask->dims());
     T* mask_data = mask->mutable_data<T>(context.GetPlace());
@@ -108,7 +109,8 @@ class GPUDropoutKernel : public framework::OpKernel {
     auto M = EigenMatrix<T>::From(*mask, new_dims);
 
     auto place = context.GetEigenDevice<Place>();
-    Y.device(place) = X * M * (1 - dropout_prob);
+    Y.device(place) = X * M;
+    // TODO: add test time logits.
   }
 };
 
@@ -129,8 +131,8 @@ class DropoutGradKernel : public framework::OpKernel {
     auto dY = EigenMatrix<T>::From(*grad_y, new_dims);
 
     auto place = context.GetEigenDevice<Place>();
-    float dropout_prob = context.op_.GetAttr<float>("dropout_prob");
-    dX.device(place) = dY * M * (1 - dropout_prob);
+    dX.device(place) = dY * M;
+    // TODO: add test time logits.
   }
 };
 

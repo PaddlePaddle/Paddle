@@ -42,10 +42,10 @@ bool Conv3DLayer::init(const LayerMap &layerMap,
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
       biases_ =
-          std::unique_ptr<Weight>(new Weight(1, numFilters_, biasParameter_));
+          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
     } else {
       biases_ =
-          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
+          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
     }
   }
   return true;
@@ -224,20 +224,31 @@ void Conv3DLayer::bpropData(int i) {
 }
 
 void Conv3DLayer::bpropBiases() {
+  MatrixPtr biases = Matrix::create(biases_->getWGrad()->getData(),
+                                    1,
+                                    biases_->getWGrad()->getElementCnt(),
+                                    false,
+                                    useGpu_);
   MatrixPtr outGradMat = getOutputGrad();
+
   if (this->sharedBiases_) {
-    biases_->getWGrad()->collectSharedBias(*outGradMat, 1.0f);
+    biases->collectSharedBias(*outGradMat, 1.0f);
   } else {
-    biases_->getWGrad()->collectBias(*outGradMat, 1.0f);
+    biases->collectBias(*outGradMat, 1.0f);
   }
 }
 
 void Conv3DLayer::addBias() {
   MatrixPtr outMat = getOutputValue();
+  MatrixPtr bias = Matrix::create(biases_->getW()->getData(),
+                                  1,
+                                  biases_->getW()->getElementCnt(),
+                                  false,
+                                  useGpu_);
   if (this->sharedBiases_) {
-    outMat->addSharedBias(*(biases_->getW()), 1.0f);
+    outMat->addSharedBias(*(bias), 1.0f);
   } else {
-    outMat->addBias(*(biases_->getW()), 1.0f);
+    outMat->addBias(*(bias), 1.0f);
   }
 }
 

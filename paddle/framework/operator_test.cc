@@ -122,10 +122,10 @@ class CPUKernelTest : public OpKernel {
  public:
   void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
-    std::cout << ctx.op_.DebugString() << std::endl;
+    std::cout << ctx.op().DebugString() << std::endl;
     cpu_kernel_run_num++;
-    ASSERT_EQ(ctx.op_.Input("x"), "IN1");
-    ASSERT_EQ(ctx.op_.Output("y"), "OUT1");
+    ASSERT_EQ(ctx.op().Input("x"), "IN1");
+    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
   }
 };
 
@@ -148,7 +148,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 class CPUKernalMultiInputsTest : public OpKernel {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    auto xs = ctx.op_.Inputs("xs");
+    auto xs = ctx.op().Inputs("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
     ASSERT_EQ(xs[1], "x1");
@@ -172,10 +172,10 @@ class CPUKernalMultiInputsTest : public OpKernel {
     auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
     ASSERT_EQ(outTensor0.size(), 2U);
 
-    auto k = ctx.op_.Input("k");
+    auto k = ctx.op().Input("k");
     ASSERT_EQ(k, "k0");
 
-    auto ys = ctx.op_.Outputs("ys");
+    auto ys = ctx.op().Outputs("ys");
     ASSERT_EQ(ys.size(), 2UL);
     ASSERT_EQ(ys[0], "y0");
     ASSERT_EQ(ys[1], "y1");
@@ -263,4 +263,38 @@ TEST(Operator, Clone) {
   OperatorClone a("ABC", {}, {}, {});
   auto b = a.Clone();
   ASSERT_EQ(a.Type(), b->Type());
+}
+
+class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
+ public:
+  TestAttrProtoMaker(paddle::framework::OpProto* proto,
+                     paddle::framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddAttr<float>("scale", "scale of test op");
+    AddAttr<float>("scale", "scale of test op");
+  }
+};
+
+TEST(ProtoMaker, DuplicatedAttr) {
+  paddle::framework::OpProto op_proto;
+  paddle::framework::OpAttrChecker op_checker;
+  auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
+  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
+}
+
+class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
+ public:
+  TestInOutProtoMaker(paddle::framework::OpProto* proto,
+                      paddle::framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("input", "input of test op");
+    AddInput("input", "input of test op");
+  }
+};
+
+TEST(ProtoMaker, DuplicatedInOut) {
+  paddle::framework::OpProto op_proto;
+  paddle::framework::OpAttrChecker op_checker;
+  auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
+  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
 }

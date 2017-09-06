@@ -25,7 +25,11 @@ class DropoutOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    // validity check
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE_GE(ctx.GetAttr<float>("dropout_prob"), 0);
+    PADDLE_ENFORCE_LE(ctx.GetAttr<float>("dropout_prob"), 1);
+    // resize
     auto dims = ctx.Input<Tensor>("X")->dims();
     ctx.Output<Tensor>("Out")->Resize(dims);
     ctx.Output<Tensor>("Mask")->Resize(dims);
@@ -37,13 +41,24 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
   DropoutOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("dropout_prob", "Dropout probability.").SetDefault(.5f);
+    AddAttr<float>("dropout_prob",
+                   "Probability of randomly setting elements "
+                   "to zero.")
+        .SetDefault(.5f);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
-    AddOutput("Mask", "The dropout mask.").AsIntermediate();
+    AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
 
-    AddComment(R"DOC(Dropout Operator.)DOC");
+    AddComment(R"DOC(
+Dropout Operator.
+
+"Dropout" refers to randomly dropping out units in a nerual network. It is a
+regularization technique for reducing overfitting by preventing neuron
+co-adaption during training. The dropout operator randomly set (according to
+the given dropout probability) the output of some units to zero, while others
+being set to their inputs.
+)DOC");
   }
 };
 
@@ -53,11 +68,13 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    // validity check
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Mask"), "Mask must not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) must not be null.");
-
+    PADDLE_ENFORCE_GE(ctx.GetAttr<float>("dropout_prob"), 0);
+    PADDLE_ENFORCE_LE(ctx.GetAttr<float>("dropout_prob"), 1);
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto mask_dims = ctx.Input<Tensor>("Mask")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
@@ -65,7 +82,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                       "Dimensions of Input(X) and Out@Grad must be the same.");
     PADDLE_ENFORCE_EQ(x_dims, mask_dims,
                       "Dimensions of Input(X) and Mask must be the same.");
-
+    // resize
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     x_grad->Resize(x_dims);
   }
