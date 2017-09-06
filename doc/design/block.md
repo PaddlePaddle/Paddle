@@ -49,7 +49,7 @@ Above Python program builds a protobuf message which describe the model, a C++ B
 
 ## Block Implementation
 
-During the Protobuf message generation, the Block should store VarDesc (the Protobuf message which describes Variable) and OpDesc (the Protobuf message which describes Operator).
+During the generation of the Protobuf message, the Block should store VarDesc (the Protobuf message which describes Variable) and OpDesc (the Protobuf message which describes Operator).
 
 VarDesc in a block should have its name scope to avoid local variables affect father block's name scope. 
 Child block's name scopes should inherit the father's so that OpDesc in child block can reference a VarDesc that stored in father block. For example
@@ -140,6 +140,8 @@ class RuntimeTable {
 
   vector<OperatorBase*> ops() { return ops_; }
 
+  bool IsValid() const { return ops_.empty(); }
+
  protected:
   void CreateVars(const Scope& scope);
   void CreateOps();
@@ -153,13 +155,15 @@ class RuntimeTable {
 
 
 class Block : OperatorBase {
- public:
+public:
   // desc may be serialized from a RuntimeTable or not.
   Block(const BlockDesc& desc) desc_(desc) {}
 
   void InferShape(const framework::Scope& scope) const override {
     // should run InferShape first.
-    runtime_table_ = RuntimeTable(desc_, scope);
+    if (!runtime_table_.IsValid()) {
+      runtime_table_ = RuntimeTable(desc_, scope);
+    }
     for (auto& op : runtime_table_.ops()) {
       op->InferShape(scope);
     }
@@ -175,8 +179,7 @@ class Block : OperatorBase {
   // some other necessary interfaces of NetOp are list below
   // ...
 
- private:
-  vector<OperatorBase*> ops_;
+private:
   RuntimeTable runtime_table_;
   BlockDesc desc_;
 };
