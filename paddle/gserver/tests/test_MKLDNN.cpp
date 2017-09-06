@@ -129,9 +129,9 @@ void testConvLayer(const testConvDesc& pm) {
 TEST(MKLDNNLayer, ConvLayer) {
   /* bs, gp, ic, ih, iw, oc, oh, ow, fh, fw, ph, pw, sh, sw, dh, dw */
   testConvLayer({2, 1, 3, 32, 32, 16, 32, 32, 3, 3, 1, 1, 1, 1, 1, 1});
-  testConvLayer({2, 1, 16, 32, 32, 64, 32, 32, 3, 3, 1, 1, 1, 1, 1, 1});
-  // test case for DeepSpeech2
-  testConvLayer({10, 1, 1, 161, 1056, 32, 81, 352, 41, 11, 20, 5, 2, 3, 1, 1});
+  testConvLayer({3, 1, 16, 32, 32, 3, 32, 32, 3, 3, 1, 1, 1, 1, 1, 1});
+  testConvLayer({8, 1, 16, 18, 18, 32, 18, 18, 3, 3, 1, 1, 1, 1, 1, 1});
+  testConvLayer({16, 1, 1, 42, 31, 32, 23, 11, 4, 5, 3, 2, 2, 3, 1, 1});
 }
 
 // TODO(TJ): add branch test
