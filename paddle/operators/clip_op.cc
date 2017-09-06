@@ -26,8 +26,8 @@ class ClipOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto max = GetAttr<float>("max");
-    auto min = GetAttr<float>("min");
+    auto max = Attr<float>("max");
+    auto min = Attr<float>("min");
     PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
     ctx.Output<Tensor>("Out")->Resize(x_dims);
   }
