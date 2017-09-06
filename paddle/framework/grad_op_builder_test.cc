@@ -3,7 +3,7 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 
-USE_OP(add_two);
+USE_OP(add);
 
 namespace paddle {
 namespace framework {
@@ -41,7 +41,7 @@ namespace f = paddle::framework;
 
 TEST(GradOpBuilder, AddTwo) {
   std::shared_ptr<f::OperatorBase> add_op(f::OpRegistry::CreateOp(
-      "add_two", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
+      "add", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
   std::shared_ptr<f::OperatorBase> grad_add_op =
       f::OpRegistry::CreateGradOp(*add_op);
   EXPECT_EQ(grad_add_op->Inputs().size(), 4UL);

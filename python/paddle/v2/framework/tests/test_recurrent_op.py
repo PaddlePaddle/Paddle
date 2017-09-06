@@ -146,7 +146,7 @@ class TestRecurrentOp(unittest.TestCase):
         stepnet = core.Net.create()
         x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
-        sum_op = Operator("add_two", X="Wx", Y="Uh", Out="sum")
+        sum_op = Operator("add", X="Wx", Y="Uh", Out="sum")
         sig_op = Operator("sigmoid", X="sum", Y="h@alias")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:

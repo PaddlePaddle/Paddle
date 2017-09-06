@@ -27,6 +27,14 @@ class SequenceType(object):
     SEQUENCE = 1
     SUB_SEQUENCE = 2
 
+    @classmethod
+    def tostring(cls, value):
+        for k in cls.__dict__:
+            if not k.startswith('__'):
+                if getattr(cls, k) == value:
+                    return cls.__name__ + '.' + k
+        return 'INVALID(' + str(value) + ')'
+
 
 # TODO(yuyang18): Add string data type here.
 class DataType(object):
@@ -34,6 +42,14 @@ class DataType(object):
     SparseNonValue = 1
     SparseValue = 2
     Index = 3
+
+    @classmethod
+    def tostring(cls, value):
+        for k in cls.__dict__:
+            if not k.startswith('__'):
+                if getattr(cls, k) == value:
+                    return cls.__name__ + '.' + k
+        return 'INVALID(' + str(value) + ')'
 
 
 class CacheType(object):
@@ -68,6 +84,26 @@ class InputType(object):
         self.dim = dim
         self.seq_type = seq_type
         self.type = tp
+
+    def __repr__(self):
+        """
+        Return a human readable representation like 'InputType(dim=25921, 
+            seq_type=SequenceType.NO_SEQUENCE, type=DataType.Dense)'
+        """
+        repr_str = type(self).__name__
+        repr_str += '('
+        serialize_func_map = {
+            'dim': repr,
+            'seq_type': SequenceType.tostring,
+            'type': DataType.tostring
+        }
+        for idx, k in enumerate(self.__slots__):
+            if idx != 0:
+                repr_str += ', '
+            repr_str += (
+                k + '=' + serialize_func_map.get(k, repr)(getattr(self, k)))
+        repr_str += ')'
+        return repr_str
 
 
 def dense_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
