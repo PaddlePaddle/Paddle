@@ -84,8 +84,8 @@ void DeConv3DLayer::forward(PassType passType) {
   resetOutput(batchSize, outWidth);
   const MatrixPtr outMat = getOutputValue();
 
+  REGISTER_TIMER_INFO("FwdDeConv3D", getName().c_str());
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    REGISTER_TIMER_INFO("FwdDeConv3D", getName().c_str());
     const MatrixPtr &inMat = getInputValue(i);
     int M = M_[i];
     int N = N_[i];
@@ -120,7 +120,6 @@ void DeConv3DLayer::forward(PassType passType) {
     }
   }
   if (nullptr != this->biasParameter_) {
-    REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
     this->addBias();
   }
   forwardActivation();
@@ -133,12 +132,12 @@ void DeConv3DLayer::backward(const UpdateCallback &callback) {
     bpropBiases();
     biases_->getParameterPtr()->incUpdate(callback);
   }
+  REGISTER_TIMER_INFO("BwdDeConv3D", getName().c_str());
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
     if (weights_[i]->getWGrad() || this->needGradient_) {
       int M = M_[i];
       int N = N_[i];
       int K = K_[i];
-      REGISTER_TIMER_INFO("BwdDeConv3D", getName().c_str());
       Matrix::resizeOrCreate(colBuf_, K * groups_[i], N, false, useGpu_);
       const MatrixPtr &inMat = getInputValue(i);
       for (int n = 0; n < batchSize; ++n) {
@@ -182,7 +181,6 @@ void DeConv3DLayer::backward(const UpdateCallback &callback) {
           }
         }
       }
-      REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
       weights_[i]->getParameterPtr()->incUpdate(callback);
     }
   }
