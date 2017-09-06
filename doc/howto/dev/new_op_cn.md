@@ -169,6 +169,8 @@ class MulKernel : public framework::OpKernel {
 `MulKernel`需要重写`Compute`接口，该接口参数为`const framework::ExecutionContext& context`, `ExecutionContext`相比`InferShapeContext`增加了设备类型，同样可获取到输入输出和属性参数，`Compute`函数里写具体实现时。
    
 注意，不同设备(CPU、GPU)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。`MulOp`的CPU、GPU实现共享同一个`Kernel`，`OpKernel`不共享的例子可以参考[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。 
+
+为了使得`OpKernel`的计算过程书写较为简单，CPU、GPU的代码可以复用，我们通常借助Eigen unsupported Tensor模块来实现。关于在paddle中如何使用Eigen库，请参考对应的使用[文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)
    
 到此前向Op实现完成，需要在`.cc`文件中注册该op和kernel。反向Op类的定义和Kernel定义与前向Op类似，这里不再重复。但注意，反向Op没有`ProtoMaker`。
    
@@ -188,9 +190,12 @@ REGISTER_OP_CPU_KERNEL(mul_grad,
   - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
   - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulKernel`类。
 
-在 `.cu`文件中注册GPU Kernel。
+在 `.cu`文件中注册GPU Kernel。请注意，如果GPU Kernel的实现是基于Eigen unsupported模块，那么在 `.cu`的最前面请加上宏定义 `#define EIGEN_USE_GPU`
    
 ```c++
+// if use Eigen unsupported module before include head files
+#define EIGEN_USE_GPU
+
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(mul_grad,
@@ -286,28 +291,50 @@ class TestMulOp(unittest.TestCase):
 
 反向Op单测继承自`GradientChecker`，而`GradientChecker`集成自`unittest.TestCase`，所以反向单测函数需要`test_`开头。
 
- ```
- class MulGradOpTest(GradientChecker):
-    def test_mul(self):
-        op = create_op("mul")
-        inputs = {
+```
+class TestMulGradOp(GradientChecker):
+    def setUp(self):
+        self.op = create_op("mul")
+        self.inputs = {
             'X': np.random.random((32, 84)).astype("float32"),
             'Y': np.random.random((84, 100)).astype("float32")
         }
-        self.compare_grad(op, inputs)      
+
+    def test_cpu_gpu_compare(self):
+        self.compare_grad(self.op, self.inputs)
+
+    def test_normal(self):
         # mul op will enlarge the relative error
         self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.5)
- ```
+            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+
+    def test_ignore_x(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["Y"],
+            "Out",
+            max_relative_error=0.5,
+            no_grad_set={"X"})
+
+    def test_ignore_y(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["X"],
+            "Out",
+            max_relative_error=0.5,
+            no_grad_set={"Y"})
+```
+
+下面解释一些关键的地方:
 
    - 调用`create_op("mul")`创建反向Op对应的前向Op。
-   - 定义输入`inputs`。
    - 调用`compare_grad`函数对比CPU、GPU计算结果。
-   - 调用`check_grad`检查梯度稳定性，这里采用数值法检测梯度正确性。
-      - 第一个参数`op` : 前向op。
-      - 第二个参数`inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
-      - 第三个参数`set(["X", "Y"])` : 指定对输入变量`X`、`Y`做梯度检测。
+   - `test_normal`中调用`check_grad`检查梯度稳定性，这里采用数值法检测梯度正确性。
+      - 第一个参数`self.op` : 前向Op。
+      - 第二个参数`self.inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
+      - 第三个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
       - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
+   - `test_ignore_x`和`test_ignore_y`分支测试只需要计算一个输入梯度的情况。
 
 
 ### 编译和执行 
