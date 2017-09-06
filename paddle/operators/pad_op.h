@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "paddle/operators/math/math_function.h"
-
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
@@ -30,12 +28,13 @@ using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename Place, typename T, size_t D>
 void PadFunction(const framework::ExecutionContext& context) {
-  auto pads = context.op_.GetAttr<std::vector<std::pair<int, int>>>("paddings");
+  auto pads =
+      context.op().GetAttr<std::vector<std::pair<int, int>>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
   for (int i = 0; i < pads.size(); ++i) {
     paddings[i] = pads[i];
   }
-  T pad_value = context.op_.GetAttr<T>("pad_value");
+  T pad_value = context.op().GetAttr<T>("pad_value");
 
   auto* X = context.Input<Tensor>("X");
   auto* Out = context.Output<Tensor>("Out");
@@ -80,7 +79,8 @@ class PadKernel : public framework::OpKernel {
 
 template <typename Place, typename T, size_t D>
 void PadGradFunction(const framework::ExecutionContext& context) {
-  auto pads = context.op_.GetAttr<std::vector<std::pair<int, int>>>("paddings");
+  auto pads =
+      context.op().GetAttr<std::vector<std::pair<int, int>>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
   for (int i = 0; i < pads.size(); ++i) {
     paddings[0].first = -paddings[0].first;

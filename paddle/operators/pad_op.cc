@@ -27,6 +27,9 @@ class PadOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto dim0 = ctx.Input<Tensor>("X")->dims();
     auto paddings = GetAttr<std::vector<std::pair<int, int>>>("paddings");
+    PADDLE_ENFORCE_EQ(
+        dim0.size(), paddings.size(),
+        "Paddings size should be equal to dimension size of input tensor.");
     std::vector<int> dim1(dim0.size());
     for (int i = 0; i < dim0.size(); ++i) {
       dim1[i] = dim0[i] + paddings[i].first + paddings[i].second;
