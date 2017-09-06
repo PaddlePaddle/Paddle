@@ -26,18 +26,18 @@ class PadOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto dim0 = ctx.Input<Tensor>("X")->dims();
-    auto dim1 = ctx.Output<Tensor>("Out")->dims();
-    auto paddings = GetAttr<std::vector<std::pair<int32, int32>>>("paddings");
+    auto paddings = GetAttr<std::vector<std::pair<int, int>>>("paddings");
+    std::vector<int> dim1(dim0.size());
     for (int i = 0; i < dim0.size(); ++i) {
-      dim1[i] = dim0[i] + paddings[i][0] + paddings[i][1];
+      dim1[i] = dim0[i] + paddings[i].first + paddings[i].second;
     }
-    ctx.Output<Tensor>("Out")->Resize(dim1);
+    ctx.Output<Tensor>("Out")->Resize(paddle::framework::make_ddim(dim1));
   }
 };
 
-class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+class PadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  PadOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of pad op");
     AddOutput("Out", "The output of pad op");
