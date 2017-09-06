@@ -90,8 +90,8 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    x_grad->Resize(x_dims);
-    y_grad->Resize(y_dims);
+    if (x_grad) x_grad->Resize(x_dims);
+    if (y_grad) y_grad->Resize(y_dims);
   }
 };
 

@@ -24,26 +24,36 @@ class TestCosSimOp(unittest.TestCase):
         }
 
 
-class CosSimGradOpTest(GradientChecker):
-    def test_cos_sim_2d(self):
-        op = create_op("cos_sim")
-        inputs = {
+class TestCosSimGradOp(GradientChecker):
+    def setUp(self):
+        self.op = create_op("cos_sim")
+        self.inputs = {
             'X': np.random.random((10, 5)).astype("float32"),
             'Y': np.random.random((10, 5)).astype("float32")
         }
-        self.compare_grad(op, inputs)
-        self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.05)
 
-    def test_cos_sim_3d(self):
-        op = create_op("cos_sim")
-        inputs = {
-            'X': np.random.random((10, 5, 2)).astype("float32"),
-            'Y': np.random.random((10, 5, 2)).astype("float32")
-        }
-        self.compare_grad(op, inputs)
+    def test_cpu_gpu_compare(self):
+        self.compare_grad(self.op, self.inputs)
+
+    def test_normal(self):
         self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.05)
+            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.05)
+
+    def test_ignore_x(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["Y"],
+            "Out",
+            max_relative_error=0.05,
+            no_grad_set={"X"})
+
+    def test_ignore_y(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["X"],
+            "Out",
+            max_relative_error=0.05,
+            no_grad_set={"Y"})
 
 
 if __name__ == '__main__':
