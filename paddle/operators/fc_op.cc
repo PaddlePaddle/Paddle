@@ -31,12 +31,23 @@ class FCOp : public NetOp {
     if (b != framework::kEmptyVarName) {
       AppendOp(framework::OpRegistry::CreateOp(
           "rowwise_add", {{"X", {Output("mul_out")}}, {"b", {Input("b")}}},
-          {{"Out", {Output("mul_out")}}}, {}));
+          {{"Out", {Output("add_out")}}}, {}));
+    } else {
+      AppendOp(framework::OpRegistry::CreateOp(
+          "identity", {{"X", {Output("mul_out")}}},
+          {{"Out", {Output("add_out")}}}, {}));
     }
 
     auto activation = GetAttr<std::string>("activation");
-    AppendOp(framework::OpRegistry::CreateOp(
-        activation, {{"X", {Output("mul_out")}}}, {{"Y", {Output("Y")}}}, {}));
+    if (activation == "identity") {
+      AppendOp(framework::OpRegistry::CreateOp(activation,
+                                               {{"X", {Output("add_out")}}},
+                                               {{"Out", {Output("Out")}}}, {}));
+    } else {
+      AppendOp(framework::OpRegistry::CreateOp(activation,
+                                               {{"X", {Output("add_out")}}},
+                                               {{"Y", {Output("Out")}}}, {}));
+    }
     CompleteAddOp(false);
   }
 };
@@ -49,8 +60,10 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W", "The 2D weight matrix of FC operator.");
     AddInput("b", "The 1D bias vector of FC operator");
 
-    AddOutput("Y", "The activated output matrix of FC operator");
-    AddOutput("mul_out", "The non-actived output of FC operator, X * W + b")
+    AddOutput("Out", "The activated output matrix of FC operator");
+    AddOutput("mul_out", "The non-actived output of FC operator, X * W")
+        .AsIntermediate();
+    AddOutput("add_out", "The non-actived output of FC operator, X * W + b")
         .AsIntermediate();
     AddAttr<std::string>("activation", "The activation type of FC operator.")
         .SetDefault("identity")
@@ -65,7 +78,7 @@ learned weights with a matrix multiplication followed by a bias offset
 (optionally).
 
 Equation:
-  Y = Act(sum_n{X_i * W_i} + b)
+  Out = Act(sum_n{X_i * W_i} + b)
 
 where X_i is a 2D matrix of size (M x K), usually M is the minibatch size and
 K is the number of features. W_i is also a 2D matrix of size (K x N),
@@ -75,22 +88,6 @@ Activation type can be set to `identity` (default), `sigmoid` or `softmax`.
 
   The config api is `paddle.v2.layer.fc`.
 )DOC");
-  }
-};
-
-class FCGradOp : public NetOp {
- public:
-  FCGradOp(const std::string &type, const framework::VariableNameMap &inputs,
-           const framework::VariableNameMap &outputs,
-           const framework::AttributeMap &attrs)
-      : NetOp(type, inputs, outputs, attrs) {
-    auto y_grad = Input(framework::GradVarName("Y"));
-    auto mul_out_grad = Input(framework::GradVarName("mul_out"));
-    auto x_grad = Output(framework::GradVarName("X"));
-    auto w_grad = Output(framework::GradVarName("W"));
-    auto b_grad = Output(framework::GradVarName("b"));
-
-    CompleteAddOp(false);
   }
 };
 
@@ -104,4 +101,4 @@ USE_OP(sigmoid);
 USE_OP(softmax);
 
 namespace ops = paddle::operators;
-REGISTER_OP(fc, ops::FCOp, ops::FCOpMaker, fc_grad, ops::FCGradOp);
+REGISTER_OP_WITHOUT_GRADIENT(fc, ops::FCOp, ops::FCOpMaker);
