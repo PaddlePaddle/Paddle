@@ -31,8 +31,8 @@ class CPUGaussianRandomKernel : public framework::OpKernel {
     }
     engine.seed(seed);
     std::normal_distribution<T> dist(mean, std);
-    ssize_t size = framework::product(tensor->dims());
-    for (ssize_t i = 0; i < size; ++i) {
+    int64_t size = framework::product(tensor->dims());
+    for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
   }
@@ -46,9 +46,13 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     auto dims = GetAttr<std::vector<int>>("dims");
+    std::vector<int64_t> temp(dims.size());
+    for (auto dim : dims) {
+      temp.push_back(static_cast<int64_t>(dim));
+    }
     PADDLE_ENFORCE(dims.size() > 0UL,
                    "dims can be one int or array. dims must be set.");
-    tensor->Resize(framework::make_ddim(dims));
+    tensor->Resize(framework::make_ddim(temp));
   }
 };
 

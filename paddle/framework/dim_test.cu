@@ -47,9 +47,9 @@ TEST(Dim, Equality) {
   EXPECT_EQ(b[1], 11);
 
   // dynamic access on GPU
-  thrust::device_vector<int> r(1);
+  thrust::device_vector<int64_t> r(1);
   dyn_idx_gpu<<<1, 1>>>(thrust::raw_pointer_cast(r.data()));
-  int res = r[0];
+  int64_t res = r[0];
   EXPECT_EQ(res, 6);
 
   // ex_prefix_mul

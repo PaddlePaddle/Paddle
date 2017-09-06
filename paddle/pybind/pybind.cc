@@ -76,7 +76,7 @@ PYBIND11_PLUGIN(core) {
       .def("get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
-           [](Tensor &self, const std::vector<int> &dim) {
+           [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
       .def("alloc_float",
