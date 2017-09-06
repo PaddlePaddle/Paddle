@@ -51,7 +51,8 @@ list(REMOVE_ITEM GENERAL_OPS
      minus_op
      mul_op
      recurrent_op
-     scale_op)
+     scale_op
+	 transpose_op)
 
 op_library(net_op SRCS net_op.cc)
 op_library(minus_op SRCS minus_op.cc minus_op.cu DEPS scale_op)
@@ -59,6 +60,7 @@ op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
   DEPS framework_proto tensor operator net_op)
 op_library(scale_op SRCS scale_op.cc scale_op.cu DEPS net_op)
+op_library(transpose_op SRCS transpose_op.cc transpose_op.cu DEPS paddle_memory device_context)
 
 foreach(src ${GENERAL_OPS})
     op_library(${src} SRCS ${src}.cc ${src}.cu)
