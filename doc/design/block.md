@@ -210,5 +210,3 @@ void Block::Eval(const vector<string>& targets,
   min_block.Run(scope, dev_ctx);
 }
 ```
-
-## Python binding
