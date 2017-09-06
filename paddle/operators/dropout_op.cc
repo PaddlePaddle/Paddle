@@ -41,9 +41,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
   DropoutOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("dropout_prob",
-                   "Probability of randomly setting elements "
-                   "to zero.")
+    AddAttr<float>("dropout_prob", "Probability for dropping out units.")
         .SetDefault(.5f);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
     AddInput("X", "The input of dropout op.");
@@ -56,7 +54,7 @@ Dropout Operator.
 "Dropout" refers to randomly dropping out units in a nerual network. It is a
 regularization technique for reducing overfitting by preventing neuron
 co-adaption during training. The dropout operator randomly set (according to
-the given dropout probability) the output of some units to zero, while others
+the given dropout probability) the outputs of some units to zero, while others
 being set to their inputs.
 )DOC");
   }
