@@ -286,6 +286,9 @@ class GradientChecker(unittest.TestCase):
         for no_grad in no_grad_set:
             if no_grad not in in_names:
                 raise ValueError("no_grad should be in in_names")
+            if no_grad in inputs_to_check:
+                raise ValueError("no_grad should not be in inputs_to_check")
+
         backward_op = core.Operator.backward(forward_op, no_grad_set)
 
         places = [core.CPUPlace()]
@@ -301,7 +304,6 @@ class GradientChecker(unittest.TestCase):
 
         check_names = [grad_var_name(name) for name in inputs_to_check]
         for place in places:
-            # get analytical gradients according to different device
             analytic_grads = self.__get_gradient(forward_op, backward_op,
                                                  input_vars, check_names, place)
             self.__assert_is_close(numeric_grads, analytic_grads, check_names,
