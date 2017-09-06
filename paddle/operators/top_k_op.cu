@@ -292,7 +292,7 @@ class TopkOpCUDAKernel : public framework::OpKernel {
     const T* input_data = input->data<T>();
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    int* indices_data = indices->mutable_data<int>(ctx.GetPlace());
+    T* indices_data = indices->mutable_data<T>(ctx.GetPlace());
 
     size_t input_height = input->dims()[0];
     size_t input_width = input->dims()[1];
