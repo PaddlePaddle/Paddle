@@ -2369,6 +2369,9 @@ class BatchNormLayer(LayerBase):
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
                  **xargs):
+
+        super(BatchNormLayer, self).__init__(
+            name, 'batch_norm', 0, inputs=inputs, **xargs)
         if inputs is None:
             inputs = []
         elif not isinstance(inputs, list):
