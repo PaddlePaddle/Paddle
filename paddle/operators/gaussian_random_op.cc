@@ -71,6 +71,13 @@ Use to initialize tensor with gaussian random generator.
                  "0 means use system wide seed")
         .SetDefault(0);
   }
+
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+    auto dims = ctx.Attrs().Get<std::vector<int>>("dims");
+    PADDLE_ENFORCE(dims.size() > 0UL,
+                   "dims can be one int or array. dims must be set.");
+    ctx.set_output_dim("Out", framework::make_ddim(dims));
+  }
 };
 
 }  // namespace operators

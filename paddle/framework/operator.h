@@ -184,6 +184,8 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
     set_dim(op_->Output(name), dim);
   }
 
+  const AttrReader Attrs() const { return AttrReader(op_->Attrs()); }
+
  private:
   const DDim get_dim(const std::string& name) const {
     VarDesc* desc = var_descs_.at(name);
@@ -227,6 +229,8 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   void set_output_dim(const std::string& name, const DDim& dim) const {
     set_dim(op_.Output(name), dim);
   }
+
+  const AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
 
  private:
   const DDim get_dim(const std::string& name) const {

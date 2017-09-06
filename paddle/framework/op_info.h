@@ -39,6 +39,7 @@ class InferShapeContextBase {
   virtual const DDim get_output_dim(const std::string& name) const = 0;
   virtual void set_output_dim(const std::string& name,
                               const DDim& dim) const = 0;
+  virtual const AttrReader Attrs() const;
 
  protected:
   virtual const DDim get_dim(const std::string& name) const = 0;
@@ -110,6 +111,8 @@ class NOPMaker : public OpProtoAndCheckerMaker {
  public:
   NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {}
+
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 struct OpInfo {
