@@ -48,6 +48,7 @@ USE_NO_KERNEL_OP(identity);
 USE_OP(minus);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
+USE_OP(clip);
 
 namespace paddle {
 namespace framework {
