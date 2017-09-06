@@ -27,7 +27,6 @@ class OpTestMeta(type):
                 places.append(core.GPUPlace(0))
 
             for place in places:
-                import paddle
                 for ins in Operator.get_op_input_names(self.type):
                     in_name = ins[0]
                     in_dup = ins[1]

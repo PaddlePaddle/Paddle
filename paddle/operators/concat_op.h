@@ -27,7 +27,7 @@ class ConcatKernel : public framework::OpKernel {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
 
-    const int axis = static_cast<int>(ctx.op_.GetAttr<int>("axis"));
+    auto axis = static_cast<int>(ctx.GetAttr<int>("axis"));
     int N = ins.size();
     int output_axis_dim = 0;
     int before = 1;
@@ -51,12 +51,10 @@ class ConcatKernel : public framework::OpKernel {
     for (int i = 0; i < N; i++) {
       auto& in = ins[i];
       auto axis_dim = in->dims()[axis];
-      auto itemsize = sizeof(T);
       for (int j = 0; j < before; j++) {
-        int len = axis_dim * after * itemsize;
-        const T* src = in->data<T>() + axis_dim * after * j * itemsize;
-        T* dest =
-            out->data<T>() + output_offset + output_axis_dim * j * itemsize;
+        int len = axis_dim * after * sizeof(T);
+        const T* src = in->data<T>() + axis_dim * after * j;
+        T* dest = out->data<T>() + output_offset + output_axis_dim * after * j;
         memcpy(dest, src, len);
       }
       output_offset += axis_dim * after;

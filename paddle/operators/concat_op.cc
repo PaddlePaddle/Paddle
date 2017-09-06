@@ -27,7 +27,7 @@ class ConcatOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto *out = ctx.Output<framework::Tensor>("Out");
-    const int axis = static_cast<int>(ctx.op_.GetAttr<int>("axis"));
+    auto axis = static_cast<int>(ctx.GetAttr<int>("axis"));
     int N = ins.size();
 
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
