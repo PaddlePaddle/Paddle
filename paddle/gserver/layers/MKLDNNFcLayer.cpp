@@ -228,7 +228,7 @@ void MKLDNNFcLayer::updateInputData() {
     return;
   }
   real* iData = getInputValue(0, CPU_DEVICE)->getData();
-  inVal_->updateData(iData);
+  inVal_->setData(iData);
 }
 
 void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {

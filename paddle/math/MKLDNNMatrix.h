@@ -99,15 +99,14 @@ public:
   void downSpatial();
 
   /**
-   * Update the memory data handle.
+   * set the memory data handle.
    * Caution: This will not check the buffer size of the data,
    *          it should be coverd by user.
    */
-  void updateData(void* data) {
-    // TODO(TJ): change name to setData
+  void setData(real* data) {
     set_data_handle(data);
-    CpuMatrix::setData((real*)data);
-    // TODO(TJ): release the initial CpuMatrix and m_ when data changed
+    CpuMatrix::setData(data);
+    m_.reset();
   }
 
   /**

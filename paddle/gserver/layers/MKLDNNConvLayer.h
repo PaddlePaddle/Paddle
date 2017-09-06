@@ -41,15 +41,17 @@ protected:
   MKLDNNMatrixPtr wgtValBwdData_;
   std::shared_ptr<mkldnn::reorder> cvtWgtVal_;
 
-  // MKLDNNMatrixPtr with user format
-  // in case for conversion with CPU device or MKLDNN device with other format
-  MKLDNNMatrixPtr userInVal_;
-  MKLDNNMatrixPtr userOutVal_;
-  MKLDNNMatrixPtr userInGrad_;
-  MKLDNNMatrixPtr userOutGrad_;
+  // save forward primitive_desc use for backward
+  std::shared_ptr<mkldnn::convolution_forward::primitive_desc> fwdPD_;
+
+  // MKLDNNMatrixPtr with cpu device for conversion between MKLDNN device
+  MKLDNNMatrixPtr cpuInVal_;
+  MKLDNNMatrixPtr cpuInGrad_;
+  MKLDNNMatrixPtr cpuOutVal_;
+  MKLDNNMatrixPtr cpuOutGrad_;
   std::shared_ptr<mkldnn::reorder> cvtInVal_;
-  std::shared_ptr<mkldnn::reorder> cvtOutVal_;
   std::shared_ptr<mkldnn::reorder> cvtInGrad_;
+  std::shared_ptr<mkldnn::reorder> cvtOutVal_;
   std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
 
   // if has already init the weight
@@ -72,9 +74,6 @@ protected:
   // weight and bias
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> biases_;
-  // internal matrix for input value and output value
-  MatrixPtr internalInVal_;
-  MatrixPtr internalOutVal_;
 
 public:
   explicit MKLDNNConvLayer(const LayerConfig& config)
@@ -99,36 +98,51 @@ public:
 
   void convertWeightsToPaddle() override;
 
-  void printSizeInfo();
-
 protected:
+  void printSizeInfo() override {
+    MKLDNNLayer::printSizeInfo();
+    VLOG(MKLDNN_SIZES) << getName() << ": fh: " << fh_ << ", fw: " << fw_
+                       << ": ph: " << ph_ << ", pw: " << pw_ << ", sh: " << sh_
+                       << ", sw: " << sw_ << ", dh: " << dh_ << ", dw: " << dw_;
+  }
+
   void printValueFormatFlow() override {
-    if (userInVal_) {
-      VLOG(MKLDNN_FMTS) << userInVal_->getFormat() << " >>>";
+    if (cpuInVal_) {
+      VLOG(MKLDNN_FMTS) << cpuInVal_->getFormat() << " >>>";
     }
     MKLDNNLayer::printValueFormatFlow();
-    if (userOutVal_) {
-      VLOG(MKLDNN_FMTS) << " >>> " << userOutVal_->getFormat();
+    if (cpuOutVal_) {
+      VLOG(MKLDNN_FMTS) << " >>> " << cpuOutVal_->getFormat();
     }
   }
   void printGradFormatFlow() override {
-    if (userInGrad_) {
-      VLOG(MKLDNN_FMTS) << userInGrad_->getFormat() << " <<<";
+    if (cpuInGrad_) {
+      VLOG(MKLDNN_FMTS) << cpuInGrad_->getFormat() << " <<<";
     }
     MKLDNNLayer::printGradFormatFlow();
-    if (userOutGrad_) {
-      VLOG(MKLDNN_FMTS) << " <<< " << userOutGrad_->getFormat();
+    if (cpuOutGrad_) {
+      VLOG(MKLDNN_FMTS) << " <<< " << cpuOutGrad_->getFormat();
     }
   }
 
-private:
   /**
    * get padding_r according to
    * https://github.com/01org/mkl-dnn/blob/master/tests/gtests/
    * test_convolution_forward_common.hpp
    * @note: mkldnn dilation start from 0 while paddle start from 1
    */
-  mkldnn::memory::dims getPaddingR() const;
+  mkldnn::memory::dims getPaddingR() const {
+    mkldnn::memory::dims padR = {ph_, pw_};
+    for (int i = 0; i < 2; ++i) {
+      if ((ih_ - ((fh_ - 1) * dh_ + 1) + ph_ + padR[0]) / sh_ + 1 != oh_) {
+        ++padR[0];
+      }
+      if ((iw_ - ((fw_ - 1) * dw_ + 1) + pw_ + padR[1]) / sw_ + 1 != ow_) {
+        ++padR[1];
+      }
+    }
+    return padR;
+  }
 };
 
 }  // namespace paddle

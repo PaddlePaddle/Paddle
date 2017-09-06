@@ -55,10 +55,6 @@ protected:
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-  // cpu output Argument index of outputOtherDevice_, set -1 if none
-  // TODO(TJ): remove me if unused
-  int cpuOutputIndex_;
-
   // MKLDNNMatrixPtr with internal format
   MKLDNNMatrixPtr inVal_;
   MKLDNNMatrixPtr inGrad_;
@@ -103,7 +99,7 @@ public:
     if (!Layer::init(layerMap, parameterMap)) {
       return false;
     }
-    cpuOutputIndex_ = getCPUOutputIndex();
+    checkCPUOutputsNumber();
 
     stream_.reset(new MKLDNNStream());
     engine_ = CPUEngine::Instance().getEngine();
@@ -321,20 +317,17 @@ private:
   }
 
   /**
-   * get cpu output Argument index of outputOtherDevice_.
-   * return -1 if none.
+   * Check the cpu device number of outputOtherDevice_.
+   * should have only one at most.
    */
-  int getCPUOutputIndex() {
-    int index = -1;
+  void checkCPUOutputsNumber(int max = 1) {
     int cnt = 0;
     for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
       if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
         ++cnt;
-        index = i;
       }
     }
-    CHECK_LE(cnt, 1) << "should not have more than one CPU devie";
-    return index;
+    CHECK_LE(cnt, max) << "too much CPU devies";
   }
 
   /**
