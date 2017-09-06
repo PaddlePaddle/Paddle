@@ -42,10 +42,10 @@ bool Conv3DLayer::init(const LayerMap &layerMap,
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
       biases_ =
-          std::unique_ptr<Weight>(new Weight(1, numFilters_, biasParameter_));
+          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
     } else {
       biases_ =
-          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
+          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
     }
   }
   return true;
@@ -83,8 +83,8 @@ void Conv3DLayer::forward(PassType passType) {
   int outWidth = getSize();
   resetOutput(batchSize, outWidth);
 
+  REGISTER_TIMER_INFO("FwdConv3D", getName().c_str());
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    REGISTER_TIMER_INFO("FwdConv3D", getName().c_str());
     const MatrixPtr &inMat = getInputValue(i);
     const MatrixPtr &outMat = getOutputValue();
     int M = M_[i];
@@ -120,7 +120,6 @@ void Conv3DLayer::forward(PassType passType) {
     }
   }
   if (nullptr != this->biasParameter_) {
-    REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
     this->addBias();
   }
   forwardActivation();
@@ -134,15 +133,14 @@ void Conv3DLayer::backward(const UpdateCallback &callback) {
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
+  REGISTER_TIMER_INFO("BwdConv3D", getName().c_str());
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    REGISTER_TIMER_INFO("BwdConv3D", getName().c_str());
     if (weights_[i]->getWGrad()) {
       bpropWeights(i);
     }
     if (getInputGrad(i)) {
       bpropData(i);
     }
-    REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
     weights_[i]->getParameterPtr()->incUpdate(callback);
   }
 }
@@ -224,20 +222,31 @@ void Conv3DLayer::bpropData(int i) {
 }
 
 void Conv3DLayer::bpropBiases() {
+  MatrixPtr biases = Matrix::create(biases_->getWGrad()->getData(),
+                                    1,
+                                    biases_->getWGrad()->getElementCnt(),
+                                    false,
+                                    useGpu_);
   MatrixPtr outGradMat = getOutputGrad();
+
   if (this->sharedBiases_) {
-    biases_->getWGrad()->collectSharedBias(*outGradMat, 1.0f);
+    biases->collectSharedBias(*outGradMat, 1.0f);
   } else {
-    biases_->getWGrad()->collectBias(*outGradMat, 1.0f);
+    biases->collectBias(*outGradMat, 1.0f);
   }
 }
 
 void Conv3DLayer::addBias() {
   MatrixPtr outMat = getOutputValue();
+  MatrixPtr bias = Matrix::create(biases_->getW()->getData(),
+                                  1,
+                                  biases_->getW()->getElementCnt(),
+                                  false,
+                                  useGpu_);
   if (this->sharedBiases_) {
-    outMat->addSharedBias(*(biases_->getW()), 1.0f);
+    outMat->addSharedBias(*(bias), 1.0f);
   } else {
-    outMat->addBias(*(biases_->getW()), 1.0f);
+    outMat->addBias(*(bias), 1.0f);
   }
 }
 

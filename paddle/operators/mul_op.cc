@@ -75,8 +75,8 @@ class MulOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(y_dims[1] == out_dims[1],
                    "Out@GRAD M X N must equal to Y dims 1, N ");
 
-    x_grad->Resize(x_dims);
-    y_grad->Resize(y_dims);
+    if (x_grad) x_grad->Resize(x_dims);
+    if (y_grad) y_grad->Resize(y_dims);
   }
 };
 
