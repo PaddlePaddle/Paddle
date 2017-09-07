@@ -2008,6 +2008,31 @@ TEST(Layer, CropLayer) {
   }
 }
 
+TEST(Layer, SwitchOrderLayer) {
+  TestConfig config;
+  // config input_0
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ImageConfig* img = input->mutable_image_conf();
+  img->set_channels(4);
+  img->set_img_size(16);
+  img->set_img_size_y(16);
+
+  ReshapeConfig* reshape = config.layerConfig.mutable_reshape_conf();
+  reshape->add_height_axis(0);
+  reshape->add_height_axis(1);
+  reshape->add_height_axis(2);
+  reshape->add_width_axis(3);
+
+  // config softmax layer
+  config.layerConfig.set_type("switch_order");
+  config.layerConfig.set_name("switchOrderLayer");
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "switch_order", 100, false, useGpu, true);
+  }
+}
+
 vector<real> randSampling(real range, int n) {
   CHECK_GE(range, n);
   vector<real> num(range);
