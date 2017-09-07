@@ -53,11 +53,11 @@ class GreaterThanChecker {
 };
 
 template <typename T>
-class EqualLargerThanChecker {
+class EqualGreaterThanChecker {
  public:
-  explicit EqualLargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
+  explicit EqualGreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(T& value) const {
-    PADDLE_ENFORCE(value >= lower_bound_, "equal_larger_than check fails.");
+    PADDLE_ENFORCE_GE(value, lower_bound_, "equal_larger_than check fails.");
   }
 
  private:
@@ -127,8 +127,8 @@ class TypedAttrChecker {
     return *this;
   }
 
-  TypedAttrChecker& EqualLargerThan(const T& lower_bound) {
-    value_checkers_.push_back(EqualLargerThanChecker<T>(lower_bound));
+  TypedAttrChecker& EqualGreaterThan(const T& lower_bound) {
+    value_checkers_.push_back(EqualGreaterThanChecker<T>(lower_bound));
     return *this;
   }
 

@@ -65,14 +65,14 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
             will be the product of tensor's first `rank - num_col_dims` dimensions.
         )DOC")
         .SetDefault(1)
-        .EqualLargerThan(1);
+        .EqualGreaterThan(1);
     AddAttr<int>(
         "y_num_col_dims",
         R"DOC(mul_op can take tensors with more than two dimensions as input `Y`,
              in that case, tensors will be reshaped to a matrix. Just like input `X`.
         )DOC")
         .SetDefault(1)
-        .EqualLargerThan(1);
+        .EqualGreaterThan(1);
     AddComment(R"DOC(
 Two Element Mul Operator.
 

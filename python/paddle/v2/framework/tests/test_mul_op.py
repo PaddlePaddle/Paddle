@@ -99,7 +99,5 @@ class TestMulGradTest2(GradientChecker):
             no_grad_set={"Y"})
 
 
-# TODO(dzh,qijun) : mulgrad test case need transpose feature of blas library
-
 if __name__ == '__main__':
     unittest.main()
