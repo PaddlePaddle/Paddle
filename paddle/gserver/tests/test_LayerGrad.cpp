@@ -2019,10 +2019,10 @@ TEST(Layer, SwitchOrderLayer) {
   img->set_img_size_y(16);
 
   ReshapeConfig* reshape = config.layerConfig.mutable_reshape_conf();
-  reshape->add_heightaxis(0);
-  reshape->add_heightaxis(1);
-  reshape->add_heightaxis(2);
-  reshape->add_widthaxis(3);
+  reshape->add_height_axis(0);
+  reshape->add_height_axis(1);
+  reshape->add_height_axis(2);
+  reshape->add_width_axis(3);
 
   // config softmax layer
   config.layerConfig.set_type("switch_order");

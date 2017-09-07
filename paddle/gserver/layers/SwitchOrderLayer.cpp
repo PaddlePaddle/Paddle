@@ -32,11 +32,11 @@ bool SwitchOrderLayer::init(const LayerMap& layerMap,
   outDims_ = TensorShape(4);
 
   auto& reshape_conf = config_.reshape_conf();
-  for (size_t i = 0; i < reshape_conf.heightaxis_size(); i++) {
-    heightAxis_.push_back(reshape_conf.heightaxis(i));
+  for (int i = 0; i < reshape_conf.height_axis_size(); i++) {
+    heightAxis_.push_back(reshape_conf.height_axis(i));
   }
-  for (size_t i = 0; i < reshape_conf.widthaxis_size(); i++) {
-    widthAxis_.push_back(reshape_conf.widthaxis(i));
+  for (int i = 0; i < reshape_conf.width_axis_size(); i++) {
+    widthAxis_.push_back(reshape_conf.width_axis(i));
   }
   createFunction(nchw2nhwc_, "NCHW2NHWC", FuncConfig());
   createFunction(nhwc2nchw_, "NHWC2NCHW", FuncConfig());
