@@ -63,7 +63,8 @@ class AccuracyKernel : public framework::OpKernel {
     }
 
     // FIXME(typhoonzero): we don't accumulate the accuracy for now.
-    *accuracy_data = static_cast<T>(num_correct) / static_cast<T>(num_samples);
+    *accuracy_data =
+        static_cast<float>(num_correct) / static_cast<float>(num_samples);
   }
 };
 
