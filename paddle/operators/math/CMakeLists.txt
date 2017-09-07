@@ -7,3 +7,4 @@ else()
 endif()
 
 nv_test(math_function_test SRCS math_function_test.cc DEPS math_function tensor)
+cc_test(im2col_test SRCS im2col_test.cc DEPS math_function tensor)
