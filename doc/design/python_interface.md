@@ -1,17 +1,9 @@
 # Python Interface Design
 
 ## Variable as variable data type (not parameter)
-The class Variable is introduced to define the variables that are not parameters.
+The class Variable is introduced to define the variables, which are not only parameters but also the input data and intermediate outputs.
 
 All the variables are defined in a variable scope, `VarScope`, it will check duplicate variable names.
-
-```python
-class VarScope(object):
-    '''
-    VarScope is names' container of VarDesc in compile period.
-    '''
-    pass
-```
 
 The `Variable`'s definition is as follows
 ```python
