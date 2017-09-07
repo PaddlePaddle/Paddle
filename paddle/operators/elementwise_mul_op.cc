@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/element_wise_mul_op.h"
+#include "paddle/operators/elementwise_mul_op.h"
 
 namespace paddle {
 namespace operators {
@@ -23,12 +23,12 @@ class ElemWiseMulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto dim0 = ctx.Input<Tensor>("X")->dims();
-    auto dim1 = ctx.Input<Tensor>("Y")->dims();
+    auto x_dim = ctx.Input<Tensor>("X")->dims();
+    auto y_dim = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_EQ(
-        dim0, dim1,
+        x_dim, y_dim,
         "First matrix's dims must be equal with second matrix's dims.");
-    ctx.Output<Tensor>("Out")->Resize(dim0);
+    ctx.Output<Tensor>("Out")->Resize(x_dim);
   }
 };
 
@@ -37,9 +37,9 @@ class ElemWiseMulOpMaker : public framework::OpProtoAndCheckerMaker {
   ElemWiseMulOpMaker(framework::OpProto *proto,
                      framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of element-wise mul op");
-    AddInput("Y", "The second input of element-wise mul op");
-    AddOutput("Out", "The output of element-wise mul op");
+    AddInput("X", "The first input of elementwise mul op");
+    AddInput("Y", "The second input of elementwise mul op");
+    AddOutput("Out", "The output of elementwise mul op");
     AddComment(R"DOC(
 Element-wise mul operator.
 
@@ -75,10 +75,10 @@ class ElemWiseMulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elemwisemul, ops::ElemWiseMulOp, ops::ElemWiseMulOpMaker,
-            elemwisemul_grad, ops::ElemWiseMulOpGrad);
+REGISTER_OP(elementwise_mul, ops::ElemWiseMulOp, ops::ElemWiseMulOpMaker,
+            elementwise_mul_grad, ops::ElemWiseMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    elemwisemul, ops::ElemWiseMulKernel<paddle::platform::CPUPlace, float>);
+    elementwise_mul, ops::ElemWiseMulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    elemwisemul_grad,
+    elementwise_mul_grad,
     ops::ElemWiseMulGradKernel<paddle::platform::CPUPlace, float>);
