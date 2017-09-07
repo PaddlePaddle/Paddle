@@ -49,7 +49,6 @@ USE_OP(minus);
 USE_OP(cos_sim);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
-USE_OP(top_k);
 USE_OP(accuracy);
 
 namespace paddle {

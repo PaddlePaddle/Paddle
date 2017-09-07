@@ -21,7 +21,7 @@ namespace operators {
 // FIXME(typhoonzero): use cub:blockreduce to do accuracy add.
 // import cub libraries and make this more efficient.
 __global__ void AccuracyDivideKernel(const int N, const int D, const int top_k,
-                                     const float* Xdata, const int* labelData,
+                                     const int* Xdata, const int* labelData,
                                      float* accuracy) {
   int correct = 0;
   for (int row = 0; row < N; row++) {
@@ -33,12 +33,9 @@ __global__ void AccuracyDivideKernel(const int N, const int D, const int top_k,
         break;
       }
       __syncthreads();
-      // atomicAdd(accuracy, static_cast<float>(correct));
     }
   }
-  *accuracy = static_cast<float>(N);
-  // static_cast<float>(correct);
-  // static_cast<float>(N);
+  *accuracy = static_cast<float>(correct) / static_cast<float>(N);
 }
 
 template <typename T>
@@ -50,7 +47,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel {
     auto* inference = ctx.Input<Tensor>("Inference");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
-    const T* inference_data = inference->data<T>();
+    const int* inference_data = inference->data<int>();
     const int* label_data = label->data<int>();
     T* accuracy_data = accuracy->mutable_data<T>(ctx.GetPlace());
 

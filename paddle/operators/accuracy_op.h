@@ -41,8 +41,6 @@ class AccuracyKernel : public framework::OpKernel {
     auto* inference = ctx.Input<Tensor>("Inference");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
-    const size_t topk = 1;
-    // static_cast<AttrType>(ctx.op_.GetAttr<AttrType>("topk"));
 
     float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
 
@@ -55,9 +53,7 @@ class AccuracyKernel : public framework::OpKernel {
     int num_correct = 0;
     // assume inference is already the topk of the output
     for (size_t i = 0; i < num_samples; ++i) {
-      PADDLE_ENFORCE_GE(label_data[i], 0);
-      // ensure label does not exceed inference dim size
-      PADDLE_ENFORCE_LE(topk, class_dim);
+      PADDLE_ENFORCE_GE(label_data[i], 0, "label must >= 0");
       for (size_t j = 0; j < class_dim; ++j) {
         if (inference_data[i * class_dim + j] == label_data[i]) {
           ++num_correct;

@@ -30,9 +30,9 @@ class AccuracyOp : public framework::OperatorWithKernel {
     auto *inference = ctx.Input<framework::Tensor>("Inference");
     auto *label = ctx.Input<framework::Tensor>("Label");
 
-    // label must be a vector
-    PADDLE_ENFORCE_EQ(label->dims().size(), 1);
-    PADDLE_ENFORCE_EQ(inference->dims()[0], label->dims()[0]);
+    PADDLE_ENFORCE_EQ(label->dims().size(), 1, "label must be a vector");
+    PADDLE_ENFORCE_EQ(inference->dims()[0], label->dims()[0],
+                      "inference size must be the same as label size");
 
     ctx.Output<Tensor>("Accuracy")->Resize({1});
   }
@@ -43,16 +43,17 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
   AccuracyOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
+    // TODO(typhoonzero): support both inference value and indices.
     AddInput("Inference", "topk(indices) the network output");
     AddInput("Label", "Label of the training data");
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
 
     AddComment(
-        R"DOC(Accuracy. It will print accuracy rate for classification.");
-"The accuracy is:"
-"..  math::"
-"accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})DOC");
+        R"DOC(Accuracy. It will print accuracy rate for classification.
+The accuracy is:
+..  math::
+accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})DOC");
   }
 };
 
