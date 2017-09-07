@@ -116,15 +116,15 @@ struct DepthwiseConvKernel<3, 1> {
 
           float32x4_t tmp1 = vdupq_n_f32(0.f);
           float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[0][0], k[0]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[0][1], k[0]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[0][2], k[0]);
-          tmp2 = vmlaq_laneq_f32<0>(tmp2, input[1][0], k[1]);
-          tmp1 = vmlaq_laneq_f32<1>(tmp1, input[1][1], k[1]);
-          tmp2 = vmlaq_laneq_f32<2>(tmp2, input[1][2], k[1]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[2][0], k[2]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[2][1], k[2]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[2][2], k[2]);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][0], k[1], 0);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[1][1], k[1], 1);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][2], k[1], 2);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
           tmp1 = vaddq_f32(tmp1, tmp2);
 
           vst1q_f32(outputData, tmp1);
@@ -223,15 +223,15 @@ struct DepthwiseConvKernel<3, 2> {
 
           float32x4_t tmp1 = vdupq_n_f32(0.f);
           float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[0][0], k[0]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[0][1], k[0]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[0][2], k[0]);
-          tmp2 = vmlaq_laneq_f32<0>(tmp2, input[1][0], k[1]);
-          tmp1 = vmlaq_laneq_f32<1>(tmp1, input[1][1], k[1]);
-          tmp2 = vmlaq_laneq_f32<2>(tmp2, input[1][2], k[1]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[2][0], k[2]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[2][1], k[2]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[2][2], k[2]);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][0], k[1], 0);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[1][1], k[1], 1);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][2], k[1], 2);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
           tmp1 = vaddq_f32(tmp1, tmp2);
 
           vst1q_f32(outputData, tmp1);
@@ -316,22 +316,22 @@ struct DepthwiseConvKernel<4, 1> {
 
           float32x4_t tmp1 = vdupq_n_f32(0.f);
           float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[0][0], k[0]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[0][1], k[0]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[0][2], k[0]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[0][3], k[0]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[1][0], k[1]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[1][1], k[1]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[1][2], k[1]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[1][3], k[1]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[2][0], k[2]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[2][1], k[2]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[2][2], k[2]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[2][3], k[2]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[3][0], k[3]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[3][1], k[3]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[3][2], k[3]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[3][3], k[3]);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[0][3], k[0], 3);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[1][0], k[1], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][1], k[1], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[1][2], k[1], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][3], k[1], 3);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[2][3], k[2], 3);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[3][0], k[3], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[3][1], k[3], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[3][2], k[3], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[3][3], k[3], 3);
           tmp1 = vaddq_f32(tmp1, tmp2);
 
           vst1q_f32(outputData, tmp1);
@@ -431,22 +431,22 @@ struct DepthwiseConvKernel<4, 2> {
 
           float32x4_t tmp1 = vdupq_n_f32(0.f);
           float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[0][0], k[0]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[0][1], k[0]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[0][2], k[0]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[0][3], k[0]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[1][0], k[1]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[1][1], k[1]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[1][2], k[1]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[1][3], k[1]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[2][0], k[2]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[2][1], k[2]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[2][2], k[2]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[2][3], k[2]);
-          tmp1 = vmlaq_laneq_f32<0>(tmp1, input[3][0], k[3]);
-          tmp2 = vmlaq_laneq_f32<1>(tmp2, input[3][1], k[3]);
-          tmp1 = vmlaq_laneq_f32<2>(tmp1, input[3][2], k[3]);
-          tmp2 = vmlaq_laneq_f32<3>(tmp2, input[3][3], k[3]);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[0][3], k[0], 3);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[1][0], k[1], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][1], k[1], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[1][2], k[1], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[1][3], k[1], 3);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[2][3], k[2], 3);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[3][0], k[3], 0);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[3][1], k[3], 1);
+          tmp1 = vmlaq_laneq_f32(tmp1, input[3][2], k[3], 2);
+          tmp2 = vmlaq_laneq_f32(tmp2, input[3][3], k[3], 3);
           tmp1 = vaddq_f32(tmp1, tmp2);
 
           vst1q_f32(outputData, tmp1);

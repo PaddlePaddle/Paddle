@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "GemmFunctor.h"
-#include "GruFunctor.h"
 #include "hl_cpu_gru.cuh"
 
 namespace paddle {
