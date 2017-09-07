@@ -27,7 +27,7 @@ class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "input tensor of identity op");
-    AddOutput("Out", "output tensor of identity op");
+    AddOutput("Y", "output tensor of identity op");
     AddComment("identity operator. Just a alias of scale op which scale = 1.0");
   }
 };
@@ -40,7 +40,7 @@ class IdentityOp : public NetOp {
              const framework::AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
     AppendOp(framework::OpRegistry::CreateOp(
-        "scale", {{"X", {Input("X")}}}, {{"Out", {Output("Out")}}},
+        "scale", {{"X", {Input("X")}}}, {{"Out", {Output("Y")}}},
         {{"scale", static_cast<AttrType>(1)}}));
     CompleteAddOp(false);
   }

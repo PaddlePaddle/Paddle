@@ -29,13 +29,20 @@ class TestFCOp(unittest.TestCase):
 class TestFCGradOp(GradientChecker):
     def test_normal(self):
         self.inputs = {
-            "X": np.random.random((4, 4)).astype("float32"),
-            "W": np.random.random((4, 4)).astype("float32"),
-            "b": np.random.random(4).astype("float32")
+            "X": np.random.random((32, 256)).astype("float32"),
+            "W": np.random.random((256, 100)).astype("float32"),
+            "b": np.random.random(100).astype("float32")
         }
         op = Operator(
-            "fc", X="X", W="W", b="b", Out="Out", activation="sigmoid")
-        #self.check_grad(op, self.inputs, ["X", "W", "b"], "Out")
+            "fc",
+            X="X",
+            W="W",
+            b="b",
+            Out="Out",
+            mul_out="mul_out",
+            add_out="add_out",
+            activation="sigmoid")
+        self.check_grad(op, self.inputs, ["X", "W", "b"], "Out")
 
 
 if __name__ == '__main__':

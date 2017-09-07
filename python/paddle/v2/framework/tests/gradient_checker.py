@@ -277,10 +277,6 @@ class GradientChecker(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
 
-        no_tmp_out = forward_op.no_intermediate_outputs()
-        if len(no_tmp_out) != 1:
-            raise ValueError("non temp out_names should be 1")
-
         inputs = forward_op.inputs()
         in_names = [item for k in inputs for item in inputs[k]]
         for no_grad in no_grad_set:

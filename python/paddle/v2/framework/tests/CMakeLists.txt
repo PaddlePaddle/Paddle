@@ -18,6 +18,7 @@ py_test(test_gather_op SRCS test_gather_op.py)
 py_test(test_scatter_op SRCS test_scatter_op.py)
 py_test(test_fill_zeros_like_op SRCS test_fill_zeros_like_op.py)
 py_test(test_fc_op SRCS test_fc_op.py)
+py_test(test_minus_op SRCS test_minus_op.py)
 
 py_test(gradient_checker SRCS gradient_checker.py)
 
