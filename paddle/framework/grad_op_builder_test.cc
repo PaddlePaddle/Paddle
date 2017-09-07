@@ -3,7 +3,7 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 
-USE_OP(add_two);
+USE_OP(add);
 
 namespace paddle {
 namespace framework {
@@ -41,7 +41,7 @@ namespace f = paddle::framework;
 
 TEST(GradOpBuilder, AddTwo) {
   std::shared_ptr<f::OperatorBase> add_op(f::OpRegistry::CreateOp(
-      "add_two", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
+      "add", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
   std::shared_ptr<f::OperatorBase> grad_add_op =
       f::OpRegistry::CreateGradOp(*add_op);
   EXPECT_EQ(grad_add_op->Inputs().size(), 4UL);
@@ -54,8 +54,8 @@ TEST(GradOpBuilder, AddTwo) {
   EXPECT_EQ(grad_add_op->Output(f::GradVarName("Y")), f::GradVarName("y"));
 }
 
-REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, f::NOP);
-REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker, f::NOP);
+REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, mult_io_grad, f::NOP);
+REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker, io_ignored_grad, f::NOP);
 
 TEST(GradOpBuilder, MutiInOut) {
   std::shared_ptr<f::OperatorBase> test_op(f::OpRegistry::CreateOp(

@@ -54,7 +54,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanGradOp);
+REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean,
                        ops::MeanKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mean_grad,

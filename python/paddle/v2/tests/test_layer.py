@@ -134,8 +134,9 @@ class CostLayerTest(unittest.TestCase):
         cost3 = layer.cross_entropy_cost(input=inference, label=label)
         cost4 = layer.cross_entropy_with_selfnorm_cost(
             input=inference, label=label)
-        cost5 = layer.mse_cost(input=inference, label=label)
-        cost6 = layer.mse_cost(input=inference, label=label, weight=weight)
+        cost5 = layer.square_error_cost(input=inference, label=label)
+        cost6 = layer.square_error_cost(
+            input=inference, label=label, weight=weight)
         cost7 = layer.multi_binary_label_cross_entropy_cost(
             input=inference, label=label)
         cost8 = layer.rank_cost(left=score, right=score, label=score)

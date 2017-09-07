@@ -57,7 +57,6 @@ class AddOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(add_two, ops::AddOp, ops::AddOpMaker, ops::AddOpGrad);
+REGISTER_OP(add, ops::AddOp, ops::AddOpMaker, add_grad, ops::AddOpGrad);
 
-REGISTER_OP_CPU_KERNEL(add_two,
-                       ops::AddKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(add, ops::AddKernel<paddle::platform::CPUPlace, float>);
