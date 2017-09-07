@@ -71,8 +71,12 @@ void testIm2col() {
     context =
         new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
   } else {
+#ifndef PADDLE_ONLY_CPU
     context =
         new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
+#else
+    PADDLE_THROW("no GPU support");
+#endif  // PADDLE_ONLY_CPU
   }
   im2col(input, output_cfo, stride, stride, padding, padding, context);
   im2col_ocf(input, output_ocf, stride, stride, padding, padding, context);
