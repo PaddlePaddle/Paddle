@@ -15,7 +15,7 @@ class VarScope(object):
 
 The `Variable`'s definition is as follows
 ```python
-class _unique_name_generator:
+class UniqueNameGenerator:
     counter = 0
 
     def __call__(self, prefix):
@@ -24,16 +24,11 @@ class _unique_name_generator:
         return name
 
 
-unique_name_generator = _unique_name_generator()
+unique_name_generator = UniqueNameGenerator()
+
 
 class Variable(object):
-    def __init__(self,
-                 shape,
-                 name=None,
-                 prefix=None,
-                 var_scope=None,
-                 op=None,
-                 reuse=False):
+    def __init__(self, shape, name=None, prefix=None, var_scope=None, op=None):
         '''
         var_scope is VarDesc's scope.
         '''
@@ -45,8 +40,6 @@ class Variable(object):
                 name = unique_name_generator("unknown")
         self.name = name
         self.var_scope = var_scope
-        if not reuse:
-            assert self.name not in self.var_scope, "variable name %s duplicate in var scope" % self.name
         self.op = op
 ```
 
@@ -84,18 +77,29 @@ currently, the trainable parameters should be registered in global scope so that
 So, the parameters should only created in the head of the variable stack, we can implement this stack like
 
 ```python
-g_varscope_stack = []
+class ScopeStack(object):
+    def __init__(self):
+        self.scope = [Scope()]
+
+    def push_stack(self):
+        self.scope.push(Scope())
+
+    def pop_stack(self):
+        self.scope.pop()
+
+    def cur_scope(self):
+        return self.scope[-1]
+
+    def global_scope(self):
+        return self.scope[0]
 
 
-class VarScope(object):
-    def __enter__(self):
-        g_varscope_stack.append(self)
+g_scope_stack = ScopeStack()
 
-    def __exit__(self, type, value, traceback):
-        g_varscope_stack.pop()
 
-if not g_varscope_stack: g_varscope_stack.append(VarScope())
-
-def Parameter(...):
-    g_varscope_stack[0].register(...)
+# `new_variable` could be based on the `g_scope_stack`, and could be based on a user-defined scope stack.
+def new_variable(scope_stack=None):
+    if scope_stack is None:
+        scope_stack = g_scope_stack
+    return scope_stack.cur_scope.new()
 ```
