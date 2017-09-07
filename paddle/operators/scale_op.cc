@@ -49,7 +49,8 @@ The equation is: Out = scale*X
   }
 };
 
-// The gradients of a scale operator is just the scale operator itself.
+// The operator to calculate gradients of a scale operator is just the scale
+// operator itself.
 // Grad(Out=scale(X)) => Grad(X) = scale(Grad(Out))
 template <typename AttrType>
 class ScaleGradOp : public NetOp {

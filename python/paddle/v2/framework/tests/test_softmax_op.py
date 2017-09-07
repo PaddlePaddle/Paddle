@@ -18,9 +18,9 @@ class TestSoftmaxOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "softmax"
-        self.inputs = {"Logits": np.random.random((10, 10)).astype("float32")}
+        self.inputs = {"X": np.random.random((10, 10)).astype("float32")}
         self.outputs = {
-            "Out": np.apply_along_axis(stable_softmax, 1, self.inputs["Logits"])
+            "Y": np.apply_along_axis(stable_softmax, 1, self.inputs["X"])
         }
 
 
@@ -28,11 +28,11 @@ class TestSoftmaxGradOp(GradientChecker):
     def setUp(self):
         self.op = create_op("softmax")
         self.inputs = {
-            "Logits": np.random.uniform(0.1, 1, [10, 10]).astype("float32")
+            "X": np.random.uniform(0.1, 1, [10, 10]).astype("float32")
         }
 
     def test_softmax_grad(self):
-        self.check_grad(self.op, self.inputs, ["Logits"], "Out")
+        self.check_grad(self.op, self.inputs, ["X"], "Y")
 
 
 if __name__ == "__main__":

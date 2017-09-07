@@ -28,14 +28,14 @@ class GetNumericGradientTest(unittest.TestCase):
                 dX[i, :] = Y[i, :] * (dY[i, :] - d)
             return dX
 
-        softmax_op = Operator("softmax", Logits="Logits", Out="Out")
+        softmax_op = Operator("softmax", X="X", Y="Y")
 
         X = numpy.random.random((2, 2)).astype("float32")
         Y = numpy.apply_along_axis(stable_softmax, 1, X)
         dY = numpy.ones(Y.shape)
         dX = label_softmax_grad(Y, dY)
 
-        arr = get_numeric_gradient(softmax_op, {"Logits": X}, "Out", "Logits")
+        arr = get_numeric_gradient(softmax_op, {"X": X}, "Y", "X")
         numpy.testing.assert_almost_equal(arr, dX, decimal=1e-2)
 
 
