@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/backward.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -54,6 +55,7 @@ namespace paddle {
 namespace framework {
 
 using Tensor = framework::Tensor;
+using LODTensor = framework::LODTensor;
 
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
@@ -113,6 +115,25 @@ PYBIND11_PLUGIN(core) {
         return self.data<float>()[offset];
       });
 
+  py::class_<LODTensor>(m, "LODTensor", R"DOC(LOD(Leval of Ddetails) Tensor.
+
+The tensor and LOD info should be created before creating the LODTensor, then
+call the set_tensor and set_lod functions to set them.
+
+)DOC")
+      .def("set_tensor",
+           [](LODTensor &self, Tensor *tensor) { self.set_tensor(tensor); })
+      .def("set_lod",
+           [](LODTensor &self, std::vector<std::vector<size_t>> &lod) {
+             self.set_lod(lod);
+           })
+      .def("get_tensor",
+           [](LODTensor &self) -> Tensor & { return self.tensor(); },
+           py::return_value_policy::reference)
+      .def("get_lod", [](LODTensor &self) -> std::vector<std::vector<size_t>> {
+        return self.lod();
+      });
+
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
 All parameter, weight, gradient are variables in Paddle.
@@ -123,6 +144,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
       .def("get_tensor",
            [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
+           py::return_value_policy::reference)
+      .def("get_lod_tensor",
+           [](Variable &self) -> LODTensor * {
+             return self.GetMutable<LODTensor>();
+           },
            py::return_value_policy::reference)
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
