@@ -38,6 +38,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     size_t in_size = framework::product(in->dims());
     PADDLE_ENFORCE_EQ(shape_size, in_size,
                       "The size of Input(X) mismatches with Attr(shape).");
+    ctx.Output<framework::Tensor>("Out")->Resize(in->dims());
   }
 };
 
@@ -51,7 +52,7 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("shape", "Target shape of reshape operator.");
     AddComment(R"DOC(Reshape operator
 
-The input tensor will be reshaped with Attr(shape).
+Reshape Input(X) into the shape specified by Attr(shape).
 )DOC");
   }
 };

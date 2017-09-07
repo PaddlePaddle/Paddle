@@ -23,13 +23,13 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename Place, typename T>
 class ReshapeKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out = ctx.Output<Tensor>("Out");
     auto* in = ctx.Input<Tensor>("X");
-    out->mutable_data<T>(in->place());
+    out->mutable_data<T>(ctx.GetPlace());
 
     auto shape = ctx.Attr<std::vector<int>>("shape");
     std::vector<int64_t> tmp;
@@ -42,7 +42,7 @@ class ReshapeKernel : public framework::OpKernel {
   }
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename Place, typename T>
 class ReshapeGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -51,7 +51,6 @@ class ReshapeGradKernel : public framework::OpKernel {
     d_x->mutable_data<T>(ctx.GetPlace());
 
     auto in_dims = d_x->dims();
-
     d_x->CopyFrom<T>(*d_out, ctx.GetPlace());
     d_x->Resize(in_dims);
   }
