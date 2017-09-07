@@ -66,7 +66,7 @@ class OpTestMeta(type):
                     self.assertTrue(
                         numpy.allclose(
                             actual, expect, atol=1e-05),
-                        "output name: " + out_name + "has diff")
+                        "output name: " + out_name + " has diff")
 
         obj.test_all = test_all
         return obj
