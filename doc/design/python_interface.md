@@ -3,7 +3,7 @@
 ## Variable as variable data type (not parameter)
 The class Variable is introduced to define the variables, which are not only parameters but also the input data and intermediate outputs.
 
-All the variables are defined in a variable scope, `VarScope`, it will check duplicate variable names.
+All the variables are defined in a variable scope, `Scope`, it will check duplicate variable names.
 
 The `Variable`'s definition is as follows
 ```python
@@ -24,7 +24,6 @@ class Variable(object):
         '''
         var_scope is VarDesc's scope.
         '''
-        self.shape = shape
         if name is None:
             if prefix is not None:
                 name = unique_name_generator(prefix)
@@ -33,11 +32,14 @@ class Variable(object):
         self.name = name
         self.var_scope = var_scope
         self.op = op
+
+    def shape(self):
+        pass
 ```
 
 in above example, the `unique_name_generator` is introduced to make unique name with a prefix and can be used to generate variables' and operators' names.
 
-## VarScope Stack for Block Inherience
+## Scope Stack for Block Inherience
 Each block should has a variable scope that is inheriented from parent's variable scope.
 That needs a stack of variable scopes, so that when user's model definition jumps out a sub-block, 
 the following variables could be defined in current variable scope.
