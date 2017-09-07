@@ -201,6 +201,21 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc.InitializationErrorString());
                     return OpRegistry::CreateOp(desc);
                   })
+      .def_static("infer_shape",
+                  [](py::bytes op_desc_bin,
+                     std::map<std::string, VarDesc *> &var_descs) {
+                    OpDesc desc;
+                    PADDLE_ENFORCE(desc.ParsePartialFromString(op_desc_bin),
+                                   "Cannot parse user input to OpDesc");
+                    PADDLE_ENFORCE(desc.IsInitialized(),
+                                   "User OpDesc is not initialized, reason %s",
+                                   desc.InitializationErrorString());
+                    OpRegistry::InferShape(desc, var_descs);
+                  })
+      .def_static("infer_shape",
+                  [](const OperatorBase &op, const Scope &scope) {
+                    OpRegistry::InferShape(op, scope);
+                  })
       .def("backward",
            [](const OperatorBase &forwardOp,
               const std::unordered_set<std::string> &no_grad_vars) {
