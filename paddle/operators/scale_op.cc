@@ -60,7 +60,7 @@ class ScaleGradOp : public NetOp {
     AppendOp(framework::OpRegistry::CreateOp(
         "scale", {{"X", {Input(framework::GradVarName("Out"))}}},
         {{"Out", {Output(framework::GradVarName("X"))}}},
-        {{"scale", GetAttr<AttrType>("scale")}}));
+        {{"scale", Attr<AttrType>("scale")}}));
     CompleteAddOp(false);
   }
 };
