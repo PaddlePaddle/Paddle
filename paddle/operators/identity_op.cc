@@ -18,17 +18,20 @@
 namespace paddle {
 namespace operators {
 
-// identity is a alias of scale op. This is also a example for creating a alias
-// operator.
+// The identity operator is an alias of the scale operator. This is also an
+// example for creating an alias for an existing operator.
 template <typename AttrType>
 class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   IdentityOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "input tensor of identity op");
-    AddOutput("Y", "output tensor of identity op");
-    AddComment("identity operator. Just a alias of scale op which scale = 1.0");
+    AddInput("X", "The input tensor of identity operator.");
+    AddOutput("Y", "The output tensor of identity operator.");
+    AddComment(R"DOC(
+The identity operator is an alias of the scale operator
+with the attribute scale fixed to 1.0.
+)DOC");
   }
 };
 

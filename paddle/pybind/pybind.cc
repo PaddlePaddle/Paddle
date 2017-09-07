@@ -50,6 +50,7 @@ USE_OP(minus);
 USE_OP(cos_sim);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
+USE_OP(squared_l2_distance);
 
 namespace paddle {
 namespace framework {

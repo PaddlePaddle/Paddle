@@ -45,7 +45,9 @@ Kernel实现       | CPU、GPU共享Kernel实现在`.h`文件中，否则，CPU 
 
 ### 1. 定义ProtoMaker类
 
-矩阵乘的公式：$Out = X * Y$, 可见该计算由两个输入，一个输出组成。首先定义`ProtoMaker`来描述该Op的输入、输出及注释：
+矩阵乘法的公式：$Out = X * Y$, 可见该计算由两个输入，一个输出组成。
+
+首先定义`ProtoMaker`来描述该Op的输入、输出，并添加注释：
 
 ```cpp
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -63,17 +65,17 @@ The equation is: Out = X * Y
 };
 ```
 
-[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)继承自`framework::OpProtoAndCheckerMaker`，构造函数包括2个参数：
+[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)继承自`framework::OpProtoAndCheckerMaker`，构造函数含有2个参数：
 
    - `framework::OpProto` ： 前者存储Op的输入输出和参数属性，将用于Python API接口的生成。
    - `framework::OpAttrChecker` ：后者用于检查参数属性的合法性。
 
-构造函数里通过`AddInput`添加输入参数，通过`AddOutput`添加输出参数，通过`AddComment`添加该Op的注释，这些函数会将对应内容添加到`OpProto`中。
+构造函数里通过`AddInput`添加输入参数，通过`AddOutput`添加输出参数，通过`AddComment`添加Op的注释。这些函数会将对应内容添加到`OpProto`中。
 
-在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守命名规范。
+上面的代码在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守命名规范。
 
 
-再举个[`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37)的例子：
+再以[`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37)为例：
 
 ```cpp
 template <typename AttrType>
@@ -91,14 +93,16 @@ The equation is: Out = scale*X
 };
 ```
 
- 这个例子有两处不同：
+这个例子有两处不同：
 
-  - `AddInput("X","...").NotInGradient()` : 表示`X`这个输入不参与`ScaleOp`对应的梯度Op计算之中。
-  - `AddAttr<AttrType>("scale", "...").SetDefault(1.0);` : 增加`scale`系数，作为参数属性，并且设置默认值为1.0。
+- `AddInput("X","...").NotInGradient()` : 表示`X`这个输入不参与`ScaleOp`对应的梯度Op计算之中，如果Op的某个输入不参与反向梯度的计算，请显示地调用`.NotInGradient()`进行设置。
+
+- `AddAttr<AttrType>("scale", "...").SetDefault(1.0);` : 增加`scale`系数，作为参数属性，并且设置默认值为1.0。
 
 
 ### 2. 定义Operator类
 
+下面的点实现了MulOp的定义：
 
 ```cpp
 class MulOp : public framework::OperatorWithKernel {
@@ -143,14 +147,27 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
   - 1). 做检查， 尽早报错：检查输入数据维度、类型等是否合法。
   - 2). 设置输出Tensor的形状。
 
-通常`OpProtoMaker`和`Op`类的定义写在`.cc`文件中，和要讲到的注册函数一起放在`.cc`中
+通常`OpProtoMaker`和`Op`类的定义写在`.cc`文件中，和下面将要介绍的注册函数一起放在`.cc`中
 
 ### 3. 定义OpKernel类
 
-```cpp
-template <typename Place, typename T>
-class MulKernel : public framework::OpKernel {
- public:
+`MulKernel`继承自`framework::OpKernel`，带有下面两个模板参数:
+
+- `typename  Place`: 表示设备类型，不同设备(CPU、GPU)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+
+- `typename T` : 表示数据类型，如`float`, `double`等。
+
+需要为`MulKernel`类重写`Compute`接口。
+- `Compute`接受一个输入参数：`const framework::ExecutionContext& context`。
+- 与`InferShapeContext`相比，`ExecutionContext`增加了设备类型，同样可获取到输入输出和属性参数。
+- `Compute`函数里实现`OpKernel`的具体计算逻辑。
+
+下面是 `MulKernel` `Compute`的实现：
+
+  ```cpp
+  template <typename Place, typename T>
+  class MulKernel : public framework::OpKernel {
+  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<Tensor>("X");
     auto* Y = context.Input<Tensor>("Y");
@@ -160,50 +177,50 @@ class MulKernel : public framework::OpKernel {
         const_cast<platform::DeviceContext*>(context.device_context_);
     math::matmul<Place, T>(*X, false, *Y, false, 1, Z, 0, device_context);
   }
-};
-```
+  };
+  ```
 
-`MulKernel`继承自`framework::OpKernel`，带有模板参数:
+需要注意：**不同设备(CPU、GPU)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
 
-  - `typename  Place`: 表示设备类型，不同设备(CPU、GPU)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+`MulOp`的CPU、GPU实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
 
- - `typename T` : 表示数据类型，如`float`, `double`等。
+为了使`OpKernel`的计算过程书写更加简单，并且CPU、GPU的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)。
 
-`MulKernel`需要重写`Compute`接口，该接口参数为`const framework::ExecutionContext& context`, `ExecutionContext`相比`InferShapeContext`增加了设备类型，同样可获取到输入输出和属性参数，`Compute`函数里写具体实现时。
 
-注意，不同设备(CPU、GPU)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。`MulOp`的CPU、GPU实现共享同一个`Kernel`，`OpKernel`不共享的例子可以参考[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。 
-
-为了使得`OpKernel`的计算过程书写较为简单，CPU、GPU的代码可以复用，我们通常借助Eigen unsupported Tensor模块来实现。关于在paddle中如何使用Eigen库，请参考对应的使用[文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)
-
-到此前向Op实现完成，需要在`.cc`文件中注册该op和kernel。反向Op类的定义和Kernel定义与前向Op类似，这里不再重复。但注意，反向Op没有`ProtoMaker`。
+到此，前向Op实现完成。接下来，需要在`.cc`文件中注册该op和kernel。
+反向Op类的定义，反向OpKernel的定义与前向Op类似，这里不再赘述。**但需注意反向Op没有`ProtoMaker`**。
 
 ### 4. 注册Operator
 
-在`.cc`文件中注册前向、反向Op类，注册CPU Kernel。
+- 在`.cc`文件中注册前向、反向Op类，注册CPU Kernel。
 
-```cpp
-namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(mul_grad,
-              ops::MulGradKernel<paddle::platform::CPUPlace, float>);
-```
+    ```cpp
+    namespace ops = paddle::operators;
+    REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+    REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
+    REGISTER_OP_CPU_KERNEL(mul_grad,
+                  ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+    ```
 
-  - `REGISTER_OP` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`，
-  - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
-  - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulKernel`类。
+   在上面的代码中：
 
-在 `.cu`文件中注册GPU Kernel。请注意，如果GPU Kernel的实现是基于Eigen unsupported模块，那么在 `.cu`的最前面请加上宏定义 `#define EIGEN_USE_GPU`
+    - `REGISTER_OP` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`。
+    - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
+    - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulKernel`类。
 
-```cpp
-// if use Eigen unsupported module before include head files
-#define EIGEN_USE_GPU
 
-namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(mul_grad,
-                       ops::MulGradKernel<paddle::platform::GPUPlace, float>);
-```
+- 在 `.cu`文件中注册GPU Kernel。
+    - 请注意，如果GPU Kernel的实现基于Eigen unsupported模块，那么在 `.cu`的开始请加上宏定义 `#define EIGEN_USE_GPU`，代码示例如下：
+
+    ```cpp
+    // if use Eigen unsupported module before include head files
+    #define EIGEN_USE_GPU
+
+    namespace ops = paddle::operators;
+    REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
+    REGISTER_OP_GPU_KERNEL(mul_grad,
+                           ops::MulGradKernel<paddle::platform::GPUPlace, float>);
+    ```
 
 ### 5. 编译
 
@@ -225,7 +242,7 @@ REGISTER_OP_GPU_KERNEL(mul_grad,
 - 绑定Python
 
     在 [`paddle/pybind/pybind.cc
-`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/pybind.cc)文件中添加该类：
+`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/pybind.cc) 使用`USE_OP`告知编译器需要链接的Op，具体解释参考[代码注释](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/op_registry.h#L81)。
 
     ```
     USE_OP(mul);
@@ -242,50 +259,54 @@ REGISTER_OP_GPU_KERNEL(mul_grad,
     USE_NO_KENREL_OP(recurrent);
     ```
 
-    使用`USE_OP`告知编译器需要链接该Op的目标文件，具体解释参考[代码注释](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/op_registry.h#L81)。
-
 
  - 生成库
 
-   无需修改 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件，`paddle/operators` 目录下新增的 `*_op.cc` 文件会自动被添加链接到生成的lib库中。
+   无需修改 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件，`paddle/operators` 目录下新增的 `*_op.cc` 文件会被自动添加链接到生成的lib库中。
 
 ## 实现单元测试
 
-单测包括对比前向Op不同设备(CPU、GPU)的实现、对比反向OP不同设备(CPU、GPU)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单测](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
+单测包括对比前向Op不同设备(CPU、GPU)的实现、对比反向OP不同设备(CPU、GPU)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
 
 ### 前向Operator单元测试
 
-前向Op单测继承自`unittest.TestCase`，并定义元类`__metaclass__ = OpTestMeta`，具体单测流程在`OpTestMeta`里完成。需在`setUp`函数定义输入输出和属性参数，以及Python对比的输出值。
+前向Op单元测试继承自`unittest.TestCase`，并定义元类`__metaclass__ = OpTestMeta`。各项更加具体的单元测试在`OpTestMeta`里完成。测试前向Operator，需要：
 
-```python
-import unittest
-import numpy as np
-from gradient_checker import GradientChecker, create_op
-from op_test_util import OpTestMeta
+1. 在`setUp`函数定义输入、输出，以及相关的属性参数。
+2. 生成随机的输入数据。
+3. 在Python脚本中实现与前向operator相同的计算逻辑，得到输出值，与operator前向计算的输出进行对比。
 
-class TestMulOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
 
-    def setUp(self):
-        self.type = "mul"
-        self.inputs = {
-            'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((84, 100)).astype("float32")
-        }
-        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
-```
-   首先需要`import`必要的包,下面详细解释其他值：
+  ```python
+  import unittest
+  import numpy as np
+  from gradient_checker import GradientChecker, create_op
+  from op_test_util import OpTestMeta
 
-   - `self.type = "mul" ` : 定义类型，和注册的类型一致。
-   - `self.inputs` : 定义输入，类型为Numpy.array，并初始化。
-   - `self.outputs` : 定义输出，并得到Python结算结果。
+  class TestMulOp(unittest.TestCase):
+      __metaclass__ = OpTestMeta
+
+      def setUp(self):
+          self.type = "mul"
+          self.inputs = {
+              'X': np.random.random((32, 84)).astype("float32"),
+              'Y': np.random.random((84, 100)).astype("float32")
+          }
+          self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
+  ```
+
+上面的代码首先导入依赖的包，下面是对`setUp`函数中操作的重要变量的详细解释：
+
+- `self.type = "mul" ` : 定义类型，与operator注册时注册的类型一致。
+- `self.inputs` : 定义输入，类型为`numpy.array`，并初始化。
+- `self.outputs` : 定义输出，并在Python脚本中完成与operator同样的计算逻辑，返回Python端的计算结果。
 
 
 ### 反向Operator单元测试
 
-反向Op单测继承自`GradientChecker`，而`GradientChecker`集成自`unittest.TestCase`，所以反向单测函数需要`test_`开头。
+反向Op单元测试继承自`GradientChecker`，而`GradientChecker`继承自`unittest.TestCase`，因此，**反向单元测试函数需要以`test_`开头**。
 
-```cpp
+```python
 class TestMulGradOp(GradientChecker):
     def setUp(self):
         self.op = create_op("mul")
@@ -319,27 +340,27 @@ class TestMulGradOp(GradientChecker):
             no_grad_set={"Y"})
 ```
 
-下面解释一些关键的地方:
+下面解释代码中一些关键的地方:
 
-   - 调用`create_op("mul")`创建反向Op对应的前向Op。
-   - 调用`compare_grad`函数对比CPU、GPU计算结果。
-   - `test_normal`中调用`check_grad`检查梯度稳定性，这里采用数值法检测梯度正确性。
-      - 第一个参数`self.op` : 前向Op。
-      - 第二个参数`self.inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
-      - 第三个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
-      - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
-   - `test_ignore_x`和`test_ignore_y`分支测试只需要计算一个输入梯度的情况。
+- 调用`create_op("mul")`创建反向Op对应的前向Op。
+- 调用`compare_grad`函数对比CPU、GPU计算结果。
+- `test_normal`中调用`check_grad`使用数值法检测梯度正确性和稳定性。
+  - 第一个参数`self.op` : 前向Op。
+  - 第二个参数`self.inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
+  - 第三个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
+  - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
+- `test_ignore_x`和`test_ignore_y`分支用来测试只需要计算一个输入梯度的情况。
 
 
 ### 编译和执行单元测试
 
-单测完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)里添加以下内容将单测加入工程中：
+单元测试编写完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)中添加以下内容，将单元测试加入工程：
 
 ```
 py_test(test_mul_op SRCS test_mul_op.py)
 ```
 
-请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单测：
+请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单元测试：
 
 ```bash
 make test ARGS="-R test_mul_op -V"

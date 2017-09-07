@@ -44,11 +44,13 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
 
 The equation is: Out = scale*X
 )DOC");
-    AddAttr<AttrType>("scale", "scale of scale operator.").SetDefault(1.0);
+    AddAttr<AttrType>("scale", "The scaling factor of the scale operator.")
+        .SetDefault(1.0);
   }
 };
 
-// Scale Op's gradient is scale op, too.
+// The operator to calculate gradients of a scale operator is just the scale
+// operator itself.
 // Grad(Out=scale(X)) => Grad(X) = scale(Grad(Out))
 template <typename AttrType>
 class ScaleGradOp : public NetOp {
@@ -60,7 +62,7 @@ class ScaleGradOp : public NetOp {
     AppendOp(framework::OpRegistry::CreateOp(
         "scale", {{"X", {Input(framework::GradVarName("Out"))}}},
         {{"Out", {Output(framework::GradVarName("X"))}}},
-        {{"scale", GetAttr<AttrType>("scale")}}));
+        {{"scale", Attr<AttrType>("scale")}}));
     CompleteAddOp(false);
   }
 };
