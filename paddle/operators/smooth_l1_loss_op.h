@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +29,10 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
-struct SmoothL1LossFoward {
-  __host__ __device__ SmoothL1LossFoward(const T& sigma2) : sigma2(sigma2) {}
+struct SmoothL1LossForward {
+  HOSTDEVICE SmoothL1LossForward(const T& sigma2) : sigma2(sigma2) {}
 
-  __host__ __device__ T operator()(const T& val) const {
+  HOSTDEVICE T operator()(const T& val) const {
     T abs_val = std::abs(val);
     if (abs_val < 1.0 / sigma2) {
       return 0.5 * val * val * sigma2;
@@ -80,7 +81,7 @@ class SmoothL1LossKernel : public framework::OpKernel {
                                   context.GetPlace());
     auto errors = EigenVector<T>::Flatten(paddle_errors);
     // apply smooth l1 forward
-    errors.device(place) = diff.unaryExpr(SmoothL1LossFoward<T>(sigma2));
+    errors.device(place) = diff.unaryExpr(SmoothL1LossForward<T>(sigma2));
 
     // multiply outside weight
     if (has_weight) {
@@ -99,9 +100,9 @@ class SmoothL1LossKernel : public framework::OpKernel {
 
 template <typename T>
 struct SmoothL1LossBackward {
-  __host__ __device__ SmoothL1LossBackward(const T& sigma2) : sigma2(sigma2) {}
+  HOSTDEVICE SmoothL1LossBackward(const T& sigma2) : sigma2(sigma2) {}
 
-  __host__ __device__ T operator()(const T& val) const {
+  HOSTDEVICE T operator()(const T& val) const {
     T abs_val = std::abs(val);
     if (abs_val < 1.0 / sigma2) {
       return sigma2 * val;
