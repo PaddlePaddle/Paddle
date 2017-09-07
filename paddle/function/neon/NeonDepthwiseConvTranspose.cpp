@@ -20,7 +20,7 @@ namespace paddle {
 #if defined(__ARM_NEON__) || defined(__ARM_NEON)
 
 template <DeviceType Device>
-class NeonDepthwiseConvFunction : public ConvFunctionBase {
+class NeonDepthwiseConvTransposeFunction : public ConvFunctionBase {
 public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
@@ -56,41 +56,53 @@ public:
 
     // only support strideH() == strideW() and filterHeight == filterWidth.
     CHECK_EQ(strideH(), strideW());
+    CHECK_EQ(paddingH(), paddingW());
     CHECK_EQ(filterHeight, filterWidth);
 
     float* inputData = inputs[0].data<float>();
     float* filterData = inputs[1].data<float>();
     float* outputData = outputs[0].data<float>();
 
-    // padding the input
+    // padding the input, input -> inputPadding
     float* inputPadding = inputData;
-    int padInputHeight = inputHeight + 2 * paddingH();
-    int padInputWidth = inputWidth + 2 * paddingW();
-    if (paddingH() > 0 || paddingW() > 0) {
+    int padInputHeight =
+        (inputHeight - 1) * strideH() + 2 * filterHeight - 1 - 2 * paddingH();
+    int padInputWidth =
+        (inputWidth - 1) * strideW() + 2 * filterWidth - 1 - 2 * paddingW();
+
+    if (padInputHeight > inputHeight || padInputWidth > inputWidth) {
       int newSize = batchSize * inputChannels * padInputHeight * padInputWidth;
       resizeBuffer<Device>(newSize);
       inputPadding = reinterpret_cast<float*>(memory_->getBuf());
-      neon::Padding<float>::run(inputData,
-                                inputPadding,
-                                batchSize * inputChannels,
-                                inputHeight,
-                                inputWidth,
-                                padInputHeight,
-                                padInputWidth);
+      if (strideH() == 1) {
+        neon::Padding<float>::run(inputData,
+                                  inputPadding,
+                                  batchSize * inputChannels,
+                                  inputHeight,
+                                  inputWidth,
+                                  padInputHeight,
+                                  padInputWidth);
+      } else if (strideH() == 2) {
+        neon::StridePadding::run(inputData,
+                                 inputPadding,
+                                 batchSize * inputChannels,
+                                 inputHeight,
+                                 inputWidth,
+                                 padInputHeight,
+                                 padInputWidth);
+      } else {
+        LOG(FATAL) << "Not supported";
+      }
     }
 
     std::function<void(
         const float*, const float*, int, int, int, int, int, int, float*)>
         DepthWiseConv;
 
-    if (filterWidth == 3 && strideW() == 1) {
+    if (filterWidth == 3) {
       DepthWiseConv = neon::DepthwiseConvKernel<3, 1>::run;
-    } else if (filterWidth == 3 && strideW() == 2) {
-      DepthWiseConv = neon::DepthwiseConvKernel<3, 2>::run;
-    } else if (filterWidth == 4 && strideW() == 1) {
+    } else if (filterWidth == 4) {
       DepthWiseConv = neon::DepthwiseConvKernel<4, 1>::run;
-    } else if (filterWidth == 4 && strideW() == 2) {
-      DepthWiseConv = neon::DepthwiseConvKernel<4, 2>::run;
     } else {
       LOG(FATAL) << "Not supported";
     }
@@ -112,7 +124,11 @@ public:
 };
 
 #ifndef PADDLE_TYPE_DOUBLE
-REGISTER_TYPED_FUNC(NeonDepthwiseConv, CPU, NeonDepthwiseConvFunction);
+
+REGISTER_TYPED_FUNC(NeonDepthwiseConvTranspose,
+                    CPU,
+                    NeonDepthwiseConvTransposeFunction);
+
 #endif
 
 #endif

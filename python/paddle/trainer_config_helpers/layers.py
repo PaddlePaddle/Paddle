@@ -131,6 +131,7 @@ __all__ = [
     'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
+    'switch_order_layer',
     'gated_unit_layer',
     'crop_layer',
     'sub_nested_seq_layer',
@@ -239,6 +240,7 @@ class LayerType(object):
     SMOOTH_L1 = 'smooth_l1'
 
     PRELU = 'prelu'
+    SWITCH_ORDER_LAYER = 'switch_order'
     CROP_LAYER = 'crop'
     SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
@@ -6402,6 +6404,48 @@ def gated_unit_layer(input,
         name="%s_gated_act" % name,
         input=dotmul_operator(input_proj, gate),
         layer_attr=layer_attr)
+
+
+@layer_support()
+@wrap_name_default('switch_order')
+def switch_order_layer(input,
+                       name=None,
+                       reshape=None,
+                       act=None,
+                       layer_attr=None):
+    """
+    This layer switch dimension order of image input. 
+    From order "batchSize, channels, height, width"
+    to order "batchSize, height, width, channels".
+
+    The example usage is:
+
+    .. code-block:: python
+       reshape = {'height':[ 0, 1, 2], 'width':[3]}
+       switch = switch_order(input=layer, name='switch', reshape=reshape)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param name: Name of this layer.
+    :type name: basestring
+    :param reshape: reshape matrix by axises.
+    :type reshape: Dict
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    l = Layer(
+        name=name,
+        inputs=input.name,
+        reshape=reshape,
+        type=LayerType.SWITCH_ORDER_LAYER,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SWITCH_ORDER_LAYER,
+        parents=input,
+        size=l.config.size)
 
 
 @wrap_name_default()
