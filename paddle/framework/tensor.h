@@ -78,6 +78,9 @@ class Tensor {
   /*! Return the dimensions of the memory block. */
   inline const DDim& dims() const;
 
+  /*! Return the numel of the memory block. */
+  inline int64_t numel() const;
+
   /*! Resize the dimensions of the memory block. */
   inline Tensor& Resize(const DDim& dims);
 
@@ -158,6 +161,9 @@ class Tensor {
 
   /*! points to dimensions of memory block. */
   DDim dims_;
+
+  /*! the element count of tensor. */
+  int64_t numel_;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
