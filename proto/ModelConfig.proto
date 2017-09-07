@@ -288,8 +288,8 @@ message PadConfig {
 }
 
 message ReshapeConfig {
-  repeated uint32 heightAxis = 1;
-  repeated uint32 widthAxis = 2;
+  repeated uint32 height_axis = 1;
+  repeated uint32 width_axis = 2;
 }
 
 message MultiBoxLossConfig {
