@@ -4,64 +4,46 @@ import sys
 sys.path.append("../")
 
 import namespace as space
+from Variable import Variable
 
 
-class NamespaceTest(unittest.TestCase):
+class NameprefixTest(unittest.TestCase):
     def test_hierarchy(self):
-        with space.namespace("father") as father:
-            self.assertEqual("father/", father)
-            with space.namespace("child") as child:
-                # print space.current_namespace()
-                self.assertEqual("father/child/", space.current_namespace())
-                self.assertEqual("father/child/", child)
+        with space.nameprefix("father") as father:
+            self.assertEqual("father/", space.current_nameprefix())
+            with space.nameprefix("child") as child:
+                self.assertEqual("father/child/", space.current_nameprefix())
 
     def test_sibling(self):
-        with space.namespace("father"):
-            with space.namespace("first"):
-                self.assertEqual("father/first/", space.current_namespace())
-                a = 1
-            with space.namespace("second"):
-                self.assertEqual("father/second/", space.current_namespace())
-                a = 2
-            self.assertEqual("father/", space.current_namespace())
+        with space.nameprefix("father"):
+            with space.nameprefix("first"):
+                self.assertEqual("father/first/", space.current_nameprefix())
+            with space.nameprefix("second"):
+                self.assertEqual("father/second/", space.current_nameprefix())
+            self.assertEqual("father/", space.current_nameprefix())
 
-    # def test_multithread(self):
-    #   with space.namespace("father"):
+    def test_multithread(self):
+        def _thread_test(idx):
+            with space.nameprefix("father") as father:
+                with space.nameprefix("%s" % (str(idx))) as child:
+                    self.assertEqual("father/%s/" % (str(idx)),
+                                     space.current_nameprefix())
 
-    ###############
-    # demo case 
+        ths = []
+        THREAD_NUM = 3
+        for i in range(THREAD_NUM):
+            t = threading.Thread(target=_thread_test, args=(i, ))
+            ths.append(t)
+        for i in range(THREAD_NUM):
+            ths[i].run()
 
-
-import paddle as pd
-
-
-def case0(x):
-    with pd.namespace() as A:
-        a = pd.Variable()
-    with pd.namespace() as B:
-        a = pd.Variable()
-    c = A.a + B.a
-
-
-def case1(x):
-    with pd.namespace() as A:
-        with pd.namespace() as AA:
-            a = pd.Variable()
-    with pd.namespace() as B:
-        a = pd.Variable()
-    c = A.AA.a + B.a
-
-
-#################
-
-
-def f(x):
-    """ """
-    return x
-
-
-def g(x):
-    return x * x
+    def test_namehiding(self):
+        with space.nameprefix("M1") as A:
+            a = Variable("a")
+        with space.nameprefix("M2") as B:
+            a = Variable("a")
+        c = Variable("c")
+        c = Variable("M1/a") + Variable("M2/a")
 
 
 if __name__ == '__main__':

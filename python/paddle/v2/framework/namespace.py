@@ -1,60 +1,31 @@
 import os, re
 import threading
 from contextlib import contextmanager
-import inspect
 
 _local = threading.local()
 
 
-def current_namespace():
+class Nameprefix(object):
     global _local
-    if not hasattr(_local, "namespace"):
-        _local.namespace = ""
-    return _local.namespace
 
-
-# @contextmanager
-# def namespace(prefix, reset=False):
-#   global _local
-#   _old_namespace = current_namespace()
-#   if reset:
-#     _local.namespace = ""
-#   else:
-#     _local.namespace += prefix + os.sep
-#   yield _local.namespace
-# try:
-#   yield _local.namespace
-# finally:
-#   if not _local.namespace.endswith(prefix+os.sep):
-#     _local.namespace = _old_namespace
-#     raise ValueError("create namespace failed %s", prefix)
-
-# except ValueError as e:
-#   print e
-# finally :
-#   print "namespace invalid"
-
-
-class Namespace(object):
     def __init__(self, prefix, reset=False):
-        _local = threading.local()
-        if not hasattr(_local, "namespace"):
-            _local.namespace = ""
-        self._namespace = _local.namespace
+        if not hasattr(_local, "nameprefix") or reset:
+            _local.nameprefix = []
+        # assert(isinstance(prefix, basestring), "prefix must be string")
+        if prefix not in _local.nameprefix:
+            _local.nameprefix.append(prefix)
+        self.nameprefix = _local.nameprefix
 
     def __enter__(self):
-        print "enter"
-        local_namespace = inspect.getframeinfo(inspect.currentframe().f_back)
-        i = 0
-        for line in local_namespace:
-            print str(i) + " ", line
-            i += 1
-        # print local_namespace
-        return self._namespace
+        return self.nameprefix
 
-    def __exit__(self, type, value, trackback):
-        print "exit"
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.nameprefix.pop(len(self.nameprefix) - 1)
 
 
-with Namespace("dzh") as net:
-    print net
+nameprefix = Nameprefix
+
+
+def current_nameprefix():
+    global _local
+    return "/".join(_local.nameprefix) + "/"
