@@ -287,7 +287,7 @@ class TopkOpCUDAKernel : public framework::OpKernel {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
-    size_t k = static_cast<int>(ctx.op().GetAttr<int>("k"));
+    size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
     const T* input_data = input->data<T>();
 
