@@ -73,7 +73,7 @@ given a forward network, it generates the backward network. We only care about t
    <p align="center">
    <img src="images/duplicate_op2.png" width="50%" ><br/>
 
-   2. Replace shared variable's gradient with `Add` Operator
+   2. Replace shared variable's gradient with `Add` operator.
 
    </p>
 
