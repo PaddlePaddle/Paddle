@@ -14,14 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "TensorShape.h"
-#include "TensorType.h"
-#include "neon/neon_util.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
+namespace operators {
+namespace math {
 
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
-enum ColFormat { kCFO = 0, kOCF = 1 };
+enum class ColFormat { kCFO = 0, kOCF = 1 };
 
 /*
  * \brief Converts the image data of three dimensions(CHW) into a colData of
@@ -30,68 +31,60 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  *
  * \param imData   Image data.
  * \param imShape  The shape of imData,
- *                 [inputChannels, inputHeight, inputWidth].
+ *                 [input_channels, input_height, input_width].
  * \param colData  Column data.
  * \param colShape The shape of colData.
  *
  * If the template argument Format is kCFO, the shape of colData is:
- * [inputChannels, filterHeight, filterWidth, outputHeight, outputWidth]
+ * [input_channels, filter_height, filter_width, output_height, output_width]
  * So, it is easy to reshape into a convolution matrix for convolution
  * calculation based on matrix multiplication.
  * The shape of convolution matrix is [height, width], where the height is equal
- * inputChannels * filterHeight * filterWidth, and the width is equal
- * outputHeight * outputWidth.
+ * input_channels * filter_height * filter_width, and the width is equal
+ * output_height * output_width.
  *
  * Reshape:
  *     shape of colData           shape of convolution matrix
- *     [inputChannels,
- *      filterHeight,
- *      filterWidth,      ======>      [height, width]
- *      outputHeight,
- *      outputWidth]
+ *     [input_channels,
+ *      filter_height,
+ *      filter_width,      ======>      [height, width]
+ *      output_height,
+ *      output_width]
  *
  * If the template argument Format is kOCF, the shape of colData is:
- * [outputHeight, outputWidth, inputChannels, filterHeight, filterWidth]
+ * [output_height, output_width, input_channels, filter_height, filter_width]
  * So, it is easy to reshape into a sequence matrix for rnn calculation.
- * The shape of sequence matrix is [seqLength, stepSize], where the seqLength
- * is equal outputHeight * outputWidth, and the stepSize is equal
- * inputChannels * filterHeight * filterWidth.
+ * The shape of sequence matrix is [seq_length, step_size], where the seq_length
+ * is equal output_height * output_width, and the step_size is equal
+ * input_channels * filter_height * filter_width.
  *
  * Reshape:
  *     shape of colData             shape of sequence matrix
- *     [outputHeight,
- *      outputWidth,
- *      inputChannels,    ======>    [seqLength, stepSize]
- *      filterHeight,
- *      filterWidth]
+ *     [output_height,
+ *      output_width,
+ *      input_channels,    ======>    [seqLength, stepSize]
+ *      filter_height,
+ *      filter_width]
  *
  * \note The caller needs to ensure that imShape.inputChannels is equal to
  *       colShape.inputChannels.
  */
-template <ColFormat Format, DeviceType Device, class T>
+template <ColFormat Format, typename Place, typename T>
 class Im2ColFunctor {
-public:
-  void operator()(const T* imData,
-                  const TensorShape& imShape,
-                  T* colData,
-                  const TensorShape& colShape,
-                  int strideHeight,
-                  int strideWidth,
-                  int paddingHeight,
-                  int paddingWidth);
+ public:
+  void operator()(const framework::Tensor& im, framework::Tensor& col,
+                  int stride_height, int stride_width, int padding_height,
+                  int padding_width, platform::DeviceContext* context);
 };
 
-template <ColFormat Format, DeviceType Device, class T>
+template <ColFormat Format, typename Place, typename T>
 class Col2ImFunctor {
-public:
-  void operator()(T* imData,
-                  const TensorShape& imShape,
-                  const T* colData,
-                  const TensorShape& colShape,
-                  int strideHeight,
-                  int strideWidth,
-                  int paddingHeight,
-                  int paddingWidth);
+ public:
+  void operator()(framework::Tensor& im, const framework::Tensor& col,
+                  int stride_height, int stride_width, int padding_height,
+                  int padding_width, platform::DeviceContext* context);
 };
 
+}  // namespace math
+}  // namespace operators
 }  // namespace paddle

@@ -17,6 +17,7 @@ py_test(test_cross_entropy_op SRCS test_cross_entropy_op.py)
 py_test(test_gather_op SRCS test_gather_op.py)
 py_test(test_scatter_op SRCS test_scatter_op.py)
 py_test(test_fill_zeros_like_op SRCS test_fill_zeros_like_op.py)
+py_test(test_top_k_op SRCS test_top_k_op.py)
 
 py_test(gradient_checker SRCS gradient_checker.py)
 
@@ -33,3 +34,4 @@ py_test(test_gradient_checker SRCS test_gradient_checker.py)
 py_test(test_lookup_table SRCS test_lookup_table.py)
 py_test(test_scale_and_identity_op SRCS test_scale_and_identity_op.py)
 py_test(mnist SRCS mnist.py)
+py_test(test_squared_l2_distance_op SRCS test_squared_l2_distance_op.py)
