@@ -284,8 +284,6 @@ DDim::DDim(std::initializer_list<int64_t> init_list) {
   *this = make_ddim(init_list);
 }
 
-// Reshape a tensor to a matrix. The matrix's first dimension(column length)
-// will be the product of tensor's first `num_col_dims` dimensions
 DDim flatten_to_2d(const DDim& src, int num_col_dims) {
   int rank = src.size();
   return make_ddim({product(slice_ddim(src, 0, num_col_dims)),
