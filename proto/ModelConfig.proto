@@ -287,6 +287,11 @@ message PadConfig {
   repeated uint32 pad_w = 4;
 }
 
+message ReshapeConfig {
+  repeated uint32 heightAxis = 1;
+  repeated uint32 widthAxis = 2;
+}
+
 message MultiBoxLossConfig {
   required uint32 num_classes = 1;
   required float overlap_threshold = 2;
@@ -339,7 +344,6 @@ message LayerInputConfig {
 }
 
 message LayerConfig {
-
   required string name = 1;
   required string type = 2;
   optional uint64 size = 3;
@@ -516,6 +520,9 @@ message LayerConfig {
   optional double delta = 57 [ default = 1.0 ];
 
   optional uint64 depth = 58 [ default = 1 ];
+
+  // for switch order layer
+  optional ReshapeConfig reshape_conf = 59;
 }
 
 message EvaluatorConfig {

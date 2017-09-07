@@ -23,6 +23,9 @@ using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
 class CosSimKernel : public framework::OpKernel {
@@ -43,14 +46,14 @@ class CosSimKernel : public framework::OpKernel {
     auto new_dims = framework::make_ddim({dims[0], size / dims[0]});
     auto x = EigenMatrix<T>::From(*input_x, new_dims);
     auto y = EigenMatrix<T>::From(*input_y, new_dims);
-    auto z = EigenMatrix<T>::From(*output_z);
-    auto x_norm = EigenMatrix<T>::From(*output_x_norm);
-    auto y_norm = EigenMatrix<T>::From(*output_y_norm);
+    auto z = EigenVector<T>::Flatten(*output_z);
+    auto x_norm = EigenVector<T>::Flatten(*output_x_norm);
+    auto y_norm = EigenVector<T>::Flatten(*output_y_norm);
 
     auto place = context.GetEigenDevice<Place>();
-    auto xy = (x * y).sum(Eigen::array<int, 1>({1}));
-    x_norm.device(place) = x.square().sum(Eigen::array<int, 1>({1})).sqrt();
-    y_norm.device(place) = y.square().sum(Eigen::array<int, 1>({1})).sqrt();
+    auto xy = (x * y).sum(Eigen::array<int, 1>({{1}}));
+    x_norm.device(place) = x.square().sum(Eigen::array<int, 1>({{1}})).sqrt();
+    y_norm.device(place) = y.square().sum(Eigen::array<int, 1>({{1}})).sqrt();
     z.device(place) = xy / x_norm / y_norm;
   }
 };

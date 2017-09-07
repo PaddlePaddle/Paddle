@@ -1616,6 +1616,10 @@ public:
 };
 
 class CpuMatrix : public Matrix {
+private:
+  MatrixPtr sftmaxSum_;
+  MatrixPtr sftmaxDot_;
+
 public:
   CpuMatrix(size_t height, size_t width, bool trans = false);
   CpuMatrix(real* data, size_t height, size_t width, bool trans = false)

@@ -26,14 +26,12 @@ class TopkOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
                             "Input of TopkOP must be initialized.");
     auto *input = ctx.Input<framework::Tensor>("X");
-    const int k = static_cast<int>(ctx.op().GetAttr<int>("k"));
+    const int k = static_cast<int>(ctx.Attr<int>("k"));
 
-    // k must >= 1
-    PADDLE_ENFORCE_GE(k, 1);
-    // input must have >= 1d shape.
-    PADDLE_ENFORCE_GE(input->dims().size(), 1);
-    // input must have >= k columns.
-    PADDLE_ENFORCE_GE(input->dims()[input->dims().size() - 1], k);
+    PADDLE_ENFORCE_GE(k, 1, "k must >= 1");
+    PADDLE_ENFORCE_GE(input->dims().size(), 1, "input must have >= 1d shape");
+    PADDLE_ENFORCE_GE(input->dims()[input->dims().size() - 1], k,
+                      "input must have >= k columns");
 
     framework::DDim dims = input->dims();
     dims[dims.size() - 1] = k;

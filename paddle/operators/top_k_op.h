@@ -37,12 +37,12 @@ class TopkKernel : public framework::OpKernel {
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
     // k is determined by Attr
-    const size_t k = static_cast<int>(ctx.op().GetAttr<int>("k"));
+    const size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     T* indices_data = indices->mutable_data<T>(ctx.GetPlace());
 
-    auto X = EigenMatrix<T>::From(*input);
+    auto eg_input = EigenMatrix<T>::From(*input);
 
     // reshape input to a flattern matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
@@ -50,13 +50,13 @@ class TopkKernel : public framework::OpKernel {
         framework::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];
     Eigen::DSizes<int, 2> flat2dims(row, col);
-    X.reshape(flat2dims);
+    // NOTE: eigen shape doesn't affect paddle tensor.
+    eg_input.reshape(flat2dims);
 
     for (size_t i = 0; i < row; i++) {
-      // TODO(typhoonzero): make this more efficient
       std::vector<std::pair<T, size_t>> vec;
       for (size_t j = 0; j < col; j++) {
-        vec.push_back(std::pair<T, size_t>(X(i, j), j));
+        vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
       }
 
       std::partial_sort(
@@ -69,7 +69,6 @@ class TopkKernel : public framework::OpKernel {
         indices_data[i * k + j] = vec[j].second;
       }
     }
-    // FIXME: Resize back to the original input shape
   }
 };
 
