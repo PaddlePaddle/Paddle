@@ -267,7 +267,7 @@ TEST(Tensor, ReshapeToMatrix) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor src;
-  int* src_ptr = src.mutable_data<int>(make_ddim({2, 3, 4, 9}), CPUPlace());
+  int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, CPUPlace());
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }

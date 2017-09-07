@@ -37,12 +37,12 @@ class MulKernel : public framework::OpKernel {
     const Tensor x_matrix =
         x->dims().size() > 2
             ? framework::ReshapeToMatrix<T>(
-                  *x, context.template GetAttr<int>("x_num_col_dims"))
+                  *x, context.template Attr<int>("x_num_col_dims"))
             : *x;
     const Tensor y_matrix =
         y->dims().size() > 2
             ? framework::ReshapeToMatrix<T>(
-                  *y, context.template GetAttr<int>("y_num_col_dims"))
+                  *y, context.template Attr<int>("y_num_col_dims"))
             : *y;
 
     z->mutable_data<T>(context.GetPlace());
@@ -57,8 +57,8 @@ template <typename Place, typename T>
 class MulGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    int x_num_col_dims = ctx.template GetAttr<int>("x_num_col_dims");
-    int y_num_col_dims = ctx.template GetAttr<int>("y_num_col_dims");
+    int x_num_col_dims = ctx.template Attr<int>("x_num_col_dims");
+    int y_num_col_dims = ctx.template Attr<int>("y_num_col_dims");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
     const Tensor x_matrix =

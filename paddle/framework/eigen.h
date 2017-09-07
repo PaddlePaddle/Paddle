@@ -87,11 +87,11 @@ template <typename T, int MajorType = Eigen::RowMajor,
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten reshapes a Tensor into an EigenVector.
   static typename EigenVector::Type Flatten(Tensor& tensor) {
-    return EigenVector::From(tensor, {static_cast<int>(product(tensor.dims_))});
+    return EigenVector::From(tensor, {product(tensor.dims_)});
   }
 
   static typename EigenVector::ConstType Flatten(const Tensor& tensor) {
-    return EigenVector::From(tensor, {static_cast<int>(product(tensor.dims_))});
+    return EigenVector::From(tensor, {product(tensor.dims_)});
   }
 };
 

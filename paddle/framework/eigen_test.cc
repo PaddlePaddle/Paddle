@@ -110,8 +110,7 @@ TEST(Eigen, Matrix) {
 
 TEST(Eigen, MatrixReshape) {
   Tensor t;
-  float* p =
-      t.mutable_data<float>(make_ddim({2, 3, 6, 4}), platform::CPUPlace());
+  float* p = t.mutable_data<float>({2, 3, 6, 4}, platform::CPUPlace());
   for (int i = 0; i < 2 * 3 * 6 * 4; ++i) {
     p[i] = static_cast<float>(i);
   }
