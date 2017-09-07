@@ -37,6 +37,8 @@ class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out", "Out of Add").NotInGradient();
     AddComment("Add Op");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class MulOpMaker : public OpProtoAndCheckerMaker {
@@ -48,6 +50,8 @@ class MulOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out", "Out");
     AddComment("Mul");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class SigmoidOpMaker : public OpProtoAndCheckerMaker {
@@ -58,6 +62,8 @@ class SigmoidOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out", "Y");
     AddComment("Sigmoid");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class NoGradOpMaker : public OpProtoAndCheckerMaker {
@@ -68,6 +74,8 @@ class NoGradOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out", "Y output");
     AddComment("NoGradOp, same input output. no Grad");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class FcOp : public operators::NetOp {
@@ -110,6 +118,8 @@ class FcOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out", "");
     AddComment("");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class ManyOutputOpMaker : public OpProtoAndCheckerMaker {
@@ -121,6 +131,8 @@ class ManyOutputOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("z", "z");
     AddComment("");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class FillZeroOpMaker : public OpProtoAndCheckerMaker {
@@ -131,6 +143,8 @@ class FillZeroOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Dst", "out");
     AddComment("");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class AddOpMaker : public OpProtoAndCheckerMaker {
@@ -141,6 +155,8 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out", "out");
     AddComment("");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 }  // namespace framework
 }  // namespace paddle

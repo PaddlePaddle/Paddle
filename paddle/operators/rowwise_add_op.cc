@@ -50,6 +50,8 @@ for i in xrange(X.shape[0]):
   Out = X[i] + b
 )DOC");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 class RowwiseAddGradOp : public framework::OperatorWithKernel {
  public:

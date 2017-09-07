@@ -51,6 +51,8 @@ class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of cosine op");
     AddComment("This is test op");
   }
+
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 }  // namespace framework
@@ -105,6 +107,8 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
         .LargerThan(0.0);
     AddComment("This is test op");
   }
+
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 static int cpu_kernel_run_num = 0;
@@ -143,6 +147,8 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
         .LargerThan(0.0);
     AddComment("This is test op");
   }
+
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 class CPUKernalMultiInputsTest : public OpKernel {

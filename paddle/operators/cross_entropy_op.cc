@@ -61,6 +61,8 @@ OnehotCrossEntropy Operator.
 
 )DOC");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

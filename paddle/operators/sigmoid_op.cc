@@ -36,6 +36,8 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y", "sigmoid output");
     AddComment("Sigmoid function");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class SigmoidOpGrad : public framework::OperatorWithKernel {

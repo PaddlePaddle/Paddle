@@ -39,7 +39,7 @@ class InferShapeContextBase {
   virtual const DDim get_output_dim(const std::string& name) const = 0;
   virtual void set_output_dim(const std::string& name,
                               const DDim& dim) const = 0;
-  virtual const AttrReader Attrs() const;
+  virtual const AttrReader Attrs() const = 0;
 
  protected:
   virtual const DDim get_dim(const std::string& name) const = 0;

@@ -37,6 +37,8 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of mean op").NotInGradient();
     AddComment("Mean Operator");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class MeanGradOp : public framework::OperatorWithKernel {

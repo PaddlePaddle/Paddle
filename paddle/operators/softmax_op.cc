@@ -38,6 +38,8 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y", "output of softmax");
     AddComment("Softmax Op");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class SoftmaxOpGrad : public framework::OperatorWithKernel {

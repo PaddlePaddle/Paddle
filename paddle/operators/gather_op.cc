@@ -58,6 +58,8 @@ Gather Operator by selecting from the first axis,
 Out = X[Index]
 )DOC");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

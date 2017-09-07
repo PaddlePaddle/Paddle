@@ -24,6 +24,8 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
         .LargerThan(0.0);
     AddComment("This is cos op");
   }
+
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 class MyTestOp : public OperatorBase {
@@ -47,6 +49,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
         .AddCustomChecker(my_checker);
     AddComment("This is my_test op");
   }
+
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 }  // namespace framework
 }  // namespace paddle
@@ -183,6 +187,8 @@ class TestAttrProtoMaker : public pd::OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of test op");
     AddAttr<float>("scale", "scale of test op");
   }
+
+  void InferShape(const pd::InferShapeContextBase& ctx) const override {}
 };
 
 TEST(ProtoMaker, DuplicatedAttr) {
@@ -199,6 +205,8 @@ class TestInOutProtoMaker : public pd::OpProtoAndCheckerMaker {
     AddInput("input", "input of test op");
     AddInput("input", "input of test op");
   }
+
+  void InferShape(const pd::InferShapeContextBase& ctx) const override {}
 };
 
 TEST(ProtoMaker, DuplicatedInOut) {

@@ -46,6 +46,8 @@ param_out = param - learning_rate * grad;
 
 )DOC");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle
