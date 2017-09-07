@@ -40,7 +40,7 @@ class TopkKernel : public framework::OpKernel {
     const size_t k = static_cast<int>(ctx.op().GetAttr<int>("k"));
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    int* indices_data = indices->mutable_data<int>(ctx.GetPlace());
+    T* indices_data = indices->mutable_data<T>(ctx.GetPlace());
 
     auto X = EigenMatrix<T>::From(*input);
 

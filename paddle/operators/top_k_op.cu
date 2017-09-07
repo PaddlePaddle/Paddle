@@ -27,12 +27,12 @@ struct Pair {
 
   __device__ __forceinline__ void set(T value, int id) {
     v = value;
-    v = id;
+    id = id;
   }
 
   __device__ __forceinline__ void operator=(const Pair<T>& in) {
     v = in.v;
-    v = in.v;
+    id = in.id;
   }
 
   __device__ __forceinline__ bool operator<(const T value) const {
@@ -40,11 +40,11 @@ struct Pair {
   }
 
   __device__ __forceinline__ bool operator<(const Pair<T>& in) const {
-    return (v < in.v) || ((v == in.v) && (v > in.v));
+    return (v < in.v) || ((v == in.v) && (id > in.id));
   }
 
   __device__ __forceinline__ bool operator>(const Pair<T>& in) const {
-    return (v > in.v) || ((v == in.v) && (v < in.v));
+    return (v > in.v) || ((v == in.v) && (id < in.id));
   }
 
   T v;
@@ -195,14 +195,14 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int& beam,
 }
 
 template <typename T, int MaxLength, int BlockSize>
-__device__ __forceinline__ void BlockReduce(Pair<T>* shTopK, int* maxid,
+__device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk, int* maxid,
                                             Pair<T> topk[], T** topVal,
                                             int** topIds, int& beam, int& k,
                                             const int tid, const int warp) {
   while (true) {
     __syncthreads();
     if (tid < BlockSize / 2) {
-      if (shTopK[tid] < shTopK[tid + BlockSize / 2]) {
+      if (sh_topk[tid] < sh_topk[tid + BlockSize / 2]) {
         maxid[tid] = tid + BlockSize / 2;
       } else {
         maxid[tid] = tid;
@@ -211,7 +211,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* shTopK, int* maxid,
     __syncthreads();
     for (int stride = BlockSize / 4; stride > 0; stride = stride / 2) {
       if (tid < stride) {
-        if (shTopK[maxid[tid]] < shTopK[maxid[tid + stride]]) {
+        if (sh_topk[maxid[tid]] < sh_topk[maxid[tid + stride]]) {
           maxid[tid] = maxid[tid + stride];
         }
       }
@@ -220,8 +220,8 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* shTopK, int* maxid,
     __syncthreads();
 
     if (tid == 0) {
-      **topVal = shTopK[maxid[0]].v;
-      **topIds = shTopK[maxid[0]].v;
+      **topVal = sh_topk[maxid[0]].v;
+      **topIds = sh_topk[maxid[0]].id;
       (*topVal)++;
       (*topIds)++;
     }
@@ -231,7 +231,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* shTopK, int* maxid,
 
     if (tid == maxid[0]) {
       if (beam < MaxLength) {
-        shTopK[tid] = topk[beam];
+        sh_topk[tid] = topk[beam];
       }
     }
     if (maxid[0] / 32 == warp) {
@@ -244,7 +244,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* shTopK, int* maxid,
  * Each block compute one sample.
  * In a block:
  * 1. every thread get top MaxLength value;
- * 2. merge to shTopK, block reduce and get max value;
+ * 2. merge to sh_topk, block reduce and get max value;
  * 3. go to the second setp, until one thread's topk value is null;
  * 4. go to the first setp, until get the topk value.
  */
@@ -292,21 +292,20 @@ class TopkOpCUDAKernel : public framework::OpKernel {
     const T* input_data = input->data<T>();
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    // FIXME(typhoonzero): data is always converted to type T?
     int* indices_data = indices->mutable_data<int>(ctx.GetPlace());
 
     size_t input_height = input->dims()[0];
     size_t input_width = input->dims()[1];
     if (k > input_width) k = input_width;
 
-    // pass lds and dim same to input width.
+    // NOTE: pass lds and dim same to input width.
     // NOTE: old matrix implementation of stride is different to eigen.
-    // TODO(typhoonzero): launch kernel on specified stream, need sync?
+    // TODO(typhoonzero): launch kernel on specified stream.
     // TODO(typhoonzero): refine this kernel.
     dim3 threads(256, 1);
     dim3 grid(input_height, 1);
 
-    // auto stream = reinterpret_cast<platform::CUDADeviceContext*>(
-    // ctx.device_context())->stream();
     KeMatrixTopK<T, 5, 256><<<grid, threads>>>(
         output_data, output->dims()[1], indices_data, input_data, input_width,
         input_width, int(k));

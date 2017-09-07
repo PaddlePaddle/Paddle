@@ -34,7 +34,7 @@ class TestTopkOp3d(unittest.TestCase):
         input = np.random.random((32, 2, 84)).astype("float32")
         input_flat_2d = input.reshape(64, 84)
         output = np.ndarray((64, k))
-        indices = np.ndarray((64, k))
+        indices = np.ndarray((64, k)).astype("int")
 
         # FIXME: should use 'X': input for a 3d input
         self.inputs = {'X': input_flat_2d}
