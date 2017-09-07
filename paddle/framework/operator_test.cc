@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -279,6 +280,9 @@ class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of test op");
     AddAttr<float>("scale", "scale of test op");
   }
+
+  void InferShape(
+      const paddle::framework::InferShapeContextBase& ctx) const override {}
 };
 
 TEST(ProtoMaker, DuplicatedAttr) {
@@ -296,6 +300,9 @@ class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
     AddInput("input", "input of test op");
     AddInput("input", "input of test op");
   }
+
+  void InferShape(
+      const paddle::framework::InferShapeContextBase& ctx) const override {}
 };
 
 TEST(ProtoMaker, DuplicatedInOut) {

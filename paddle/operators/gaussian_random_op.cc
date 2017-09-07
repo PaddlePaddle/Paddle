@@ -79,9 +79,14 @@ Use to initialize tensor with gaussian random generator.
 
   void InferShape(const framework::InferShapeContextBase& ctx) const override {
     auto dims = ctx.Attrs().Get<std::vector<int>>("dims");
+    std::vector<int64_t> temp;
+    temp.reserve(dims.size());
+    for (auto dim : dims) {
+      temp.push_back(static_cast<int64_t>(dim));
+    }
     PADDLE_ENFORCE(dims.size() > 0UL,
                    "dims can be one int or array. dims must be set.");
-    ctx.set_output_dim("Out", framework::make_ddim(dims));
+    ctx.set_output_dim("Out", framework::make_ddim(temp));
   }
 };
 

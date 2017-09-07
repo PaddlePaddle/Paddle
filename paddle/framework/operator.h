@@ -189,7 +189,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
  private:
   const DDim get_dim(const std::string& name) const {
     VarDesc* desc = var_descs_.at(name);
-    std::vector<int> dim;
+    std::vector<int64_t> dim;
     int length = desc->lod_tensor().dims().size();
     dim.reserve(length);
     std::copy(desc->lod_tensor().dims().begin(),

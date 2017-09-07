@@ -54,6 +54,8 @@ Cosine Similarity Operator.
 The equation is: Out = X^T * Y / (sqrt(X^T * X) * sqrt(Y^T * Y))
 )DOC");
   }
+
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class CosSimOpGrad : public framework::OperatorWithKernel {
