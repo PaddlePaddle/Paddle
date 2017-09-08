@@ -197,7 +197,7 @@ class OpTest(unittest.TestCase):
 
     def check_output(self):
         places = [core.CPUPlace()]
-        if core.is_compile_gpu() and self.op.support_gpu():
+        if core.is_compile_gpu():
             places.append(core.GPUPlace(0))
         for place in places:
             self.check_output_with_place(place)
@@ -270,6 +270,6 @@ class OpTest(unittest.TestCase):
             for c_grad, g_grad, name in itertools.izip(
                     cpu_analytic_grads, gpu_analytic_grads, grad_names):
                 self.assertTrue(
-                    numpy.allclose(
+                    np.allclose(
                         c_grad, g_grad, atol=1e-4),
                     "output name: " + name + " has diff")
