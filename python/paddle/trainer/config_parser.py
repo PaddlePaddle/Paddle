@@ -3670,6 +3670,15 @@ class RecurrentLayerGroup(LayerBase):
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
 
 
+@config_layer('switch_order')
+class SwitchOrderLayer(LayerBase):
+    def __init__(self, name, inputs, reshape, **xargs):
+        super(SwitchOrderLayer, self).__init__(
+            name, 'switch_order', 0, inputs=inputs, **xargs)
+        self.config.reshape_conf.heightAxis.extend(reshape['height'])
+        self.config.reshape_conf.widthAxis.extend(reshape['width'])
+
+
 # Deprecated, use a new layer specific class instead
 @config_func
 def Layer(name, type, **xargs):
