@@ -42,10 +42,10 @@ bool DeConv3DLayer::init(const LayerMap &layerMap,
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
       biases_ =
-          std::unique_ptr<Weight>(new Weight(1, numFilters_, biasParameter_));
+          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
     } else {
       biases_ =
-          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
+          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
     }
   }
   return true;
@@ -84,8 +84,8 @@ void DeConv3DLayer::forward(PassType passType) {
   resetOutput(batchSize, outWidth);
   const MatrixPtr outMat = getOutputValue();
 
+  REGISTER_TIMER_INFO("FwdDeConv3D", getName().c_str());
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    REGISTER_TIMER_INFO("FwdDeConv3D", getName().c_str());
     const MatrixPtr &inMat = getInputValue(i);
     int M = M_[i];
     int N = N_[i];
@@ -120,7 +120,6 @@ void DeConv3DLayer::forward(PassType passType) {
     }
   }
   if (nullptr != this->biasParameter_) {
-    REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
     this->addBias();
   }
   forwardActivation();
@@ -133,12 +132,12 @@ void DeConv3DLayer::backward(const UpdateCallback &callback) {
     bpropBiases();
     biases_->getParameterPtr()->incUpdate(callback);
   }
+  REGISTER_TIMER_INFO("BwdDeConv3D", getName().c_str());
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
     if (weights_[i]->getWGrad() || this->needGradient_) {
       int M = M_[i];
       int N = N_[i];
       int K = K_[i];
-      REGISTER_TIMER_INFO("BwdDeConv3D", getName().c_str());
       Matrix::resizeOrCreate(colBuf_, K * groups_[i], N, false, useGpu_);
       const MatrixPtr &inMat = getInputValue(i);
       for (int n = 0; n < batchSize; ++n) {
@@ -182,7 +181,6 @@ void DeConv3DLayer::backward(const UpdateCallback &callback) {
           }
         }
       }
-      REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
       weights_[i]->getParameterPtr()->incUpdate(callback);
     }
   }
@@ -191,21 +189,31 @@ void DeConv3DLayer::bpropWeights(int i) {}
 void DeConv3DLayer::bpropData(int i) {}
 
 void DeConv3DLayer::bpropBiases() {
+  MatrixPtr biases = Matrix::create(biases_->getWGrad()->getData(),
+                                    1,
+                                    biases_->getWGrad()->getElementCnt(),
+                                    false,
+                                    useGpu_);
   const MatrixPtr &outGradMat = getOutputGrad();
 
   if (this->sharedBiases_) {
-    biases_->getWGrad()->collectSharedBias(*outGradMat, 1.0f);
+    biases->collectSharedBias(*outGradMat, 1.0f);
   } else {
-    biases_->getWGrad()->collectBias(*outGradMat, 1.0f);
+    biases->collectBias(*outGradMat, 1.0f);
   }
 }
 
 void DeConv3DLayer::addBias() {
   MatrixPtr outMat = getOutputValue();
+  MatrixPtr bias = Matrix::create(biases_->getW()->getData(),
+                                  1,
+                                  biases_->getW()->getElementCnt(),
+                                  false,
+                                  useGpu_);
   if (this->sharedBiases_) {
-    outMat->addSharedBias(*(biases_->getW()), 1.0f);
+    outMat->addSharedBias(*(bias), 1.0f);
   } else {
-    outMat->addBias(*(biases_->getW()), 1.0f);
+    outMat->addBias(*(bias), 1.0f);
   }
 }
 

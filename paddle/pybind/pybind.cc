@@ -30,7 +30,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-USE_OP(add_two);
+USE_OP(add);
 USE_OP(onehot_cross_entropy);
 USE_OP(sgd);
 USE_OP(mul);
@@ -46,9 +46,12 @@ USE_OP(lookup_table);
 USE_OP(scale);
 USE_NO_KERNEL_OP(identity);
 USE_OP(minus);
+USE_OP(cos_sim);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
 USE_CPU_ONLY_OP(concat);
+USE_OP(top_k);
+USE_OP(squared_l2_distance);
 
 namespace paddle {
 namespace framework {
@@ -77,7 +80,7 @@ PYBIND11_PLUGIN(core) {
       .def("get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
-           [](Tensor &self, const std::vector<int> &dim) {
+           [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
       .def("alloc_float",
