@@ -141,22 +141,12 @@ class SmoothL1LossGradKernel : public framework::OpKernel {
     diff.device(place) = EigenVector<T>::Flatten(*in2).unaryExpr(
         SmoothL1LossBackward<T>(sigma2));
 
-    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
-
     // compute weights
     Tensor paddle_weights;
     paddle_weights.mutable_data<T>(mat_dims, context.GetPlace());
     auto weights = EigenMatrix<T>::From(paddle_weights);
     // initialize to 1.0
-    if (platform::is_cpu_place(context.GetPlace())) {
-      weights.setConstant(static_cast<T>(1.0));
-    } else {
-      Tensor paddle_cpu_weights;
-      paddle_cpu_weights.mutable_data<T>(mat_dims, platform::CPUPlace());
-      EigenMatrix<T>::From(paddle_cpu_weights).setConstant(static_cast<T>(1.0));
-      paddle_weights.CopyFrom<T>(paddle_cpu_weights, context.GetPlace());
-    }
+    weights.device(place) = weights.constant(static_cast<T>(1.0));
     if (has_weight) {
       auto inside_weight = EigenMatrix<T>::From(*in0, mat_dims);
       auto outside_weight = EigenMatrix<T>::From(*in1, mat_dims);
@@ -169,6 +159,9 @@ class SmoothL1LossGradKernel : public framework::OpKernel {
     auto gradients = out_grad.broadcast(
                          Eigen::array<int, 2>({{1, static_cast<int>(cols)}})) *
                      weights * diff_mat_view;
+
+    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
 
     if (out0) {
       out0->mutable_data<T>(context.GetPlace());
