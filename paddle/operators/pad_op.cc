@@ -27,9 +27,9 @@ class PadOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto dim0 = ctx.Input<Tensor>("X")->dims();
     auto paddings = GetAttr<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(
-        dim0.size(), (int)(paddings.size() / 2),
-        "Paddings size should be equal to dimension size of input tensor.");
+    PADDLE_ENFORCE_EQ(dim0.size(), (int)(paddings.size() / 2),
+                      "Size of paddings should be equal to 2 * dimension size "
+                      "of input tensor.");
     std::vector<int> dim1(dim0.size());
     for (int i = 0; i < dim0.size(); ++i) {
       dim1[i] = dim0[i] + paddings[i * 2] + paddings[i * 2 + 1];
@@ -54,7 +54,7 @@ X = [[1, 2],
 
 and 
 
-paddings = [(0,1),(1,2)]
+paddings = [0, 1, 1, 2]
 
 and
  
@@ -68,11 +68,11 @@ Out = [[0, 1, 2, 0, 0]
 )DOC");
     AddAttr<std::vector<int>>(
         "paddings",
-        "A pair list to describes padding rules for each dimension."
-        " For 2-D image tensor, paddings=[(0, 1), (2, 3)] means"
+        "A list<int> to describes padding rules for each dimension."
+        " For 2-D image tensor, paddings=[0, 1, 2, 3] means"
         " padding 0 row to top, 1 row to bottom, 2 columns to left"
-        " and 3 columns to right.Paddings size should be equal to"
-        " dimension size of input tensor.");
+        " and 3 columns to right.Size of paddings should be equal to"
+        " 2 * dimension size of input tensor.");
     AddAttr<float>("pad_value",
                    "(float) default to 0; "
                    "The value to be padded into tensor. ")
