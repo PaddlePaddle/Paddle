@@ -26,13 +26,13 @@ class PadOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto dim0 = ctx.Input<Tensor>("X")->dims();
-    auto paddings = GetAttr<std::vector<std::pair<int, int>>>("paddings");
+    auto paddings = GetAttr<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(
-        dim0.size(), paddings.size(),
+        dim0.size(), (int)(paddings.size() / 2),
         "Paddings size should be equal to dimension size of input tensor.");
     std::vector<int> dim1(dim0.size());
     for (int i = 0; i < dim0.size(); ++i) {
-      dim1[i] = dim0[i] + paddings[i].first + paddings[i].second;
+      dim1[i] = dim0[i] + paddings[i * 2] + paddings[i * 2 + 1];
     }
     ctx.Output<Tensor>("Out")->Resize(paddle::framework::make_ddim(dim1));
   }
@@ -42,14 +42,40 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PadOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input of pad op");
-    AddOutput("Out", "The output of pad op");
+    AddInput("X", "The input of pad op.");
+    AddOutput("Out", "The output of pad op.");
     AddComment(R"DOC(
-Pad Operator.
+Pad input into output, as specified by paddings and pad_value. The input should be a k-D tensor(k > 0 and k < 7). As an example:
+
+Given:
+
+X = [[1, 2],
+   [3, 4]]
+
+and 
+
+paddings = [(0,1),(1,2)]
+
+and
+ 
+pad_value = 0 
+
+then we get 
+
+Out = [[0, 1, 2, 0, 0]
+       [0, 3, 4, 0, 0]
+       [0, 0, 0, 0, 0]]
 )DOC");
-    AddAttr<std::vector<std::pair<int, int>>>(
-        "paddings", "The padding rules for each dimension");
-    AddAttr<float>("pad_value", "The value to be padded into tensor")
+    AddAttr<std::vector<int>>(
+        "paddings",
+        "A pair list to describes padding rules for each dimension."
+        " For 2-D image tensor, paddings=[(0, 1), (2, 3)] means"
+        " padding 0 row to top, 1 row to bottom, 2 columns to left"
+        " and 3 columns to right.Paddings size should be equal to"
+        " dimension size of input tensor.");
+    AddAttr<float>("pad_value",
+                   "(float) default to 0; "
+                   "The value to be padded into tensor. ")
         .SetDefault(0.0f);
   }
 };

@@ -28,23 +28,23 @@ using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename Place, typename T, size_t D>
 void PadFunction(const framework::ExecutionContext& context) {
-  auto pads =
-      context.op().GetAttr<std::vector<std::pair<int, int>>>("paddings");
+  auto pads = context.GetAttr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
-  for (int i = 0; i < pads.size(); ++i) {
-    paddings[i] = pads[i];
+  for (int i = 0; i < paddings.size(); ++i) {
+    paddings[i].first = pads[i * 2];
+    paddings[i].second = pads[i * 2 + 1];
   }
-  T pad_value = context.op().GetAttr<T>("pad_value");
+  T pad_value = context.GetAttr<T>("pad_value");
 
-  auto* X = context.Input<Tensor>("X");
-  auto* Out = context.Output<Tensor>("Out");
-  Out->mutable_data<T>(context.GetPlace());
-  auto dims = X->dims();
+  auto* x = context.Input<Tensor>("X");
+  auto* out = context.Output<Tensor>("Out");
+  out->mutable_data<T>(context.GetPlace());
+  auto dims = x->dims();
 
-  auto X_tensor = EigenTensor<T, D>::From(*X);
-  auto Out_tensor = EigenTensor<T, D>::From(*Out);
+  auto x_tensor = EigenTensor<T, D>::From(*x);
+  auto out_tensor = EigenTensor<T, D>::From(*out);
   auto place = context.GetEigenDevice<Place>();
-  Out_tensor.device(place) = X_tensor.pad(paddings, pad_value);
+  out_tensor.device(place) = x_tensor.pad(paddings, pad_value);
 }
 
 template <typename Place, typename T>
@@ -72,28 +72,27 @@ class PadKernel : public framework::OpKernel {
         PadFunction<Place, T, 6>(context);
         break;
       default:
-        LOG(ERROR) << "Only ranks up to 6 supported.";
+        PADDLE_THROW("Only ranks up to 6 supported.");
     }
   }
 };
 
 template <typename Place, typename T, size_t D>
 void PadGradFunction(const framework::ExecutionContext& context) {
-  auto pads =
-      context.op().GetAttr<std::vector<std::pair<int, int>>>("paddings");
+  auto pads = context.GetAttr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
-  for (int i = 0; i < pads.size(); ++i) {
-    paddings[i].first = -pads[i].first;
-    paddings[i].second = -pads[i].second;
+  for (int i = 0; i < paddings.size(); ++i) {
+    paddings[i].first = -pads[i * 2];
+    paddings[i].second = -pads[i * 2 + 1];
   }
-  auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-  auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
-  dX->mutable_data<T>(context.GetPlace());
+  auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+  auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+  d_x->mutable_data<T>(context.GetPlace());
 
-  auto dX_tensor = EigenTensor<T, D>::From(*dX);
-  auto dOut_tensor = EigenTensor<T, D>::From(*dOut);
+  auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
+  auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
   auto place = context.GetEigenDevice<Place>();
-  dX_tensor.device(place) = dOut_tensor.pad(paddings, 0);
+  d_x_tensor.device(place) = d_out_tensor.pad(paddings, 0);
 }
 
 template <typename Place, typename T>
@@ -122,7 +121,7 @@ class PadGradKernel : public framework::OpKernel {
         PadGradFunction<Place, T, 6>(context);
         break;
       default:
-        LOG(ERROR) << "Only ranks up to 6 supported.";
+        PADDLE_THROW("Only ranks up to 6 supported.");
     }
   }
 };
