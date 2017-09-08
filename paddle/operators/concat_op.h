@@ -26,13 +26,12 @@ class ConcatKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
-
-    auto axis = static_cast<int>(ctx.GetAttr<int>("axis"));
-    int N = ins.size();
+    int axis = static_cast<int>(ctx.Attr<int>("axis"));
+    size_t N = ins.size();
     int output_axis_dim = 0;
     int before = 1;
     int after = 1;
-    for (int i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++) {
       output_axis_dim += ins[i]->dims()[axis];
     }
     auto& input_zero = ins[0];
@@ -47,14 +46,14 @@ class ConcatKernel : public framework::OpKernel {
       }
     }
     int output_offset = 0;
-    out->mutable_data<T>(platform::CPUPlace());
-    for (int i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++) {
       auto& in = ins[i];
       auto axis_dim = in->dims()[axis];
       for (int j = 0; j < before; j++) {
         int len = axis_dim * after * sizeof(T);
         const T* src = in->data<T>() + axis_dim * after * j;
-        T* dest = out->data<T>() + output_offset + output_axis_dim * after * j;
+        T* out_data = out->mutable_data<T>(platform::CPUPlace());
+        T* dest = out_data + output_offset + output_axis_dim * after * j;
         memcpy(dest, src, len);
       }
       output_offset += axis_dim * after;

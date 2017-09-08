@@ -27,26 +27,25 @@ class ConcatOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto *out = ctx.Output<framework::Tensor>("Out");
-    auto axis = static_cast<int>(ctx.GetAttr<int>("axis"));
-    int N = ins.size();
+    int axis = static_cast<int>(ctx.Attr<int>("axis"));
+    size_t N = ins.size();
 
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
 
-    auto dim_zero = ins[0]->dims();
-    auto dim_zero_size = dim_zero.size();
-    auto concat_dim = dim_zero;
-    for (int i = 1; i < N; i++) {
-      for (int j = 0; j < dim_zero_size; j++) {
+    auto out_dims = ins[0]->dims();
+    int in_zero_dims_size = out_dims.size();
+    for (size_t i = 1; i < N; i++) {
+      for (int j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
-          concat_dim[axis] += ins[i]->dims()[j];
+          out_dims[axis] += ins[i]->dims()[j];
           continue;
         }
-        PADDLE_ENFORCE_EQ(dim_zero[j], ins[i]->dims()[j],
+        PADDLE_ENFORCE_EQ(out_dims[j], ins[i]->dims()[j],
                           "Input tensors should have the same "
                           "elements except the specify axis.")
       }
     }
-    out->Resize(concat_dim);
+    out->Resize(out_dims);
   }
 };
 
@@ -57,9 +56,16 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "the input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of concat operator.");
     AddComment(R"DOC(
-            Join the input tensors alone the with the axis.
+            Join the input tensors along with the axis.
+            Examples:
+              Input[0] = [[1,2],[3,4]]
+              Input[1] = [[5,6]]
+              axis = 0
+              Output = [[1,2],
+                        [3,4],
+                        [5,6]]
         )DOC");
-    AddAttr<int>("axis", "The axis alone which the inputs will be joined")
+    AddAttr<int>("axis", "The axis which the inputs will be joined with.")
         .SetDefault(0);
   }
 };

@@ -16,5 +16,4 @@ limitations under the License. */
 #include "paddle/operators/concat_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(concat,
-                       ops::ConcatKernel<paddle::platform::GPUPlace, float>)
+// TODO(Yancey1989) Add GPU kernel

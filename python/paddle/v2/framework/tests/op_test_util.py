@@ -47,7 +47,7 @@ class OpTestMeta(type):
                             var.set_dims(arr.shape)
                             var.set(arr, place)
                     else:
-                        kwargs[in_name] = '@EMPTY@'
+                        kwargs[in_name] = "@EMPTY@"
 
                 for out_name, out_dup in Operator.get_op_output_names(
                         self.type):
