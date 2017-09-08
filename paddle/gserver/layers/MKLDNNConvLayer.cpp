@@ -53,8 +53,10 @@ bool MKLDNNConvLayer::init(const LayerMap& layerMap,
   iw_ = conf.img_size();
   caffeMode_ = conf.caffe_mode();
   CHECK(caffeMode_) << "Only support caffe mode yet";
-  CHECK_EQ(gp_, 1) << "Only support group 1 yet";
   CHECK(dh_ == 1 && dw_ == 1) << "Only support dilation 1 yet";
+  // check group setting
+  CHECK_EQ((oc_ / gp_) * gp_, oc_) << "group is indivisible for oc";
+  CHECK_EQ((ic_ / gp_) * gp_, ic_) << "group is indivisible for ic";
 
   // create weight
   size_t height = oc_ / gp_;
@@ -76,8 +78,7 @@ void MKLDNNConvLayer::convertWeightsFromPaddle() {
   }
 
   CHECK(wgtVal_) << "should have been initialized";
-  // TODO(TJ): check g>2 cpu format
-  CHECK_EQ(gp_, 1);
+  // the paddle weight format is oihw or goihw
   auto targetDim = wgtVal_->getDims();
   auto srcFmt = (gp_ == 1) ? memory::format::oihw : memory::format::goihw;
   wgtVal_->reorderDataFrom(wgtVal_, srcFmt, targetDim);
@@ -86,8 +87,6 @@ void MKLDNNConvLayer::convertWeightsFromPaddle() {
 
 void MKLDNNConvLayer::convertWeightsToPaddle() {
   CHECK(wgtVal_) << "should have been initialized";
-  // TODO(TJ): check g>2 cpu format
-  CHECK_EQ(gp_, 1);
   auto targetDim = wgtVal_->getDims();
   auto dstFmt = (gp_ == 1) ? memory::format::oihw : memory::format::goihw;
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);

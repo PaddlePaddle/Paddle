@@ -129,9 +129,16 @@ void testConvLayer(const testConvDesc& pm) {
 TEST(MKLDNNLayer, ConvLayer) {
   /* bs, gp, ic, ih, iw, oc, oh, ow, fh, fw, ph, pw, sh, sw, dh, dw */
   testConvLayer({2, 1, 3, 32, 32, 16, 32, 32, 3, 3, 1, 1, 1, 1, 1, 1});
+  testConvLayer({2, 1, 8, 16, 16, 8, 16, 16, 3, 3, 1, 1, 1, 1, 1, 1});
   testConvLayer({3, 1, 16, 32, 32, 3, 32, 32, 3, 3, 1, 1, 1, 1, 1, 1});
   testConvLayer({8, 1, 16, 18, 18, 32, 18, 18, 3, 3, 1, 1, 1, 1, 1, 1});
   testConvLayer({16, 1, 1, 42, 31, 32, 23, 11, 4, 5, 3, 2, 2, 3, 1, 1});
+  testConvLayer({2, 1, 8, 16, 16, 8, 8, 8, 3, 3, 1, 1, 2, 2, 1, 1});
+  testConvLayer({3, 1, 8, 13, 13, 8, 7, 7, 3, 3, 1, 1, 2, 2, 1, 1});
+  // with groups
+  testConvLayer({2, 2, 4, 5, 5, 8, 5, 5, 3, 3, 1, 1, 1, 1, 1, 1});
+  testConvLayer({2, 3, 3, 5, 5, 3, 5, 5, 3, 3, 1, 1, 1, 1, 1, 1});
+  testConvLayer({4, 4, 16, 3, 3, 16, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1});
 }
 
 // TODO(TJ): add branch test
