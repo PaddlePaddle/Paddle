@@ -9,7 +9,9 @@ The goal of refactorizaiton include:
 
 ## Computation Graphs
 
-1. PaddlePaddle represent the computation, training and inference of DL models, by [computation graphs](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/graph.md).
+1. PaddlePaddle represent the computation, training and inference of DL models, by computation graphs.
+
+  1. Please dig into [computation graphs](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/graph.md) for a solid example.
 
 1. Users write Python programs to describe the graphs and run it (locally or remotely).
 
@@ -38,22 +40,36 @@ At runtime, the C++ program realizes the graph and run it.
 |---|---|---|
 |Data|[VarDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L107)|[Variable](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/variable.h#L24)|
 |Operation|[OpDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L35)|[Operator](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L64)|
+|Block|BlockDesc|Block|
 
----
-# Training Process
-1. User Use Python code to describe the Computation.
-1. `Compile Time`: generates Graph.
-1. `Compile Time`: check, optimize, and transform Graph.
+The word *graph* is exchangable with *block* in this document.  A graph represent computation steps and local variables as a C++/Java program block, or a pair of { and }.
 
-   1. Check data size and attribute.
-   1. Infer the shape of data.
-   1. Do memory plan and reuse.
-   1. Generate backward and optimization part of the Graph.
-   1. split the graph for distributed training.
+## Compilation and Execution
 
-4. `Runtime`: Run Graph.
+1. Run an applicaton Python program to describe the graph.  In particular,
 
----
+   1. create VarDesc to represent local/intermediate variables,
+   1. create operators and set attributes,
+   1. validate attribute values,
+   1. inference the type and the shape of variables,
+   1. plan for memory-reuse for variables,
+   1. generate backward and optimization part of the Graph.
+   1. possiblly split the graph for distributed training.
+
+1. The invocation of `train` or `infer` in the application Python program:
+
+   1. create a new Scope instance in the [scope hierarchy](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/scope.md) for each run of a block,
+      1. realize local variables defined in the BlockDesc message in the new scope,
+      1. a scope is similar to the stack frame in programming languages,
+
+   1. create an instance of class `Block`, in which,
+      1. realize operators in the BlockDesc message,
+
+   1. run the Block by calling
+      1. `Block::Eval(vector<Variable>* targets)` for forward and backward computations, or
+      1. `Block::Eval(vector<Operator>* targets)` for optimization.
+
+
 ## Intermediate Representation (IR)
 
 ```text
