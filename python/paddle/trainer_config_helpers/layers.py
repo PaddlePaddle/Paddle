@@ -6410,7 +6410,7 @@ def gated_unit_layer(input,
 @wrap_name_default('switch_order')
 def switch_order_layer(input,
                        name=None,
-                       reshape=None,
+                       reshape_axis=None,
                        act=None,
                        layer_attr=None):
     """
@@ -6421,8 +6421,9 @@ def switch_order_layer(input,
     The example usage is:
 
     .. code-block:: python
+       reshape_axis = 3
+       switch = switch_order(input=layer, name='switch', reshape_axis=reshape_axis)
        reshape = {'height':[ 0, 1, 2], 'width':[3]}
-       switch = switch_order(input=layer, name='switch', reshape=reshape)
 
     :param input: The input layer.
     :type input: LayerOutput
@@ -6434,6 +6435,11 @@ def switch_order_layer(input,
     :rtype: LayerOutput
     """
     assert isinstance(input, LayerOutput)
+    assert reshape_axis != None and (reshape_axis > 0 and reshape_axis < 4)
+    height = [ele for ele in xrange(reshape_axis)]
+    width = [ele for ele in range(reshape_axis, 4)]
+    reshape = {'height': height, 'width': width}
+
     l = Layer(
         name=name,
         inputs=input.name,

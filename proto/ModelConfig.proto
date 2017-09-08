@@ -271,6 +271,7 @@ message ImageConfig {
   // The size of input feature map.
   required uint32 img_size = 8;
   optional uint32 img_size_y = 9;
+  optional uint32 img_size_z = 10 [ default = 1 ];
 }
 
 message PriorBoxConfig {
