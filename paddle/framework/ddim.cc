@@ -283,5 +283,14 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 DDim::DDim(std::initializer_list<int64_t> init_list) {
   *this = make_ddim(init_list);
 }
+
+DDim flatten_to_2d(const DDim& src, int num_col_dims) {
+  int rank = src.size();
+  return make_ddim({product(slice_ddim(src, 0, num_col_dims)),
+                    product(slice_ddim(src, num_col_dims, rank))});
+}
+
+DDim flatten_to_1d(const DDim& src) { return make_ddim({product(src)}); }
+
 }  // namespace framework
 }  // namespace paddle
