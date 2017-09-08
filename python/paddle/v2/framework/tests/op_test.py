@@ -9,54 +9,40 @@ def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
-def remove_grad_var_name(var_name):
-    return var_name[0:-5]
-
-
 def create_op(scope, op_type, inputs, outputs, attrs=None):
     kwargs = dict()
 
-    for ins in Operator.get_op_inputs(op_type):
-        in_name = ins[0]
-        in_dup = ins[1]
+    for in_name, in_dup in Operator.get_op_inputs(op_type):
         if in_name in inputs:
             kwargs[in_name] = []
             if in_dup:
                 sub_in = inputs[in_name]
                 for sub_in_name in sub_in:
                     var = scope.new_var(sub_in_name)
-                    tensor = var.get_tensor()
                     kwargs[in_name].append(sub_in_name)
             else:
                 var = scope.new_var(in_name)
-                tensor = var.get_tensor()
                 kwargs[in_name].append(in_name)
 
-    for outs in Operator.get_op_outputs(op_type):
-        out_name = outs[0]
-        out_dup = outs[1]
+    for out_name, out_dup in Operator.get_op_outputs(op_type):
         if out_name in outputs:
             kwargs[out_name] = []
             if out_dup:
                 sub_in = outputs[out_name]
                 for sun_in_name in sub_in:
                     var = scope.new_var(sun_in_name)
-                    tensor = var.get_tensor()
                     kwargs[out_name].append(sun_in_name)
             else:
                 var = scope.new_var(out_name)
-                tensor = var.get_tensor()
                 kwargs[out_name].append(out_name)
 
-    # for attr_name in Operator.get_op_attr_names(op_type):
-    #	  kwargs[attr_name] = attrs[attr_name]
+    for attr_name in Operator.get_op_attr_names(op_type):
+        kwargs[attr_name] = attrs[attr_name]
     return Operator(op_type, **kwargs)
 
 
 def set_input(scope, op, inputs, place):
-    for ins in Operator.get_op_inputs(op.type()):
-        in_name = ins[0]
-        in_dup = ins[1]
+    for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]
@@ -75,9 +61,7 @@ def set_input(scope, op, inputs, place):
 
 
 def set_output_grad(scope, op, outputs, place):
-    for outs in Operator.get_op_outputs(op.type()):
-        out_name = outs[0]
-        out_dup = outs[1]
+    for out_name, out_dup in Operator.get_op_outputs(op.type()):
         if out_name in outputs:
             if out_dup:
                 sub_out = outputs[out_name]
@@ -150,10 +134,10 @@ def get_numeric_gradient(scope,
 
 def get_backward_op(scope, op, no_grad_set):
     backward_op = core.Operator.backward(op, no_grad_set)
-    for input in backward_op.inputs_names():
+    for input in backward_op.input_vars():
         var = scope.new_var(input)
         var.get_tensor()
-    for output in backward_op.outputs_names():
+    for output in backward_op.output_vars():
         var = scope.new_var(output)
         var.get_tensor()
     return backward_op
@@ -182,7 +166,7 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
 
 class OpTest(unittest.TestCase):
-    def check_output(self, place):
+    def check_output_with_place(self, place):
         self.scope = core.Scope()
         self.op = create_op(self.scope, self.op_type, self.inputs, self.outputs)
         if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
@@ -192,9 +176,7 @@ class OpTest(unittest.TestCase):
         ctx = core.DeviceContext.create(place)
         self.op.run(self.scope, ctx)
 
-        for outs in Operator.get_op_outputs(self.op.type()):
-            out_name = outs[0]
-            out_dup = outs[1]
+        for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
             if out_dup:
                 sub_out = self.outputs[out_name]
                 for sub_out_name in sub_out:
@@ -212,6 +194,13 @@ class OpTest(unittest.TestCase):
                     np.allclose(
                         actual, expect, atol=1e-05),
                     "output name: " + out_name + "has diff")
+
+    def check_output(self):
+        places = [core.CPUPlace()]
+        if core.is_compile_gpu() and self.op.support_gpu():
+            places.append(core.GPUPlace(0))
+        for place in places:
+            self.check_output_with_place(place)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):
@@ -255,17 +244,32 @@ class OpTest(unittest.TestCase):
             grad_var_name(input_to_check) for input_to_check in inputs_to_check
         ]
 
-        places = [core.CPUPlace()]
-        if core.is_compile_gpu() and self.op.support_gpu():
-            places.append(core.GPUPlace(0))
+        cpu_place = core.CPUPlace()
+        cpu_analytic_grads = [
+            get_gradient(self.scope, self.op, self.inputs, self.outputs,
+                         grad_name, cpu_place, no_grad_set)
+            for grad_name in grad_names
+        ]
 
-        for place in places:
-            analytic_grads = [
+        self.__assert_is_close(numeric_grads, cpu_analytic_grads, grad_names,
+                               max_relative_error,
+                               "Gradient Check On %s" % str(cpu_place))
+
+        if core.is_compile_gpu() and self.op.support_gpu():
+            gpu_place = core.GPUPlace(0)
+            gpu_analytic_grads = [
                 get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                             grad_name, place, no_grad_set)
+                             grad_name, gpu_place, no_grad_set)
                 for grad_name in grad_names
             ]
 
-            self.__assert_is_close(numeric_grads, analytic_grads, grad_names,
-                                   max_relative_error,
-                                   "Gradient Check On %s" % str(place))
+            self.__assert_is_close(numeric_grads, gpu_analytic_grads,
+                                   grad_names, max_relative_error,
+                                   "Gradient Check On %s" % str(gpu_place))
+
+            for c_grad, g_grad, name in itertools.izip(
+                    cpu_analytic_grads, gpu_analytic_grads, grad_names):
+                self.assertTrue(
+                    numpy.allclose(
+                        c_grad, g_grad, atol=1e-4),
+                    "output name: " + name + " has diff")

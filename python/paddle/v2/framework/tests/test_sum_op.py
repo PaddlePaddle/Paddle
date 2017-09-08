@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.v2.framework.core as core
 
 
 class TestSumOp(OpTest):
@@ -15,8 +14,7 @@ class TestSumOp(OpTest):
         self.outputs = {'Out': y}
 
     def test_check_output(self):
-        self.check_output(core.CPUPlace())
-        self.check_output(core.GPUPlace(0))
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["x0"], "Out")

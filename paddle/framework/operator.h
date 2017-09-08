@@ -95,30 +95,12 @@ class OperatorBase {
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
 
-  const std::vector<std::string> InputsNames() const {
-    std::vector<std::string> result;
-    for (auto& kv : inputs_) {
-      for (auto& name : kv.second) {
-        result.push_back(name);
-      }
-    }
-    return result;
-  }
-
-  const std::vector<std::string> OutputsNames() const {
-    std::vector<std::string> result;
-    for (auto& kv : outputs_) {
-      for (auto& name : kv.second) {
-        result.push_back(name);
-      }
-    }
-    return result;
-  }
-
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
   //! Get a input which has multiple variables.
   const std::vector<std::string>& Inputs(const std::string& name) const;
+
+  std::vector<std::string> InputVars() const;
 
   //! Get a output with argument's name described in `op_proto`
   std::string Output(const std::string& name) const;

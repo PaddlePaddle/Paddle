@@ -26,10 +26,14 @@ class SumOp : public framework::OperatorWithKernel {
     auto *out = ctx.Output<framework::Tensor>("Out");
     int N = ins.size();
 
-    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+    auto in_dim = ins[0]->dims();
 
-    auto dim_zero = ins[0]->dims();
-    out->Resize(dim_zero);
+    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+    for (int i = 1; i < N; i++) {
+      auto dim = ins[i]->dims();
+      PADDLE_ENFORCE(in_dim == dim, "Input tensors must have same shape");
+    }
+    out->Resize(in_dim);
   }
 };
 
