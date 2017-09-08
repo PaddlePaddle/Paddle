@@ -69,7 +69,7 @@ class OperatorBase {
   virtual ~OperatorBase() {}
 
   template <typename T>
-  inline const T& GetAttr(const std::string& name) const {
+  inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
                    name);
     return boost::get<T>(attrs_.at(name));
@@ -241,8 +241,8 @@ class InferShapeContext {
   const Scope& scope() const { return scope_; }
 
   template <typename T>
-  inline const T& GetAttr(const std::string& name) const {
-    return op_.GetAttr<T>(name);
+  inline const T& Attr(const std::string& name) const {
+    return op_.Attr<T>(name);
   }
 
   size_t InputSize(const std::string& name) const {
