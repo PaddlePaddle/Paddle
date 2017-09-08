@@ -90,10 +90,10 @@ private:
   void checkBackwardData();
   void checkBackwardWgts();
 
-  void clearWgtDiffs();
-  void clearBotDiffs();
-  void clearBotDiffs(int n);  // clear specific layer
-  void clearTopDatas();
+  // clear specific layer, clear all when id equals NUM
+  void clearWgtDiffs(size_t id = NUM);
+  void clearBotDiffs(size_t id = NUM);
+  void clearTopDatas(size_t id = NUM);
 
   void printTopDatas();
   void printMatrix(const MatrixPtr& m);

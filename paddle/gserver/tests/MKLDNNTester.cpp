@@ -192,38 +192,38 @@ void MKLDNNTester::restoreWgt(const vector<VectorPtr>& from,
 }
 
 // clear parameters grad
-void MKLDNNTester::clearWgtDiffs() {
+void MKLDNNTester::clearWgtDiffs(size_t id) {
+  CHECK_LE(id, parameters_.size());
   for (size_t n = 0; n < parameters_.size(); ++n) {
-    for (size_t i = 0; i < parameters_[n].size(); ++i) {
-      const VectorPtr& grad = parameters_[n][i]->getBuf(PARAMETER_GRADIENT);
-      if (grad) {
-        grad->zeroMem();
+    if (id == n || id == parameters_.size()) {
+      for (size_t i = 0; i < parameters_[n].size(); ++i) {
+        const VectorPtr& grad = parameters_[n][i]->getBuf(PARAMETER_GRADIENT);
+        if (grad) {
+          grad->zeroMem();
+        }
       }
     }
   }
 }
 
-void MKLDNNTester::clearBotDiffs() {
-  // dnn and ref
+void MKLDNNTester::clearBotDiffs(size_t id) {
+  CHECK_LE(id, dataLayers_.size());
   for (size_t n = 0; n < dataLayers_.size(); ++n) {
-    // all inputs layers
-    for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
-      dataLayers_[n][i]->getOutputGrad()->zeroMem();
+    if (id == n || id == dataLayers_.size()) {
+      // clear inputs layers of this specific layer
+      for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
+        dataLayers_[n][i]->getOutputGrad()->zeroMem();
+      }
     }
   }
 }
 
-void MKLDNNTester::clearBotDiffs(int n) {
-  CHECK_LT(n, NUM);
-  // all inputs layers
-  for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
-    dataLayers_[n][i]->getOutputGrad()->zeroMem();
-  }
-}
-
-void MKLDNNTester::clearTopDatas() {
+void MKLDNNTester::clearTopDatas(size_t id) {
+  CHECK_LE(id, testLayers_.size());
   for (size_t i = 0; i < testLayers_.size(); ++i) {
-    testLayers_[i]->getOutputValue()->zeroMem();
+    if (id == i || id == testLayers_.size()) {
+      testLayers_[i]->getOutputValue()->zeroMem();
+    }
   }
 }
 
@@ -303,16 +303,24 @@ void MKLDNNTester::runOnce() {
   checkForward();
 
   // test backward
+  // simple updater
+  UpdateCallback updateCallback = [](Parameter* para) {
+    auto& grad = para->getBuf(PARAMETER_GRADIENT);
+    auto& value = para->getBuf(PARAMETER_VALUE);
+    real lr = 1e-3;
+    value->add(*grad, lr);
+  };
   randomTopDiffs();
-  dnnLayer_->backward(nullptr);
-  refLayer_->backward(nullptr);
+  dnnLayer_->backward(updateCallback);
+  refLayer_->backward(updateCallback);
   checkBackwardData();
   checkBackwardWgts();
 
   // clear buffers
   // ref code will addto the diff, dnn code will writeto it
-  // and clearTopDatas() and clearWgtDiffs() should be coverd by test layers
+  // and clearTopDatas(REF) should be coverd by ref layers
   clearBotDiffs(REF);
+  clearWgtDiffs(REF);
 }
 
 void MKLDNNTester::run(const TestConfig& dnn,
