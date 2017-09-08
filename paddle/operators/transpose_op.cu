@@ -12,6 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <iostream>
 #include "paddle/memory/memcpy.h"
 #include "paddle/memory/memory.h"
 #include "paddle/operators/transpose_op.h"
@@ -24,7 +25,7 @@ __global__ void transpose_kernel(int nthreads, const T* in_data, T* out_data,
                                  int* offset_buffer, int ndims) {
   int* in_offset = offset_buffer;
   int* out_offset = offset_buffer + ndims;
-  int* axis = offset_buffer + ndims;
+  int* axis = offset_buffer + ndims * 2;
 
   int to_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -51,31 +52,37 @@ void TransposeCUDA(const framework::ExecutionContext& context,
   size_t ndims = in_dim.size();
   std::vector<int> in_offset(ndims, 1);
   std::vector<int> out_offset(ndims, 1);
-  std::vector<int64_t> buffer_dim_shape(1, ndims * 3);
 
+  auto cpu_place = platform::CPUPlace();
+  auto gpu_place = boost::get<platform::GPUPlace>(context.GetPlace());
+
+  // Get a host_buffer to cache the input offset, output offset and the axis.
+  std::vector<int64_t> buffer_dim_shape(1, ndims * 3);
   auto buffer_dims = framework::make_ddim(buffer_dim_shape);
   framework::Tensor host_buffer;
-  platform::CPUPlace cpu_place;
-  platform::GPUPlace gpu_place;
-
   int* host_buffer_data = host_buffer.mutable_data<int>(buffer_dims, cpu_place);
-
-  auto offset_buffer =
-      memory::Alloc(context.GetPlace(), ndims * 3 * sizeof(int));
 
   for (int i = ndims - 2; i >= 0; i--) {
     in_offset[i] = in_offset[i + 1] * in_dim[i + 1];
     out_offset[i] = out_offset[i + 1] * out_dim[i + 1];
   }
-
+  // copy the data to the host_buffer
   for (int i = 0; i < ndims; i++) {
     host_buffer_data[i] = in_offset[i];
     host_buffer_data[i + ndims] = out_offset[i];
     host_buffer_data[i + ndims * 2] = axis[i];
   }
 
+  // Get a device_buffer to cache the input offset, output offset and the axis.
+  auto offset_buffer = memory::Alloc(gpu_place, ndims * 3 * sizeof(int));
+
+  auto* cuda_device_context = reinterpret_cast<platform::CUDADeviceContext*>(
+      const_cast<platform::DeviceContext*>(context.device_context_));
+
+  // copy the host_buffer data to the device_buffer
   memory::Copy(gpu_place, offset_buffer, cpu_place, host_buffer_data,
-               ndims * 3 * sizeof(int));
+               ndims * 3 * sizeof(int), cuda_device_context->stream());
+
   int block = 512;
   int grid = (data_size + block - 1) / block;
   transpose_kernel<T><<<grid, block>>>(data_size, in_data, out_data,

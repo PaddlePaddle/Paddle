@@ -31,6 +31,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     auto axis = ctx.GetAttr<std::vector<int>>("axis");
     size_t in_dim_size = in_dim.size();
     size_t axis_size = axis.size();
+
     PADDLE_ENFORCE_EQ(
         in_dim_size, axis_size,
         "the input tensor dimensions should be equal to the axis size");
@@ -42,7 +43,7 @@ class TransposeOp : public framework::OperatorWithKernel {
                         "the sorted axis should be [0, 1, ... dims - 1], "
                         "the dims equals to the input tensor dimensions");
     }
-    //
+
     framework::DDim out_dim(in_dim);
     for (size_t i = 0; i < axis.size(); i++) {
       out_dim[i] = in_dim[axis[i]];
@@ -60,11 +61,12 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of transpose op");
     AddAttr<std::vector<int>>(
         "axis",
-        "a list of integers, and the num of integers should be "
-        "the same with the input tensor dimensions");
+        "a list of values, and the size of the list should be "
+        "the same with the input tensor dimensions, the tensor will "
+        "permute the axes according the the values given");
     AddComment(R"DOC(
-Transpose the input tensor. 
-For example, input tensor shape(N, C, H, W) and axis {0, 2, 3, 1},
+The Tensor will be permuted according to the axis values given.
+For example, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
 the output tensor shape will be (N, H, W, C)
 )DOC");
   }
