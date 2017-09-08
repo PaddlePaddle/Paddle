@@ -37,7 +37,7 @@ USE_OP(mul);
 USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
-USE_OP(softmax_with_loss);
+USE_OP(softmax_with_cross_entropy);
 USE_OP(rowwise_add);
 USE_OP(fill_zeros_like);
 USE_NO_KERNEL_OP(recurrent);
