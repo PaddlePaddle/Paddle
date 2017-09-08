@@ -52,7 +52,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
 # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
 # version util jupyter fixes this issue.
-RUN pip install --upgrade pip && \
+RUN pip install --upgrade pip setuptools && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark
