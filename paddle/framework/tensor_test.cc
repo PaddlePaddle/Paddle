@@ -36,7 +36,7 @@ TEST(Tensor, DataAssert) {
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg =
-        "holder_ should not be null\nTenosr holds no memory. Call "
+        "holder_ should not be null\nTensor holds no memory. Call "
         "Tensor::mutable_data first.";
     const char* what = err.what();
     for (size_t i = 0; i < msg.length(); ++i) {
@@ -59,6 +59,8 @@ TEST(Tensor, MutableData) {
     // initialization
     p1 = src_tensor.mutable_data<float>(make_ddim({1, 2, 3}), CPUPlace());
     EXPECT_NE(p1, nullptr);
+    // check tensor type
+    EXPECT_EQ(src_tensor.element_size(), sizeof(float));
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(make_ddim({3, 4}), CPUPlace());
@@ -112,7 +114,7 @@ TEST(Tensor, ShareDataWith) {
     } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
       std::string msg =
-          "holder_ should not be null\nTenosr holds no memory. Call "
+          "holder_ should not be null\nTensor holds no memory. Call "
           "Tensor::mutable_data first.";
       const char* what = err.what();
       for (size_t i = 0; i < msg.length(); ++i) {
