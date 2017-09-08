@@ -28,7 +28,7 @@ class TransposeOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto in_dim = ctx.Input<Tensor>("X")->dims();
-    auto axis = ctx.GetAttr<std::vector<int>>("axis");
+    auto axis = ctx.Attr<std::vector<int>>("axis");
     size_t in_dim_size = in_dim.size();
     size_t axis_size = axis.size();
 

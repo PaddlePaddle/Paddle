@@ -77,7 +77,7 @@ class TransposeKernel : public framework::OpKernel {
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    auto axis = context.GetAttr<std::vector<int>>("axis");
+    auto axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
     switch (ndims) {
       case 2:
@@ -107,7 +107,7 @@ class TransposeGradKernel : public framework::OpKernel {
     auto* out = context.Output<framework::Tensor>(framework::GradVarName("X"));
     out->mutable_data<T>(context.GetPlace());
 
-    auto axis_temp = context.GetAttr<std::vector<int>>("axis");
+    auto axis_temp = context.Attr<std::vector<int>>("axis");
     std::vector<int> axis(axis_temp);
 
     for (size_t i = 0; i < axis.size(); i++) {
