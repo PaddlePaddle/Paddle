@@ -21,7 +21,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is cos op");
   }
 };
@@ -80,7 +80,7 @@ TEST(OpRegistry, CreateOp) {
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
-  float scale_get = op->GetAttr<float>("scale");
+  float scale_get = op->Attr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
 
@@ -121,7 +121,7 @@ TEST(OpRegistry, DefaultValue) {
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
-  ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
+  ASSERT_EQ(op->Attr<float>("scale"), 1.0);
 }
 
 TEST(OpRegistry, CustomChecker) {
@@ -172,38 +172,6 @@ TEST(OpRegistry, CustomChecker) {
   paddle::platform::CPUDeviceContext dev_ctx;
   paddle::framework::Scope scope;
   op->Run(scope, dev_ctx);
-  int test_attr = op->GetAttr<int>("test_attr");
+  int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
-}
-
-class TestAttrProtoMaker : public pd::OpProtoAndCheckerMaker {
- public:
-  TestAttrProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("scale", "scale of test op");
-    AddAttr<float>("scale", "scale of test op");
-  }
-};
-
-TEST(ProtoMaker, DuplicatedAttr) {
-  pd::OpProto op_proto;
-  pd::OpAttrChecker op_checker;
-  auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
-}
-
-class TestInOutProtoMaker : public pd::OpProtoAndCheckerMaker {
- public:
-  TestInOutProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of test op");
-    AddInput("input", "input of test op");
-  }
-};
-
-TEST(ProtoMaker, DuplicatedInOut) {
-  pd::OpProto op_proto;
-  pd::OpAttrChecker op_checker;
-  auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
 }

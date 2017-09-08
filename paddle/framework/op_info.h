@@ -80,9 +80,19 @@ class OpInfoMap {
   }
 
   const OpInfo& Get(const std::string& type) const {
+    auto op_info_ptr = GetNullable(type);
+    PADDLE_ENFORCE_NOT_NULL(op_info_ptr, "Operator %s has not been registered",
+                            type);
+    return *op_info_ptr;
+  }
+
+  const OpInfo* GetNullable(const std::string& type) const {
     auto it = map_.find(type);
-    PADDLE_ENFORCE(it != map_.end(), "Operator %s are not found", type);
-    return it->second;
+    if (it == map_.end()) {
+      return nullptr;
+    } else {
+      return &it->second;
+    }
   }
 
   template <typename Callback>

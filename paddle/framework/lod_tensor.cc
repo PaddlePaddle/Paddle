@@ -19,25 +19,24 @@
 namespace paddle {
 namespace framework {
 
-LODTensor::LOD LODTensor::LOD::SliceLevels(size_t level_begin,
-                                           size_t level_end) const {
-  LOD new_lod;
+LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end) {
+  LoD new_lod;
   new_lod.reserve(level_end - level_begin);
   for (size_t i = level_begin; i < level_end; i++) {
-    new_lod.emplace_back(at(i));
+    new_lod.emplace_back(in.at(i));
   }
   return new_lod;
 }
 
-LODTensor::LOD LODTensor::LOD::SliceInLevel(size_t level, size_t elem_begin,
-                                            size_t elem_end) const {
+LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
+                 size_t elem_end) {
   // slice the lod.
-  LOD new_lod;
-  new_lod.reserve(size() - level);
-  auto start = this->at(level)[elem_begin];
-  auto end = this->at(level)[elem_end];
+  LoD new_lod;
+  new_lod.reserve(in.size() - level);
+  auto start = in.at(level)[elem_begin];
+  auto end = in.at(level)[elem_end];
 
-  for (auto it = this->begin() + level; it != this->end(); it++) {
+  for (auto it = in.begin() + level; it != in.end(); it++) {
     auto it_begin = std::find(it->begin(), it->end(), start);
     auto it_end = std::find(it_begin, it->end(), end);
     PADDLE_ENFORCE(it_begin != it->end(), "error in parsing lod info");
@@ -47,13 +46,13 @@ LODTensor::LOD LODTensor::LOD::SliceInLevel(size_t level, size_t elem_begin,
     std::transform(new_lod.back().begin(), new_lod.back().end(),
                    new_lod.back().begin(),
                    [start](int v) { return v - start; });
-    PADDLE_ENFORCE_EQ(new_lod.back().front(), 0, "error in slice LOD");
+    PADDLE_ENFORCE_EQ(new_lod.back().front(), 0, "error in slice LoD");
   }
-  PADDLE_ENFORCE_LE(new_lod.size(), this->size());
+  PADDLE_ENFORCE_LE(new_lod.size(), in.size());
   return new_lod;
 }
 
-bool operator==(const LODTensor::LOD& a, const LODTensor::LOD& b) {
+bool operator==(const LoD& a, const LoD& b) {
   if (a.size() != b.size()) {
     return false;
   }
@@ -70,8 +69,26 @@ bool operator==(const LODTensor::LOD& a, const LODTensor::LOD& b) {
       }
     }
   }
-
   return true;
+}
+
+void LoDTensor::SliceLevels(size_t level_begin, size_t level_end) {
+  auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
+  lod_ = new_lod;
+}
+
+void LoDTensor::SliceInLevel(size_t level, size_t elem_begin, size_t elem_end) {
+  PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
+                 NumLevels());
+  PADDLE_ENFORCE(elem_begin < NumElements(level),
+                 "element begin [%d] out of range [%d]", elem_begin,
+                 NumElements(level));
+  PADDLE_ENFORCE(elem_end < NumElements(level) + 1,
+                 "element end [%d] out of range [%d]", elem_end,
+                 NumElements(level));
+
+  auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
+  lod_ = new_lod;
 }
 
 }  // namespace framework

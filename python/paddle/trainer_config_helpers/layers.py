@@ -53,7 +53,7 @@ __all__ = [
     'cos_sim',
     'hsigmoid',
     'conv_projection',
-    'mse_cost',
+    'square_error_cost',
     'regression_cost',
     'classification_cost',
     'LayerOutput',
@@ -131,13 +131,14 @@ __all__ = [
     'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
+    'switch_order_layer',
     'gated_unit_layer',
     'crop_layer',
     'sub_nested_seq_layer',
     'clip_layer',
     'slice_projection',
     'seq_slice_layer',
-    'kmax_sequence_score_layer',
+    'kmax_seq_score_layer',
     'img_pool3d_layer',
     'scale_shift_layer',
     'img_conv3d_layer',
@@ -239,6 +240,7 @@ class LayerType(object):
     SMOOTH_L1 = 'smooth_l1'
 
     PRELU = 'prelu'
+    SWITCH_ORDER_LAYER = 'switch_order'
     CROP_LAYER = 'crop'
     SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
@@ -4238,13 +4240,18 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
+def square_error_cost(input,
+                      label,
+                      weight=None,
+                      name=None,
+                      coeff=1.0,
+                      layer_attr=None):
     """
-    mean squared error cost:
+    sum of square error cost:
 
     ..  math::
 
-        \\frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
+        cost = \\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
@@ -4273,7 +4280,7 @@ def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
 
 
-regression_cost = mse_cost
+regression_cost = square_error_cost
 
 
 @wrap_name_default("cost")
@@ -5798,9 +5805,9 @@ def huber_regression_cost(input,
                           coeff=1.0,
                           layer_attr=None):
     """
-    In statistics, the Huber loss is a loss function used in robust regression, 
-    that is less sensitive to outliers in data than the squared error loss. 
-    Given a prediction f(x), a label y and :math:`\delta`, the loss function 
+    In statistics, the Huber loss is a loss function used in robust regression,
+    that is less sensitive to outliers in data than the squared error loss.
+    Given a prediction f(x), a label y and :math:`\delta`, the loss function
     is defined as:
 
     .. math:
@@ -5848,13 +5855,13 @@ def huber_classification_cost(input,
                               coeff=1.0,
                               layer_attr=None):
     """
-    For classification purposes, a variant of the Huber loss called modified Huber 
-    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and 
-    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber 
+    For classification purposes, a variant of the Huber loss called modified Huber
+    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and
+    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber
     loss is defined as:
 
     .. math:
-       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1 
+       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1
        loss = -4yf(x), \text{otherwise}
 
     The example usage is:
@@ -5994,7 +6001,7 @@ def cross_entropy_over_beam(input, name=None):
     Note that, if gold falls off the beam at search step t, then the cost is
     calculated over the beam at step t.
 
-    This cost layer always works together with kmax_sequence_score_layer,
+    This cost layer always works together with kmax_seq_score_layer,
     sub_nested_seq_layer, and sequence_slice_layer to trim the input to form a
     sub-search space.
 
@@ -6399,6 +6406,48 @@ def gated_unit_layer(input,
         layer_attr=layer_attr)
 
 
+@layer_support()
+@wrap_name_default('switch_order')
+def switch_order_layer(input,
+                       name=None,
+                       reshape=None,
+                       act=None,
+                       layer_attr=None):
+    """
+    This layer switch dimension order of image input. 
+    From order "batchSize, channels, height, width"
+    to order "batchSize, height, width, channels".
+
+    The example usage is:
+
+    .. code-block:: python
+       reshape = {'height':[ 0, 1, 2], 'width':[3]}
+       switch = switch_order(input=layer, name='switch', reshape=reshape)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param name: Name of this layer.
+    :type name: basestring
+    :param reshape: reshape matrix by axises.
+    :type reshape: Dict
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    l = Layer(
+        name=name,
+        inputs=input.name,
+        reshape=reshape,
+        type=LayerType.SWITCH_ORDER_LAYER,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SWITCH_ORDER_LAYER,
+        parents=input,
+        size=l.config.size)
+
+
 @wrap_name_default()
 @layer_support()
 def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
@@ -6597,14 +6646,14 @@ def seq_slice_layer(input, starts, ends, name=None):
 
 @wrap_name_default()
 @layer_support()
-def kmax_sequence_score_layer(input, name=None, beam_size=1):
+def kmax_seq_score_layer(input, name=None, beam_size=1):
     """
     This layer accepts one input which are scores over a sequence or a nested
     sequence, and returns indices of beam_size sequences with highest scores.
 
     .. code-block:: python
 
-        kmax_indices = kmax_sequence_score_layer(input=input_layer, beam_size)
+        kmax_indices = kmax_seq_score_layer(input=input_layer, beam_size)
 
 
     :param name: The Layer Name.
@@ -6617,10 +6666,10 @@ def kmax_sequence_score_layer(input, name=None, beam_size=1):
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert isinstance(input, LayerOutput), ("kmax_sequence_score_layer "
+    assert isinstance(input, LayerOutput), ("kmax_seq_score_layer "
                                             "accepts only one input.")
     assert input.size == 1, (
-        "input of kmax_sequence_score_layer is a score"
+        "input of kmax_seq_score_layer is a score "
         "over a sequence or a nested sequence, so its width must be 1.")
 
     Layer(

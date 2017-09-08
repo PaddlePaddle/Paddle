@@ -434,9 +434,9 @@ lambda_cost
 ..  autoclass:: paddle.v2.layer.lambda_cost
     :noindex:
 
-mse_cost
+square_error_cost
 --------
-..  autoclass:: paddle.v2.layer.mse_cost
+..  autoclass:: paddle.v2.layer.square_error_cost
     :noindex:
 
 rank_cost
