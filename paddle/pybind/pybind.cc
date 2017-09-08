@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/backward.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -190,6 +191,32 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
+  py::class_<OpDesc>(m, "OpDesc")
+      .def_static("create",
+                  [](py::bytes protobin) {
+                    OpDesc *op_desc = new OpDesc();
+                    PADDLE_ENFORCE(op_desc->ParsePartialFromString(protobin),
+                                   "Cannot parse user input to OpDesc");
+                    PADDLE_ENFORCE(op_desc->IsInitialized(),
+                                   "User OpDesc is not initialized, reason %s",
+                                   op_desc->InitializationErrorString());
+                    return op_desc;
+                  })
+      .def("__str__", &OpDesc::DebugString);
+
+  py::class_<VarDesc>(m, "VarDesc")
+      .def_static("create",
+                  [](py::bytes protobin) {
+                    VarDesc *desc = new VarDesc;
+                    PADDLE_ENFORCE(desc->ParsePartialFromString(protobin),
+                                   "Cannot parse user input to OpDesc");
+                    PADDLE_ENFORCE(desc->IsInitialized(),
+                                   "User OpDesc is not initialized, reason %s",
+                                   desc->InitializationErrorString());
+                    return desc;
+                  })
+      .def("__str__", &VarDesc::DebugString);
+
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
                   [](py::bytes protobin) {
@@ -201,7 +228,7 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc.InitializationErrorString());
                     return OpRegistry::CreateOp(desc);
                   })
-      .def_static("infer_shape",
+      .def_static("infer_shape_compile",
                   [](py::bytes op_desc_bin,
                      std::map<std::string, VarDesc *> &var_descs) {
                     OpDesc desc;
@@ -212,7 +239,7 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc.InitializationErrorString());
                     OpRegistry::InferShape(desc, var_descs);
                   })
-      .def_static("infer_shape",
+      .def_static("infer_shape_run",
                   [](const OperatorBase &op, const Scope &scope) {
                     OpRegistry::InferShape(op, scope);
                   })
