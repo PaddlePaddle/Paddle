@@ -1,7 +1,7 @@
 # Python Interface Design
 
 ## Variable as variable data type (not parameter)
-The class Variable is introduced to define the variables, which are not only parameters but also the input data and intermediate outputs.
+The class `Variable` is introduced to define the variables, which are not only parameters but also the input data and intermediate outputs.
 
 All the variables are defined in a variable scope, `Scope`, it will check duplicate variable names.
 
@@ -40,7 +40,7 @@ class Variable(object):
 in above example, the `unique_name_generator` is introduced to make unique name with a prefix and can be used to generate variables' and operators' names.
 
 ## Scope Stack for Block Inherience
-Each block should has a variable scope that is inheriented from parent's variable scope.
+Each block should have a variable scope that is inheriented from parent's variable scope.
 That needs a stack of variable scopes, so that when user's model definition jumps out a sub-block, 
 the following variables could be defined in current variable scope.
 
