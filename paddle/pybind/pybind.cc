@@ -202,12 +202,12 @@ All parameter, weight, gradient are variables in Paddle.
                                    op_desc->InitializationErrorString());
                     return op_desc;
                   })
-      .def("__str__", &OpDesc::DebugString);
+      .def("__str__", [](OpDesc &self) { return self.DebugString(); });
 
   py::class_<VarDesc>(m, "VarDesc")
       .def_static("create",
                   [](py::bytes protobin) {
-                    VarDesc *desc = new VarDesc;
+                    VarDesc *desc = new VarDesc();
                     PADDLE_ENFORCE(desc->ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc->IsInitialized(),
@@ -215,7 +215,7 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc->InitializationErrorString());
                     return desc;
                   })
-      .def("__str__", &VarDesc::DebugString);
+      .def("__str__", [](VarDesc &self) { return self.DebugString(); });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
@@ -274,7 +274,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](operators::NetOp &self, const OperatorBase &op) {
              self.AppendOp(op);
            })
-      .def("complete_add_op", &operators::NetOp::CompleteAddOp)
+      //      .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
       });
