@@ -74,49 +74,31 @@ class ModifiedHuberLossKernel : public framework::OpKernel {
   }
 };
 
-// Use thrust lib to unify cpu and gpu
 // CPU backward kernel
 template <typename T>
 class ModifiedHuberLossGradCPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto* in1 = context.Input<Tensor>("Y");
-    auto* in2 = context.Input<Tensor>("intermediate_val");
-    auto* in3 = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* in0 = context.Input<Tensor>("Y");
+    auto* in1 = context.Input<Tensor>("intermediate_val");
+    auto* in2 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* out1 = context.Output<Tensor>(framework::GradVarName("X"));
-
-    // loop inter_val (x<-1) (x<1) otherwise
-    const T* p_inter_val = in2->data<T>();
-    const T* p_out_grad = in3->data<T>();
-    size_t counts = static_cast<size_t>(framework::product(in2->dims()));
 
     if (out0) {
-      T* p_x_grad = out0->mutable_data<T>(context.GetPlace());
-      const T* p_y = in1->data<T>();
-      ModifiedHuberLossBackward(p_inter_val, p_y, p_out_grad, p_x_grad, counts);
-    }
-
-    if (out1) {
-      T* p_y_grad = out1->mutable_data<T>(context.GetPlace());
-      const T* p_x = in0->data<T>();
-      ModifiedHuberLossBackward(p_inter_val, p_x, p_out_grad, p_y_grad, counts);
-    }
-  }
-
- protected:
-  void ModifiedHuberLossBackward(const T* p_inter_data, const T* p_in_data,
-                                 const T* p_in_grad, T* p_out_grad,
-                                 size_t counts) const {
-    for (size_t i = 0; i < counts; ++i) {
-      if (p_inter_data[i] < -1) {
-        p_out_grad[i] = -4 * p_in_data[i] * p_in_grad[i];
-      } else if (p_inter_data[i] < 1) {
-        p_out_grad[i] =
-            -2 * (1 - p_inter_data[i]) * p_in_data[i] * p_in_grad[i];
-      } else {
-        p_out_grad[i] = 0;
+      const T* y_ptr = in0->data<T>();
+      const T* inter_val_ptr = in1->data<T>();
+      const T* out_grad_ptr = in2->data<T>();
+      size_t counts = static_cast<size_t>(framework::product(in1->dims()));
+      T* x_grad_ptr = out0->mutable_data<T>(context.GetPlace());
+      for (size_t i = 0; i < counts; ++i) {
+        if (inter_val_ptr[i] < -1) {
+          x_grad_ptr[i] = -4 * (2 * y_ptr[i] - 1) * out_grad_ptr[i];
+        } else if (inter_val_ptr[i] < 1) {
+          x_grad_ptr[i] = -2 * (1 - inter_val_ptr[i]) * (2 * y_ptr[i] - 1) *
+                          out_grad_ptr[i];
+        } else {
+          x_grad_ptr[i] = 0;
+        }
       }
     }
   }

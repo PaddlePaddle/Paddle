@@ -45,11 +45,25 @@ class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
   ModifiedHuberLossOpMaker(framework::OpProto* proto,
                            framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "");
-    AddInput("Y", "");
-    AddOutput("intermediate_val", "").AsIntermediate();
-    AddOutput("Out", "");
-    AddComment("");
+    AddInput("X", "Input value of ModifiedHuberLossOp.");
+    AddInput("Y", "Target labels of ModifiedHuberLossOp.");
+    AddOutput("intermediate_val",
+              "Variable to save intermediate result which will be reused in "
+              "backward processing.")
+        .AsIntermediate();
+    AddOutput("Out", "Classification loss for input X.");
+    AddComment(R"DOC(
+Modified huber loss is used in binary classification problem. Dimensions of
+input X and target Y are both (N, 1) and so is the dimension of output loss.
+Since target Y is not differentiable, cacluating gradient for Y is illegal.
+The formulation of modified huber loss is:
+
+L(y, f(x)) = max(0, 1 - yf(x))^2  for yf(x) >= -1,
+             -4yf(x)              otherwise.
+
+Make sure the values of target label Y are in {0, 1} here. The operator will
+scale values of Y to {-1, +1} when computing loss and gradients.
+)DOC");
   }
 };
 
@@ -64,7 +78,6 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
     auto* intermediate_val = context.Input<Tensor>("intermediate_val");
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* y_grad = context.Output<Tensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_NOT_NULL(x, "Input X must not be null.");
     PADDLE_ENFORCE_NOT_NULL(y, "Target Y must not be null.");
@@ -80,7 +93,6 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
         "Dimension of Out gradient and X must be the same (N*1).");
 
     if (x_grad) x_grad->Resize(x->dims());
-    if (y_grad) y_grad->Resize(y->dims());
   }
 };
 
