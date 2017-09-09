@@ -520,6 +520,7 @@ message LayerConfig {
   // for HuberRegressionLoss
   optional double delta = 57 [ default = 1.0 ];
 
+  // for 3D data
   optional uint64 depth = 58 [ default = 1 ];
 
   // for switch order layer

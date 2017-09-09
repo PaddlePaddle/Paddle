@@ -354,6 +354,10 @@ class LayerOutput(object):
     def height(self):
         return cp.g_layer_map[self.full_name].height
 
+    @property
+    def depth(self):
+        return cp.g_layer_map[self.full_name].depth
+
     def set_input(self, input):
         """
         Set the input for a memory layer. Can only be used for memory layer
@@ -943,7 +947,7 @@ def data_layer(name, size, depth=None, height=None, width=None,
     if height is not None and width is not None:
         num_filters = size / (width * height * depth)
         assert num_filters * width * height * depth == size, \
-                "size=%s width=%s height=%s depth=%s"  % (size, width, height, depth)
+                "size=%s width=%s height=%s depth=%s" % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
@@ -2953,6 +2957,7 @@ def img_cmrnorm_layer(input,
 def batch_norm_layer(input,
                      act=None,
                      name=None,
+                     img3D=False,
                      num_channels=None,
                      bias_attr=None,
                      param_attr=None,
@@ -3042,6 +3047,7 @@ def batch_norm_layer(input,
            (batch_norm_type == "cudnn_batch_norm")
     l = Layer(
         name=name,
+        img3D=img3D,
         inputs=Input(
             input.name, image=Image(channels=num_channels), **param_attr.attr),
         active_type=act.name,
