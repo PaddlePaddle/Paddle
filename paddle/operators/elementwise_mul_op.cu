@@ -18,7 +18,8 @@
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
-    elementwise_mul, ops::ElemWiseMulKernel<paddle::platform::GPUPlace, float>);
+    elementwise_mul,
+    ops::ElementWiseMulKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
     elementwise_mul_grad,
-    ops::ElemWiseMulGradKernel<paddle::platform::GPUPlace, float>);
+    ops::ElementWiseMulGradKernel<paddle::platform::GPUPlace, float>);

@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-class ElemWiseMulOp : public framework::OperatorWithKernel {
+class ElementWiseMulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -32,13 +32,15 @@ class ElemWiseMulOp : public framework::OperatorWithKernel {
   }
 };
 
-class ElemWiseMulOpMaker : public framework::OpProtoAndCheckerMaker {
+class ElementWiseMulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ElemWiseMulOpMaker(framework::OpProto *proto,
-                     framework::OpAttrChecker *op_checker)
+  ElementWiseMulOpMaker(framework::OpProto *proto,
+                        framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of elementwise mul op");
     AddInput("Y", "The second input of elementwise mul op");
+    AddAttr<int>("axis", "Optional input parameter of elementwise mul op");
+    AddAttr<int>("broadcast", "Optional input parameter of elementwise mul op");
     AddOutput("Out", "The output of elementwise mul op");
     AddComment(R"DOC(
 Element-wise mul operator.
@@ -48,7 +50,7 @@ The equation is: Out = X ⊙ Y
   }
 };
 
-class ElemWiseMulOpGrad : public framework::OperatorWithKernel {
+class ElementWiseMulOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -75,10 +77,11 @@ class ElemWiseMulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_mul, ops::ElemWiseMulOp, ops::ElemWiseMulOpMaker,
-            elementwise_mul_grad, ops::ElemWiseMulOpGrad);
+REGISTER_OP(elementwise_mul, ops::ElementWiseMulOp, ops::ElementWiseMulOpMaker,
+            elementwise_mul_grad, ops::ElementWiseMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    elementwise_mul, ops::ElemWiseMulKernel<paddle::platform::CPUPlace, float>);
+    elementwise_mul,
+    ops::ElementWiseMulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad,
-    ops::ElemWiseMulGradKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementWiseMulGradKernel<paddle::platform::CPUPlace, float>);

@@ -28,44 +28,65 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class ElemWiseMulKernel : public framework::OpKernel {
+class ElementWiseMulKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
-    auto* z = context.Output<Tensor>("Out");
-    z->mutable_data<T>(context.GetPlace());
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* z = ctx.Output<Tensor>("Out");
+    z->mutable_data<T>(ctx.GetPlace());
 
-    auto* input_axis = context.InputVar("axis");
-    auto* input_broadcast = context.InputVar("broadcast");
+    auto x_dims = x->dims();
+    auto y_dims = y->dims();
+    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
+                      "Rank of first input must >= rank of second input.")
 
-    int axis = -1;
-    if (nullptr != input_axis) {
-      axis = input_axis->Get<int>();
-    }
-
-    int broadcast = 0;
-    if (nullptr != input_broadcast) {
-      PADDLE_ENFORCE_NOT_NULL(input_axis);
-      broadcast = input_broadcast->Get<int>();
-    }
-
-    printf("axis:%d broadcast:%d\n", axis, broadcast);
-    if (x->dims() == y->dims() || product(y->dims()) == 1) {
+    // Same shape or product(y_dims) == 1
+    if (x_dims == y_dims || product(y_dims) == 1) {
       auto x_e = framework::EigenVector<T>::Flatten(*x);
       auto y_e = framework::EigenVector<T>::Flatten(*y);
       auto z_e = framework::EigenVector<T>::Flatten(*z);
 
-      z_e.device(context.GetEigenDevice<Place>()) = x_e * y_e;
-      return
+      z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_e;
+      return;
     }
 
-    // TODO(gongweibao):
+    // TODO(gongweibao): if axis is optional?
+    bool broadcast = ctx.template Attr<int>("broadcast");
+    PADDLE_ENFORCE(broadcast, "Do you forget broadcast parameter?");
+
+    int axis = ctx.template Attr<int>("axis");
+    PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
+                   "Axis should be in range [0, x_dims)");
+
+    printf("axis:%d broadcast:%d\n", axis, broadcast);
+
+    int pre = 1;
+    int n = 1;
+    int post = 1;
+    for (int i = 0; i < axis; ++i) {
+      pre *= x_dims[i];
+    }
+    for (int i = 0; i < y_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(x_dims[i + axis], y_dims[i],
+                        "Broadcast dimension mismatch.");
+      n *= y_dims[i];
+    }
+    for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
+      post *= x_dims[i];
+    }
+
+    if (post == 1) {
+      // functor_.RunWithBroadcast(Adata, Bdata, Cdata, pre, n, &ctx_);
+    } else {
+      // functor_.RunWithBroadcast2(
+      //       Adata, Bdata, Cdata, pre, n, post, &ctx_);
+    }
   }
 };
 
 template <typename Place, typename T>
-class ElemWiseMulGradKernel : public framework::OpKernel {
+class ElementWiseMulGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
