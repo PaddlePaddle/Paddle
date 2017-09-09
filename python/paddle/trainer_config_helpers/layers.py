@@ -2957,6 +2957,7 @@ def batch_norm_layer(input,
                      bias_attr=None,
                      param_attr=None,
                      layer_attr=None,
+                     mean_var_names=None,
                      batch_norm_type=None,
                      moving_average_fraction=0.9,
                      use_global_stats=None):
@@ -3014,6 +3015,8 @@ def batch_norm_layer(input,
     :type param_attr: ParameterAttribute
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param mean_var_names: [mean name, variance name]
+    :type mean_var_names: string list
     :param use_global_stats: whether use moving mean/variance statistics
                              during testing peroid. If None or True,
                              it will use moving mean/variance statistics during
@@ -3044,6 +3047,7 @@ def batch_norm_layer(input,
         active_type=act.name,
         type=LayerType.BATCH_NORM_LAYER,
         batch_norm_type=batch_norm_type,
+        mean_var_names=mean_var_names,
         bias=ParamAttr.to_bias(bias_attr),
         moving_average_fraction=moving_average_fraction,
         use_global_stats=use_global_stats,

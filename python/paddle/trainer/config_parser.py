@@ -2366,6 +2366,7 @@ class BatchNormLayer(LayerBase):
                  inputs,
                  bias=True,
                  use_global_stats=True,
+                 mean_var_names=None,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
                  **xargs):
@@ -2421,11 +2422,11 @@ class BatchNormLayer(LayerBase):
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
+        if mean_var_names is not None:
+            assert len(mean_var_names) == 2
+            self.inputs[1].parameter_name = mean_var_names[0]
+            self.inputs[2].parameter_name = mean_var_names[1]
 
-        self.inputs[1].parameter_name = self.inputs[0].parameter_name.split('.')[0] + '.' + \
-                                        self.inputs[1].parameter_name.split('.')[1]
-        self.inputs[2].parameter_name = self.inputs[0].parameter_name.split('.')[0] + '.' + \
-                                        self.inputs[2].parameter_name.split('.')[1]
         self.create_input_parameter(0, psize)
         self.create_input_parameter(1, psize, dims)
         self.create_input_parameter(2, psize, dims)
