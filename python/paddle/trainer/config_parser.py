@@ -2421,6 +2421,11 @@ class BatchNormLayer(LayerBase):
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
+
+        self.inputs[1].parameter_name = self.inputs[0].parameter_name.split('.')[0] + '.' + \
+                                        self.inputs[1].parameter_name.split('.')[1]
+        self.inputs[2].parameter_name = self.inputs[0].parameter_name.split('.')[0] + '.' + \
+                                        self.inputs[2].parameter_name.split('.')[1]
         self.create_input_parameter(0, psize)
         self.create_input_parameter(1, psize, dims)
         self.create_input_parameter(2, psize, dims)
