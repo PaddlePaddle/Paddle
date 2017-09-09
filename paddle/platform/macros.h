@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/scatter_op.h"
+#pragma once
 
-namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(scatter,
-                       ops::ScatterOpKernel<paddle::platform::GPUPlace, float>);
+// Disable the copy and assignment operator for a class.
+#ifndef DISABLE_COPY_AND_ASSIGN
+#define DISABLE_COPY_AND_ASSIGN(classname) \
+ private:                                  \
+  classname(const classname&) = delete;    \
+  classname& operator=(const classname&) = delete
+#endif

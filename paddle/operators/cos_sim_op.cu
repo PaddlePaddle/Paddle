@@ -13,8 +13,10 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/gather_op.h"
+#include "paddle/operators/cos_sim_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gather,
-                       ops::GatherOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(cos_sim,
+                       ops::CosSimKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    cos_sim_grad, ops::CosSimGradKernel<paddle::platform::GPUPlace, float>);
