@@ -2366,9 +2366,9 @@ class BatchNormLayer(LayerBase):
                  inputs,
                  bias=True,
                  use_global_stats=True,
-                 mean_var_names=None,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
+                 mean_var_names=None,
                  **xargs):
         if inputs is None:
             inputs = []
