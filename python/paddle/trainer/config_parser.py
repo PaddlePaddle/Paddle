@@ -3748,8 +3748,8 @@ class SwitchOrderLayer(LayerBase):
     def __init__(self, name, inputs, reshape, **xargs):
         super(SwitchOrderLayer, self).__init__(
             name, 'switch_order', 0, inputs=inputs, **xargs)
-        self.config.reshape_conf.heightAxis.extend(reshape['height'])
-        self.config.reshape_conf.widthAxis.extend(reshape['width'])
+        self.config.reshape_conf.height_axis.extend(reshape['height'])
+        self.config.reshape_conf.width_axis.extend(reshape['width'])
 
 
 # Deprecated, use a new layer specific class instead
