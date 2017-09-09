@@ -70,14 +70,14 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("diff", "Intermediate variable to cache Win*(X-Y).")
         .AsIntermediate();
     AddOutput("Out", "Final smooth l1 loss of inputs.");
-    AddComment(R"DOC(
-Compute SmoothL1Loss for input and target.
-
-The equation is: Out = 0.5 * (sigma * (X - Y)) ^ 2  if abs(X - Y) < 1 / sigma^2
-                       abs(X - Y) - 0.5 / sigma^2   otherwise
-)DOC");
     AddAttr<AttrType>("sigma", "Hyper parameter, default value is 3.0 .")
         .SetDefault(3.0);
+    AddComment(R"DOC(
+Compute SmoothL1Loss for input and target.
+The equation is:
+loss = 0.5 * (sigma * (x - y)) ^ 2 if abs(x - y) < 1 / sigma^2
+       abs(x - y) - 0.5 / sigma^2  otherwise
+)DOC");
   }
 };
 
