@@ -537,7 +537,7 @@ void getDetectionOutput(const real* confData,
   Matrix::resizeOrCreate(outBuffer, numKept, 7, false, false);
   real* bufferData = outBuffer->getData();
   for (size_t i = 0; i < 7; i++)
-     bufferData[i] = -1;
+    bufferData[i] = -1;
   size_t count = 0;
   for (size_t n = 0; n < batchSize; ++n) {
     for (map<size_t, vector<size_t>>::const_iterator it = allIndices[n].begin();
