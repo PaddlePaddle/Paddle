@@ -37,7 +37,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_PYTHON=${WITH_PYTHON:-ON}
       -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
       -DCUDNN_ROOT=/usr/
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
       -DWITH_TESTING=${WITH_TESTING:-ON}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================

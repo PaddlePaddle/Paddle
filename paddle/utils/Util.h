@@ -33,6 +33,13 @@ limitations under the License. */
 #include "Flags.h"
 #include "hl_gpu.h"
 
+#if defined(__ANDROID__) && (__ANDROID_API__ < 21)
+inline int rand_r(unsigned int* seedp) {
+  (void)seedp;
+  return rand();
+}
+#endif
+
 /**
  * Loop over the elements in a container
  * TODO(yuyang18): It's this foreach useful? Why not use C++ 11 foreach,

@@ -1332,6 +1332,12 @@ def parse_image(image, input_layer_name, image_conf):
         get_img_size(input_layer_name, image_conf.channels)
 
 
+def parse_image3d(image, input_layer_name, image_conf):
+    image_conf.channels = image.channels
+    image_conf.img_size, image_conf.img_size_y, image_conf.img_size_z = \
+        get_img3d_size(input_layer_name, image_conf.channels)
+
+
 def parse_norm(norm, input_layer_name, norm_conf):
     norm_conf.norm_type = norm.norm_type
     config_assert(
@@ -2365,9 +2371,11 @@ class BatchNormLayer(LayerBase):
                  name,
                  inputs,
                  bias=True,
+                 img3D=False,
                  use_global_stats=True,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
+                 mean_var_names=None,
                  **xargs):
         if inputs is None:
             inputs = []
@@ -2409,23 +2417,68 @@ class BatchNormLayer(LayerBase):
 
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
-        parse_image(self.inputs[0].image, input_layer.name, image_conf)
-
-        # Only pass the width and height of input to batch_norm layer
-        # when either of it is non-zero.
-        if input_layer.width != 0 or input_layer.height != 0:
-            self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                               image_conf.channels, False)
+        if img3D:
+            parse_image3d(self.inputs[0].image, input_layer.name, image_conf)
+            # Only pass the width and height of input to batch_norm layer
+            # when either of it is non-zero.
+            if input_layer.width != 0 or input_layer.height != 0:
+                self.set_cnn_layer(
+                    input_layer_name=name,
+                    depth=image_conf.img_size_z,
+                    height=image_conf.img_size_y,
+                    width=image_conf.img_size,
+                    channels=image_conf.channels,
+                    is_print=True)
+            else:
+                self.set_layer_size(input_layer.size)
         else:
-            self.set_layer_size(input_layer.size)
+            parse_image(self.inputs[0].image, input_layer.name, image_conf)
+            # Only pass the width and height of input to batch_norm layer
+            # when either of it is non-zero.
+            if input_layer.width != 0 or input_layer.height != 0:
+                self.set_cnn_layer(
+                    input_layer_name=name,
+                    height=image_conf.img_size_y,
+                    width=image_conf.img_size,
+                    channels=image_conf.channels,
+                    is_print=True)
+            else:
+                self.set_layer_size(input_layer.size)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
+        if mean_var_names is not None:
+            assert len(mean_var_names) == 2
+            self.inputs[1].parameter_name = mean_var_names[0]
+            self.inputs[2].parameter_name = mean_var_names[1]
+
         self.create_input_parameter(0, psize)
         self.create_input_parameter(1, psize, dims)
         self.create_input_parameter(2, psize, dims)
 
         self.create_bias_parameter(bias, psize)
+
+    def set_cnn_layer(self,
+                      input_layer_name,
+                      depth=None,
+                      height=None,
+                      width=None,
+                      channels=None,
+                      is_print=True):
+        depthIsNone = False
+        if depth is None:
+            depth = 1
+            depthIsNone = True
+        size = depth * height * width * channels
+        self.set_layer_size(size)
+        self.set_layer_height_width(height, width)
+        self.set_layer_depth(depth)
+        if is_print and depthIsNone:
+            print("output for %s: c = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, height, width, size))
+        elif is_print:
+            print("output for %s: c = %d, d = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, depth, height, width, size))
 
     def calc_parameter_size(self, image_conf):
         return image_conf.channels
@@ -2688,9 +2741,20 @@ class AddToLayer(LayerBase):
         super(AddToLayer, self).__init__(
             name, 'addto', 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            self.set_layer_size(input_layer.size)
+
+        if len(self.inputs) > 1:
+            for input_index in xrange(len(self.inputs)):
+                assert self.get_input_layer(0).height == self.get_input_layer(
+                    input_index).height
+                assert self.get_input_layer(0).width == self.get_input_layer(
+                    input_index).width
+                assert self.get_input_layer(0).depth == self.get_input_layer(
+                    input_index).depth
+
+        self.set_layer_size(self.get_input_layer(0).size)
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                        self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
         self.create_bias_parameter(bias, self.config.size)
 
 
@@ -3370,11 +3434,20 @@ class ConcatenateLayer(LayerBase):
             name, 'concat', 0, inputs=inputs, **xargs)
         size = 0
         for input_index in xrange(len(self.inputs)):
+            assert self.get_input_layer(0).height == self.get_input_layer(
+                input_index).height
+            assert self.get_input_layer(0).width == self.get_input_layer(
+                input_index).width
+            assert self.get_input_layer(0).depth == self.get_input_layer(
+                input_index).depth
             input_layer = self.get_input_layer(input_index)
             input = self.inputs[input_index]
             if self.config.size == 0:
                 size += input_layer.size
 
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                    self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
         self.set_layer_size(size)
 
 
@@ -3668,6 +3741,15 @@ class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
         super(RecurrentLayerGroup, self).__init__(
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
+
+
+@config_layer('switch_order')
+class SwitchOrderLayer(LayerBase):
+    def __init__(self, name, inputs, reshape, **xargs):
+        super(SwitchOrderLayer, self).__init__(
+            name, 'switch_order', 0, inputs=inputs, **xargs)
+        self.config.reshape_conf.heightAxis.extend(reshape['height'])
+        self.config.reshape_conf.widthAxis.extend(reshape['width'])
 
 
 # Deprecated, use a new layer specific class instead

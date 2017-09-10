@@ -271,6 +271,7 @@ message ImageConfig {
   // The size of input feature map.
   required uint32 img_size = 8;
   optional uint32 img_size_y = 9;
+  optional uint32 img_size_z = 10 [ default = 1 ];
 }
 
 message PriorBoxConfig {
@@ -285,6 +286,11 @@ message PadConfig {
   repeated uint32 pad_c = 2;
   repeated uint32 pad_h = 3;
   repeated uint32 pad_w = 4;
+}
+
+message ReshapeConfig {
+  repeated uint32 height_axis = 1;
+  repeated uint32 width_axis = 2;
 }
 
 message MultiBoxLossConfig {
@@ -339,7 +345,6 @@ message LayerInputConfig {
 }
 
 message LayerConfig {
-
   required string name = 1;
   required string type = 2;
   optional uint64 size = 3;
@@ -515,7 +520,11 @@ message LayerConfig {
   // for HuberRegressionLoss
   optional double delta = 57 [ default = 1.0 ];
 
+  // for 3D data
   optional uint64 depth = 58 [ default = 1 ];
+
+  // for switch order layer
+  optional ReshapeConfig reshape_conf = 59;
 }
 
 message EvaluatorConfig {
