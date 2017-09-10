@@ -3,6 +3,7 @@ import numpy as np
 from gradient_checker import GradientChecker, create_op
 from op_test_util import OpTestMeta
 import random
+from paddle.v2.framework.op import Operator
 
 
 class TestElementwiseMulOp_Matrix(unittest.TestCase):
@@ -99,36 +100,42 @@ class TestElementwiseMulOp_broadcast_3(unittest.TestCase):
         }
 
 
-'''
 class ElemMulGradOpTest_Matrix(GradientChecker):
+    def setUp(self):
+        self.op = Operator(
+            "elementwise_mul", X="X", Y="Y", Out="Out", axis=0, broadcast=0)
+
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        }
+
     def test_mul(self):
-        op = create_op("elementwise_mul")
         """ Warning
         CPU gradient check error!
         'X': np.random.random((32,84)).astype("float32"),
         'Y': np.random.random((32,84)).astype("float32")
         """
-        inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        self.compare_grad(self.op, self.inputs)
+        self.check_grad(
+            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+
+
+class ElemMulGradOpTest_broadcast_3(GradientChecker):
+    def setUp(self):
+        self.op = Operator(
+            "elementwise_mul", X="X", Y="Y", Out="Out", axis=1, broadcast=1)
+
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4, 5).astype(np.float32),
+            'Y': np.random.rand(3, 4).astype(np.float32)
         }
 
-        self.compare_grad(op, inputs)
-        self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.02)
-
-
-class ElemMulGradOpTest_Vector(GradientChecker):
     def test_mul(self):
-        op = create_op("elementwise_mul")
-        inputs = {
-            'X': np.random.random((32, )).astype("float32"),
-            'Y': np.random.random((32, )).astype("float32")
-        }
-        self.compare_grad(op, inputs)
+        self.compare_grad(self.op, self.inputs)
         self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.02)
-'''
+            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+
 
 if __name__ == '__main__':
     unittest.main()

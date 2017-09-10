@@ -25,11 +25,8 @@ class ElementWiseMulOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto y_dim = ctx.Input<Tensor>("Y")->dims();
-    /*
-    PADDLE_ENFORCE_EQ(
-        x_dim, y_dim,
-        "First matrix's dims must be equal with second matrix's dims.");
-        */
+    PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
+                      "Rank of first input must >= rank of second input.")
     ctx.Output<Tensor>("Out")->Resize(x_dim);
   }
 };
@@ -68,8 +65,9 @@ class ElementWiseMulOpGrad : public framework::OperatorWithKernel {
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    PADDLE_ENFORCE(x_dims == out_dims, "Out@GRAD must equal to X dims");
-    PADDLE_ENFORCE(y_dims == out_dims, "Out@GRAD must equal to Y dims");
+
+    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
+                      "Rank of first input must >= rank of second input.")
 
     x_grad->Resize(x_dims);
     y_grad->Resize(y_dims);

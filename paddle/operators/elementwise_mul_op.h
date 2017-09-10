@@ -14,11 +14,7 @@
 
 #pragma once
 
-#include "paddle/operators/math/math_function.h"
-
-#include <iostream>
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
+#include "elementwise_op.h"
 
 namespace paddle {
 namespace operators {
@@ -59,32 +55,18 @@ class ElementWiseMulKernel : public framework::OpKernel {
     PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
                    "Axis should be in range [0, x_dims)");
 
-    int pre = 1;
-    int n = 1;
-    int post = 1;
-    for (int i = 0; i < axis; ++i) {
-      pre *= x_dims[i];
-    }
-    for (int i = 0; i < y_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(x_dims[i + axis], y_dims[i],
-                        "Broadcast dimension mismatch.");
-      n *= y_dims[i];
-    }
-    for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
-      post *= x_dims[i];
-    }
-
-    Eigen::DSizes<int, 1> one_d(x_e.size());
+    int pre, n, post;
+    get_slice(x_dims, y_dims, axis, pre, n, post);
     if (post == 1) {
       auto y_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
                          .broadcast(Eigen::DSizes<int, 2>(pre, 1))
-                         .reshape(one_d);
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
       z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_bcast;
       return;
     } else {
       auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
                          .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
-                         .reshape(one_d);
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
       z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_bcast;
       return;
     }
@@ -97,6 +79,10 @@ class ElementWiseMulGradKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
+
+    auto x_dims = x->dims();
+    auto y_dims = y->dims();
+
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -110,8 +96,41 @@ class ElementWiseMulGradKernel : public framework::OpKernel {
     auto dy_e = framework::EigenVector<T>::Flatten(*dy);
     auto dout_e = framework::EigenVector<T>::Flatten(*dout);
 
-    dx_e.device(ctx.GetEigenDevice<Place>()) = dout_e * y_e;
-    dy_e.device(ctx.GetEigenDevice<Place>()) = x_e * dout_e;
+    if (x_dims == y_dims || product(y_dims) == 1) {
+      dx_e.device(ctx.GetEigenDevice<Place>()) = dout_e * y_e;
+      dy_e.device(ctx.GetEigenDevice<Place>()) = x_e * dout_e;
+      return;
+    }
+
+    int axis = ctx.template Attr<int>("axis");
+
+    int pre, n, post;
+    get_slice(x_dims, y_dims, axis, pre, n, post);
+
+    // TODO(gongweibao): wrap reshape to a function.
+    if (post == 1) {
+      auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
+                           .broadcast(Eigen::DSizes<int, 2>(pre, 1))
+                           .reshape(Eigen::DSizes<int, 1>(x_e.size()));
+      dx_e.device(ctx.GetEigenDevice<Place>()) = dout_e * y_e_bcast;
+
+      dy_e.device(ctx.GetEigenDevice<Place>()) =
+          (x_e * dout_e)
+              .reshape(Eigen::DSizes<int, 2>(pre, n))
+              .sum(Eigen::array<int, 1>{{0}});
+      return;
+    } else {
+      auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
+                           .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
+                           .reshape(Eigen::DSizes<int, 1>(x_e.size()));
+      dx_e.device(ctx.GetEigenDevice<Place>()) = dout_e * y_e_bcast;
+
+      dy_e.device(ctx.GetEigenDevice<Place>()) =
+          (x_e * dout_e)
+              .reshape(Eigen::DSizes<int, 3>(pre, n, post))
+              .sum(Eigen::array<int, 2>{{0, 2}});
+      return;
+    }
   }
 };
 
