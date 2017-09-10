@@ -25,9 +25,11 @@ class ElementWiseMulOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto y_dim = ctx.Input<Tensor>("Y")->dims();
+    /*
     PADDLE_ENFORCE_EQ(
         x_dim, y_dim,
         "First matrix's dims must be equal with second matrix's dims.");
+        */
     ctx.Output<Tensor>("Out")->Resize(x_dim);
   }
 };

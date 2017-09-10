@@ -37,20 +37,16 @@ class ElementWiseMulKernel : public framework::OpKernel {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
 
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto z_e = framework::EigenVector<T>::Flatten(*z);
+
     auto x_dims = x->dims();
     auto y_dims = y->dims();
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
 
-    auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
-    auto z_e = framework::EigenVector<T>::Flatten(*z);
-    // Same shape or product(y_dims) == 1
     if (x_dims == y_dims || product(y_dims) == 1) {
-      // auto x_e = framework::EigenVector<T>::Flatten(*x);
-      // auto y_e = framework::EigenVector<T>::Flatten(*y);
-      // auto z_e = framework::EigenVector<T>::Flatten(*z);
-
       z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_e;
       return;
     }
@@ -62,8 +58,6 @@ class ElementWiseMulKernel : public framework::OpKernel {
     int axis = ctx.template Attr<int>("axis");
     PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
                    "Axis should be in range [0, x_dims)");
-
-    printf("axis:%d broadcast:%d\n", axis, broadcast);
 
     int pre = 1;
     int n = 1;
@@ -80,30 +74,18 @@ class ElementWiseMulKernel : public framework::OpKernel {
       post *= x_dims[i];
     }
 
-    // printf("%d\n", x_e.size());
-    std::cout << x_e.size() << std::endl;
-    Eigen::DSizes<int, 3> bcast_row(2, 1, 4);
     Eigen::DSizes<int, 1> one_d(x_e.size());
-    auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, 3, 1))
-                       .broadcast(bcast_row)
-                       .reshape(one_d);
-
     if (post == 1) {
-      // functor_.RunWithBroadcast(Adata, Bdata, Cdata, pre, n, &ctx_);
-      // auto a = framework::EigenMatrix<T>::From(*x);
-      /*
-      auto a_e = framework::EigenMatrix<T>::Reshape(*x, axis);
-      auto y_e = framework::EigenVector<T>::Flatten(*y);
-      z = a_e * y_e;
-      */
+      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
+                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))
+                         .reshape(one_d);
+      z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_bcast;
       return;
     } else {
-      // functor_.RunWithBroadcast2(
-      //       Adata, Bdata, Cdata, pre, n, post, &ctx_);
-      LOG(INFO) << "Before assign";
+      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
+                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
+                         .reshape(one_d);
       z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_bcast;
-      LOG(INFO) << "After assign";
-      printf("get z_e\n");
       return;
     }
   }
