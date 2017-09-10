@@ -16,6 +16,7 @@
 
 #include "paddle/operators/math/math_function.h"
 
+#include <iostream>
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
@@ -41,11 +42,14 @@ class ElementWiseMulKernel : public framework::OpKernel {
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
 
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto z_e = framework::EigenVector<T>::Flatten(*z);
     // Same shape or product(y_dims) == 1
     if (x_dims == y_dims || product(y_dims) == 1) {
-      auto x_e = framework::EigenVector<T>::Flatten(*x);
-      auto y_e = framework::EigenVector<T>::Flatten(*y);
-      auto z_e = framework::EigenVector<T>::Flatten(*z);
+      // auto x_e = framework::EigenVector<T>::Flatten(*x);
+      // auto y_e = framework::EigenVector<T>::Flatten(*y);
+      // auto z_e = framework::EigenVector<T>::Flatten(*z);
 
       z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_e;
       return;
@@ -76,11 +80,31 @@ class ElementWiseMulKernel : public framework::OpKernel {
       post *= x_dims[i];
     }
 
+    // printf("%d\n", x_e.size());
+    std::cout << x_e.size() << std::endl;
+    Eigen::DSizes<int, 3> bcast_row(2, 1, 4);
+    Eigen::DSizes<int, 1> one_d(x_e.size());
+    auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, 3, 1))
+                       .broadcast(bcast_row)
+                       .reshape(one_d);
+
     if (post == 1) {
       // functor_.RunWithBroadcast(Adata, Bdata, Cdata, pre, n, &ctx_);
+      // auto a = framework::EigenMatrix<T>::From(*x);
+      /*
+      auto a_e = framework::EigenMatrix<T>::Reshape(*x, axis);
+      auto y_e = framework::EigenVector<T>::Flatten(*y);
+      z = a_e * y_e;
+      */
+      return;
     } else {
       // functor_.RunWithBroadcast2(
       //       Adata, Bdata, Cdata, pre, n, post, &ctx_);
+      LOG(INFO) << "Before assign";
+      z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_bcast;
+      LOG(INFO) << "After assign";
+      printf("get z_e\n");
+      return;
     }
   }
 };
