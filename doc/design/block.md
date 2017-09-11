@@ -26,7 +26,7 @@ m_boot = some_op()
 W = pd.Variable(shape=[20, 20])
 U = pd.Varable(shape=[20, 20])
 
-rnn = create_RNNOp()
+rnn = create_rnn()
 with rnn.stepnet() as net:
   # declare the input variables that need to be segmented into steps
   x = net.add_input(v)
@@ -58,7 +58,7 @@ Child block's name scopes should inherit the father's so that OpDesc in child bl
 a = pd.Varaible(shape=[20, 20])
 b = pd.fc(a, params=["fc.w", "fc.b"])
 
-rnn = pd.create_RNNOp()
+rnn = pd.create_rnn()
 with rnn.stepnet() as net:
     x = net.add_input(a)
     # reuse fc's parameter
