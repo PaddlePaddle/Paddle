@@ -9,7 +9,7 @@ class TestSumOp(OpTest):
         x0 = np.random.random((3, 4)).astype('float32')
         x1 = np.random.random((3, 4)).astype('float32')
         x2 = np.random.random((3, 4)).astype('float32')
-        self.inputs = {"X": {"x0": x0, "x1": x1, "x2": x2}}
+        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
 
