@@ -11,7 +11,7 @@ Blocks do not only group source code, but also narrow the lexical scope of varia
 In Paddle, we need a similar concept called Block to support following scenes:
 
 - define a PaddlePaddle program by writing blocks of codes, which includes the definitions of variables and operators.
-  - `RNNOp`, `SwitchOp`, `WhileOp` and `IfElseOp` needs Block to help to define sub-block. 
+  - `RNNOp`, `SwitchOp`, `WhileOp` and `IfElseOp`, etc, need Block to help to define sub-block. 
 - help to execute multiple operators, blocks should group operators and runs like a single operator.
 
 ## How to use Block
