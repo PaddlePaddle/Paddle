@@ -119,7 +119,7 @@ def lower_level_rnn(paragraph):
     '''
     rnn = pd.create_rnn_op(output_num=1)
     with rnn.stepnet():
-        sentence = rnn.segment_input(paragraph, level=0)
+        sentence = rnn.add_input(paragraph, level=0)
         h = rnn.add_memory(shape=[20, 30])
         h.update(
             pd.matmul(W, sentence) + pd.matmul(U, h.pre_state()))
@@ -129,7 +129,7 @@ def lower_level_rnn(paragraph):
 
 top_level_rnn = pd.create_rnn_op(output_num=1)
 with top_level_rnn.stepnet():
-    paragraph_data = rnn.segment_input(chapter_data, level=1)
+    paragraph_data = rnn.add_input(chapter_data, level=1)
     low_rnn = lower_level_rnn(paragraph_data)
     paragraph_out = low_rnn()
 
