@@ -142,8 +142,8 @@ def create_op_creation_method(op_proto):
     return OpInfo(
         method=__impl__,
         name=op_proto.type,
-        inputs=[var.name for var in op_proto.inputs],
-        outputs=[var.name for var in op_proto.outputs],
+        inputs=[(var.name, var.duplicable) for var in op_proto.inputs],
+        outputs=[(var.name, var.duplicable) for var in op_proto.outputs],
         attrs=[attr.name for attr in op_proto.attrs])
 
 
@@ -180,9 +180,15 @@ class OperatorFactory(object):
         return self.op_methods.get(t)
 
     def get_op_input_names(self, type):
+        return map(lambda x: x[0], self.get_op_info(type).inputs)
+
+    def get_op_inputs(self, type):
         return self.get_op_info(type).inputs
 
     def get_op_output_names(self, type):
+        return map(lambda x: x[0], self.get_op_info(type).outputs)
+
+    def get_op_outputs(self, type):
         return self.get_op_info(type).outputs
 
     def get_op_attr_names(self, type):
