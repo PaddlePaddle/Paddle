@@ -28,18 +28,17 @@ using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename Place, typename T, size_t D>
 void PadFunction(const framework::ExecutionContext& context) {
-  auto pads = context.GetAttr<std::vector<int>>("paddings");
+  auto pads = context.Attr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
   for (int i = 0; i < paddings.size(); ++i) {
     paddings[i].first = pads[i * 2];
     paddings[i].second = pads[i * 2 + 1];
   }
-  T pad_value = context.GetAttr<T>("pad_value");
+  T pad_value = context.Attr<T>("pad_value");
 
   auto* x = context.Input<Tensor>("X");
   auto* out = context.Output<Tensor>("Out");
   out->mutable_data<T>(context.GetPlace());
-  auto dims = x->dims();
 
   auto x_tensor = EigenTensor<T, D>::From(*x);
   auto out_tensor = EigenTensor<T, D>::From(*out);
@@ -51,8 +50,8 @@ template <typename Place, typename T>
 class PadKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int dim = context.Input<Tensor>("X")->dims().size();
-    switch (dim) {
+    int rank = context.Input<Tensor>("X")->dims().size();
+    switch (rank) {
       case 1:
         PadFunction<Place, T, 1>(context);
         break;
@@ -72,14 +71,15 @@ class PadKernel : public framework::OpKernel {
         PadFunction<Place, T, 6>(context);
         break;
       default:
-        PADDLE_THROW("Only ranks up to 6 supported.");
+        PADDLE_THROW(
+            "PadOp only support tensors with no more than 6 dimensions.");
     }
   }
 };
 
 template <typename Place, typename T, size_t D>
 void PadGradFunction(const framework::ExecutionContext& context) {
-  auto pads = context.GetAttr<std::vector<int>>("paddings");
+  auto pads = context.Attr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
   for (int i = 0; i < paddings.size(); ++i) {
     paddings[i].first = -pads[i * 2];
@@ -99,9 +99,9 @@ template <typename Place, typename T>
 class PadGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    size_t dim =
+    size_t rank =
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
-    switch (dim) {
+    switch (rank) {
       case 1:
         PadGradFunction<Place, T, 1>(context);
         break;
@@ -121,7 +121,8 @@ class PadGradKernel : public framework::OpKernel {
         PadGradFunction<Place, T, 6>(context);
         break;
       default:
-        PADDLE_THROW("Only ranks up to 6 supported.");
+        PADDLE_THROW(
+            "PadOp only support tensors with no more than 6 dimensions.");
     }
   }
 };

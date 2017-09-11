@@ -27,10 +27,10 @@ class PadOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto paddings = Attr<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(x_dim.size() * 2, int(paddings.size()),
+    PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
                       "Size of paddings should be equal to 2 * dimension size "
                       "of input tensor.");
-    std::vector<int> out_dims(x_dim.size());
+    std::vector<int64_t> out_dims(x_dim.size());
     for (int i = 0; i < x_dim.size(); ++i) {
       out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
     }
@@ -95,6 +95,7 @@ class PadOpGrad : public framework::OperatorWithKernel {
                             "Input(Out@GRAD) should not be null");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    PADDLE_ENFORCE_NOT_NULL(x_grad, "Output(X@GRAD) should not be null");
 
     x_grad->Resize(x_dims);
   }
