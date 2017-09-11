@@ -203,7 +203,7 @@ protected:
     real* iData = getInputValue(0, CPU_DEVICE)->getData();
     // update input data
     // since it might be changed if this is after data layer
-    inVal_->updateData(iData);
+    inVal_->setData(iData);
   }
 
   /**
@@ -216,7 +216,7 @@ protected:
 
     // update diff
     real* oDiff = getOutput(CPU_DEVICE).grad->getData();
-    outGrad_->updateData(oDiff);
+    outGrad_->setData(oDiff);
   }
 
   /**
