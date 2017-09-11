@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <iostream>
 #include "paddle/memory/memcpy.h"
 #include "paddle/memory/memory.h"
 #include "paddle/operators/transpose_op.h"
