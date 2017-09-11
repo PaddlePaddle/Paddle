@@ -120,7 +120,7 @@ class SymbolTable {
 After all the description of variables and operators is added into SymbolTable,
 the block has enough information to run.
 
-To make block simpler, we use another class `RuntimeTable` to create Variable and Operator objects. `RuntimeTable` is free to add memory optimizements if needed in the future.
+To make block simpler, we use another class `RuntimeTable` to create Variable and Operator objects. `RuntimeTable` is free to add memory optimizements in the future.
 
 The `Block` class takes a `BlockDesc` as input, and provide `Run` and `InferShape` functions.
 
@@ -147,7 +147,6 @@ class RuntimeTable {
   void CreateOps();
 
  private:
-  Scope *scope_;
   SymbolTable symbol_tabel_;
   vector<OperatorBase*> ops_;
 };
@@ -189,11 +188,10 @@ private:
 Block inherits from OperatorBase, which has a Run method. 
 Block's Run method will run its operators sequentially.
 
-There is another important interface called Eval, which passed in some variables called targets, and Eval will generate a minimal graph which takes targets as the end points and creates a new Block, 
-after Run, Eval will get the latest value and return the targets.
+There is another important interface called `Eval`, which take some arguments called targets, and generate a minimal graph which takes targets as the end points and creates a new Block, 
+after `Run`, `Eval` will get the latest value and return the targets.
 
 The definition of Eval is as follows:
-
 
 ```c++
 // clean a block description by targets using the corresponding dependency graph.
