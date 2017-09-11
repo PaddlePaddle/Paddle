@@ -68,7 +68,7 @@ void MKLDNNTester::reset(const TestConfig& dnn,
   CHECK(dnnLayer_);
   // for comparison with Paddle reference results,
   // need manually add cpu device output for test
-  dnnLayer_->addOutputArgument(-1);
+  dnnLayer_->addOutputArgument(CPU_DEVICE);
   EXPECT_EQ(dataLayers_[DNN].size(), dataLayers_[REF].size());
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
 
@@ -113,7 +113,8 @@ void MKLDNNTester::randomBotDatas() {
 
 void MKLDNNTester::randomTopDiffs() {
   refLayer_->getOutputGrad()->randomizeUniform();
-  dnnLayer_->getOutput(-1).grad->copyFrom(*(refLayer_->getOutputGrad()));
+  dnnLayer_->getOutput(CPU_DEVICE)
+      .grad->copyFrom(*(refLayer_->getOutputGrad()));
   VLOG(lvl_) << "Random Backward Input, TopDiff: ";
   printMatrix(refLayer_->getOutputGrad());
 }
