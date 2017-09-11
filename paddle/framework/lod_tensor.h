@@ -56,17 +56,7 @@ class LoDTensor {
   LoDTensor() {}
   LoDTensor(const LoD& lod, Tensor* t) : lod_(lod), tensor_(t) {}
 
-  void set_lod(const LoD& lod) {
-    lod_ = lod;
-    LOG(INFO) << lod_[0][0];
-  }
-
-#ifdef PADDLE_ONLY_CPU
-  void set_lod(const std::vector<std::vector<size_t>>& lod) {
-    lod_ = lod;
-    LOG(INFO) << lod_[0][0];
-  }
-#endif
+  void set_lod(const LoD& lod) { lod_ = lod; }
 
   void set_tensor(Tensor* tensor) { tensor_ = tensor; }
 
