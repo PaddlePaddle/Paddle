@@ -6461,6 +6461,7 @@ def switch_order_layer(input,
     return LayerOutput(
         name=name,
         layer_type=LayerType.SWITCH_ORDER_LAYER,
+        activation=act,
         parents=input,
         size=l.config.size)
 
