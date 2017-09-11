@@ -27,15 +27,15 @@ class ConcatOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto *out = ctx.Output<framework::Tensor>("Out");
-    int axis = static_cast<int>(ctx.Attr<int>("axis"));
+    size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
     size_t n = ins.size();
 
     PADDLE_ENFORCE_GT(n, 1, "Input tensors count should > 1.");
 
     auto out_dims = ins[0]->dims();
     size_t in_zero_dims_size = out_dims.size();
-    for (int i = 1; i < n; i++) {
-      for (int j = 0; j < in_zero_dims_size; j++) {
+    for (size_t i = 1; i < n; i++) {
+      for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
           out_dims[axis] += ins[i]->dims()[j];
           continue;
