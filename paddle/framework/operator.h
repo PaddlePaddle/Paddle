@@ -199,9 +199,10 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
 
   void set_dim(const std::string& name, const DDim& dim) const {
     VarDesc* desc = var_descs_.at(name);
-    size_t length = dim.size();
-    for (size_t i = 0; i < length; ++i) {
-      desc->mutable_lod_tensor()->set_dims(i, dim[i]);
+    auto tensor = desc->mutable_lod_tensor();
+    tensor->clear_dims();
+    for (int i = 0; i < dim.size(); ++i) {
+      tensor->add_dims(static_cast<int>(dim[i]));
     }
   }
 

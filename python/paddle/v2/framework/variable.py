@@ -1,5 +1,4 @@
 import paddle.v2.framework.core as core
-from paddle.v2.framework.op import Operator
 import paddle.v2.framework.proto.framework_pb2 as framework_pb2
 
 
@@ -10,9 +9,9 @@ class Variable(object):
 
         var_desc = framework_pb2.VarDesc()
         var_desc.name = name
+        var_desc.lod_tensor.data_type = data_type
+        var_desc.lod_tensor.lod_level = 0
         if isinstance(dims, list):
-            var_desc.lod_tensor.data_type = data_type
-            var_desc.lod_tensor.lod_level = 0
             var_desc.lod_tensor.dims.extend(dims)
         self.var_desc = core.VarDesc.create(var_desc.SerializeToString())
 
