@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "MKLDNNFcLayer.h"
 #include "paddle/utils/Logging.h"
-#include "paddle/utils/Stat.h"
 
 using namespace mkldnn;  // NOLINT
 typedef memory::format format;
@@ -40,6 +39,8 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
   oc_ = getSize();
   oh_ = 1;
   ow_ = 1;
+  ih_ = 1;
+  iw_ = 1;
 
   // input size can not change in FC
   iLayerSize_ = inputLayers_[0]->getSize();
@@ -77,55 +78,18 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
-void MKLDNNFcLayer::convertOutputToOtherDevice() {
-  copyOutputInfoToOtherDevice();
-  // find other cpu device and reorder output to cpu device
-  int cnt = 0;
-  for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-    if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
-      // fc cpu output value do not need convert
-      // just share point
-      outputOtherDevice_[i].value = output_.value;
-      ++cnt;
-    }
-  }
-
-  if (cnt > 1) {
-    LOG(WARNING) << "should not have more than one CPU devie";
-  }
-}
-
 void MKLDNNFcLayer::reshape() {
-  const Argument& input = getInput(0, getPrev(0)->getDeviceId());
-  int batchSize = input.getBatchSize();
-  if (bs_ == batchSize) {
-    return;
-  }
-  bs_ = batchSize;
-  ih_ = input.getFrameHeight();
-  iw_ = input.getFrameWidth();
-  if (ih_ == 0) {
-    ih_ = 1;
-  }
-  if (iw_ == 0) {
-    iw_ = 1;
-  }
+  reshapeInput();
+
   CHECK_EQ(iLayerSize_, inputLayers_[0]->getSize());
   ic_ = iLayerSize_ / (ih_ * iw_);
   CHECK_EQ(size_t(ic_ * ih_ * iw_), iLayerSize_) << "not divisible";
   CHECK_EQ(size_t(oc_), getSize());
+
+  reshapeOutput(oh_, ow_);
+  resizeOutput(bs_, oc_);
+
   printSizeInfo();
-
-  // reset output
-  output_.setFrameHeight(oh_);
-  output_.setFrameWidth(ow_);
-  resetOutput(bs_, oc_);
-
-  // reset mkldnn forward
-  resetFwd();
-  needResetBwd_ = true;
-
-  convertWeightsFromPaddle();
 }
 
 void MKLDNNFcLayer::resetFwd() {
@@ -155,7 +119,9 @@ void MKLDNNFcLayer::resetFwd() {
   // change original output value to mkldnn output value
   output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
   if (!outputIsOnlyMKLDNN()) {
-    convertOutputToOtherDevice();
+    // fc cpu output value do not need create convert
+    // just share point
+    getOutput(CPU_DEVICE).value->setData(output_.value->getData());
   }
 
   // create forward handle
@@ -235,13 +201,12 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdWgt_);
 
   /// backward data
-  device = inputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
-  const MatrixPtr& in = getInputGrad(0, device);
+  const MatrixPtr& in = inputLayers_[0]->getOutput().grad;
   if (in == nullptr) {
     return;
   }
-  if (getInput(0, device).getAllCount() > 1) {
-    // TODO(TJ): use outputMaps_ ways when merge outgrad done
+  if (getInput(0, MKLDNN_DEVICE).getAllCount() > 1) {
+    // TODO(TJ): use outputMaps_ ways to get the inGrad_ when merge outgrad done
   } else {
     inGrad_ = MKLDNNMatrix::create(in, inVal_->getPrimitiveDesc());
   }
@@ -258,45 +223,18 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdData_);
 }
 
-void MKLDNNFcLayer::forward(PassType passType) {
-  Layer::forward(passType);
-  reshape();
-
-  {
-    REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
-    syncInputValue();
-
-    // just submit forward pipeline
-    stream_->submit(pipelineFwd_);
+void MKLDNNFcLayer::updateInputData() {
+  if (inputLayers_[0]->getType() != "data") {
+    return;
   }
-
-  /* activation */ {
-    REGISTER_TIMER_INFO("FwActTimer", getName().c_str());
-    forwardActivation();
-  }
+  real* iData = getInputValue(0, CPU_DEVICE)->getData();
+  inVal_->setData(iData);
 }
 
-void MKLDNNFcLayer::backward(const UpdateCallback& callback) {
-  /* Do derivation */ {
-    REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
-    backwardActivation();
-  }
-
-  {
-    REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
-    resetBwd();
-
-    syncOutputGrad();
-    // just sumbmit backward pipeline
-    stream_->submit(pipelineBwd_);
-  }
-
-  {
-    REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
-    weight_->getParameterPtr()->incUpdate(callback);
-    if (biases_ && biases_->getWGrad()) {
-      biases_->getParameterPtr()->incUpdate(callback);
-    }
+void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {
+  weight_->getParameterPtr()->incUpdate(callback);
+  if (biases_ && biases_->getWGrad()) {
+    biases_->getParameterPtr()->incUpdate(callback);
   }
 }
 }  // namespace paddle
