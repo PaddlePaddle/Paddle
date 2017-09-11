@@ -65,7 +65,7 @@ def set_output_grad(scope, op, outputs, place):
         if out_name in outputs:
             if out_dup:
                 sub_out = outputs[out_name]
-                for sub_out_name, sub_out_grad in sub_out:
+                for sub_out_name, _ in sub_out:
                     out_tensor = scope.find_var(sub_out_name).get_tensor()
                     grad_tensor = scope.new_var(grad_var_name(
                         sub_out_name)).get_tensor()

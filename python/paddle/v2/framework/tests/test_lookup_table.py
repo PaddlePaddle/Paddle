@@ -1,31 +1,22 @@
 import unittest
 import numpy as np
-from op_test_util import OpTestMeta
-from gradient_checker import GradientChecker, create_op
+from op_test import OpTest
 
 
-class TestLookupTableOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestLookupTableOp(OpTest):
     def setUp(self):
-        self.type = 'lookup_table'
-        table = np.random.random((17, 31)).astype('float32')
-        ids = np.random.randint(0, 17, 4).astype('int32')
+        self.op_type = "lookup_table"
+        table = np.random.random((17, 31)).astype("float32")
+        ids = np.random.randint(0, 17, 4).astype("int32")
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids]}
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestLookupTableGradOp(GradientChecker):
-    def test_grad(self):
-        op = create_op('lookup_table')
-        table = np.random.random((17, 31)).astype('float32')
-        ids = np.random.randint(0, 17, 4).astype('int32')
-        inputs = {'W': table, 'Ids': ids}
-        # comapre gradients 
-        self.compare_grad(op, inputs, set(['Ids']))
-        # check gradients 
-        self.check_grad(op, inputs, set('W'), 'Out')
+    def test_check_grad(self):
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
