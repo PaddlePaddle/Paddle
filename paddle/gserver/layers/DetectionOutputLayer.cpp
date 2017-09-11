@@ -139,8 +139,13 @@ void DetectionOutputLayer::forward(PassType passType) {
                                        allDecodedBBoxes,
                                        &allIndices);
 
-  numKept = numKept > 0 ? numKept : 1;
-  resetOutput(numKept, 7);
+  if (numKept > 0) {
+    resetOutput(numKept, 7);
+  } else {
+    MatrixPtr outV = getOutputValue();
+    outV = NULL;
+    return;
+  }
   MatrixPtr outV = getOutputValue();
   getDetectionOutput(confBuffer_->getData(),
                      numKept,
