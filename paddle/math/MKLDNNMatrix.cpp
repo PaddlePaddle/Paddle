@@ -33,14 +33,12 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m, memory::primitive_desc pd) {
     size_t width = cnts / dims[0];
     m = Matrix::create(height, width, false, false);
   }
-
   CHECK(m) << " Matrix should not be empty";
+
   CpuMatrixPtr cpuMatrix = std::dynamic_pointer_cast<CpuMatrix>(m);
   CHECK(cpuMatrix) << "Only support create from CPU matrix yet";
-
-  CHECK_EQ(cnts, m->getElementCnt()) << "Count size does not match";
-  return std::make_shared<MKLDNNMatrix>(
-      m->getData(), m->getHeight(), m->getWidth(), pd);
+  CHECK_EQ(cpuMatrix->getElementCnt(), cnts) << "Count size does not match";
+  return std::make_shared<MKLDNNMatrix>(cpuMatrix, pd);
 }
 
 MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
@@ -138,7 +136,7 @@ void MKLDNNMatrix::downSpatial() {
       mkldnn_primitive_create(&result, pd.get(), nullptr, nullptr),
       "could not create a memory primitive");
   reset(result);
-  set_data_handle(getData());
+  set_data_handle(data_);
 }
 
 }  // namespace paddle

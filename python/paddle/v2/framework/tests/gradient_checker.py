@@ -15,7 +15,6 @@ def create_op(op_type):
         kwargs[in_name] = in_name
     for out_name in Operator.get_op_output_names(op_type):
         kwargs[out_name] = out_name
-
     return Operator(op_type, **kwargs)
 
 
