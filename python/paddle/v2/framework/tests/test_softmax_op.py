@@ -12,7 +12,7 @@ def stable_softmax(x):
 
 class TestSoftmaxOp(OpTest):
     def setUp(self):
-        self.type = "softmax"
+        self.op_type = "softmax"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [10, 10]).astype("float32")
         }

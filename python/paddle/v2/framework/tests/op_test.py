@@ -89,7 +89,6 @@ def get_numeric_gradient(scope,
                          delta=0.005,
                          in_place=False):
 
-    print "before set input"
     set_input(scope, op, inputs, core.CPUPlace())
     op.infer_shape(scope)
 
