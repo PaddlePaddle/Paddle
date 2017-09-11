@@ -26,38 +26,43 @@ class FCOp : public NetOp {
       : NetOp(type, inputs, outputs, attrs) {
     auto x = Inputs("X");
     auto w = Inputs("W");
+    auto mul_out = Outputs("mul_out");
     PADDLE_ENFORCE_EQ(
         x.size(), w.size(),
         "The size of inputs X(%d) should be the same as that of weights W(%d).",
         x.size(), w.size());
+    PADDLE_ENFORCE_EQ(mul_out.size(), x.size(),
+                      "The size of intermediate mul_out(%d) should be the same "
+                      "as that of inputs X(%d).",
+                      mul_out.size(), x.size());
 
     int n = x.size();
     PADDLE_ENFORCE_GE(n, 1,
                       "The size of inputs X(%d) should be no less than 1.", n);
 
-    // mul_out = X[0] * W[0] + ... + X[n-1] * W[n-1]
-    AppendOp(
-        framework::OpRegistry::CreateOp("mul", {{"X", {x[0]}}, {"Y", {w[0]}}},
-                                        {{"Out", {Output("mul_out")}}}, {}));
-
-    for (int i = 1; i < n; i++) {
-      // mul_out = mul_out + X[i] * W[i]
-      AppendOp(
-          framework::OpRegistry::CreateOp("mul", {{"X", {x[i]}}, {"Y", {w[i]}}},
-                                          {{"Out", {Output("add_out")}}}, {}));
+    // mul_out[i] = X[i] * W[i]
+    for (int i = 0; i < n; i++) {
       AppendOp(framework::OpRegistry::CreateOp(
-          "add", {{"X", {Output("mul_out")}}, {"Y", {Output("add_out")}}},
-          {{"Out", {Output("mul_out")}}}, {}));
+          "mul", {{"X", {x[i]}}, {"Y", {w[i]}}}, {{"Out", {mul_out[i]}}}, {}));
     }
 
-    auto b = Input("b");
-    std::string add_out = "mul_out";
-    if (b != framework::kEmptyVarName) {
-      // add_out = mul_out + b
+    // sum_out = X[0] * W[0] + ... + X[n-1] * W[n-1]
+    if (n > 1) {
       AppendOp(framework::OpRegistry::CreateOp(
-          "rowwise_add", {{"X", {Output("mul_out")}}, {"b", {Input("b")}}},
-          {{"Out", {Output("add_out")}}}, {}));
+          "sum", {{"X", {mul_out}}}, {{"Out", {Output("sum_out")}}}, {}));
+    } else {
+      AppendOp(framework::OpRegistry::CreateOp(
+          "identity", {{"X", {mul_out[0]}}}, {{"Y", {Output("sum_out")}}}, {}));
+    }
+
+    // add_out = sum_out + b
+    auto b = Input("b");
+    std::string add_out = "sum_out";
+    if (b != framework::kEmptyVarName) {
       add_out = "add_out";
+      AppendOp(framework::OpRegistry::CreateOp(
+          "rowwise_add", {{"X", {Output("sum_out")}}, {"b", {Input("b")}}},
+          {{"Out", {Output(add_out)}}}, {}));
     } else {
       if (Output("add_out") != framework::kEmptyVarName) {
         this->Rename(Output("add_out"), framework::kEmptyVarName);
@@ -68,8 +73,6 @@ class FCOp : public NetOp {
     AppendOp(framework::OpRegistry::CreateOp(
         activation, {{"X", {Output(add_out)}}}, {{"Y", {Output("Y")}}}, {}));
     CompleteAddOp(false);
-
-    std::cout << DebugString() << std::endl;
   }
 };
 
@@ -77,14 +80,24 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   FCOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The 2-D input matrix of FC operator.").AsDuplicable();
-    AddInput("W", "The 2-D weight matrix of FC operator.").AsDuplicable();
+    AddInput("X", "The inputs of FC operator, a ordered vector of 2-D matrix.")
+        .AsDuplicable();
+    AddInput("W", "The weights of FC operator, a ordered vector of 2-D matrix.")
+        .AsDuplicable();
     AddInput("b", "The 1-D bias vector of FC operator");
 
     AddOutput("Y", "The activated output matrix of FC operator");
-    AddOutput("mul_out", "The non-actived output of FC operator, X * W")
+    AddOutput("mul_out",
+              "The intermediate outputs of FC operator, "
+              "saving the product of X[i] * W[i]")
+        .AsIntermediate()
+        .AsDuplicable();
+    AddOutput("sum_out",
+              "The intermediate output of FC operator, "
+              "saving the sum of products, sum(X[i] * W[i])")
         .AsIntermediate();
-    AddOutput("add_out", "The non-actived output of FC operator, X * W + b")
+    AddOutput("add_out",
+              "The non-actived output of FC operator, saving X * W + b")
         .AsIntermediate();
     AddAttr<std::string>("activation", "The activation type of FC operator.")
         .SetDefault("identity")
