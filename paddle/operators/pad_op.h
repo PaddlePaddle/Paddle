@@ -30,7 +30,7 @@ template <typename Place, typename T, size_t D>
 void PadFunction(const framework::ExecutionContext& context) {
   auto pads = context.Attr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
-  for (int i = 0; i < paddings.size(); ++i) {
+  for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = pads[i * 2];
     paddings[i].second = pads[i * 2 + 1];
   }
@@ -81,7 +81,7 @@ template <typename Place, typename T, size_t D>
 void PadGradFunction(const framework::ExecutionContext& context) {
   auto pads = context.Attr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
-  for (int i = 0; i < paddings.size(); ++i) {
+  for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = -pads[i * 2];
     paddings[i].second = -pads[i * 2 + 1];
   }
