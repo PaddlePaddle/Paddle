@@ -29,14 +29,17 @@ class ReshapeOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto *in = ctx.Input<framework::Tensor>("X");
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    PADDLE_ENFORCE_EQ((unsigned)shape.size(), in->dims().size(),
-                      "The dimension of Input(X) mismatches with Attr(shape).");
-    size_t shape_size = 1;
+    int64_t capacity = -1;
     for (auto dim : shape) {
-      shape_size *= dim;
+      PADDLE_ENFORCE(dim > 0, "Each dimension of shape must be positive.");
+      if (capacity < 0) {
+        capacity = dim;
+      } else {
+        capacity *= dim;
+      }
     }
-    size_t in_size = framework::product(in->dims());
-    PADDLE_ENFORCE_EQ(shape_size, in_size,
+    int64_t in_size = framework::product(in->dims());
+    PADDLE_ENFORCE_EQ(capacity, in_size,
                       "The size of Input(X) mismatches with Attr(shape).");
     ctx.Output<framework::Tensor>("Out")->Resize(in->dims());
   }
