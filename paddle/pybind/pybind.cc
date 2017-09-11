@@ -125,10 +125,23 @@ The tensor and LoD info should be created before creating the LoDTensor, then
 call the set_tensor and set_lod functions to set them.
 
 )DOC")
+      .def("__init__",
+           [](LoDTensor &instance,
+              const std::vector<std::vector<size_t>> &lod,
+              Tensor *t) {
+#ifdef PADDLE_ONLY_CPU
+             new (&instance) LoDTensor(lod, t);
+#else
+             paddle::framework::LoD new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             new (&instance) LoDTensor(new_lod, t);
+#endif
+           })
       .def("set_tensor",
            [](LoDTensor &self, Tensor *tensor) { self.set_tensor(tensor); })
       .def("set_lod",
-           [](LoDTensor &self, std::vector<std::vector<size_t>> &lod) {
+           [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
 #ifdef PADDLE_ONLY_CPU
              self.set_lod(lod);
 #else
