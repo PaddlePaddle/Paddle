@@ -63,20 +63,35 @@ struct EigenTensor {
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {};
+struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
+  static typename EigenMatrix::Type Reshape(Tensor& tensor, int num_col_dims) {
+    int rank = tensor.dims_.size();
+    PADDLE_ENFORCE(num_col_dims > 0 && num_col_dims < rank,
+                   "`num_col_dims` must be between (0, rank_of_tensor).");
+    return EigenMatrix::From(tensor,
+                             flatten_to_2d(tensor.dims(), num_col_dims));
+  }
+
+  static typename EigenMatrix::ConstType Reshape(const Tensor& tensor,
+                                                 int num_col_dims) {
+    int rank = tensor.dims_.size();
+    PADDLE_ENFORCE(num_col_dims > 0 && num_col_dims < rank,
+                   "`num_col_dims` must be between (0, rank_of_tensor).");
+    return EigenMatrix::From(tensor,
+                             flatten_to_2d(tensor.dims(), num_col_dims));
+  }
+};
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten reshapes a Tensor into an EigenVector.
   static typename EigenVector::Type Flatten(Tensor& tensor) {
-    return EigenVector::From(
-        tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
+    return EigenVector::From(tensor, {product(tensor.dims_)});
   }
 
   static typename EigenVector::ConstType Flatten(const Tensor& tensor) {
-    return EigenVector::From(
-        tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
+    return EigenVector::From(tensor, {product(tensor.dims_)});
   }
 };
 
