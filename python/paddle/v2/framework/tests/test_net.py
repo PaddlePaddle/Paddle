@@ -35,5 +35,5 @@ Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}
         self.assertEqual(expected, "\n" + str(net))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
