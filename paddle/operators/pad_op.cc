@@ -25,16 +25,16 @@ class PadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto dim0 = ctx.Input<Tensor>("X")->dims();
-    auto paddings = GetAttr<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(dim0.size(), (int)(paddings.size() / 2),
+    auto x_dim = ctx.Input<Tensor>("X")->dims();
+    auto paddings = Attr<std::vector<int>>("paddings");
+    PADDLE_ENFORCE_EQ(x_dim.size() * 2, int(paddings.size()),
                       "Size of paddings should be equal to 2 * dimension size "
                       "of input tensor.");
-    std::vector<int> dim1(dim0.size());
-    for (int i = 0; i < dim0.size(); ++i) {
-      dim1[i] = dim0[i] + paddings[i * 2] + paddings[i * 2 + 1];
+    std::vector<int> out_dims(x_dim.size());
+    for (int i = 0; i < x_dim.size(); ++i) {
+      out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
     }
-    ctx.Output<Tensor>("Out")->Resize(paddle::framework::make_ddim(dim1));
+    ctx.Output<Tensor>("Out")->Resize(framework::make_ddim(out_dims));
   }
 };
 
@@ -42,8 +42,12 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PadOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input of pad op.");
-    AddOutput("Out", "The output of pad op.");
+    AddInput("X",
+             "The input of pad op. "
+             "The input should be a k-D tensor(k > 0 and k < 7)");
+    AddOutput("Out",
+              "The output of pad op."
+              "A tensor with the same shape as X.");
     AddComment(R"DOC(
 Pad input into output, as specified by paddings and pad_value. The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
@@ -75,7 +79,7 @@ Out = [[0, 1, 2, 0, 0]
         " 2 * dimension size of input tensor.");
     AddAttr<float>("pad_value",
                    "(float) default to 0; "
-                   "The value to be padded into tensor. ")
+                   "The value to fill padded areas.")
         .SetDefault(0.0f);
   }
 };
