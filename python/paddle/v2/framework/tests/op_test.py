@@ -9,7 +9,7 @@ def grad_var_name(var_name):
     return var_name + "@GRAD"
 
 
-def create_op(scope, op_type, inputs, outputs, attrs=None):
+def create_op(scope, op_type, inputs, outputs, attrs):
     kwargs = dict()
 
     for in_name, in_dup in Operator.get_op_inputs(op_type):
@@ -29,15 +29,16 @@ def create_op(scope, op_type, inputs, outputs, attrs=None):
             kwargs[out_name] = []
             if out_dup:
                 sub_in = outputs[out_name]
-                for sun_in_name in sub_in:
-                    var = scope.new_var(sun_in_name)
-                    kwargs[out_name].append(sun_in_name)
+                for sub_in_name in sub_in:
+                    var = scope.new_var(sub_in_name)
+                    kwargs[out_name].append(sub_in_name)
             else:
                 var = scope.new_var(out_name)
                 kwargs[out_name].append(out_name)
 
     for attr_name in Operator.get_op_attr_names(op_type):
-        kwargs[attr_name] = attrs[attr_name]
+        if attr_name in attrs:
+            kwargs[attr_name] = attrs[attr_name]
     return Operator(op_type, **kwargs)
 
 
@@ -89,6 +90,7 @@ def get_numeric_gradient(scope,
                          delta=0.005,
                          in_place=False):
 
+    print "before set input"
     set_input(scope, op, inputs, core.CPUPlace())
     op.infer_shape(scope)
 
@@ -110,7 +112,7 @@ def get_numeric_gradient(scope,
     # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
         if in_place:
-            set_input(op, inputs, core.CPUPlace())
+            set_input(scope, op, inputs, core.CPUPlace())
 
         # get one input element throw it's index i.
         origin = tensor_to_check.get_float_element(i)
@@ -120,7 +122,7 @@ def get_numeric_gradient(scope,
         y_pos = get_output()
 
         if in_place:
-            set_input(op, inputs, core.CPUPlace())
+            set_input(scope, op, inputs, core.CPUPlace())
 
         x_neg = origin - delta
         tensor_to_check.set_float_element(i, x_neg)
@@ -168,7 +170,11 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 class OpTest(unittest.TestCase):
     def check_output_with_place(self, place):
         self.scope = core.Scope()
-        self.op = create_op(self.scope, self.op_type, self.inputs, self.outputs)
+        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
+        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
+        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
+                            op_attrs)
         if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
             return
         set_input(self.scope, self.op, self.inputs, place)
@@ -227,7 +233,11 @@ class OpTest(unittest.TestCase):
                    in_place=False,
                    max_relative_error=0.005):
         self.scope = core.Scope()
-        self.op = create_op(self.scope, self.op_type, self.inputs, self.outputs)
+        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
+        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
+        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
+                            op_attrs)
         if no_grad_set is None:
             no_grad_set = set()
 
