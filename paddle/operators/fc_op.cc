@@ -37,7 +37,7 @@ class FCOp : public NetOp {
 
     // mul_out = X[0] * W[0] + ... + X[n-1] * W[n-1]
     AppendOp(
-        framework::OpRegistry::CreateOp("mul", {{"X", {x[0]}}, {"W", {w[0]}}},
+        framework::OpRegistry::CreateOp("mul", {{"X", {x[0]}}, {"Y", {w[0]}}},
                                         {{"Out", {Output("mul_out")}}}, {}));
 
     for (int i = 1; i < n; i++) {
@@ -68,6 +68,8 @@ class FCOp : public NetOp {
     AppendOp(framework::OpRegistry::CreateOp(
         activation, {{"X", {Output(add_out)}}}, {{"Y", {Output("Y")}}}, {}));
     CompleteAddOp(false);
+
+    std::cout << DebugString() << std::endl;
   }
 };
 

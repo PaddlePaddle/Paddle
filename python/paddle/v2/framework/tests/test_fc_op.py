@@ -1,8 +1,6 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.v2.framework.core as core
-from paddle.v2.framework.op import Operator
 
 
 class TestFCOp(OpTest):
@@ -37,8 +35,7 @@ class TestFCOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(core.CPUPlace())
-        self.check_output(core.GPUPlace(0))
+        self.check_output()
 
     #def test_check_grad(self):
     #    self.check_grad(["X0", "X1", "W0", "W1", "b"], "Y")

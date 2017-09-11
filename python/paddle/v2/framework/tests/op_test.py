@@ -36,8 +36,8 @@ def create_op(scope, op_type, inputs, outputs, attrs=None):
                 var = scope.new_var(out_name)
                 kwargs[out_name].append(out_name)
 
-    for attr_name in Operator.get_op_attr_names(op_type):
-        kwargs[attr_name] = attrs[attr_name]
+    #for attr_name in Operator.get_op_attr_names(op_type):
+    #    kwargs[attr_name] = attrs[attr_name]
     return Operator(op_type, **kwargs)
 
 
@@ -186,14 +186,14 @@ class OpTest(unittest.TestCase):
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=1e-05),
-                        "output name: " + out_name + "has diff")
+                        "output name: " + out_name + " has diff")
             else:
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
                 expect = self.outputs[out_name]
                 self.assertTrue(
                     np.allclose(
                         actual, expect, atol=1e-05),
-                    "output name: " + out_name + "has diff")
+                    "output name: " + out_name + " has diff")
 
     def check_output(self):
         places = [core.CPUPlace()]
