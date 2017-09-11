@@ -1,6 +1,6 @@
 # RNNOp design
-This is the design doc of the recurrent neural network operator, 
-and this operator requires that input instances in each mini-batch must have the same length. 
+
+This document is about an RNN operator which requires that instances in a mini-batch have the same length.  We will have a more flexible RNN operator.
 
 ## RNN Algorithm Implementation
 
@@ -8,57 +8,50 @@ and this operator requires that input instances in each mini-batch must have the
 <img src="./images/rnn.jpg"/>
 </p>
 
-The above diagram shows an RNN being unrolled into a full network.
+The above diagram shows an RNN unrolled into a full network.
 
 There are several important concepts:
 
-- sep-net, the network to be executed in each step
-- memory, a variable storing state in the current step, which is denoted as $h_t$.
-- pre-memory, the value of state in the previous time step, it can be denoted as $h_{t-1}$.
-- init-memory, the variable to help initialize state in the first time step.
+- *step-net*: the sub-graph to run at each step,
+- *memory*, $h_t$, the state of the current step,
+- *ex-memory*, $h_{t-1}$, the state of the previous step,
+- *initial memory value*, the ex-memory of the first step.
 
-### Step Scope
-The step-net could have local variables defined.
-In each step of RNN, a scope is created to hold corresponding variables.
-Such a scope is known as a *step scope*.
+### Step-scope
+
+There could be local variables defined in step-nets.  PaddlePaddle runtime realizes these variables in *step-scopes* -- scopes created for each step.
 
 <p aligh="center">
 <img src="./images/rnn.png"/><br/>
 Figure 2 the RNN's data flow
 </p>
 
-All steps run the same step-net.
+Please be aware that all steps run the same step-net.  Each step
 
-Each step runs the following procedure:
+1. creates the step-scope,
+2. realizes local variables, including step-outputs, in the step-scope, and
+3. runs the step-net, which could use these variables.
 
-1. create the step scope,
-2. create local variables in the step scope, and
-3. execute the step-net, which would use these variables.
-
-After the execution of all steps, the RNNOp would compose its output from step outputs in those step scopes.
+The RNN operator will compose its output from step outputs in step scopes.
 
 ### Memory and Ex-memory
-An RNN step often has some status which needs to be passed to the next step.
-These status are known as the memory, which is often referred by the step-net as variables.
-A step often needs to refer to the memory value changed by the previous step.
-We call it *ex-memory*.
 
-Let's use a simply RNN as an example to explain memory and ex-memory.
+Let's give more details about memory and ex-memory via a simply example:
 
 $$
 h_t = U h_{t-1} + W x_t
 $$,
 
-where $h_t$ is the memory of step $t$'s, $h_{t-1}$ is the ex-memory, or the memory of step $t-1$.
+where $h_t$ and $h_{t-1}$ are the memory and ex-memory of step $t$'s respectively.
 
-In the implementation, we can make an ex-memory variable either "refers to" the memory variable of the previous step, 
-or copy the value of the previous memory variable to the current ex-memory variable.
+In the implementation, we can make an ex-memory variable either "refers to" the memory variable of the previous step,
+or copy the value of the previous memory value to the current ex-memory variable.
 
-### The Python Interface
-In Paddle's macro design, 
-the concept Block represents a sequence of operators.
+### Usage in Python
 
-We can define an RNN's step-net based on Block as follows
+For more information on Block, please refer to the [design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md).
+
+We can define an RNN's step-net using Block:
 
 ```python
 import paddle as pd
@@ -70,7 +63,7 @@ a = some_op()
 W = pd.Variable(shape=[20, 30])
 U = pd.Variable(shape=[20, 30])
 
-rnn = pd.create_RNNOp(output_num=1)
+rnn = pd.create_rnn_op(output_num=1)
 with rnn.stepnet():
     x = rnn.add_input(X)
     # declare a memory (rnn's step)
@@ -81,24 +74,23 @@ with rnn.stepnet():
     h.update(new_state)
     # indicate that h variables in all step scopes should be merged
     rnn.set_output(0, h)
-    
+
 out = rnn()
 ```
 
-in above example, some Python interfaces declared:
-- `rnn.add_input` indicates the variables that need to be segmented for RNN time steps and step-net's inputs.
-- `rnn.add_memory` declares a memory of RNN (state).
-- `rnn.set_output` mark the variables that need to be concated across all the time steps.
+Python API functions in above example:
 
-### Integrate with LoDTensor to implement multiple levels of RNN
-We are interested in how to apply varied levels of RNN using RNNOp, 
-for example, use a 2-level RNN to learn the information from a Chapter,
-a single chapter contains several paragraphs, 
-and each paragraph contains several sentences.
+- `rnn.add_input` indicates the parameter is a variable that will be segmented into step-inputs.
+- `rnn.add_memory` creates a variable used as the memory.
+- `rnn.set_output` mark the variables that will be concatenated across steps into the RNN output.
 
-Feed the paragraph data to the lower level RNNOps, one sentence in each step time, 
-collect their outputs and feed to the top level RNNOp, one paragraph in each step time,
-finally, the top level RNN outputs the information of a chapter.
+### Nested RNN and LoDTensor
+
+An RNN whose step-net includes other RNN operators is known as an *nested RNN*.
+
+For example, we could have a 2-level RNN, where the top level corresponds to paragraphs, and the lower level corresponds to sentences.
+
+The following figure illustrates the feeding of text into the lower level, one sentence each step, and the feeding of step outputs to the top level. The final top level output is about the whole text.
 
 <p aligh="center">
 <img src="./images/2_level_rnn.png"/>
@@ -125,7 +117,7 @@ def lower_level_rnn(paragraph):
     '''
     x: the input
     '''
-    rnn = pd.create_RNNOp(output_num=1)
+    rnn = pd.create_rnn_op(output_num=1)
     with rnn.stepnet():
         sentence = rnn.segment_input(paragraph, level=0)
         h = rnn.add_memory(shape=[20, 30])
@@ -135,7 +127,7 @@ def lower_level_rnn(paragraph):
         rnn.set_output(0, h)
     return rnn
 
-top_level_rnn = pd.create_RNNOp(output_num=1)
+top_level_rnn = pd.create_rnn_op(output_num=1)
 with top_level_rnn.stepnet():
     paragraph_data = rnn.segment_input(chapter_data, level=1)
     low_rnn = lower_level_rnn(paragraph_data)
@@ -149,13 +141,8 @@ with top_level_rnn.stepnet():
 chapter_out = top_level_rnn()
 ```
 
-in above example, the `lower_level_rnn` will be embedded in the step-net of `top_level_rnn` as a RNNOp operator, 
-with a LoD Tensor, the top rnn will segment the original chapter data into paragraph records, 
-and the lower rnn will segment paragraph records into sentence records.
+in above example, the construction of the `top_level_rnn` calls  `lower_level_rnn`.  The input is a LoD Tensor. The top level RNN segments input text data into paragraphs, and the lower level RNN segments each paragraph into sentences.
 
 <p align="center">
 <img src="images/rnn_2level_data.png"/>
 </p>
-
-After data are segmented, run `lower-level-rnn` first, then the `up-level-rnn`, 
-finally the `up-level-rnn` will output the hidden state learned from the whole chapter data.
