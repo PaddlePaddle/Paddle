@@ -45,11 +45,20 @@ public:
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
-  void reshape() override;
+  void reshape(
+      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
 
-  void resetFwd() override;
+  void resetFwd(std::vector<mkldnn::primitive>& pipeline,
+                MKLDNNMatrixPtr& in,
+                MKLDNNMatrixPtr& wgt,
+                MKLDNNMatrixPtr& bias,
+                MKLDNNMatrixPtr& out) override;
 
-  void resetBwd() override;
+  void resetBwd(std::vector<mkldnn::primitive>& pipeline,
+                MKLDNNMatrixPtr& in,
+                MKLDNNMatrixPtr& wgt,
+                MKLDNNMatrixPtr& bias,
+                MKLDNNMatrixPtr& out) override;
 
   void updateInputData() override;
 

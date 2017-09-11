@@ -111,13 +111,14 @@ public:
 
     {
       REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
-      copySeqInfoToOutputs();
       CHECK(!inputLayers_.empty());
+      copySeqInfoToOutputs();
       size_t elemenCnt = inputLayers_[0]->getOutput().value->getElementCnt();
       if (inputElemenCnt_ != elemenCnt) {
+        // reset when input total sizes changed, not only the batchsize
         inputElemenCnt_ = elemenCnt;
-        reshape();
-        resetFwd();
+        reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
+        resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
         convertWeightsFromPaddle();
         needResetBwd_ = true;
       }
@@ -144,7 +145,7 @@ public:
     {
       REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
       if (needResetBwd_) {
-        resetBwd();
+        resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
         needResetBwd_ = false;
       }
 
@@ -160,20 +161,30 @@ public:
   /**
    * reshape the input image sizes
    * and reset output image and buffer size
+   * output channel can not be changed
    */
-  virtual void reshape() = 0;
+  virtual void reshape(
+      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) = 0;
 
   /**
    * reset the mkldnn forward primitve and memory
    * only would be called when input size changes
    */
-  virtual void resetFwd() = 0;
+  virtual void resetFwd(std::vector<mkldnn::primitive>& pipeline,
+                        MKLDNNMatrixPtr& in,
+                        MKLDNNMatrixPtr& wgt,
+                        MKLDNNMatrixPtr& bias,
+                        MKLDNNMatrixPtr& out) = 0;
 
   /**
    * reset the mkldnn backward primitve and memory for mkldnn fc
    * only would be called when needed
    */
-  virtual void resetBwd() = 0;
+  virtual void resetBwd(std::vector<mkldnn::primitive>& pipeline,
+                        MKLDNNMatrixPtr& in,
+                        MKLDNNMatrixPtr& wgt,
+                        MKLDNNMatrixPtr& bias,
+                        MKLDNNMatrixPtr& out) = 0;
 
   /**
    * Update input value data when input layer is "data" type.
@@ -207,16 +218,16 @@ protected:
   /**
    * reshape the input image sizes and input batchsize
    */
-  virtual void reshapeInput() {
+  virtual void reshapeInput(int& batchsize, int& height, int& width) {
     const Argument& input = inputLayers_[0]->getOutput();
-    bs_ = input.getBatchSize();
-    int height = input.getFrameHeight();
-    int width = input.getFrameWidth();
-    if (height != 0) {
-      ih_ = height;
+    batchsize = input.getBatchSize();
+    int h = input.getFrameHeight();
+    int w = input.getFrameWidth();
+    if (h != 0) {
+      height = h;
     }
-    if (width != 0) {
-      iw_ = width;
+    if (w != 0) {
+      width = w;
     }
   }
 
