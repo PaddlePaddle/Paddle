@@ -53,7 +53,7 @@ class BeginPass(object):
 class EndPass(WithMetric):
     """
     Event On One Pass Training Complete.
-    To get output of specific layer, add "event.gm.getLayerOutputs('predict_layer')"
+    To get the output of a specific layer, add "event.gm.getLayerOutputs('predict_layer')"
     in your event_handler call back
     """
 
@@ -76,7 +76,7 @@ class BeginIteration(object):
 class EndIteration(WithMetric):
     """
     Event On One Batch Training Complete.
-    To get output of specific layer, add "event.gm.getLayerOutputs('predict_layer')"
+    To get the output of a specific layer, add "event.gm.getLayerOutputs('predict_layer')"
     in your event_handler call back
     """
 
