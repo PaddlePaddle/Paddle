@@ -77,24 +77,6 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
-void MKLDNNFcLayer::convertOutputToOtherDevice() {
-  copyOutputInfoToOtherDevice();
-  // find other cpu device and reorder output to cpu device
-  int cnt = 0;
-  for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-    if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
-      // fc cpu output value do not need convert
-      // just share point
-      outputOtherDevice_[i].value = output_.value;
-      ++cnt;
-    }
-  }
-
-  if (cnt > 1) {
-    LOG(WARNING) << "should not have more than one CPU devie";
-  }
-}
-
 void MKLDNNFcLayer::reshape() {
   const Argument& input = getInput(0, getPrev(0)->getDeviceId());
   int batchSize = input.getBatchSize();
@@ -155,7 +137,10 @@ void MKLDNNFcLayer::resetFwd() {
   // change original output value to mkldnn output value
   output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
   if (!outputIsOnlyMKLDNN()) {
-    convertOutputToOtherDevice();
+    copyOutputInfoToOtherDevice();
+    // fc cpu output value do not need create convert
+    // just share point
+    getOutput(CPU_DEVICE).value->setData(output_.value->getData());
   }
 
   // create forward handle

@@ -72,8 +72,6 @@ protected:
    * only would be called when needed
    */
   void resetBwd();
-
-  void convertOutputToOtherDevice() override;
 };
 
 }  // namespace paddle

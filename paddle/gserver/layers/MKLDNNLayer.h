@@ -114,12 +114,6 @@ public:
   virtual void convertWeightsToPaddle() {}
 
   /**
-   * convert MKLDNN output to other device.
-   * only support CPU device yet
-   */
-  virtual void convertOutputToOtherDevice() {}
-
-  /**
    * print info about sizes
    */
   virtual void printSizeInfo() {
@@ -155,6 +149,7 @@ protected:
    *        copy base info and do not copy data value
    */
   void copyOutputInfoToOtherDevice() {
+    int cnt = 0;
     for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
       outputOtherDevice_[i].setFrameHeight(output_.getFrameHeight());
       outputOtherDevice_[i].setFrameWidth(output_.getFrameWidth());
@@ -163,6 +158,12 @@ protected:
       outputOtherDevice_[i].subSequenceStartPositions =
           output_.subSequenceStartPositions;
       outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
+      if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
+        ++cnt;
+      }
+    }
+    if (cnt > 1) {
+      LOG(WARNING) << "should not have more than one CPU devie";
     }
   }
 
