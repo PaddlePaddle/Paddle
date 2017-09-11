@@ -50,8 +50,10 @@ USE_OP(minus);
 USE_OP(cos_sim);
 USE_CPU_ONLY_OP(gather);
 USE_CPU_ONLY_OP(scatter);
+USE_CPU_ONLY_OP(concat);
 USE_OP(top_k);
 USE_OP(squared_l2_distance);
+USE_OP(sum);
 
 namespace paddle {
 namespace framework {
@@ -217,7 +219,10 @@ All parameter, weight, gradient are variables in Paddle.
                -> std::map<std::string, std::vector<std::string>> {
                  return op.Outputs();
                })
+      .def("output_vars",
+           [](const OperatorBase &op) { return op.OutputVars(true); })
       .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
+      .def("input_vars", [](const OperatorBase &op) { return op.InputVars(); })
       .def("__str__", &OperatorBase::DebugString)
       .def("no_intermediate_outputs",
            [](const OperatorBase &op) { return op.OutputVars(false); })

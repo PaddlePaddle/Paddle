@@ -53,6 +53,8 @@ public:
 
   void backward(const UpdateCallback& callback) override;
 
+  void updateInputData() override;
+
 protected:
   /**
    * reshape the input image sizes
@@ -72,8 +74,6 @@ protected:
    * only would be called when needed
    */
   void resetBwd();
-
-  void convertOutputToOtherDevice() override;
 };
 
 }  // namespace paddle
