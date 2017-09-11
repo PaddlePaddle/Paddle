@@ -15,7 +15,6 @@ def create_op(op_type):
         kwargs[in_name] = in_name
     for out_name in Operator.get_op_output_names(op_type):
         kwargs[out_name] = out_name
-
     return Operator(op_type, **kwargs)
 
 
@@ -36,13 +35,13 @@ def get_numeric_gradient(op,
                          in_place=False):
     """
     Get Numeric Gradient for an operator's input.
-    
-    :param op: C++ operator instance, could be an network 
-    :param input_values: The input variables. Should be an dictionary, key is 
+
+    :param op: C++ operator instance, could be an network
+    :param input_values: The input variables. Should be an dictionary, key is
     variable name. Value is numpy array.
-    :param output_name: The final output variable name. 
+    :param output_name: The final output variable name.
     :param input_to_check: The input variable need to get gradient.
-    :param delta: The perturbation value for numeric gradient method. The 
+    :param delta: The perturbation value for numeric gradient method. The
     smaller delta is, the more accurate result will get. But if that delta is
      too small, it could occur numerical stability problem.
     :param local_scope: The local scope used for get_numeric_gradient.
@@ -229,9 +228,9 @@ class GradientChecker(unittest.TestCase):
         """Use relative error for the comparison.
 
         :param numeric_grads: the numerical graidents.
-        :type numeric_grads: a list of numpy.array 
+        :type numeric_grads: a list of numpy.array
         :param analytic_grads: the analytical graidents.
-        :type analytic_grads: a list of numpy.array 
+        :type analytic_grads: a list of numpy.array
         :param name: the names of gradients, used to print for debug.
         :type names: a list of string
         :param msg_prefix: string info, used to print for debug.
@@ -286,6 +285,9 @@ class GradientChecker(unittest.TestCase):
         for no_grad in no_grad_set:
             if no_grad not in in_names:
                 raise ValueError("no_grad should be in in_names")
+            if no_grad in inputs_to_check:
+                raise ValueError("no_grad should not be in inputs_to_check")
+
         backward_op = core.Operator.backward(forward_op, no_grad_set)
 
         places = [core.CPUPlace()]
@@ -301,7 +303,6 @@ class GradientChecker(unittest.TestCase):
 
         check_names = [grad_var_name(name) for name in inputs_to_check]
         for place in places:
-            # get analytical gradients according to different device
             analytic_grads = self.__get_gradient(forward_op, backward_op,
                                                  input_vars, check_names, place)
             self.__assert_is_close(numeric_grads, analytic_grads, check_names,

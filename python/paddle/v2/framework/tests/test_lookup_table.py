@@ -4,7 +4,7 @@ from op_test_util import OpTestMeta
 from gradient_checker import GradientChecker, create_op
 
 
-class TestSigmoidOp(unittest.TestCase):
+class TestLookupTableOp(unittest.TestCase):
     __metaclass__ = OpTestMeta
 
     def setUp(self):
@@ -15,7 +15,7 @@ class TestSigmoidOp(unittest.TestCase):
         self.outputs = {'Out': table[ids]}
 
 
-class TestSigmoidGradOp(GradientChecker):
+class TestLookupTableGradOp(GradientChecker):
     def test_grad(self):
         op = create_op('lookup_table')
         table = np.random.random((17, 31)).astype('float32')
