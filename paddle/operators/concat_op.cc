@@ -28,13 +28,13 @@ class ConcatOp : public framework::OperatorWithKernel {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto *out = ctx.Output<framework::Tensor>("Out");
     int axis = static_cast<int>(ctx.Attr<int>("axis"));
-    size_t N = ins.size();
+    size_t n = ins.size();
 
-    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+    PADDLE_ENFORCE_GT(n, 1, "Input tensors count should > 1.");
 
     auto out_dims = ins[0]->dims();
-    int in_zero_dims_size = out_dims.size();
-    for (size_t i = 1; i < N; i++) {
+    size_t in_zero_dims_size = out_dims.size();
+    for (int i = 1; i < n; i++) {
       for (int j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
           out_dims[axis] += ins[i]->dims()[j];
