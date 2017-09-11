@@ -8,18 +8,18 @@ This document is about an RNN operator which requires that instances in a mini-b
 <img src="./images/rnn.jpg"/>
 </p>
 
-The above diagram shows an RNN being unrolled into a full network.
+The above diagram shows an RNN unrolled into a full network.
 
 There are several important concepts:
 
-- *step-net*: the network to run at each step
-- *memory*, a variable storing the state of the current step, denoted as $h_t$.
-- *ex-memory*, the value of the state of the previous step, denoted as $h_{t-1}$.
+- *step-net*: the sub-graph to run at each step,
+- *memory*, $h_t$, the state of the current step,
+- *ex-memory*, $h_{t-1}$, the state of the previous step,
 - *initial memory value*, the ex-memory of the first step.
 
 ### Step-scope
 
-There could be local variables defined in step-nets.  At runtime, these variables are realized in *step-scopes* -- scopes created for each step.
+There could be local variables defined in step-nets.  PaddlePaddle runtime realizes these variables in *step-scopes* -- scopes created for each step.
 
 <p aligh="center">
 <img src="./images/rnn.png"/><br/>
@@ -29,7 +29,7 @@ Figure 2 the RNN's data flow
 Please be aware that all steps run the same step-net.  Each step
 
 1. creates the step-scope,
-2. realizes local variables, including step outputs, in the step-scope, and
+2. realizes local variables, including step-outputs, in the step-scope, and
 3. runs the step-net, which could use these variables.
 
 The RNN operator will compose its output from step outputs in step scopes.
@@ -45,7 +45,7 @@ $$,
 where $h_t$ and $h_{t-1}$ are the memory and ex-memory of step $t$'s respectively.
 
 In the implementation, we can make an ex-memory variable either "refers to" the memory variable of the previous step,
-or copy the value of the previous memory variable to the current ex-memory variable.
+or copy the value of the previous memory value to the current ex-memory variable.
 
 ### Usage in Python
 
@@ -80,17 +80,17 @@ out = rnn()
 
 Python API functions in above example:
 
-- `rnn.add_input` indicates the variables that need to be segmented for RNN time steps and step-net's inputs.
-- `rnn.add_memory` declares a memory of RNN (state).
-- `rnn.set_output` mark the variables that need to be concated across all the time steps.
+- `rnn.add_input` indicates the parameter is a variable that will be segmented into step-inputs.
+- `rnn.add_memory` creates a variable used as the memory.
+- `rnn.set_output` mark the variables that will be concatenated across steps into the RNN output.
 
 ### Nested RNN and LoDTensor
 
-There could be RNN operators in the step-net of an RNN.  This is known as *nested RNN*.
+An RNN whose step-net includes other RNN operators is known as an *nested RNN*.
 
-For example, we could have a 2-level RNN, where the top level corresponds to paragraphs and the lower level corresponds to sentences.
+For example, we could have a 2-level RNN, where the top level corresponds to paragraphs, and the lower level corresponds to sentences.
 
-The following figure illustrates the feeding of text into the lower level, one sentence each step, and the feeding of step outputs to the top level. The final top level outputs is about the whole text.
+The following figure illustrates the feeding of text into the lower level, one sentence each step, and the feeding of step outputs to the top level. The final top level output is about the whole text.
 
 <p aligh="center">
 <img src="./images/2_level_rnn.png"/>
@@ -141,13 +141,8 @@ with top_level_rnn.stepnet():
 chapter_out = top_level_rnn()
 ```
 
-in above example, the `lower_level_rnn` will be embedded in the step-net of `top_level_rnn` as a RNNOp operator,
-with a LoD Tensor, the top rnn will segment the original chapter data into paragraph records,
-and the lower rnn will segment paragraph records into sentence records.
+in above example, the construction of the `top_level_rnn` calls  `lower_level_rnn`.  The input is a LoD Tensor. The top level RNN segments input text data into paragraphs, and the lower level RNN segments each paragraph into sentences.
 
 <p align="center">
 <img src="images/rnn_2level_data.png"/>
 </p>
-
-After data are segmented, run `lower-level-rnn` first, then the `up-level-rnn`,
-finally the `up-level-rnn` will output the hidden state learned from the whole chapter data.
