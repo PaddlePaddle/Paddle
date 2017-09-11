@@ -354,6 +354,10 @@ class LayerOutput(object):
     def height(self):
         return cp.g_layer_map[self.full_name].height
 
+    @property
+    def depth(self):
+        return cp.g_layer_map[self.full_name].depth
+
     def set_input(self, input):
         """
         Set the input for a memory layer. Can only be used for memory layer
@@ -943,7 +947,7 @@ def data_layer(name, size, depth=None, height=None, width=None,
     if height is not None and width is not None:
         num_filters = size / (width * height * depth)
         assert num_filters * width * height * depth == size, \
-                "size=%s width=%s height=%s depth=%s"  % (size, width, height, depth)
+                "size=%s width=%s height=%s depth=%s" % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
@@ -2953,13 +2957,15 @@ def img_cmrnorm_layer(input,
 def batch_norm_layer(input,
                      act=None,
                      name=None,
+                     img3D=False,
                      num_channels=None,
                      bias_attr=None,
                      param_attr=None,
                      layer_attr=None,
                      batch_norm_type=None,
                      moving_average_fraction=0.9,
-                     use_global_stats=None):
+                     use_global_stats=None,
+                     mean_var_names=None):
     """
     Batch Normalization Layer. The notation of this layer as follow.
 
@@ -3026,6 +3032,8 @@ def batch_norm_layer(input,
                                    :math:`runningMean = newMean*(1-factor)
                                    + runningMean*factor`
     :type moving_average_fraction: float.
+    :param mean_var_names: [mean name, variance name]
+    :type mean_var_names: string list
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3039,6 +3047,7 @@ def batch_norm_layer(input,
            (batch_norm_type == "cudnn_batch_norm")
     l = Layer(
         name=name,
+        img3D=img3D,
         inputs=Input(
             input.name, image=Image(channels=num_channels), **param_attr.attr),
         active_type=act.name,
@@ -3047,6 +3056,7 @@ def batch_norm_layer(input,
         bias=ParamAttr.to_bias(bias_attr),
         moving_average_fraction=moving_average_fraction,
         use_global_stats=use_global_stats,
+        mean_var_names=mean_var_names,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     return LayerOutput(
@@ -6410,7 +6420,7 @@ def gated_unit_layer(input,
 @wrap_name_default('switch_order')
 def switch_order_layer(input,
                        name=None,
-                       reshape=None,
+                       reshape_axis=None,
                        act=None,
                        layer_attr=None):
     """
@@ -6421,8 +6431,9 @@ def switch_order_layer(input,
     The example usage is:
 
     .. code-block:: python
+       reshape_axis = 3
+       switch = switch_order(input=layer, name='switch', reshape_axis=reshape_axis)
        reshape = {'height':[ 0, 1, 2], 'width':[3]}
-       switch = switch_order(input=layer, name='switch', reshape=reshape)
 
     :param input: The input layer.
     :type input: LayerOutput
@@ -6434,6 +6445,11 @@ def switch_order_layer(input,
     :rtype: LayerOutput
     """
     assert isinstance(input, LayerOutput)
+    assert reshape_axis != None and (reshape_axis > 0 and reshape_axis < 4)
+    height = [ele for ele in xrange(reshape_axis)]
+    width = [ele for ele in range(reshape_axis, 4)]
+    reshape = {'height': height, 'width': width}
+
     l = Layer(
         name=name,
         inputs=input.name,

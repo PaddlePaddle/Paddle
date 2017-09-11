@@ -65,8 +65,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(ANDROID)
-    if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
-        message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 21")
+    if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
+        message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
     endif()
 
     set(WITH_GPU OFF CACHE STRING
