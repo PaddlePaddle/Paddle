@@ -15,13 +15,6 @@ class TestReshapeOp(unittest.TestCase):
 
 
 class TestReshapeGradOp(GradientChecker):
-    """
-    def test_normal(self):
-        op = Operator("reshape", X='X', Out='Out', shape=[5, 40])
-        inputs = {"X": np.random.random((10, 20)).astype("float32")}
-        self.check_grad(op, inputs, set("X"), "Out")
-    """
-
     def setUp(self):
         self.op = Operator("reshape", X='X', Out='Out', shape=[5, 40])
         self.inputs = {"X": np.random.random((10, 20)).astype("float32")}
