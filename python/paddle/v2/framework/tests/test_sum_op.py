@@ -17,8 +17,8 @@ class TestSumOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["x0"], "Out")
+        self.check_grad(['x0'], 'Out')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
