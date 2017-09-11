@@ -53,6 +53,7 @@ USE_CPU_ONLY_OP(concat);
 USE_OP(top_k);
 USE_OP(squared_l2_distance);
 USE_OP(sum);
+USE_CPU_ONLY_OP(split);
 
 namespace paddle {
 namespace framework {
