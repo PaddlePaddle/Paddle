@@ -27,9 +27,7 @@ class OpTestMeta(type):
                 places.append(core.GPUPlace(0))
 
             for place in places:
-                for ins in Operator.get_op_input_names(self.type):
-                    in_name = ins[0]
-                    in_dup = ins[1]
+                for in_name, in_dup in Operator.get_op_inputs(self.type):
                     if hasattr(self, 'inputs') and in_name in self.inputs:
                         kwargs[in_name] = []
                         if in_dup:
@@ -49,8 +47,7 @@ class OpTestMeta(type):
                     else:
                         kwargs[in_name] = "@EMPTY@"
 
-                for out_name, out_dup in Operator.get_op_output_names(
-                        self.type):
+                for out_name, out_dup in Operator.get_op_outputs(self.type):
                     if not hasattr(self, "outputs"):
                         raise ValueError(
                             "The test op must set self.outputs dict.")
@@ -73,8 +70,7 @@ class OpTestMeta(type):
                 ctx = core.DeviceContext.create(place)
                 op.run(scope, ctx)
 
-                for out_name, out_dup in Operator.get_op_output_names(
-                        self.type):
+                for out_name, out_dup in Operator.get_op_outputs(self.type):
                     actual = numpy.array(scope.find_var(out_name).get_tensor())
                     expect = self.outputs[out_name]
                     self.assertTrue(
