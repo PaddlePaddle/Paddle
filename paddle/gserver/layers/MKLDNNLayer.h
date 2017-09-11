@@ -114,6 +114,12 @@ public:
   virtual void convertWeightsToPaddle() {}
 
   /**
+   * Update input value data when input layer is "data" type.
+   * Since the input value data address might be changed.
+   */
+  virtual void updateInputData() {}
+
+  /**
    * print info about sizes
    */
   virtual void printSizeInfo() {
@@ -192,32 +198,6 @@ protected:
           << "Only support other device is CPU yet";
     }
     return outputOtherDevice_.size() == 0;
-  }
-
-  /**
-   * Sync input value data
-   */
-  void syncInputValue() {
-    if (inputIsOnlyMKLDNN()) {
-      return;
-    }
-    real* iData = getInputValue(0, CPU_DEVICE)->getData();
-    // update input data
-    // since it might be changed if this is after data layer
-    inVal_->setData(iData);
-  }
-
-  /**
-   * Sync output grad data
-   */
-  void syncOutputGrad() {
-    if (outputIsOnlyMKLDNN()) {
-      return;
-    }
-
-    // update diff
-    real* oDiff = getOutput(CPU_DEVICE).grad->getData();
-    outGrad_->setData(oDiff);
   }
 
   /**

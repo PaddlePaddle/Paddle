@@ -53,6 +53,8 @@ public:
 
   void backward(const UpdateCallback& callback) override;
 
+  void updateInputData() override;
+
 protected:
   /**
    * reshape the input image sizes
