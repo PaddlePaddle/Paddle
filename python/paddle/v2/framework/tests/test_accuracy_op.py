@@ -1,12 +1,9 @@
 import unittest
 import numpy as np
-from gradient_checker import GradientChecker, create_op
-from op_test_util import OpTestMeta
+from op_test import OpTest
 
 
-class TestAccuracyOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestAccuracyOp(OpTest):
     def setUp(self):
         self.type = "accuracy"
         infer = np.random.randint(0, 2, (32, 1)).astype("int")
