@@ -18,6 +18,7 @@ from paddle.proto.ModelConfig_pb2 import ModelConfig
 import paddle.trainer_config_helpers as conf_helps
 import layer as v2_layer
 import config_base
+import cPickle
 
 __all__ = ['Topology']
 
@@ -99,6 +100,14 @@ class Topology(object):
             if layer.name == name:
                 return layer
         return None
+
+    def serialize_for_inference(self, stream):
+        protobin = self.proto().SerializeToString()
+        data_type = self.data_type()
+        cPickle.dump({
+            'protobin': protobin,
+            'data_type': data_type
+        }, stream, cPickle.HIGHEST_PROTOCOL)
 
 
 def __check_layer_type__(layer):
