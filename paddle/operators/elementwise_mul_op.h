@@ -24,7 +24,7 @@ namespace operators {
  * Out = X ⊙ Y
  * 1. shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
  *    pre=2, n=3*4, post=5
- * 2.shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
+ * 2. shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
  *    pre=2*3, n=4*5, post=1
  */
 
@@ -74,7 +74,7 @@ class ElementWiseMulKernel : public framework::OpKernel {
       return;
     }
 
-    int axis = ctx.template Attr<int>("axis");
+    int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
     PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
                    "Axis should be in range [0, x_dims)");
@@ -136,7 +136,7 @@ class ElementWiseMulGradKernel : public framework::OpKernel {
       return;
     }
 
-    int axis = ctx.template Attr<int>("axis");
+    int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
 
     int pre, n, post;

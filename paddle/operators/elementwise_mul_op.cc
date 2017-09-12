@@ -53,7 +53,7 @@ to match the shape of X and axis should be dimension index Y in X
     AddOutput("Out", "The output of elementwise mul op");
     AddComment(R"DOC(
 Limited elementwise multiple operator.The equation is: Out = X ⊙ Y.
-1. The shape of Y should be same of X or
+1. The shape of Y should be same with X or
 2. Y's shape is a subset of X. 
    Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
    example:
