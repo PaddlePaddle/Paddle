@@ -2,6 +2,7 @@ import numpy
 import collections
 import topology
 import minibatch
+import cPickle
 
 __all__ = ['infer', 'Inference']
 
@@ -25,18 +26,23 @@ class Inference(object):
     :type parameters: paddle.v2.parameters.Parameters
     """
 
-    def __init__(self, output_layer, parameters, data_types=None):
+    def __init__(self, parameters, output_layer=None, fileobj=None):
         import py_paddle.swig_paddle as api
-        if isinstance(output_layer, str):
-            gm = api.GradientMachine.createByConfigProtoStr(output_layer)
-            if data_types is None:
-                raise ValueError("data_types != None when using protobuf bin")
-            self.__data_types__ = data_types
-        else:
+
+        if output_layer is not None:
             topo = topology.Topology(output_layer)
             gm = api.GradientMachine.createFromConfigProto(
                 topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
             self.__data_types__ = topo.data_type()
+        elif fileobj is not None:
+            tmp = cPickle.load(fileobj)
+            gm = api.GradientMachine.createByConfigProtoStr(
+                tmp['protobin'], api.CREATE_MODE_TESTING,
+                [api.PARAMETER_VALUE])
+            self.__data_types__ = tmp['data_type']
+        else:
+            raise ValueError("Either output_layer or fileobj must be set")
+
         for param in gm.getParameters():
             val = param.getBuf(api.PARAMETER_VALUE)
             name = param.getName()
