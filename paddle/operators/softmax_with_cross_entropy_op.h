@@ -15,6 +15,8 @@
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/softmax_function.h"
+#include "paddle/operators/math/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -27,7 +29,30 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {}
+  void Compute(const framework::ExecutionContext& context) const override {
+    // Calculate ths softmax outputs.
+    const Tensor* logits = context.Input<Tensor>("Logits");
+    Tensor* softmax = context.Output<Tensor>("Softmax");
+    // allocate memory on device.
+    softmax->mutable_data<T>(context.GetPlace());
+    math::SoftmaxFunctor<Place, T>()(logits, softmax, context);
+
+    // Calculate the cross entropy loss based on hard labels.
+    T* softmax_out = softmax->data<T>();
+    const int* label_data = context.Input<Tensor>("label")->data<int>();
+
+    Tensor* loss = context.Output<Tensor>("Loss");
+    loss->mutable_data<T>(context.GetPlace());
+    T* loss_data = loss->data<T>();
+
+    const int batch_size = logits->dims()[0];
+    const int class_num = logits->dims()[1];
+
+    for (int i = 0; i < batch_size; ++i) {
+      int index = i * class_num + label_data[i];
+      loss_data[i] = -math::tolerable_value(std::log(softmax_out[index]));
+    }
+  }
 };
 
 template <typename Place, typename T>

@@ -23,13 +23,13 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto logits = ctx.Input<Tensor>("logits");
+    auto logits = ctx.Input<Tensor>("Logits");
     PADDLE_ENFORCE(
         logits->dims().size() == 2UL,
         "The input of softmax_with_cross_entropy should be a 2-d tensor.");
-    PADDLE_ENFORCE(ctx.Input<Tensor>("lables")->dims().size() == 1UL,
+    PADDLE_ENFORCE(ctx.Input<Tensor>("Label")->dims().size() == 1UL,
                    "The label should be a 1-d tensor.");
-    ctx.Output<Tensor>("Y")->Resize({logits->dims()[0]});
+    ctx.Output<Tensor>("Label")->Resize({logits->dims()[0]});
   }
 };
 
@@ -39,11 +39,15 @@ class SoftmaxWithCrossEntropyOpMaker
   SoftmaxWithCrossEntropyOpMaker(framework::OpProto *proto,
                                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("logits",
+    AddInput("Logits",
              "The unscaled log probabilities which is a 2-D tensor<float> with"
              "shape [N x K]. N is the batch_size, and K is the class number.");
-    AddInput("label", "The ground truth. A 1-D tensor<int> with shape N.");
-    AddOutput("Y", "A 1-D tensor<float> with shape N.");
+    AddInput("Label", "The ground truth. A 1-D tensor<int> with shape N.");
+    AddOutput("Softmax",
+              "Store the outputs of softmax function, "
+              "which will be used in backward calculation.")
+        .AsIntermediate();
+    AddOutput("Loss", "A 1-D tensor<float> with shape N.");
     AddComment(R"DOC(
 Cross entropy loss with softmax are used as the output layer extensively. This
 operator computes the softmax normalized values for each row of the input
@@ -67,21 +71,21 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
-                            "Input(Y@GRAD) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Y")->dims(),
-                      ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
-                      "Input(Y) and its gradients should have a same shape.");
-
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("labels"),
-                            "Input(lables) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("logits")),
-                            "Input(logits@GRAD) should be not null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Loss"),
+                            "Input(Loss) should be not null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Loss")),
+                            "Input(Loss@GRAD) should be not null.");
     PADDLE_ENFORCE_EQ(
-        ctx.Input<Tensor>("logits")->dims(),
-        ctx.Input<Tensor>(framework::GradVarName("logits"))->dims(),
-        "Input(logits) and its gradients should have a same shape.");
+        ctx.Input<Tensor>("Logits")->dims(),
+        ctx.Input<Tensor>(framework::GradVarName("Logits"))->dims(),
+        "Input(Logits) and its gradients should have a same shape.");
+    PADDLE_ENFORCE_EQ(
+        ctx.Input<Tensor>("Logits")->dims(),
+        ctx.Input<Tensor>(framework::GradVarName("Logits"))->dims(),
+        "Input(Logits) and its gradients should have a same shape.");
+
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
+                            "Input(Lable) should be not null.");
   }
 };
 
