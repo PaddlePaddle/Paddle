@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/backward.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -58,6 +59,8 @@ namespace paddle {
 namespace framework {
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using LoD = framework::LoD;
 
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
@@ -117,6 +120,60 @@ PYBIND11_PLUGIN(core) {
         return self.data<float>()[offset];
       });
 
+  py::class_<LoDTensor>(m, "LoDTensor", R"DOC(LoD(Leval of Ddetails) Tensor.
+
+The tensor and LoD info should be created before creating the LoDTensor, then
+call the set_tensor and set_lod functions to set them.
+
+)DOC")
+      .def("__init__",
+           [](LoDTensor &instance,
+              const std::vector<std::vector<size_t>> &lod,
+              Tensor *t) {
+#ifdef PADDLE_ONLY_CPU
+             new (&instance) LoDTensor(lod, t);
+#else
+             paddle::framework::LoD new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             new (&instance) LoDTensor(new_lod, t);
+#endif
+           })
+      .def("set_tensor",
+           [](LoDTensor &self, Tensor *tensor) { self.set_tensor(tensor); })
+      .def("set_lod",
+           [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
+#ifdef PADDLE_ONLY_CPU
+             self.set_lod(lod);
+#else
+             paddle::framework::LoD new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             self.set_lod(new_lod);
+#endif
+           })
+      .def("tensor",
+           [](LoDTensor &self) -> Tensor & { return self.tensor(); },
+           py::return_value_policy::reference)
+      .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+#ifdef PADDLE_ONLY_CPU
+        return self.lod();
+#else
+           auto lod = self.lod();
+           std::vector<std::vector<size_t>> new_lod;
+           new_lod.reserve(lod.size());
+           std::transform(lod.begin(), lod.end(), std::back_inserter(new_lod),
+               [](paddle::framework::Vector<size_t> item) ->
+                   std::vector<size_t> {
+                 std::vector<size_t> v;
+                 v.reserve(item.size());
+                 std::copy(item.begin(), item.end(), std::back_inserter(v));
+                 return v;
+               });
+           return new_lod;
+#endif
+      });
+
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
 All parameter, weight, gradient are variables in Paddle.
@@ -127,6 +184,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
       .def("get_tensor",
            [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
+           py::return_value_policy::reference)
+      .def("get_lod_tensor",
+           [](Variable &self) -> LoDTensor * {
+             return self.GetMutable<LoDTensor>();
+           },
            py::return_value_policy::reference)
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
