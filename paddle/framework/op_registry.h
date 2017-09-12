@@ -38,7 +38,7 @@ class OpRegistry {
     PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;
-    ProtoMakerType* maker = nullptr;
+    ShapeInferenceFn grad_op_inferer = nullptr;
     op_info.creator_ = [](
         const std::string& type, const VariableNameMap& inputs,
         const VariableNameMap& outputs, const AttributeMap& attrs) {
@@ -49,10 +49,11 @@ class OpRegistry {
         std::type_index(typeid(NOPMaker))) {
       op_info.proto_ = new OpProto;
       op_info.checker_ = new OpAttrChecker;
-      maker = new ProtoMakerType(op_info.proto_, op_info.checker_);
-      maker->Validate();
+      ProtoMakerType maker = ProtoMakerType(op_info.proto_, op_info.checker_);
+      maker.Validate();
       op_info.proto_->set_type(op_type);
-      op_info.shapeInferFn_ = maker->GetShapeInferenceFn();
+      op_info.shapeInferFn_ = maker.GetShapeInferenceFn();
+      grad_op_inferer = maker.GetGradShapeInferenceFn();
       PADDLE_ENFORCE(
           op_info.proto_->IsInitialized(),
           "Fail to initialize %s's OpProto, because %s is not initialized",
@@ -65,8 +66,7 @@ class OpRegistry {
     OpInfoMap::Instance().Insert(op_type, op_info);
     // register gradient op
     if (!grad_op_type.empty()) {
-      RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "",
-                                            maker->GetGradShapeInferenceFn());
+      RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "", grad_op_inferer);
     }
   }
 
