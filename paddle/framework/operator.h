@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"

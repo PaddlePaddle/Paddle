@@ -19,8 +19,6 @@ class MutiInOutOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out2_mult", "a multiple output").AsDuplicable();
     AddComment("test op with multiple inputs and outputs");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class IOIgnoredOpMaker : public OpProtoAndCheckerMaker {
@@ -34,8 +32,6 @@ class IOIgnoredOpMaker : public OpProtoAndCheckerMaker {
     AddOutput("Out2", "a single output").NotInGradient();
     AddComment("op with inputs and outputs ignored in gradient calculating");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 }  // namespace framework

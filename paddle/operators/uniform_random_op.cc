@@ -78,8 +78,6 @@ Used to initialize tensor with uniform random generator.
                  "0 means generate a seed by system")
         .SetDefault(0);
   }
-
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

@@ -72,8 +72,6 @@ Out = Ref
 Out[Index] = Ref[Index] + Updates
 )DOC");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

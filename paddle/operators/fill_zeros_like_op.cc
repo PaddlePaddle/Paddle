@@ -41,8 +41,6 @@ Fill up a vriable with zeros.
 The output will have the same size with input.
 )DOC");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

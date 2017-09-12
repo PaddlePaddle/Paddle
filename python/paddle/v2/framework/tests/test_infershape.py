@@ -12,7 +12,7 @@ class TestCompileTimeInferShape(unittest.TestCase):
             "input1": Variable(
                 "input1", dims=[1, 2]).desc(),
             "input2": Variable(
-                "input1", dims=[1, 3]).desc(),
+                "input1", dims=[2, 3]).desc(),
             "output": out.desc()
         }
         mul_op = Operator.desc("mul", X="input1", Y="input2", Out="output")

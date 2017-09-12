@@ -24,8 +24,6 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
         .GreaterThan(0.0);
     AddComment("This is cos op");
   }
-
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 class MyTestOp : public OperatorBase {
@@ -49,8 +47,6 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
         .AddCustomChecker(my_checker);
     AddComment("This is my_test op");
   }
-
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 }  // namespace framework
 }  // namespace paddle

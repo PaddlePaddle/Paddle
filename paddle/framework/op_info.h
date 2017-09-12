@@ -20,6 +20,7 @@
 
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/shape_inference.h"
 
 namespace paddle {
 namespace framework {
@@ -29,22 +30,6 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using OpCreator = std::function<OperatorBase*(
     const std::string& /*type*/, const VariableNameMap& /*inputs*/,
     const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
-
-class InferShapeContextBase {
- public:
-  virtual ~InferShapeContextBase() {}
-  virtual const DDim get_input_dim(const std::string& name) const = 0;
-  virtual void set_input_dim(const std::string& name,
-                             const DDim& dim) const = 0;
-  virtual const DDim get_output_dim(const std::string& name) const = 0;
-  virtual void set_output_dim(const std::string& name,
-                              const DDim& dim) const = 0;
-  virtual const AttrReader Attrs() const = 0;
-
- protected:
-  virtual const DDim get_dim(const std::string& name) const = 0;
-  virtual void set_dim(const std::string& name, const DDim& dim) const = 0;
-};
 
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
@@ -57,8 +42,6 @@ class OpProtoAndCheckerMaker {
   }
 
   void Validate();
-
-  virtual void InferShape(const InferShapeContextBase& ctx) const = 0;
 
  protected:
   struct VariableBuilder {
@@ -99,11 +82,26 @@ class OpProtoAndCheckerMaker {
 
   void AddComment(const std::string& comment) { proto_->set_comment(comment); }
 
+  void SetShapeInferenceFn(ShapeInferenceFn fn) { shape_infer_fn_ = fn; }
+
+  void SetGradShapeInferenceFn(ShapeInferenceFn fn) {
+    grad_shape_infer_fn_ = fn;
+  }
+
+ public:
+  const ShapeInferenceFn GetShapeInferenceFn() const { return shape_infer_fn_; }
+
+  const ShapeInferenceFn GetGradShapeInferenceFn() const {
+    return grad_shape_infer_fn_;
+  }
+
  private:
   void CheckNoDuplicatedInOutAttrs();
 
   OpProto* proto_;
   OpAttrChecker* op_checker_;
+  ShapeInferenceFn shape_infer_fn_{nullptr};
+  ShapeInferenceFn grad_shape_infer_fn_{nullptr};
   bool validated_{false};
 };
 
@@ -111,8 +109,6 @@ class NOPMaker : public OpProtoAndCheckerMaker {
  public:
   NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {}
-
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 struct OpInfo {
@@ -120,7 +116,7 @@ struct OpInfo {
   std::string grad_op_type_;
   OpProto* proto_;
   OpAttrChecker* checker_;
-  OpProtoAndCheckerMaker* maker_;
+  ShapeInferenceFn shapeInferFn_;
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
@@ -144,8 +140,6 @@ struct OpInfo {
                             "Operator Creator has not been registered");
     return creator_;
   }
-
-  const OpProtoAndCheckerMaker& Maker() const { return *maker_; }
 
   bool HasGradientOp() const { return !grad_op_type_.empty(); }
 };

@@ -46,8 +46,6 @@ The equation is: Out = scale*X
 )DOC");
     AddAttr<AttrType>("scale", "scale of scale operator.").SetDefault(1.0);
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 // Scale Op's gradient is scale op, too.

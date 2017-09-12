@@ -51,8 +51,6 @@ class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
 Equation: Out = X - Y
 )DOC");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 template <typename AttrType>
 class MinusGradOp : public NetOp {

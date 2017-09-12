@@ -56,8 +56,6 @@ For each row `i` and each column `j` in X, we have:
 
 )DOC");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class SoftmaxOpGrad : public framework::OperatorWithKernel {

@@ -166,8 +166,6 @@ class RecurrentAlgorithmProtoAndCheckerMaker
 
     AddComment("This is a recurrent group operator.");
   }
-
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 void RecurrentGradientAlgorithm::Run(

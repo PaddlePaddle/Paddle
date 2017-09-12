@@ -77,8 +77,6 @@ class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
     You can decide whether calculate the gradient of input and target.
     )DOC");
   }
-
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {

@@ -30,8 +30,6 @@ class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "output tensor of identity op");
     AddComment("identity operator. Just a alias of scale op which scale = 1.0");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 template <typename AttrType>

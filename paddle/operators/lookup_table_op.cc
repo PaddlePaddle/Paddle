@@ -47,8 +47,6 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "This operator is used to perform lookups on the parameter W,"
         "then concatenated into a dense tensor.");
   }
-
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
 };
 
 class LookupTableOpGrad : public framework::OperatorWithKernel {
