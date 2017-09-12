@@ -46,10 +46,7 @@ class SplitKernel : public framework::OpKernel {
     size_t input_offset = 0;
     for (size_t i = 0; i < n; i++) {
       auto& out = outs[i];
-      for (size_t p = 0; p < out->dims().size(); p++) {
-        printf("%ld: %ld->%ld\n", i, p, out->dims()[p]);
-      }
-      auto axis_dim = out->dims()[axis];
+      size_t axis_dim = out->dims()[axis];
       for (size_t j = 0; j < before; j++) {
         size_t len = axis_dim * after * sizeof(T);
         T* dest =

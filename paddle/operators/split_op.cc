@@ -24,34 +24,38 @@ class SplitOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    printf("Infershape ... \n");
     // infershape
     auto *in = ctx.Input<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    size_t indices = static_cast<size_t>(ctx.Attr<int>("indices"));
     size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
-    size_t n = outs.size();
-
-    std::vector<int> axis_dim;
+    size_t num = static_cast<size_t>(ctx.Attr<int>("num"));
     std::vector<int> sections =
         static_cast<std::vector<int>>(ctx.Attr<std::vector<int>>("sections"));
-    if (indices > 0) {
-      PADDLE_ENFORCE_EQ(in->dims()[axis] % indices, 0,
-                        "tensor split does not result in an equal division.");
-      size_t out_size = in->dims()[axis] / indices;
-      printf("out_size=%ld\n", out_size);
+    size_t n = outs.size();
+
+    if (num > 0) {
+      int64_t in_axis_dim = in->dims()[axis];
+      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
+                        "tensor split does not result"
+                        " in an equal division");
+      size_t out_axis_dim = in_axis_dim / num;
       for (size_t i = 0; i < n; ++i) {
-        axis_dim.push_back(indices);
+        auto dim = in->dims();
+        dim[axis] = out_axis_dim;
+        outs[i]->Resize(dim);
       }
     } else if (sections.size() > 0) {
-      // TODO(Yancey1989)
+      PADDLE_ENFORCE_EQ(sections.size(), n,
+                        "tensor split sections size"
+                        "should be equal to output size.");
+      for (size_t i = 0; i < n; ++i) {
+        auto dim = in->dims();
+        dim[axis] = sections[i];
+        outs[i]->Resize(dim);
+      }
     } else {
-      // throw exception
-    }
-    for (size_t i = 0; i < outs.size(); i++) {
-      auto dim = in->dims();
-      // dim[axis] = axis_dim[i];
-      // outs[i]->Resize(dim);
+      PADDLE_ENFORCE_NOT_NULL(nullptr, "split operator should",
+                              " specify indices or sections.");
     }
   }
 };
@@ -68,20 +72,19 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
         Input = [[1,2],
                  [3,4],
                  [5,6]]
-        indices = 1
+        sections = [2,1]
         axis = 0
-        Output[0] = [[1,2]]
-        Output[1] = [[3,4]]
-        Output[2] = [[5,6]] 
+        Output[0] = [[1,2],
+                     [3,4]]
+        Output[1] = [[5,6]]
     )DOC");
-    AddAttr<std::vector<int>>("sections", "The length of each output.")
+    AddAttr<std::vector<int>>("sections",
+                              "the length for each"
+                              "output along with the specify axis.")
         .SetDefault(std::vector<int>{});
-    AddAttr<int>("axis", "The axis which the input will be splited on")
+    AddAttr<int>("num", "number of splits.").SetDefault(0);
+    AddAttr<int>("axis", "The axis which the input will be splited on.")
         .SetDefault(0);
-    AddAttr<int>("indices",
-                 "The input will be divided into N equal array"
-                 "along with the specify axis.")
-        .SetDefault(-1);
   }
 };
 

@@ -1,24 +1,25 @@
 import unittest
 import numpy as np
 from gradient_checker import GradientChecker, create_op
-from op_test_util import OpTestMeta
+from op_test import OpTest
 
 
-class TestConcatOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestSplitOp(OpTest):
     def setUp(self):
-        self.type = "split"
+        self.op_type = "split"
         axis = 0
         indices = 2
-        split_info = []
+        sections = [1, 3]
         x = np.random.random((4, 2)).astype('float32')
-        assert x.shape(axis) % indices == 0
-        split_info = [x.shape(axis) / indices for i in xrange(n)]
+        out = np.split(x, indices, axis)
         self.inputs = {'X': x}
-        self.attrs = {'axis': axis, 'split_info': split_info}
+        self.attrs = {'axis': axis, 'sections': sections}
         print np.split(x, indices, axis)
-        self.outputs = {'Out': list(np.split(x, indices, axis))}
+        self.outputs = {'Out': [('out%d' % i, out[i]) \
+            for i in xrange(len(out))]}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':
