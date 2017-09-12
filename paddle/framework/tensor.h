@@ -44,6 +44,9 @@ class Tensor {
   friend struct EigenTensor;
 
   template <typename T, int MajorType, typename IndexType>
+  friend struct EigenMatrix;
+
+  template <typename T, int MajorType, typename IndexType>
   friend struct EigenVector;
 
  public:

@@ -77,24 +77,6 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
-void MKLDNNFcLayer::convertOutputToOtherDevice() {
-  copyOutputInfoToOtherDevice();
-  // find other cpu device and reorder output to cpu device
-  int cnt = 0;
-  for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-    if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
-      // fc cpu output value do not need convert
-      // just share point
-      outputOtherDevice_[i].value = output_.value;
-      ++cnt;
-    }
-  }
-
-  if (cnt > 1) {
-    LOG(WARNING) << "should not have more than one CPU devie";
-  }
-}
-
 void MKLDNNFcLayer::reshape() {
   const Argument& input = getInput(0, getPrev(0)->getDeviceId());
   int batchSize = input.getBatchSize();
@@ -155,7 +137,10 @@ void MKLDNNFcLayer::resetFwd() {
   // change original output value to mkldnn output value
   output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
   if (!outputIsOnlyMKLDNN()) {
-    convertOutputToOtherDevice();
+    copyOutputInfoToOtherDevice();
+    // fc cpu output value do not need create convert
+    // just share point
+    getOutput(CPU_DEVICE).value->setData(output_.value->getData());
   }
 
   // create forward handle
@@ -235,13 +220,12 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdWgt_);
 
   /// backward data
-  device = inputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
-  const MatrixPtr& in = getInputGrad(0, device);
+  const MatrixPtr& in = inputLayers_[0]->getOutput().grad;
   if (in == nullptr) {
     return;
   }
-  if (getInput(0, device).getAllCount() > 1) {
-    // TODO(TJ): use outputMaps_ ways when merge outgrad done
+  if (getInput(0, MKLDNN_DEVICE).getAllCount() > 1) {
+    // TODO(TJ): use outputMaps_ ways to get the inGrad_ when merge outgrad done
   } else {
     inGrad_ = MKLDNNMatrix::create(in, inVal_->getPrimitiveDesc());
   }
@@ -258,13 +242,21 @@ void MKLDNNFcLayer::resetBwd() {
   pipelineBwd_.push_back(*bwdData_);
 }
 
+void MKLDNNFcLayer::updateInputData() {
+  if (inputLayers_[0]->getType() != "data") {
+    return;
+  }
+  real* iData = getInputValue(0, CPU_DEVICE)->getData();
+  inVal_->setData(iData);
+}
+
 void MKLDNNFcLayer::forward(PassType passType) {
   Layer::forward(passType);
   reshape();
 
   {
     REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
-    syncInputValue();
+    updateInputData();
 
     // just submit forward pipeline
     stream_->submit(pipelineFwd_);
@@ -286,7 +278,6 @@ void MKLDNNFcLayer::backward(const UpdateCallback& callback) {
     REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
     resetBwd();
 
-    syncOutputGrad();
     // just sumbmit backward pipeline
     stream_->submit(pipelineBwd_);
   }

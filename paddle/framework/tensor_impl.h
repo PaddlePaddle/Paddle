@@ -151,5 +151,13 @@ inline const DDim& Tensor::dims() const { return dims_; }
 
 inline int64_t Tensor::numel() const { return numel_; }
 
+template <typename T>
+inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
+  Tensor res;
+  res.ShareDataWith<T>(src);
+  res.Resize(flatten_to_2d(src.dims(), num_col_dims));
+  return res;
+}
+
 }  // namespace framework
 }  // namespace paddle
