@@ -54,13 +54,11 @@ set(DEPS_OPS
     identity_op
     minus_op
     mul_op
-    elementwise_mul_op
     recurrent_op
     scale_op)
 op_library(identity_op DEPS scale_op)
 op_library(minus_op DEPS scale_op)
 op_library(mul_op DEPS math_function)
-op_library(elementwise_mul_op SRCS elementwise_mul_op.cc elementwise_mul_op.cu)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
   DEPS framework_proto tensor operator net_op)
 op_library(scale_op DEPS net_op)

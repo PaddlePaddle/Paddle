@@ -17,12 +17,16 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class ElementWiseMulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto y_dim = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
@@ -38,13 +42,30 @@ class ElementWiseMulOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of elementwise mul op");
     AddInput("Y", "The second input of elementwise mul op");
-    AddAttr<int>("axis", "Optional input parameter of elementwise mul op");
-    AddAttr<int>("broadcast", "Optional input parameter of elementwise mul op");
+    AddAttr<int>(
+        "axis",
+        R"DOC(When broadcast is set, axis should be Y's dimension index in X.
+        )DOC")
+        .SetDefault(-1)
+        .EqualGreaterThan(-1);
+    AddAttr<int>(
+        "broadcast",
+        R"DOC(When broadcast is set, Y will be broadcast to match shape of X.
+        )DOC")
+        .SetDefault(0);
+
     AddOutput("Out", "The output of elementwise mul op");
     AddComment(R"DOC(
-Element-wise mul operator.
-
-The equation is: Out = X ⊙ Y
+Limited elementwise multiple operator.The equation is: Out = X ⊙ Y.
+1. The shape of Y should be same of X or
+2. Y's shape is a subset of X. 
+   When broadcast is set, Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
+   example:
+      shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+      shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+      shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
+      shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+      shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
 )DOC");
   }
 };
@@ -69,8 +90,13 @@ class ElementWiseMulOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
 
-    x_grad->Resize(x_dims);
-    y_grad->Resize(y_dims);
+    if (x_grad) {
+      x_grad->Resize(x_dims);
+    }
+
+    if (y_grad) {
+      y_grad->Resize(y_dims);
+    }
   }
 };
 }  // namespace operators

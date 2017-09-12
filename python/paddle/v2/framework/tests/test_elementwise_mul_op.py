@@ -15,7 +15,7 @@ class TestElementwiseMulOp_Matrix(unittest.TestCase):
             'X': np.random.random((32, 84)).astype("float32"),
             'Y': np.random.random((32, 84)).astype("float32"),
         }
-        self.attrs = {'axis': 0, 'broadcast': 0}
+        #self.attrs = {'axis': 0, 'broadcast': 0}
         self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
 
 
@@ -28,7 +28,7 @@ class TestElementwiseMulOp_Vector(unittest.TestCase):
             'X': np.random.random((32, )).astype("float32"),
             'Y': np.random.random((32, )).astype("float32")
         }
-        self.attrs = {'axis': 0, 'broadcast': 0}
+        #self.attrs = {'axis': 0, 'broadcast': 0}
         self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
 
 
@@ -77,7 +77,7 @@ class TestElementwiseMulOp_broadcast_2(unittest.TestCase):
             'Y': np.random.rand(4).astype(np.float32)
         }
 
-        self.attrs = {'axis': 2, 'broadcast': 1}
+        self.attrs = {'broadcast': 1}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 1, 4)
         }
@@ -109,6 +109,7 @@ class ElemMulGradOpTest_Matrix(GradientChecker):
             'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
             'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
         }
+        #self.attrs = {'axis': 0, 'broadcast': 0}
 
     def test_mul(self):
         """ Warning
@@ -118,7 +119,23 @@ class ElemMulGradOpTest_Matrix(GradientChecker):
         """
         self.compare_grad(self.op, self.inputs)
         self.check_grad(
-            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.1)
+
+    def test_ignore_x(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["Y"],
+            "Out",
+            no_grad_set={"X"},
+            max_relative_error=0.1)
+
+    def test_ignore_y(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["X"],
+            "Out",
+            no_grad_set={"Y"},
+            max_relative_error=0.1)
 
 
 class ElemMulGradOpTest_broadcast_3(GradientChecker):
@@ -130,11 +147,28 @@ class ElemMulGradOpTest_broadcast_3(GradientChecker):
             'X': np.random.rand(2, 3, 4, 5).astype(np.float32),
             'Y': np.random.rand(3, 4).astype(np.float32)
         }
+        self.attrs = {'axis': 1, 'broadcast': 1}
 
     def test_mul(self):
         self.compare_grad(self.op, self.inputs)
         self.check_grad(
-            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.1)
+
+    def test_ignore_x(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["Y"],
+            "Out",
+            no_grad_set={"X"},
+            max_relative_error=0.1)
+
+    def test_ignore_y(self):
+        self.check_grad(
+            self.op,
+            self.inputs, ["X"],
+            "Out",
+            no_grad_set={"Y"},
+            max_relative_error=0.1)
 
 
 if __name__ == '__main__':
