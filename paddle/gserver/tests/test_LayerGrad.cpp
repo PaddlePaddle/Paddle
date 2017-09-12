@@ -2302,26 +2302,27 @@ void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
   conv->set_stride(2);
   conv->set_stride_y(2);
   conv->set_stride_z(2);
-  conv->set_img_size(IMAGE_SIZE);
-  conv->set_img_size_y(IMAGE_SIZE_Y);
-  conv->set_img_size_z(IMAGE_SIZE_Z);
-  conv->set_output_x(imageSize(conv->img_size(),
+  conv->set_output_x(IMAGE_SIZE);
+  conv->set_output_y(IMAGE_SIZE_Y);
+  conv->set_output_z(IMAGE_SIZE_Z);
+
+  conv->set_img_size(imageSize(conv->output_x(),
                                conv->filter_size(),
                                conv->padding(),
                                conv->stride(),
                                true));
-  conv->set_output_y(imageSize(conv->img_size_y(),
-                               conv->filter_size_y(),
-                               conv->padding_y(),
-                               conv->stride_y(),
-                               true));
-  conv->set_output_z(imageSize(conv->img_size_z(),
-                               conv->filter_size_z(),
-                               conv->padding_z(),
-                               conv->stride_z(),
-                               true));
-  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
-                              conv->output_z() * NUM_FILTERS);
+  conv->set_img_size_y(imageSize(conv->output_y(),
+                                 conv->filter_size_y(),
+                                 conv->padding_y(),
+                                 conv->stride_y(),
+                                 true));
+  conv->set_img_size_z(imageSize(conv->output_z(),
+                                 conv->filter_size_z(),
+                                 conv->padding_z(),
+                                 conv->stride_z(),
+                                 true));
+  config.layerConfig.set_size(conv->img_size() * conv->img_size_y() *
+                              conv->img_size_z() * NUM_FILTERS);
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   config.inputDefs.push_back(
