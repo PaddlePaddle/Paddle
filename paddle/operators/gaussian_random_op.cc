@@ -31,7 +31,7 @@ class CPUGaussianRandomKernel : public framework::OpKernel {
     }
     engine.seed(seed);
     std::normal_distribution<T> dist(mean, std);
-    int64_t size = framework::product(tensor->dims());
+    int64_t size = tensor->numel();
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }

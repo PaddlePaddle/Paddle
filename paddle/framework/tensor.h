@@ -44,6 +44,9 @@ class Tensor {
   friend struct EigenTensor;
 
   template <typename T, int MajorType, typename IndexType>
+  friend struct EigenMatrix;
+
+  template <typename T, int MajorType, typename IndexType>
   friend struct EigenVector;
 
  public:
@@ -77,6 +80,9 @@ class Tensor {
 
   /*! Return the dimensions of the memory block. */
   inline const DDim& dims() const;
+
+  /*! Return the numel of the memory block. */
+  inline int64_t numel() const;
 
   /*! Resize the dimensions of the memory block. */
   inline Tensor& Resize(const DDim& dims);
@@ -158,6 +164,12 @@ class Tensor {
 
   /*! points to dimensions of memory block. */
   DDim dims_;
+
+  /**
+   * A cache of the number of elements in a tensor.
+   * Would be 0 for an uninitialized tensor.
+   */
+  int64_t numel_;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.

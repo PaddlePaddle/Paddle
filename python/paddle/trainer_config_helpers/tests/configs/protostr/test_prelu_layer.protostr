@@ -14,6 +14,29 @@ layers {
     input_layer_name: "input"
     input_parameter_name: "___prelu_layer_0__.w0"
   }
+  partial_sum: 1
+}
+layers {
+  name: "__prelu_layer_1__"
+  type: "prelu"
+  size: 300
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "___prelu_layer_1__.w0"
+  }
+  partial_sum: 1
+}
+layers {
+  name: "__prelu_layer_2__"
+  type: "prelu"
+  size: 300
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "___prelu_layer_2__.w0"
+  }
+  partial_sum: 5
 }
 parameters {
   name: "___prelu_layer_0__.w0"
@@ -23,14 +46,32 @@ parameters {
   initial_strategy: 0
   initial_smart: true
 }
+parameters {
+  name: "___prelu_layer_1__.w0"
+  size: 300
+  initial_mean: 0.0
+  initial_std: 0.057735026919
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___prelu_layer_2__.w0"
+  size: 60
+  initial_mean: 0.0
+  initial_std: 0.129099444874
+  initial_strategy: 0
+  initial_smart: true
+}
 input_layer_names: "input"
-output_layer_names: "__prelu_layer_0__"
+output_layer_names: "__prelu_layer_2__"
 sub_models {
   name: "root"
   layer_names: "input"
   layer_names: "__prelu_layer_0__"
+  layer_names: "__prelu_layer_1__"
+  layer_names: "__prelu_layer_2__"
   input_layer_names: "input"
-  output_layer_names: "__prelu_layer_0__"
+  output_layer_names: "__prelu_layer_2__"
   is_recurrent_layer_group: false
 }
 

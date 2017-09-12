@@ -18,8 +18,10 @@
 #ifndef PADDLE_ONLY_CPU
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include <thrust/system/cuda/experimental/pinned_allocator.h>
 #endif
 
+#include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
@@ -32,7 +34,8 @@ template <typename T>
 using Vector = std::vector<T>;
 #else
 template <typename T>
-using Vector = thrust::host_vector<T>;
+using Vector = thrust::host_vector<
+    T, thrust::system::cuda::experimental::pinned_allocator<T>>;
 #endif
 
 using LoD = std::vector<Vector<size_t>>;
