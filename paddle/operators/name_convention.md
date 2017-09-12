@@ -30,7 +30,7 @@ Here we give some examples to show how these rules will be used.
 
 - The operator contains attribute. e.g. `cosine`, inputs : `X`, `axis`, outputs : `Out`.
 
-  We give a full example of Accumulator Operator. Its OpProtoMaker should look like below.
+  We give a full example of Accumulator Operator.
 
 ```c++
 class AccumulateOpMaker : public framework::OpProtoAndCheckerMaker {
