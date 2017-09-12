@@ -24,10 +24,35 @@ class SplitOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    printf("Infershape ... \n");
     // infershape
     auto *in = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    out->Resize(in->dims());
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    size_t indices = static_cast<size_t>(ctx.Attr<int>("indices"));
+    size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
+    size_t n = outs.size();
+
+    std::vector<int> axis_dim;
+    std::vector<int> sections =
+        static_cast<std::vector<int>>(ctx.Attr<std::vector<int>>("sections"));
+    if (indices > 0) {
+      PADDLE_ENFORCE_EQ(in->dims()[axis] % indices, 0,
+                        "tensor split does not result in an equal division.");
+      size_t out_size = in->dims()[axis] / indices;
+      printf("out_size=%ld\n", out_size);
+      for (size_t i = 0; i < n; ++i) {
+        axis_dim.push_back(indices);
+      }
+    } else if (sections.size() > 0) {
+      // TODO(Yancey1989)
+    } else {
+      // throw exception
+    }
+    for (size_t i = 0; i < outs.size(); i++) {
+      auto dim = in->dims();
+      // dim[axis] = axis_dim[i];
+      // outs[i]->Resize(dim);
+    }
   }
 };
 
@@ -36,7 +61,7 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
   SplitOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input tensor of split operator.");
-    AddOutput("Out", "the output tensors of split operator.");
+    AddOutput("Out", "the output tensors of split operator.").AsDuplicable();
     AddComment(R"DOC(
       Split the input tensor into multiple sub-tensors.
       Example:
@@ -49,6 +74,14 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
         Output[1] = [[3,4]]
         Output[2] = [[5,6]] 
     )DOC");
+    AddAttr<std::vector<int>>("sections", "The length of each output.")
+        .SetDefault(std::vector<int>{});
+    AddAttr<int>("axis", "The axis which the input will be splited on")
+        .SetDefault(0);
+    AddAttr<int>("indices",
+                 "The input will be divided into N equal array"
+                 "along with the specify axis.")
+        .SetDefault(-1);
   }
 };
 

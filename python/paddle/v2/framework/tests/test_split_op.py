@@ -10,13 +10,15 @@ class TestConcatOp(unittest.TestCase):
     def setUp(self):
         self.type = "split"
         axis = 0
-        indices = 1
-        axis = 0
-        x = np.random.random((3, 2)).astype('float32')
+        indices = 2
+        split_info = []
+        x = np.random.random((4, 2)).astype('float32')
+        assert x.shape(axis) % indices == 0
+        split_info = [x.shape(axis) / indices for i in xrange(n)]
         self.inputs = {'X': x}
-        #self.attrs = {'axis': axis, 'indices': indices}
-        #self.outputs = {'Out': np.split(x, indices, axis)}
-        self.outputs = {'Out': x}
+        self.attrs = {'axis': axis, 'split_info': split_info}
+        print np.split(x, indices, axis)
+        self.outputs = {'Out': list(np.split(x, indices, axis))}
 
 
 if __name__ == '__main__':

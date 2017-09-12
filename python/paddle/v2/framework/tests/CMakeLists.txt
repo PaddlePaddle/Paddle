@@ -19,8 +19,6 @@ py_test(test_scatter_op SRCS test_scatter_op.py)
 py_test(test_fill_zeros_like_op SRCS test_fill_zeros_like_op.py)
 py_test(test_top_k_op SRCS test_top_k_op.py)
 
-py_test(gradient_checker SRCS gradient_checker.py)
-
 py_test(test_rowwise_add_op SRCS test_rowwise_add_op.py)
 
 py_test(test_default_scope_funcs SRCS test_default_scope_funcs.py)
@@ -38,3 +36,4 @@ py_test(mnist SRCS mnist.py)
 py_test(test_concat_op SRCS test_concat_op.py)
 py_test(test_squared_l2_distance_op SRCS test_squared_l2_distance_op.py)
 py_test(test_split_op SRCS test_split_op.py)
+py_test(test_reshape_op SRCS test_reshape_op.py)

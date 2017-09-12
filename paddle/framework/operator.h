@@ -308,6 +308,7 @@ class InferShapeContext {
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
+                     printf("input sub_name:%s\n", sub_name.c_str());
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
     return res;
@@ -320,6 +321,7 @@ class InferShapeContext {
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
+                     printf("sub_name:%s\n", sub_name.c_str());
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });

@@ -24,8 +24,42 @@ template <typename Place, typename T>
 class SplitKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ctx.Output<framework::Tensor>("Out")->mutable_data<T>(platform::CPUPlace());
-    // do nothing
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    size_t before = 1, after = 1;
+    size_t n = outs.size();
+    size_t input_axis_dim = 0;
+    for (size_t i = 0; i < n; i++) {
+      input_axis_dim += outs[i]->dims()[axis];
+    }
+    for (int64_t i = 0; i < in->dims().size(); ++i) {
+      if (i == axis) {
+        continue;
+      }
+      if (i < axis) {
+        before *= in->dims()[i];
+      } else {
+        after *= in->dims()[i];
+      }
+    }
+    size_t input_offset = 0;
+    for (size_t i = 0; i < n; i++) {
+      auto& out = outs[i];
+      for (size_t p = 0; p < out->dims().size(); p++) {
+        printf("%ld: %ld->%ld\n", i, p, out->dims()[p]);
+      }
+      auto axis_dim = out->dims()[axis];
+      for (size_t j = 0; j < before; j++) {
+        size_t len = axis_dim * after * sizeof(T);
+        T* dest =
+            out->mutable_data<T>(platform::CPUPlace()) + axis_dim * after * j;
+        const T* src =
+            in->data<T>() + input_offset + input_axis_dim * after * j;
+        memcpy(dest, src, len);
+      }
+      input_offset += axis_dim * after;
+    }
   }
 };
 
