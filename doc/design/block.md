@@ -51,8 +51,8 @@ Above Python program builds a protobuf message which describe the model, a C++ B
 
 During the generation of the Protobuf message, the Block should store VarDesc (the Protobuf message which describes Variable) and OpDesc (the Protobuf message which describes Operator).
 
-VarDesc in a block should have its name scope to avoid local variables affect father block's name scope. 
-Child block's name scopes should inherit the father's so that OpDesc in child block can reference a VarDesc that stored in father block. For example
+VarDesc in a block should have its name scope to avoid local variables affect parent block's name scope. 
+Child block's name scopes should inherit the parent's so that OpDesc in child block can reference a VarDesc that stored in parent block. For example
 
 ```python
 a = pd.Varaible(shape=[20, 20])
@@ -67,7 +67,7 @@ with rnn.stepnet() as net:
 
 out = rnn()
 ```
-the method `pd.get_variable` can help retrieve a Variable by a name, a Variable may store in a father block, but might be retrieved in a child block, so block should have a variable scope that supports inheritance.
+the method `pd.get_variable` can help retrieve a Variable by a name, a Variable may store in a parent block, but might be retrieved in a child block, so block should have a variable scope that supports inheritance.
 
 In compiler design, the symbol table is an data structure created and maintained by compilers in order to store information about the occurrence of various entities such as variable names, function names, classes, etc.
 
