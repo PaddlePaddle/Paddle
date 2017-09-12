@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from gradient_checker import GradientChecker, create_op
 from op_test_util import OpTestMeta
+from paddle.v2.framework.op import Operator
 
 
 class TestConv2dOp(unittest.TestCase):
@@ -56,6 +57,43 @@ class TestConv2dOp(unittest.TestCase):
         self.inputs = {'Input': input, 'Filter': filter}
         self.outputs = {'Output': output}
         self.attrs = {'strides': [1, 1], 'paddings': [0, 0]}
+
+
+class TestConv2dGradOp(GradientChecker):
+    def setUp(self):
+        batch_size = 2
+        input_channels = 3
+        input_height = 5
+        input_width = 5
+        output_channels = 6
+        filter_height = 3
+        filter_width = 3
+        stride = 1
+        padding = 0
+        output_height = (input_height - filter_height + 2 * padding
+                         ) / stride + 1
+        output_width = (input_width - filter_width + 2 * padding) / stride + 1
+        input = np.random.random((batch_size, input_channels, input_height,
+                                  input_width)).astype("float32")
+        filter = np.random.random(
+            (output_channels, input_channels, filter_height,
+             filter_width)).astype("float32")
+
+        self.inputs = {'Input': input, 'Filter': filter}
+        self.op = Operator(
+            "conv2d",
+            Input='Input',
+            Filter='Filter',
+            Output='Output',
+            strides=[1, 1],
+            paddings=[0, 0])
+
+    def test_compare_grad(self):
+        self.compare_grad(self.op, self.inputs)
+
+    def test_check_grad(self):
+        self.check_grad(self.op, self.inputs,
+                        set(['Input', 'Filter']), 'Output')
 
 
 if __name__ == '__main__':

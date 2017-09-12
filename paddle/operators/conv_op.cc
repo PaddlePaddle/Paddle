@@ -28,9 +28,9 @@ class Conv2DOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *in = ctx.Input<framework::Tensor>("Input");
-    auto *filter = ctx.Input<framework::Tensor>("Filter");
-    auto *out = ctx.Output<framework::Tensor>("Output");
+    auto in = ctx.Input<Tensor>("Input");
+    auto filter = ctx.Input<Tensor>("Filter");
+    auto out = ctx.Output<Tensor>("Output");
     PADDLE_ENFORCE_EQ(in->dims().size(), 4, "Conv2DOp intput should be 4-D.");
     PADDLE_ENFORCE_EQ(filter->dims().size(), 4,
                       "Conv2DOp filter should be 4-D.");
@@ -46,10 +46,9 @@ class Conv2DOp : public framework::OperatorWithKernel {
   }
 };
 
-class Conv2DOppMaker : public framework::OpProtoAndCheckerMaker {
+class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DOppMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  Conv2DOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "Input",
@@ -62,7 +61,7 @@ class Conv2DOppMaker : public framework::OpProtoAndCheckerMaker {
         "The format of the filter tensor is MCHW, where M is the number of "
         "output "
         "image channels, C is the number of input image channels, H and W is "
-        " height and width of filter.");
+        "height and width of filter.");
     AddOutput("Output",
               "The output tensor of convolution operator."
               "The format of output tensor is also NCHW.");
@@ -80,14 +79,21 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {}
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    auto in = ctx.Input<Tensor>("Input");
+    auto filter = ctx.Input<Tensor>("Filter");
+    auto d_in = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto d_filter = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    d_in->Resize(in->dims());
+    d_filter->Resize(filter->dims());
+  }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv2d, ops::Conv2DOp, ops::Conv2DOppMaker, conv2d_grad,
+REGISTER_OP(conv2d, ops::Conv2DOp, ops::Conv2DOpMaker, conv2d_grad,
             ops::Conv2DOpGrad);
 
 REGISTER_OP_CPU_KERNEL(conv2d,
