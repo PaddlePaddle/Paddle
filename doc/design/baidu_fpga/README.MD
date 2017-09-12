@@ -57,11 +57,7 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
 重构中的PaddlePaddle实现了DeviceContext类来负责对应设备上面的资源管理，目前只支持CPU和GPU的版本。我们会添加一个FPGADeviceContext来负责管理FPGA设备的资源。
 
 ### Operator 
-重构中的PaddlePaddle是基于Operator的，不同设备（CPU、GPU）共享一个Op定义，OpKernel提供Compute方法\[[3](#references))\]。FPGA的数据格式与CPU、GPU是一样的，因此我们计划添加XXX_op_FPGA.cc文件实现FPGAKernel的计算逻辑，注册到原有的Operator上。对于FPGA不支持的操作，我们在compute函数中加入判断:
-```C++
-PADDLE_ENFORCE(!platform::is_fpga_place(ctx.GetPlace()),
-                   "It can not use FPGAPlace.");
-```
+重构中的PaddlePaddle是基于Operator的，不同设备（CPU、GPU）共享一个Op定义，OpKernel提供Compute方法\[[3](#references))\]。FPGA的数据格式与CPU、GPU是一样的，因此我们计划添加XXX_op_FPGA.cc文件实现FPGAKernel的计算逻辑，注册到原有的Operator上。如果Operator不包含XXX_op_FPGA.cc文件，则该Operator不支持FPGA设备。
 
 **备注**：由于FPGA不如CPU和GPU灵活，因此FPGA只能支持大部分Operator，无法支持所有的Operator。
 
