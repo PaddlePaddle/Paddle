@@ -53,16 +53,22 @@ bool operator==(const LoD& a, const LoD& b);
  */
 class LoDTensor {
  public:
-  LoDTensor() {}
-  LoDTensor(const LoD& lod, Tensor* t) : lod_(lod), tensor_(t) {}
+  LoDTensor() : tensor_(new Tensor()) {}
+
+  LoDTensor(const LoD& lod) : lod_(lod), tensor_(new Tensor()) {}
+
+  ~LoDTensor() { delete tensor_; }
 
   void set_lod(const LoD& lod) { lod_ = lod; }
 
-  void set_tensor(Tensor* tensor) { tensor_ = tensor; }
-
-  Tensor& tensor() { return *tensor_; }
+  Tensor& tensor() {
+    PADDLE_ENFORCE(tensor_, "The tensor_ must be null.");
+    return *tensor_;
+  }
 
   LoD lod() { return lod_; }
+
+  void CopyLoDFrom(const LoDTensor& src) { set_lod(src.lod()); }
 
   /*
    * Get a element from LoD.
