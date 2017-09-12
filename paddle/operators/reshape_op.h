@@ -30,11 +30,10 @@ class ReshapeKernel : public framework::OpKernel {
     out->mutable_data<T>(ctx.GetPlace());
 
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    std::vector<int64_t> tmp;
-    for (auto dim : shape) {
-      tmp.push_back(dim);
-    }
-    auto out_dims = framework::make_ddim(tmp);
+    std::vector<int64_t> shape_int64(shape.size(), 0);
+    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
+                   [](int a) { return static_cast<int64_t>(a); });
+    auto out_dims = framework::make_ddim(shape_int64);
     out->CopyFrom<T>(*in, ctx.GetPlace());
     out->Resize(out_dims);
   }

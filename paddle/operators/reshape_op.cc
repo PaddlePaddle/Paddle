@@ -27,21 +27,26 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *in = ctx.Input<framework::Tensor>("X");
+    // input check
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) shouldn't be null");
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    int64_t capacity = -1;
+    PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
     for (auto dim : shape) {
       PADDLE_ENFORCE(dim > 0, "Each dimension of shape must be positive.");
-      if (capacity < 0) {
-        capacity = dim;
-      } else {
-        capacity *= dim;
-      }
     }
+    // capacity check
+    int64_t capacity =
+        std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+    auto *in = ctx.Input<framework::Tensor>("X");
     int64_t in_size = framework::product(in->dims());
     PADDLE_ENFORCE_EQ(capacity, in_size,
                       "The size of Input(X) mismatches with Attr(shape).");
-    ctx.Output<framework::Tensor>("Out")->Resize(in->dims());
+    // resize output
+    std::vector<int64_t> shape_int64(shape.size(), 0);
+    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
+                   [](int a) { return static_cast<int64_t>(a); });
+    auto out_dims = framework::make_ddim(shape_int64);
+    ctx.Output<framework::Tensor>("Out")->Resize(out_dims);
   }
 };
 
@@ -56,6 +61,17 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(Reshape operator
 
 Reshape Input(X) into the shape specified by Attr(shape).
+
+An example:
+Given a 2-D tensor X with 2 rows and 2 columns
+
+    [[1, 2], [3, 4]]
+
+with target shape = [1, 4], the reshape operator will tansform 
+the tensor X into a 1-D tensor:
+
+    [1, 2, 3, 4]
+
 )DOC");
   }
 };
@@ -70,6 +86,9 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) shouldn't be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) shouldn't be null.");
     auto dims = ctx.Input<framework::Tensor>("X")->dims();
     auto *d_in = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     d_in->Resize(dims);
