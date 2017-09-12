@@ -8,13 +8,13 @@ When defining an operator in Paddle, a corresponding [OpProtoMaker](https://gith
 
 - Input/Output.
   - Input/Output names follow the **CamelCase**. e.g. `X`, `Y`, `Matrix`, `LastAxisInMatrix`. Input/Output much more like Variables, we prefer to meaningful English words. 
-  - If an operator's Input/Output are tensors in math, not match to any meaningful words, input name should starts from `X`. e.g. `X`, `Y`, and output name should starts from `Out`. e.g. `Out`. This rule make operators which have few inputs/outputs unified.
+  - If an operator's Input/Output are tensors in math, not match to any meaningful words, input name should starts from `X`. e.g. `X`, `Y`, and output name should starts from `Out`. e.g. `Out`. This rule intends making operators which have few inputs/outputs unified.
 
 - Attribute.
   - Attribute name follows the **camelCase**. e.g. `x`, `y`, `axis`, `rowwiseMatrix`. Also, attribute name prefers to meaningful English words.
 
 - Comments.
-  - Input/Output/Attr comment follow the format of **(type,default value) usage**, corresponding to which type it can be and how it will be used in the operator. e.g.  Attribute in Accumulator`"gamma" `,`(float, default 1.0) Accumulation multiplier`
+  - Input/Output/Attr comment follow the format of **(type,default value) usage**, corresponding to which type it can be and how it will be used in the operator. e.g.  Attribute in Accumulator`"gamma" `,`(float, default 1.0) Accumulation multiplier`.
   - Operator comment format of` R"DOC(your comment here)DOC"`. You should explain the input/output of the operator first. If there is math calculation in this operator, you should write the equation in the comment. e.g. `Out = X + Y`. 
 
 - Order.
