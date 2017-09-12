@@ -28,6 +28,7 @@ limitations under the License. */
 #include "hl_top_k.h"
 #include "paddle/utils/Logging.h"
 
+#include "paddle/function/GemmFunctor.h"
 #include "paddle/utils/ThreadLocal.h"
 
 #include "SIMDFunctions.h"
@@ -1190,6 +1191,221 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad,
                       outGrad.getStride());
 }
 
+void GpuMatrix::maxPool3DForward(Matrix& inputMat,
+                                 Matrix& maxPoolIdx,
+                                 size_t channels,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW) {
+  CHECK(inputMat.useGpu_) << "Matrix type are not correct";
+
+  real* inputData = inputMat.getData();
+  real* maxPoolIdxData = maxPoolIdx.getData();
+  size_t num = inputMat.getHeight();
+  size_t width = imgSizeW;
+  size_t height = imgSizeH;
+  size_t depth = imgSizeD;
+  CHECK(depth * height * width * channels == inputMat.getWidth());
+  CHECK(height_ == inputMat.getHeight());
+  CHECK(width_ == outputD * outputH * outputW * channels);
+
+  hl_maxpool3D_forward(num,
+                       inputData,
+                       channels,
+                       depth,
+                       height,
+                       width,
+                       outputD,
+                       outputH,
+                       outputW,
+                       sizeZ,
+                       sizeY,
+                       sizeX,
+                       strideD,
+                       strideH,
+                       strideW,
+                       paddingD,
+                       paddingH,
+                       paddingW,
+                       getData(),
+                       maxPoolIdxData,
+                       getStride());
+}
+
+void GpuMatrix::maxPool3DBackward(Matrix& outGrad,
+                                  Matrix& maxPoolIdx,
+                                  size_t imgSizeD,
+                                  size_t imgSizeH,
+                                  size_t imgSizeW,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
+                                  size_t sizeZ,
+                                  size_t sizeY,
+                                  size_t sizeX,
+                                  size_t strideD,
+                                  size_t strideH,
+                                  size_t strideW,
+                                  size_t paddingD,
+                                  size_t paddingH,
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
+  CHECK(outGrad.useGpu_ && maxPoolIdx.useGpu_) << "Matrix type are not equal";
+
+  real* outDiff = outGrad.getData();
+  real* maxPoolIdxData = maxPoolIdx.getData();
+  size_t frameNum = getHeight();
+  size_t channels = outGrad.getWidth() / outputD / outputH / outputW;
+  size_t width = imgSizeW;
+  size_t height = imgSizeH;
+  size_t depth = imgSizeD;
+  CHECK(depth * height * width * channels == getWidth());
+  CHECK(width_ == depth * width * height * channels);
+  CHECK(outGrad.getHeight() == maxPoolIdx.getHeight() &&
+        outGrad.getWidth() == maxPoolIdx.getWidth());
+
+  hl_maxpool3D_backward(frameNum,
+                        outDiff,
+                        channels,
+                        depth,
+                        height,
+                        width,
+                        outputD,
+                        outputH,
+                        outputW,
+                        sizeZ,
+                        sizeY,
+                        sizeX,
+                        strideD,
+                        strideH,
+                        strideW,
+                        paddingD,
+                        paddingH,
+                        paddingW,
+                        scaleTargets,
+                        scaleOutput,
+                        getData(),
+                        maxPoolIdxData,
+                        outGrad.getStride());
+}
+
+void GpuMatrix::avgPool3DForward(Matrix& inputMat,
+                                 size_t channels,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW) {
+  CHECK(inputMat.useGpu_) << "Matrix type are not equal";
+
+  real* inputData = inputMat.getData();
+  size_t frameNum = inputMat.getHeight();
+  size_t height = imgSizeH;
+  size_t width = imgSizeW;
+  size_t depth = imgSizeD;
+  CHECK(depth * height * width * channels == inputMat.getWidth());
+  CHECK(height_ == inputMat.getHeight());
+  CHECK(width_ == outputD * outputH * outputW * channels);
+
+  hl_avgpool3D_forward(frameNum,
+                       inputData,
+                       channels,
+                       depth,
+                       height,
+                       width,
+                       outputD,
+                       outputH,
+                       outputW,
+                       sizeZ,
+                       sizeY,
+                       sizeX,
+                       strideD,
+                       strideH,
+                       strideW,
+                       paddingD,
+                       paddingH,
+                       paddingW,
+                       getData(),
+                       getStride());
+}
+
+void GpuMatrix::avgPool3DBackward(Matrix& outGrad,
+                                  size_t imgSizeD,
+                                  size_t imgSizeH,
+                                  size_t imgSizeW,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
+                                  size_t sizeZ,
+                                  size_t sizeY,
+                                  size_t sizeX,
+                                  size_t strideD,
+                                  size_t strideH,
+                                  size_t strideW,
+                                  size_t paddingD,
+                                  size_t paddingH,
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
+  CHECK(outGrad.useGpu_) << "Matrix type are not equal";
+
+  real* outDiff = outGrad.getData();
+  size_t frameNum = outGrad.getHeight();
+  size_t channels = outGrad.getWidth() / outputD / outputH / outputW;
+  size_t height = imgSizeH;
+  size_t width = imgSizeW;
+  size_t depth = imgSizeD;
+  CHECK(depth * height * width * channels == width_);
+  CHECK(height_ == outGrad.getHeight());
+  CHECK(outGrad.getWidth() == outputD * outputH * outputW * channels);
+
+  hl_avgpool3D_backward(frameNum,
+                        outDiff,
+                        channels,
+                        depth,
+                        height,
+                        width,
+                        outputD,
+                        outputH,
+                        outputW,
+                        sizeZ,
+                        sizeY,
+                        sizeX,
+                        strideD,
+                        strideH,
+                        strideW,
+                        paddingD,
+                        paddingH,
+                        paddingW,
+                        scaleTargets,
+                        scaleOutput,
+                        getData(),
+                        outGrad.getStride());
+}
+
 void GpuMatrix::maxSequenceForward(Matrix& input,
                                    const IVector& sequence,
                                    IVector& index) {
@@ -1387,6 +1603,72 @@ void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label) {
   hl_sparse_matrix_s mat_d = labelPtr->sMatrix_.get();
   hl_matrix_multi_binary_cross_entropy_bp(
       output_d, grad_d, mat_d, height_, width_);
+}
+
+void GpuMatrix::vol2Col(real* dataSrc,
+                        int channels,
+                        int depth,
+                        int height,
+                        int width,
+                        int filterD,
+                        int filterH,
+                        int filterW,
+                        int strideD,
+                        int strideH,
+                        int strideW,
+                        int paddingD,
+                        int paddingH,
+                        int paddingW) {
+  hl_matrix_vol2Col(dataSrc,
+                    channels,
+                    depth,
+                    height,
+                    width,
+                    filterD,
+                    filterH,
+                    filterW,
+                    strideD,
+                    strideH,
+                    strideW,
+                    paddingD,
+                    paddingH,
+                    paddingW,
+                    getData());
+}
+
+void GpuMatrix::col2Vol(real* dataDst,
+                        int channels,
+                        int depth,
+                        int height,
+                        int width,
+                        int filterD,
+                        int filterH,
+                        int filterW,
+                        int strideD,
+                        int strideH,
+                        int strideW,
+                        int paddingD,
+                        int paddingH,
+                        int paddingW,
+                        real alpha,
+                        real beta) {
+  hl_matrix_col2Vol(dataDst,
+                    channels,
+                    depth,
+                    height,
+                    width,
+                    filterD,
+                    filterH,
+                    filterW,
+                    strideD,
+                    strideH,
+                    strideW,
+                    paddingD,
+                    paddingH,
+                    paddingW,
+                    getData(),
+                    alpha,
+                    beta);
 }
 
 /**
@@ -1930,6 +2212,276 @@ void CpuMatrix::avgPoolBackward(Matrix& input,
   }
 }
 
+void CpuMatrix::maxPool3DForward(Matrix& inputMat,
+                                 Matrix& maxPoolIdx,
+                                 size_t channels,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW) {
+  real* inputData = inputMat.getData();
+  real* outData = getData();
+  real* maxPoolIdxData = maxPoolIdx.getData();
+  size_t num = inputMat.getHeight();
+  size_t inWidth = imgSizeW;
+  size_t inHeight = imgSizeH;
+  size_t inDepth = imgSizeD;
+  CHECK(inHeight * inWidth * inDepth == inputMat.getWidth() / channels);
+  CHECK_EQ(num, this->getHeight());
+  CHECK_EQ(channels * outputH * outputW * outputD, this->getWidth());
+  size_t outStride = getStride();
+
+  /* initialize the data_ */
+  for (size_t i = 0; i < height_; i++) {
+    for (size_t j = 0; j < width_; j++) {
+      outData[(i)*outStride + j] = -(real)FLT_MAX;
+      maxPoolIdxData[(i)*outStride + j] = -1;
+    }
+  }
+
+  /* pool max one by one */
+  for (size_t n = 0; n < num; ++n) {  // frame by frame
+    if (!isContiguous()) {
+      outData = getData() + n * outStride;
+      maxPoolIdxData = maxPoolIdx.getData() + n * outStride;
+    }
+    for (size_t c = 0; c < channels; ++c) {  // channel by channel
+      for (size_t pd = 0; pd < outputD; ++pd) {
+        for (size_t ph = 0; ph < outputH; ++ph) {
+          for (size_t pw = 0; pw < outputW; ++pw) {
+            int dstart = pd * strideD - paddingD;
+            int hstart = ph * strideH - paddingH;
+            int wstart = pw * strideW - paddingW;
+            int dend = std::min(dstart + sizeZ, inDepth);
+            int hend = std::min(hstart + sizeY, inHeight);
+            int wend = std::min(wstart + sizeX, inWidth);
+            dstart = std::max(dstart, 0);
+            hstart = std::max(hstart, 0);
+            wstart = std::max(wstart, 0);
+            int maxIdx = -1;
+            real maxOutData = outData[(pd * outputH + ph) * outputW + pw];
+            for (int d = dstart; d < dend; ++d) {
+              for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                  if (maxOutData <
+                      inputData[(d * inHeight + h) * inWidth + w]) {
+                    maxOutData = inputData[(d * inHeight + h) * inWidth + w];
+                    maxIdx = (d * inHeight + h) * inWidth + w;
+                  }
+                }
+              }
+            }
+            outData[(pd * outputH + ph) * outputW + pw] = maxOutData;
+            maxPoolIdxData[(pd * outputH + ph) * outputW + pw] = maxIdx;
+          }
+        }
+      }
+      // compute offset
+      inputData += inDepth * inHeight * inWidth;
+      outData += outputD * outputH * outputW;
+      maxPoolIdxData += outputD * outputH * outputW;
+    }
+  }
+}
+
+void CpuMatrix::maxPool3DBackward(Matrix& outGrad,
+                                  Matrix& maxPoolIdx,
+                                  size_t imgSizeD,
+                                  size_t imgSizeH,
+                                  size_t imgSizeW,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
+                                  size_t sizeZ,
+                                  size_t sizeY,
+                                  size_t sizeX,
+                                  size_t strideD,
+                                  size_t strideH,
+                                  size_t strideW,
+                                  size_t paddingD,
+                                  size_t paddingH,
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
+  size_t num = getHeight();
+  size_t channels = size_t(width_ / imgSizeD / imgSizeH / imgSizeW);
+  CHECK(maxPoolIdx.getHeight() == outGrad.getHeight() &&
+        maxPoolIdx.getWidth() == outGrad.getWidth());
+
+  real* tgtGrad = getData();
+  real* otGrad = outGrad.getData();
+  real* maxPoolIdxData = maxPoolIdx.getData();
+  size_t outStride = outGrad.getStride();
+
+  for (size_t n = 0; n < num; ++n) {
+    if (!outGrad.isContiguous()) {
+      otGrad = outGrad.getData() + n * outStride;
+      maxPoolIdxData = maxPoolIdx.getData() + n * outStride;
+    }
+    for (size_t c = 0; c < channels; ++c) {
+      for (size_t pd = 0; pd < outputD; ++pd) {
+        for (size_t ph = 0; ph < outputH; ++ph) {
+          for (size_t pw = 0; pw < outputW; ++pw) {
+            const size_t index = (pd * outputH + ph) * outputW + pw;
+            const size_t tgtIdx = static_cast<size_t>(maxPoolIdxData[index]);
+            tgtGrad[tgtIdx] =
+                scaleTargets * tgtGrad[tgtIdx] + scaleOutput * otGrad[index];
+          }
+        }
+      }
+      // offset
+      tgtGrad += imgSizeD * imgSizeH * imgSizeW;
+      otGrad += outputD * outputH * outputW;
+      maxPoolIdxData += outputD * outputH * outputW;
+    }
+  }
+}
+
+void CpuMatrix::avgPool3DForward(Matrix& input,
+                                 size_t channels,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW) {
+  // The main loop
+  size_t num = input.getHeight();
+  size_t inDepth = imgSizeD;
+  size_t inHeight = imgSizeH;
+  size_t inWidth = imgSizeW;
+  CHECK(inDepth * inHeight * inWidth * channels == input.getWidth());
+  CHECK(outputD * outputH * outputW * channels * num == height_ * width_);
+  real* tgtData = getData();
+  real* inData = input.getData();
+
+  for (size_t n = 0; n < num; ++n) {
+    if (!isContiguous()) {
+      tgtData = data_ + n * getStride();
+    }
+    for (size_t c = 0; c < channels; ++c) {
+      for (size_t pd = 0; pd < outputD; ++pd) {
+        for (size_t ph = 0; ph < outputH; ++ph) {
+          for (size_t pw = 0; pw < outputW; ++pw) {
+            int dstart = pd * strideD - paddingD;
+            int hstart = ph * strideH - paddingH;
+            int wstart = pw * strideW - paddingW;
+            int dend = std::min(dstart + sizeZ, inDepth + paddingD);
+            int hend = std::min(hstart + sizeY, inHeight + paddingH);
+            int wend = std::min(wstart + sizeX, inWidth + paddingW);
+            int poolSize = (dend - dstart) * (hend - hstart) * (wend - wstart);
+            dstart = std::max(dstart, 0);
+            hstart = std::max(hstart, 0);
+            wstart = std::max(wstart, 0);
+            dend = std::min(dend, static_cast<int>(inDepth));
+            hend = std::min(hend, static_cast<int>(inHeight));
+            wend = std::min(wend, static_cast<int>(inWidth));
+
+            CHECK(poolSize);
+            tgtData[(pd * outputH + ph) * outputW + pw] = 0;  // clear
+            for (int d = dstart; d < dend; ++d) {
+              for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                  tgtData[(pd * outputH + ph) * outputW + pw] +=
+                      inData[(d * inHeight + h) * inWidth + w];
+                }
+              }
+            }
+            tgtData[(pd * outputH + ph) * outputW + pw] /= poolSize;
+          }
+        }
+      }
+      // compute offset
+      inData += inDepth * inHeight * inWidth;
+      tgtData += outputD * outputH * outputW;
+    }
+  }
+}
+
+void CpuMatrix::avgPool3DBackward(Matrix& input,
+                                  size_t imgSizeD,
+                                  size_t imgSizeH,
+                                  size_t imgSizeW,
+                                  size_t outputD,
+                                  size_t outputH,
+                                  size_t outputW,
+                                  size_t sizeZ,
+                                  size_t sizeY,
+                                  size_t sizeX,
+                                  size_t strideD,
+                                  size_t strideH,
+                                  size_t strideW,
+                                  size_t paddingD,
+                                  size_t paddingH,
+                                  size_t paddingW,
+                                  real scaleTargets,
+                                  real scaleOutput) {
+  size_t num = input.getHeight();
+  size_t channels = input.getWidth() / outputD / outputH / outputW;
+  CHECK(imgSizeD * imgSizeH * imgSizeW * channels == getWidth());
+  real* inData = input.getData();
+  real* outData = getData();
+
+  for (size_t n = 0; n < num; ++n) {
+    if (!input.isContiguous()) {
+      inData = input.getData() + n * input.getStride();
+    }
+    for (size_t c = 0; c < channels; ++c) {
+      for (size_t pd = 0; pd < outputD; ++pd) {
+        for (size_t ph = 0; ph < outputH; ++ph) {
+          for (size_t pw = 0; pw < outputW; ++pw) {
+            int dstart = pd * strideD - paddingD;
+            int hstart = ph * strideH - paddingH;
+            int wstart = pw * strideW - paddingW;
+            int dend = std::min(dstart + sizeZ, imgSizeD + paddingD);
+            int hend = std::min(hstart + sizeY, imgSizeH + paddingH);
+            int wend = std::min(wstart + sizeX, imgSizeW + paddingW);
+            int poolSize = (dend - dstart) * (hend - hstart) * (wend - wstart);
+            dstart = std::max(dstart, 0);
+            hstart = std::max(hstart, 0);
+            wstart = std::max(wstart, 0);
+            dend = std::min(dend, static_cast<int>(imgSizeD));
+            hend = std::min(hend, static_cast<int>(imgSizeH));
+            wend = std::min(wend, static_cast<int>(imgSizeW));
+            CHECK(poolSize);
+            for (int d = dstart; d < dend; ++d) {
+              for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                  outData[(d * imgSizeH + h) * imgSizeW + w] +=
+                      inData[(pd * outputH + ph) * outputW + pw] / poolSize;
+                }
+              }
+            }
+          }
+        }
+      }
+      // offset
+      outData += imgSizeD * imgSizeH * imgSizeW;
+      inData += outputD * outputH * outputW;
+    }
+  }
+}
+
 /**
  * Input: one or more sequences. Each sequence contains some instances.
  * Output: output size is the number of input sequences (NOT input instances).
@@ -2222,24 +2774,24 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   CHECK(!isTransposed()) << "Not supported";
 
   size_t a_col, b_col, a_row, b_row;
-  CBLAS_TRANSPOSE a_trans, b_trans;
+  bool a_trans, b_trans;
   if (!a->isTransposed()) {
     a_col = a->getWidth();
     a_row = a->getHeight();
-    a_trans = CblasNoTrans;
+    a_trans = false;
   } else {
     a_col = a->getHeight();
     a_row = a->getWidth();
-    a_trans = CblasTrans;
+    a_trans = true;
   }
   if (!b->isTransposed()) {
     b_col = b->getWidth();
     b_row = b->getHeight();
-    b_trans = CblasNoTrans;
+    b_trans = false;
   } else {
     b_col = b->getHeight();
     b_row = b->getWidth();
-    b_trans = CblasTrans;
+    b_trans = true;
   }
 
   CHECK_EQ(a_col, b_row);
@@ -2256,7 +2808,7 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   int lda = a->getStride();
   int ldb = b->getStride();
   int ldc = getStride();
-  gemm<real>(
+  BlasGemm<DEVICE_TYPE_CPU, real>::compute(
       a_trans, b_trans, M, N, K, scaleAB, A, lda, B, ldb, scaleT, C, ldc);
 }
 
@@ -3969,6 +4521,95 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
             inPos += inPosOffset;
             outPos += outPosOffset;
           }
+        }
+      }
+    }
+  }
+}
+
+void CpuMatrix::vol2Col(real* data,
+                        int channels,
+                        int depth,
+                        int height,
+                        int width,
+                        int filterD,
+                        int filterH,
+                        int filterW,
+                        int strideD,
+                        int strideH,
+                        int strideW,
+                        int paddingD,
+                        int paddingH,
+                        int paddingW) {
+  real* outData = getData();
+  int outHeight = (height + 2 * paddingH - filterH) / strideH + 1;
+  int outWidth = (width + 2 * paddingW - filterW) / strideW + 1;
+  int outDepth = (depth + 2 * paddingD - filterD) / strideD + 1;
+
+  int channelsCol = channels * filterD * filterH * filterW;
+  for (int c = 0; c < channelsCol; ++c) {
+    int wOffset = c % filterW;
+    int hOffset = (c / filterW) % filterH;
+    int dOffset = (c / filterW / filterH) % filterD;
+    int cIn = c / filterW / filterH / filterD;
+    for (int d = 0; d < outDepth; ++d) {
+      for (int h = 0; h < outHeight; ++h) {
+        for (int w = 0; w < outWidth; ++w) {
+          int dPad = d * strideD - paddingD + dOffset;
+          int hPad = h * strideH - paddingH + hOffset;
+          int wPad = w * strideW - paddingW + wOffset;
+
+          if (hPad >= 0 && hPad < height && wPad >= 0 && wPad < width &&
+              dPad >= 0 && dPad < depth)
+            outData[((c * outDepth + d) * outHeight + h) * outWidth + w] =
+                data[((cIn * depth + dPad) * height + hPad) * width + wPad];
+          else
+            outData[((c * outDepth + d) * outHeight + h) * outWidth + w] = 0;
+        }
+      }
+    }
+  }
+}
+
+void CpuMatrix::col2Vol(real* trg,
+                        int channels,
+                        int depth,
+                        int height,
+                        int width,
+                        int filterD,
+                        int filterH,
+                        int filterW,
+                        int strideD,
+                        int strideH,
+                        int strideW,
+                        int paddingD,
+                        int paddingH,
+                        int paddingW,
+                        real alpha,
+                        real beta) {
+  real* src = getData();
+  int outDepth = (depth + 2 * paddingD - filterD) / strideD + 1;
+  int outHeight = (height + 2 * paddingH - filterH) / strideH + 1;
+  int outWidth = (width + 2 * paddingW - filterW) / strideW + 1;
+  int channelsCol = channels * filterD * filterH * filterW;
+  for (int c = 0; c < channelsCol; ++c) {
+    int wOffset = c % filterW;
+    int hOffset = (c / filterW) % filterH;
+    int dOffset = (c / filterW / filterH) % filterD;
+    int cIm = c / filterW / filterH / filterD;
+    for (int d = 0; d < outDepth; ++d) {
+      for (int h = 0; h < outHeight; ++h) {
+        for (int w = 0; w < outWidth; ++w) {
+          int dPad = d * strideD - paddingD + dOffset;
+          int hPad = h * strideH - paddingH + hOffset;
+          int wPad = w * strideW - paddingW + wOffset;
+          if (hPad >= 0 && hPad < height && wPad >= 0 && wPad < width &&
+              dPad >= 0 && dPad < depth)
+            trg[((cIm * depth + dPad) * height + hPad) * width + wPad] =
+                alpha *
+                    src[((c * outDepth + d) * outHeight + h) * outWidth + w] +
+                beta *
+                    trg[((cIm * depth + dPad) * height + hPad) * width + wPad];
         }
       }
     }

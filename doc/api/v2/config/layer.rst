@@ -257,6 +257,11 @@ seq_concat
 ..  autoclass:: paddle.v2.layer.seq_concat
     :noindex:
 
+seq_slice
+---------
+..  autoclass:: paddle.v2.layer.seq_slice
+    :noindex:
+
 kmax_sequence_score
 -------------------
 ..  autoclass:: paddle.v2.layer.kmax_sequence_score
@@ -362,6 +367,11 @@ trans
 ..  autoclass:: paddle.v2.layer.trans
     :noindex:
 
+scale_shift
+-----------
+..  autoclass:: paddle.v2.layer.scale_shift
+    :noindex:
+
 Sampling Layers
 ===============
 
@@ -409,9 +419,14 @@ multi_binary_label_cross_entropy_cost
 ..  autoclass:: paddle.v2.layer.multi_binary_label_cross_entropy_cost
     :noindex:
 
-huber_cost
-----------
-..  autoclass:: paddle.v2.layer.huber_cost
+huber_regression_cost
+-------------------------
+..  autoclass:: paddle.v2.layer.huber_regression_cost
+    :noindex:
+
+huber_classification_cost
+-------------------------
+..  autoclass:: paddle.v2.layer.huber_classification_cost
     :noindex:
 
 lambda_cost
@@ -419,9 +434,9 @@ lambda_cost
 ..  autoclass:: paddle.v2.layer.lambda_cost
     :noindex:
 
-mse_cost
+square_error_cost
 --------
-..  autoclass:: paddle.v2.layer.mse_cost
+..  autoclass:: paddle.v2.layer.square_error_cost
     :noindex:
 
 rank_cost

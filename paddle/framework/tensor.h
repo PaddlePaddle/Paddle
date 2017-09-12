@@ -44,6 +44,9 @@ class Tensor {
   friend struct EigenTensor;
 
   template <typename T, int MajorType, typename IndexType>
+  friend struct EigenMatrix;
+
+  template <typename T, int MajorType, typename IndexType>
   friend struct EigenVector;
 
  public:
@@ -104,6 +107,11 @@ class Tensor {
    */
   template <typename T>
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+
+  platform::Place place() const {
+    PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get place() must contains holder");
+    return holder_->place();
+  }
 
  private:
   template <typename T>

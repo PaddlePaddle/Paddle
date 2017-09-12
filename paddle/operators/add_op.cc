@@ -18,17 +18,15 @@ namespace paddle {
 namespace operators {
 
 class AddOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(AddOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 2);
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1);
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0), "Inputs of AddOp must all be set");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
-                   "Outputs of AddOp must all be set");
-    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
-                   "Two input of Add Op's dimension must be same.");
-    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
+                      ctx.Input<Tensor>("Y")->dims(),
+                      "Two input of Add Op's dimension must be same.");
+    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -48,7 +46,9 @@ The equation is: Out = X + Y
 };
 
 class AddOpGrad : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(AddOpGrad, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {}
 };
@@ -57,8 +57,6 @@ class AddOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(add_two, ops::AddOp, ops::AddOpMaker);
-REGISTER_GRADIENT_OP(add_two, add_two_grad, ops::AddOpGrad);
+REGISTER_OP(add, ops::AddOp, ops::AddOpMaker, add_grad, ops::AddOpGrad);
 
-REGISTER_OP_CPU_KERNEL(add_two,
-                       ops::AddKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(add, ops::AddKernel<paddle::platform::CPUPlace, float>);

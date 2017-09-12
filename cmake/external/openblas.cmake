@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+IF(USE_EIGEN_FOR_BLAS)
+    return()
+ENDIF(USE_EIGEN_FOR_BLAS)
+
 INCLUDE(cblas)
 
 IF(NOT ${CBLAS_FOUND})
@@ -25,7 +29,12 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
-    SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_SHARED=1 NO_LAPACK=1 libs)
+    IF(APPLE)
+        SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
+        SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
+    ELSE()
+        SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_SHARED=1 NO_LAPACK=1 libs)
+    ENDIF()
 
     IF(CMAKE_CROSSCOMPILING)
         IF(ANDROID)
@@ -40,11 +49,11 @@ IF(NOT ${CBLAS_FOUND})
             SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=${TARGET} ARM_SOFTFP_ABI=1 USE_THREAD=0)
         ELSEIF(RPI)
             # use hardfp
-            SET(OPENBLAS_COMMIT "v0.2.19")
+            SET(OPENBLAS_COMMIT "v0.2.20")
             SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0)
         ENDIF()
     ELSE()
-        SET(OPENBLAS_COMMIT "v0.2.19")
+        SET(OPENBLAS_COMMIT "v0.2.20")
         SET(OPTIONAL_ARGS "")
         IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
             SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
@@ -73,10 +82,18 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
-ADD_LIBRARY(cblas STATIC ${dummyfile})
+IF(${CBLAS_PROVIDER} MATCHES MKL)
+    ADD_LIBRARY(cblas SHARED ${dummyfile})
+ELSE()
+    ADD_LIBRARY(cblas STATIC ${dummyfile})
+ENDIF()
 TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
 
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)
     LIST(APPEND external_project_dependencies cblas)
+ELSE()
+    IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+        ADD_DEPENDENCIES(cblas mklml)
+    ENDIF()
 ENDIF(NOT ${CBLAS_FOUND})

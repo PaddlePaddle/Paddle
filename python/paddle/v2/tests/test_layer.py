@@ -134,19 +134,21 @@ class CostLayerTest(unittest.TestCase):
         cost3 = layer.cross_entropy_cost(input=inference, label=label)
         cost4 = layer.cross_entropy_with_selfnorm_cost(
             input=inference, label=label)
-        cost5 = layer.mse_cost(input=inference, label=label)
-        cost6 = layer.mse_cost(input=inference, label=label, weight=weight)
+        cost5 = layer.square_error_cost(input=inference, label=label)
+        cost6 = layer.square_error_cost(
+            input=inference, label=label, weight=weight)
         cost7 = layer.multi_binary_label_cross_entropy_cost(
             input=inference, label=label)
         cost8 = layer.rank_cost(left=score, right=score, label=score)
         cost9 = layer.lambda_cost(input=inference, score=score)
         cost10 = layer.sum_cost(input=inference)
-        cost11 = layer.huber_cost(input=score, label=label)
+        cost11 = layer.huber_regression_cost(input=score, label=label)
+        cost12 = layer.huber_classification_cost(input=score, label=label)
 
         print layer.parse_network([cost1, cost2])
         print layer.parse_network([cost3, cost4])
         print layer.parse_network([cost5, cost6])
-        print layer.parse_network([cost7, cost8, cost9, cost10, cost11])
+        print layer.parse_network([cost7, cost8, cost9, cost10, cost11, cost12])
 
         crf = layer.crf(input=inference, label=label)
         crf_decoding = layer.crf_decoding(input=inference, size=3)

@@ -17,26 +17,33 @@
 namespace paddle {
 namespace operators {
 
-class RowWiseAddOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(RowWiseAddOp, framework::OperatorWithKernel)
+using framework::Tensor;
+
+class RowwiseAddOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 2UL,
-                   "Two inputs is needed by rowwise add");
-    auto dim0 = ctx.Input<Tensor>(0)->dims();
-    auto dim1 = ctx.Input<Tensor>(1)->dims();
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto b_dims = ctx.Input<Tensor>("b")->dims();
+    PADDLE_ENFORCE_GT(
+        x_dims.size(), b_dims.size(),
+        "The rank of input `X` must be larger than the one of input `b`.");
 
-    PADDLE_ENFORCE(dim0.size() == 2, "Input 0 must be matrix");
-    PADDLE_ENFORCE(dim1.size() == 1, "The second input must be vector");
-    PADDLE_ENFORCE(dim0[1] == dim1[0], "The width of two input must be same");
-    PADDLE_ENFORCE(ctx.OutputSize() == 1, "The output size must be 1");
-    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+    int num_col_dims = x_dims.size() - b_dims.size();
+
+    PADDLE_ENFORCE_EQ(
+        framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
+        "The width of two operands must be same");
+    PADDLE_ENFORCE_EQ(ctx.OutputSize("Out"), 1, "The output size must be 1");
+    ctx.Output<Tensor>("Out")->Resize(x_dims);
   }
 };
 
-class RowWiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
+class RowwiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RowWiseAddOpMaker(framework::OpProto *proto,
+  RowwiseAddOpMaker(framework::OpProto *proto,
                     framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
@@ -49,11 +56,41 @@ for i in xrange(X.shape[0]):
 )DOC");
   }
 };
+class RowwiseAddGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "X should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("b"), "b should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto b_dims = ctx.Input<Tensor>("b")->dims();
+    PADDLE_ENFORCE_GT(
+        x_dims.size(), b_dims.size(),
+        "The rank of input `X` must be larger than the one of input `b`.");
+
+    int num_col_dims = x_dims.size() - b_dims.size();
+    PADDLE_ENFORCE_EQ(
+        framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
+        "The width of two operands must be same");
+    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *db = ctx.Output<Tensor>(framework::GradVarName("b"));
+    if (dx) dx->Resize(x_dims);
+    if (db) db->Resize(b_dims);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(rowwise_add, ops::RowWiseAddOp, ops::RowWiseAddOpMaker);
+REGISTER_OP(rowwise_add, ops::RowwiseAddOp, ops::RowwiseAddOpMaker,
+            rowwise_add_grad, ops::RowwiseAddGradOp);
 REGISTER_OP_CPU_KERNEL(
-    rowwise_add, ops::RowWiseAddKernel<paddle::platform::CPUPlace, float>);
+    rowwise_add, ops::RowwiseAddKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    rowwise_add_grad,
+    ops::RowwiseAddGradKernel<paddle::platform::CPUPlace, float>);

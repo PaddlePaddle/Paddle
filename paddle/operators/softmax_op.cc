@@ -18,15 +18,13 @@ namespace paddle {
 namespace operators {
 
 class SoftmaxOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(SoftmaxOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 1UL,
-                      "Only one input is need for softmax");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims().size(), 2UL,
-                      "The input of softmax op must be matrix");
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1UL,
-                      "Only one output is need for softmax");
+    PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
+                   "The input of softmax op must be a matrix.");
     ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
@@ -36,28 +34,45 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
   SoftmaxOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "input of softmax");
-    AddOutput("Y", "output of softmax");
-    AddComment("Softmax Op");
+    AddInput("X",
+             "The input tensor of softmax. "
+             "2-D with shape [batch_size, input_feature_dimensions].");
+    AddOutput("Y", "The normalized values with the same shape as X.");
+    AddComment(R"DOC(
+The input of softmax operator is a 2-D tensor with shape N x K (N is the
+batch_size, K is the dimension of input feature). The output tensor has the
+same shape as the input tensor.
+
+For each row of the input tensor, the softmax operator squashes the
+K-dimensional vector of arbitrary real values to a K-dimensional vector of real
+values in the range [0, 1] that add up to 1. Specifically, it computes the
+exponential of the given dimension and the sum of exponential values of all
+the other dimensions in the K-dimensional vector input. Then the ratio of the
+exponential of the given dimension and the sum of exponential values of all
+the other dimensions is the output of the softmax operator.
+
+For each row `i` and each column `j` in input X, we have:
+    Y[i, j] = exp(X[i, j]) / sum_j(exp(X[i, j]))
+
+)DOC");
   }
 };
 
 class SoftmaxOpGrad : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(SoftmaxOpGrad, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 3UL,
-                      "Input of SoftmaxOpGrad should be 3, X, Y, YG");
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1UL,
-                      "Output of SoftmaxOpGrad should be 1");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should be not null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
-                            "Input(Y@GRAD) should not be null");
-    PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
-                       ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
-                   "the shape of Input(0) and Input(1) should be the same");
+                            "Input(Y@GRAD) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Y")->dims(),
+                      ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
+                      "Input(Y) and its gradients should have a same shape.");
+
     ctx.Output<Tensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<Tensor>("Y")->dims());
+        ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -66,9 +81,9 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
+REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker, softmax_grad,
+            ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(softmax,
                        ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);
-REGISTER_GRADIENT_OP(softmax, softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
     softmax_grad, ops::SoftmaxGradKernel<paddle::platform::CPUPlace, float>);

@@ -19,9 +19,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "op_info.h"
 #include "paddle/framework/attribute.h"
-#include "paddle/framework/op_desc.pb.h"
-#include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -63,31 +63,19 @@ class ExecutionContext;
  */
 class OperatorBase {
  public:
-  OperatorBase() {}  // TODO(yi): This constructor is to be removed.
-  OperatorBase(const std::string& type, const std::vector<std::string>& inputs,
-               const std::vector<std::string>& outputs,
-               const AttributeMap& attrs,
-               std::unordered_map<std::string, int>* in_out_idxs)
-      : type_(type),
-        inputs_(inputs),
-        outputs_(outputs),
-        attrs_(attrs),
-        in_out_idxs_(in_out_idxs) {}
+  OperatorBase(const std::string& type, const VariableNameMap& inputs,
+               const VariableNameMap& outputs, const AttributeMap& attrs);
 
   virtual ~OperatorBase() {}
 
   template <typename T>
-  inline const T& GetAttr(const std::string& name) const {
+  inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
                    name);
     return boost::get<T>(attrs_.at(name));
   }
 
   virtual std::string DebugString() const;
-
-  /// Init will be called after CreateOperator, you can put some initialization
-  /// logic here.
-  virtual void Init() {}
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
@@ -104,39 +92,143 @@ class OperatorBase {
   /// rename inputs outputs name
   void Rename(const std::string& old_name, const std::string& new_name);
 
+  const VariableNameMap& Inputs() const { return inputs_; }
+  const VariableNameMap& Outputs() const { return outputs_; }
+
   //! Get a input with argument's name described in `op_proto`
-  const std::string& Input(const std::string& name) const;
+  std::string Input(const std::string& name) const;
   //! Get a input which has multiple variables.
-  //! TODO add a vector_view to prevent memory copy.
-  std::vector<std::string> Inputs(const std::string& name) const;
+  const std::vector<std::string>& Inputs(const std::string& name) const;
+
+  std::vector<std::string> InputVars() const;
 
   //! Get a output with argument's name described in `op_proto`
-  const std::string& Output(const std::string& name) const;
+  std::string Output(const std::string& name) const;
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
-  std::vector<std::string> Outputs(const std::string& name) const;
+  const std::vector<std::string>& Outputs(const std::string& name) const;
 
-  const std::string Type() const { return type_; }
-  const std::vector<std::string> Inputs() const { return inputs_; }
-  const std::vector<std::string> Outputs() const { return outputs_; }
+  virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
+
+  const std::string& Type() const { return type_; }
+  void SetType(const std::string& type) { type_ = type; }
   const AttributeMap& Attrs() const { return attrs_; }
-  const std::unordered_map<std::string, int>* InOutIdx() const {
-    return in_out_idxs_.get();
-  }
 
- public:
+  // Return a new operator instance, which is as same as this.
+  // Use unique_ptr to prevent caller forget to delete this pointer.
+  virtual std::unique_ptr<OperatorBase> Clone() const = 0;
+
+ protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)
+  // I (Inputs)opear
   // O (Outputs)
   // OG (Output Gradients)
-  std::vector<std::string> inputs_;
+  VariableNameMap inputs_;
+
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  std::vector<std::string> outputs_;
+  VariableNameMap outputs_;
   AttributeMap attrs_;
-  // store the arguments' offset described in op_desc.
-  std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
+
+ private:
+  void GenerateTemporaryNames();
+  void CheckAllInputOutputSet() const;
+};
+
+// Macro for define a clone method.
+// If you are writing an kernel operator, `Clone` will be defined when you
+// register it. i.e. `Clone` method is not needed to define by yourself.
+#define DEFINE_OP_CLONE_METHOD(cls)                       \
+  std::unique_ptr<OperatorBase> Clone() const final {     \
+    return std::unique_ptr<OperatorBase>(new cls(*this)); \
+  }
+
+// Macro for define a default constructor for Operator.
+// You can also use
+//   using PARENT_CLASS::PARENT_CLASS;
+// to use parent's constructor.
+#define DEFINE_OP_CONSTRUCTOR(cls, parent_cls)             \
+  cls(const std::string& type,                             \
+      const ::paddle::framework::VariableNameMap& inputs,  \
+      const ::paddle::framework::VariableNameMap& outputs, \
+      const paddle::framework::AttributeMap& attrs)        \
+      : parent_cls(type, inputs, outputs, attrs) {}
+
+class NOP : public OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
+  std::unique_ptr<OperatorBase> Clone() const override {
+    return std::unique_ptr<OperatorBase>(new NOP(*this));
+  }
+};
+
+// this class not only make proto but also init attribute checkers.
+class OpProtoAndCheckerMaker {
+ public:
+  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : proto_(proto), op_checker_(op_checker) {}
+
+  ~OpProtoAndCheckerMaker() {
+    PADDLE_ENFORCE(validated_, "should call Validate after build");
+  }
+
+  void Validate();
+
+ protected:
+  struct VariableBuilder {
+    OpProto::Var* var_;
+
+    VariableBuilder& AsDuplicable() {
+      var_->set_duplicable(true);
+      return *this;
+    }
+
+    VariableBuilder& AsIntermediate() {
+      var_->set_intermediate(true);
+      return *this;
+    }
+
+    VariableBuilder& NotInGradient() {
+      var_->set_not_in_gradient(true);
+      return *this;
+    }
+  };
+
+  VariableBuilder AddInput(const std::string& name, const std::string& comment);
+
+  VariableBuilder AddOutput(const std::string& name,
+                            const std::string& comment);
+
+  template <typename T>
+  TypedAttrChecker<T>& AddAttr(const std::string& name,
+                               const std::string& comment,
+                               bool generated = false) {
+    auto* attr = proto_->add_attrs();
+    attr->set_name(name);
+    attr->set_comment(comment);
+    attr->set_generated(generated);
+    attr->set_type(AttrTypeID<T>());
+    return op_checker_->AddAttrChecker<T>(name);
+  }
+
+  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
+
+ private:
+  void CheckNoDuplicatedInOutAttrs();
+
+  OpProto* proto_;
+  OpAttrChecker* op_checker_;
+  bool validated_{false};
+};
+
+class NOPMaker : public OpProtoAndCheckerMaker {
+ public:
+  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {}
 };
 
 class InferShapeContext {
@@ -144,24 +236,31 @@ class InferShapeContext {
   InferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
-  size_t InputSize() const { return op_.inputs_.size(); }
+  const OperatorBase& op() const { return op_; }
 
-  size_t OutputSize() const { return op_.outputs_.size(); }
+  const Scope& scope() const { return scope_; }
 
-  const Variable* InputVar(const size_t index) const {
-    return scope_.FindVar(op_.inputs_.at(index));
+  template <typename T>
+  inline const T& Attr(const std::string& name) const {
+    return op_.Attr<T>(name);
   }
 
-  Variable* OutputVar(const size_t index) const {
-    return scope_.FindVar(op_.outputs_.at(index));
+  size_t InputSize(const std::string& name) const {
+    return op_.Inputs(name).size();
+  }
+
+  size_t OutputSize(const std::string& name) const {
+    return op_.Outputs(name).size();
   }
 
   const Variable* InputVar(const std::string& name) const {
-    return scope_.FindVar(op_.Input(name));
+    auto ipt = op_.Input(name);
+    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
   }
 
   Variable* OutputVar(const std::string& name) const {
-    return scope_.FindVar(op_.Output(name));
+    auto opt = op_.Output(name);
+    return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
   }
 
   const std::vector<const Variable*> MultiInputVar(
@@ -169,9 +268,11 @@ class InferShapeContext {
     auto names = op_.Inputs(name);
     std::vector<const Variable*> res;
     res.reserve(names.size());
-    std::transform(
-        names.begin(), names.end(), std::back_inserter(res),
-        [this](const std::string& name) { return scope_.FindVar(name); });
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [this](const std::string& name) {
+                     return name == kEmptyVarName ? nullptr
+                                                  : scope_.FindVar(name);
+                   });
     return res;
   }
 
@@ -179,42 +280,24 @@ class InferShapeContext {
     auto names = op_.Outputs(name);
     std::vector<const Variable*> res;
     res.reserve(names.size());
-    std::transform(
-        names.begin(), names.end(), std::back_inserter(res),
-        [this](const std::string& name) { return scope_.FindVar(name); });
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [this](const std::string& name) {
+                     return name == kEmptyVarName ? nullptr
+                                                  : scope_.FindVar(name);
+                   });
     return res;
   }
 
   template <typename T>
-  const T* Input(const size_t index) const {
-    auto var = InputVar(index);
-    PADDLE_ENFORCE_NOT_NULL(var, "Input(%d) should not be nullptr", index);
-    return &var->Get<T>();
-  }
-
-  template <typename T>
-  T* Output(const size_t index) const {
-    auto var = OutputVar(index);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        "Output(%d) not be nullptr, which means variable [%s] does not "
-        "exist in scope",
-        index, op_.outputs_[index]);
-    return var->GetMutable<T>();
-  }
-
-  template <typename T>
   const T* Input(const std::string& name) const {
-    auto var = InputVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var, "Input(%s) should not be nullptr", name);
-    return &var->Get<T>();
+    auto* var = InputVar(name);
+    return var == nullptr ? nullptr : &var->Get<T>();
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
     auto var = OutputVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var, "Output(%s) should not be nullptr", name);
-    return var->GetMutable<T>();
+    return var == nullptr ? nullptr : var->GetMutable<T>();
   }
 
   template <typename T>
@@ -225,30 +308,25 @@ class InferShapeContext {
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
-                     PADDLE_ENFORCE_NOT_NULL(
-                         var, "MultiInput(%s:%s) should not be nullptr", name,
-                         sub_name);
-                     return &var->Get<T>();
+                     return var == nullptr ? nullptr : &var->Get<T>();
                    });
     return res;
   }
 
   template <typename T>
-  std::vector<const T*> MultiOutput(const std::string& name) const {
+  std::vector<T*> MultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
-    std::vector<const T*> res;
+    std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
                      auto var = scope_.FindVar(sub_name);
-                     PADDLE_ENFORCE_NOT_NULL(
-                         var, "MultiOutput(%s:%s) should not be nullptr", name,
-                         sub_name);
-                     return var->GetMutable<T>();
+                     return var == nullptr ? nullptr : var->GetMutable<T>();
                    });
     return res;
   }
 
+ private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
@@ -281,6 +359,10 @@ class ExecutionContext : public InferShapeContext {
 
   platform::Place GetPlace() const { return device_context_->GetPlace(); }
 
+  const platform::DeviceContext* device_context() const {
+    return device_context_;
+  }
+
   const platform::DeviceContext* device_context_;
 };
 
@@ -300,14 +382,6 @@ class OpKernel {
 
 class OperatorWithKernel : public OperatorBase {
  public:
-  OperatorWithKernel() {}  // TODO(yi): This constructor is to be removed.
-  OperatorWithKernel(const std::string& type,
-                     const std::vector<std::string>& inputs,
-                     const std::vector<std::string>& outputs,
-                     const AttributeMap& attrs,
-                     std::unordered_map<std::string, int>* in_out_idxs)
-      : OperatorBase(type, inputs, outputs, attrs, in_out_idxs) {}
-
   struct OpKernelKey {
     platform::Place place_;
 
@@ -330,6 +404,10 @@ class OperatorWithKernel : public OperatorBase {
 
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
+
+  OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
+                     const VariableNameMap& outputs, const AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(const Scope& scope) const override {
     InferShape(InferShapeContext(*this, scope));
@@ -356,16 +434,6 @@ class OperatorWithKernel : public OperatorBase {
  protected:
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
-
-#define DEFINE_OPERATOR_CTOR(Class, ParentClass)                         \
- public:                                                                 \
-  Class() { /* TODO(yi): This constructor is to be removed. */           \
-  }                                                                      \
-  Class(const std::string& type, const std::vector<std::string>& inputs, \
-        const std::vector<std::string>& outputs,                         \
-        const ::paddle::framework::AttributeMap& attrs,                  \
-        std::unordered_map<std::string, int>* in_out_idxs)               \
-      : ParentClass(type, inputs, outputs, attrs, in_out_idxs) {}
 
 }  // namespace framework
 }  // namespace paddle

@@ -10,13 +10,11 @@ RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ub
 ARG WITH_GPU
 ARG WITH_AVX
 ARG WITH_DOC
-ARG WITH_STYLE_CHECK
 
 ENV WOBOQ OFF
-ENV WITH_GPU=${WITH_GPU:-OFF}
+ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
-ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
 
 ENV HOME /root
 # Add bash enhancements
@@ -33,9 +31,6 @@ RUN apt-get update && \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools && \
     apt-get clean -y
-
-# paddle is using numpy.flip, which is introduced since 1.12.0
-RUN pip --no-cache-dir install 'numpy>=1.12.0'
 
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
@@ -58,33 +53,22 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
 # version util jupyter fixes this issue.
 RUN pip install --upgrade pip && \
-    pip install -U 'protobuf==3.1.0' && \
-    pip install -U wheel pillow BeautifulSoup && \
+    pip install -U wheel && \
     pip install -U docopt PyYAML sphinx && \
-    pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
+    pip install -U sphinx-rtd-theme==0.1.9 recommonmark
+
+RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip install opencv-python rarfile 'scipy>=0.19.0' 'nltk>=3.2.2'
+    pip install opencv-python
+
+COPY ./python/requirements.txt /root/
+RUN pip install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
 
-# TODO(qijun) The template library Eigen doesn't work well with GCC 5 
-# coming with the default Docker image, so we switch to use GCC 4.8 
-# by default. And I will check Eigen library later.
-
-RUN ln -sf gcc-4.8 /usr/bin/gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/gcc-ranlib && \
-    ln -sf gcc-4.8 /usr/bin/x86_64-linux-gnu-gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/x86_64-linux-gnu-gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/x86_64-linux-gnu-gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
-    ln -sf g++-4.8 /usr/bin/g++ && \
-    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++ 
 
 # Install woboq_codebrowser to /woboq
 RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \

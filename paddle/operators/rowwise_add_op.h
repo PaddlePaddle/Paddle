@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include "paddle/framework/eigen.h"
@@ -28,15 +28,17 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class RowWiseAddKernel : public framework::OpKernel {
+class RowwiseAddKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto out = context.Output<Tensor>(0);
+    auto out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-
-    auto input = EigenMatrix<T>::From(*context.Input<Tensor>(0));
-    auto bias = EigenVector<T>::From(*context.Input<Tensor>(1));
-    auto output = EigenMatrix<T>::From(*out);
+    int num_col_dims = context.Input<Tensor>("X")->dims().size() -
+                       context.Input<Tensor>("b")->dims().size();
+    auto input =
+        EigenMatrix<T>::Reshape(*context.Input<Tensor>("X"), num_col_dims);
+    auto bias = EigenVector<T>::Flatten(*context.Input<Tensor>("b"));
+    auto output = EigenMatrix<T>::Reshape(*out, num_col_dims);
 
     const int bias_size = bias.dimension(0);
     const int rest_size = input.size() / bias_size;
@@ -47,5 +49,32 @@ class RowWiseAddKernel : public framework::OpKernel {
   }
 };
 
+template <typename Place, typename T>
+class RowwiseAddGradKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* db = context.Output<Tensor>(framework::GradVarName("b"));
+    int num_col_dims = context.Input<Tensor>("X")->dims().size() -
+                       context.Input<Tensor>("b")->dims().size();
+
+    auto out_grad = EigenMatrix<T>::Reshape(*dout, num_col_dims);
+    auto place = context.GetEigenDevice<Place>();
+
+    if (dx) {
+      dx->mutable_data<T>(context.GetPlace());
+      EigenMatrix<T>::Reshape(*dx, num_col_dims).device(place) = out_grad;
+    }
+
+    if (db) {
+      db->mutable_data<T>(context.GetPlace());
+      // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
+      // colwise add
+      Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
+      EigenVector<T>::Flatten(*db).device(place) = out_grad.sum(dims);
+    }
+  }
+};
 }  // namespace operators
 }  // namespace paddle

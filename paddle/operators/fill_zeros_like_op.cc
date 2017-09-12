@@ -18,19 +18,13 @@ namespace paddle {
 namespace operators {
 
 class FillZerosLikeOp : public framework::OperatorWithKernel {
-  DEFINE_OPERATOR_CTOR(FillZerosLikeOp, framework::OperatorWithKernel)
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.InputSize(), 1UL,
-                      "Input size of FillZerosLikeOp must be one.");
-    PADDLE_ENFORCE_EQ(ctx.OutputSize(), 1UL,
-                      "Output size of AddOp must be one.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(0),
-                            "Input of FillZerosLikeOp must be set.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(0),
-                            "Output of FillZerosLikeOp must be set.");
-    ctx.Output<framework::Tensor>(0)->Resize(
-        ctx.Input<framework::Tensor>(0)->dims());
+    ctx.Output<framework::Tensor>("Dst")->Resize(
+        ctx.Input<framework::Tensor>("Src")->dims());
   }
 };
 
@@ -52,7 +46,8 @@ The output will have the same size with input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(fill_zeros_like, ops::FillZerosLikeOp, ops::FillZerosLikeOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
+                             ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
     ops::FillZerosLikeKernel<paddle::platform::CPUPlace, float>);

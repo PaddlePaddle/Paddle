@@ -23,10 +23,10 @@ template <typename Place, typename T>
 class FillZerosLikeKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output = context.Output<framework::Tensor>(0);
+    auto* output = context.Output<framework::Tensor>("Dst");
     output->mutable_data<T>(context.GetPlace());
     auto t = framework::EigenVector<T>::Flatten(*output);
-    t.device(context.GetEigenDevice<Place>()) = t.constant(T(0));
+    t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
   }
 };
 

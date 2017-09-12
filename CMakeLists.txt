@@ -36,8 +36,8 @@ include(simd)
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    OFF)
-option(WITH_MKLML       "Compile PaddlePaddle with mklml package."      OFF)
+option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ${AVX_FOUND})
+option(WITH_MKLML       "Compile PaddlePaddle with mklml package."      ${AVX_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -55,6 +55,7 @@ option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
+option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -64,8 +65,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(ANDROID)
-    if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
-        message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 21")
+    if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
+        message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
     endif()
 
     set(WITH_GPU OFF CACHE STRING
@@ -137,9 +138,9 @@ set(EXTERNAL_LIBS
 )
 
 if(WITH_GPU)
-    list(APPEND EXTERNAL_LIB ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
+    list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
     if(NOT WITH_DSO)
-        list(APPEND EXTERNAL_LIB ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 
