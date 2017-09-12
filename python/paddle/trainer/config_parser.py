@@ -2034,6 +2034,7 @@ class ParameterReluLayer(LayerBase):
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
         self.set_layer_size(input_layer.size)
+        self.config.partial_sum = partial_sum
         self.create_input_parameter(0, input_layer.size / partial_sum)
 
 
@@ -3748,8 +3749,8 @@ class SwitchOrderLayer(LayerBase):
     def __init__(self, name, inputs, reshape, **xargs):
         super(SwitchOrderLayer, self).__init__(
             name, 'switch_order', 0, inputs=inputs, **xargs)
-        self.config.reshape_conf.heightAxis.extend(reshape['height'])
-        self.config.reshape_conf.widthAxis.extend(reshape['width'])
+        self.config.reshape_conf.height_axis.extend(reshape['height'])
+        self.config.reshape_conf.width_axis.extend(reshape['width'])
 
 
 # Deprecated, use a new layer specific class instead

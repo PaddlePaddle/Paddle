@@ -41,8 +41,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
     int rank = framework::arity(x_dims);
     PADDLE_ENFORCE_GE(rank, 2, "Tensor rank should be at least equal to 2.");
-    PADDLE_ENFORCE_EQ(framework::product(x_dims) / x_dims[0],
-                      framework::product(y_dims) / y_dims[0],
+    PADDLE_ENFORCE_EQ(x->numel() / x_dims[0], y->numel() / y_dims[0],
                       "Product of dimensions expcet the first dimension of "
                       "input and target must be equal.");
     PADDLE_ENFORCE(y_dims[0] == 1 || y_dims[0] == x_dims[0],
@@ -50,8 +49,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
                    "or to 1.");
 
     ctx.Output<Tensor>("sub_result")
-        ->Resize({static_cast<int>(x_dims[0]),
-                  static_cast<int>(framework::product(x_dims) / x_dims[0])});
+        ->Resize({x_dims[0], x->numel() / x_dims[0]});
     ctx.Output<Tensor>("Out")->Resize({x_dims[0], 1});
   }
 };

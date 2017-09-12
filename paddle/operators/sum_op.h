@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
+http://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,42 +19,45 @@ namespace operators {
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class MeanKernel : public framework::OpKernel {
+class SumKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto ins = context.MultiInput<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
+    out->mutable_data<T>(context.GetPlace());
 
-    output->mutable_data<T>(context.GetPlace());
+    auto place = context.GetEigenDevice<Place>();
+    auto result = EigenVector<T>::Flatten(*out);
 
-    auto X = EigenVector<T>::Flatten(*input);
-    auto y = EigenScalar<T>::From(*output);
-    auto& place = context.GetEigenDevice<Place>();
-
-    y.device(place) = X.mean();
+    int N = ins.size();
+    auto in = EigenVector<T>::Flatten(*(ins[0]));
+    result.device(place) = in;
+    for (int i = 1; i < N; i++) {
+      auto in = EigenVector<T>::Flatten(*(ins[i]));
+      result.device(place) = result + in;
+    }
   }
 };
 
 template <typename Place, typename T>
-class MeanGradKernel : public framework::OpKernel {
+class SumGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(OG->numel() == 1, "Mean Gradient should be scalar");
-    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
-    IG->mutable_data<T>(context.GetPlace());
+    auto* input = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto outs = context.MultiOutput<Tensor>(framework::GradVarName("X"));
+    for (auto out : outs) {
+      out->mutable_data<T>(context.GetPlace());
+    }
 
-    T ig_size = static_cast<T>(IG->numel());
-    Eigen::DSizes<int, 1> bcast(ig_size);
-
-    EigenVector<T>::Flatten(*IG).device(context.GetEigenDevice<Place>()) =
-        (EigenVector<T>::From(*OG) / ig_size).broadcast(bcast);
+    auto place = context.GetEigenDevice<Place>();
+    auto in = EigenVector<T>::Flatten(*input);
+    for (auto out : outs) {
+      auto result = EigenVector<T>::Flatten(*out);
+      result.device(place) = in;
+    }
   }
 };
 

@@ -35,7 +35,7 @@ class CPUUniformRandomKernel : public framework::OpKernel {
     std::uniform_real_distribution<T> dist(
         static_cast<T>(context.Attr<float>("min")),
         static_cast<T>(context.Attr<float>("max")));
-    int64_t size = framework::product(tensor->dims());
+    int64_t size = tensor->numel();
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
