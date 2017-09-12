@@ -354,11 +354,7 @@ class TestMulGradOp(GradientChecker):
 
 ### 编译和执行单元测试
 
-单元测试编写完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)中添加以下内容，将单元测试加入工程：
-
-```
-py_test(test_mul_op SRCS test_mul_op.py)
-```
+无需修改 [`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt) 文件，新增的 `test_*.py` 单元测试会被自动加入工程。
 
 请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单元测试：
 
