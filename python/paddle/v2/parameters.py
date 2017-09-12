@@ -297,17 +297,32 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        param = self.get(name)
-        size = reduce(lambda a, b: a * b, param.shape)
-        f.write(struct.pack("IIQ", 0, 4, size))
-        param = param.astype(np.float32)
-        s = param.tostring()
-        wrote_size = 0
-        buf = buffer(s, wrote_size, 65535)
-        while buf:  # f.write crashes with big data blog.
-            f.write(buf)
-            wrote_size += 65535
+        if len(self.__gradient_machines__) == 0:
+            param = self.get(name)
+            size = reduce(lambda a, b: a * b, param.shape)
+            f.write(struct.pack("IIQ", 0, 4, size))
+            param = param.astype(np.float32)
+            s = param.tostring()
+            wrote_size = 0
             buf = buffer(s, wrote_size, 65535)
+            while buf:  # f.write crashes with big data blog.
+                f.write(buf)
+                wrote_size += 65535
+                buf = buffer(s, wrote_size, 65535)
+        else:
+            import os
+            import py_paddle.swig_paddle as api
+            for each_gradient_machine in self.__gradient_machines__:
+                print name
+                param = __get_parameter_in_gradient_machine__(
+                    each_gradient_machine, name)
+                assert isinstance(param, api.Parameter)
+                filename = 'tmp_param_file'
+                param.save(filename)
+                with open(filename, 'rb') as fdata:
+                    f.write(fdata.read())
+                os.remove(filename)
+                return
 
     def deserialize(self, name, f):
         """
@@ -317,9 +332,22 @@ class Parameters(object):
         :type f: file
         :return:
         """
-        f.read(16)  # header
-        arr = np.frombuffer(f.read(), dtype=np.float32)
-        self.set(name, arr.reshape(self.get_shape(name)))
+        if len(self.__gradient_machines__) == 0:
+            f.read(16)  # header
+            arr = np.frombuffer(f.read(), dtype=np.float32)
+            self.set(name, arr.reshape(self.get_shape(name)))
+        else:
+            import os
+            import py_paddle.swig_paddle as api
+            for each_gradient_machine in self.__gradient_machines__:
+                param = __get_parameter_in_gradient_machine__(
+                    each_gradient_machine, name)
+                assert isinstance(param, api.Parameter)
+                filename = 'tmp_param_file'
+                with open(filename, 'w') as fdata:
+                    fdata.write(f.read())
+                param.load(filename)
+                os.remove(filename)
 
     def to_tar(self, f):
         tar = tarfile.TarFile(fileobj=f, mode='w')
