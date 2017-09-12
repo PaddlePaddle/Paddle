@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,5 +51,5 @@ class ReshapeGradKernel : public framework::OpKernel {
     d_x->Resize(in_dims);
   }
 };
-}
-}
+}  // namespace operators
+}  // namespace paddle
