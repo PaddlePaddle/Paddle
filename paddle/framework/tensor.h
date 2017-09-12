@@ -162,7 +162,10 @@ class Tensor {
   /*! points to dimensions of memory block. */
   DDim dims_;
 
-  /*! the element count of tensor. */
+  /**
+   * A cache of the number of elements in a tensor.
+   * Would be 0 for an uninitialized tensor.
+   */
   int64_t numel_;
 
   /**
