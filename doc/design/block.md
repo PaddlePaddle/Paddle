@@ -15,7 +15,7 @@ In Paddle, we need a similar concept called Block to support following scenes:
 - help to execute multiple operators, blocks should group operators and runs like a single operator.
 
 ## How to use Block
-In `RNNOp`, `SwitchOp`, `WhileOp` and `IfElseOp`, a sub-block should be used to help to define a sub-block.
+In `RNNOp`, `SwitchOp`, `WhileOp` and `IfElseOp`, a with-statement should be used to help to define a sub-block.
 
 Let's start from how a RNNOp is described using Block:
 
@@ -107,7 +107,7 @@ class SymbolTable {
   OpDesc* FindOp(const string& name);
 
   BlockDesc Serialize() const;
-  void DeSerialize();
+  void DeSerialize(const BlockDesc& desc);
 
  private:
   SymbolTable* parent_;
@@ -175,12 +175,12 @@ The definition of Eval is as follows:
 // return a new BlockDesc with minial number of operators.
 // NOTE not return a Block but the block's description so that this can be distributed
 // to a cluster.
-BlockDesc CleanBlock(const BlockDesc& desc, vector<string> targets);
+BlockDesc Prune(const BlockDesc& desc, vector<string> targets);
 
 void Block::Eval(const vector<string>& targets,
                  const framework::Scope& scope,
                  const platform::DeviceContext& dev_ctx) {
-  BlockDesc min_desc = CleanBlock(desc_, targets);
+  BlockDesc min_desc = Prune(desc_, targets);
   Block min_block(min_desc);
   min_block.Run(scope, dev_ctx);
 }
