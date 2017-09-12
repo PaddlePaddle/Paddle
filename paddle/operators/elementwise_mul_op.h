@@ -74,9 +74,6 @@ class ElementWiseMulKernel : public framework::OpKernel {
       return;
     }
 
-    bool broadcast = ctx.template Attr<int>("broadcast");
-    PADDLE_ENFORCE(broadcast, "Do you forget broadcast parameter?");
-
     int axis = ctx.template Attr<int>("axis");
     axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
     PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),

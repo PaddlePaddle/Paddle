@@ -42,24 +42,20 @@ class ElementWiseMulOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of elementwise mul op");
     AddInput("Y", "The second input of elementwise mul op");
-    AddAttr<int>(
-        "axis",
-        R"DOC(When broadcast is set, axis should be Y's dimension index in X.
+    AddAttr<int>("axis",
+                 R"DOC(
+When shape(Y) does not equal shape(X),Y will be broadcasted 
+to match the shape of X and axis should be dimension index Y in X
         )DOC")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
-    AddAttr<int>(
-        "broadcast",
-        R"DOC(When broadcast is set, Y will be broadcast to match shape of X.
-        )DOC")
-        .SetDefault(0);
 
     AddOutput("Out", "The output of elementwise mul op");
     AddComment(R"DOC(
 Limited elementwise multiple operator.The equation is: Out = X ⊙ Y.
 1. The shape of Y should be same of X or
 2. Y's shape is a subset of X. 
-   When broadcast is set, Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
+   Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
    example:
       shape(X) = (2, 3, 4, 5), shape(Y) = (,)
       shape(X) = (2, 3, 4, 5), shape(Y) = (5,)

@@ -64,7 +64,7 @@ class TestElementwiseMulOp_broadcast_0(OpTest):
             'Y': np.random.rand(2).astype(np.float32)
         }
 
-        self.attrs = {'axis': 0, 'broadcast': 1}
+        self.attrs = {'axis': 0}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(2, 1, 1)
         }
@@ -92,7 +92,7 @@ class TestElementwiseMulOp_broadcast_1(OpTest):
             'Y': np.random.rand(3).astype(np.float32)
         }
 
-        self.attrs = {'axis': 1, 'broadcast': 1}
+        self.attrs = {'axis': 1}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 3, 1)
         }
@@ -120,7 +120,6 @@ class TestElementwiseMulOp_broadcast_2(OpTest):
             'Y': np.random.rand(4).astype(np.float32)
         }
 
-        self.attrs = {'broadcast': 1}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 1, 4)
         }
@@ -148,7 +147,7 @@ class TestElementwiseMulOp_broadcast_3(OpTest):
             'Y': np.random.rand(3, 4).astype(np.float32)
         }
 
-        self.attrs = {'axis': 1, 'broadcast': 1}
+        self.attrs = {'axis': 1}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 3, 4, 1)
         }
