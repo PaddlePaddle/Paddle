@@ -20,8 +20,14 @@
 
 namespace paddle {
 namespace operators {
+/*
+ * Out = X ⊙ Y
+ * 1. shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+ *    pre=2, n=3*4, post=5
+ * 2.shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
+ *    pre=2, n=4*5, post=1
+ */
 
-// Try to get reshape dimentions.
 inline void get_mid_dims(const framework::DDim& x_dims,
                          const framework::DDim& y_dims, const int axis,
                          int& pre, int& n, int& post) {
