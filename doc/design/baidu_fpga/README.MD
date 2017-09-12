@@ -2,14 +2,13 @@
 
 我们计划利用百度FPGA云主机和深度学习加速库Polaris，将FPGA集成到PaddlePaddle，使其支持更多的异构硬件。
 - 百度FPGA云服务器：百度云环境中配备的FPGA计算实例，通过该实例，可以快速地构建FPGA硬件加速程序[1]。
-- Polaris：一个百度开发的基于FPGA的高性能深度学习计算库，供用户方便的调用百度FPGA实现的功能\[[2](#references)\]。
-
+- Polaris：一个百度开发的基于FPGA的高性能深度学习计算库（待开源，包含头文件和.a文件），供用户方便的调用百度FPGA实现的功能\[[2](#references)\]。
 
 
 我们计划基于重构中的PaddlePaddle进行开发，目标是：
 
 - 百度FPGA支持大部分常见的深度学习Operator。
-- 百度FPGA支持大部分常见的深度学习模型。
+- 百度FPGA支持大部分常见的深度学习模型(包含图像、语音、NLP、广告)。
 
 
 ## Contents
@@ -30,7 +29,7 @@
 
 我们会把Polaris作为第三方库集成进PaddlePaddle，利用百度FPGA云服务器能够快速构建基于FPGA的PaddlePaddle应用，整体框架图如下所示：
 <div align="center">
-<img src="image/overview.png" width=350><br/>
+<img src="image/overview.png" width=280><br/>
 Figure 1. FPGA on Paddle.
 </div>
 
@@ -58,7 +57,7 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
 重构中的PaddlePaddle实现了DeviceContext类来负责对应设备上面的资源管理，目前只支持CPU和GPU的版本。我们会添加一个FPGADeviceContext来负责管理FPGA设备的资源。
 
 ### Operator 
-重构中的PaddlePaddle是基于Operator的，不同设备（CPU、GPU）共享一个Op定义，OpKernel提供Compute方法\[[3](#references))\]，我们会在现有XXX_op.cc文件中添加FPGAKernel来实现FPGA的计算逻辑。对于FPGA不支持的操作，我们在compute函数中加入判断:
+重构中的PaddlePaddle是基于Operator的，不同设备（CPU、GPU）共享一个Op定义，OpKernel提供Compute方法\[[3](#references))\]。FPGA的数据格式与CPU、GPU是一样的，因此我们计划添加XXX_op_FPGA.cc文件实现FPGAKernel的计算逻辑，注册到原有的Operator上。对于FPGA不支持的操作，我们在compute函数中加入判断:
 ```C++
 PADDLE_ENFORCE(!platform::is_fpga_place(ctx.GetPlace()),
                    "It can not use FPGAPlace.");
@@ -70,7 +69,7 @@ PADDLE_ENFORCE(!platform::is_fpga_place(ctx.GetPlace()),
 Net是包含了一系列的Operator，目前一个Net上的Operator只能运行在同一个设备上。由于FPGA不够灵活，部分Operator可能不支持FPGA，因此需要提供类似Parallel-nn的方法，即部分Operator在FPGA运行，部分Operator在CPU或GPU上运行。
 
 ### UnitTest 
-FPGA相关代码的单元测试会添加到对应修改的模块中。例如在添加了FPGAPlace，就需要在place_test.cc中添加FPGA的单元测试。
+FPGA相关代码的单元测试会添加到对应修改的模块中。例如在添加了FPGAPlace，就需要在place_test.cc中添加FPGA的单元测试。单元测试需要使用FPGA设备，我们会提供FPGA云服务器作为测试平台。
 
 ### Python API
 目前只考虑v2 API，使用FPGA时只需在设置Place时设置成FPGA，其他配置不变。
