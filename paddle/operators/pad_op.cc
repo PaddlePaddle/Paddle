@@ -47,7 +47,8 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input should be a k-D tensor(k > 0 and k < 7)");
     AddOutput("Out",
               "The output of pad op."
-              "A tensor with the same shape as X.");
+              "A tensor with the same shape as X.")
+        .NotInGradient();
     AddComment(R"DOC(
 Pad input into output, as specified by paddings and pad_value. The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
