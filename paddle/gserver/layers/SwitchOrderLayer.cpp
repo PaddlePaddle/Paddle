@@ -24,10 +24,12 @@ bool SwitchOrderLayer::init(const LayerMap& layerMap,
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
   auto& img_conf = config_.inputs(0).image_conf();
+  size_t inD = img_conf.img_size_z();
   size_t inH =
       img_conf.has_img_size_y() ? img_conf.img_size_y() : img_conf.img_size();
   size_t inW = img_conf.img_size();
   size_t inC = img_conf.channels();
+  inH = inH * inD;
   inDims_ = TensorShape({0, inC, inH, inW});
   outDims_ = TensorShape(4);
 
@@ -64,9 +66,10 @@ void SwitchOrderLayer::setInDims() {
   MatrixPtr input = inputLayers_[0]->getOutputValue();
   size_t batchSize = input->getHeight();
   inDims_.setDim(0, batchSize);
-
+  int d = inputLayers_[0]->getOutput().getFrameDepth();
+  d = (d == 0 ? 1 : d);
   int h = inputLayers_[0]->getOutput().getFrameHeight();
-  if (h != 0) inDims_.setDim(2, h);
+  if (h != 0) inDims_.setDim(2, h * d);
   int w = inputLayers_[0]->getOutput().getFrameWidth();
   if (w != 0) inDims_.setDim(3, w);
   int totalCount = input->getElementCnt();
