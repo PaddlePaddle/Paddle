@@ -53,9 +53,6 @@ The equation is: Out = X + Y
   }
 };
 
-framework::ShapeInferenceFn fn =
-    [](const framework::InferShapeContextBase &ctx) {};
-
 class AddOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
