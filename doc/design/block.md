@@ -120,49 +120,22 @@ class SymbolTable {
 After all the description of variables and operators is added into SymbolTable,
 the block has enough information to run.
 
-To make block simpler, we use another class `RuntimeTable` to create Variable and Operator objects. `RuntimeTable` is free to add memory optimizements in the future.
-
 The `Block` class takes a `BlockDesc` as input, and provide `Run` and `InferShape` functions.
 
 
 ```c++
 namespace {
-// A RuntimeTable maintains all the runtime environment symbols of a block,
-// including the variables and operators.
-// NOTE the implementation of runtime environment is seperated from Block
-// to make it easier to improve memory usage and some other improvements
-// based on a block's description.
-// NOTE this name is aweful, and should be updated latter.
-class RuntimeTable {
- public:
-  // scope: the scope to create new variables.
-  RuntimeTable(const BlockDesc& desc, const Scope& scope);
-
-  vector<OperatorBase*> ops() { return ops_; }
-
-  bool IsValid() const { return ops_.empty(); }
-
- protected:
-  void CreateVars(const Scope& scope);
-  void CreateOps();
-
- private:
-  SymbolTable symbol_tabel_;
-  vector<OperatorBase*> ops_;
-};
-}
-
 
 class Block : OperatorBase {
 public:
-  // desc may be serialized from a RuntimeTable or not.
   Block(const BlockDesc& desc) desc_(desc) {}
 
   void InferShape(const framework::Scope& scope) const override {
-    // should run InferShape first.
-    if (!runtime_table_.IsValid()) {
-      runtime_table_ = RuntimeTable(desc_, scope);
+    if (!symbols_ready_) {
+      CreateVariables(scope);
+      CreateOperators();
     }
+    // should run InferShape first.
     for (auto& op : runtime_table_.ops()) {
       op->InferShape(scope);
     }
@@ -170,17 +143,21 @@ public:
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
+    PADDLE_ENFORCE(symbols_ready_, "operators and variables should be created first.");
     for (auto& op : runtime_table_.ops()) {
       op->Run(scope, dev_ctx);
     }
   }
+  
+  void CreateVariables(const framework::Scope& scope);
+  void CreateOperators();
 
   // some other necessary interfaces of NetOp are list below
   // ...
 
 private:
-  RuntimeTable runtime_table_;
   BlockDesc desc_;
+  bool symbols_ready_{false};
 };
 ```
 
