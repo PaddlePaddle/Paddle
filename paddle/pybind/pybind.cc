@@ -41,6 +41,7 @@ USE_OP(softmax);
 USE_OP(rowwise_add);
 USE_OP(fill_zeros_like);
 USE_NO_KERNEL_OP(recurrent);
+USE_NO_KERNEL_OP(cond);
 USE_OP(gaussian_random);
 USE_OP(uniform_random);
 USE_OP(lookup_table);
@@ -323,6 +324,28 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_stepnet",
            [](operators::RecurrentOp &self, const operators::NetOp &net)
                -> void { self.set_stepnet(net.Clone()); });
+
+  // cond_op
+  py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
+      .def_static("create",
+                  [](py::bytes protobin) -> operators::CondOp * {
+                    OpDesc desc;
+                    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                                   "Cannot parse user input to OpDesc");
+                    PADDLE_ENFORCE(desc.IsInitialized(),
+                                   "User OpDesc is not initialized, reason %s",
+                                   desc.InitializationErrorString());
+                    auto cond_op = OpRegistry::CreateOp(desc);
+                    return static_cast<operators::CondOp *>(cond_op.release());
+                  })
+      .def("set_truenet",
+           [](operators::CondOp &self, const operators::NetOp &net) -> void {
+             self.set_truenet(net.Clone());
+           })
+      .def("set_falsenet",
+           [](operators::CondOp &self, const operators::NetOp &net) -> void {
+             self.set_falsenet(net.Clone());
+           });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 

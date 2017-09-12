@@ -55,12 +55,14 @@ set(DEPS_OPS
     minus_op
     mul_op
     recurrent_op
+    cond_op
     scale_op)
 op_library(identity_op DEPS scale_op)
 op_library(minus_op DEPS scale_op)
 op_library(mul_op DEPS math_function)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
   DEPS framework_proto tensor operator net_op)
+op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(scale_op DEPS net_op)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
