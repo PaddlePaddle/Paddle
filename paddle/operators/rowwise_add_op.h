@@ -33,10 +33,12 @@ class RowwiseAddKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-
-    auto input = EigenMatrix<T>::From(*context.Input<Tensor>("X"));
-    auto bias = EigenVector<T>::From(*context.Input<Tensor>("b"));
-    auto output = EigenMatrix<T>::From(*out);
+    int num_col_dims = context.Input<Tensor>("X")->dims().size() -
+                       context.Input<Tensor>("b")->dims().size();
+    auto input =
+        EigenMatrix<T>::Reshape(*context.Input<Tensor>("X"), num_col_dims);
+    auto bias = EigenVector<T>::Flatten(*context.Input<Tensor>("b"));
+    auto output = EigenMatrix<T>::Reshape(*out, num_col_dims);
 
     const int bias_size = bias.dimension(0);
     const int rest_size = input.size() / bias_size;
@@ -51,20 +53,27 @@ template <typename Place, typename T>
 class RowwiseAddGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* db = context.Output<Tensor>(framework::GradVarName("b"));
-    dX->mutable_data<T>(context.GetPlace());
-    db->mutable_data<T>(context.GetPlace());
+    int num_col_dims = context.Input<Tensor>("X")->dims().size() -
+                       context.Input<Tensor>("b")->dims().size();
 
-    auto OutGrad = EigenMatrix<T>::From(*dOut);
+    auto out_grad = EigenMatrix<T>::Reshape(*dout, num_col_dims);
     auto place = context.GetEigenDevice<Place>();
-    EigenMatrix<T>::From(*dX).device(place) = OutGrad;
 
-    // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
-    // colwise add
-    Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
-    EigenVector<T>::Flatten(*db).device(place) = OutGrad.sum(dims);
+    if (dx) {
+      dx->mutable_data<T>(context.GetPlace());
+      EigenMatrix<T>::Reshape(*dx, num_col_dims).device(place) = out_grad;
+    }
+
+    if (db) {
+      db->mutable_data<T>(context.GetPlace());
+      // https://eigen.tuxfamily.org/dox/unsupported/TensorBase_8h_source.html
+      // colwise add
+      Eigen::array<int, 1> dims{{0}}; /* dimension to reduce */
+      EigenVector<T>::Flatten(*db).device(place) = out_grad.sum(dims);
+    }
   }
 };
 }  // namespace operators

@@ -114,10 +114,10 @@ public:
   virtual void convertWeightsToPaddle() {}
 
   /**
-   * convert MKLDNN output to other device.
-   * only support CPU device yet
+   * Update input value data when input layer is "data" type.
+   * Since the input value data address might be changed.
    */
-  virtual void convertOutputToOtherDevice() {}
+  virtual void updateInputData() {}
 
   /**
    * print info about sizes
@@ -155,6 +155,7 @@ protected:
    *        copy base info and do not copy data value
    */
   void copyOutputInfoToOtherDevice() {
+    int cnt = 0;
     for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
       outputOtherDevice_[i].setFrameHeight(output_.getFrameHeight());
       outputOtherDevice_[i].setFrameWidth(output_.getFrameWidth());
@@ -163,6 +164,12 @@ protected:
       outputOtherDevice_[i].subSequenceStartPositions =
           output_.subSequenceStartPositions;
       outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
+      if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
+        ++cnt;
+      }
+    }
+    if (cnt > 1) {
+      LOG(WARNING) << "should not have more than one CPU devie";
     }
   }
 
@@ -191,32 +198,6 @@ protected:
           << "Only support other device is CPU yet";
     }
     return outputOtherDevice_.size() == 0;
-  }
-
-  /**
-   * Sync input value data
-   */
-  void syncInputValue() {
-    if (inputIsOnlyMKLDNN()) {
-      return;
-    }
-    real* iData = getInputValue(0, CPU_DEVICE)->getData();
-    // update input data
-    // since it might be changed if this is after data layer
-    inVal_->updateData(iData);
-  }
-
-  /**
-   * Sync output grad data
-   */
-  void syncOutputGrad() {
-    if (outputIsOnlyMKLDNN()) {
-      return;
-    }
-
-    // update diff
-    real* oDiff = getOutput(CPU_DEVICE).grad->getData();
-    outGrad_->updateData(oDiff);
   }
 
   /**
