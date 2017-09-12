@@ -95,7 +95,6 @@ class PadOpGrad : public framework::OperatorWithKernel {
                             "Input(Out@GRAD) should not be null");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    PADDLE_ENFORCE_NOT_NULL(x_grad, "Output(X@GRAD) should not be null");
 
     x_grad->Resize(x_dims);
   }
