@@ -97,7 +97,7 @@ class OpDescCreationMethod(object):
                     new_attr.strings.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
-                        pair = new_attr.pairs.add()
+                        pair = new_attr.int_pairs.add()
                         pair.first = p[0]
                         pair.second = p[1]
                 else:
