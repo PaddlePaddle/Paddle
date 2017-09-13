@@ -2034,6 +2034,7 @@ class ParameterReluLayer(LayerBase):
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
         self.set_layer_size(input_layer.size)
+        self.config.partial_sum = partial_sum
         self.create_input_parameter(0, input_layer.size / partial_sum)
 
 
