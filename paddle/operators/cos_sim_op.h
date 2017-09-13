@@ -42,7 +42,7 @@ class CosSimKernel : public framework::OpKernel {
     output_y_norm->mutable_data<T>(context.GetPlace());
 
     auto dims = input_x->dims();
-    int size = static_cast<int>(framework::product(dims));
+    int64_t size = input_x->numel();
     auto new_dims = framework::make_ddim({dims[0], size / dims[0]});
     auto x = EigenMatrix<T>::From(*input_x, new_dims);
     auto y = EigenMatrix<T>::From(*input_y, new_dims);
@@ -72,7 +72,7 @@ class CosSimGradKernel : public framework::OpKernel {
     auto* input_grad_z = context.Input<Tensor>(framework::GradVarName("Out"));
 
     auto dims = input_x->dims();
-    int size = static_cast<int>(framework::product(dims));
+    int64_t size = input_x->numel();
     auto new_dims = framework::make_ddim({dims[0], size / dims[0]});
     auto x = EigenMatrix<T>::From(*input_x, new_dims);
     auto y = EigenMatrix<T>::From(*input_y, new_dims);

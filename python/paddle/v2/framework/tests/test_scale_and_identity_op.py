@@ -1,43 +1,34 @@
 import unittest
-from op_test_util import OpTestMeta
-from gradient_checker import GradientChecker, create_op
 import numpy as np
-from paddle.v2.framework.op import Operator
+from op_test import OpTest
 
 
-class IdentityTest(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class IdentityTest(OpTest):
     def setUp(self):
-        self.type = "identity"
-        self.inputs = {'X': np.random.random((32, 784)).astype("float32")}
+        self.op_type = "identity"
+        self.inputs = {'X': np.random.random((10, 10)).astype("float32")}
         self.outputs = {'Y': self.inputs['X']}
 
+    def test_check_output(self):
+        self.check_output()
 
-class IdentityGradOpTest(GradientChecker):
-    def test_normal(self):
-        op = create_op("identity")
-        inputs = {"X": np.random.random((10, 10)).astype("float32")}
-        self.check_grad(op, inputs, set("X"), "Y")
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y')
 
 
-class ScaleTest(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class ScaleTest(OpTest):
     def setUp(self):
-        self.type = "scale"
-        self.inputs = {'X': np.random.random((32, 784)).astype("float32")}
+        self.op_type = "scale"
+        self.inputs = {'X': np.random.random((10, 10)).astype("float32")}
         self.attrs = {'scale': -2.3}
         self.outputs = {'Out': self.inputs['X'] * self.attrs['scale']}
 
+    def test_check_output(self):
+        self.check_output()
 
-class ScaleGradTest(GradientChecker):
-    def test_normal(self):
-        op = Operator("scale", X="X", Out="Out", scale=3.2)
-        self.check_grad(op,
-                        {"X": np.random.random((10, 10)).astype("float32")},
-                        set("X"), "Out")
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
