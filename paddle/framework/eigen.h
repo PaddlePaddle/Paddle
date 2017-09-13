@@ -14,26 +14,42 @@ limitations under the License. */
 
 #pragma once
 
+#include <boost/variant.hpp>
+#include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace framework {
 
-// EigenDim converts paddle::platform::DDim into Eigen::DSizes.
-template <int D>
-struct EigenDim {
-  using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
+template <int arity>
+using EigenDim = Eigen::DSizes<Eigen::DenseIndex, arity>;
 
-  static Type From(const DDim& dims) {
-    PADDLE_ENFORCE(arity(dims) == D, "D must match arity(DDim)");
-    Type ret;
-    for (int64_t d = 0; d < arity(dims); d++) {
+using EigenDDim = boost::variant<EigenDim<1>, EigenDim<2>, EigenDim<3>,
+                                 EigenDim<4>, EigenDim<5>, EigenDim<6>,
+                                 EigenDim<7>, EigenDim<8>, EigenDim<9>>;
+
+struct EigenDDimConvertVisitor : public boost::static_visitor<EigenDDim> {
+  template <typename DimType>
+  EigenDDim operator()(const DimType& dims) const {
+    constexpr int arity = DimType::dimensions;
+    Eigen::DSizes<Eigen::DenseIndex, arity> ret;
+    for (int64_t d = 0; d < arity; ++d) {
       ret[d] = dims[d];
     }
     return ret;
   }
 };
+
+inline EigenDDim DDimToEigenDDim(const DDim& dims) {
+  return boost::apply_visitor(EigenDDimConvertVisitor(), dims);
+}
+
+template <typename Visitor>
+inline auto VisitEigenDDim(Visitor visitor, const EigenDDim& ddim) ->
+    typename Visitor::result_type {
+  return boost::apply_visitor(visitor, ddim);
+}
 
 // Interpret paddle::platform::Tensor as EigenTensor and EigenConstTensor.
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
@@ -47,13 +63,15 @@ struct EigenTensor {
       Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>>;
 
   static Type From(Tensor& tensor, DDim dims) {
-    return Type(tensor.data<T>(), EigenDim<D>::From(dims));
+    return Type(tensor.data<T>(),
+                boost::get<EigenDim<D>>(DDimToEigenDDim(dims)));
   }
 
   static Type From(Tensor& tensor) { return From(tensor, tensor.dims_); }
 
   static ConstType From(const Tensor& tensor, DDim dims) {
-    return ConstType(tensor.data<T>(), EigenDim<D>::From(dims));
+    return ConstType(tensor.data<T>(),
+                     boost::get<EigenDim<D>>(DDimToEigenDDim(dims)));
   }
 
   static ConstType From(const Tensor& tensor) {
