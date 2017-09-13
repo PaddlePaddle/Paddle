@@ -119,9 +119,9 @@ The class `Parameter` is derived from class `Variable`. In addition to variables
 
 ## Layer Functions
 
-A layer is a Python function. When it is invoked, it creates a serise of operators and variables then inserts them into the block. It is something like the macro in C++. It is called 'Layer' because the combination of added operators acts just like what a neural network layer does. 
+A layer is a Python function. When it is invoked, it creates a series of operators and variables then inserts them into the block. It is something like the macro in C++. It is called 'Layer' because the combination of added operators acts just like what a neural network layer does. 
 
-Here are examples about how to write a date layer and FC layer:
+Here are examples of how to write a data layer and FC layer:
 
 ### Data Layer
 
@@ -137,7 +137,7 @@ def data_layer(name, type, block=None):
 
 ``` 
 
-Before building new variables, we need to specify which block to use. If we don't, the default one `g_block` will be used. In the above `data_layer` code, a variable is created and be inserted into the root block to make it global. This varibale is going to be used as input data of the whole network.
+Before building new variables, we need to specify which block to use. If we don't, the default one `g_block` will be used. In the above `data_layer` code, a variable is created and be inserted into the root block to make it global. This variable is going to be used as input data of the whole network.
 
 ### FC Layer
 
@@ -153,4 +153,4 @@ def fc_layer(input, size, block=None, ...):
     return out
 ```
 
-In the `fc_layer` code, we create two parameters(`w` and `b`), one variable(`out`) and one operator(`FC operator`), then insert all of them into specify block.
+In the `fc_layer` code, we create two parameters(`w` and `b`), one variable(`out`) and one operator(`FC operator`), then insert all of them into the specified block.
