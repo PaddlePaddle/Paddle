@@ -35,7 +35,7 @@ class LookupTableKernel : public framework::OpKernel {
     auto ids = ids_t->data<int32_t>();
     auto table = table_t->data<T>();
     auto output = output_t->mutable_data<T>(context.GetPlace());
-    for (ssize_t i = 0; i < product(ids_t->dims()); ++i) {
+    for (int64_t i = 0; i < ids_t->numel(); ++i) {
       PADDLE_ENFORCE_LT(ids[i], N);
       PADDLE_ENFORCE_GE(ids[i], 0);
       memcpy(output + i * D, table + ids[i] * D, D * sizeof(T));
@@ -61,7 +61,7 @@ class LookupTableGradKernel : public framework::OpKernel {
     t.device(context.GetEigenDevice<platform::CPUPlace>()) =
         t.constant(static_cast<T>(0));
 
-    for (ssize_t i = 0; i < product(ids_t->dims()); ++i) {
+    for (int64_t i = 0; i < ids_t->numel(); ++i) {
       PADDLE_ENFORCE_LT(ids[i], N);
       PADDLE_ENFORCE_GE(ids[i], 0);
       for (int j = 0; j < D; ++j) {

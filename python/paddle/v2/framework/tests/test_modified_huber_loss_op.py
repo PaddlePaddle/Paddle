@@ -7,7 +7,7 @@ import numpy as np
 
 def modified_huber_loss_forward(val):
     if val < -1:
-        return -4 * a
+        return -4 * val
     elif val < 1:
         return (1 - val) * (1 - val)
     else:
@@ -28,7 +28,7 @@ class TestModifiedHuberLossOp_f0(unittest.TestCase):
         loss = np.vectorize(modified_huber_loss_forward)(product_res)
 
         self.outputs = {
-            'intermediate_val': product_res,
+            'IntermediateVal': product_res,
             'Out': loss.reshape((samples_num, 1))
         }
 
@@ -44,10 +44,9 @@ class TestModifiedHuberLossGradOp(GradientChecker):
             "modified_huber_loss",
             X='X',
             Y='Y',
-            intermediate_val='intermediate_val',
+            IntermediateVal='IntermediateVal',
             Out='Out')
-        self.compare_grad(
-            op, inputs, no_grad_set=set(['intermediate_val', 'Y']))
+        self.compare_grad(op, inputs, no_grad_set=set(['IntermediateVal', 'Y']))
         self.check_grad(op, inputs, set(["X"]), "Out")
 
 

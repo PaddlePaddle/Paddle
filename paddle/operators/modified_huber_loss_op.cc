@@ -31,11 +31,10 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(x->dims(), y->dims(),
                       "Dimensions of X and Y must be the same.");
-    PADDLE_ENFORCE_EQ(framework::arity(x->dims()), 2,
-                      "Tensor rank of X must be 2.");
-    PADDLE_ENFORCE_EQ(x->dims()[1], 1, "Second dimension of X must be 1.");
+    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "Tensor rank of X must be 2.");
+    PADDLE_ENFORCE_EQ(x->dims()[1], 1, "2nd dimension of X must be 1.");
 
-    context.Output<Tensor>("intermediate_val")->Resize(x->dims());
+    context.Output<Tensor>("IntermediateVal")->Resize(x->dims());
     context.Output<Tensor>("Out")->Resize({x->dims()[0], 1});
   }
 };
@@ -47,7 +46,7 @@ class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input value of ModifiedHuberLossOp.");
     AddInput("Y", "Target labels of ModifiedHuberLossOp.");
-    AddOutput("intermediate_val",
+    AddOutput("IntermediateVal",
               "Variable to save intermediate result which will be reused in "
               "backward processing.")
         .AsIntermediate();
@@ -75,7 +74,7 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Input<Tensor>("Y");
-    auto* intermediate_val = context.Input<Tensor>("intermediate_val");
+    auto* intermediate_val = context.Input<Tensor>("IntermediateVal");
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
 

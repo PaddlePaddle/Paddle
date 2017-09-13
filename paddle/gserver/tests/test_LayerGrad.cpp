@@ -1703,6 +1703,55 @@ TEST(Layer, BatchNormalizationLayer) {
 #endif
 }
 
+void testBatchNorm3DLayer(const string& type, bool trans, bool useGpu) {
+  TestConfig config;
+  const int CHANNELS = 10;
+  const int IMG_SIZE = 16;
+  const int IMG_SIZE_Y = 8;
+  const int IMG_SIZE_Z = 8;
+  size_t size = CHANNELS * IMG_SIZE * IMG_SIZE_Y * IMG_SIZE_Z;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_size(size);
+  config.layerConfig.set_active_type("sigmoid");
+  config.biasSize = CHANNELS;
+  config.inputDefs.push_back({INPUT_DATA,
+                              "layer_0",
+                              /* dim= */ size,
+                              /* paraSize= */ CHANNELS});
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_1_running_mean", 1, CHANNELS});
+  config.inputDefs.back().isStatic = true;
+  config.inputDefs.push_back({INPUT_DATA, "layer_2_running_var", 1, CHANNELS});
+  config.inputDefs.back().isStatic = true;
+
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  ImageConfig* img_conf = input->mutable_image_conf();
+  img_conf->set_channels(CHANNELS);
+  img_conf->set_img_size(IMG_SIZE);
+  img_conf->set_img_size_y(IMG_SIZE_Y);
+  img_conf->set_img_size_z(IMG_SIZE_Z);
+
+  testLayerGrad(config,
+                "batch_norm",
+                64,
+                /* trans= */ trans,
+                useGpu,
+                /* useWeight */ true);
+}
+
+TEST(Layer, testBatchNorm3DLayer) {
+  testBatchNorm3DLayer("batch_norm", false, false);
+#ifndef PADDLE_ONLY_CPU
+  testBatchNorm3DLayer("batch_norm", false, true);
+  if (hl_get_cudnn_lib_version() >= int(4000)) {
+    testBatchNorm3DLayer("cudnn_batch_norm", false, true);
+  }
+#endif
+}
+
 void testConvOperator(bool isDeconv) {
   TestConfig config;
   const int NUM_FILTERS = 16;
@@ -2019,10 +2068,10 @@ TEST(Layer, SwitchOrderLayer) {
   img->set_img_size_y(16);
 
   ReshapeConfig* reshape = config.layerConfig.mutable_reshape_conf();
-  reshape->add_heightaxis(0);
-  reshape->add_heightaxis(1);
-  reshape->add_heightaxis(2);
-  reshape->add_widthaxis(3);
+  reshape->add_height_axis(0);
+  reshape->add_height_axis(1);
+  reshape->add_height_axis(2);
+  reshape->add_width_axis(3);
 
   // config softmax layer
   config.layerConfig.set_type("switch_order");
@@ -2253,26 +2302,27 @@ void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
   conv->set_stride(2);
   conv->set_stride_y(2);
   conv->set_stride_z(2);
-  conv->set_img_size(IMAGE_SIZE);
-  conv->set_img_size_y(IMAGE_SIZE_Y);
-  conv->set_img_size_z(IMAGE_SIZE_Z);
-  conv->set_output_x(imageSize(conv->img_size(),
+  conv->set_output_x(IMAGE_SIZE);
+  conv->set_output_y(IMAGE_SIZE_Y);
+  conv->set_output_z(IMAGE_SIZE_Z);
+
+  conv->set_img_size(imageSize(conv->output_x(),
                                conv->filter_size(),
                                conv->padding(),
                                conv->stride(),
                                true));
-  conv->set_output_y(imageSize(conv->img_size_y(),
-                               conv->filter_size_y(),
-                               conv->padding_y(),
-                               conv->stride_y(),
-                               true));
-  conv->set_output_z(imageSize(conv->img_size_z(),
-                               conv->filter_size_z(),
-                               conv->padding_z(),
-                               conv->stride_z(),
-                               true));
-  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
-                              conv->output_z() * NUM_FILTERS);
+  conv->set_img_size_y(imageSize(conv->output_y(),
+                                 conv->filter_size_y(),
+                                 conv->padding_y(),
+                                 conv->stride_y(),
+                                 true));
+  conv->set_img_size_z(imageSize(conv->output_z(),
+                                 conv->filter_size_z(),
+                                 conv->padding_z(),
+                                 conv->stride_z(),
+                                 true));
+  config.layerConfig.set_size(conv->img_size() * conv->img_size_y() *
+                              conv->img_size_z() * NUM_FILTERS);
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   config.inputDefs.push_back(

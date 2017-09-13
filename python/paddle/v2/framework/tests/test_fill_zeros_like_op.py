@@ -1,16 +1,17 @@
 import unittest
-from op_test_util import OpTestMeta
-import numpy
+import numpy as np
+from op_test import OpTest
 
 
-class TestFillZerosLikeOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestFillZerosLikeOp(OpTest):
     def setUp(self):
-        self.type = "fill_zeros_like"
-        self.inputs = {'Src': numpy.random.random((219, 232)).astype("float32")}
-        self.outputs = {'Dst': numpy.zeros_like(self.inputs['Src'])}
+        self.op_type = "fill_zeros_like"
+        self.inputs = {'Src': np.random.random((219, 232)).astype("float32")}
+        self.outputs = {'Dst': np.zeros_like(self.inputs["Src"])}
+
+    def test_check_output(self):
+        self.check_output()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

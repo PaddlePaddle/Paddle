@@ -43,7 +43,7 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("Y");
-    auto* in1 = context.Input<Tensor>("intermediate_val");
+    auto* in1 = context.Input<Tensor>("IntermediateVal");
     auto* in2 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
 
