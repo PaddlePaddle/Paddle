@@ -5,7 +5,7 @@ from op_test import OpTest
 
 class TestAccuracyOp(OpTest):
     def setUp(self):
-        self.type = "accuracy"
+        self.op_type = "accuracy"
         infer = np.random.randint(0, 2, (32, 1)).astype("int")
         label = np.random.randint(0, 2, (32, )).astype("int")
         self.inputs = {'Inference': infer, "Label": label}
@@ -16,6 +16,9 @@ class TestAccuracyOp(OpTest):
                     num_correct += 1
                     break
         self.outputs = {'Accuracy': [num_correct / 32.0]}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':

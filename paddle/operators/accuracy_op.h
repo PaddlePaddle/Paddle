@@ -49,6 +49,11 @@ class AccuracyKernel : public framework::OpKernel {
 
     size_t num_samples = inference->dims()[0];
     size_t class_dim = inference->dims()[1];
+    *accuracy_data = 0.0f;
+
+    if (num_samples == 0) {
+      return;
+    }
 
     int num_correct = 0;
     // assume inference is already the topk of the output

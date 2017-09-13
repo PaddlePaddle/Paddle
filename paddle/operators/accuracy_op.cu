@@ -12,15 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <iostream>
 #include "paddle/operators/accuracy_op.h"
 
 namespace paddle {
 namespace operators {
 
-// FIXME(typhoonzero): use cub:blockreduce to do accuracy add.
-// import cub libraries and make this more efficient.
-__global__ void AccuracyDivideKernel(const int N, const int D, const int top_k,
+__global__ void AccuracySingleKernel(const int N, const int D, const int top_k,
                                      const int* Xdata, const int* labelData,
                                      float* accuracy) {
   int correct = 0;
@@ -32,7 +29,6 @@ __global__ void AccuracyDivideKernel(const int N, const int D, const int top_k,
         ++correct;
         break;
       }
-      __syncthreads();
     }
   }
   *accuracy = static_cast<float>(correct) / static_cast<float>(N);
@@ -47,14 +43,21 @@ class AccuracyOpCUDAKernel : public framework::OpKernel {
     auto* inference = ctx.Input<Tensor>("Inference");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
+    // FIXME(typhoonzero): only support indices currently
+    // if add support for output values, how to detect the data type?
     const int* inference_data = inference->data<int>();
     const int* label_data = label->data<int>();
-    T* accuracy_data = accuracy->mutable_data<T>(ctx.GetPlace());
+    float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
 
     size_t num_samples = inference->dims()[0];
     size_t infer_width = inference->dims()[1];
+    cudaMemset((void**)&accuracy_data, 0, sizeof(float));
 
-    AccuracyDivideKernel<<<1, 1>>>(num_samples, infer_width, 1, inference_data,
+    if (num_samples == 0) {
+      return;
+    }
+
+    AccuracySingleKernel<<<1, 1>>>(num_samples, infer_width, 1, inference_data,
                                    label_data, accuracy_data);
   }
 };
