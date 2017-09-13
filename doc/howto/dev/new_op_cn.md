@@ -12,7 +12,6 @@
    - [前向Operator单测](#前向Operator单测)
    - [反向Operator单测](#反向Operator单测)
    - [编译和执行](#编译和执行)
-   - [如何快速的做python单元测试](#如何快速的做python单元测试)
 
 
 ## 概念简介
