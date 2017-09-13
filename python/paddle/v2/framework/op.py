@@ -217,7 +217,7 @@ class __RecurrentOp__(object):
 
 class __CondOp__(object):
     __proto__ = None
-    type = 'cond_op'
+    type = "cond"
 
     def __init__(self):
         # cache recurrent_op's proto
@@ -227,8 +227,8 @@ class __CondOp__(object):
                     self.__proto__ = op_proto
 
     def __call__(self, *args, **kwargs):
-        if self.type not in args and 'type' not in kwargs:
-            kwargs['type'] = self.type
+        if self.type not in args and "type" not in kwargs:
+            kwargs["type"] = self.type
         # create proto
         create_method = OpDescCreationMethod(self.__proto__)
         proto = create_method(*args, **kwargs)
