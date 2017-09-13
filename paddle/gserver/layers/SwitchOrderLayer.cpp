@@ -83,8 +83,7 @@ void SwitchOrderLayer::forward(PassType passType) {
   setOutDims();
   resetOutput(outDims_[0], outDims_[1] * outDims_[2] * outDims_[3]);
   if (heightAxis_.size() > 0) {
-    getOutputValue()->reshape(reshapeHeight_, reshapeWidth_);
-    getOutputGrad()->reshape(reshapeHeight_, reshapeWidth_);
+    resetOutput(reshapeHeight_, reshapeWidth_);
   }
 
   // switch NCHW to NHWC
