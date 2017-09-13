@@ -17,7 +17,7 @@ class TestCompileTimeInferShape(unittest.TestCase):
         }
         mul_op = Operator.desc("mul", X="input1", Y="input2", Out="output")
         core.Operator.infer_shape_compile(mul_op, var_map)
-        print(str(out.desc()))
+        self.assertEqual(out.desc().get_dims(), [1, 3])
 
 
 if __name__ == "__main__":

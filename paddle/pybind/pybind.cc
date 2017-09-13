@@ -281,7 +281,15 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc->InitializationErrorString());
                     return desc;
                   })
-      .def("__str__", [](VarDesc &self) { return self.DebugString(); });
+      .def("__str__", [](const VarDesc &self) { return self.DebugString(); })
+      .def("get_dims", [](const VarDesc &self) {
+        std::vector<int> result;
+        auto &dims = self.lod_tensor().dims();
+        int size = dims.size();
+        result.reserve(size);
+        std::copy(dims.begin(), dims.end(), std::back_inserter(result));
+        return result;
+      });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",

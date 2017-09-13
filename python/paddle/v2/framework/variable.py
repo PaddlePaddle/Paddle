@@ -20,9 +20,3 @@ class Variable(object):
 
     def desc(self):
         return self.var_desc
-
-
-if __name__ == "__main__":
-    var = Variable("aa", dims=[1, 2])
-    var1 = Variable("aa")
-    print(var)
