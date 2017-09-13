@@ -63,10 +63,12 @@ class OpTestMeta(type):
                 for out_name in Operator.get_op_output_names(self.type):
                     actual = numpy.array(scope.find_var(out_name).get_tensor())
                     expect = self.outputs[out_name]
+                    print "actual: %s" % actual
+                    print "expect: %s" % expect
                     self.assertTrue(
                         numpy.allclose(
                             actual, expect, atol=1e-05),
-                        "output name: " + out_name + "has diff")
+                        "output name: " + out_name + " has diff")
 
         obj.test_all = test_all
         return obj

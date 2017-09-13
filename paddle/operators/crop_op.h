@@ -18,7 +18,7 @@
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
-namespace operators {
+namespace operators {  // Internal
 
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -26,60 +26,22 @@ using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T, size_t D>
-void CropFunction(const framework::ExecutionContext& context) {
-  auto* x = context.Input<Tensor>("X");
-  auto* out = context.Output<Tensor>("Out");
-  out->mutable_data<T>(context.GetPlace());
-  auto x_dims = x->dims();
-  auto out_dims = out->dims();
+int64_t transIndex(std::vector<int64_t> out_shape, std::vector<int64_t> x_shape,
+                   std::vector<std::pair<int, int>> crop_rules, size_t index) {
+  int64_t dim_size = out_shape.size();
+  int64_t pos[dim_size];
 
-  auto offsets = context.op().GetAttr<std::vector<int>>("offsets");
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(), offsets.size(),
-      "Offsets size should be equal to dimension size of input tensor.");
-
-  Eigen::array<std::pair<int, int>, D> paddings;
-  for (size_t i = 0; i < D; ++i) {
-    paddings[i].first = -(offsets[i]);
-    paddings[i].second = -(x_dims[i] - out_dims[i] - offsets[i]);
+  for (int64_t i = out_shape.size() - 1; i >= 0; --i) {
+    pos[i] = (index % out_shape[i]) + crop_rules[i].first;
+    index = index / out_shape[i];
   }
 
-  auto x_tensor = EigenTensor<T, D>::From(*x);
-  auto out_tensor = EigenTensor<T, D>::From(*out);
-  auto place = context.GetEigenDevice<Place>();
-  out_tensor.device(place) = x_tensor.pad(paddings, 0);
+  size_t result = pos[0];
+  for (size_t i = 1; i < x_shape.size(); ++i) {
+    result = result * x_shape[i] + pos[i];
+  }
+  return result;
 }
-
-template <typename Place, typename T>
-class CropKernel : public framework::OpKernel {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    int dim = context.Input<Tensor>("X")->dims().size();
-    switch (dim) {
-      case 1:
-        CropFunction<Place, T, 1>(context);
-        break;
-      case 2:
-        CropFunction<Place, T, 2>(context);
-        break;
-      case 3:
-        CropFunction<Place, T, 3>(context);
-        break;
-      case 4:
-        CropFunction<Place, T, 4>(context);
-        break;
-      case 5:
-        CropFunction<Place, T, 5>(context);
-        break;
-      case 6:
-        CropFunction<Place, T, 6>(context);
-        break;
-      default:
-        LOG(ERROR) << "Only ranks up to 6 supported.";
-    }
-  }
-};
 
 template <typename Place, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
@@ -89,7 +51,7 @@ void CropGradFunction(const framework::ExecutionContext& context) {
   auto d_x_dims = d_x->dims();
   auto d_out_dims = d_out->dims();
 
-  auto offsets = context.op().GetAttr<std::vector<int>>("offsets");
+  auto offsets = context.op().Attr<std::vector<int>>("offsets");
 
   Eigen::array<std::pair<int, int>, D> paddings;
   for (int i = 0; i < d_out_dims.size(); ++i) {
@@ -107,9 +69,9 @@ template <typename Place, typename T>
 class CropGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    size_t dim =
+    size_t rank =
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
-    switch (dim) {
+    switch (rank) {
       case 1:
         CropGradFunction<Place, T, 1>(context);
         break;
@@ -129,7 +91,8 @@ class CropGradKernel : public framework::OpKernel {
         CropGradFunction<Place, T, 6>(context);
         break;
       default:
-        LOG(ERROR) << "Only ranks up to 6 supported.";
+        PADDLE_THROW(
+            "CropOp only support tensors with no more than 6 dimensions.");
     }
   }
 };

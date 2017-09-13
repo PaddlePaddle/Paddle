@@ -13,8 +13,13 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/gather_op.h"
+
+#include "paddle/operators/squared_l2_distance_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gather,
-                       ops::GatherOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    squared_l2_distance,
+    ops::SquaredL2DistanceKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    squared_l2_distance_grad,
+    ops::SquaredL2DistanceGradKernel<paddle::platform::GPUPlace, float>);
