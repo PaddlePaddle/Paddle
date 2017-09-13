@@ -67,6 +67,8 @@ endif()
 if(ANDROID)
     if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
         message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
+    elseif(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
+        message(WARNING "Using the unofficial git repository <https://github.com/Xreki/glog.git> instead")
     endif()
 
     set(WITH_GPU OFF CACHE STRING
