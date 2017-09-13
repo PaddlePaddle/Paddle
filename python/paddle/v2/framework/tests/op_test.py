@@ -239,6 +239,9 @@ class OpTest(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
 
+        if not type(output_names) is list:
+            output_names = [output_names]
+
         numeric_grads = [
             get_numeric_gradient(
                 self.scope,
