@@ -12,6 +12,7 @@
    - [前向Operator单测](#前向Operator单测)
    - [反向Operator单测](#反向Operator单测)
    - [编译和执行](#编译和执行)
+   - [小的技巧](#TIP)
 
 
 ## 概念简介
@@ -351,69 +352,29 @@ class TestMulGradOp(GradientChecker):
   - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
 - `test_ignore_x`和`test_ignore_y`分支用来测试只需要计算一个输入梯度的情况。
 
-
 ### 编译和执行单元测试
 
 `python/paddle/v2/framework/tests` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
 
-我们在调试的时候，其实不需要编译整体的工程(编译整体是在太耗时间了)，也可以做到快速单元调试的效果。
-CMake中定义的`target`是可以单独进行编译的。另外，我们在编译的过程中，已经把python需要的依赖打包到了`core.so`中，并且拷贝到了源代码目录下，只需要吧`PYTHONPATH`指向我们的源代码对应的目录，不需要安装就可以进行测试。
+请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单元测试：
 
-具体过程如下：
-
-- 生成Makefile
-
-```
-export WITH_GPU=OFF
-export WITH_AVX=ON
-export WITH_TEST=ON
-export WITH_GOLANG=ON
-export WITH_TESTING=ON
-export RUN_TEST=OFF
-
-mkdir -p /paddle/build
-cd /paddle/build
-
-cmake .. \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DWITH_DOC=OFF \
-      -DWITH_GPU=${WITH_GPU:-OFF} \
-      -DWITH_AVX=${WITH_AVX:-ON} \
-      -DWITH_GOLANG=${WITH_GOLANG:-ON} \
-      -DWITH_SWIG_PY=ON \
-      -DCUDNN_ROOT=/usr/ \
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DWITH_TESTING=${WITH_TESTING:-ON} \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DCMAKE_BUILD_TYPE=Debug
+```bash
+make test ARGS="-R test_mul_op -V"
 ```
 
-*解释*：CMAKE_BUILD_TYPE参数可以让CMake编译的时候加入`-g`参数，以便进行gdb的调试。
+或者:
 
-
-- 编译生成`core.so`
-
-```
-make  copy_paddle_pybind -j 8
-```
-- 执行python unit test文件
-
-```
-export PYTHONPATH=$PYTHONPATH:/paddle/python
-cd /paddle/python/paddle/v2/framework/tests
-python test_xxx.py
+```bash
+ctest -R test_mul_op
 ```
 
-*注意：如果你不是在docker环境中进行开发，`/paddle`的路径需要设置为你开发的实际路径*
+### TIP
 
-如果需要运行的是C的程序，一样的道理，例如`gather_test`，执行
-
-```
-make gather_test
-cd /paddle/build/paddle/operators
-./gather_test
-```
-
-如果需要调试则执行`gdb gather_test`
-
-注意：*如果您用的是docker环境，启动continer的时候需要加入`--security-opt seccomp=unconfined`参数，否则不能进行gdb调试*
+- 只编译新功能相关的部分  
+  - opertator的python单测依赖的是`/paddle/python/paddle/v2/framework/core.so`, 添加或者修改operator的C源代码后，用`make copy_paddle_pybind`即可更新该文件，不用编译整个工程，即可使用如`ctest -R test_mul_op`运行单测。  
+  - 如果需要的是C的可单测程序，如`gather_test`,可以执行`make gather_test`。  
+- python调试:     
+  如果需要pdb调试，如`pdb test_xxx.py`, 可以尝试修改`PYTHONPATH` 如`export PYTHONPATH=$PYTHONPATH:/paddle/python`。  
+  *注意：这种办法由于可能库的不完整导致错误的发生。*    
+- 调试C单测:   
+  cmake需要增加参数`-DCMAKE_BUILD_TYPE=Debug`，同时如果使用的是docker环境，启动continer的时候需要加入`--security-opt seccomp=unconfined`，然后执行如`gdb gather_test`。
