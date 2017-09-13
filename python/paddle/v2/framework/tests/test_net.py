@@ -15,7 +15,7 @@ def fc(X, W, Y):
 class TestNet(unittest.TestCase):
     def test_net_all(self):
         net = core.Net.create()
-        op1 = Operator("add_two", X="X", Y="Y", Out="Out")
+        op1 = Operator("add", X="X", Y="Y", Out="Out")
         net.append_op(op1)
 
         net2 = core.Net.create()
@@ -26,7 +26,7 @@ class TestNet(unittest.TestCase):
 
         expected = '''
 Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}.
-    Op(add_two), inputs:{X[X], Y[Y]}, outputs:{Out[Out]}.
+    Op(add), inputs:{X[X], Y[Y]}, outputs:{Out[Out]}.
     Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
         Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
             Op(mul), inputs:{X[X], Y[W]}, outputs:{Out[pre_activation]}.
@@ -35,5 +35,5 @@ Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}
         self.assertEqual(expected, "\n" + str(net))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

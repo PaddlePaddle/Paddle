@@ -83,9 +83,9 @@ struct EigenBlasGemm {
 };
 
 #ifdef PADDLE_TYPE_DOUBLE
-template class EigenBlasGemm<double>;
+template struct EigenBlasGemm<double>;
 #else
-template class EigenBlasGemm<float>;
+template struct EigenBlasGemm<float>;
 #endif
 
 }  // namespace paddle

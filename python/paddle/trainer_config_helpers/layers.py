@@ -53,7 +53,7 @@ __all__ = [
     'cos_sim',
     'hsigmoid',
     'conv_projection',
-    'mse_cost',
+    'square_error_cost',
     'regression_cost',
     'classification_cost',
     'LayerOutput',
@@ -131,6 +131,7 @@ __all__ = [
     'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
+    'switch_order_layer',
     'gated_unit_layer',
     'crop_layer',
     'sub_nested_seq_layer',
@@ -239,6 +240,7 @@ class LayerType(object):
     SMOOTH_L1 = 'smooth_l1'
 
     PRELU = 'prelu'
+    SWITCH_ORDER_LAYER = 'switch_order'
     CROP_LAYER = 'crop'
     SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
@@ -351,6 +353,10 @@ class LayerOutput(object):
     @property
     def height(self):
         return cp.g_layer_map[self.full_name].height
+
+    @property
+    def depth(self):
+        return cp.g_layer_map[self.full_name].depth
 
     def set_input(self, input):
         """
@@ -941,7 +947,7 @@ def data_layer(name, size, depth=None, height=None, width=None,
     if height is not None and width is not None:
         num_filters = size / (width * height * depth)
         assert num_filters * width * height * depth == size, \
-                "size=%s width=%s height=%s depth=%s"  % (size, width, height, depth)
+                "size=%s width=%s height=%s depth=%s" % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
@@ -1217,7 +1223,8 @@ def detection_output_layer(input_loc,
                            name=None):
     """
     Apply the NMS to the output of network and compute the predict bounding
-    box location.
+    box location. The output of this layer could be None if there is no valid
+    bounding box.
 
     :param name: The Layer Name.
     :type name: basestring
@@ -2951,13 +2958,15 @@ def img_cmrnorm_layer(input,
 def batch_norm_layer(input,
                      act=None,
                      name=None,
+                     img3D=False,
                      num_channels=None,
                      bias_attr=None,
                      param_attr=None,
                      layer_attr=None,
                      batch_norm_type=None,
                      moving_average_fraction=0.9,
-                     use_global_stats=None):
+                     use_global_stats=None,
+                     mean_var_names=None):
     """
     Batch Normalization Layer. The notation of this layer as follow.
 
@@ -3024,6 +3033,8 @@ def batch_norm_layer(input,
                                    :math:`runningMean = newMean*(1-factor)
                                    + runningMean*factor`
     :type moving_average_fraction: float.
+    :param mean_var_names: [mean name, variance name]
+    :type mean_var_names: string list
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3037,6 +3048,7 @@ def batch_norm_layer(input,
            (batch_norm_type == "cudnn_batch_norm")
     l = Layer(
         name=name,
+        img3D=img3D,
         inputs=Input(
             input.name, image=Image(channels=num_channels), **param_attr.attr),
         active_type=act.name,
@@ -3045,6 +3057,7 @@ def batch_norm_layer(input,
         bias=ParamAttr.to_bias(bias_attr),
         moving_average_fraction=moving_average_fraction,
         use_global_stats=use_global_stats,
+        mean_var_names=mean_var_names,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     return LayerOutput(
@@ -4238,13 +4251,18 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
+def square_error_cost(input,
+                      label,
+                      weight=None,
+                      name=None,
+                      coeff=1.0,
+                      layer_attr=None):
     """
-    mean squared error cost:
+    sum of square error cost:
 
     ..  math::
 
-        \\frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
+        cost = \\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
@@ -4273,7 +4291,7 @@ def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
 
 
-regression_cost = mse_cost
+regression_cost = square_error_cost
 
 
 @wrap_name_default("cost")
@@ -5798,9 +5816,9 @@ def huber_regression_cost(input,
                           coeff=1.0,
                           layer_attr=None):
     """
-    In statistics, the Huber loss is a loss function used in robust regression, 
-    that is less sensitive to outliers in data than the squared error loss. 
-    Given a prediction f(x), a label y and :math:`\delta`, the loss function 
+    In statistics, the Huber loss is a loss function used in robust regression,
+    that is less sensitive to outliers in data than the squared error loss.
+    Given a prediction f(x), a label y and :math:`\delta`, the loss function
     is defined as:
 
     .. math:
@@ -5848,13 +5866,13 @@ def huber_classification_cost(input,
                               coeff=1.0,
                               layer_attr=None):
     """
-    For classification purposes, a variant of the Huber loss called modified Huber 
-    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and 
-    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber 
+    For classification purposes, a variant of the Huber loss called modified Huber
+    is sometimes used. Given a prediction f(x) (a real-valued classifier score) and
+    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber
     loss is defined as:
 
     .. math:
-       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1 
+       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1
        loss = -4yf(x), \text{otherwise}
 
     The example usage is:
@@ -6397,6 +6415,55 @@ def gated_unit_layer(input,
         name="%s_gated_act" % name,
         input=dotmul_operator(input_proj, gate),
         layer_attr=layer_attr)
+
+
+@layer_support()
+@wrap_name_default('switch_order')
+def switch_order_layer(input,
+                       name=None,
+                       reshape_axis=None,
+                       act=None,
+                       layer_attr=None):
+    """
+    This layer switch dimension order of image input. 
+    From order "batchSize, channels, height, width"
+    to order "batchSize, height, width, channels".
+
+    The example usage is:
+
+    .. code-block:: python
+       reshape_axis = 3
+       switch = switch_order(input=layer, name='switch', reshape_axis=reshape_axis)
+       reshape = {'height':[ 0, 1, 2], 'width':[3]}
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param name: Name of this layer.
+    :type name: basestring
+    :param reshape: reshape matrix by axises.
+    :type reshape: Dict
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert reshape_axis != None and (reshape_axis > 0 and reshape_axis < 4)
+    height = [ele for ele in xrange(reshape_axis)]
+    width = [ele for ele in range(reshape_axis, 4)]
+    reshape = {'height': height, 'width': width}
+
+    l = Layer(
+        name=name,
+        inputs=input.name,
+        reshape=reshape,
+        type=LayerType.SWITCH_ORDER_LAYER,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SWITCH_ORDER_LAYER,
+        activation=act,
+        parents=input,
+        size=l.config.size)
 
 
 @wrap_name_default()

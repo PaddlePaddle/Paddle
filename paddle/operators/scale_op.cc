@@ -44,11 +44,13 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
 
 The equation is: Out = scale*X
 )DOC");
-    AddAttr<AttrType>("scale", "scale of scale operator.").SetDefault(1.0);
+    AddAttr<AttrType>("scale", "The scaling factor of the scale operator.")
+        .SetDefault(1.0);
   }
 };
 
-// Identity Op's gradient is identity op, too.
+// The operator to calculate gradients of a scale operator is just the scale
+// operator itself.
 // Grad(Out=scale(X)) => Grad(X) = scale(Grad(Out))
 template <typename AttrType>
 class ScaleGradOp : public NetOp {
@@ -60,35 +62,8 @@ class ScaleGradOp : public NetOp {
     AppendOp(framework::OpRegistry::CreateOp(
         "scale", {{"X", {Input(framework::GradVarName("Out"))}}},
         {{"Out", {Output(framework::GradVarName("X"))}}},
-        {{"scale", GetAttr<AttrType>("scale")}}));
+        {{"scale", Attr<AttrType>("scale")}}));
     CompleteAddOp(false);
-  }
-};
-
-// identity is a alias of scale op. This is also a example for creating a alias
-// operator.
-template <typename AttrType>
-class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  IdentityOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "input tensor of identity op");
-    AddOutput("Out", "output tensor of identity op");
-    AddComment("identity operator. Just a alias of scale op which scale = 1.0");
-  }
-};
-
-template <typename AttrType>
-class IdentityOp : public NetOp {
- public:
-  IdentityOp(const std::string &type, const framework::VariableNameMap &inputs,
-             const framework::VariableNameMap &outputs,
-             const framework::AttributeMap &attrs)
-      : NetOp(type, inputs, outputs, attrs) {
-    AppendOp(framework::OpRegistry::CreateOp(
-        "scale", {{"X", {Input("X")}}}, {{"Out", {Output("Out")}}},
-        {{"scale", static_cast<AttrType>(1)}}));
   }
 };
 
@@ -97,9 +72,7 @@ class IdentityOp : public NetOp {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(scale, ops::ScaleOp, ops::ScaleOpMaker<float>,
+REGISTER_OP(scale, ops::ScaleOp, ops::ScaleOpMaker<float>, scale_grad,
             ops::ScaleGradOp<float>);
 REGISTER_OP_CPU_KERNEL(scale,
                        ops::ScaleKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_WITHOUT_GRADIENT(identity, ops::IdentityOp<float>,
-                             ops::IdentityOpMaker<float>);

@@ -69,7 +69,7 @@ class OperatorBase {
   virtual ~OperatorBase() {}
 
   template <typename T>
-  inline const T& GetAttr(const std::string& name) const {
+  inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
                    name);
     return boost::get<T>(attrs_.at(name));
@@ -94,10 +94,13 @@ class OperatorBase {
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
+
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
   //! Get a input which has multiple variables.
   const std::vector<std::string>& Inputs(const std::string& name) const;
+
+  std::vector<std::string> InputVars() const;
 
   //! Get a output with argument's name described in `op_proto`
   std::string Output(const std::string& name) const;
@@ -233,6 +236,15 @@ class InferShapeContext {
   InferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
+  const OperatorBase& op() const { return op_; }
+
+  const Scope& scope() const { return scope_; }
+
+  template <typename T>
+  inline const T& Attr(const std::string& name) const {
+    return op_.Attr<T>(name);
+  }
+
   size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
   }
@@ -302,9 +314,9 @@ class InferShapeContext {
   }
 
   template <typename T>
-  std::vector<const T*> MultiOutput(const std::string& name) const {
+  std::vector<T*> MultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
-    std::vector<const T*> res;
+    std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [&](const std::string& sub_name) {
@@ -314,6 +326,7 @@ class InferShapeContext {
     return res;
   }
 
+ private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
