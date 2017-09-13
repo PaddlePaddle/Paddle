@@ -169,6 +169,7 @@ class LayerType(object):
     EXCONV_LAYER = 'exconv'
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
+    CUDNNCONVTRANS_LAYER = 'cudnn_convt'
     POOL_LAYER = 'pool'
     POOL3D_LAYER = 'pool3d'
     BATCH_NORM_LAYER = 'batch_norm'
@@ -1223,7 +1224,8 @@ def detection_output_layer(input_loc,
                            name=None):
     """
     Apply the NMS to the output of network and compute the predict bounding
-    box location.
+    box location. The output of this layer could be None if there is no valid
+    bounding box.
 
     :param name: The Layer Name.
     :type name: basestring
@@ -6460,6 +6462,7 @@ def switch_order_layer(input,
     return LayerOutput(
         name=name,
         layer_type=LayerType.SWITCH_ORDER_LAYER,
+        activation=act,
         parents=input,
         size=l.config.size)
 

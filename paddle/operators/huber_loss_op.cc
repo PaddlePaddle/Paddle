@@ -34,9 +34,9 @@ class HuberLossOp : public framework::OperatorWithKernel {
     // we constraint shape of X to (N, 1), may expand to (N, x, ...) if needed
     PADDLE_ENFORCE_EQ(framework::arity(x->dims()), 2,
                       "Tensor rank of X must be 2.");
-    PADDLE_ENFORCE_EQ(x->dims()[1], 1, "Second dimension of X must be 1.");
+    PADDLE_ENFORCE_EQ(x->dims()[1], 1, "2nd dimension of X must be 1.");
 
-    ctx.Output<Tensor>("residual")->Resize(x->dims());
+    ctx.Output<Tensor>("Residual")->Resize(x->dims());
     ctx.Output<Tensor>("Out")->Resize({x->dims()[0], 1});
   }
 };
@@ -49,7 +49,7 @@ class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input value of HuberLossOp.");
     AddInput("Y", "Target value of HuberLossOp.");
-    AddOutput("residual",
+    AddOutput("Residual",
               "Save residual value between Y and X. "
               "Will be reused in backward.")
         .AsIntermediate();
@@ -74,7 +74,7 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
-    auto* residual = ctx.Input<Tensor>("residual");
+    auto* residual = ctx.Input<Tensor>("Residual");
     auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));

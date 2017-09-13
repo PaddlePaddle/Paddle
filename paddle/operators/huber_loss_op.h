@@ -47,7 +47,7 @@ class HuberLossKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
     auto* in1 = context.Input<Tensor>("Y");
-    auto* out0 = context.Output<Tensor>("residual");
+    auto* out0 = context.Output<Tensor>("Residual");
     auto* out1 = context.Output<Tensor>("Out");
     auto delta = static_cast<T>(context.op().Attr<AttrType>("delta"));
     auto place = context.GetEigenDevice<Place>();
@@ -90,7 +90,7 @@ template <typename Place, typename T, typename AttrType = T>
 class HuberLossGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("residual");
+    auto* in0 = context.Input<Tensor>("Residual");
     auto* in1 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
