@@ -306,9 +306,11 @@ class InferShapeContext {
     auto names = op_.Inputs(name);
     std::vector<const T*> res;
     res.reserve(names.size());
-    std::transform(
-        names.begin(), names.end(), std::back_inserter(res),
-        [&](const std::string& sub_name) { return Input<T>(sub_name); });
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     return var == nullptr ? nullptr : &var->Get<T>();
+                   });
     return res;
   }
 
@@ -317,10 +319,21 @@ class InferShapeContext {
     auto names = op_.Outputs(name);
     std::vector<T*> res;
     res.reserve(names.size());
-    std::transform(
-        names.begin(), names.end(), std::back_inserter(res),
-        [&](const std::string& sub_name) { return Output<T>(sub_name); });
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     return var == nullptr ? nullptr : var->GetMutable<T>();
+                   });
     return res;
+  }
+
+  Tensor* GetTensorFromVar(const Variable* var) const {
+    if (var->IsType<LoDTensor>()) {
+      return const_cast<LoDTensor*>(&var->Get<LoDTensor>());
+    }
+    PADDLE_ENFORCE(var->IsType<Tensor>(),
+                   "The Input(%s) must be LoDTensor or Tensor.");
+    return const_cast<Tensor*>(&var->Get<Tensor>());
   }
 
  private:

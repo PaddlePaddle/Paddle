@@ -189,13 +189,7 @@ void OperatorBase::GenerateTemporaryNames() {
 template <>
 const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
-  if (var == nullptr) return nullptr;
-  if (var->IsType<LoDTensor>()) {
-    return &var->Get<LoDTensor>();
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input(%s) must be LoDTensor or Tensor.");
-  return &var->Get<Tensor>();
+  return var == nullptr ? nullptr : GetTensorFromVar(var);
 }
 
 template <>
@@ -204,9 +198,11 @@ const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
   auto names = op().Inputs(name);
   std::vector<const Tensor*> res;
   res.reserve(names.size());
-  std::transform(
-      names.begin(), names.end(), std::back_inserter(res),
-      [&](const std::string& sub_name) { return Input<Tensor>(sub_name); });
+  std::transform(names.begin(), names.end(), std::back_inserter(res),
+                 [&](const std::string& sub_name) {
+                   auto var = scope_.FindVar(sub_name);
+                   return var == nullptr ? nullptr : GetTensorFromVar(var);
+                 });
   return res;
 }
 
@@ -214,12 +210,7 @@ template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto* var = OutputVar(name);
   if (var == nullptr) return nullptr;
-  if (var->IsType<LoDTensor>()) {
-    return const_cast<LoDTensor*>(&var->Get<LoDTensor>());
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input(%s) must be LoDTensor or Tensor.");
-  return const_cast<Tensor*>(&var->Get<Tensor>());
+  return GetTensorFromVar(var);
 }
 
 template <>
@@ -228,9 +219,11 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   auto names = op().Outputs(name);
   std::vector<Tensor*> res;
   res.reserve(names.size());
-  std::transform(
-      names.begin(), names.end(), std::back_inserter(res),
-      [&](const std::string& sub_name) { return Output<Tensor>(sub_name); });
+  std::transform(names.begin(), names.end(), std::back_inserter(res),
+                 [&](const std::string& sub_name) {
+                   auto var = scope().FindVar(sub_name);
+                   return var == nullptr ? nullptr : GetTensorFromVar(var);
+                 });
   return res;
 }
 
