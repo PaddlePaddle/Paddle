@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/memory/memcpy.h"
 #include "paddle/platform/enforce.h"
 
+#include <glog/logging.h>
+
 namespace paddle {
 namespace framework {
 
@@ -53,6 +55,7 @@ inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
 
 template <typename T>
 inline T* Tensor::mutable_data(platform::Place place) {
+  LOG(INFO) << "------ mutable_data ----  ";
   static_assert(std::is_pod<T>::value, "T must be POD");
   PADDLE_ENFORCE_GT(numel(), 0,
                     "Tensor's numel must be larger than zero to call "
@@ -142,6 +145,7 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
 }
 
 inline Tensor& Tensor::Resize(const DDim& dims) {
+  LOG(INFO) << "---- resize -----";
   dims_ = dims;
   numel_ = product(dims_);
   return *this;

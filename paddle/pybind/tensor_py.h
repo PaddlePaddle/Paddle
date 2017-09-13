@@ -42,6 +42,7 @@ template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<true, I, ARGS...> {
   using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
   py::buffer_info operator()(framework::Tensor &tensor) {
+    LOG(INFO) << "---- CastToPyBufferImpl -----";
     if (std::type_index(typeid(CUR_TYPE)) == tensor.holder_->type()) {
       auto dim_vec = framework::vectorize(tensor.dims());
       std::vector<size_t> dims_outside;
