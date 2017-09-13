@@ -15,57 +15,135 @@
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/activation_functor.h"
+// #include "paddle/operators/math/activation_functor.h"
 
-#define ACTIVATION_KERNEL_NAME(ACTIVATION_NAME) ACTIVATION_NAME##Kernel
+// #define ACTIVATION_KERNEL_NAME(ACTIVATION_NAME) ACTIVATION_NAME##Kernel
 
-#define DEFINE_ACTIVATION_KERNEL(ACTIVATION_NAME)                              \
-  template <typename Place, typename T>                                        \
-  class ACTIVATION_KERNEL_NAME(ACTIVATION_NAME) : public framework::OpKernel { \
-   public:                                                                     \
-    void Compute(const framework::ExecutionContext& context) const override {  \
-      auto* X = context.Input<framework::Tensor>("X");                         \
-      auto* Y = context.Output<framework::Tensor>("Y");                        \
-      Y->mutable_data<T>(context.GetPlace());                                  \
-      math::ACTIVATION_NAME<Place, T> functor;                                 \
-      auto* device_context = context.device_context();                         \
-      functor(*device_context, *X, Y);                                         \
-    }                                                                          \
-  };
+// #define DEFINE_ACTIVATION_KERNEL(ACTIVATION_NAME)                              \
+//   template <typename Place, typename T>                                        \
+//   class ACTIVATION_KERNEL_NAME(ACTIVATION_NAME) : public framework::OpKernel { \
+//    public:                                                                     \
+//     void Compute(const framework::ExecutionContext& context) const override {  \
+//       auto* X = context.Input<framework::Tensor>("X");                         \
+//       auto* Y = context.Output<framework::Tensor>("Y");                        \
+//       Y->mutable_data<T>(context.GetPlace());                                  \
+//       math::ACTIVATION_NAME<Place, T> functor;                                 \
+//       auto* device_context = context.device_context();                         \
+//       functor(*device_context, *X, Y);                                         \
+//     }                                                                          \
+//   };
 
-#define DEFINE_ACTIVATION_GRAD_KERNEL(ACTIVATION_GRAD_NAME)                   \
-  template <typename Place, typename T>                                       \
-  class ACTIVATION_KERNEL_NAME(ACTIVATION_GRAD_NAME)                          \
-      : public framework::OpKernel {                                          \
-   public:                                                                    \
-    void Compute(const framework::ExecutionContext& context) const override { \
-      auto* X = context.Input<framework::Tensor>("X");                        \
-      auto* Y = context.Input<framework::Tensor>("Y");                        \
-      auto* dY =                                                              \
-          context.Input<framework::Tensor>(framework::GradVarName("Y"));      \
-      auto* dX =                                                              \
-          context.Output<framework::Tensor>(framework::GradVarName("X"));     \
-      dX->mutable_data<T>(context.GetPlace());                                \
-      math::ACTIVATION_GRAD_NAME<Place, T> functor;                           \
-      auto* device_context = context.device_context();                        \
-      functor(*device_context, *X, *Y, *dY, dX);                              \
-    }                                                                         \
-  };
+// #define DEFINE_ACTIVATION_GRAD_KERNEL(ACTIVATION_GRAD_NAME)                   \
+//   template <typename Place, typename T>                                       \
+//   class ACTIVATION_KERNEL_NAME(ACTIVATION_GRAD_NAME)                          \
+//       : public framework::OpKernel {                                          \
+//    public:                                                                    \
+//     void Compute(const framework::ExecutionContext& context) const override { \
+//       auto* X = context.Input<framework::Tensor>("X");                        \
+//       auto* Y = context.Input<framework::Tensor>("Y");                        \
+//       auto* dY =                                                              \
+//           context.Input<framework::Tensor>(framework::GradVarName("Y"));      \
+//       auto* dX =                                                              \
+//           context.Output<framework::Tensor>(framework::GradVarName("X"));     \
+//       dX->mutable_data<T>(context.GetPlace());                                \
+//       math::ACTIVATION_GRAD_NAME<Place, T> functor;                           \
+//       auto* device_context = context.device_context();                        \
+//       functor(*device_context, *X, *Y, *dY, dX);                              \
+//     }                                                                         \
+//   };
 
 namespace paddle {
 namespace operators {
 
-DEFINE_ACTIVATION_KERNEL(Sigmoid);
+template <typename Place, typename T, typename Functor>
+class ActivationKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* X = context.Input<framework::Tensor>("X");
+    auto* Y = context.Output<framework::Tensor>("Y");
+    Y->mutable_data<T>(context.GetPlace());
 
-DEFINE_ACTIVATION_GRAD_KERNEL(SigmoidGrad);
+    auto x = framework::EigenVector<T>::Flatten(*X);
+    auto y = framework::EigenVector<T>::Flatten(*Y);
+    auto place = context.GetEigenDevice<Place>();
+    Functor functor;
+    functor(place, x, y);
+  }
+};
 
-DEFINE_ACTIVATION_KERNEL(Exp);
+template <typename Place, typename T, typename Functor>
+class ActivationGradKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* X = context.Input<framework::Tensor>("X");
+    auto* Y = context.Input<framework::Tensor>("Y");
+    auto* dY = context.Input<framework::Tensor>(framework::GradVarName("Y"));
+    auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    dX->mutable_data<T>(context.GetPlace());
 
-DEFINE_ACTIVATION_GRAD_KERNEL(ExpGrad);
+    auto dy = framework::EigenVector<T>::Flatten(*dY);
+    auto x = framework::EigenVector<T>::Flatten(*X);
+    auto y = framework::EigenVector<T>::Flatten(*Y);
+    auto dx = framework::EigenVector<T>::Flatten(*dX);
+    auto place = context.GetEigenDevice<Place>();
+    Functor functor;
+    functor(place, x, y, dy, dx);
+  }
+};
 
-DEFINE_ACTIVATION_KERNEL(Relu);
+struct Sigmoid {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = 1. / (1. + (-x).exp());
+  }
+};
 
-DEFINE_ACTIVATION_GRAD_KERNEL(ReluGrad);
+struct SigmoidGrad {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    dx.device(d) = dy * y * (1. - y);
+  }
+};
+
+struct Exp {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = x.exp();
+  }
+};
+
+struct ExpGrad {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    dx.device(d) = y;
+  }
+};
+
+// template <typename Device, typename X, typename Y>
+// struct Relu {
+//   void operator()(Device d, X x, Y y) {
+//     y.device(d) = x.cwiseMax(static_cast<T>(0));
+//   }
+// };
+
+// template <typename Device, typename X, typename Y, typename dY, typename dX>
+// struct ReluGrad {
+//   void operator()(Device d, X x, Y y, dY dy, dX dx) {
+//     dx.device(d) = dy * (x > static_cast<T>(0)).template cast<T>();
+//   }
+// };
+
+// DEFINE_ACTIVATION_KERNEL(Sigmoid);
+
+// DEFINE_ACTIVATION_GRAD_KERNEL(SigmoidGrad);
+
+// DEFINE_ACTIVATION_KERNEL(Exp);
+
+// DEFINE_ACTIVATION_GRAD_KERNEL(ExpGrad);
+
+// DEFINE_ACTIVATION_KERNEL(Relu);
+
+// DEFINE_ACTIVATION_GRAD_KERNEL(ReluGrad);
 
 }  // namespace operators
 }  // namespace paddle
