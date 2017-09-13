@@ -23,6 +23,9 @@ using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
 class CosSimKernel : public framework::OpKernel {
@@ -41,12 +44,11 @@ class CosSimKernel : public framework::OpKernel {
     // convert Tensor to Eigen Tensor
     int rows_x = in_x->dims()[0];
     int rows_y = in_y->dims()[0];
-    int cols = framework::product(in_x->dims()) / rows_x;
     auto x = EigenMatrix<T>::Reshape(*in_x, 1);
     auto y = EigenMatrix<T>::Reshape(*in_y, 1);
-    auto z = EigenMatrix<T>::From(*out_z);
-    auto x_norm = EigenMatrix<T>::From(*out_x_norm);
-    auto y_norm = EigenMatrix<T>::From(*out_y_norm);
+    auto z = EigenVector<T>::Flatten(*out_z);
+    auto x_norm = EigenVector<T>::Flatten(*out_x_norm);
+    auto y_norm = EigenVector<T>::Flatten(*out_y_norm);
 
     // compute
     auto place = context.GetEigenDevice<Place>();
@@ -81,10 +83,10 @@ class CosSimGradKernel : public framework::OpKernel {
     // convert Tensor to Eigen Tensor
     auto x = EigenMatrix<T>::Reshape(*in_x, 1);
     auto y = EigenMatrix<T>::Reshape(*in_y, 1);
-    auto z = EigenMatrix<T>::From(*in_z);
-    auto x_norm = EigenMatrix<T>::From(*in_x_norm);
-    auto y_norm = EigenMatrix<T>::From(*in_y_norm);
-    auto dz = EigenMatrix<T>::From(*in_grad_z);
+    auto z = EigenMatrix<T>::Reshape(*in_z, 1);
+    auto x_norm = EigenMatrix<T>::Reshape(*in_x_norm, 1);
+    auto y_norm = EigenMatrix<T>::Reshape(*in_y_norm, 1);
+    auto dz = EigenMatrix<T>::Reshape(*in_grad_z, 1);
 
     // compute gradident
     int rows_x = in_x->dims()[0];
@@ -108,16 +110,18 @@ class CosSimGradKernel : public framework::OpKernel {
       // compute dy
       if (out_grad_y) {
         out_grad_y->mutable_data<T>(context.GetPlace());
-        auto dy = EigenMatrix<T>::Reshape(*out_grad_y, 1) auto grad =
-            x / norm_prod_bcast - z_bcast * y / y_snorm_bcast;
+        auto dy = EigenMatrix<T>::Reshape(*out_grad_y, 1);
+        auto grad = x / norm_prod_bcast - z_bcast * y / y_snorm_bcast;
         dy.device(place) = dz_bcast * grad;
       }
     } else {
       Eigen::DSizes<int, 2> bcast_rows(rows_x, 1);
-      Eigen::DSizes<int, 2> bcast_rows_cols(rows_x, 1);
+      Eigen::DSizes<int, 2> bcast_rows_cols(rows_x, cols);
       auto y_bcast = y.broadcast(bcast_rows);
       auto y_snorm_bcast = y_norm.square().eval().broadcast(bcast_rows_cols);
-      auto norm_prod_bcast = x_norm * y_norm.broadcast(bcast_rows_cols);
+      auto norm_prod_bcast = (x_norm * y_norm.eval().broadcast(bcast_rows))
+                                 .eval()
+                                 .broadcast(bcast_cols);
       // compute dx
       if (out_grad_x) {
         out_grad_x->mutable_data<T>(context.GetPlace());

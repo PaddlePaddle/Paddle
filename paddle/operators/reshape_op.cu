@@ -12,9 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/gather_op.h"
+#include "paddle/operators/reshape_op.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gather,
-                       ops::GatherOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    reshape,
+    paddle::operators::ReshapeKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    reshape_grad,
+    paddle::operators::ReshapeGradKernel<paddle::platform::GPUPlace, float>);

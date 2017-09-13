@@ -119,10 +119,10 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(x_dims[0] == y_dims[0] || y_dims[0] == 1,
                    "The 1st dimension of Input(Y) must be equal to Input(X) or"
                    " just 1 (which will be broadcasted to match Input(X)).");
-    auto target_xnorm_dims = framework::make_ddim({x_dims[0], 1}),
-         auto target_ynorm_dims = framework::make_ddim({y_dims[0], 1}),
-         PADDLE_ENFORCE_EQ(xnorm_dims, target_xnorm_dims,
-                           "Shape of Input(XNorm) must be [X.Dim(0), 1].");
+    auto target_xnorm_dims = framework::make_ddim({x_dims[0], 1});
+    auto target_ynorm_dims = framework::make_ddim({y_dims[0], 1});
+    PADDLE_ENFORCE_EQ(xnorm_dims, target_xnorm_dims,
+                      "Shape of Input(XNorm) must be [X.Dim(0), 1].");
     PADDLE_ENFORCE_EQ(ynorm_dims, target_ynorm_dims,
                       "Shape of Input(YNorm) must be [Y.Dim(0), 1].");
     PADDLE_ENFORCE_EQ(out_dims, target_xnorm_dims,
