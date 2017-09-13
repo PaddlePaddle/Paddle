@@ -58,10 +58,10 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("expandTimes",
                               "Expand times for each dimension.");
     AddComment(R"DOC(
-Expand operator tiles the input by given times. You should set times for each
-dimension by providing attribute 'expandTimes'. Rank of input tensor should be
-in [1, 6]. Please draw an inttention that size of 'expandTimes' must be same
-with rank of input tensor.
+Expand operator tiles the input by given times number. You should set times
+number for each dimension by providing attribute 'expandTimes'. Rank of input
+tensor should be in [1, 6]. Please draw an attention that size of
+'expandTimes' must be same with rank of input tensor.
 )DOC");
   }
 };
