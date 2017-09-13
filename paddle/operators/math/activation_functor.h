@@ -61,9 +61,9 @@ struct ExpGrad {
                   const framework::Tensor& X, const framework::Tensor& Y,
                   const framework::Tensor& dY, framework::Tensor* dX) {
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto dy = framework::EigenVector<T>::Flatten(dY);
+    auto y = framework::EigenVector<T>::Flatten(Y);
     auto* place = device_context.template get_eigen_device<Place>();
-    dx.device(*place) = dy.exp();
+    dx.device(*place) = y;
   }
 };
 

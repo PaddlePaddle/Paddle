@@ -3,9 +3,9 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestExp(OpTest):
+class TestRelu(OpTest):
     def setUp(self):
-        self.op_type = "exp"
+        self.op_type = "relu"
         self.inputs = {
             'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
         }
