@@ -33,7 +33,7 @@ class Conv2DOp : public framework::OperatorWithKernel {
     auto out = ctx.Output<Tensor>("Output");
     std::vector<int> strides = Attr<std::vector<int>>("strides");
     std::vector<int> paddings = Attr<std::vector<int>>("paddings");
-    int groups = context.Attr<int>("groups");
+    int groups = Attr<int>("groups");
     int input_channels = in->dims()[1];
     int output_channels = filter->dims()[0];
 
