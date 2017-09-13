@@ -75,9 +75,9 @@ A backward network is a series of backward operators. The main idea of building 
    **sharing variables**. As illustrated in the pictures, two operator's share the same variable name of W@GRAD, which will overwrite their sharing input variable. 
 
 <p align="center">
-<img src="./images/duplicate_op.png" alt="Sharing variables in operators." width="50%"><br/>
+<img src="./images/duplicate_op.png" width="50%" ><br/>
 
-​	pic 1. 
+​	pic 1. Sharing variables in operators. 
 
 </p>
 
