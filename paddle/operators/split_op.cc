@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/split_op.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
@@ -88,10 +89,26 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SplitOpGrad : public NetOp {
+ public:
+  SplitOpGrad(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
+      : NetOp(type, inputs, outputs, attrs) {
+    auto out_grad = Inputs(framework::GradVarName("Out"));
+    auto x_grad = Output(framework::GradVarName("X"));
+    AppendOp(framework::OpRegistry::CreateOp("concat", {{"X", out_grad}},
+                                             {{"Out", {x_grad}}}, attrs));
+    CompleteAddOp(false);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(split, ops::SplitOp, ops::SplitOpMaker)
+USE_CPU_ONLY_OP(concat);
+REGISTER_OP(split, ops::SplitOp, ops::SplitOpMaker, split_grad,
+            ops::SplitOpGrad);
 REGISTER_OP_CPU_KERNEL(split,
-                       ops::SplitKernel<paddle::platform::CPUPlace, float>)
+                       ops::SplitKernel<paddle::platform::CPUPlace, float>);

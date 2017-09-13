@@ -85,7 +85,7 @@ def get_numeric_gradient(scope,
                          op,
                          inputs,
                          input_to_check,
-                         output_name,
+                         output_names,
                          delta=0.005,
                          in_place=False):
 
@@ -100,8 +100,11 @@ def get_numeric_gradient(scope,
     ctx = core.DeviceContext.create(core.CPUPlace())
 
     def get_output():
-        op.run(scope, ctx)
-        return np.array(scope.find_var(output_name).get_tensor()).sum()
+        sum = 0.0
+        for output_name in output_names:
+            op.run(scope, ctx)
+            sum += np.array(scope.find_var(output_name).get_tensor()).sum()
+        return sum
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
@@ -224,7 +227,7 @@ class OpTest(unittest.TestCase):
 
     def check_grad(self,
                    inputs_to_check,
-                   output_name,
+                   output_names,
                    no_grad_set=None,
                    in_place=False,
                    max_relative_error=0.005):
@@ -242,7 +245,7 @@ class OpTest(unittest.TestCase):
                 self.op,
                 self.inputs,
                 input_to_check,
-                output_name,
+                output_names,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
         grad_names = [
