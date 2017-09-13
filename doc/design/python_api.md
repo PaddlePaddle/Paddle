@@ -1,6 +1,6 @@
 # Design Doc: Python API
 
-The top level user API in Python should be as same as API in `paddle.v2` after refactoring Paddle from a layer based framework to an operator based framework. There are many new classes in CPP in [compile time] for describing neural networks, such as `Variable`, `Operator`, `Block`. The issue about current design is how to give a proper way to wrap the C++ API to `paddle.v2` API and writing layers in Python.
+The top level user API in Python should be as same as API in `paddle.v2` after refactoring Paddle from a layer based framework to an operator based framework. There are many new classes in C++ in [compile time] for describing neural networks, such as `Variable`, `Operator`, `Block`. The issue about current design is how to give a proper way to wrap the C++ API to `paddle.v2` API and writing layers in Python.
 
 This implementation of Python API includes two steps.
 
@@ -64,20 +64,21 @@ Users can create local variables for outputs of operators. Users can also append
 
 ### Operator
 
-<!-- TODO -->
+Operator class will take inputs, outputs and attributes of the operator into `protobuf` OpDesc and create a C++ `OpDesc` instance. The `infer_shape` perform on C++ objects.
 
 ```python
 class Operator(object):
 	def __init__(self, type, inputs, outputs, attrs):
 		# create OpDesc in Python
 		op_desc = ...
-		self.cpp_op_desc_ptr = cpp.to_cpp_op_desc(op_desc)
-		cpp.infer_shapes(self.cpp_op_desc_ptr, inputs, outputs)
-		outputs.op = self
+		self.cpp_op_desc_ptr = core.OpDesc(op_desc)
+		cpp.infer_shape(self.cpp_op_desc_ptr, inputs, outputs)
 
 	def type(self):
 		return self.cpp_op_desc_ptr.type()
 ```
+
+After creating a C++ `OpDesc`, `Operator` in Python can only reads the attribute from C++ side.
 
 ### Variable
 
