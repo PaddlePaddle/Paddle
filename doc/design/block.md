@@ -29,7 +29,7 @@ U = pd.Varable(shape=[20, 20])
 rnn = create_rnn()
 with rnn.stepnet() as net:
   # declare the input variables that need to be segmented into steps
-  x = net.add_input(v)
+  x = net.set_inputs(v)
   # declare rnn's memory (state)
   h = net.add_memory(init=m_boot)
   
@@ -40,12 +40,41 @@ with rnn.stepnet() as net:
   h.update(act) # update memory
 
   # declare outputs that needs to be merged across all the steps
-  net.add_output(act, hidden_out)
+  net.set_outputs(act, hidden_out)
 
 acts, hs = rnn()
 ```
 
-Above Python program builds a protobuf message which describe the model, a C++ Block class will create the corresponding Variables and Operators, and execute all the operators.
+The with-statement above describes a `RNNOp`'s stepnet as a block, this description will be transformed to a protobuf message as follows 
+
+```
+BlockDesc RNNOp_stepnet {
+  vars = {
+    x {...}
+    h {...}
+    fc_out {...}
+    hidden_out {...}
+    sum {...}
+    act {...}
+  }
+
+  ops = {
+    matmul,
+    add_two,
+    sigmoid
+  }
+};
+
+RNNOpDesc rnn {
+  inputs = {x};
+  outputs = {act, hidden_out};
+  attrs { memories={h} };
+  stepnet {RNNOp_stepnet};
+};
+```
+
+and pass it to a C++ Block, the C++ Block will create the Variables and Operators.
+
 
 ## Block Implementation
 
@@ -60,10 +89,10 @@ b = pd.fc(a, params=["fc.w", "fc.b"])
 
 rnn = pd.create_rnn()
 with rnn.stepnet() as net:
-    x = net.add_input(a)
+    x = net.set_inputs(a)
     # reuse fc's parameter
     fc_without_b = pd.get_variable("fc.w")
-    net.add_output(fc_without_b)
+    net.set_outputs(fc_without_b)
 
 out = rnn()
 ```
@@ -106,8 +135,7 @@ class SymbolTable {
 
   OpDesc* FindOp(const string& name);
 
-  BlockDesc Serialize() const;
-  void DeSerialize(const BlockDesc& desc);
+  BlockDesc Compile() const;
 
  private:
   SymbolTable* parent_;
