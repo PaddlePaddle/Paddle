@@ -79,7 +79,7 @@ class Tensor {
   inline T* mutable_data(DDim dims, platform::Place place);
 
   /*! Size of a single element in data() */
-  inline size_t element_size() { return holder_->element_size(); }
+  inline size_t element_size() const { return holder_->element_size(); }
 
   /*! Return the dimensions of the memory block. */
   inline const DDim& dims() const;
