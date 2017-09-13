@@ -17,11 +17,36 @@
 namespace paddle {
 namespace framework {
 
-TEST(EigenDim, From) {
-  EigenDim<3>::Type ed = EigenDim<3>::From(make_ddim({1, 2, 3}));
-  ASSERT_EQ(1, ed[0]);
-  ASSERT_EQ(2, ed[1]);
-  ASSERT_EQ(3, ed[2]);
+TEST(EigenDim, FromDDimToEigenDDim) {
+  auto eigen_ddim = DDimToEigenDDim({1, 2, 3});
+  auto& eigen_dim = boost::get<EigenDim<3>>(eigen_ddim);
+  ASSERT_EQ(1, eigen_dim[0]);
+  ASSERT_EQ(2, eigen_dim[1]);
+  ASSERT_EQ(3, eigen_dim[2]);
+}
+
+struct ProductVisit : public boost::static_visitor<int64_t> {
+  template <typename EigenDim>
+  int64_t operator()(const EigenDim& dim) const {
+    int64_t prod = 1;
+    for (auto& item : dim) {
+      prod *= item;
+    }
+    return prod;
+  }
+};
+
+TEST(EigenDim, Visit) {
+  std::vector<int64_t> tmp(5);
+  int64_t expect = 1;
+  for (int i = 0; i < 5; ++i) {
+    tmp[i] = i + 1;
+    expect *= tmp[i];
+  }
+  auto eigen_ddim = DDimToEigenDDim(make_ddim(tmp));
+
+  int64_t actual = VisitEigenDDim(ProductVisit(), eigen_ddim);
+  ASSERT_EQ(expect, actual);
 }
 
 TEST(Eigen, Tensor) {
