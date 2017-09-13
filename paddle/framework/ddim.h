@@ -89,6 +89,8 @@ DDim make_ddim(const std::vector<int64_t>& dims);
  */
 DDim make_ddim(std::initializer_list<int64_t> dims);
 
+DDim make_ddim(const std::vector<int>& dims);
+
 int64_t get(const DDim& dim, int idx);
 void set(DDim& dim, int idx, int val);
 
