@@ -30,13 +30,13 @@ As mentioned above, we summarise that several kinds of operators are needed. Cur
 
 ### Graph Converter
 
-To be compatible with parameter server design doc, the graph converter converts the user defined operation graph into sub-graphs to be executed on different devices.
+To be compatible with [parameter server design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/ops/dist_train.md), the graph converter converts the user defined operation graph into sub-graphs to be executed on different devices.
 
 1. The user-defined operator graph will be partitioned into sub-graph. 
 
 2. Control operators between GPUs will be inserted into the graph.
 
-   *Broadcast, AllReduce in a single machine. And Broadcast, AllReduce, Send, Recv in multiple machines*
+   *Broadcast, AllReduce in a single machine. And Broadcast, AllReduce, [Send, Recv](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/ops/dist_train.md#graph-converter) in multiple machines*
 
    <img src="images/multigpu_before_convert.png" width="300"/>
 
@@ -53,12 +53,12 @@ These two operators need the Multi-GPU context support.
 
 Need to notice that Allreduce operator force GPUs synchronized at that point. Every device only need runs sub-graph in a loop style forever, the whole training process in asynchronous or synchronous mode depends on the Allreduce point in the graph.
 
-For the simplest implement, when each GPU compute the gradient of `W`, followed with a `AllReduce` operator, accumulate the `dW` to full batch of data, then run the optimize process individually and apply the gradient to its `W`.
+As it shown in the picture, when each GPU compute the gradient of `W`, followed with a `AllReduce` operator, accumulate the `dW` to full batch of data, then run the optimize process individually and apply the gradient to its `W`.
 
 In fact, in the way of every GPU optimized full batch of data, wasted (n-1) GPU compute resources. We will enhance it in the next stage.
 
 ### Benefits
 
 - can easily move the optimize sub-graph to parameter server,  multi-GPU feature can be  compatible with distributed support design.
-- easily plug-in with NCCL2 library.
+- easily plug-in with [NCCL2](https://developer.nvidia.com/nccl) library.
 - GPU Model parallelism becomes easier to implement. we only need to replace different GPU's sub-graph with different part of the whole graph.
