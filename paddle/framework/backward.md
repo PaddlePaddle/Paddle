@@ -13,9 +13,9 @@ std::unique_ptr<OperatorBase> Backward(const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
 ```
 
-The implementation behind it can be divided into two parts, ** Backward Operator Creating** and **Backward Operator Building**.
+The implementation behind it can be divided into two parts, **Backward Operator Creating** and **Backward Operator Building**.
 
-###Backward Operator Registry
+### Backward Operator Registry
 
 A backward network is built up with several backward operators. Backward operators take forward operators' inputs outputs, and output gradients and then calculate its input gradients.
 
@@ -36,7 +36,7 @@ REGISTER_OP(mul, MulOp, MulOpMaker, mul_grad, MulOpGrad);
 
 `mul_grad` is the type of backward operator, and `MulOpGrad` is its class name.
 
-###Backward Opeartor Creating
+### Backward Opeartor Creating
 
 Given a certain forward operator, we can get its corresponding backward operator by calling:
 
@@ -54,13 +54,13 @@ The function `BuildGradOp` will sequentially execute following processes:
 
 4. Building backward operator with `inputs`, `outputs` and forward operator's attributes.
 
-###Backward Network Building
+### Backward Network Building
 
 A backward network is a series of backward operators. The main idea of building a backward network is creating backward operators in the inverted sequence and append them together one by one. There is some corner case need to process specially.
 
 1. Op 
 
-   when the input forward network is an Op, return its gradient Operator Immediately. If all of its outputs are in no gradient set, then return a special `NOP`.
+   When the input forward network is an Op, return its gradient Operator Immediately. If all of its outputs are in no gradient set, then return a special `NOP`.
 
 2. NetOp 
 
@@ -72,12 +72,12 @@ A backward network is a series of backward operators. The main idea of building 
 
 4. Sharing Variables
 
-   **sharing variables**. As illustrated in the pictures, two operator's `Output` `Gradient` will overwrite their sharing input variable.  
+   **sharing variables**. As illustrated in the pictures, two operator's share the same variable name of W@GRAD, which will overwrite their sharing input variable. 
 
 <p align="center">
-<img src="./images/duplicate_op.png" width="50%" ><br/>
+<img src="./images/duplicate_op.png" alt="Sharing variables in operators." width="50%"><br/>
 
-​	pic 1. Sharing variables in operators. 
+​	pic 1. 
 
 </p>
 
