@@ -21,8 +21,8 @@ REGISTER_OP_GPU_KERNEL(
     reduce_sum,
     ops::ReduceKernel<paddle::platform::GPUPlace, float, ops::SumFunctor>);
 REGISTER_OP_GPU_KERNEL(reduce_sum_grad,
-                       ops::ReduceGradEigenKernel<paddle::platform::GPUPlace,
-                                                  float, ops::SumGradFunctor>);
+                       ops::ReduceGradKernel<paddle::platform::GPUPlace, float,
+                                             ops::SumGradFunctor>);
 
 REGISTER_OP_GPU_KERNEL(
     reduce_mean,

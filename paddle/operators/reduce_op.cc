@@ -30,12 +30,14 @@ class ReduceOp : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto x_rank = x_dims.size();
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported");
-    int dim = static_cast<int>(ctx.Attr<int>("dim"));
+    int dim = ctx.Attr<int>("dim");
     if (dim < 0) dim = x_rank + dim;
     PADDLE_ENFORCE_LT(
         dim, x_rank,
-        "The dim should be in the range [-rank(input), rank(input)]");
-    bool keep_dim = true;  // TODO;
+        "The dim should be in the range [-rank(input), rank(input))");
+    PADDLE_ENFORCE_GE(ctx.Attr<int>("keep_dim"), 0, "keep_dim must be 0 or 1");
+    PADDLE_ENFORCE_LE(ctx.Attr<int>("keep_dim"), 1, "keep_dim must be 0 or 1");
+    bool keep_dim = ctx.Attr<int>("keep_dim") == 1;
     auto dims_vector = vectorize(x_dims);
     if (keep_dim || x_rank == 1) {
       dims_vector[dim] = 1;
@@ -59,11 +61,11 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto x_rank = x_dims.size();
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported");
-    int dim = static_cast<int>(ctx.Attr<int>("dim"));
+    int dim = ctx.Attr<int>("dim");
     if (dim < 0) dim = x_rank + dim;
     PADDLE_ENFORCE_LT(
         dim, x_rank,
-        "The dim should be in the range [-rank(input), rank(input)]");
+        "The dim should be in the range [-rank(input), rank(input))");
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (x_grad) x_grad->Resize(x_dims);
   }
@@ -84,12 +86,13 @@ The result tensor has 1 fewer dimension than the input unless `keep_dim` is true
 )DOC");
     AddAttr<int>("dim",
                  "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input)]")
+                 "Must be in the range [-rank(input), rank(input))")
         .SetDefault(0);
-    AddAttr<bool>("keep_dim",
-                  "(bool, default fasle) "
-                  "If true, retain the reduced dimension with length 1.")
-        .SetDefault(false);
+    AddAttr<int>(
+        "keep_dim",
+        "(int, default 0) "
+        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
+        .SetDefault(0);
   }
 };
 
@@ -108,12 +111,13 @@ The result tensor has 1 fewer dimension than the input unless `keep_dim` is true
 )DOC");
     AddAttr<int>("dim",
                  "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input)]")
+                 "Must be in the range [-rank(input), rank(input))")
         .SetDefault(0);
-    AddAttr<bool>("keep_dim",
-                  "(bool, default fasle) "
-                  "If true, retain the reduced dimension with length 1.")
-        .SetDefault(false);
+    AddAttr<int>(
+        "keep_dim",
+        "(int, default 0) "
+        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
+        .SetDefault(0);
   }
 };
 
@@ -132,12 +136,13 @@ The result tensor has 1 fewer dimension than the input unless `keep_dim` is true
 )DOC");
     AddAttr<int>("dim",
                  "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input)]")
+                 "Must be in the range [-rank(input), rank(input))")
         .SetDefault(0);
-    AddAttr<bool>("keep_dim",
-                  "(bool, default fasle) "
-                  "If true, retain the reduced dimension with length 1.")
-        .SetDefault(false);
+    AddAttr<int>(
+        "keep_dim",
+        "(int, default 0) "
+        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
+        .SetDefault(0);
   }
 };
 
@@ -156,12 +161,13 @@ The result tensor has 1 fewer dimension than the input unless `keep_dim` is true
 )DOC");
     AddAttr<int>("dim",
                  "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input)]")
+                 "Must be in the range [-rank(input), rank(input))")
         .SetDefault(0);
-    AddAttr<bool>("keep_dim",
-                  "(bool, default fasle) "
-                  "If true, retain the reduced dimension with length 1.")
-        .SetDefault(false);
+    AddAttr<int>(
+        "keep_dim",
+        "(int, default 0) "
+        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
+        .SetDefault(0);
   }
 };
 

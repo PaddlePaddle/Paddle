@@ -127,7 +127,7 @@ class ReduceKernel : public framework::OpKernel {
     if (dim < 0) dim = x_rank + dim;
     auto reduce_dim = Eigen::array<int, 1>({{dim}});
     // construct the squeezed output tensor
-    bool keep_dim = true;  // static_cast<bool>(context.Attr<bool>("keep_dim"));
+    bool keep_dim = context.Attr<int>("keep_dim") == 1;
     DDim dims = output->dims();
     auto dims_vector = vectorize(dims);
     if (keep_dim && x_rank > 1) {
