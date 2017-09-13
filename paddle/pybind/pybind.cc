@@ -35,6 +35,7 @@ USE_OP(add);
 USE_OP(onehot_cross_entropy);
 USE_OP(sgd);
 USE_OP(mul);
+USE_OP(elementwise_mul);
 USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
@@ -54,6 +55,7 @@ USE_CPU_ONLY_OP(concat);
 USE_OP(top_k);
 USE_OP(squared_l2_distance);
 USE_OP(sum);
+USE_OP(reshape);
 USE_OP(expand);
 
 namespace paddle {
