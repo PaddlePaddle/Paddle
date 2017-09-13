@@ -31,30 +31,30 @@ The block is hierarchical because PaddlePaddle supports RNN and IfElse. For exam
 
 ```python
 class Block(objects):
-	def __init__(self, parent=None):
-		self.vars = map<string, Variable>()
-		self.ops = vector<Operator>()
-		self.parent = parent
-	
-	def create_var(self, ...):
-	    # create variable in `self.vars`
-	    return Variable(...)
-	
-	
-	def create_global_var(self, ...):
-		if self.parent is not None:
-			return self.parent.create_global_var(...)
-		else:
-			return self.create_var(...)
-	
-	def create_parameter(self, ...):
-		return self.create_global_var(...)
-	
-	def append_operator(self, ...):
-		self.ops.append(...)
-		
-	def prepend_operator(self, ...):
-	   self.ops.prepend(...)
+    def __init__(self, parent=None):
+        self.vars = map<string, Variable>()
+        self.ops = vector<Operator>()
+        self.parent = parent
+    
+    def create_var(self, ...):
+        # create variable in `self.vars`
+        return Variable(...)
+    
+    
+    def create_global_var(self, ...):
+        if self.parent is not None:
+            return self.parent.create_global_var(...)
+        else:
+            return self.create_var(...)
+    
+    def create_parameter(self, ...):
+        return self.create_global_var(...)
+    
+    def append_operator(self, ...):
+        self.ops.append(...)
+        
+    def prepend_operator(self, ...):
+       self.ops.prepend(...)
 ```
 
 Users are able to create a global variable inside any block since they many create parameters inside a RNN or IfElseOp. All parameters should be stored in the global block, not the step block in RNN.
@@ -68,14 +68,14 @@ Operator class will take inputs, outputs and attributes of the operator into `pr
 
 ```python
 class Operator(object):
-	def __init__(self, type, inputs, outputs, attrs):
-		# create OpDesc in Python
-		op_desc = ...
-		self.cpp_op_desc_ptr = core.OpDesc(op_desc)
-		cpp.infer_shape(self.cpp_op_desc_ptr, inputs, outputs)
+    def __init__(self, type, inputs, outputs, attrs):
+        # create OpDesc in Python
+        op_desc = ...
+        self.cpp_op_desc_ptr = core.OpDesc(op_desc)
+        cpp.infer_shape(self.cpp_op_desc_ptr, inputs, outputs)
 
-	def type(self):
-		return self.cpp_op_desc_ptr.type()
+    def type(self):
+        return self.cpp_op_desc_ptr.type()
 ```
 
 After creating a C++ `OpDesc`, `Operator` in Python can only reads the attribute from C++ side.
@@ -108,8 +108,7 @@ class Variable(object):
 
 <!-- 参数 is a special Variable -->
 
-```python
-class Parameter(Variable):
+```pythonVclass Parameter(Variable):
     def __init__(self, trainable, initialize_attrs, optimize_attrs):
         pass
 ```
