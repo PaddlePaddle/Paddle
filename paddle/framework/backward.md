@@ -17,7 +17,7 @@ The implementation behind it can be divided into two parts, **Backward Operator 
 
 ### Backward Operator Registry
 
-A backward network is built up with several backward operators. Backward operators take forward operators' inputs outputs, and output gradients and then calculate its input gradients.
+A backward network is built up with several backward operators. Backward operators take forward operators' inputs, outputs, and output gradients and then calculate its input gradients.
 
 |                        | forward operator | backward operator 
 | ---------------------- | ---------------- |------------------------- |		
