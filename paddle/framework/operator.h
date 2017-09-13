@@ -139,9 +139,9 @@ class OperatorBase {
 // Macro for define a clone method.
 // If you are writing an kernel operator, `Clone` will be defined when you
 // register it. i.e. `Clone` method is not needed to define by yourself.
-#define DEFINE_OP_CLONE_METHOD(cls)                                            \
-  std::unique_ptr<::paddle::framework::OperatorBase> Clone() const final {     \
-    return std::unique_ptr<::paddle::framework::OperatorBase>(new cls(*this)); \
+#define DEFINE_OP_CLONE_METHOD(cls)                       \
+  std::unique_ptr<OperatorBase> Clone() const final {     \
+    return std::unique_ptr<OperatorBase>(new cls(*this)); \
   }
 
 // Macro for define a default constructor for Operator.
@@ -331,6 +331,21 @@ class InferShapeContext {
   const Scope& scope_;
 };
 
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+#endif
+
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
@@ -338,8 +353,8 @@ class ExecutionContext : public InferShapeContext {
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
-            typename DeviceType = typename platform::EigenDeviceConverter<
-                PlaceType>::EigenDeviceType>
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
   platform::Place GetPlace() const { return device_context_->GetPlace(); }

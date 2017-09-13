@@ -56,7 +56,7 @@ USE_OP(sum);
 USE_OP(reshape);
 USE_OP(sigmoid);
 USE_OP(exp);
-// USE_OP(relu);
+USE_OP(relu);
 
 namespace paddle {
 namespace framework {

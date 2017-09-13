@@ -22,14 +22,14 @@ namespace framework {
 template <>
 Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_->get_eigen_device<platform::CPUPlace>();
+  return *device_context_->get_eigen_device<Eigen::DefaultDevice>();
 }
 
 #ifndef PADDLE_ONLY_CPU
 template <>
 Eigen::GpuDevice&
 ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_->get_eigen_device<platform::GPUPlace>();
+  return *device_context_->get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
 

@@ -14,26 +14,6 @@
 
 #include "paddle/operators/activation_op.h"
 
-// #define FILL_ACTIVATION_OP                                                  \
-//  public:                                                                    \
-//   using framework::OperatorWithKernel::OperatorWithKernel;                  \
-//                                                                             \
-//  protected:                                                                 \
-//   void InferShape(const framework::InferShapeContext &ctx) const override { \
-//     ctx.Output<framework::Tensor>("Y")->Resize(                             \
-//         ctx.Input<framework::Tensor>("X")->dims());                         \
-//   }
-
-// #define FILL_ACTIVATION_GRAD_OP                                             \
-//  public:                                                                    \
-//   using framework::OperatorWithKernel::OperatorWithKernel;                  \
-//                                                                             \
-//  protected:                                                                 \
-//   void InferShape(const framework::InferShapeContext &ctx) const override { \
-//     ctx.Output<framework::Tensor>(framework::GradVarName("X"))              \
-//         ->Resize(ctx.Input<framework::Tensor>("Y")->dims());                \
-//   }
-
 namespace paddle {
 namespace operators {
 
@@ -59,10 +39,6 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-// class SigmoidOp : public framework::OperatorWithKernel {
-//   FILL_ACTIVATION_OP
-// };
-
 class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SigmoidOpMaker(framework::OpProto *proto,
@@ -74,14 +50,6 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-// class SigmoidOpGrad : public framework::OperatorWithKernel {
-//   FILL_ACTIVATION_GRAD_OP
-// };
-
-// class ExpOp : public framework::OperatorWithKernel {
-//   FILL_ACTIVATION_OP
-// };
-
 class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ExpOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -91,14 +59,6 @@ class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment("Exp activation operator");
   }
 };
-
-// class ExpOpGrad : public framework::OperatorWithKernel {
-//   FILL_ACTIVATION_GRAD_OP
-// };
-
-// class ReluOp : public framework::OperatorWithKernel {
-//   FILL_ACTIVATION_OP
-// };
 
 class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -110,36 +70,33 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-// class ReluOpGrad : public framework::OperatorWithKernel {
-//   FILL_ACTIVATION_GRAD_OP
-// };
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP(sigmoid, ops::ActivationOp, ops::SigmoidOpMaker, sigmoid_grad,
             ops::ActivationOpGrad);
+REGISTER_OP_CPU_KERNEL(sigmoid,
+                       ops::ActivationKernel<paddle::platform::CPUPlace, float,
+                                             ops::SigmoidFunctor>);
 REGISTER_OP_CPU_KERNEL(
-    sigmoid,
-    ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::Sigmoid>);
-REGISTER_OP_CPU_KERNEL(sigmoid_grad,
-                       ops::ActivationGradKernel<paddle::platform::CPUPlace,
-                                                 float, ops::SigmoidGrad>);
+    sigmoid_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
+                                            ops::SigmoidGradFunctor>);
 
 REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
             ops::ActivationOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    exp, ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::Exp>);
-REGISTER_OP_CPU_KERNEL(
-    exp_grad,
-    ops::ActivationGradKernel<paddle::platform::CPUPlace, float, ops::ExpGrad>);
+    exp,
+    ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::ExpFunctor>);
+REGISTER_OP_CPU_KERNEL(exp_grad,
+                       ops::ActivationGradKernel<paddle::platform::CPUPlace,
+                                                 float, ops::ExpGradFunctor>);
 
-// REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
-// ops::ActivationOpGrad);
-// REGISTER_OP_CPU_KERNEL(relu,
-//                        ops::ReluKernel<paddle::platform::CPUPlace, float,
-//                        ops::Relu>);
-// REGISTER_OP_CPU_KERNEL(relu_grad,
-//                        ops::ReluGradKernel<paddle::platform::CPUPlace, float,
-//                        ops::ReluGrad>);
+REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
+            ops::ActivationOpGrad);
+REGISTER_OP_CPU_KERNEL(relu,
+                       ops::ActivationKernel<paddle::platform::CPUPlace, float,
+                                             ops::ReluFunctor<float>>);
+REGISTER_OP_CPU_KERNEL(
+    relu_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
+                                         ops::ReluGradFunctor<float>>);

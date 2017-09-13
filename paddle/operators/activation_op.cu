@@ -18,15 +18,21 @@
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(sigmoid,
-                       ops::SigmoidKernel<paddle::platform::GPUPlace, float>);
+                       ops::ActivationKernel<paddle::platform::GPUPlace, float,
+                                             ops::SigmoidFunctor>);
 REGISTER_OP_GPU_KERNEL(
-    sigmoid_grad, ops::SigmoidGradKernel<paddle::platform::GPUPlace, float>);
+    sigmoid_grad, ops::ActivationGradKernel<paddle::platform::GPUPlace, float,
+                                            ops::SigmoidGradFunctor>);
 
-REGISTER_OP_GPU_KERNEL(exp, ops::ExpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    exp,
+    ops::ActivationKernel<paddle::platform::GPUPlace, float, ops::ExpFunctor>);
 REGISTER_OP_GPU_KERNEL(exp_grad,
-                       ops::ExpGradKernel<paddle::platform::GPUPlace, float>);
-
+                       ops::ActivationGradKernel<paddle::platform::GPUPlace,
+                                                 float, ops::ExpGradFunctor>);
 REGISTER_OP_GPU_KERNEL(relu,
-                       ops::ReluKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(relu_grad,
-                       ops::ReluGradKernel<paddle::platform::GPUPlace, float>);
+                       ops::ActivationKernel<paddle::platform::GPUPlace, float,
+                                             ops::ReluFunctor<float>>);
+REGISTER_OP_GPU_KERNEL(
+    relu_grad, ops::ActivationGradKernel<paddle::platform::GPUPlace, float,
+                                         ops::ReluGradFunctor<float>>);
