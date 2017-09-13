@@ -69,15 +69,17 @@ class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
         "Filter",
         "The filter tensor of convolution operator."
         "The format of the filter tensor is MCHW, where M is the number of "
-        "output "
-        "image channels, C is the number of input image channels, H and W is "
-        "height and width of filter.");
+        "output image channels, C is the number of input image channels, "
+        "H and W is height and width of filter. "
+        "If the groups attribute is greater than 1, C equal the number of "
+        "input image channels divided by the groups.");
     AddOutput("Output",
               "The output tensor of convolution operator."
               "The format of output tensor is also NCHW.");
     AddComment(R"DOC(
-The convolution operation calculates the output based on
-the input, filter and strides, paddings parameters.
+The convolution operation calculates the output based on the input, filter
+and strides, paddings, groups parameters. The size of each dimension of the
+parameters is checked in the infer-shape.
 )DOC");
     AddAttr<std::vector<int>>("strides", "strides of convolution operator.");
     AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.");
