@@ -82,18 +82,16 @@ After creating a C++ `OpDesc`, `Operator` in Python can only reads the attribute
 
 ### Variable
 
-<!-- TODO -->
+Operators' intputs, outputs and parameters are all variables. In our design, a variable has four key attributes: its name(`name`), the block it belongs to(`block`), a pointer pointed to its C++ Protobuf object(`cpp_var_desc_ptr`), and the operator it is created by(`op`). All of these attributes are initialized in constructor, except the `op`. The `op` will keep being `None` till the variable is taken as an operator's output.
 
 ```python
 class Variable(object):
     def __init__(self, shape, dtype="float32", name=None, block=None):
         if name is None:
-            if prefix is not None:
-                name = unique_name_generator(prefix)
-            else:
-                name = unique_name_generator("unknown")
+            name = unique_name_generator()
         self.name = name
         self.block = block
+        # build C++ Protobuf object
         self.cpp_var_desc_ptr = ...
         self.op = None
 
@@ -101,6 +99,10 @@ class Variable(object):
         cpp_shape = self.cpp_var_desc_ptr.shape()
         return [None if elem < 0 else elem for elem in cpp_shape]
 ```
+
+Protobuf object should be created in C++ not Python because it is needed by infershape, and infershape is implementated by C++ code. The C++ Protobuf object is accessible for Python through the `cpp_var_desc_ptr` pointer.
+
+The user is allowed to build an variable without specifying its name. If so, it is going to be assigned with an automatically generated unique name.
 
 ### Parameter
 
