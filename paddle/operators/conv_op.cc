@@ -31,12 +31,22 @@ class Conv2DOp : public framework::OperatorWithKernel {
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto out = ctx.Output<Tensor>("Output");
+    std::vector<int> strides = Attr<std::vector<int>>("strides");
+    std::vector<int> paddings = Attr<std::vector<int>>("paddings");
+    int groups = context.Attr<int>("groups");
+    int input_channels = in->dims()[1];
+    int output_channels = filter->dims()[0];
+
     PADDLE_ENFORCE_EQ(in->dims().size(), 4, "Conv2DOp intput should be 4-D.");
     PADDLE_ENFORCE_EQ(filter->dims().size(), 4,
                       "Conv2DOp filter should be 4-D.");
+    PADDLE_ENFORCE_EQ(input_channels, filter->dims()[1] * groups,
+                      "The number of input channels should be equal to filter "
+                      "channels * groups.");
+    PADDLE_ENFORCE_EQ(
+        output_channels % groups, 0,
+        "The number of output channels should be divided by groups.");
 
-    std::vector<int> strides = Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = Attr<std::vector<int>>("paddings");
     auto output_height =
         outputSize(in->dims()[2], filter->dims()[2], paddings[0], strides[0]);
     auto output_width =
@@ -71,6 +81,14 @@ the input, filter and strides, paddings parameters.
 )DOC");
     AddAttr<std::vector<int>>("strides", "strides of convolution operator.");
     AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.");
+    AddAttr<int>(
+        "groups",
+        "group size of convolution operator. "
+        "Refer to grouped convolution in Alex Krizhevsky's paper: "
+        "when group=2, the first half of the filters are only connected to the "
+        "first half of the input channels, and the second half only connected "
+        "to the second half.")
+        .SetDefault(1);
   }
 };
 

@@ -38,6 +38,7 @@ class GemmConvKernel : public framework::OpKernel {
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    int groups = context.Attr<int>("groups");
 
     int batch_size = input->dims()[0];
     int input_channels = input->dims()[1];
@@ -51,11 +52,11 @@ class GemmConvKernel : public framework::OpKernel {
         paddle::operators::math::ColFormat::kCFO, Place, T>
         im2col;
     // use col_shape in the im2col calculation
-    framework::DDim col_shape = {input_channels, filter_height, filter_width,
-                                 output_height, output_width};
+    framework::DDim col_shape = {input_channels / groups, filter_height,
+                                 filter_width, output_height, output_width};
     // use col_matrix_shape in the gemm calculation
     framework::DDim col_matrix_shape = {
-        input_channels * filter_height * filter_width,
+        input_channels / groups * filter_height * filter_width,
         output_height * output_width};
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
@@ -78,16 +79,26 @@ class GemmConvKernel : public framework::OpKernel {
         const_cast<platform::DeviceContext*>(context.device_context_);
 
     // convolution operator: im2col + gemm
+    int in_step = input_channels / groups;
+    int out_step = output_channels / groups;
     for (int i = 0; i < batch_size; i++) {
-      // im2col
-      Tensor in_slice = input->Slice<T>(i, i + 1).Resize(input_shape);
-      im2col(in_slice, col, strides[0], strides[1], paddings[0], paddings[1],
-             device_context);
+      Tensor in_slice_batch = input->Slice<T>(i, i + 1).Resize(input_shape);
+      Tensor out_slice_batch =
+          output->Slice<T>(i, i + 1).Resize(output_matrix_shape);
+      for (int g = 0; g < groups; g++) {
+        // im2col
+        Tensor in_slice =
+            in_slice_batch.Slice<T>(g * in_step, (g + 1) * in_step);
+        im2col(in_slice, col, strides[0], strides[1], paddings[0], paddings[1],
+               device_context);
 
-      // gemm
-      Tensor out_slice = output->Slice<T>(i, i + 1).Resize(output_matrix_shape);
-      math::matmul<Place, T>(filter, false, col_matrix, false, T(1.0),
-                             &out_slice, T(0.0), device_context);
+        // gemm
+        Tensor out_slice =
+            out_slice_batch.Slice<T>(g * out_step, (g + 1) * out_step);
+        Tensor filter_slice = filter.Slice<T>(g * out_step, (g + 1) * out_step);
+        math::matmul<Place, T>(filter_slice, false, col_matrix, false, T(1.0),
+                               &out_slice, T(0.0), device_context);
+      }
     }
   }
 };
@@ -114,6 +125,7 @@ class GemmConvGradKernel : public framework::OpKernel {
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    // int groups = context.Attr<int>("groups");
 
     int batch_size = input->dims()[0];
     int input_channels = input->dims()[1];
