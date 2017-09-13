@@ -22,12 +22,15 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
 template <typename Place, typename T>
 class AucKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* inference = ctx.Input<Tensor>("Inference");
-    auto* inference_prob = ctx.Input<Tensor>("InferenceProb");
     auto* label = ctx.Input<Tensor>("Label");
     auto* auc = ctx.Output<Tensor>("AUC");
 
@@ -44,14 +47,20 @@ class AucKernel : public framework::OpKernel {
     thresholds_list[0] = 0.0f - kEpsilon;
     thresholds_list[num_thresholds - 1] = 1.0f + kEpsilon;
 
-    const int* inference_data = inference->data<int>();
-    const T* inference_prob_data = inference_prob->data<T>();
-    const T* label_data = label->data<T>();
+    size_t num_samples = inference->numel();
 
-    size_t num_samples = inference->dims()[0];
-    size_t class_dim = inference->dims()[1];
+    const T* inference_data = inference->data<T>();
+    Tensor label_casted;
+    label_casted.Resize(label->dims());
+    bool* label_casted_data = label_casted.mutable_data<bool>(ctx.GetPlace());
 
-    // create local tensor for storing the curve: TP, FN, TN, FP
+    const int* label_data = label->data<int>();
+    // cast label_data to bool
+    for (size_t i = 0; i < num_samples; i++) {
+      label_casted_data[i] = static_cast<bool>(label_data[i]);
+    }
+
+    // Create local tensor for storing the curve: TP, FN, TN, FP
     // TODO(typhoonzero): put these tensors in Scope
     // TODO(typhoonzero): use op to caculate these values.
     Tensor true_positive, false_positive, true_negative, false_negative;
@@ -72,19 +81,17 @@ class AucKernel : public framework::OpKernel {
       // caculate TP, FN, TN, FP for current thresh
       int tp, fn, tn, fp = 0;
       for (size_t i = 0; i < num_samples; i++) {
-        for (size_t j = 0; j < class_dim; j++) {
-          if (inference_data[i * class_dim + j] == label_data[i]) {
-            if (inference_prob_data[i * class_dim + j] >= (*thresh)) {
-              tp++;
-            } else {
-              tn++;
-            }
+        if (label_casted_data[i]) {
+          if (inference_data[i] >= (*thresh)) {
+            tp++;
           } else {
-            if (inference_prob_data[i * class_dim + j] >= (*thresh)) {
-              fp++;
-            } else {
-              fn++;
-            }
+            tn++;
+          }
+        } else {
+          if (inference_data[i] >= (*thresh)) {
+            fp++;
+          } else {
+            fn++;
           }
         }
       }

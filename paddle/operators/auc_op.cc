@@ -28,15 +28,12 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
                             "Input of Inference must be initialized.");
     auto *inference = ctx.Input<framework::Tensor>("Inference");
-    auto *inference_prob = ctx.Input<framework::Tensor>("InferenceProb");
     auto *label = ctx.Input<framework::Tensor>("Label");
 
-    PADDLE_ENFORCE_EQ(label->dims().size(), 1, "label must be a vector");
-    PADDLE_ENFORCE_EQ(inference->dims()[0], label->dims()[0],
-                      "inference size must be the same as label size");
-    PADDLE_ENFORCE_EQ(inference->dims(), inference_prob->dims());
+    PADDLE_ENFORCE_EQ(inference->dims(), label->dims(),
+                      "inference should have same shape as label");
 
-    ctx.Output<Tensor>("Accuracy")->Resize({1});
+    ctx.Output<Tensor>("AUC")->Resize({1});
   }
 };
 
@@ -45,14 +42,15 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
   AucOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Inference",
-             "Topk(indices) the network output, float value indicating "
-             "probabilities of classification");
-    AddInput("InferenceProb",
-             "Topk(values) the network output, float value indicating "
-             "probabilities of classification");
-    AddInput("Label", "Label of the training data");
-    // TODO(typhoonzero): support weight
-    AddOutput("AUC", "Area Under Curve caculations");
+             "A floating point `Tensor` of arbitrary shape and whose values"
+             "are in the range `[0, 1]`.");
+    AddInput("Label",
+             "A `Tensor` whose shape matches "
+             "`Inference`. Will be cast to `bool`.");
+    // TODO(typhoonzero): support weight input
+    AddOutput("AUC",
+              "A scalar `Tensor` representing the "
+              "current area-under-curve.");
     AddAttr<std::string>("curve", "Possible curves are ROC and PR")
         .SetDefault("ROC");
     AddAttr<int>("num_thresholds",
@@ -62,12 +60,16 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(
         R"DOC(Computes the AUC according forward output and label.
+        Best to use for binary classification evaluations.
+        If `label` can be values other than 0 and 1, it will be cast
+        to bool.
+
         You can find the definations here: 
         https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve
         
         Possible curves are:
-        ROC: Receiver operating characteristic
-        PR: Precision Recall
+        - ROC: Receiver operating characteristic
+        - PR: Precision Recall
         )DOC");
   }
 };
