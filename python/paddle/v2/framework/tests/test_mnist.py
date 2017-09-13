@@ -128,7 +128,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
 def cross_entropy_layer(net, input, label):
     cost_name = "cross_entropy_%d" % uniq_id()
     cross_entropy_op = Operator(
-        "onehot_cross_entropy", X=input, label=label, Y=cost_name)
+        "cross_entropy", X=input, label=label, Y=cost_name)
     net.append_op(cross_entropy_op)
     scope.new_var(cost_name)
     net.infer_shape(scope)

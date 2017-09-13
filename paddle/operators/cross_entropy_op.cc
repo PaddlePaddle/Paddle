@@ -17,48 +17,62 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
+class CrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *label = ctx.Input<Tensor>("label");
+    auto *x = ctx.Input<Tensor>("X");
+    auto *label = ctx.Input<Tensor>("Label");
 
-    PADDLE_ENFORCE_EQ(X->dims().size(), 2, "X's dimension must be 2.");
-    PADDLE_ENFORCE_EQ(label->dims().size(), 1, "label's dimension must be 1.");
-    PADDLE_ENFORCE_EQ(X->dims()[0], label->dims()[0]);
-    ctx.Output<Tensor>("Y")->Resize({X->dims()[0]});
+    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "X's rank must be 2.");
+    PADDLE_ASSERT(label->dims().size() == 1 || label->dims().size() == 2);
+    if (label->dims().size() == 2) {
+      // soft cross entropy
+      PADDLE_ENFORCE_EQ(x->dims(), label->dims());
+    } else {
+      // normal cross entropy
+      PADDLE_ENFORCE_EQ(x->dims()[0], label->dims()[0]);
+    }
+    ctx.Output<Tensor>("Y")->Resize({x->dims()[0]});
   }
 };
 
-class OnehotCrossEntropyGradientOp : public framework::OperatorWithKernel {
+class CrossEntropyGradientOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto X = ctx.Input<Tensor>("X");
+    auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto x = ctx.Input<Tensor>("X");
 
-    dX->Resize(X->dims());
+    dx->Resize(x->dims());
   }
 };
 
-class OnehotCrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
+class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  OnehotCrossEntropyOpMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  CrossEntropyOpMaker(framework::OpProto *proto,
+                      framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of OnehotCrossEntropyOp");
-    AddInput("label", "The second input of OnehotCrossEntropyOp");
-    AddOutput("Y", "The output of OnehotCrossEntropyOp");
+    AddInput("X", "The first input of CrossEntropyOp");
+    AddInput("Label", "The second input of CrossEntropyOp");
+    AddOutput("Y", "The output of CrossEntropyOp");
     AddComment(R"DOC(
-OnehotCrossEntropy Operator.
+CrossEntropy Operator.
 
-                Y[i] = -log(X[i][j])
+The second input (Label tensor) supports two kinds of shapes:
+1) Rank(Label) = 1, Label[i] indicates the class index for sample i:
+                Y[i] = -log(X[i, Label[i]])
 
+2) Rank(Label) = 2, Label[i, j] indicates the soft label of class j
+   for sample i:
+                Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
+   Please make sure that in this case the summuation of each row of Label
+   equals one. If each row of Label has only one non-zero element (equals 1),
+   it degenerates to a standard one-hot representation.
 )DOC");
   }
 };
@@ -66,10 +80,8 @@ OnehotCrossEntropy Operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(onehot_cross_entropy, ops::OnehotCrossEntropyOp,
-            ops::OnehotCrossEntropyOpMaker, onehot_cross_entropy_grad,
-            ops::OnehotCrossEntropyGradientOp);
-REGISTER_OP_CPU_KERNEL(onehot_cross_entropy,
-                       ops::OnehotCrossEntropyOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(onehot_cross_entropy_grad,
-                       ops::OnehotCrossEntropyGradientOpKernel<float>);
+REGISTER_OP(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
+            cross_entropy_grad, ops::CrossEntropyGradientOp);
+REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
+                       ops::CrossEntropyGradientOpKernel<float>);
