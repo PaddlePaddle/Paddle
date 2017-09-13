@@ -108,7 +108,8 @@ class Variable(object):
 
 <!-- 参数 is a special Variable -->
 
-```pythonVclass Parameter(Variable):
+```python
+class Parameter(Variable):
     def __init__(self, trainable, initialize_attrs, optimize_attrs):
         pass
 ```
