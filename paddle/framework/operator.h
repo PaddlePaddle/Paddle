@@ -22,6 +22,7 @@ limitations under the License. */
 #include "op_info.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -305,11 +306,9 @@ class InferShapeContext {
     auto names = op_.Inputs(name);
     std::vector<const T*> res;
     res.reserve(names.size());
-    std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
-                     auto var = scope_.FindVar(sub_name);
-                     return var == nullptr ? nullptr : &var->Get<T>();
-                   });
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(res),
+        [&](const std::string& sub_name) { return Input<T>(sub_name); });
     return res;
   }
 
@@ -318,11 +317,9 @@ class InferShapeContext {
     auto names = op_.Outputs(name);
     std::vector<T*> res;
     res.reserve(names.size());
-    std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
-                     auto var = scope_.FindVar(sub_name);
-                     return var == nullptr ? nullptr : var->GetMutable<T>();
-                   });
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(res),
+        [&](const std::string& sub_name) { return Output<T>(sub_name); });
     return res;
   }
 
@@ -361,6 +358,27 @@ class ExecutionContext : public InferShapeContext {
 
   const platform::DeviceContext* device_context() const {
     return device_context_;
+  }
+
+  // redefine Output function,
+  // use Variable::Get instead of Variable::GetMutable
+  template <typename T>
+  T* Output(const std::string& name) const {
+    auto var = OutputVar(name);
+    return var == nullptr ? nullptr : const_cast<T*>(&var->Get<T>());
+  }
+
+  // redefine MultiOutput function.
+  // use Variable::Get instead of Variable::GetMutable
+  template <typename T>
+  std::vector<T*> MultiOutput(const std::string& name) const {
+    auto names = op().Outputs(name);
+    std::vector<T*> res;
+    res.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(res),
+        [&](const std::string& sub_name) { return Output<T>(sub_name); });
+    return res;
   }
 
   const platform::DeviceContext* device_context_;

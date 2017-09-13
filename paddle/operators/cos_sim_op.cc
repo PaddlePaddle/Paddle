@@ -32,9 +32,9 @@ class CosSimOp : public framework::OperatorWithKernel {
                       "Dimensions of Input(X) and Input(Y) must be the same.");
 
     auto dims = ctx.Input<Tensor>("X")->dims();
-    ctx.Output<Tensor>("Out")->Resize({dims[0], 1});
-    ctx.Output<Tensor>("XNorm")->Resize({dims[0], 1});
-    ctx.Output<Tensor>("YNorm")->Resize({dims[0], 1});
+    ctx.Output<framework::LoDTensor>("Out")->Resize({dims[0], 1});
+    ctx.Output<framework::LoDTensor>("XNorm")->Resize({dims[0], 1});
+    ctx.Output<framework::LoDTensor>("YNorm")->Resize({dims[0], 1});
   }
 };
 
@@ -88,8 +88,10 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
                       "1st dimension of Out@GRAD must equal that of Input(X)");
     PADDLE_ENFORCE_EQ(out_dims[1], 1, "1st dimension of Out@GRAD must be one.");
 
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto *x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *y_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
     if (x_grad) x_grad->Resize(x_dims);
     if (y_grad) y_grad->Resize(y_dims);
   }

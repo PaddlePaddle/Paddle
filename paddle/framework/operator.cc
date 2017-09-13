@@ -186,6 +186,54 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+template <>
+const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const {
+  auto* var = InputVar(name);
+  if (var == nullptr) return nullptr;
+  if (var->IsType<LoDTensor>()) {
+    return &var->Get<LoDTensor>();
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input(%s) must be LoDTensor or Tensor.");
+  return &var->Get<Tensor>();
+}
+
+template <>
+const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+    const std::string& name) const {
+  auto names = op().Inputs(name);
+  std::vector<const Tensor*> res;
+  res.reserve(names.size());
+  std::transform(
+      names.begin(), names.end(), std::back_inserter(res),
+      [&](const std::string& sub_name) { return Input<Tensor>(sub_name); });
+  return res;
+}
+
+template <>
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
+  auto* var = OutputVar(name);
+  if (var == nullptr) return nullptr;
+  if (var->IsType<LoDTensor>()) {
+    return const_cast<LoDTensor*>(&var->Get<LoDTensor>());
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input(%s) must be LoDTensor or Tensor.");
+  return const_cast<Tensor*>(&var->Get<Tensor>());
+}
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+    const std::string& name) const {
+  auto names = op().Outputs(name);
+  std::vector<Tensor*> res;
+  res.reserve(names.size());
+  std::transform(
+      names.begin(), names.end(), std::back_inserter(res),
+      [&](const std::string& sub_name) { return Output<Tensor>(sub_name); });
+  return res;
+}
+
 void OpProtoAndCheckerMaker::Validate() {
   validated_ = true;
   CheckNoDuplicatedInOutAttrs();

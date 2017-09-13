@@ -122,6 +122,8 @@ PYBIND11_PLUGIN(core) {
       });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
+      .def_buffer(
+          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
@@ -172,10 +174,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_int",
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
+      //      .def("get_tensor",
+      //         [](Variable &self) -> Tensor * { return
+      //         self.GetMutable<Tensor>(); },
+      //         py::return_value_policy::reference)
       .def("get_tensor",
-           [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
-           py::return_value_policy::reference)
-      .def("get_lod_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
            },

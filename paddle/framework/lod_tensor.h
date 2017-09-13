@@ -59,7 +59,7 @@ class LoDTensor : public Tensor {
 
   void set_lod(const LoD& lod) { lod_ = lod; }
 
-  LoD lod() { return lod_; }
+  LoD lod() const { return lod_; }
 
   /*
    * Get a element from LoD.
