@@ -16,8 +16,8 @@ namespace paddle {
 namespace platform {
 
 template <>
-Eigen::DefaultDevice* DeviceContext::get_eigen_device<Eigen::DefaultDevice>()
-    const {
+Eigen::DefaultDevice*
+DeviceContext::get_eigen_device<CPUPlace, Eigen::DefaultDevice>() const {
   return reinterpret_cast<const CPUDeviceContext*>(this)->eigen_device();
 }
 
@@ -91,7 +91,8 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 };
 
 template <>
-Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
+Eigen::GpuDevice* DeviceContext::get_eigen_device<GPUPlace, Eigen::GpuDevice>()
+    const {
   return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
 }
 

@@ -331,21 +331,6 @@ class InferShapeContext {
   const Scope& scope_;
 };
 
-template <typename T>
-struct EigenDeviceConverter;
-
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
-
-#ifndef PADDLE_ONLY_CPU
-template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
-#endif
-
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
@@ -353,8 +338,8 @@ class ExecutionContext : public InferShapeContext {
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
-            typename DeviceType =
-                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+            typename DeviceType = typename platform::EigenDeviceConverter<
+                PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
   platform::Place GetPlace() const { return device_context_->GetPlace(); }
