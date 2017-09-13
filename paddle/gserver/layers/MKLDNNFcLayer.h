@@ -45,35 +45,28 @@ public:
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
+  void reshape(
+      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
+
+  void resetFwd(std::vector<mkldnn::primitive>& pipeline,
+                MKLDNNMatrixPtr& in,
+                MKLDNNMatrixPtr& wgt,
+                MKLDNNMatrixPtr& bias,
+                MKLDNNMatrixPtr& out) override;
+
+  void resetBwd(std::vector<mkldnn::primitive>& pipeline,
+                MKLDNNMatrixPtr& in,
+                MKLDNNMatrixPtr& wgt,
+                MKLDNNMatrixPtr& bias,
+                MKLDNNMatrixPtr& out) override;
+
+  void updateInputData() override;
+
+  void updateWeights(const UpdateCallback& callback) override;
+
   void convertWeightsFromPaddle() override;
 
   void convertWeightsToPaddle() override;
-
-  void forward(PassType passType) override;
-
-  void backward(const UpdateCallback& callback) override;
-
-protected:
-  /**
-   * reshape the input image sizes
-   * and reset output buffer size
-   * and reset mkldnn forward
-   */
-  void reshape();
-
-  /**
-   * reset the forward primitve and memory
-   * only would be called when input size changes
-   */
-  void resetFwd();
-
-  /**
-   * reset the backward primitve and memory for mkldnn fc
-   * only would be called when needed
-   */
-  void resetBwd();
-
-  void convertOutputToOtherDevice() override;
 };
 
 }  // namespace paddle
