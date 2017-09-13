@@ -31,9 +31,9 @@ class AucOp : public framework::OperatorWithKernel {
     auto *label = ctx.Input<framework::Tensor>("Label");
 
     PADDLE_ENFORCE_EQ(inference->dims(), label->dims(),
-                      "inference should have same shape as label");
+                      "inference and label should have same shape");
 
-    ctx.Output<Tensor>("AUC")->Resize({1});
+    ctx.Output<framework::Tensor>("AUC")->Resize({1});
   }
 };
 
@@ -51,6 +51,7 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("AUC",
               "A scalar `Tensor` representing the "
               "current area-under-curve.");
+
     AddAttr<std::string>("curve", "Possible curves are ROC and PR")
         .SetDefault("ROC");
     AddAttr<int>("num_thresholds",

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <algorithm>
+#include <iostream>
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
@@ -75,23 +75,21 @@ class AucKernel : public framework::OpKernel {
     int* tn_data = true_negative.mutable_data<int>(ctx.GetPlace());
     int* fp_data = false_positive.mutable_data<int>(ctx.GetPlace());
 
-    for (auto thresh = thresholds_list.begin(); thresh != thresholds_list.end();
-         thresh++) {
-      size_t idx_thresh = thresh - thresholds_list.begin();
+    for (int idx_thresh = 0; idx_thresh < num_thresholds; idx_thresh++) {
       // caculate TP, FN, TN, FP for current thresh
-      int tp, fn, tn, fp = 0;
+      int tp = 0, fn = 0, tn = 0, fp = 0;
       for (size_t i = 0; i < num_samples; i++) {
         if (label_casted_data[i]) {
-          if (inference_data[i] >= (*thresh)) {
+          if (inference_data[i] >= (thresholds_list[idx_thresh])) {
             tp++;
           } else {
-            tn++;
+            fn++;
           }
         } else {
-          if (inference_data[i] >= (*thresh)) {
+          if (inference_data[i] >= (thresholds_list[idx_thresh])) {
             fp++;
           } else {
-            fn++;
+            tn++;
           }
         }
       }
@@ -118,11 +116,11 @@ class AucKernel : public framework::OpKernel {
       rec_rate_data[i] =
           ((float)tp_data[i] + epsilon) / (tp_data[i] + fp_data[i] + epsilon);
     }
-
+    *auc_data = 0.0f;
     if (curve == "ROC") {
-      for (int i = 1; i < num_thresholds; i++) {
-        auto dx = fp_rate_data[i] - fp_rate_data[i - 1];
-        auto y = (tp_rate_data[i] + tp_rate_data[i - 1]) / 2.0f;
+      for (int i = 0; i < num_thresholds - 1; i++) {
+        auto dx = fp_rate_data[i] - fp_rate_data[i + 1];
+        auto y = (tp_rate_data[i] + tp_rate_data[i + 1]) / 2.0f;
         *auc_data = *auc_data + dx * y;
       }
     } else if (curve == "PR") {
