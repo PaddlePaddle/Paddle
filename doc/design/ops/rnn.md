@@ -73,7 +73,7 @@ with rnn.stepnet():
     # update current memory
     h.update(new_state)
     # indicate that h variables in all step scopes should be merged
-    rnn.set_output(0, h)
+    rnn.add_outputs(h)
 
 out = rnn()
 ```
@@ -82,7 +82,7 @@ Python API functions in above example:
 
 - `rnn.add_input` indicates the parameter is a variable that will be segmented into step-inputs.
 - `rnn.add_memory` creates a variable used as the memory.
-- `rnn.set_output` mark the variables that will be concatenated across steps into the RNN output.
+- `rnn.add_outputs` mark the variables that will be concatenated across steps into the RNN output.
 
 ### Nested RNN and LoDTensor
 
@@ -124,7 +124,7 @@ def lower_level_rnn(paragraph):
         h.update(
             pd.matmul(W, sentence) + pd.matmul(U, h.pre_state()))
         # get the last state as sentence's info
-        rnn.set_output(0, h)
+        rnn.add_outputs(h)
     return rnn
 
 top_level_rnn = pd.create_rnn_op(output_num=1)
@@ -136,12 +136,17 @@ with top_level_rnn.stepnet():
     h = rnn.add_memory(init=a)
     h.update(
         pd.matmul(W0, paragraph_data) + pd.matmul(U0, h.pre_state()))
-    top_level_rnn.set_output(0, h)
+    top_level_rnn.add_outputs(h)
 
-chapter_out = top_level_rnn()
+# just output the last step
+chapter_out = top_level_rnn(output_all_steps=False)
 ```
 
 in above example, the construction of the `top_level_rnn` calls  `lower_level_rnn`.  The input is a LoD Tensor. The top level RNN segments input text data into paragraphs, and the lower level RNN segments each paragraph into sentences.
+
+By default, the `RNNOp` will concatenate the outputs from all the time steps,
+if the `output_all_steps` set to False, it will only output the final time step.
+
 
 <p align="center">
 <img src="images/rnn_2level_data.png"/>
