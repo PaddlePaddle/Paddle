@@ -26,20 +26,24 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename T>
 class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    auto place = context.GetPlace();
+    PADDLE_ENFORCE(platform::is_cpu_place(place),
+                   "This kernel only runs on CPU.");
+
     // Calculate ths softmax outputs.
     const Tensor* logits = context.Input<Tensor>("Logits");
     Tensor* softmax = context.Output<Tensor>("Softmax");
-    // allocate memory on device.
     softmax->mutable_data<T>(context.GetPlace());
-    math::SoftmaxFunctor<Place, T>()(logits, softmax, context);
+
+    math::SoftmaxFunctor<platform::CPUPlace, T>()(logits, softmax, context);
 
     // Calculate the cross entropy loss based on hard labels.
     T* softmax_out = softmax->data<T>();
-    const int* label_data = context.Input<Tensor>("label")->data<int>();
+    const int* label_data = context.Input<Tensor>("Label")->data<int>();
 
     Tensor* loss = context.Output<Tensor>("Loss");
     loss->mutable_data<T>(context.GetPlace());
@@ -55,10 +59,24 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
   }
 };
 
-template <typename Place, typename T>
+template <typename T>
 class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {}
+  void Compute(const framework::ExecutionContext& context) const override {
+    Tensor* logit_grad =
+        context.Output<Tensor>(framework::GradVarName("Logits"));
+    logit_grad->ShareDataWith<T>(*context.Input<Tensor>("Softmax"));
+    T* logit_grad_data = logit_grad->data<T>();
+
+    const int batch_size = logit_grad->dims()[0];
+    const int class_num = logit_grad->dims()[1];
+
+    const int* label_data = context.Input<Tensor>("Label")->data<int>();
+    for (int i = 0; i < batch_size; ++i) {
+      int index = i * class_num + label_data[i];
+      logit_grad_data[index] -= .1;
+    }
+  }
 };
 
 }  // namespace operators

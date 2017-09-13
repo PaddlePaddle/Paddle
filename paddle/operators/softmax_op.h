@@ -43,8 +43,6 @@ template <typename Place, typename T>
 class SoftmaxGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
-
     auto Y = context.Input<Tensor>("Y");
     auto dY = context.Input<Tensor>(framework::GradVarName("Y"));
     auto dX = context.Output<Tensor>(framework::GradVarName("X"));

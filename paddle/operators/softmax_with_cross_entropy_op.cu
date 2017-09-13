@@ -17,9 +17,4 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
-    softmax_with_cross_entropy,
-    ops::SoftmaxWithCrossEntropyKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    softmax_with_cross_entropy_grad,
-    ops::SoftmaxWithCrossEntropyGradKernel<paddle::platform::GPUPlace, float>);
+// TODO(caoying) add GPU kernel
