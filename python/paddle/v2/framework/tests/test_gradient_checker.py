@@ -12,7 +12,8 @@ class GetNumericGradientTest(unittest.TestCase):
         z = x + y
         scope = core.Scope()
         add_op = create_op(scope, "add", {'X': x, 'Y': y}, {'Out': z}, dict())
-        arr = get_numeric_gradient(scope, add_op, {'X': x, 'Y': y}, 'X', 'Out')
+        arr = get_numeric_gradient(scope, add_op, {'X': x,
+                                                   'Y': y}, 'X', ['Out'])
         self.assertAlmostEqual(arr.mean(), 1.0, delta=1e-4)
 
     def test_softmax_op(self):
