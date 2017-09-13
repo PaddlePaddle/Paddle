@@ -47,9 +47,9 @@ bool MKLDNNConvLayer::init(const LayerMap& layerMap,
   sw_ = conf.stride();
   sh_ = conf.stride_y();
   gp_ = conf.groups();
-  oh_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
+  oh_ = conf.output_y();
   ow_ = conf.output_x();
-  ih_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
+  ih_ = conf.img_size_y();
   iw_ = conf.img_size();
   caffeMode_ = conf.caffe_mode();
   CHECK(caffeMode_) << "Only support caffe mode yet";

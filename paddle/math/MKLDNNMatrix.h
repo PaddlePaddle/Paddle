@@ -65,6 +65,12 @@ public:
 
   /**
    * Create reorder primitive.
+   * Create a mkldnn::reorder handle for converting src MKLDNNMatrix to dst.
+   * checkData: for whether to check the data handle of src and dst is the same.
+   *            if true, means check it and do not want support inplace reorder;
+   *            otherwise do not check data which means the created reorder
+   *            maybe inplace buffer and do not guarantee the logical is correct
+   *            since not all format or conversion support inplace.
    */
   static std::shared_ptr<mkldnn::reorder> createReorder(
       const MKLDNNMatrixPtr& src,

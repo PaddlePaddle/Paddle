@@ -2073,10 +2073,7 @@ class ConvLayerBase(LayerBase):
             (parallel_nn == 0 or self.config.device > -1)):
             self.layer_type = "cudnn_conv"
         else:
-            if (use_mkldnn == 1):
-                self.layer_type = "mkldnn_conv"
-            else:
-                self.layer_type = "exconv"
+            self.layer_type = "mkldnn_conv" if use_mkldnn else "exconv"
         # need to specify layer in config
         self.config.type = self.layer_type
 

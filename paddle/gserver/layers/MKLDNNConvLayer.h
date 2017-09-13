@@ -37,38 +37,30 @@ protected:
   // group number
   int gp_;
 
-  // in backward data the format is different with wgtVal_
+  // in resetBwdData, the format of wgtValBwdData_ is different with wgtVal_
   MKLDNNMatrixPtr wgtValBwdData_;
+  // convert handle from wgtVal_ to wgtValBwdData_
   std::shared_ptr<mkldnn::reorder> cvtWgtVal_;
 
-  // save forward primitive_desc use for backward
+  // save forward primitive_desc, which can be used backward
   std::shared_ptr<mkldnn::convolution_forward::primitive_desc> fwdPD_;
 
-  // MKLDNNMatrixPtr with cpu device for conversion between MKLDNN device
+  // MKLDNNMatrixPtr which should be created from CPU Device
   MKLDNNMatrixPtr cpuInVal_;
   MKLDNNMatrixPtr cpuInGrad_;
   MKLDNNMatrixPtr cpuOutVal_;
   MKLDNNMatrixPtr cpuOutGrad_;
+  // convert handle between CPU device and MKLDNN device
   std::shared_ptr<mkldnn::reorder> cvtInVal_;
   std::shared_ptr<mkldnn::reorder> cvtInGrad_;
   std::shared_ptr<mkldnn::reorder> cvtOutVal_;
   std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
 
-  // if has already init the weight
+  // whether the weight has been init
   bool hasInitedWgt_;
 
-  // True by default. This impact the calculation of output size.
-  // For example:
-  // - input(+padding): 0123456789
-  // - imageSize(+padding) = 10;
-  // - filterSize = 3;
-  // - stride = 2;
-  // - caffeMode_ is true:
-  // - output: (012), (234), (456), (678)
-  // - outputSize = 4;
-  // - caffeMode_ is false:
-  // - output: (012), (234), (456), (678), (9)
-  // - outputSize = 5;
+  // true by default, which impact the calculation of output image size.
+  // details can refer to mathUtil.h
   bool caffeMode_;
 
   // weight and bias

@@ -52,11 +52,7 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
 std::shared_ptr<reorder> MKLDNNMatrix::createReorder(const MKLDNNMatrixPtr& src,
                                                      const MKLDNNMatrixPtr& dst,
                                                      bool checkData) {
-  if (src == dst) {
-    return nullptr;
-  }
-
-  if (src->getPrimitiveDesc() == dst->getPrimitiveDesc()) {
+  if (src == dst || src->getPrimitiveDesc() == dst->getPrimitiveDesc()) {
     return nullptr;
   }
 
