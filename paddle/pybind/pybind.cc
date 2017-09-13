@@ -50,6 +50,7 @@ USE_NO_KERNEL_OP(identity);
 USE_OP(minus);
 USE_OP(cos_sim);
 USE_CPU_ONLY_OP(gather);
+USE_OP(pad);
 USE_CPU_ONLY_OP(scatter);
 USE_CPU_ONLY_OP(concat);
 USE_OP(top_k);
