@@ -109,11 +109,23 @@ class ExpandGradKernel : public framework::OpKernel {
     }
 
     int dims = reshape_dims_vec.size() * 6 + reduce_dims_vec.size() - 7;
-    switch (dims) {
-      REP_EXPAND_GRAD_TEMPLATE(72)
-      default:
-        PADDLE_ENFORCE(false, "Only support tensor whose rank in [1, 6].");
-    };
+    // no need reduce, just copy
+    if (reduce_dims_vec.size() == 0) {
+      auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+      out0->mutable_data<T>(context.GetPlace());
+      if (platform::is_cpu_place(context.GetPlace())) {
+        out0->CopyFrom<T>(*in0, platform::CPUPlace());
+      } else {
+        out0->CopyFrom<T>(*in0, platform::GPUPlace());
+      }
+    } else {
+      switch (dims) {
+        REP_EXPAND_GRAD_TEMPLATE(72)
+        default:
+          PADDLE_ENFORCE(false, "Only support tensor whose rank in [1, 6].");
+      };
+    }
   }
 
  protected:
