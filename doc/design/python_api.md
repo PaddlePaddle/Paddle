@@ -12,7 +12,7 @@ The implementation of the first step is a temporary implementation. We should de
 
 ## Python Class and compile-time protobuf
 
-As we design our Python API concepts based on `compile-time`, we try to map our Python classes to every compile-time result, i.e., the protobuf messages. They are:
+Since we design our Python API concepts based on `compile-time`, we try to map our Python classes to every compile-time result, i.e., the protobuf messages. They are:
 
 
 | Python Class | Compile-time protobuf |
@@ -24,26 +24,42 @@ As we design our Python API concepts based on `compile-time`, we try to map our 
 
 ### Block
 
-<!-- TODO -->
+Block is just like programming languages `{}`, which contains many operators and variables. There are two data fields in `Block`.  1) An associate map, whose key is variable name and value is variable itself; 2) A list of operators.
+
+The block is hierarchical because PaddlePaddle supports RNN and IfElse. For example, RNN is like `for-loop` in programming languages. There is new `block` inside a `for-loop`. To represent hierarchies, `Block` stores the `parent Block` inside. If `parent=None`, the `Block` is the outermost block, i.e., the `global` block.
+
 
 ```python
 class Block(objects):
 	def __init__(self, parent=None):
-		self.vars_ = map<string, Variable>()
-		self.ops_ = vector<Operator>()
-		if parent is None:
-			self.global_vars = map<string, Variable>()
-			self.parent=None
-		else:
-			self.parent = parent
-			self.global_vars = None
+		self.vars = map<string, Variable>()
+		self.ops = vector<Operator>()
+		self.parent = parent
 	
-	def create_global_vars(...):
+	def create_var(self, ...):
+	    # create variable in `self.vars`
+	    return Variable(...)
+	
+	
+	def create_global_var(self, ...):
 		if self.parent is not None:
-			return self.parent.create_global_vars(...)
+			return self.parent.create_global_var(...)
 		else:
-			return self.global_vars.new()
+			return self.create_var(...)
+	
+	def create_parameter(self, ...):
+		return self.create_global_var(...)
+	
+	def append_operator(self, ...):
+		self.ops.append(...)
+		
+	def prepend_operator(self, ...):
+	   self.ops.prepend(...)
 ```
+
+Users are able to create a global variable inside any block since they many create parameters inside a RNN or IfElseOp. All parameters should be stored in the global block, not the step block in RNN.
+
+Users can create local variables for outputs of operators. Users can also append and prepend an operator in current block. Prepending `random initialize` operator or `load` operator is very useful to initialize parameters before training.
 
 
 ### Operator
