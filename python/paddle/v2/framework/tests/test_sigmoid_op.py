@@ -15,8 +15,8 @@ class TestSigmoid(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Y", max_relative_error=0.007)
+        self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
