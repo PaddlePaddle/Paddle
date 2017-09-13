@@ -26,7 +26,7 @@ class FCOp : public NetOp {
       : NetOp(type, inputs, outputs, attrs) {
     auto x = Inputs("X");
     auto w = Inputs("W");
-    auto mul_out = Outputs("mul_out");
+    auto mul_out = Outputs("MulOut");
     PADDLE_ENFORCE_EQ(
         x.size(), w.size(),
         "The size of inputs X(%d) should be the same as that of weights W(%d).",
@@ -36,36 +36,51 @@ class FCOp : public NetOp {
                       "as that of inputs X(%d).",
                       mul_out.size(), x.size());
 
-    int n = x.size();
-    PADDLE_ENFORCE_GE(n, 1,
+    size_t n = x.size();
+    PADDLE_ENFORCE_GE(n, static_cast<size_t>(1),
                       "The size of inputs X(%d) should be no less than 1.", n);
 
+    auto x_num_col_dims = Attr<std::vector<int>>("xNumColDims");
+    auto w_num_col_dims = Attr<std::vector<int>>("wNumColDims");
+    PADDLE_ENFORCE_EQ(x_num_col_dims.size(), n,
+                      "The size of attribute xNumColDims(%d) should be the "
+                      "same as that of inputs X(%d).",
+                      x_num_col_dims.size(), n);
+    PADDLE_ENFORCE_EQ(w_num_col_dims.size(), n,
+                      "The size of attribute wNumColDims(%d) should be the "
+                      "same as that of inputs X(%d).",
+                      w_num_col_dims.size(), n)
+
     // mul_out[i] = X[i] * W[i]
-    for (int i = 0; i < n; i++) {
-      AppendOp(framework::OpRegistry::CreateOp(
-          "mul", {{"X", {x[i]}}, {"Y", {w[i]}}}, {{"Out", {mul_out[i]}}}, {}));
+    for (size_t i = 0; i < n; i++) {
+      framework::AttributeMap mul_attr;
+      mul_attr["x_num_col_dims"] = static_cast<int>(x_num_col_dims[i]);
+      mul_attr["y_num_col_dims"] = static_cast<int>(w_num_col_dims[i]);
+      AppendOp(
+          framework::OpRegistry::CreateOp("mul", {{"X", {x[i]}}, {"Y", {w[i]}}},
+                                          {{"Out", {mul_out[i]}}}, mul_attr));
     }
 
     // sum_out = X[0] * W[0] + ... + X[n-1] * W[n-1]
     if (n > 1) {
       AppendOp(framework::OpRegistry::CreateOp(
-          "sum", {{"X", {mul_out}}}, {{"Out", {Output("sum_out")}}}, {}));
+          "sum", {{"X", {mul_out}}}, {{"Out", {Output("SumOut")}}}, {}));
     } else {
       AppendOp(framework::OpRegistry::CreateOp(
-          "identity", {{"X", {mul_out[0]}}}, {{"Y", {Output("sum_out")}}}, {}));
+          "identity", {{"X", {mul_out[0]}}}, {{"Y", {Output("SumOut")}}}, {}));
     }
 
     // add_out = sum_out + b
-    auto b = Input("b");
-    std::string add_out = "sum_out";
+    auto b = Input("B");
+    std::string add_out = "SumOut";
     if (b != framework::kEmptyVarName) {
-      add_out = "add_out";
+      add_out = "AddOut";
       AppendOp(framework::OpRegistry::CreateOp(
-          "rowwise_add", {{"X", {Output("sum_out")}}, {"b", {Input("b")}}},
+          "rowwise_add", {{"X", {Output("SumOut")}}, {"b", {Input("B")}}},
           {{"Out", {Output(add_out)}}}, {}));
     } else {
-      if (Output("add_out") != framework::kEmptyVarName) {
-        this->Rename(Output("add_out"), framework::kEmptyVarName);
+      if (Output("AddOut") != framework::kEmptyVarName) {
+        this->Rename(Output("AddOut"), framework::kEmptyVarName);
       }
     }
 
@@ -84,24 +99,26 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput("W", "The weights of FC operator, a ordered vector of 2-D matrix.")
         .AsDuplicable();
-    AddInput("b", "The 1-D bias vector of FC operator");
+    AddInput("B", "The 1-D bias vector of FC operator");
 
     AddOutput("Y", "The activated output matrix of FC operator");
-    AddOutput("mul_out",
+    AddOutput("MulOut",
               "The intermediate outputs of FC operator, "
               "saving the product of X[i] * W[i]")
         .AsIntermediate()
         .AsDuplicable();
-    AddOutput("sum_out",
+    AddOutput("SumOut",
               "The intermediate output of FC operator, "
               "saving the sum of products, sum(X[i] * W[i])")
         .AsIntermediate();
-    AddOutput("add_out",
+    AddOutput("AddOut",
               "The non-actived output of FC operator, saving X * W + b")
         .AsIntermediate();
     AddAttr<std::string>("activation", "The activation type of FC operator.")
         .SetDefault("identity")
         .InEnum({"identity", "sigmoid", "softmax"});
+    AddAttr<std::vector<int>>("xNumColDims", "");
+    AddAttr<std::vector<int>>("wNumColDims", "");
 
     AddComment(R"DOC(
 Fully Connected Operator, known as Fully Connected Layer or Inner Product Layer
