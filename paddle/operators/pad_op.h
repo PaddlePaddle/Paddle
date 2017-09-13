@@ -87,12 +87,13 @@ void PadGradFunction(const framework::ExecutionContext& context) {
   }
   auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
   auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-  d_x->mutable_data<T>(context.GetPlace());
-
-  auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
-  auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-  auto place = context.GetEigenDevice<Place>();
-  d_x_tensor.device(place) = d_out_tensor.pad(paddings, 0);
+  if (d_x != nullptr) {
+    d_x->mutable_data<T>(context.GetPlace());
+    auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
+    auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
+    auto place = context.GetEigenDevice<Place>();
+    d_x_tensor.device(place) = d_out_tensor.pad(paddings, 0);
+  }
 }
 
 template <typename Place, typename T>
