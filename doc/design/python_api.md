@@ -82,7 +82,7 @@ After creating a C++ `OpDesc`, `Operator` in Python can only reads the attribute
 
 ### Variable
 
-Operators' intputs, outputs and parameters are all variables. In our design, a variable has four key attributes: its name(`name`), the block it belongs to(`block`), a pointer pointed to its C++ Protobuf object(`cpp_var_desc_ptr`), and the operator it is created by(`op`). All of these attributes are initialized in constructor, except the `op`. The `op` will keep being `None` till the variable is taken as an operator's output.
+Operators' inputs, outputs, and parameters are all variables. In our design, a variable has four key attributes: its name(`name`), the block it belongs to(`block`), a pointer pointed to its C++ Protobuf object(`cpp_var_desc_ptr`), and the operator it is created by(`op`). All of these attributes are initialized in the constructor, except the `op`. The `op` will keep being `None` till the variable is taken as an operator's output.
 
 ```python
 class Variable(object):
@@ -100,21 +100,22 @@ class Variable(object):
         return [None if elem < 0 else elem for elem in cpp_shape]
 ```
 
-Protobuf object should be created in C++ not Python because it is needed by infershape, and infershape is implementated by C++ code. The C++ Protobuf object is accessible for Python through the `cpp_var_desc_ptr` pointer.
+The Protobuf object should be created in C++ not Python because it is needed by infershape, and infershape is implemented by C++ code. The C++ Protobuf object is accessible for Python through the `cpp_var_desc_ptr`, just like how `shape()` function does.
 
-The user is allowed to build an variable without specifying its name. If so, it is going to be assigned with an automatically generated unique name.
+The user is allowed to build a variable without specifying its name. If so, it is going to be assigned with an automatically generated unique name.
 
 ### Parameter
 
-<!-- 虽然Parameter不是编译器的概念，但是Python维护一个Parameter可以帮助我们构造计算图，知道哪个参数是可更新的等等 -->
-
-<!-- 参数 is a special Variable -->
+The parameter is a kind of special variable. They need to be initialized at the very beginning and updated after each batch training. So if a variable is a parameter, our compiler will add an initializer op and an optimizer op for it during the building process of computation graph. Apart from these, there is no more difference between variable and parameter. In other words, 'parameter' is only a label attached to variables, to tell the compiler these ones require additional processing.
 
 ```python
 class Parameter(Variable):
     def __init__(self, trainable, initialize_attrs, optimize_attrs):
         pass
 ```
+
+The class `Parameter` is derived from class `Variable`. In addition to variables have, parameters are able to hold their initializing and updating information. A parameter's `self.op` will always be `None` because it can never be an operator's output.
+
 
 ## Layer Functions
 
