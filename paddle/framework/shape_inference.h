@@ -19,6 +19,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class InferShapeContextBase;
+
+using ShapeInferenceFn =
+    std::function<void(const framework::InferShapeContextBase& ctx)>;
+
 class InferShapeContextBase {
  public:
   virtual ~InferShapeContextBase() {}
@@ -37,9 +42,6 @@ class InferShapeContextBase {
   virtual void set_dim(const std::string& name,
                        const framework::DDim& dim) const = 0;
 };
-
-using ShapeInferenceFn =
-    std::function<void(const framework::InferShapeContextBase& ctx)>;
 
 inline void NonFn(const framework::InferShapeContextBase& ctx){};
 

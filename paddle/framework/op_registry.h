@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_info.h"
+#include "paddle/framework/op_proto_maker.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
@@ -34,7 +35,8 @@ class OpRegistry {
  public:
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
-                         const std::string& grad_op_type, ShapeInferenceFn fn) {
+                         const std::string& grad_op_type,
+                         const ShapeInferenceFn fn) {
     PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;
