@@ -2,7 +2,7 @@
 
 ## Motivation
 
-In Neural Network, many model is solved by the the backpropagation algorithm(known as BP) at present.  Technically it caculates the gradient of the loss function, then distributed back through the networks. Follows the chain rule, so we need to compound the gradient operators/expressions together with the chain rule. Every forward network needs a backward network to construct the full computation graph, the operator/expression's backward pass will be generated respect to forward pass. 
+In Neural Network, many model is solved by the the backpropagation algorithm(known as BP) at present. Technically it caculates the gradient of the loss function, then distributed back through the networks. Follows the chain rule, so we need a module chains the gradient operators/expressions together with to construct the backward pass. Every forward network needs a backward network to construct the full computation graph, the operator/expression's backward pass will be generated respect to forward pass. 
 
 ## Implementation
 
@@ -13,7 +13,7 @@ std::unique_ptr<OperatorBase> Backward(const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
 ```
 
-The implementation behind it can be divided into two parts. Namely, ** Backward Operator Creating** and **Backward Operator Building**.  
+The implementation behind it can be divided into two parts, ** Backward Operator Creating** and **Backward Operator Building**.
 
 ###Backward Operator Registry
 
@@ -60,7 +60,7 @@ A backward network is a series of backward operators. The main idea of building 
 
 1. Op 
 
-   when the input forward network is an Op, return its gradient Operator Immediately. If all of its outputs are in no gradient set, then return a special `NoGradient` operator 
+   when the input forward network is an Op, return its gradient Operator Immediately. If all of its outputs are in no gradient set, then return a special `NOP`.
 
 2. NetOp 
 
@@ -70,27 +70,27 @@ A backward network is a series of backward operators. The main idea of building 
 
    RnnOp is a nested stepnet operator.  Backward module need to recusively call `Backward` for every stepnet.
 
-4. Shared Variable
+4. Sharing Variables
 
-   **shared variable**. As illustrated in the pictures, two operator's `Output` `Gradient` will overwrite their shared input variable.  
+   **sharing variables**. As illustrated in the pictures, two operator's `Output` `Gradient` will overwrite their sharing input variable.  
 
 <p align="center">
 <img src="./images/duplicate_op.png" width="50%" ><br/>
 
-​	pic 1. Shared variable in operators. 
+​	pic 1. Sharing variables in operators. 
 
 </p>
 
-​	Share variable between operators or same input variable used in multiple operators leads to a duplicate gradient variable. As demo show above, we need to rename gradient name recursively and add a generic add operator replace the overwrite links. 
+​	Sharing variable between operators or same input variable used in multiple operators leads to a duplicate gradient variable. As demo show above, we need to rename gradient name recursively and add a generic add operator to replace the overwrite links. 
 
 <p align="center">
 <img src="images/duplicate_op2.png" width="40%" ><br/>
 
-​	pic 2. Replace shared variable's gradient with `Add` operator.
+​	pic 2. Replace sharing variable's gradient with `Add` operator.
 
 </p>
 
-​	Because our framework find variable accord to its name, we need rename the output links. We add a suffix of number represent its position in clockwise. 
+​	Because our framework finds variables accord to their names, we need to rename the output links. We add a suffix of number to represent its position in clockwise. 
 
 5. Part of Gradient is Zero.
 
