@@ -31,8 +31,7 @@ class MinusOp : public framework::OperatorWithKernel {
     auto *right_tensor = ctx.Input<framework::Tensor>("Y");
 
     PADDLE_ENFORCE_EQ(
-        framework::product(left_tensor->dims()),
-        framework::product(right_tensor->dims()),
+        left_tensor->numel(), right_tensor->numel(),
         "Minus operator must take two tensor with same num of elements");
     ctx.Output<framework::Tensor>("Out")->Resize(left_tensor->dims());
   }
@@ -79,7 +78,7 @@ class MinusGradOp : public NetOp {
 }  // namespace paddle
 
 USE_OP(scale);
-USE_OP_ITSELF(identity);
+USE_NO_KERNEL_OP(identity);
 namespace ops = paddle::operators;
 REGISTER_OP(minus, ops::MinusOp, ops::MinusOpMaker, minus_grad,
             ops::MinusGradOp<float>);

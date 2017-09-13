@@ -18,8 +18,10 @@
 #ifndef PADDLE_ONLY_CPU
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include <thrust/system/cuda/experimental/pinned_allocator.h>
 #endif
 
+#include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
@@ -32,37 +34,38 @@ template <typename T>
 using Vector = std::vector<T>;
 #else
 template <typename T>
-using Vector = thrust::host_vector<T>;
+using Vector = thrust::host_vector<
+    T, thrust::system::cuda::experimental::pinned_allocator<T>>;
 #endif
 
-using LOD = std::vector<Vector<size_t>>;
+using LoD = std::vector<Vector<size_t>>;
 
-LOD SliceLevels(const LOD& in, size_t level_begin, size_t level_end);
+LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
 
-LOD SliceInLevel(const LOD& in, size_t level, size_t elem_begin,
+LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
                  size_t elem_end);
 
-bool operator==(const LOD& a, const LOD& b);
+bool operator==(const LoD& a, const LoD& b);
 
 /*
- * LODTensor (Level of details Tensor)
+ * LoDTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */
-class LODTensor {
+class LoDTensor {
  public:
-  LODTensor() {}
-  LODTensor(const LOD& lod, Tensor* t) : lod_(lod), tensor_(t) {}
+  LoDTensor() {}
+  LoDTensor(const LoD& lod, Tensor* t) : lod_(lod), tensor_(t) {}
 
-  void set_lod(const LOD& lod) { lod_ = lod; }
+  void set_lod(const LoD& lod) { lod_ = lod; }
 
   void set_tensor(Tensor* tensor) { tensor_ = tensor; }
 
   Tensor& tensor() { return *tensor_; }
 
-  LOD lod() { return lod_; }
+  LoD lod() { return lod_; }
 
   /*
-   * Get a element from LOD.
+   * Get a element from LoD.
    */
   size_t lod_element(size_t level, size_t elem) const {
     PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
@@ -74,7 +77,7 @@ class LODTensor {
   }
 
   /*
-   * Number of LODTensor's levels, each level has units of data, for example,
+   * Number of LoDTensor's levels, each level has units of data, for example,
    * in the sentence's view, article, paragraph, sentence are 3 levels.
    */
   size_t NumLevels() const { return lod_.size(); }
@@ -100,7 +103,7 @@ class LODTensor {
   void SliceInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
  private:
-  LOD lod_;
+  LoD lod_;
   Tensor* tensor_;  // not owned
 };
 }  // namespace framework

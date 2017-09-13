@@ -223,6 +223,15 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
+    IF(WITH_C_API)
+        INSTALL(DIRECTORY ${PROTOBUF_INCLUDE_DIR} DESTINATION third_party/protobuf)
+        IF(ANDROID)
+            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
+        ELSE()
+            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib)
+        ENDIF()
+    ENDIF()
+
     IF(CMAKE_CROSSCOMPILING)
         PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
     ELSE()
