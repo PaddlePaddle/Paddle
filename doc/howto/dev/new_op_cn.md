@@ -262,7 +262,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
  - 生成库
 
-   无需修改 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件，`paddle/operators` 目录下新增的 `*_op.cc` 文件会被自动添加链接到生成的lib库中。
+   `paddle/operators` 目录下新增的 `*_op.cc` 文件会被自动添加链接到生成的lib库中。
 
 ## 实现单元测试
 
@@ -354,11 +354,7 @@ class TestMulGradOp(GradientChecker):
 
 ### 编译和执行单元测试
 
-单元测试编写完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)中添加以下内容，将单元测试加入工程：
-
-```
-py_test(test_mul_op SRCS test_mul_op.py)
-```
+`python/paddle/v2/framework/tests` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
 
 请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单元测试：
 
