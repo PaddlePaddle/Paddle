@@ -6,13 +6,14 @@ RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ub
 
 # ENV variables
 ARG ANDROID_ABI
+ARG ANDROID_API
 
 ENV ANDROID_ABI=${ANDROID_ABI:-"armeabi-v7a"}
+ENV ANDROID_API=${ANDROID_API:-21}
 
 ENV HOME=/root \
     ANDROID_NDK_HOME=/opt/android-ndk-linux \
-    ANDROID_ARM_STANDALONE_TOOLCHAIN=/opt/arm-toolchain \
-    ANDROID_ARM64_STANDALONE_TOOLCHAIN=/opt/arm64-toolchain
+    ANDROID_TOOLCHAINS_DIR=/opt/toolchains
 
 RUN apt-get update && \
     apt-get install -y \
@@ -42,14 +43,12 @@ RUN pip install --upgrade pip && \
     pip install pre-commit
 
 # Android NDK
-RUN mkdir /opt/android-ndk-tmp && \
+RUN mkdir -p ${ANDROID_TOOLCHAINS_DIR} && \
+    mkdir -p /opt/android-ndk-tmp && \
     cd /opt/android-ndk-tmp && \
     wget -q https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip && \
     unzip -q android-ndk-r14b-linux-x86_64.zip && \
     mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm --platform=android-23 --install-dir=${ANDROID_ARM_STANDALONE_TOOLCHAIN} && \
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm64 --platform=android-23 --install-dir=${ANDROID_ARM64_STANDALONE_TOOLCHAIN} && \
-    rm -rf /opt/android-ndk-tmp && \
-    rm -rf ${ANDROID_NDK_HOME}
+    rm -rf /opt/android-ndk-tmp
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build_android.sh"]
