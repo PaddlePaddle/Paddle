@@ -1,22 +1,20 @@
 # Design Doc: Python API
 
-<!-- 引言，说明问题 -->
-
 The top level user API in Python should be as same as API in `paddle.v2` after refactoring Paddle from a layer based framework to an operator based framework. There are many new classes in CPP in [compile time] for describing neural networks, such as `Variable`, `Operator`, `Block`. The issue about current design is how to give a proper way to wrap the C++ API to `paddle.v2` API and writing layers in Python.
-
-<!-- 说明为什么我们要先用runtime概念实现Python API。说明我们必须要同时考虑编译器API，进而让之后迁移更简单 -->
 
 This implementation of Python API includes two steps.
 
 1. Implement the Python API using current C++ runtime concepts.
 2. Replace the implementation by using compile-time concepts when they are completed.
 
-...
+The implementation of the first step is a temporary implementation. We should design our Python API concepts based on `compile-time` concepts. We just use `runtime` classes to implement it for now.
 
 
-## Python Class about compile-time concepts
+## Python Class and compile-time protobuf
 
-<!-- 引言，引出这个表格 -->
+As we design our Python API concepts based on `compile-time`, we try to map our Python classes to every compile-time result, i.e., the protobuf messages. They are:
+
+
 | Python Class | Compile-time protobuf |
 | --- | --- |
 | Block | BlockDesc |
