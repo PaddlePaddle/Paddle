@@ -29,7 +29,7 @@ class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(X->dims().size(), 2, "X's dimension must be 2.");
     PADDLE_ENFORCE_EQ(label->dims().size(), 1, "label's dimension must be 1.");
     PADDLE_ENFORCE_EQ(X->dims()[0], label->dims()[0]);
-    ctx.Output<Tensor>("Y")->Resize({X->dims()[0]});
+    ctx.Output<Tensor>("Y")->Resize({X->dims()[0], 1});
   }
 };
 
