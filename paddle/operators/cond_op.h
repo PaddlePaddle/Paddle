@@ -34,7 +34,6 @@ namespace operators {
  *
  * if cond == 0, it will run false_net, which is another NetOp.
  */
-
 class CondOp : public framework::OperatorBase {
  public:
   CondOp(const std::string& type, const framework::VariableNameMap& inputs,
