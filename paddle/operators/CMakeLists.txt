@@ -52,7 +52,7 @@ function(op_library TARGET)
 
     # net_op doesn't need pybind
     if ("${TARGET}" STREQUAL "net_op")
-        set(pybind_file 1)
+        set(pybind_flag 1)
     endif()
 
     # pybind USE_NO_KERNEL_OP

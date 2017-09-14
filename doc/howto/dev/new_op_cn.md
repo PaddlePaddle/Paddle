@@ -241,24 +241,12 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 - 绑定Python
 
-    在 [`paddle/pybind/pybind.cc
-`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/pybind.cc) 使用`USE_OP`告知编译器需要链接的Op，具体解释参考[代码注释](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/op_registry.h#L81)。
-
-    ```
-    USE_OP(mul);
-    ```
-    如果只实现了CPU版本，则使用`USE_CPU_ONLY_OP`:
-
-    ```
-    USE_CPU_ONLY_OP(gather);
-    ```
-
-    如果OP不带Kernel，则使用`USE_NO_KENREL_OP`:
-
-    ```
-    USE_NO_KENREL_OP(recurrent);
-    ```
-
+    编译器 [paddle/operators/CMakeLists.txt](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/CMakeLists.txt) 会自动为Op绑定Python，生成[`paddle/pybind/pybind.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/pybind.h)，绑定规则如下：
+    
+    - net_op 不绑定Python
+    - 如果OP不带Kernel，则使用`USE_NO_KENREL_OP`
+    - 如果只实现了CPU版本，则使用`USE_CPU_ONLY_OP`
+    - `USE_NO_KENREL_OP`优先级高于`USE_CPU_ONLY_OP`
 
  - 生成库
 
@@ -367,3 +355,9 @@ make test ARGS="-R test_mul_op -V"
 ```bash
 ctest -R test_mul_op
 ```
+
+## 注意事项
+
+- 为每个Op创建单独的`*_op.h`（如有）、`*_op.cc`和`*_op.cu`（如有）。不允许一个文件中包含多个Op，这将会导致编译出错。
+- 注册Op时的类型名，需要和该Op的名字一样。即不允许在`A_op.cc`里面，注册`REGISTER_OP(B, ...)`等，这将会导致单元测试出错。
+- 如果Op没有实现GPU Kernel，请不要创建空的`*_op.cu`，这将会导致单元测试出错。
