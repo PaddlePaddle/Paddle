@@ -80,9 +80,11 @@ endfunction()
 add_subdirectory(math)
 
 set(DEPS_OPS
-    recurrent_op)
+    recurrent_op
+    cond_op)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
   DEPS framework_proto tensor net_op)
+op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
