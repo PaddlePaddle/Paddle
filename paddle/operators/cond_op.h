@@ -61,12 +61,16 @@ class CondOp : public framework::OperatorBase {
    */
   void InferShape(const framework::Scope& scope) const override;
 
-  // Set True Block
+  /*
+   * Set True Block
+   */
   void set_truenet(std::unique_ptr<OperatorBase>&& net) {
     sub_net_op_[0] = std::move(net);
   }
 
-  // Set False Block
+  /*
+   * Set False Block
+   */
   void set_falsenet(std::unique_ptr<OperatorBase>&& net) {
     sub_net_op_[1] = std::move(net);
   }
