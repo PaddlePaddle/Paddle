@@ -78,7 +78,7 @@ struct EnforceNotMet : public std::exception {
 
       Dl_info info;
       for (int i = 0; i < size; ++i) {
-        if (dladdr(call_stack[i], &info)) {
+        if (dladdr(call_stack[i], &info) && info.dli_sname) {
           auto demangled = demangle(info.dli_sname);
           auto addr_offset = static_cast<char*>(call_stack[i]) -
                              static_cast<char*>(info.dli_saddr);

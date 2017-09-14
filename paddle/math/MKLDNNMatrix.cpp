@@ -33,14 +33,12 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m, memory::primitive_desc pd) {
     size_t width = cnts / dims[0];
     m = Matrix::create(height, width, false, false);
   }
-
   CHECK(m) << " Matrix should not be empty";
+
   CpuMatrixPtr cpuMatrix = std::dynamic_pointer_cast<CpuMatrix>(m);
   CHECK(cpuMatrix) << "Only support create from CPU matrix yet";
-
-  CHECK_EQ(cnts, m->getElementCnt()) << "Count size does not match";
-  return std::make_shared<MKLDNNMatrix>(
-      m->getData(), m->getHeight(), m->getWidth(), pd);
+  CHECK_EQ(cpuMatrix->getElementCnt(), cnts) << "Count size does not match";
+  return std::make_shared<MKLDNNMatrix>(cpuMatrix, pd);
 }
 
 MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
@@ -49,6 +47,27 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
                                      engine& eg,
                                      mkldnn::memory::data_type dtype) {
   return create(m, memory::primitive_desc(memory::desc(dims, dtype, fmt), eg));
+}
+
+std::shared_ptr<reorder> MKLDNNMatrix::createReorder(const MKLDNNMatrixPtr& src,
+                                                     const MKLDNNMatrixPtr& dst,
+                                                     bool checkData) {
+  if (src == dst || src->getPrimitiveDesc() == dst->getPrimitiveDesc()) {
+    return nullptr;
+  }
+
+  if (checkData && (src->getData() == dst->getData())) {
+    LOG(FATAL) << "can not create reorder with inplace data";
+    return nullptr;
+  }
+
+  memory::dims srcDims = src->getDims();
+  memory::dims dstDims = dst->getDims();
+  CHECK_EQ(srcDims.size(), dstDims.size());
+  for (size_t i = 0; i < srcDims.size(); ++i) {
+    CHECK_EQ(srcDims[i], dstDims[i]);
+  }
+  return std::make_shared<reorder>(*src, *dst);
 }
 
 void MKLDNNMatrix::reorderDataFrom(const MKLDNNMatrixPtr& m,
@@ -138,7 +157,7 @@ void MKLDNNMatrix::downSpatial() {
       mkldnn_primitive_create(&result, pd.get(), nullptr, nullptr),
       "could not create a memory primitive");
   reset(result);
-  set_data_handle(getData());
+  set_data_handle(data_);
 }
 
 }  // namespace paddle
