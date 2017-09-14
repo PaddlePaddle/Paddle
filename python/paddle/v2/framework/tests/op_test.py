@@ -196,7 +196,7 @@ class OpTest(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(
                         actual, expect, atol=1e-05),
-                    "output name: " + out_name + "has diff")
+                    "output name: " + out_name + " has diff")
 
     def check_output(self):
         places = [core.CPUPlace()]
