@@ -56,6 +56,7 @@ USE_OP(top_k);
 USE_OP(squared_l2_distance);
 USE_OP(sum);
 USE_OP(reshape);
+USE_OP(rank_loss);
 
 namespace paddle {
 namespace framework {
