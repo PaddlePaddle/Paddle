@@ -26,9 +26,7 @@ def crop(data, offsets, crop_shape):
     return np.array(result).reshape(crop_shape)
 
 
-class TCropOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TCropOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.type = "crop"

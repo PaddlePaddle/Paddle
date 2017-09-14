@@ -118,6 +118,23 @@ class CropOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+int64_t transIndex(std::vector<int64_t> out_shape, std::vector<int64_t> x_shape,
+                   std::vector<std::pair<int, int>> crop_rules, size_t index) {
+  int64_t dim_size = out_shape.size();
+  std::vector<int64_t> pos(dim_size);
+
+  for (int64_t i = out_shape.size() - 1; i >= 0; --i) {
+    pos[i] = (index % out_shape[i]) + crop_rules[i].first;
+    index = index / out_shape[i];
+  }
+
+  size_t result = pos[0];
+  for (size_t i = 1; i < x_shape.size(); ++i) {
+    result = result * x_shape[i] + pos[i];
+  }
+  return result;
+}
+
 template <typename T>
 class CropCPUKernel : public framework::OpKernel {
  public:

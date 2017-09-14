@@ -26,23 +26,6 @@ using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 using Tensor = framework::Tensor;
 
-int64_t transIndex(std::vector<int64_t> out_shape, std::vector<int64_t> x_shape,
-                   std::vector<std::pair<int, int>> crop_rules, size_t index) {
-  int64_t dim_size = out_shape.size();
-  int64_t pos[dim_size];
-
-  for (int64_t i = out_shape.size() - 1; i >= 0; --i) {
-    pos[i] = (index % out_shape[i]) + crop_rules[i].first;
-    index = index / out_shape[i];
-  }
-
-  size_t result = pos[0];
-  for (size_t i = 1; i < x_shape.size(); ++i) {
-    result = result * x_shape[i] + pos[i];
-  }
-  return result;
-}
-
 template <typename Place, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
   auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));

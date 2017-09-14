@@ -43,7 +43,6 @@ class OpDescCreationMethod(object):
         if len(args) != 0:
             raise ValueError("Only keyword arguments are supported.")
         op_desc = framework_pb2.OpDesc()
-
         for input_parameter in self.__op_proto__.inputs:
             input_arguments = kwargs.get(input_parameter.name, [])
             if is_str(input_arguments):
@@ -98,7 +97,7 @@ class OpDescCreationMethod(object):
                     new_attr.strings.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
-                        pair = new_attr.pairs.add()
+                        pair = new_attr.int_pairs.add()
                         pair.first = p[0]
                         pair.second = p[1]
                 else:
