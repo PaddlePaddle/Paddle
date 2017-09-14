@@ -17,21 +17,25 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-__global__ void AccuracySingleKernel(const int N, const int D, const int top_k,
-                                     const int* Xdata, const int* labelData,
-                                     float* accuracy) {
-  int correct = 0;
-  for (int row = 0; row < N; row++) {
-    const int label = labelData[row];
-    for (int col = 0; col < D; col++) {
-      const int pred = Xdata[row * D + col];
-      if (pred == label) {
-        ++correct;
+__global__ void AccuracyCudaKernel(const int N, const int D, const int* Xdata,
+                                   const int* labeldata, float* accuracy) {
+  int count = 0;
+  __shared__ int total;
+  total = 0;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (N);
+       i += blockDim.x * gridDim.x) {
+    for (int j = 0; j < D; ++j) {
+      if (Xdata[i * D + j] == labeldata[i]) {
+        ++count;
         break;
       }
     }
   }
-  *accuracy = static_cast<float>(correct) / static_cast<float>(N);
+  atomicAdd(&total, count);
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    *accuracy = static_cast<float>(total) / static_cast<float>(N);
+  }
 }
 
 template <typename T>
@@ -57,8 +61,10 @@ class AccuracyOpCUDAKernel : public framework::OpKernel {
       return;
     }
 
-    AccuracySingleKernel<<<1, 1>>>(num_samples, infer_width, 1, inference_data,
-                                   label_data, accuracy_data);
+    int threads = 512;
+    int grids = (num_samples + 4096 - 1) / 4096;
+    AccuracyCudaKernel<<<grids, threads>>>(
+        num_samples, infer_width, inference_data, label_data, accuracy_data);
   }
 };
 
