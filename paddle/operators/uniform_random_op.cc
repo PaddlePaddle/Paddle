@@ -35,7 +35,7 @@ class CPUUniformRandomKernel : public framework::OpKernel {
     std::uniform_real_distribution<T> dist(
         static_cast<T>(context.Attr<float>("min")),
         static_cast<T>(context.Attr<float>("max")));
-    int64_t size = framework::product(tensor->dims());
+    int64_t size = tensor->numel();
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
@@ -50,7 +50,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE(Attr<float>("min") < Attr<float>("max"),
                    "uniform_random's min must less then max");
-    auto* tensor = ctx.Output<framework::Tensor>("Out");
+    auto* tensor = ctx.Output<framework::LoDTensor>("Out");
     auto dims = Attr<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());

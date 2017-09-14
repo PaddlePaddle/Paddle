@@ -469,7 +469,7 @@ size_t getDetectionIndices(
     const size_t numClasses,
     const size_t backgroundId,
     const size_t batchSize,
-    const size_t confThreshold,
+    const real confThreshold,
     const size_t nmsTopK,
     const real nmsThreshold,
     const size_t keepTopK,

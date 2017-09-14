@@ -33,7 +33,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x->dims(), y->dims(),
                       "Dimensions of SmoothL1LossOp's input and target "
                       "must be same.");
-    PADDLE_ENFORCE_GE(framework::arity(x->dims()), 2,
+    PADDLE_ENFORCE_GE(x->dims().size(), 2,
                       "Tensor rank of SmoothL1LossOp's input must be "
                       "at least 2.");
     auto* inside_weight = ctx.Input<framework::Tensor>("InsideWeight");
@@ -49,8 +49,8 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
           "Dimensions of outside weight must be same with input.");
     }
 
-    auto* diff = ctx.Output<framework::Tensor>("diff");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* diff = ctx.Output<framework::LoDTensor>("Diff");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
     diff->Resize(x->dims());
     // loss is a two-rank tensor
     out->Resize({x->dims()[0], 1});
@@ -67,16 +67,18 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "Target of SmoothL1LossOp.");
     AddInput("InsideWeight", "Optional input to scale (X-Y).");
     AddInput("OutsideWeight", "Optinal input to scale smooth l1 loss.");
-    AddOutput("diff", "Intermediate variable to cache Win*(X-Y).")
+    AddOutput("Diff", "Intermediate variable to cache Win*(X-Y).")
         .AsIntermediate();
     AddOutput("Out", "Final smooth l1 loss of inputs.");
     AddAttr<AttrType>("sigma", "Hyper parameter, default value is 3.0 .")
         .SetDefault(3.0);
     AddComment(R"DOC(
 Compute SmoothL1Loss for input and target.
+
 The equation is:
 loss = 0.5 * (sigma * (x - y)) ^ 2 if abs(x - y) < 1 / sigma^2
        abs(x - y) - 0.5 / sigma^2  otherwise
+
 )DOC");
   }
 };
@@ -90,10 +92,12 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
     auto in_dims = ctx.Input<framework::Tensor>("X")->dims();
     auto out_dims =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->dims();
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* y_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
 
-    PADDLE_ENFORCE_GE(framework::arity(out_dims), 2,
+    PADDLE_ENFORCE_GE(out_dims.size(), 2,
                       "Tensor rank of output gradient should be 2.");
     PADDLE_ENFORCE_EQ(out_dims[0], in_dims[0],
                       "First dimension of ouptut gradient must be "

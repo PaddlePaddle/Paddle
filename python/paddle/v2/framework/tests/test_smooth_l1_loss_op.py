@@ -1,9 +1,6 @@
 import unittest
-from op_test_util import OpTestMeta
-from gradient_checker import GradientChecker, create_op
-import functools
 import numpy as np
-from paddle.v2.framework.op import Operator
+from op_test import OpTest
 
 
 def smooth_l1_loss_forward(val, sigma2):
@@ -14,12 +11,10 @@ def smooth_l1_loss_forward(val, sigma2):
         return abs_val - 0.5 / sigma2
 
 
-class TestSmoothL1LossOp_f0(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestSmoothL1LossOp1(OpTest):
     def setUp(self):
-        self.type = "smooth_l1_loss"
-        dims = (32, 64)
+        self.op_type = "smooth_l1_loss"
+        dims = (10, 15)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32")
@@ -30,15 +25,27 @@ class TestSmoothL1LossOp_f0(unittest.TestCase):
         diff = self.inputs['X'] - self.inputs['Y']
         loss = np.vectorize(smooth_l1_loss_forward)(diff, sigma2).sum(1)
         loss = loss.reshape((dims[0], 1))
-        self.outputs = {'diff': diff, 'Out': loss}
+        self.outputs = {'Diff': diff, 'Out': loss}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.08)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.08, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.08, no_grad_set=set('Y'))
 
 
-class TestSmoothL1LossOp_f1(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestSmoothL1LossOp2(OpTest):
     def setUp(self):
-        self.type = "smooth_l1_loss"
-        dims = (32, 64)
+        self.op_type = "smooth_l1_loss"
+        dims = (10, 15)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32"),
@@ -53,53 +60,27 @@ class TestSmoothL1LossOp_f1(unittest.TestCase):
         loss = np.vectorize(smooth_l1_loss_forward)(diff, sigma2)
         loss = loss * self.inputs['OutsideWeight']
         loss = loss.sum(1).reshape((dims[0], 1))
-        self.outputs = {'diff': diff, 'Out': loss}
+        self.outputs = {'Diff': diff, 'Out': loss}
 
+    def test_check_output(self):
+        self.check_output()
 
-class SmoothL1LossGradOpTest(GradientChecker):
-    def test_smooth_l1_loss_b0(self):
-        dims = (5, 7)
-        X = np.random.random(dims).astype("float32")
-        Y = np.random.random(dims).astype("float32")
-        InsideWeight = np.random.random(dims).astype("float32")
-        OutsideWeight = np.random.random(dims).astype("float32")
-        inputs = {
-            'X': X,
-            'Y': Y,
-            'InsideWeight': InsideWeight,
-            'OutsideWeight': OutsideWeight
-        }
-        op = Operator(
-            "smooth_l1_loss",
-            X='X',
-            Y='Y',
-            InsideWeight='InsideWeight',
-            OutsideWeight='OutsideWeight',
-            diff="diff",
-            Out="Out",
-            sigma=3.0)
-        self.compare_grad(
-            op, inputs, no_grad_set=set(['InsideWeight', 'OutsideWeight']))
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.08)
+
+    def test_check_grad_ingore_x(self):
         self.check_grad(
-            op, inputs, set(["X", "Y"]), "Out", max_relative_error=0.08)
+            ['Y'],
+            'Out',
+            max_relative_error=0.08,
+            no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']))
 
-    def test_smooth_l1_loss_b1(self):
-        dims = (5, 7)
-        X = np.random.random(dims).astype("float32")
-        Y = np.random.random(dims).astype("float32")
-        inputs = {'X': X, 'Y': Y}
-        op = Operator(
-            "smooth_l1_loss",
-            X='X',
-            Y='Y',
-            InsideWeight='InsideWeight',
-            OutsideWeight='OutsideWeight',
-            diff="diff",
-            Out="Out",
-            sigma=3.0)
-        self.compare_grad(
-            op, inputs, no_grad_set=set(['InsideWeight', 'OutsideWeight']))
-        self.check_grad(op, inputs, set(["X", "Y"]), "Out")
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.08,
+            no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']))
 
 
 if __name__ == '__main__':

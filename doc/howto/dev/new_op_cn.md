@@ -34,7 +34,7 @@ Kernel实现       | CPU、GPU共享Kernel实现在`.h`文件中，否则，CPU 
 注册Op           | Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，GPU实现在`.cu`文件中
 
 
-实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。
+实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。**系统会根据文件名自动构建op和其对应的Python扩展。**
 
 
 下面以矩阵乘操作，即[MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc)为例来介绍如何写带Kernel的Operator。
@@ -224,45 +224,15 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 ### 5. 编译
 
-- 简单**无特殊依赖**的OP无需修改CMakeList.txt文件。[paddle/operators/CMakeLists.txt](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/CMakeLists.txt) 会自动将 `paddle/operators` 目录下新增的 `*_op.cc` 文件加入编译。
-- 较为复杂、**有额外依赖** 的operator仍需要修改[paddle/operators/CMakeLists.txt](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/CMakeLists.txt)。如，`mul_op` 依赖 `math_function`，需要在`CMakeLists.txt`中添加如下内容：
+运行下面命令可以进行编译：
 
-    ```
-    op_library(mul_op SRCS mul_op.cc mul_op.cu DEPS math_function)		 +
-    ```
-
-- 运行下面命令可以进行编译：
-
-    ```
-    make mul_op
-    ```
+```
+make mul_op
+```
 
 ## 绑定Python
 
-- 绑定Python
-
-    在 [`paddle/pybind/pybind.cc
-`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/pybind.cc) 使用`USE_OP`告知编译器需要链接的Op，具体解释参考[代码注释](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/op_registry.h#L81)。
-
-    ```
-    USE_OP(mul);
-    ```
-    如果只实现了CPU版本，则使用`USE_CPU_ONLY_OP`:
-
-    ```
-    USE_CPU_ONLY_OP(gather);
-    ```
-
-    如果OP不带Kernel，则使用`USE_NO_KENREL_OP`:
-
-    ```
-    USE_NO_KENREL_OP(recurrent);
-    ```
-
-
- - 生成库
-
-   无需修改 [`paddle/pybind/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/pybind/CMakeLists.txt)文件，`paddle/operators` 目录下新增的 `*_op.cc` 文件会被自动添加链接到生成的lib库中。
+系统会对新增的op自动绑定Python，并链接到生成的lib库中。
 
 ## 实现单元测试
 
@@ -354,11 +324,7 @@ class TestMulGradOp(GradientChecker):
 
 ### 编译和执行单元测试
 
-单元测试编写完成之后，在[`python/paddle/v2/framework/tests/CMakeLists.txt`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/CMakeLists.txt)中添加以下内容，将单元测试加入工程：
-
-```
-py_test(test_mul_op SRCS test_mul_op.py)
-```
+`python/paddle/v2/framework/tests` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
 
 请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单元测试：
 
@@ -371,3 +337,10 @@ make test ARGS="-R test_mul_op -V"
 ```bash
 ctest -R test_mul_op
 ```
+
+## 注意事项
+
+- 为每个Op创建单独的`*_op.h`（如有）、`*_op.cc`和`*_op.cu`（如有）。不允许一个文件中包含多个Op，这将会导致编译出错。
+- 注册Op时的类型名，需要和该Op的名字一样。即不允许在`A_op.cc`里面，注册`REGISTER_OP(B, ...)`等，这将会导致单元测试出错。
+- 如果Op没有实现GPU Kernel，请不要创建空的`*_op.cu`，这将会导致单元测试出错。
+- 如果多个Op依赖一些共用的函数，可以创建非`*_op.*`格式的文件来存放，如`gather.h`文件。
