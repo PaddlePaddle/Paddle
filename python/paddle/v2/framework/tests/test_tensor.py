@@ -44,79 +44,66 @@ class TestTensor(unittest.TestCase):
         self.assertAlmostEqual(2.0, tensor_array_2[19, 11])
 
     def test_int_lod_tensor(self):
-        places = [core.CPUPlace(), core.GPUPlace(0)]
-        for place in places:
-            scope = core.Scope()
-            var = scope.new_var("test_tensor")
-            var_lod = scope.new_var("test_lod_tensor")
+        place = core.CPUPlace()
+        scope = core.Scope()
+        var_lod = scope.new_var("test_lod_tensor")
+        lod_tensor = var_lod.get_tensor()
 
-            tensor = var.get_tensor()
-            lod_tensor = var_lod.get_lod_tensor()
+        lod_tensor.set_dims([4, 4, 6])
+        lod_tensor.alloc_int(place)
+        array = numpy.array(lod_tensor)
+        array[0, 0, 0] = 3
+        array[3, 3, 5] = 10
+        lod_tensor.set(array, place)
+        lod_tensor.set_lod([[0, 2, 4]])
 
-            tensor.set_dims([4, 4, 6])
-            tensor.alloc_int(place)
-            array = numpy.array(tensor)
-            array[0, 0, 0] = 3
-            array[3, 3, 5] = 10
-            tensor.set(array, place)
+        lod_v = numpy.array(lod_tensor)
+        self.assertTrue(numpy.alltrue(array == lod_v))
 
-            lod_tensor.set_tensor(tensor)
-            lod_tensor.set_lod([[0, 2, 4]])
-
-            lod_v = numpy.array(lod_tensor.tensor())
-            self.assertTrue(numpy.alltrue(array == lod_v))
-
-            lod = lod_tensor.lod()
-            self.assertEqual(0, lod[0][0])
-            self.assertEqual(2, lod[0][1])
-            self.assertEqual(4, lod[0][2])
+        lod = lod_tensor.lod()
+        self.assertEqual(0, lod[0][0])
+        self.assertEqual(2, lod[0][1])
+        self.assertEqual(4, lod[0][2])
 
     def test_float_lod_tensor(self):
-        places = [core.CPUPlace(), core.GPUPlace(0)]
-        for place in places:
-            scope = core.Scope()
-            var = scope.new_var("test_tensor")
-            var_lod = scope.new_var("test_lod_tensor")
+        place = core.CPUPlace()
+        scope = core.Scope()
+        var_lod = scope.new_var("test_lod_tensor")
 
-            tensor = var.get_tensor()
-            lod_tensor = var_lod.get_lod_tensor()
+        lod_tensor = var_lod.get_tensor()
+        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor.alloc_float(place)
 
-            tensor.set_dims([5, 2, 3, 4])
-            tensor.alloc_float(place)
+        tensor_array = numpy.array(lod_tensor)
+        self.assertEqual((5, 2, 3, 4), tensor_array.shape)
+        tensor_array[0, 0, 0, 0] = 1.0
+        tensor_array[0, 0, 0, 1] = 2.0
+        lod_tensor.set(tensor_array, place)
 
-            tensor_array = numpy.array(tensor)
-            self.assertEqual((5, 2, 3, 4), tensor_array.shape)
-            tensor_array[0, 0, 0, 0] = 1.0
-            tensor_array[0, 0, 0, 1] = 2.0
-            tensor.set(tensor_array, place)
+        lod_v = numpy.array(lod_tensor)
+        self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
+        self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
+        self.assertEqual(len(lod_tensor.lod()), 0)
 
-            lod_tensor.set_tensor(tensor)
-
-            lod_v = numpy.array(lod_tensor.tensor())
-            self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
-            self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
-            self.assertEqual(len(lod_tensor.lod()), 0)
-
-            lod_py = [[0, 2, 5], [0, 2, 4, 5]]
-            lod_tensor.set_lod(lod_py)
-            lod = lod_tensor.lod()
-            self.assertListEqual(lod_py, lod)
+        lod_py = [[0, 2, 5], [0, 2, 4, 5]]
+        lod_tensor.set_lod(lod_py)
+        lod = lod_tensor.lod()
+        self.assertListEqual(lod_py, lod)
 
     def test_lod_tensor_init(self):
         scope = core.Scope()
-        var = scope.new_var("test_tensor")
         place = core.CPUPlace()
-        tensor = var.get_tensor()
-        tensor.set_dims([5, 2, 3, 4])
-        tensor.alloc_float(place)
-        tensor_array = numpy.array(tensor)
+        lod_py = [[0, 2, 5], [0, 2, 4, 5]]
+        lod_tensor = core.LoDTensor(lod_py)
+
+        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor.alloc_float(place)
+        tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
         tensor_array[0, 0, 0, 1] = 2.0
-        tensor.set(tensor_array, place)
-        lod_py = [[0, 2, 5], [0, 2, 4, 5]]
+        lod_tensor.set(tensor_array, place)
 
-        lod_tensor = core.LoDTensor(lod_py, tensor)
-        lod_v = numpy.array(lod_tensor.tensor())
+        lod_v = numpy.array(lod_tensor)
         self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
         self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
         self.assertListEqual(lod_py, lod_tensor.lod())

@@ -51,18 +51,15 @@ bool operator==(const LoD& a, const LoD& b);
  * LoDTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */
-class LoDTensor {
+class LoDTensor : public Tensor {
  public:
   LoDTensor() {}
-  LoDTensor(const LoD& lod, Tensor* t) : lod_(lod), tensor_(t) {}
+
+  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 
   void set_lod(const LoD& lod) { lod_ = lod; }
 
-  void set_tensor(Tensor* tensor) { tensor_ = tensor; }
-
-  Tensor& tensor() { return *tensor_; }
-
-  LoD lod() { return lod_; }
+  LoD lod() const { return lod_; }
 
   /*
    * Get a element from LoD.
@@ -104,7 +101,6 @@ class LoDTensor {
 
  private:
   LoD lod_;
-  Tensor* tensor_;  // not owned
 };
 }  // namespace framework
 }  // namespace paddle
