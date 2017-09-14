@@ -17,18 +17,15 @@
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/elementwise_op.h"
-#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-#define EIGEN_MUL(x, y) ((x) * (y))
 
 template <typename Place, typename T>
 class ElementWiseMulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementWiseCompute<EIGEN_FUNCTOR(mul, EIGEN_MUL), Place, T>(ctx);
+    ElementWiseCompute<EigenMulFunctor, Place, T>(ctx);
   }
 };
 
@@ -36,7 +33,7 @@ template <typename Place, typename T>
 class ElementWiseMulGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementWiseCompute<EIGEN_GRAD_FUNCTOR(mul, EIGEN_MUL), Place, T>(ctx);
+    ElementWiseGradCompute<EigenMulGradFunctor, Place, T>(ctx);
   }
 };
 

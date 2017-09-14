@@ -49,39 +49,45 @@ inline void get_mid_dims(const framework::DDim& x_dims,
   }
 }
 
-#define EIGEN_FUNCTOR(name, eigen_op)                                         \
-  struct Eigen##name##Functor {                                               \
-    using Tensor = framework::Tensor;                                         \
-    using Context = framework::ExecutionContext;                              \
-    template <typename Place, typename T>                                     \
-    inline void Run(Tensor* x, Tensor* y, Tensor* z, const Context& ctx) {    \
-      auto x_e = framework::EigenVector<T>::Flatten(*x);                      \
-      auto y_e = framework::EigenVector<T>::Flatten(*y);                      \
-      auto z_e = framework::EigenVector<T>::Flatten(*z);                      \
-      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_e);           \
-    }                                                                         \
-    template <typename Place, typename T>                                     \
-    inline void RunBroadCast(Tensor* x, Tensor* y, Tensor* z,                 \
-                             const Context& ctx, int pre, int n) {            \
-      auto x_e = framework::EigenVector<T>::Flatten(*x);                      \
-      auto y_e = framework::EigenVector<T>::Flatten(*y);                      \
-      auto z_e = framework::EigenVector<T>::Flatten(*z);                      \
-      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))                 \
-                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))            \
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));         \
-      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_bcast);       \
-    }                                                                         \
-    template <typename Place, typename T>                                     \
-    inline void RunBroadCast2(Tensor* x, Tensor* y, Tensor* z,                \
-                              const Context& ctx, int pre, int n, int post) { \
-      auto x_e = framework::EigenVector<T>::Flatten(*x);                      \
-      auto y_e = framework::EigenVector<T>::Flatten(*y);                      \
-      auto z_e = framework::EigenVector<T>::Flatten(*z);                      \
-      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))              \
-                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))      \
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));         \
-      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_bcast);       \
-    }
+#define EIGEN_FUNCTOR(name, eigen_op)                                          \
+  struct Eigen##name##Functor {                                                \
+    template <typename Place, typename T>                                      \
+    inline void Run(const framework::Tensor* x, const framework::Tensor* y,    \
+                    framework::Tensor* z,                                      \
+                    const framework::ExecutionContext& ctx) {                  \
+      auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
+      auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
+      auto z_e = framework::EigenVector<T>::Flatten(*z);                       \
+      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_e);            \
+    }                                                                          \
+    template <typename Place, typename T>                                      \
+    inline void RunBroadCast(const framework::Tensor* x,                       \
+                             const framework::Tensor* y, framework::Tensor* z, \
+                             const framework::ExecutionContext& ctx, int pre,  \
+                             int n) {                                          \
+      auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
+      auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
+      auto z_e = framework::EigenVector<T>::Flatten(*z);                       \
+      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))                  \
+                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))             \
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));          \
+      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_bcast);        \
+    }                                                                          \
+    template <typename Place, typename T>                                      \
+    inline void RunBroadCast2(const framework::Tensor* x,                      \
+                              const framework::Tensor* y,                      \
+                              framework::Tensor* z,                            \
+                              const framework::ExecutionContext& ctx, int pre, \
+                              int n, int post) {                               \
+      auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
+      auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
+      auto z_e = framework::EigenVector<T>::Flatten(*z);                       \
+      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))               \
+                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))       \
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));          \
+      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_bcast);        \
+    }                                                                          \
+  }
 
 template <class functor, typename Place, typename T>
 void ElementWiseCompute(const framework::ExecutionContext& ctx) {
@@ -98,7 +104,8 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
                     "Rank of first input must >= rank of second input.")
 
   if (x_dims == y_dims || product(y_dims) == 1) {
-    functor::Run(x, y, z, ctx);
+    functor f;
+    f.template Run<Place, T>(x, y, z, ctx);
     return;
   }
 
@@ -110,21 +117,23 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
   int pre, n, post;
   get_mid_dims(x_dims, y_dims, axis, pre, n, post);
   if (post == 1) {
-    functor::template RunBroadCast<Place, T>(x, y, z, ctx, pre, n);
+    functor f;
+    f.template RunBroadCast<Place, T>(x, y, z, ctx, pre, n);
     return;
   } else {
-    functor::template RunBroadCast2<Place, T>(x, y, z, ctx, pre, n, post);
+    functor f;
+    f.template RunBroadCast2<Place, T>(x, y, z, ctx, pre, n, post);
     return;
   }
 }
 
 #define EIGEN_GRAD_FUNCTOR(name, eigen_op)                                     \
   struct Eigen##name##Grad##Functor {                                          \
-    using Tensor = framework::Tensor;                                          \
-    using Context = framework::ExecutionContext;                               \
     template <typename Place, typename T>                                      \
-    inline void Run(Tensor* x, Tensor* y, Tensor* dout, Tensor* dx,            \
-                    Tensor* dy, const Context& ctx) {                          \
+    inline void Run(const framework::Tensor* x, const framework::Tensor* y,    \
+                    const framework::Tensor* dout, framework::Tensor* dx,      \
+                    framework::Tensor* dy,                                     \
+                    const framework::ExecutionContext& ctx) {                  \
       auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
       auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
       auto dout_e = framework::EigenVector<T>::Flatten(*dout);                 \
@@ -138,8 +147,12 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
       }                                                                        \
     }                                                                          \
     template <typename Place, typename T>                                      \
-    inline void RunBroadCast(Tensor* x, Tensor* y, Tensor* dout, Tensor* dx,   \
-                             Tensor* dy, const Context& ctx, int pre, int n) { \
+    inline void RunBroadCast(const framework::Tensor* x,                       \
+                             const framework::Tensor* y,                       \
+                             const framework::Tensor* dout,                    \
+                             framework::Tensor* dx, framework::Tensor* dy,     \
+                             const framework::ExecutionContext& ctx, int pre,  \
+                             int n) {                                          \
       auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
       auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
       auto dout_e = framework::EigenVector<T>::Flatten(*dout);                 \
@@ -149,7 +162,7 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
       if (dx) {                                                                \
         auto dx_e = framework::EigenVector<T>::Flatten(*dx);                   \
         dx_e.device(ctx.GetEigenDevice<Place>()) =                             \
-            eigen_op(dout_e * y_e_bcast);                                      \
+            eigen_op(dout_e, y_e_bcast);                                       \
       }                                                                        \
       if (dy) {                                                                \
         auto dy_e = framework::EigenVector<T>::Flatten(*dy);                   \
@@ -160,9 +173,12 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
       }                                                                        \
     }                                                                          \
     template <typename Place, typename T>                                      \
-    inline void RunBroadCast2(Tensor* x, Tensor* y, Tensor* dout, Tensor* dx,  \
-                              Tensor* dy, const Context& ctx, int pre, int n,  \
-                              int post) {                                      \
+    inline void RunBroadCast2(const framework::Tensor* x,                      \
+                              const framework::Tensor* y,                      \
+                              const framework::Tensor* dout,                   \
+                              framework::Tensor* dx, framework::Tensor* dy,    \
+                              const framework::ExecutionContext& ctx, int pre, \
+                              int n, int post) {                               \
       auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
       auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
       auto dout_e = framework::EigenVector<T>::Flatten(*dout);                 \
@@ -181,7 +197,12 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
                 .reshape(Eigen::DSizes<int, 3>(pre, n, post))                  \
                 .sum(Eigen::array<int, 2>{{0, 2}});                            \
       }                                                                        \
-    }
+    }                                                                          \
+  }
+
+#define EIGEN_MUL(x, y) ((x) * (y))
+EIGEN_FUNCTOR(Mul, EIGEN_MUL);
+EIGEN_GRAD_FUNCTOR(Mul, EIGEN_MUL);
 
 template <class functor, typename Place, typename T>
 void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
@@ -204,7 +225,8 @@ void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
   }
 
   if (x_dims == y_dims || product(y_dims) == 1) {
-    functor::template Run<Place, T>(x, y, dout, dx, dy, ctx);
+    functor f;
+    f.template Run<Place, T>(x, y, dout, dx, dy, ctx);
     return;
   }
 
@@ -216,11 +238,12 @@ void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
 
   // TODO(gongweibao): wrap reshape to a function.
   if (post == 1) {
-    functor::template RunBroadCast<Place, T>(x, y, dout, dx, dy, ctx, pre, n);
+    functor f;
+    f.template RunBroadCast<Place, T>(x, y, dout, dx, dy, ctx, pre, n);
     return;
   } else {
-    functor::template RunBroadCast2<Place, T>(x, y, dout, dx, dy, ctx, pre, n,
-                                              post);
+    functor f;
+    f.template RunBroadCast2<Place, T>(x, y, dout, dx, dy, ctx, pre, n, post);
     return;
   }
 }
