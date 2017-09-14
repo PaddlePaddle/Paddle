@@ -23,7 +23,7 @@ class ActivationOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<framework::Tensor>("Y")->Resize(
+    ctx.Output<framework::LoDTensor>("Y")->Resize(
         ctx.Input<framework::Tensor>("X")->dims());
   }
 };
@@ -34,7 +34,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<framework::Tensor>(framework::GradVarName("X"))
+    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<framework::Tensor>("Y")->dims());
   }
 };
