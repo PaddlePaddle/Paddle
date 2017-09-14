@@ -51,7 +51,7 @@ class OpRegistry {
         std::type_index(typeid(NOPMaker))) {
       op_info.proto_ = new OpProto;
       op_info.checker_ = new OpAttrChecker;
-      ProtoMakerType maker = ProtoMakerType(op_info.proto_, op_info.checker_);
+      auto maker = ProtoMakerType(op_info.proto_, op_info.checker_);
       maker.Validate();
       op_info.proto_->set_type(op_type);
       op_info.shapeInferFn_ = maker.GetShapeInferenceFn();
