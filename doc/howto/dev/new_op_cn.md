@@ -12,6 +12,7 @@
    - [前向Operator单测](#前向Operator单测)
    - [反向Operator单测](#反向Operator单测)
    - [编译和执行](#编译和执行)
+   - [小的技巧](#TIP)
 
 
 ## 概念简介
@@ -351,7 +352,6 @@ class TestMulGradOp(GradientChecker):
   - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
 - `test_ignore_x`和`test_ignore_y`分支用来测试只需要计算一个输入梯度的情况。
 
-
 ### 编译和执行单元测试
 
 `python/paddle/v2/framework/tests` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
@@ -367,3 +367,14 @@ make test ARGS="-R test_mul_op -V"
 ```bash
 ctest -R test_mul_op
 ```
+
+### TIP
+
+- 只编译新功能相关的部分  
+  - opertator的python单测依赖的是`/paddle/python/paddle/v2/framework/core.so`, 添加或者修改operator的C源代码后，用`make copy_paddle_pybind`即可更新该文件，不用编译整个工程，即可使用如`ctest -R test_mul_op`运行单测。  
+  - 如果需要的是C的可单测程序，如`gather_test`,可以执行`make gather_test`。  
+- python调试:     
+  如果需要pdb调试，如`pdb test_xxx.py`, 可以尝试修改`PYTHONPATH` 如`export PYTHONPATH=$PYTHONPATH:/paddle/python`。  
+  *注意：这种办法由于可能库的不完整导致错误的发生。*    
+- 调试C单测:   
+  cmake需要增加参数`-DCMAKE_BUILD_TYPE=Debug`，同时如果使用的是docker环境，启动continer的时候需要加入`--security-opt seccomp=unconfined`，然后执行如`gdb gather_test`。
