@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 #include "pybind11/numpy.h"
@@ -30,34 +31,6 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
-
-USE_OP(add);
-USE_OP(onehot_cross_entropy);
-USE_OP(sgd);
-USE_OP(mul);
-USE_OP(elementwise_mul);
-USE_OP(mean);
-USE_OP(sigmoid);
-USE_OP(softmax);
-USE_OP(rowwise_add);
-USE_OP(fill_zeros_like);
-USE_NO_KERNEL_OP(recurrent);
-USE_OP(gaussian_random);
-USE_OP(uniform_random);
-USE_OP(lookup_table);
-USE_OP(scale);
-USE_NO_KERNEL_OP(identity);
-USE_OP(minus);
-USE_OP(cos_sim);
-USE_CPU_ONLY_OP(gather);
-USE_OP(pad);
-USE_CPU_ONLY_OP(scatter);
-USE_OP(accuracy);
-USE_CPU_ONLY_OP(concat);
-USE_OP(top_k);
-USE_OP(squared_l2_distance);
-USE_OP(sum);
-USE_OP(reshape);
 
 namespace paddle {
 namespace framework {
