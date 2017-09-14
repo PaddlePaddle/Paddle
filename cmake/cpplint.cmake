@@ -26,9 +26,9 @@ set(IGNORE_PATTERN
     .*ImportanceSampler.*
     .*cblas\\.h.*
     .*\\.pb\\.txt
-    .*LtrDataProvider.*
     .*MultiDataProvider.*
-    .*pb.*)
+    .*pb.*
+    .*pybind.h)
 
 # add_style_check_target
 #
