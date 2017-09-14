@@ -73,6 +73,26 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
+
+    IF(WITH_C_API)
+        INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
+        # Because libopenblas.a is a symbolic link of another library, thus need to
+        # install the whole directory.
+        IF(ANDROID)
+            SET(TMP_INSTALL_DIR third_party/openblas/lib/${ANDROID_ABI})
+        ELSE()
+            SET(TMP_INSTALL_DIR third_party/openblas/lib)
+        ENDIF()
+        INSTALL(CODE "execute_process(
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CBLAS_INSTALL_DIR}/lib
+                    destination ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
+            )"
+        )
+        INSTALL(CODE "MESSAGE(STATUS \"Installing: \"
+                \"${CBLAS_INSTALL_DIR}/lib -> ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}\"
+            )"
+        )
+    ENDIF()
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
