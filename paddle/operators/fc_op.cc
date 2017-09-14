@@ -41,10 +41,19 @@ class FCOp : public NetOp {
                       "The size of inputs X(%d) should be no less than 1.", n);
 
     auto x_num_col_dims = Attr<std::vector<int>>("xNumColDims");
-    PADDLE_ENFORCE_EQ(x_num_col_dims.size(), n,
-                      "The size of attribute xNumColDims(%d) should be the "
-                      "same as that of inputs X(%d).",
-                      x_num_col_dims.size(), n);
+
+    // Set all values or set no values (use the default value)
+    if (!x_num_col_dims.empty()) {
+      PADDLE_ENFORCE_EQ(x_num_col_dims.size(), n,
+                        "The size of attribute xNumColDims(%d) should be the "
+                        "same as that of inputs X(%d).",
+                        x_num_col_dims.size(), n);
+    } else {
+      x_num_col_dims.resize(n);
+      for (size_t i = 0; i < n; i++) {
+        x_num_col_dims[i] = 1;
+      }
+    }
 
     // mul_out[i] = X[i] * W[i]
     for (size_t i = 0; i < n; i++) {
@@ -81,7 +90,7 @@ class FCOp : public NetOp {
 
     auto activation = Attr<std::string>("activation");
     AppendOp(framework::OpRegistry::CreateOp(
-        activation, {{"X", {Output(add_out)}}}, {{"Y", {Output("Y")}}}, {}));
+        activation, {{"X", {Output(add_out)}}}, {{"Y", {Output("Out")}}}, {}));
     CompleteAddOp(false);
   }
 };
@@ -105,7 +114,7 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the bias of FC operator, a 1-D vector of size "
              "number_of_neurons.");
 
-    AddOutput("Y",
+    AddOutput("Out",
               "(Tensor) the activated output matrix of FC operator, a 2-D "
               "matrix of size (minibatch, number_of_neurons).");
     AddOutput("MulOut",
@@ -137,7 +146,8 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
         "`X_i.dims[0] x ... x X_i.dims[xNumColDims_i - 1]`. "
         "The matrix's second dimension (the length of row) will be the product "
         "of `X_i`'s first `rank - xNumColDims_i` dimensions, that is "
-        "`X_i.dims[xNumColDims_i] x ... x X_i.dims[rank - 1]`)");
+        "`X_i.dims[xNumColDims_i] x ... x X_i.dims[rank - 1]`)")
+        .SetDefault(std::vector<int>{});
 
     AddComment(R"DOC(
 Fully Connected Operator, known as Fully Connected Layer or Inner Product Layer
@@ -148,13 +158,13 @@ learned weights with a matrix multiplication followed by a bias offset
 (optionally).
 
 Equation:
-  Y = Act(sum_n{X_i * W_i} + B)
+  Out = Act(sum_n{X_i * W_i} + B)
 
 where X_i is Tensor that will be reshaped to a 2-D matrix of size (M x K),
 usually M is the minibatch size and K is the number of input features.
 W_i is a 2-D matrix of size (K x N), where N means the number of neurons
 in the fully connected layer. B is a 1-D vector of size N.
-Thus, the output Y is a 2-D matrix of size (M x N).
+Thus, the output Out is a 2-D matrix of size (M x N).
 Activation type can be set to `identity` (default), `sigmoid` or `softmax`.
 )DOC");
   }

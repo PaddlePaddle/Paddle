@@ -20,15 +20,14 @@ class TestFCOp1(OpTest):
             "MulOut": [("MulOut0", mul_out0)],
             "SumOut": sum_out,
             "AddOut": add_out,
-            "Y": identity_out
+            "Out": identity_out
         }
-        self.attrs = {"xNumColDims": [1]}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X0", "W0", "B"], "Y", max_relative_error=0.01)
+        self.check_grad(["X0", "W0", "B"], "Out", max_relative_error=0.01)
 
 
 class TestFCOp2(OpTest):
@@ -56,7 +55,7 @@ class TestFCOp2(OpTest):
             "MulOut": [("MulOut0", mul_out0), ("MulOut1", mul_out1)],
             "SumOut": sum_out,
             "AddOut": add_out,
-            "Y": sigmoid_out
+            "Out": sigmoid_out
         }
 
     def test_check_output(self):
@@ -64,7 +63,7 @@ class TestFCOp2(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ["X0", "X1", "W0", "W1", "B"], "Y", max_relative_error=0.01)
+            ["X0", "X1", "W0", "W1", "B"], "Out", max_relative_error=0.01)
 
 
 if __name__ == '__main__':
