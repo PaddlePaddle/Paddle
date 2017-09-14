@@ -209,8 +209,7 @@ const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto* var = OutputVar(name);
-  if (var == nullptr) return nullptr;
-  return GetTensorFromVar(var);
+  return var == nullptr ? nullptr : const_cast<Tensor*>(GetTensorFromVar(var));
 }
 
 template <>
@@ -222,7 +221,9 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   std::transform(names.begin(), names.end(), std::back_inserter(res),
                  [&](const std::string& sub_name) {
                    auto var = scope().FindVar(sub_name);
-                   return var == nullptr ? nullptr : GetTensorFromVar(var);
+                   return var == nullptr
+                              ? nullptr
+                              : const_cast<Tensor*>(GetTensorFromVar(var));
                  });
   return res;
 }

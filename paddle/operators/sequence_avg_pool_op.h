@@ -38,7 +38,7 @@ class SequenceAvgPoolKernel : public framework::OpKernel {
 
     out->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
-    for (int i = 0; i < lod[0].size() - 1; ++i) {
+    for (int i = 0; i < static_cast<int>(lod[0].size()) - 1; ++i) {
       Tensor in_t = in->Slice<T>(static_cast<int>(lod[0][i]),
                                  static_cast<int>(lod[0][i + 1]));
       Tensor out_t = out->Slice<T>(i, i + 1);
@@ -64,7 +64,7 @@ class SequenceAvgPoolGradKernel : public framework::OpKernel {
 
     in_g->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
-    for (int i = 0; i < lod[0].size() - 1; ++i) {
+    for (int i = 0; i < static_cast<int>(lod[0].size()) - 1; ++i) {
       auto in_g_t = in_g->Slice<T>(static_cast<int>(lod[0][i]),
                                    static_cast<int>(lod[0][i + 1]));
       auto out_g_t = out_g->Slice<T>(i, i + 1);

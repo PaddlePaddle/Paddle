@@ -66,7 +66,7 @@ class SequenceAvgPoolGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<framework::LoDTensor>("X")->dims();
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
                       "The rank of output grad must equal to Input(X).");
-    for (size_t i = 1; i < og_dims.size(); ++i) {
+    for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
     auto* x_grad =
