@@ -16,39 +16,11 @@
 #include <iostream>
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/elementwise_op.h"
 #include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
-/*
- * Out = X ⊙ Y
- * 1. shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
- *    pre=2, n=3*4, post=5
- * 2. shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
- *    pre=2*3, n=4*5, post=1
- */
-
-inline void get_mid_dims(const framework::DDim& x_dims,
-                         const framework::DDim& y_dims, const int axis,
-                         int& pre, int& n, int& post) {
-  pre = 1;
-  n = 1;
-  post = 1;
-  for (int i = 0; i < axis; ++i) {
-    pre *= x_dims[i];
-  }
-
-  for (int i = 0; i < y_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(x_dims[i + axis], y_dims[i],
-                      "Broadcast dimension mismatch.");
-    n *= y_dims[i];
-  }
-
-  for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
-    post *= x_dims[i];
-  }
-}
-
 template <typename Place, typename T>
 class ElementWiseMulKernel : public framework::OpKernel {
  public:
@@ -61,39 +33,9 @@ class ElementWiseMulKernel : public framework::OpKernel {
     z->mutable_data<T>(ctx.GetPlace());
 
     auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
-    auto z_e = framework::EigenVector<T>::Flatten(*z);
-
-    auto x_dims = x->dims();
-    auto y_dims = y->dims();
-    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
-                      "Rank of first input must >= rank of second input.")
-
-    if (x_dims == y_dims || product(y_dims) == 1) {
-      z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_e;
-      return;
-    }
-
     int axis = ctx.Attr<int>("axis");
-    axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
-    PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
-                   "Axis should be in range [0, x_dims)");
-
-    int pre, n, post;
-    get_mid_dims(x_dims, y_dims, axis, pre, n, post);
-    if (post == 1) {
-      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
-                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
-      z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_bcast;
-      return;
-    } else {
-      auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
-                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
-      z_e.device(ctx.GetEigenDevice<Place>()) = x_e * y_bcast;
-      return;
-    }
+    auto z_e = framework::EigenVector<T>::Flatten(*z);
+    z_e.device(ctx.GetEigenDevice<Place>()) = x_e * reshape(x, y, axis);
   }
 };
 
