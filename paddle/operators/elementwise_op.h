@@ -127,6 +127,9 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
   }
 }
 
+#define EIGEN_GRAD_OP(x, y, z, dx, dy, dz) {
+}
+
 #define EIGEN_GRAD_FUNCTOR(name, eigen_op)                                     \
   struct Eigen##name##Grad##Functor {                                          \
     template <typename Place, typename T>                                      \
@@ -200,9 +203,21 @@ void ElementWiseCompute(const framework::ExecutionContext& ctx) {
     }                                                                          \
   }
 
+#define EIGEN_ADD(x, y) ((x) + (y))
+EIGEN_FUNCTOR(Add, EIGEN_ADD);
+EIGEN_GRAD_FUNCTOR(Add, EIGEN_ADD);
+
+#define EIGEN_SUB(x, y) ((x) - (y))
+EIGEN_FUNCTOR(Sub, EIGEN_SUB);
+EIGEN_GRAD_FUNCTOR(Sub, EIGEN_SUB);
+
 #define EIGEN_MUL(x, y) ((x) * (y))
 EIGEN_FUNCTOR(Mul, EIGEN_MUL);
 EIGEN_GRAD_FUNCTOR(Mul, EIGEN_MUL);
+
+#define EIGEN_DIV(x, y) ((x) / (y))
+EIGEN_FUNCTOR(Div, EIGEN_DIV);
+EIGEN_GRAD_FUNCTOR(Div, EIGEN_DIV);
 
 template <class functor, typename Place, typename T>
 void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
@@ -236,7 +251,6 @@ void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
   int pre, n, post;
   get_mid_dims(x_dims, y_dims, axis, pre, n, post);
 
-  // TODO(gongweibao): wrap reshape to a function.
   if (post == 1) {
     functor f;
     f.template RunBroadCast<Place, T>(x, y, dout, dx, dy, ctx, pre, n);
@@ -248,5 +262,83 @@ void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
   }
 }
 
+class ElementWiseOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  using Tensor = framework::Tensor;
+  void InferShape(const framework::InferShapeContext& ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
+    auto x_dim = ctx.Input<Tensor>("X")->dims();
+    auto y_dim = ctx.Input<Tensor>("Y")->dims();
+    PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
+                      "Rank of first input must >= rank of second input.")
+    ctx.Output<Tensor>("Out")->Resize(x_dim);
+  }
+};
+
+class ElementWiseOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ElementWiseOpMaker(framework::OpProto* proto,
+                     framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "The first input of elementwise mul op");
+    AddInput("Y", "The second input of elementwise mul op");
+    AddAttr<int>("axis",
+                 R"DOC(
+When shape(Y) does not equal shape(X),Y will be broadcasted 
+to match the shape of X and axis should be dimension index Y in X
+        )DOC")
+        .SetDefault(-1)
+        .EqualGreaterThan(-1);
+
+    AddOutput("Out", "The output of elementwise mul op");
+    AddComment(R"DOC(
+Limited elementwise multiple operator.The equation is: Out = X ⊙ Y.
+1. The shape of Y should be same with X or
+2. Y's shape is a subset of X. 
+   Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
+   example:
+      shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+      shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+      shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
+      shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+      shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+)DOC");
+  }
+};
+
+class ElementWiseOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using Tensor = framework::Tensor;
+
+ protected:
+  void InferShape(const framework::InferShapeContext& ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) should not be null");
+
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto y_dims = ctx.Input<Tensor>("Y")->dims();
+    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
+    auto* x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+
+    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
+                      "Rank of first input must >= rank of second input.")
+
+    if (x_grad) {
+      x_grad->Resize(x_dims);
+    }
+
+    if (y_grad) {
+      y_grad->Resize(y_dims);
+    }
+  }
+};
 }  // namespace operators
 }  // namespace paddle

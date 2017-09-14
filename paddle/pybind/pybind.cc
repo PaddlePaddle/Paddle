@@ -36,6 +36,7 @@ USE_OP(onehot_cross_entropy);
 USE_OP(sgd);
 USE_OP(mul);
 USE_OP(elementwise_mul);
+USE_OP(elementwise_add);
 USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
