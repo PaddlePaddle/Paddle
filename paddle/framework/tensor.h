@@ -78,9 +78,6 @@ class Tensor {
   template <typename T>
   inline T* mutable_data(DDim dims, platform::Place place);
 
-  /*! Size of a single element in data() */
-  inline size_t element_size() { return holder_->element_size(); }
-
   /*! Return the dimensions of the memory block. */
   inline const DDim& dims() const;
 
@@ -132,7 +129,6 @@ class Tensor {
     virtual ~Placeholder() {}
     virtual void* ptr() const = 0;
     virtual size_t size() const = 0;
-    virtual size_t element_size() const = 0;
     virtual std::type_index type() const = 0;
     virtual platform::Place place() const = 0;
   };
@@ -143,8 +139,7 @@ class Tensor {
         : ptr_(static_cast<T*>(memory::Alloc(place, size)),
                memory::PODDeleter<T, Place>(place)),
           place_(place),
-          size_(size),
-          element_size_(sizeof(T)) {
+          size_(size) {
       PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
                               (is_cpu_place(place_) ? "CPU" : "GPU"));
     }
@@ -153,7 +148,6 @@ class Tensor {
     virtual platform::Place place() const { return place_; }
     virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual std::type_index type() const { return std::type_index(typeid(T)); }
-    virtual size_t element_size() const { return element_size_; }
 
     /*! the pointer of memory block. */
     std::unique_ptr<T, memory::PODDeleter<T, Place>> ptr_;
@@ -163,9 +157,6 @@ class Tensor {
 
     /*! the size of memory block. */
     size_t size_;
-
-    /*! the size of a single element */
-    size_t element_size_;
   };
 
   /*! holds the memory block if allocated. */

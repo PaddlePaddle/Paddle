@@ -24,6 +24,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+/*
+ * @brief CondOp is a dynamic if-else Operator
+ *
+ * It has a input tensor named cond indicating which netop each instance will
+ * run.
+ *
+ * if cond == 1, it will run true_net, which is a NetOp.
+ *
+ * if cond == 0, it will run false_net, which is another NetOp.
+ */
+
 class CondOp : public framework::OperatorBase {
  public:
   CondOp(const std::string& type, const framework::VariableNameMap& inputs,
@@ -45,18 +56,18 @@ class CondOp : public framework::OperatorBase {
 
   void CreateIndexTensor(const framework::Scope& scope) const;
 
-  /**
+  /*
    * InferShape must be called before Run.
    */
   void InferShape(const framework::Scope& scope) const override;
 
   // Set True Block
-  void set_truenet(std::unique_ptr<OperatorBase> net) {
+  void set_truenet(std::unique_ptr<OperatorBase>&& net) {
     sub_net_op_[0] = std::move(net);
   }
 
   // Set False Block
-  void set_falsenet(std::unique_ptr<OperatorBase> net) {
+  void set_falsenet(std::unique_ptr<OperatorBase>&& net) {
     sub_net_op_[1] = std::move(net);
   }
 

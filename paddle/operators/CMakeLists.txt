@@ -80,8 +80,7 @@ endfunction()
 add_subdirectory(math)
 
 set(DEPS_OPS
-    recurrent_op)
-set(DEPS_OPS
+    recurrent_op
     cond_op)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
   DEPS framework_proto tensor net_op)

@@ -28,6 +28,7 @@ namespace operators {
 using Scope = framework::Scope;
 using Variable = framework::Variable;
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
 void CondOp::CreateScope(const Scope& scope) const {
@@ -41,8 +42,9 @@ void CondOp::CreateScope(const Scope& scope) const {
 void CondOp::CreateIndexTensor(const Scope& scope) const {
   auto index_tensors_var = scope.FindVar("IndexTensors");
   PADDLE_ENFORCE(index_tensors_var != nullptr, "");
-  auto& index_tensors = *index_tensors_var->GetMutable<std::vector<Tensor>>();
-  index_tensors.push_back(Tensor());
+  auto& index_tensors =
+      *index_tensors_var->GetMutable<std::vector<LoDTensor>>();
+  index_tensors.push_back(LoDTensor());
 }
 
 void CondOp::InferShape(const Scope& scope) const {
@@ -65,8 +67,8 @@ void CondOp::InferShape(const Scope& scope) const {
     for (auto& input : Inputs("Xs")) {
       // Create a new tensor in sub-scope for input-type tensor
       Variable* v = sub_scopes[i]->NewVar(input);
-      Tensor* sub_input = v->GetMutable<Tensor>();
-      sub_input->Resize(scope.FindVar(input)->GetMutable<Tensor>()->dims());
+      LoDTensor* sub_input = v->GetMutable<LoDTensor>();
+      sub_input->Resize(scope.FindVar(input)->GetMutable<LoDTensor>()->dims());
     }
 
     for (auto& output : (*sub_net_op_[i]).Outputs()) {
@@ -80,33 +82,40 @@ void CondOp::InferShape(const Scope& scope) const {
   }
 
   for (auto& output : Outputs("Outs")) {
-    Tensor* tensor_t_out = sub_scopes[0]->FindVar(output)->GetMutable<Tensor>();
-    PADDLE_ENFORCE_NOT_NULL(tensor_t_out, "True output should be NULL");
-    Tensor* tensor_f_out = sub_scopes[1]->FindVar(output)->GetMutable<Tensor>();
-    PADDLE_ENFORCE_NOT_NULL(tensor_f_out, "True output should be NULL");
+    LoDTensor* tensor_t_out =
+        sub_scopes[0]->FindVar(output)->GetMutable<LoDTensor>();
+    PADDLE_ENFORCE_NOT_NULL(tensor_t_out, "True output should not be NULL");
+    LoDTensor* tensor_f_out =
+        sub_scopes[1]->FindVar(output)->GetMutable<LoDTensor>();
+    PADDLE_ENFORCE_NOT_NULL(tensor_f_out, "False output should not be NULL");
 
     auto* tensor_out_var = scope.FindVar(output);
     PADDLE_ENFORCE_NOT_NULL(tensor_out_var, "Output not found");
-    Tensor* tensor_out = tensor_out_var->GetMutable<Tensor>();
-    PADDLE_ENFORCE_NOT_NULL(tensor_t_out, "True output should be NULL");
+    LoDTensor* tensor_out = tensor_out_var->GetMutable<LoDTensor>();
+    PADDLE_ENFORCE_NOT_NULL(tensor_t_out,
+                            "True output tensor should not be NULL");
+
     // check output size should be same
     PADDLE_ENFORCE_EQ(tensor_t_out->dims(), tensor_f_out->dims(),
                       "Outputs not of the same shape");
     tensor_out->Resize(tensor_t_out->dims());
-    tensor_out->mutable_data<float>(tensor_out->dims(), platform::CPUPlace());
+    // tensor_out->mutable_data<float>(tensor_out->dims(),
+    // platform::CPUPlace());
+    tensor_out->mutable_data<float>(platform::CPUPlace());
   }
 }
 
 void CondOp::Run(const Scope& scope,
                  const platform::DeviceContext& dev_ctx) const {
-  auto sub_scopes = scope.FindVar("SubScopes")->Get<std::vector<Scope*>>();
-  auto index_tensors =
-      scope.FindVar("IndexTensors")->Get<std::vector<Tensor>>();
+  auto* sub_scopes_var = scope.FindVar("SubScopes");
+  auto sub_scopes = sub_scopes_var->Get<std::vector<Scope*>>();
+  auto* index_tensors_var = scope.FindVar("IndexTensors");
+  auto index_tensors = index_tensors_var->Get<std::vector<LoDTensor>>();
 
   std::string cond_name = Input("Cond");
   Variable* cond_var = scope.FindVar(cond_name);
   PADDLE_ENFORCE_NOT_NULL(cond_var);
-  const Tensor* cond = cond_var->GetMutable<Tensor>();
+  const LoDTensor* cond = cond_var->GetMutable<LoDTensor>();
 
   // Step 1: get the true/false index at runtime
   // index_[0]: vector<int>, contains all index for cond[i] == true
@@ -139,11 +148,11 @@ void CondOp::Run(const Scope& scope,
       // find Tensor
       Variable* v = scope.FindVar(input);
       PADDLE_ENFORCE_NOT_NULL(v);
-      Tensor* tensor_parent = v->GetMutable<Tensor>();
+      LoDTensor* tensor_parent = v->GetMutable<LoDTensor>();
 
       v = sub_scopes[i]->FindVar(input);
       PADDLE_ENFORCE_NOT_NULL(v);
-      Tensor* tensor_child = v->GetMutable<Tensor>();
+      LoDTensor* tensor_child = v->GetMutable<LoDTensor>();
 
       // Resize child
       DDim dim = tensor_child->dims();
@@ -157,7 +166,9 @@ void CondOp::Run(const Scope& scope,
   }
 
   // Step 3: run
-  for (int i = 0; i < 2; ++i) sub_net_op_[i]->Run(*sub_scopes[i], dev_ctx);
+  for (int i = 0; i < 2; ++i) {
+    sub_net_op_[i]->Run(*sub_scopes[i], dev_ctx);
+  }
 
   // Step 4: merge output results
   for (int i = 0; i < 2; ++i) {
@@ -166,11 +177,11 @@ void CondOp::Run(const Scope& scope,
       // find Tensor
       Variable* v = scope.FindVar(output);
       PADDLE_ENFORCE_NOT_NULL(v);
-      Tensor* tensor_parent = v->GetMutable<Tensor>();
+      LoDTensor* tensor_parent = v->GetMutable<LoDTensor>();
 
       v = sub_scopes[i]->FindVar(output);
       PADDLE_ENFORCE_NOT_NULL(v);
-      Tensor* tensor_child = v->GetMutable<Tensor>();
+      LoDTensor* tensor_child = v->GetMutable<LoDTensor>();
 
       ScatterUpdate<float>(dev_ctx.GetPlace(), tensor_child, &index_tensors[i],
                            tensor_parent);
@@ -192,7 +203,9 @@ class CondOpProtoAndCheckerMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 Sample dependent Cond Operator:
-The equation is: Out[i] = subnet_t[i], if Cond[i] == true
+Given Cond[i] as a 1/0 vector to indicate true/false
+The equation is: 
+Out[i] = subnet_t[i], if Cond[i] == true
 Out[i] = subnet_t[i], if Cond[i] == false
 )DOC");
   }
