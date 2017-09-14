@@ -46,9 +46,9 @@ class CosSimOp : public framework::OperatorWithKernel {
                    " just 1 (which will be broadcasted to match Input(X)).");
 
     // resize tensor
-    ctx.Output<Tensor>("Out")->Resize({x_dims[0], 1});
-    ctx.Output<Tensor>("XNorm")->Resize({x_dims[0], 1});
-    ctx.Output<Tensor>("YNorm")->Resize({y_dims[0], 1});
+    ctx.Output<framework::LoDTensor>("Out")->Resize({x_dims[0], 1});
+    ctx.Output<framework::LoDTensor>("XNorm")->Resize({x_dims[0], 1});
+    ctx.Output<framework::LoDTensor>("YNorm")->Resize({y_dims[0], 1});
   }
 };
 
@@ -131,8 +131,10 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
                       "Shape of Input(Out@Grad) must be [X.Dim(0), 1].");
 
     // resize tensor
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto *x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *y_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
     if (x_grad) x_grad->Resize(x_dims);
     if (y_grad) y_grad->Resize(y_dims);
   }

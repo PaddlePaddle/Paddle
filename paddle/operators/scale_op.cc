@@ -28,7 +28,7 @@ class ScaleOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto *in = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(in->dims());
   }
 };

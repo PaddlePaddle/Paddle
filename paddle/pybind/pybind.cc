@@ -97,27 +97,21 @@ PYBIND11_PLUGIN(core) {
         return self.data<float>()[offset];
       });
 
-  py::class_<LoDTensor>(m, "LoDTensor", R"DOC(LoD(Leval of Ddetails) Tensor.
-
-The tensor and LoD info should be created before creating the LoDTensor, then
-call the set_tensor and set_lod functions to set them.
-
-)DOC")
-      .def("__init__",
-           [](LoDTensor &instance,
-              const std::vector<std::vector<size_t>> &lod,
-              Tensor *t) {
+  py::class_<LoDTensor, Tensor>(m, "LoDTensor")
+      .def_buffer(
+          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def(
+          "__init__",
+          [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
 #ifdef PADDLE_ONLY_CPU
-             new (&instance) LoDTensor(lod, t);
+            new (&instance) LoDTensor(lod);
 #else
              paddle::framework::LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             new (&instance) LoDTensor(new_lod, t);
+             new (&instance) LoDTensor(new_lod);
 #endif
-           })
-      .def("set_tensor",
-           [](LoDTensor &self, Tensor *tensor) { self.set_tensor(tensor); })
+          })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
 #ifdef PADDLE_ONLY_CPU
@@ -129,9 +123,6 @@ call the set_tensor and set_lod functions to set them.
              self.set_lod(new_lod);
 #endif
            })
-      .def("tensor",
-           [](LoDTensor &self) -> Tensor & { return self.tensor(); },
-           py::return_value_policy::reference)
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
 #ifdef PADDLE_ONLY_CPU
         return self.lod();
@@ -160,9 +151,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
       .def("get_tensor",
-           [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
-           py::return_value_policy::reference)
-      .def("get_lod_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
            },
