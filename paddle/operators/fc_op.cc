@@ -41,21 +41,16 @@ class FCOp : public NetOp {
                       "The size of inputs X(%d) should be no less than 1.", n);
 
     auto x_num_col_dims = Attr<std::vector<int>>("xNumColDims");
-    auto w_num_col_dims = Attr<std::vector<int>>("wNumColDims");
     PADDLE_ENFORCE_EQ(x_num_col_dims.size(), n,
                       "The size of attribute xNumColDims(%d) should be the "
                       "same as that of inputs X(%d).",
                       x_num_col_dims.size(), n);
-    PADDLE_ENFORCE_EQ(w_num_col_dims.size(), n,
-                      "The size of attribute wNumColDims(%d) should be the "
-                      "same as that of inputs X(%d).",
-                      w_num_col_dims.size(), n)
 
     // mul_out[i] = X[i] * W[i]
     for (size_t i = 0; i < n; i++) {
       framework::AttributeMap mul_attr;
       mul_attr["x_num_col_dims"] = static_cast<int>(x_num_col_dims[i]);
-      mul_attr["y_num_col_dims"] = static_cast<int>(w_num_col_dims[i]);
+      mul_attr["y_num_col_dims"] = static_cast<int>(1);
       AppendOp(
           framework::OpRegistry::CreateOp("mul", {{"X", {x[i]}}, {"Y", {w[i]}}},
                                           {{"Out", {mul_out[i]}}}, mul_attr));
@@ -95,30 +90,54 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   FCOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The inputs of FC operator, a ordered vector of 2-D matrix.")
+    AddInput("X",
+             "(A vector of Tensors) each input Tensor can be of arbitrary "
+             "dimension, and will be reshaped to a 2-D matrix of size "
+             "(minibatch, number_of_input_features) according to attribute "
+             "xNumColDims.")
         .AsDuplicable();
-    AddInput("W", "The weights of FC operator, a ordered vector of 2-D matrix.")
+    AddInput("W",
+             "(A vector of Tensors) the weights of FC operator, a "
+             "vector of 2-D matrix of size "
+             "(number_of_input_features, number_of_neurons).")
         .AsDuplicable();
-    AddInput("B", "The 1-D bias vector of FC operator");
+    AddInput("B",
+             "(Tensor) the bias of FC operator, a 1-D vector of size "
+             "number_of_neurons.");
 
-    AddOutput("Y", "The activated output matrix of FC operator");
+    AddOutput("Y",
+              "(Tensor) the activated output matrix of FC operator, a 2-D "
+              "matrix of size (minibatch, number_of_neurons).");
     AddOutput("MulOut",
-              "The intermediate outputs of FC operator, "
-              "saving the product of X[i] * W[i]")
+              "(A vector of Tensors) the intermediate outputs of FC operator, "
+              "each Tensor saving the product of X_i * W_i.")
         .AsIntermediate()
         .AsDuplicable();
-    AddOutput("SumOut",
-              "The intermediate output of FC operator, "
-              "saving the sum of products, sum(X[i] * W[i])")
+    AddOutput(
+        "SumOut",
+        "(Tensor) the intermediate output of FC operator, "
+        "saving the sum of the products of X and W, that is sum{X_i * W_i}.")
         .AsIntermediate();
     AddOutput("AddOut",
-              "The non-actived output of FC operator, saving X * W + b")
+              "(Tensor) the non-actived output of FC operator, "
+              "saving sum{X_i * W_i} + B.")
         .AsIntermediate();
-    AddAttr<std::string>("activation", "The activation type of FC operator.")
+    AddAttr<std::string>(
+        "activation",
+        "(string, default identity) the activation type of FC operator.")
         .SetDefault("identity")
         .InEnum({"identity", "sigmoid", "softmax"});
-    AddAttr<std::vector<int>>("xNumColDims", "");
-    AddAttr<std::vector<int>>("wNumColDims", "");
+    AddAttr<std::vector<int>>(
+        "xNumColDims",
+        "(std::vector<int>) The inputs Tensors of FC operator can be of "
+        "more than 2 dimensions. In that case, each input Tensor `X_i` will be "
+        "reshaped to a 2-D matrix. The matrix's first dimension "
+        "(the length of column) will be the product of `X_i`'s last "
+        "`xNumColDims_i` dimensions, that is "
+        "`X_i.dims[0] x ... x X_i.dims[xNumColDims_i - 1]`. "
+        "The matrix's second dimension (the length of row) will be the product "
+        "of `X_i`'s first `rank - xNumColDims_i` dimensions, that is "
+        "`X_i.dims[xNumColDims_i] x ... x X_i.dims[rank - 1]`)");
 
     AddComment(R"DOC(
 Fully Connected Operator, known as Fully Connected Layer or Inner Product Layer
@@ -129,15 +148,14 @@ learned weights with a matrix multiplication followed by a bias offset
 (optionally).
 
 Equation:
-  Y = Act(sum_n{X_i * W_i} + b)
+  Y = Act(sum_n{X_i * W_i} + B)
 
-where X_i is a 2D matrix of size (M x K), usually M is the minibatch size and
-K is the number of features. W_i is also a 2D matrix of size (K x N),
-where N means the number of neurons in the fully connected layer.
-b is a 1D vector of size N. Thus, the output Y is a 2D matrix of size (M x N).
+where X_i is Tensor that will be reshaped to a 2-D matrix of size (M x K),
+usually M is the minibatch size and K is the number of input features.
+W_i is a 2-D matrix of size (K x N), where N means the number of neurons
+in the fully connected layer. B is a 1-D vector of size N.
+Thus, the output Y is a 2-D matrix of size (M x N).
 Activation type can be set to `identity` (default), `sigmoid` or `softmax`.
-
-  The config api is `paddle.v2.layer.fc`.
 )DOC");
   }
 };

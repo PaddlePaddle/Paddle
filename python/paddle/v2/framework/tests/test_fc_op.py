@@ -22,7 +22,7 @@ class TestFCOp1(OpTest):
             "AddOut": add_out,
             "Y": identity_out
         }
-        self.attrs = {"xNumColDims": [1], "wNumColDims": [1]}
+        self.attrs = {"xNumColDims": [1]}
 
     def test_check_output(self):
         self.check_output()
@@ -34,13 +34,13 @@ class TestFCOp1(OpTest):
 class TestFCOp2(OpTest):
     def setUp(self):
         x0 = np.random.random((16, 4, 8)).astype("float32")
-        x1 = np.random.random((16, 32)).astype("float32")
+        x1 = np.random.random((4, 4, 32)).astype("float32")
         w0 = np.random.random((32, 10)).astype("float32")
-        w1 = np.random.random((4, 8, 10)).astype("float32")
+        w1 = np.random.random((32, 10)).astype("float32")
         b = np.random.random(10).astype("float32")
 
         mul_out0 = np.dot(x0.reshape(16, 4 * 8), w0)
-        mul_out1 = np.dot(x1, w1.reshape(4 * 8, 10))
+        mul_out1 = np.dot(x1.reshape(4 * 4, 32), w1)
         sum_out = mul_out0 + mul_out1
         add_out = np.add(sum_out, b)
         sigmoid_out = 1 / (1 + np.exp(-add_out))
@@ -51,11 +51,7 @@ class TestFCOp2(OpTest):
             "W": [("W0", w0), ("W1", w1)],
             "B": b
         }
-        self.attrs = {
-            "xNumColDims": [1, 1],
-            "wNumColDims": [1, 2],
-            "activation": "sigmoid"
-        }
+        self.attrs = {"xNumColDims": [1, 2], "activation": "sigmoid"}
         self.outputs = {
             "MulOut": [("MulOut0", mul_out0), ("MulOut1", mul_out1)],
             "SumOut": sum_out,
