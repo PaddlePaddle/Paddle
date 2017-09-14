@@ -49,6 +49,27 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
   return create(m, memory::primitive_desc(memory::desc(dims, dtype, fmt), eg));
 }
 
+std::shared_ptr<reorder> MKLDNNMatrix::createReorder(const MKLDNNMatrixPtr& src,
+                                                     const MKLDNNMatrixPtr& dst,
+                                                     bool checkData) {
+  if (src == dst || src->getPrimitiveDesc() == dst->getPrimitiveDesc()) {
+    return nullptr;
+  }
+
+  if (checkData && (src->getData() == dst->getData())) {
+    LOG(FATAL) << "can not create reorder with inplace data";
+    return nullptr;
+  }
+
+  memory::dims srcDims = src->getDims();
+  memory::dims dstDims = dst->getDims();
+  CHECK_EQ(srcDims.size(), dstDims.size());
+  for (size_t i = 0; i < srcDims.size(); ++i) {
+    CHECK_EQ(srcDims[i], dstDims[i]);
+  }
+  return std::make_shared<reorder>(*src, *dst);
+}
+
 void MKLDNNMatrix::reorderDataFrom(const MKLDNNMatrixPtr& m,
                                    memory::format srcFmt,
                                    memory::dims targetDim) {
