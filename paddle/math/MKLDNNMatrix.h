@@ -52,6 +52,31 @@ public:
       mkldnn::engine& eg,
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
 
+  /**
+   * Create Memory descriptor.
+   * default with any format and f32 dtype
+   */
+  static mkldnn::memory::desc createMemoryDesc(
+      const mkldnn::memory::dims& dims,
+      const mkldnn::memory::format& fmt = mkldnn::memory::format::any,
+      const mkldnn::memory::data_type& dtype = mkldnn::memory::data_type::f32) {
+    return mkldnn::memory::desc(dims, dtype, fmt);
+  }
+
+  /**
+   * Create reorder primitive.
+   * Create a mkldnn::reorder handle for converting src MKLDNNMatrix to dst.
+   * checkData: for whether to check the data handle of src and dst is the same.
+   *            if true, means check it and do not want support inplace reorder;
+   *            otherwise do not check data which means the created reorder
+   *            maybe inplace buffer and do not guarantee the logical is correct
+   *            since not all format or conversion support inplace.
+   */
+  static std::shared_ptr<mkldnn::reorder> createReorder(
+      const MKLDNNMatrixPtr& src,
+      const MKLDNNMatrixPtr& dst,
+      bool checkData = true);
+
 public:
   /**
    * Reorder this MKLDNNMatrix from other format.
