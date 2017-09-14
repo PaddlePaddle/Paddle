@@ -48,9 +48,9 @@ class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
   RankLossOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("P", "The first input of RankLoss operator.");
-    AddInput("Oi", "The second input of RankLoss operator.");
-    AddInput("Oj", "The third input of RankLoss operator.");
+    AddInput("P", "The desired target values for posteriors.");
+    AddInput("Oi", "The model output for item i.");
+    AddInput("Oj", "The model output for item j.");
     AddOutput("Out", "The output tensor of RankLoss operator.");
     AddComment(R"DOC(RankLoss operator
 
@@ -62,6 +62,8 @@ three inputs: P, Oi, and Oj, and the rank cost can be expressed as
   o_{i,j} =  o_i - o_j  \\
   \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
 \f]
+
+A detailed explanation about these notations can be found in
 
 [1]. Chris Burges, Tal Shaked, Erin Renshaw, et al. Learning to
      Rank useing Gradient Descent.
