@@ -12,18 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/execution_policy.h>
+#include <thrust/reduce.h>
 #include "paddle/operators/accuracy_op.h"
+#include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
+using platform::PADDLE_CUDA_NUM_THREADS;
 
 __global__ void AccuracyCudaKernel(const int N, const int D, const int* Xdata,
                                    const int* labeldata, float* accuracy) {
   int count = 0;
-  __shared__ int total;
-  total = 0;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (N);
-       i += blockDim.x * gridDim.x) {
+  __shared__ int total[PADDLE_CUDA_NUM_THREADS];
+
+  // support only 1 block
+  for (int i = threadIdx.x; i < (N); i += blockDim.x * gridDim.x) {
     for (int j = 0; j < D; ++j) {
       if (Xdata[i * D + j] == labeldata[i]) {
         ++count;
@@ -31,10 +35,14 @@ __global__ void AccuracyCudaKernel(const int N, const int D, const int* Xdata,
       }
     }
   }
-  atomicAdd(&total, count);
+  total[threadIdx.x] = count;
   __syncthreads();
+
+  // reduce the count with init value 0, and output accuracy.
+  int result =
+      thrust::reduce(thrust::device, total, total + PADDLE_CUDA_NUM_THREADS, 0);
   if (threadIdx.x == 0) {
-    *accuracy = static_cast<float>(total) / static_cast<float>(N);
+    *accuracy = static_cast<float>(result) / static_cast<float>(N);
   }
 }
 
@@ -61,9 +69,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel {
       return;
     }
 
-    int threads = 512;
-    int grids = (num_samples + 4096 - 1) / 4096;
-    AccuracyCudaKernel<<<grids, threads>>>(
+    AccuracyCudaKernel<<<1, PADDLE_CUDA_NUM_THREADS>>>(
         num_samples, infer_width, inference_data, label_data, accuracy_data);
   }
 };
