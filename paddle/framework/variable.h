@@ -29,6 +29,21 @@ class Variable {
     return *static_cast<const T*>(holder_->Ptr());
   }
 
+  // Specialized template for Tensor,
+  // so that the Tensor can be got from LoDTensor.
+  // How to get Tensor from LoDTensor also can be put in InferShapeContext.
+  template <>
+  const Tensor& Get<Tensor>() const {
+    if (IsType<LoDTensor>()) {
+      auto lod_t = static_cast<const LoDTensor*>(holder_->Ptr());
+      return *lod_t->tensor();
+    } else {
+      PADDLE_ENFORCE(IsType<Tensor>(),
+                     "Variable must be type LoDTensor or Tensor");
+      return *static_cast<const Tensor*>(holder_->Ptr());
+    }
+  }
+
   template <typename T>
   T* GetMutable() {
     if (!IsType<T>()) {

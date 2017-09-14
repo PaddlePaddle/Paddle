@@ -45,7 +45,13 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
         "First matrix's width must be equal with second matrix's height.");
-    ctx.Output<Tensor>("Out")->Resize({x_mat_dims[0], y_mat_dims[1]});
+    // Each operator's InferShape must call Output<LoDTensor> to create
+    // LoDTensor in variable.
+    ctx.Output<LoDTensor>("Out")->tensor()->Resize(
+        {x_mat_dims[0], y_mat_dims[1]});
+    // Only the forward operator needs to pass the lod.
+    // pass the lod of Input(X) to output.
+    ctx.CopyLoD(/*in = */ "X", /* out = */ "Out");
   }
 };
 

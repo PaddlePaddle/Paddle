@@ -289,13 +289,26 @@ class InferShapeContext {
   }
 
   template <typename T>
-  const T* Input(const std::string& name) const {
+  virtual const T* Input(const std::string& name) const {
     auto* var = InputVar(name);
     return var == nullptr ? nullptr : &var->Get<T>();
   }
 
+  // template <>
+  // virtual const Tensor* Input<Tensor>(const std::string& name) const {
+  //   auto* var = InputVar(name);
+  //   if (var == nullptr) return nullptr;
+  //   if (var->IsType<LoDTensor>()>) {
+  //     return &var->Get<LoDTensor>()->tensor();
+  //   } else {
+  //     PADDLE_ENFORCE(var->IsType<Tensor>()>);
+  //     return &var->Get<Tensor>();
+  //   }
+  //   return;
+  // }
+
   template <typename T>
-  T* Output(const std::string& name) const {
+  virtual T* Output(const std::string& name) const {
     auto var = OutputVar(name);
     return var == nullptr ? nullptr : var->GetMutable<T>();
   }
@@ -314,7 +327,7 @@ class InferShapeContext {
   }
 
   template <typename T>
-  std::vector<T*> MultiOutput(const std::string& name) const {
+  virtual std::vector<T*> MultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<T*> res;
     res.reserve(names.size());
@@ -324,6 +337,14 @@ class InferShapeContext {
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });
     return res;
+  }
+
+  void CopyLoD(const std::string& in_name, const std::string& out_name) {
+    PADDLE_ENFORCE(InputVar(in_name)->IsType<LoDTensor>(),
+                   "The Input(%s) must be LoDTensor.", in_name);
+    PADDLE_ENFORCE(OutputVar(out_name)->IsType<LoDTensor>(),
+                   "The Output(%s) must be LoDTensor.", out_name);
+    Output<LoDTensor>(out_name)->set_lod(Input<LoDTensor>(in_name)->lod());
   }
 
  private:
@@ -361,6 +382,27 @@ class ExecutionContext : public InferShapeContext {
 
   const platform::DeviceContext* device_context() const {
     return device_context_;
+  }
+
+  template <typename T>
+  T* Output(const std::string& name) const override {
+    auto var = OutputVar(name);
+    // Different from InferShapeContext, call Get instread of GetMutable.
+    return var == nullptr ? nullptr : var->Get<T>();
+  }
+
+  template <typename T>
+  std::vector<T*> MultiOutput(const std::string& name) const override {
+    auto names = op_.Outputs(name);
+    std::vector<T*> res;
+    res.reserve(names.size());
+    // Different from InferShapeContext, call Get instread of GetMutable.
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [&](const std::string& sub_name) {
+                     auto var = scope_.FindVar(sub_name);
+                     return var == nullptr ? nullptr : var->Get<T>();
+                   });
+    return res;
   }
 
   const platform::DeviceContext* device_context_;
