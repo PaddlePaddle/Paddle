@@ -55,6 +55,8 @@ class ActivationGradKernel : public framework::OpKernel {
   }
 };
 
+// sigmoid = 1 / (1 + exp(-x)
+template <typename T>
 struct SigmoidFunctor {
   template <typename Device, typename X, typename Y>
   void operator()(Device d, X x, Y y) {
@@ -69,6 +71,7 @@ struct SigmoidGradFunctor {
   }
 };
 
+// exp(x) = e^x
 struct ExpFunctor {
   template <typename Device, typename X, typename Y>
   void operator()(Device d, X x, Y y) {
@@ -79,10 +82,11 @@ struct ExpFunctor {
 struct ExpGradFunctor {
   template <typename Device, typename X, typename Y, typename dY, typename dX>
   void operator()(Device d, X x, Y y, dY dy, dX dx) {
-    dx.device(d) = y;
+    dx.device(d) = dy * y;
   }
 };
 
+// relu(x) = max(x, 0)
 template <typename T>
 struct ReluFunctor {
   template <typename Device, typename X, typename Y>
@@ -99,6 +103,7 @@ struct ReluGradFunctor {
   }
 };
 
+// tanh = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 struct TanhFunctor {
   template <typename Device, typename X, typename Y>
   void operator()(Device d, X x, Y y) {
@@ -114,6 +119,7 @@ struct TanhGradFunctor {
   }
 };
 
+// sqrt(x) = x^(1/2)
 struct SqrtFunctor {
   template <typename Device, typename X, typename Y>
   void operator()(Device d, X x, Y y) {
@@ -127,6 +133,60 @@ struct SqrtGradFunctor {
   void operator()(Device d, X x, Y y, dY dy, dX dx) {
     const T y_conj = Eigen::numext::conj(y);
     dx.device(d) = static_cast<T>(0.5) * dy / y_conj;
+  }
+};
+
+// abs(x) = |x|
+struct AbsFunctor {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = x.abs();
+  }
+};
+
+// reciprocal(x) = 1 / x
+template <typename T>
+struct ReciprocalFunctor {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = 1. / x;
+  }
+};
+
+struct ReciprocalGradFunctor {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    dx.device(d) = dy * (-1.0) * y * y;
+  }
+};
+
+// log(x) = natural logarithm of x
+struct LogFunctor {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = x.log();
+  }
+};
+
+struct LogGradFunctor {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    dx.device(d) = dy * (1. / x);
+  }
+};
+
+// square(x) = x^2
+struct SquareFunctor {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = x.square();
+  }
+}
+
+struct SquareGradFunctor {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    dx.device(d) = dy * 2 * x;
   }
 };
 
