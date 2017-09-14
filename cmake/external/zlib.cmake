@@ -49,3 +49,12 @@ ExternalProject_Add(
 )
 
 LIST(APPEND external_project_dependencies zlib)
+
+IF(WITH_C_API)
+  INSTALL(DIRECTORY ${ZLIB_INCLUDE_DIR} DESTINATION third_party/zlib)
+  IF(ANDROID)
+    INSTALL(FILES ${ZLIB_LIBRARIES} DESTINATION third_party/zlib/lib/${ANDROID_ABI})
+  ELSE()
+    INSTALL(FILES ${ZLIB_LIBRARIES} DESTINATION third_party/zlib/lib)
+  ENDIF()
+ENDIF()
