@@ -185,7 +185,7 @@ class OpTest(unittest.TestCase):
         for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
             if out_dup:
                 sub_out = self.outputs[out_name]
-                for sub_out_name, expect in sub_out.iteritems():
+                for sub_out_name, expect in sub_out:
                     actual = np.array(
                         self.scope.find_var(sub_out_name).get_tensor())
                     self.assertTrue(
