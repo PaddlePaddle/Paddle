@@ -62,6 +62,24 @@ void Copy<platform::GPUPlace, platform::GPUPlace>(platform::GPUPlace dst_place,
   }
 }
 
+template <>
+void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::GPUPlace src_place,
+                                                  const void* src, size_t num) {
+  platform::SetDeviceId(src_place.device);
+  platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+}
+
+template <>
+void Copy<platform::GPUPlace, platform::CPUPlace>(platform::GPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::CPUPlace src_place,
+                                                  const void* src, size_t num) {
+  platform::SetDeviceId(dst_place.device);
+  platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
+}
+
 #endif  // PADDLE_ONLY_CPU
 
 }  // namespace memory

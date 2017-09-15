@@ -141,17 +141,23 @@ template <typename T>
 class CropCPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    LOG(INFO) << "CropCPUKernel step1";
     auto *x = context.Input<Tensor>("X");
+    LOG(INFO) << "CropCPUKernel step2";
     auto *out = context.Output<Tensor>("Out");
+    LOG(INFO) << "CropCPUKernel step3";
     auto x_data = x->data<T>();
     T *out_data = out->mutable_data<T>(paddle::platform::CPUPlace());
+    LOG(INFO) << "CropCPUKernel step4";
     auto x_dims = x->dims();
     auto out_dims = out->dims();
+    LOG(INFO) << "CropCPUKernel step5";
     int64_t out_count = framework::product(out_dims);
     std::vector<int64_t> x_shape = framework::vectorize(x_dims);
     std::vector<int64_t> out_shape = framework::vectorize(out_dims);
 
     auto offsets = context.op().Attr<std::vector<int>>("offsets");
+    LOG(INFO) << "CropCPUKernel step6";
     PADDLE_ENFORCE_EQ(
         x_dims.size(), offsets.size(),
         "Offsets size should be equal to dimension size of input tensor.");
@@ -165,6 +171,7 @@ class CropCPUKernel : public framework::OpKernel {
     for (int64_t i = 0; i < out_count; ++i) {
       out_data[i] = x_data[transIndex(out_shape, x_shape, crop_rules, i)];
     }
+    LOG(INFO) << "CropCPUKernel step7";
   }
 };
 

@@ -25,6 +25,11 @@ class PadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of PadOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of PadOp should not be null.");
+
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto paddings = Attr<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
@@ -34,7 +39,8 @@ class PadOp : public framework::OperatorWithKernel {
     for (int i = 0; i < x_dim.size(); ++i) {
       out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
     }
-    ctx.Output<Tensor>("Out")->Resize(framework::make_ddim(out_dims));
+    ctx.Output<framework::LoDTensor>("Out")->Resize(
+        framework::make_ddim(out_dims));
   }
 };
 
@@ -95,9 +101,9 @@ class PadOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    if (x_grad != nullptr) {
-      x_grad->Resize(x_dims);
+    auto *x_g = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    if (x_g != nullptr) {
+      x_g->Resize(x_dims);
     }
   }
 };

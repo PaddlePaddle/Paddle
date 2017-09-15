@@ -25,13 +25,19 @@ class ElementWiseMulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ElementWiseMulOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of ElementWiseMulOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of ElementWiseMulOp should not be null.");
+
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto y_dim = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
                       "Rank of first input must >= rank of second input.")
-    ctx.Output<Tensor>("Out")->Resize(x_dim);
+    ctx.Output<framework::LoDTensor>("Out")->Resize(x_dim);
   }
 };
 
@@ -80,8 +86,10 @@ class ElementWiseMulOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto y_dims = ctx.Input<Tensor>("Y")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto *x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *y_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")

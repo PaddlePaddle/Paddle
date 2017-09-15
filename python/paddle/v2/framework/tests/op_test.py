@@ -181,8 +181,10 @@ class OpTest(unittest.TestCase):
         self.op.infer_shape(self.scope)
         ctx = core.DeviceContext.create(place)
         self.op.run(self.scope, ctx)
-
+        print "finish self.op.run"
         for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
+            print "finish Operator.get_op_outputs"
+            print "out_dup=%s; out_name=%s" % (out_dup, out_name)
             if out_dup:
                 sub_out = self.outputs[out_name]
                 for sub_out_name in sub_out:
@@ -194,12 +196,17 @@ class OpTest(unittest.TestCase):
                             actual, expect, atol=1e-05),
                         "output name: " + out_name + "has diff")
             else:
+                v = self.scope.find_var(out_name)
+                print "var=%s" % v
+                print "tensor=%s" % v.get_tensor()
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
+                print "actual=%s" % actual
                 expect = self.outputs[out_name]
                 self.assertTrue(
                     np.allclose(
                         actual, expect, atol=1e-05),
                     "output name: " + out_name + "has diff")
+                print "finish check in %s" % place
 
     def check_output(self):
         places = [core.CPUPlace()]

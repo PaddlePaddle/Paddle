@@ -48,6 +48,7 @@ template <typename T, int D>
 void CropCUDAFunctoin(const framework::ExecutionContext& context) {
   PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
                  "It must use GPUPlace.");
+  LOG(INFO) << "CropCUDAFunctoin step1";
   auto* x = context.Input<Tensor>("X");
   auto* out = context.Output<Tensor>("Out");
   auto x_data = x->data<T>();
