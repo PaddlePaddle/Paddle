@@ -64,6 +64,7 @@ def set_input(scope, op, inputs, place):
                 tensor.set_dims(in_array.shape)
                 tensor.set(in_array, place)
                 if isinstance(in_val, tuple):
+                    print "set lod"
                     tensor.set_lod(in_val[1])
 
 
