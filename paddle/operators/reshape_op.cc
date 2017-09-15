@@ -28,7 +28,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     // input check
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) shouldn't be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ReshapeOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ReshapeOp should not be null.");
+
     auto shape = ctx.Attr<std::vector<int>>("shape");
     PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
     for (auto dim : shape) {

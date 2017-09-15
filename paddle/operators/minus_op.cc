@@ -27,6 +27,13 @@ class MinusOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of MinusOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of MinusOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of MinusOp should not be null.");
+
     auto *left_tensor = ctx.Input<framework::Tensor>("X");
     auto *right_tensor = ctx.Input<framework::Tensor>("Y");
 

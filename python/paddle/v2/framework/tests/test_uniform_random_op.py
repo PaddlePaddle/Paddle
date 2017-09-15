@@ -4,7 +4,7 @@ import paddle.v2.framework.core as core
 import numpy
 
 
-class UniformRandomTest(unittest.TestCase):
+class TestUniformRandomOp(unittest.TestCase):
     def test_uniform_random_cpu(self):
         self.uniform_random_test(place=core.CPUPlace())
 

@@ -3,7 +3,7 @@ import numpy
 from op_test import OpTest
 
 
-class TestCrossEntropy(OpTest):
+class TestOnehotCrossEntropyOp(OpTest):
     def setUp(self):
         self.op_type = "onehot_cross_entropy"
         batch_size = 30

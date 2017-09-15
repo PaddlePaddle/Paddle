@@ -26,6 +26,13 @@ class MulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of MulOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of MulOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of MulOp should not be null.");
+
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto y_dims = ctx.Input<Tensor>("Y")->dims();
     int x_num_col_dims = Attr<int>("x_num_col_dims");

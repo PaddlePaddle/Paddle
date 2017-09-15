@@ -23,6 +23,13 @@ class SGDOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("param"),
+                            "Input(param) of SGDOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("grad"),
+                            "Input(grad) of SGDOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("param_out"),
+                            "Output(param_out) of SGDOp should not be null.");
+
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("param")->dims(),
                       ctx.Input<Tensor>("grad")->dims(),
                       "Two input of SGD Op's dimension must be same.");

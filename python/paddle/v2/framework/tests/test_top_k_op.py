@@ -21,6 +21,9 @@ class TestTopkOp(OpTest):
 
         self.outputs = {'Out': output, 'Indices': indices}
 
+    def test_check_output(self):
+        self.check_output()
+
 
 class TestTopkOp3d(OpTest):
     def setUp(self):
@@ -41,6 +44,9 @@ class TestTopkOp3d(OpTest):
             indices[rowid] = row.argsort()[-k:]
 
         self.outputs = {'Out': output, 'Indices': indices}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == "__main__":

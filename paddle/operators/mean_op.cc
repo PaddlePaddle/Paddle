@@ -24,7 +24,9 @@ class MeanOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input of MeanOp must be initialized.");
+                            "Input(X) of MeanOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of MeanOp should not be null.");
     ctx.Output<framework::LoDTensor>("Out")->Resize({1});
   }
 };

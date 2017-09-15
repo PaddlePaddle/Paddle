@@ -24,6 +24,15 @@ class ScatterOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Ref"),
+                            "Input(Ref) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Index"),
+                            "Input(Index) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Updates"),
+                            "Input(Updates) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ScatterOp should not be null.");
+
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Index")->dims().size(), 1,
                       "Update Index should be 1-D.");
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Ref")->dims().size(),

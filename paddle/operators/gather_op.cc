@@ -24,6 +24,13 @@ class GatherOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of GatherOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Index"),
+                            "Input(Index) of GatherOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of GatherOp should not be null.");
+
     int batch_size = ctx.Input<Tensor>("Index")->dims()[0];
     PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
     framework::DDim output_dims(ctx.Input<Tensor>("X")->dims());

@@ -26,8 +26,16 @@ class CosSimOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     // notnull check
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of CosSimOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of CosSimOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of CosSimOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("XNorm"),
+                            "Output(XNorm) of CosSimOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("YNorm"),
+                            "Output(YNorm) of CosSimOp should not be null.");
 
     // shape check
     auto x_dims = ctx.Input<Tensor>("X")->dims();

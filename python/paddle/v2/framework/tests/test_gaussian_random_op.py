@@ -4,7 +4,7 @@ from paddle.v2.framework.op import Operator
 import numpy
 
 
-class GaussianRandomTest(unittest.TestCase):
+class TestGaussianRandomOp(unittest.TestCase):
     def test_cpu(self):
         self.gaussian_random_test(place=core.CPUPlace())
 

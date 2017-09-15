@@ -22,6 +22,11 @@ class SumOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
+                   "Input(X) of SumOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of SumOp should not be null.");
+
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     int N = ins.size();
