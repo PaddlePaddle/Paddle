@@ -25,7 +25,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class PreluKernel : public framework::OpKernel {
+class PReluKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<Tensor>("X");
@@ -45,7 +45,7 @@ class PreluKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class PreluGradKernel : public framework::OpKernel {
+class PReluGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
