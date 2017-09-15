@@ -25,17 +25,106 @@ class ElementwiseMulKernel : public framework::OpKernel {
   }
 };
 
+template <typename T>
+struct ElementwiseMulGradFunctor {
+  template <typename Device, typename X, typename Y, typename dX, typename dY,
+            typename dZ>
+  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz) {
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
+
+    if (dx) {
+      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
+      dx_e.device(d) = dz_e * y_e;
+    }
+
+    if (dy) {
+      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
+      dy_e.device(d) = x_e * dz_e;
+    }
+  }
+};
+
+template <typename T>
+struct ElementwiseMulBroadCastGradFunctor {
+  template <typename Device, typename X, typename Y, typename dX, typename dY,
+            typename dZ, typename Pre, typename N>
+  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n) {
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
+
+    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
+                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
+
+    if (dx) {
+      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
+      dx_e.device(d) = dz_e * y_e_bcast;
+    }
+
+    if (dy) {
+      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
+      dy_e.device(d) = (x_e * dz_e)
+                           .reshape(Eigen::DSizes<int, 2>(pre, n))
+                           .sum(Eigen::array<int, 1>{{0}});
+    }
+  }
+};
+
+template <typename T>
+struct ElementwiseMulBroadCast2GradFunctor {
+  template <typename Device, typename X, typename Y, typename dX, typename dY,
+            typename dZ, typename Pre, typename N, typename Post>
+  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n,
+                  Post post) {
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
+
+    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
+                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
+    if (dx) {
+      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
+      dx_e.device(d) = dz_e * y_e_bcast;
+    }
+
+    if (dy) {
+      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
+      dy_e.device(d) = (x_e * dz_e)
+                           .reshape(Eigen::DSizes<int, 3>(pre, n, post))
+                           .sum(Eigen::array<int, 2>{{0, 2}});
+    }
+  }
+};
+
 template <typename Place, typename T>
 class ElementwiseMulGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElementwiseGradCompute<Place, T, ElementwiseMulGradFunctor<T>,
+                           ElementwiseMulGradFunctor<T>,
+                           ElementwiseMulBroadCastGradFunctor<T>,
+                           ElementwiseMulBroadCast2GradFunctor<T>>(ctx);
+  }
+};
+
+class ElementwiseMulOpMaker : public ElementwiseOpMaker {
+ public:
+  ElementwiseMulOpMaker(framework::OpProto* proto,
+                        framework::OpAttrChecker* op_checker)
+      : ElementwiseOpMaker(proto, op_checker) {
+    AddComment(ElementwiseOpMaker::GetComment("Mul", "Out = X ⊙ Y"));
+  }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_mul, ops::ElementwiseOp, ops::ElementwiseOpMaker,
+REGISTER_OP(elementwise_mul, ops::ElementwiseOp, ops::ElementwiseMulOpMaker,
             elementwise_mul_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,

@@ -164,13 +164,13 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
 
   if (x_dims == y_dims) {
     functor f;
-    f(place, dx, dy, dout);
+    f(place, x, y, dx, dy, dout);
     return;
   }
 
   if (product(y_dims) == 1) {
     functor1 f;
-    f(place, dx, dy, dout);
+    f(place, x, y, dx, dy, dout);
     return;
   }
 
@@ -182,11 +182,11 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
 
   if (post == 1) {
     broadcastfunctor f;
-    f(place, dx, dy, dout, pre, n);
+    f(place, x, y, dx, dy, dout, pre, n);
     return;
   } else {
     broadcast2functor f;
-    f(place, dx, dy, dout, pre, n, post);
+    f(place, x, y, dx, dy, dout, pre, n, post);
     return;
   }
 }
