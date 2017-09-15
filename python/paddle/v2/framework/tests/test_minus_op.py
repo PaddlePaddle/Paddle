@@ -3,7 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class MinusOpTest(OpTest):
+class TestMinusOp(OpTest):
     def setUp(self):
         self.op_type = "minus"
         self.inputs = {
