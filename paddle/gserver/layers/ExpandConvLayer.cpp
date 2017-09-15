@@ -155,11 +155,12 @@ void ExpandConvLayer::forward(PassType passType) {
 
   /* add the bias-vector */
   if (biases_.get()) {
-    if (sharedBiases_) {
-      addSharedBias();
-    } else {
-      addUnsharedBias();
-    }
+    MatrixPtr bias = Matrix::create(biases_->getW()->getData(),
+                                    1,
+                                    biases_->getW()->getElementCnt(),
+                                    false,
+                                    useGpu_);
+    output_.value->addBias(*bias, 1.0, sharedBiases_);
   }
 
   /* activation */
@@ -171,7 +172,13 @@ void ExpandConvLayer::backward(const UpdateCallback &callback) {
 
   MatrixPtr outGrad = getOutputGrad();
   if (biases_ && biases_->getWGrad()) {
-    bpropBiases(outGrad);
+    // bpropBiases(outGrad);
+    MatrixPtr bias = Matrix::create(biases_->getWGrad()->getData(),
+                                    1,
+                                    biases_->getWGrad()->getElementCnt(),
+                                    false,
+                                    useGpu_);
+    bias->collectBias(*getOutputGrad(), 1, sharedBiases_);
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);
   }
