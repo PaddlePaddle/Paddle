@@ -39,19 +39,6 @@ public:
             const ParameterMap& parameterMap) override;
 
   size_t getOutputSize();
-
-  /**
-   * Add shared bias.
-   */
-  void addSharedBias();
-
-  /**
-   * Add unshared bias.
-   */
-  void addUnsharedBias();
-
-  void bpropSharedBias(MatrixPtr biases, MatrixPtr v);
-  void bpropBiases(MatrixPtr v);
 };
 
 }  // namespace paddle
