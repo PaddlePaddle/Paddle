@@ -36,7 +36,35 @@ inline bool isDepthwiseConv(int channels, int groups) {
 bool ExpandConvLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
-  ExpandConvBaseLayer::init(layerMap, parameterMap);
+  ConvBaseLayer::init(layerMap, parameterMap);
+
+  int index = 0;
+  for (auto &inputConfig : config_.inputs()) {
+    const ConvConfig &conf = inputConfig.conv_conf();
+    /* Consistent caffe mode for multiple input */
+    caffeMode_ = conf.caffe_mode();
+
+    // create a new weight
+    size_t height, width;
+    height = filterPixels_[index] * filterChannels_[index];
+    width = (!isDeconv_) ? numFilters_ : channels_[index];
+    CHECK_EQ(parameters_[index]->getSize(), width * height);
+    Weight *w = new Weight(height, width, parameters_[index]);
+    weights_.emplace_back(w);
+    index++;
+  }
+  if (biasParameter_.get()) {
+    if (sharedBiases_) {
+      CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
+    } else {
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
+    }
+  }
+
+  getOutputSize();
 
   size_t numInputs = config_.inputs_size();
   inputShape_.resize(numInputs);
@@ -106,6 +134,12 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
     }
   }
   return true;
+}
+
+size_t ExpandConvLayer::getOutputSize() {
+  CHECK_NE(inputLayers_.size(), 0UL);
+  size_t layerSize = ConvBaseLayer::calOutputSize();
+  return layerSize;
 }
 
 // i is the index of input layers
