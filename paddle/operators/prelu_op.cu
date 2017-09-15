@@ -16,3 +16,6 @@
 
 REGISTER_OP_GPU_KERNEL(
     prelu, paddle::operators::PreluKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    prelu_grad,
+    paddle::operators::PreluGradKernel<paddle::platform::GPUPlace, float>);

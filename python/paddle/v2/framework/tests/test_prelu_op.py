@@ -3,7 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class ScaleTest(OpTest):
+class PreluTest(OpTest):
     def setUp(self):
         self.op_type = "prelu"
         self.inputs = {'X': np.random.random((10, 10)).astype("float32")}
