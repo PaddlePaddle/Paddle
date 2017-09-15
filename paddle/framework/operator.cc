@@ -184,5 +184,85 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+template <>
+const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const {
+  auto* var = InputVar(name);
+  return var == nullptr ? nullptr : GetTensorFromVar(var);
+}
+
+template <>
+const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+    const std::string& name) const {
+  auto names = op().Inputs(name);
+  std::vector<const Tensor*> res;
+  res.reserve(names.size());
+  std::transform(names.begin(), names.end(), std::back_inserter(res),
+                 [&](const std::string& sub_name) {
+                   auto var = scope_.FindVar(sub_name);
+                   return var == nullptr ? nullptr : GetTensorFromVar(var);
+                 });
+  return res;
+}
+
+template <>
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
+  auto* var = OutputVar(name);
+  return var == nullptr ? nullptr : const_cast<Tensor*>(GetTensorFromVar(var));
+}
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+    const std::string& name) const {
+  auto names = op().Outputs(name);
+  std::vector<Tensor*> res;
+  res.reserve(names.size());
+  std::transform(names.begin(), names.end(), std::back_inserter(res),
+                 [&](const std::string& sub_name) {
+                   auto var = scope().FindVar(sub_name);
+                   return var == nullptr
+                              ? nullptr
+                              : const_cast<Tensor*>(GetTensorFromVar(var));
+                 });
+  return res;
+}
+
+void OpProtoAndCheckerMaker::Validate() {
+  validated_ = true;
+  CheckNoDuplicatedInOutAttrs();
+}
+
+OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(
+    const std::string& name, const std::string& comment) {
+  auto* input = proto_->add_inputs();
+  input->set_name(name);
+  input->set_comment(comment);
+  return OpProtoAndCheckerMaker::VariableBuilder{input};
+}
+
+OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
+    const std::string& name, const std::string& comment) {
+  auto* output = proto_->add_outputs();
+  output->set_name(name);
+  output->set_comment(comment);
+  return OpProtoAndCheckerMaker::VariableBuilder{output};
+}
+
+void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
+  std::unordered_set<std::string> names;
+  auto checker = [&](const std::string& name) {
+    PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+    names.insert(name);
+  };
+  for (auto& attr : proto_->attrs()) {
+    checker(attr.name());
+  }
+  for (auto& input : proto_->inputs()) {
+    checker(input.name());
+  }
+  for (auto& output : proto_->outputs()) {
+    checker(output.name());
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

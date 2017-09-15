@@ -44,7 +44,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<framework::LoDTensor>("Out");
     auto dims = Attr<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());
