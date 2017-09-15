@@ -22,7 +22,7 @@ namespace framework {
 template <typename T>
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
-      holder_, "Tenosr holds no memory. Call Tensor::mutable_data first.");
+      holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
   PADDLE_ENFORCE_GE(
       holder_->size(), numel() * sizeof(T) + offset_,
       "Tensor's dims_ is out of bound. Call Tensor::mutable_data "

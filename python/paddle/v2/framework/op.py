@@ -97,7 +97,7 @@ class OpDescCreationMethod(object):
                     new_attr.strings.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
-                        pair = new_attr.pairs.add()
+                        pair = new_attr.int_pairs.add()
                         pair.first = p[0]
                         pair.second = p[1]
                 else:
@@ -215,5 +215,27 @@ class __RecurrentOp__(object):
         return core.RecurrentOp.create(proto.SerializeToString())
 
 
+class __CondOp__(object):
+    __proto__ = None
+    type = "cond"
+
+    def __init__(self):
+        # cache recurrent_op's proto
+        if self.__proto__ is None:
+            for op_proto in get_all_op_protos():
+                if op_proto.type == self.type:
+                    self.__proto__ = op_proto
+
+    def __call__(self, *args, **kwargs):
+        if self.type not in args and "type" not in kwargs:
+            kwargs["type"] = self.type
+        # create proto
+        create_method = OpDescCreationMethod(self.__proto__)
+        proto = create_method(*args, **kwargs)
+        # create condop
+        return core.CondOp.create(proto.SerializeToString())
+
+
 Operator = OperatorFactory()  # The default global factory
 RecurrentOp = __RecurrentOp__()
+CondOp = __CondOp__()
