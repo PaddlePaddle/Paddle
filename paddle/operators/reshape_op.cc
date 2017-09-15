@@ -46,7 +46,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
                    [](int a) { return static_cast<int64_t>(a); });
     auto out_dims = framework::make_ddim(shape_int64);
-    ctx.Output<framework::Tensor>("Out")->Resize(out_dims);
+    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
   }
 };
 
@@ -90,7 +90,7 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) shouldn't be null.");
     auto dims = ctx.Input<framework::Tensor>("X")->dims();
-    auto *d_in = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_in = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     d_in->Resize(dims);
   }
 };

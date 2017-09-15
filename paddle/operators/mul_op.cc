@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+using framework::LoDTensor;
 
 class MulOp : public framework::OperatorWithKernel {
  public:
@@ -45,7 +46,8 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
         "First matrix's width must be equal with second matrix's height.");
-    ctx.Output<Tensor>("Out")->Resize({x_mat_dims[0], y_mat_dims[1]});
+    ctx.Output<framework::LoDTensor>("Out")->Resize(
+        {x_mat_dims[0], y_mat_dims[1]});
   }
 };
 
@@ -94,8 +96,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto y_dims = ctx.Input<Tensor>("Y")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto *x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *y_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
 
     auto x_mat_dims =
         framework::flatten_to_2d(x_dims, Attr<int>("x_num_col_dims"));

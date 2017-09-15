@@ -23,10 +23,11 @@ class SGDOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(
-        ctx.Input<Tensor>("param")->dims() == ctx.Input<Tensor>("grad")->dims(),
-        "Two input of SGD Op's dimension must be same.");
-    ctx.Output<Tensor>("param_out")->Resize(ctx.Input<Tensor>("param")->dims());
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("param")->dims(),
+                      ctx.Input<Tensor>("grad")->dims(),
+                      "Two input of SGD Op's dimension must be same.");
+    ctx.Output<framework::LoDTensor>("param_out")
+        ->Resize(ctx.Input<Tensor>("param")->dims());
   }
 };
 

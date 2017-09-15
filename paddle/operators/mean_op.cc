@@ -25,7 +25,7 @@ class MeanOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
                             "Input of MeanOp must be initialized.");
-    ctx.Output<Tensor>("Out")->Resize({1});
+    ctx.Output<framework::LoDTensor>("Out")->Resize({1});
   }
 };
 
@@ -45,7 +45,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>(framework::GradVarName("X"))
+    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };

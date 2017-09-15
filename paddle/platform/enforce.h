@@ -25,6 +25,10 @@ limitations under the License. */
 #include "paddle/string/printf.h"
 #include "paddle/string/to_string.h"
 
+#ifdef __GNUC__
+#include <cxxabi.h>  // for __cxa_demangle
+#endif
+
 #ifndef PADDLE_ONLY_CPU
 
 #include "paddle/platform/dynload/cublas.h"
@@ -41,6 +45,19 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
+namespace {
+#ifdef __GNUC__
+inline std::string demangle(std::string name) {
+  int status = -4;  // some arbitrary value to eliminate the compiler warning
+  std::unique_ptr<char, void (*)(void*)> res{
+      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+  return (status == 0) ? res.get() : name;
+}
+#else
+inline std::string demangle(std::string name) { return name; }
+#endif
+}
 
 struct EnforceNotMet : public std::exception {
   std::exception_ptr exp_;
@@ -61,8 +78,8 @@ struct EnforceNotMet : public std::exception {
 
       Dl_info info;
       for (int i = 0; i < size; ++i) {
-        if (dladdr(call_stack[i], &info)) {
-          auto demangled = info.dli_sname;
+        if (dladdr(call_stack[i], &info) && info.dli_sname) {
+          auto demangled = demangle(info.dli_sname);
           auto addr_offset = static_cast<char*>(call_stack[i]) -
                              static_cast<char*>(info.dli_saddr);
           sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,

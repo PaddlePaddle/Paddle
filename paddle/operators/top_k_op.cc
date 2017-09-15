@@ -35,8 +35,8 @@ class TopkOp : public framework::OperatorWithKernel {
 
     framework::DDim dims = input->dims();
     dims[dims.size() - 1] = k;
-    ctx.Output<Tensor>("Out")->Resize(dims);
-    ctx.Output<Tensor>("Indices")->Resize(dims);
+    ctx.Output<framework::LoDTensor>("Out")->Resize(dims);
+    ctx.Output<framework::LoDTensor>("Indices")->Resize(dims);
   }
 };
 
