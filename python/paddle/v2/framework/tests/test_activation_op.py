@@ -18,21 +18,6 @@ class TestExp(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
-class TestRelu(OpTest):
-    def setUp(self):
-        self.op_type = "relu"
-        x = np.random.uniform(-1, 1, [11, 17]).astype("float32")
-        x = np.sign(x) * np.exp(np.abs(x))
-        self.inputs = {'X': x}
-        self.outputs = {'Y': np.maximum(self.inputs['X'], 0)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
-
-
 class TestSigmoid(OpTest):
     def setUp(self):
         self.op_type = "sigmoid"
@@ -81,8 +66,12 @@ class TestSqrt(OpTest):
 class TestAbs(OpTest):
     def setUp(self):
         self.op_type = "abs"
-        x = np.random.uniform(-1, 1, [11, 17]).astype("float32")
-        x = np.sign(x) * np.exp(np.abs(x))
+        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
+        # Because we set delta = 0.005 in caculating numeric gradient,
+        # if x is too small, such as 0.002, x_neg will be -0.003
+        # x_pos will be 0.007, so the numeric gradient is unaccurate.
+        # we should avoid this
+        x[np.abs(x) < 0.005] = 0.02
         self.inputs = {'X': x}
         self.outputs = {'Y': np.abs(self.inputs['X'])}
 
@@ -91,6 +80,68 @@ class TestAbs(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
+
+
+class TestRelu(OpTest):
+    def setUp(self):
+        self.op_type = "relu"
+        x = np.random.uniform(-1, 1, [11, 17]).astype("float32")
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        self.inputs = {'X': x}
+        self.outputs = {'Y': np.maximum(self.inputs['X'], 0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+
+
+class TestBRelu(OpTest):
+    def setUp(self):
+        self.op_type = "brelu"
+        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
+        t_min = 1
+        t_max = 4
+        # The same with TestAbs
+        x[np.abs(x - t_min) < 0.005] = t_min + 0.02
+        x[np.abs(x - t_max) < 0.005] = t_min + 0.02
+
+        self.inputs = {'X': x}
+        self.attrs = {'t_min': t_min, 't_max': t_max}
+        t = np.copy(x)
+        t[t < t_min] = t_min
+        t[t > t_max] = t_max
+        self.outputs = {'Y': t}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+
+
+class TestSoftRelu(OpTest):
+    def setUp(self):
+        self.op_type = "soft_relu"
+        x = np.random.uniform(-3, 3, [4, 4]).astype("float32")
+        threshold = 2
+        # The same reason with TestAbs
+        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
+        x[np.abs(x + threshold) < 0.005] = -threshold + 0.02
+        self.inputs = {'X': x}
+        self.attrs = {'threshold': threshold}
+        t = np.copy(x)
+        t[t < -threshold] = -threshold
+        t[t > threshold] = threshold
+        self.outputs = {'Y': np.log((np.exp(t) + 1))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
 class TestReciprocal(OpTest):
@@ -134,47 +185,6 @@ class TestSquare(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
-
-
-class TestBRelu(OpTest):
-    def setUp(self):
-        self.op_type = "brelu"
-        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
-        x = 2 * np.sign(x) * np.exp(np.abs(x))
-        self.inputs = {'X': x}
-        t_min = 0
-        t_max = 4
-        self.attrs = {'t_min': t_min, 't_max': t_max}
-        t = np.copy(x)
-        t[t < t_min] = t_min
-        t[t > t_max] = t_max
-        self.outputs = {'Y': t}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.02)
-
-
-class TestSoftRelu(OpTest):
-    def setUp(self):
-        self.op_type = "soft_relu"
-        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
-        x = 2 * np.sign(x) * np.exp(np.abs(x))
-        self.inputs = {'X': x}
-        threshold = 4
-        self.attrs = {'threshold': threshold}
-        t = np.copy(x)
-        t[t < -threshold] = -threshold
-        t[t > threshold] = threshold
-        self.outputs = {'Y': np.log((np.exp(t) + 1))}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
 class TestPow(OpTest):
