@@ -169,8 +169,9 @@ class NOP : public OperatorBase {
 
 class CompileTimeInferShapeContext : public InferShapeContextBase {
  public:
-  CompileTimeInferShapeContext(const OpDesc& op_desc,
-                               std::map<std::string, VarDesc*>& var_descs);
+  CompileTimeInferShapeContext(std::unique_ptr<OperatorBase>& op,
+                               std::map<std::string, VarDesc*>& var_descs)
+      : op_(std::move(op)), var_descs_(var_descs) {}
 
   const DDim get_input_dim(const std::string& name) const {
     return get_dim(op_->Input(name));

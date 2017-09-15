@@ -85,7 +85,8 @@ class OpRegistry {
   static void InferShape(const OpDesc& op_desc,
                          std::map<std::string, VarDesc*>& var_descs) {
     auto& info = OpInfoMap::Instance().Get(op_desc.type());
-    info.shapeInferFn_(CompileTimeInferShapeContext(op_desc, var_descs));
+    auto op = OpRegistry::CreateOp(op_desc);
+    info.shapeInferFn_(CompileTimeInferShapeContext(op, var_descs));
   }
 
   // runtime InferShape

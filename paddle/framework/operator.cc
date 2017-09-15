@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/operator.h"
-#include <algorithm>
-#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -184,12 +182,6 @@ void OperatorBase::GenerateTemporaryNames() {
       }
     }
   }
-}
-
-CompileTimeInferShapeContext::CompileTimeInferShapeContext(
-    const OpDesc& op_desc, std::map<std::string, VarDesc*>& var_descs)
-    : var_descs_(var_descs) {
-  op_ = OpRegistry::CreateOp(op_desc);
 }
 
 }  // namespace framework
