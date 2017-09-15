@@ -24,7 +24,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename Place, typename T>
 class PreluKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -33,30 +33,29 @@ class PreluKernel : public framework::OpKernel {
 
     Out->mutable_data<T>(context.GetPlace());
 
-    auto alpha = static_cast<T>(context.Attr<AttrType>("alpha"));
+    auto alpha = static_cast<T>(context.Attr<float>("alpha"));
 
     auto X_vec = EigenVector<T>::Flatten(*X);
     auto Out_vec = EigenVector<T>::Flatten(*Out);
 
-    auto place = context.GetEigenDevice<Place>();
-
-    Out_vec.device(place) = X_vec.cwiseMax(0.f) + X_vec.cwiseMin(0.f) * alpha;
+    // auto place = context.GetEigenDevice<Place>();
+    // Out_vec.device(place)
+    Out_vec = X_vec.cwiseMax(0.f) + X_vec.cwiseMin(0.f) * alpha;
   }
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename Place, typename T>
 class PreluGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
     auto* dO = context.Input<Tensor>(framework::GradVarName("Out"));
 
-    auto* Out = context.Output<Tensor>("Out");
+    auto* Out = context.Input<Tensor>("Out");
 
-    auto alpha = static_cast<T>(context.Attr<AttrType>("alpha"));
+    auto alpha = static_cast<T>(context.Attr<float>("alpha"));
 
     dX->mutable_data<T>(context.GetPlace());
-
     for (int i = 0; i < dX->numel(); ++i) {
       if (Out->data<T>()[i] > 0) {
         dX->data<T>()[i] = dO->data<T>()[i];

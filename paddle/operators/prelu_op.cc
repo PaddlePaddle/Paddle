@@ -33,20 +33,20 @@ class PreluOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename AttrType>
+// template <typename AttrType>
 class PreluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PreluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input tensor of prelu operator.").NotInGradient();
-    AddOutput("Out", "The output tensor of prelu operator.").NotInGradient();
+    AddInput("X", "The input tensor of prelu operator.");
+    AddOutput("Out", "The output tensor of prelu operator.");
     AddComment(R"DOC(Prelu operator
 
 The equation is:
 f(x) = alpha * x , for x < 0
 f(x) = x         , for x >= 0
 )DOC");
-    AddAttr<AttrType>("alpha", "The scaling factor alpha of prelu.")
+    AddAttr<float>("alpha", "The scaling factor alpha of prelu.")
         .SetDefault(0.0);
   }
 };
@@ -58,8 +58,10 @@ class PreluGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto X_grad = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto X = ctx.Input<Tensor>("X");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
+    auto *X_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *X = ctx.Input<framework::Tensor>("X");
 
     X_grad->Resize(X->dims());
   }
@@ -70,7 +72,7 @@ class PreluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(prelu, ops::PreluOp, ops::PreluOpMaker<float>, prelu_grad,
+REGISTER_OP(prelu, ops::PreluOp, ops::PreluOpMaker, prelu_grad,
             ops::PreluGradOp);
 REGISTER_OP_CPU_KERNEL(prelu,
                        ops::PreluKernel<paddle::platform::CPUPlace, float>);
