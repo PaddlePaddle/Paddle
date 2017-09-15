@@ -77,8 +77,6 @@ class MinusGradOp : public NetOp {
 }  // namespace operators
 }  // namespace paddle
 
-USE_OP(scale);
-USE_NO_KERNEL_OP(identity);
 namespace ops = paddle::operators;
 REGISTER_OP(minus, ops::MinusOp, ops::MinusOpMaker, minus_grad,
             ops::MinusGradOp<float>);
