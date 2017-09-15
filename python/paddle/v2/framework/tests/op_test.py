@@ -158,16 +158,16 @@ def get_gradient(scope,
                  op,
                  inputs,
                  outputs,
-                 outputs_shape,
+                 outputs_shapes,
                  grad_name,
                  place,
                  no_grad_set=None):
-    accum_count = np.zeros((len(outputs_shape)), dtype=np.int32)
+    accum_count = np.zeros((len(outputs_shapes)), dtype=np.int32)
     shape_dict = {}
-    for i in xrange(len(outputs_shape)):
-        accum_count[i] = outputs_shape[i][1] + \
+    for i in xrange(len(outputs_shapes)):
+        accum_count[i] = outputs_shapes[i][1] + \
                 (accum_count[i - 1] if i > 0 else 0)
-        shape_dict[outputs_shape[i][0]] = i
+        shape_dict[outputs_shapes[i][0]] = i
 
     # inital out_values
     out_grad_values = np.zeros(accum_count[-1], dtype=np.float32)
@@ -301,10 +301,10 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        outputs_shape = []
+        outputs_shapes = []
         for out_name in output_names:
-            self.assertTrue(out_name, self.outputs)
-            outputs_shape.append((out_name, self.outputs[out_name].size))
+            self.assertTrue(out_name in self.outputs)
+            outputs_shapes.append((out_name, self.outputs[out_name].size))
 
         numeric_grads = [
             get_numeric_gradient(
@@ -323,7 +323,7 @@ class OpTest(unittest.TestCase):
         cpu_place = core.CPUPlace()
         cpu_analytic_grads = [
             get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                         outputs_shape, grad_name, cpu_place, no_grad_set)
+                         outputs_shapes, grad_name, cpu_place, no_grad_set)
             for grad_name in grad_names
         ]
 
@@ -335,7 +335,7 @@ class OpTest(unittest.TestCase):
             gpu_place = core.GPUPlace(0)
             gpu_analytic_grads = [
                 get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                             outputs_shape, grad_name, gpu_place, no_grad_set)
+                             outputs_shapes, grad_name, gpu_place, no_grad_set)
                 for grad_name in grad_names
             ]
 
