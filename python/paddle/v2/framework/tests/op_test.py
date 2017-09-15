@@ -100,15 +100,17 @@ def get_numeric_gradient(scope,
     ctx = core.DeviceContext.create(core.CPUPlace())
 
     def get_output():
-        sum = 0.0
+        output_vals = []
         for output_name in output_names:
             op.run(scope, ctx)
-            sum += np.array(scope.find_var(output_name).get_tensor()).sum()
-        return sum
+            out_val = np.array(scope.find_var(output_name).get_tensor())
+            output_vals = np.append(output_vals, out_val.flatten())
+        return output_vals
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
-    gradient_flat = np.zeros(shape=(tensor_size, ), dtype='float32')
+
+    gradient_flat = None
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
@@ -130,9 +132,15 @@ def get_numeric_gradient(scope,
         y_neg = get_output()
 
         tensor_to_check.set_float_element(i, origin)
-        gradient_flat[i] = (y_pos - y_neg) / delta / 2
+        diff = (y_pos - y_neg) / delta / 2
 
-    return gradient_flat.reshape(tensor_to_check.get_dims())
+        if gradient_flat is None:
+            gradient_flat = np.zeros((tensor_size, y_neg.size))
+
+        gradient_flat[i, :] = diff.flatten()
+
+    # dimensions: num_input * num_output
+    return gradient_flat
 
 
 def get_backward_op(scope, op, no_grad_set):
@@ -146,26 +154,76 @@ def get_backward_op(scope, op, no_grad_set):
     return backward_op
 
 
-def get_gradient(scope, op, inputs, outputs, grad_name, place,
+def get_gradient(scope,
+                 op,
+                 inputs,
+                 outputs,
+                 outputs_shape,
+                 grad_name,
+                 place,
                  no_grad_set=None):
-    ctx = core.DeviceContext.create(place)
+    accum_count = np.zeros((len(outputs_shape)), dtype=np.int32)
+    shape_dict = {}
+    for i in xrange(len(outputs_shape)):
+        accum_count[i] = outputs_shape[i][1] + \
+                (accum_count[i - 1] if i > 0 else 0)
+        shape_dict[outputs_shape[i][0]] = i
 
-    set_input(scope, op, inputs, place)
+    # inital out_values
+    out_grad_values = np.zeros(accum_count[-1], dtype=np.float32)
+    # dx_values
+    dx_values = None
 
-    op.infer_shape(scope)
-    op.run(scope, ctx)
+    def set_tensor_val(tensor_name, tensor, place):
+        shape = tensor.shape()
+        if tensor_name.encode('utf-8') in shape_dict:
+            idx = shape_dict[tensor_name]
+            start = accum_count[idx - 1] if idx > 0 else 0
+            data = out_grad_values[start:accum_count[idx]].reshape(shape)
+        else:
+            data = np.zeros(shape, dtype=np.float32)
+        tensor.set(data, place)
 
-    if no_grad_set is None:
-        no_grad_set = set()
+    for i in xrange(accum_count[-1]):
+        # set one
+        out_grad_values[i] = 1
+        for out_name, out_dup in Operator.get_op_outputs(op.type()):
+            if out_name in outputs:
+                if out_dup:
+                    sub_out = outputs[out_name]
+                    for sub_out_name, _ in sub_out:
+                        out_tensor = scope.find_var(sub_out_name).get_tensor()
+                        grad_tensor = scope.new_var(
+                            grad_var_name(sub_out_name)).get_tensor()
+                        grad_tensor.set_dims(out_tensor.shape())
+                        set_tensor_val(sub_out_name, grad_tensor, place)
+                else:
+                    out_tensor = scope.find_var(out_name).get_tensor()
+                    grad_tensor = scope.new_var(grad_var_name(
+                        out_name)).get_tensor()
+                    grad_tensor.set_dims(out_tensor.shape())
+                    set_tensor_val(out_name, grad_tensor, place)
 
-    backward_op = get_backward_op(scope, op, no_grad_set)
-    set_output_grad(scope, op, outputs, place)
+        ctx = core.DeviceContext.create(place)
+        set_input(scope, op, inputs, place)
+        op.infer_shape(scope)
+        op.run(scope, ctx)
+        if no_grad_set is None:
+            no_grad_set = set()
 
-    backward_op.infer_shape(scope)
-    backward_op.run(scope, ctx)
+        backward_op = get_backward_op(scope, op, no_grad_set)
+        #set_output_grad(scope, op, outputs, place)
 
-    out = np.array(scope.find_var(grad_name).get_tensor())
-    return out
+        backward_op.infer_shape(scope)
+        backward_op.run(scope, ctx)
+        out = np.array(scope.find_var(grad_name).get_tensor())
+        if dx_values is None:
+            dx_values = np.zeros((out.size, accum_count[-1]))
+        dx_values[:, i] = out.flatten()
+        # reset
+        out_grad_values[i] = 0
+
+    return dx_values
 
 
 class OpTest(unittest.TestCase):
@@ -231,7 +289,7 @@ class OpTest(unittest.TestCase):
                    output_names,
                    no_grad_set=None,
                    in_place=False,
-                   max_relative_error=0.005):
+                   max_relative_error=0.0001):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
@@ -243,6 +301,11 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
+        outputs_shape = []
+        for out_name in output_names:
+            self.assertTrue(out_name, self.outputs)
+            outputs_shape.append((out_name, self.outputs[out_name].size))
+
         numeric_grads = [
             get_numeric_gradient(
                 self.scope,
@@ -252,6 +315,7 @@ class OpTest(unittest.TestCase):
                 output_names,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
+
         grad_names = [
             grad_var_name(input_to_check) for input_to_check in inputs_to_check
         ]
@@ -259,7 +323,7 @@ class OpTest(unittest.TestCase):
         cpu_place = core.CPUPlace()
         cpu_analytic_grads = [
             get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                         grad_name, cpu_place, no_grad_set)
+                         outputs_shape, grad_name, cpu_place, no_grad_set)
             for grad_name in grad_names
         ]
 
@@ -271,7 +335,7 @@ class OpTest(unittest.TestCase):
             gpu_place = core.GPUPlace(0)
             gpu_analytic_grads = [
                 get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                             grad_name, gpu_place, no_grad_set)
+                             outputs_shape, grad_name, gpu_place, no_grad_set)
                 for grad_name in grad_names
             ]
 
