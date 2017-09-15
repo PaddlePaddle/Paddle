@@ -30,8 +30,7 @@ template <typename T>
 class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto place = context.GetPlace();
-    PADDLE_ENFORCE(platform::is_cpu_place(place),
+    PADDLE_ENFORCE(platform::is_cpu_place(context.GetPlace()),
                    "This kernel only runs on CPU.");
 
     // Calculate ths softmax outputs.
@@ -45,7 +44,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
     T* softmax_out = softmax->data<T>();
     const int* label_data = context.Input<Tensor>("Label")->data<int>();
 
-    Tensor* loss = context.Output<Tensor>("Loss");
+    Tensor* loss = context.Output<Tensor>("Out");
     loss->mutable_data<T>(context.GetPlace());
     T* loss_data = loss->data<T>();
 
@@ -74,7 +73,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel {
     const int* label_data = context.Input<Tensor>("Label")->data<int>();
     for (int i = 0; i < batch_size; ++i) {
       int index = i * class_num + label_data[i];
-      logit_grad_data[index] -= .1;
+      logit_grad_data[index] -= 1.;
     }
   }
 };

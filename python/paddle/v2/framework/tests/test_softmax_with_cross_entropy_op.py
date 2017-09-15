@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-import pdb
 
 from op_test import OpTest
 from test_softmax_op import stable_softmax
@@ -11,7 +10,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.op_type = "softmax_with_cross_entropy"
 
         MAX_BATCH_SIZE = 23
-        MAX_CLASS_NUM = 10
+        MAX_CLASS_NUM = 17
 
         batch_size = np.random.randint(1, MAX_BATCH_SIZE, 1)[0]
         class_num = np.random.randint(2, MAX_CLASS_NUM, 1)[0]
@@ -26,13 +25,13 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             dtype="float32")
 
         self.inputs = {"Logits": logits, "Label": labels}
-        self.outputs = {"Softmax": softmax, "Loss": cross_entropy}
+        self.outputs = {"Softmax": softmax, "Out": cross_entropy}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss")
+        self.check_grad(["Logits"], "Out", max_relative_error=0.05)
 
 
 if __name__ == "__main__":

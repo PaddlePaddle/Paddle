@@ -1,7 +1,6 @@
 import unittest
 import numpy
 from op_test import OpTest
-import pdb
 
 
 class TestCrossEntropy(OpTest):

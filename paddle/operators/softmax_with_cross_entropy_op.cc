@@ -32,7 +32,7 @@ class SoftmaxWithCrossEntropyOpMaker
               "Store the outputs of softmax function, "
               "which will be used in backward calculation.")
         .AsIntermediate();
-    AddOutput("Loss", "A 1-D tensor<float> with shape N.");
+    AddOutput("Out", "A 1-D tensor<float> with shape N.");
     AddComment(R"DOC(
 Cross entropy loss with softmax are used as the output layer extensively. This
 operator computes the softmax normalized values for each row of the input
@@ -56,14 +56,14 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Loss")),
-                            "Input(Loss@Grad) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@Grad) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Softmax"),
                             "Input(Softmax) should be not null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
                             "Input(Lable) should be not null.");
 
-    ctx.Output<Tensor>(framework::GradVarName("Logits"))
+    ctx.Output<framework::LoDTensor>(framework::GradVarName("Logits"))
         ->Resize(ctx.Input<Tensor>("Softmax")->dims());
   }
 };
@@ -81,8 +81,8 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx.Input<Tensor>("Label")->dims().size() == 1UL,
                    "The label should be a 1-d tensor.");
 
-    ctx.Output<Tensor>("Softmax")->Resize(logits->dims());
-    ctx.Output<Tensor>("Loss")->Resize({logits->dims()[0], 1});
+    ctx.Output<framework::LoDTensor>("Softmax")->Resize(logits->dims());
+    ctx.Output<framework::LoDTensor>("Out")->Resize({logits->dims()[0], 1});
   }
 };
 

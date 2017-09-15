@@ -13,26 +13,13 @@
    limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/utils.h"
 #include "paddle/platform/assert.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-template <typename T>
-__host__ __device__ T clipping_log(const T x) {
-  PADDLE_ASSERT(std::is_floating_point<T>::value);
-  const T kApproInf = 1e20;
-  T v = log(x);
-  if (v == INFINITY) {
-    return kApproInf;
-  }
-  if (v == -INFINITY) {
-    return -kApproInf;
-  }
-  return v;
-}
 
 template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
@@ -42,7 +29,7 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
-    Y[i] = -clipping_log(X[i * D + label[i]]);
+    Y[i] = -math::tolerable_value(log(X[i * D + label[i]]));
   }
 }
 
@@ -73,7 +60,7 @@ class OnehotCrossEntropyOpCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "This kernel only runs on GPU device.");
 
     auto X = ctx.Input<Tensor>("X");
     const T* Xdata = X->data<T>();
@@ -86,6 +73,7 @@ class OnehotCrossEntropyOpCUDAKernel : public framework::OpKernel {
     int D = X->dims()[1];
     int block = 512;
     int grid = (N + block - 1) / block;
+
     // TODO(qingqing) launch kernel on specified stream
     // base on ExecutionContext.
     CrossEntropyKernel<T><<<grid, block>>>(Ydata, Xdata, label_data, N, D);
