@@ -22,10 +22,17 @@ class LookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &context) const override {
-    auto table_t = context.Input<Tensor>("W");
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto output_t = context.Output<Tensor>("Out");
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("W"),
+                            "Input(W) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Ids"),
+                            "Input(Ids) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of LookupTableOp should not be null.");
+
+    auto table_t = ctx.Input<Tensor>("W");
+    auto ids_t = ctx.Input<Tensor>("Ids");
+    auto output_t = ctx.Output<framework::LoDTensor>("Out");
 
     output_t->Resize({ids_t->dims()[0], table_t->dims()[1]});
   }
@@ -56,7 +63,8 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &context) const override {
     auto table = context.Input<Tensor>("W");
-    auto d_table = context.Output<Tensor>(framework::GradVarName("W"));
+    auto d_table =
+        context.Output<framework::LoDTensor>(framework::GradVarName("W"));
     d_table->Resize(table->dims());
   }
 };
