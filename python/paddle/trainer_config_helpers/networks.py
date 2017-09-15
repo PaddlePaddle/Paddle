@@ -1410,7 +1410,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(* [l.name for l in layers])
+    Inputs(*[l.name for l in layers])
 
 
 def outputs(layers, *args):
@@ -1460,7 +1460,7 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(* [l.name for l in layers])
+        Outputs(*[l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:

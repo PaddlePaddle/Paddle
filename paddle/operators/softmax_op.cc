@@ -23,9 +23,15 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of SoftmaxOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
+                            "Output(Y) of SoftmaxOp should not be null.");
+
     PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
                    "The input of softmax op must be a matrix.");
-    ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
+    ctx.Output<framework::LoDTensor>("Y")->Resize(
+        ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -71,7 +77,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                       ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
                       "Input(Y) and its gradients should have a same shape.");
 
-    ctx.Output<Tensor>(framework::GradVarName("X"))
+    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
