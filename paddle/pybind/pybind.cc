@@ -310,7 +310,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](operators::NetOp &self, const OperatorBase &op) {
              self.AppendOp(op);
            })
-      //      .def("complete_add_op", &operators::NetOp::CompleteAddOp)
+      .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
       });
