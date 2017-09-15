@@ -17,6 +17,9 @@ class TestConcatOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['x0', 'x1', 'x2'], 'Out')
+
 
 if __name__ == '__main__':
     unittest.main()

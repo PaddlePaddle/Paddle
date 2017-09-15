@@ -77,6 +77,11 @@ void matmul(const framework::Tensor& matrix_a, bool trans_a,
             framework::Tensor* matrix_out, T beta,
             platform::DeviceContext* context);
 
+template <typename Place, typename T>
+void copy_matrix(const framework::Tensor* in, size_t in_dim,
+                 framework::Tensor* out, size_t out_dim, size_t len, size_t m,
+                 size_t n, size_t offset);
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -119,19 +119,18 @@ def get_numeric_gradient(scope,
         origin = tensor_to_check.get_float_element(i)
         # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
+        print tensor_to_check
         tensor_to_check.set_float_element(i, x_pos)
         y_pos = get_output()
-
+        print tensor_to_check
         if in_place:
             set_input(scope, op, inputs, core.CPUPlace())
 
         x_neg = origin - delta
         tensor_to_check.set_float_element(i, x_neg)
         y_neg = get_output()
-
         tensor_to_check.set_float_element(i, origin)
         gradient_flat[i] = (y_pos - y_neg) / delta / 2
-
     return gradient_flat.reshape(tensor_to_check.get_dims())
 
 
