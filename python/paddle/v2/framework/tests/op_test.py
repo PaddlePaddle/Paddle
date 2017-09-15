@@ -47,17 +47,24 @@ def set_input(scope, op, inputs, place):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]
-                for sub_in_name, sub_in_array in sub_in:
+                for sub_in_name, sub_in_val in sub_in:
                     var = scope.find_var(sub_in_name)
                     tensor = var.get_tensor()
+                    sub_in_array = sub_in_val[0] \
+                        if isinstance(sub_in_val, tuple) else sub_in_val
                     tensor.set_dims(sub_in_array.shape)
                     tensor.set(sub_in_array, place)
+                    if isinstance(sub_in_val, tuple):
+                        tensor.set_lod(sub_in_val[1])
             else:
                 var = scope.find_var(in_name)
                 tensor = var.get_tensor()
-                arr = inputs[in_name]
-                tensor.set_dims(arr.shape)
-                tensor.set(arr, place)
+                in_val = inputs[in_name]
+                in_array = in_val[0] if isinstance(in_val, tuple) else in_val
+                tensor.set_dims(in_array.shape)
+                tensor.set(in_array, place)
+                if isinstance(in_val, tuple):
+                    tensor.set_lod(in_val[1])
 
 
 def set_output_grad(scope, op, outputs, place):
