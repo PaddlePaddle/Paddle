@@ -98,7 +98,8 @@ Out = [[1, 2],
     AddAttr<std::vector<int>>("shape",
                               "A list<int> describing the shape of output."
                               "The size of shape list should be as same as "
-                              "dimension size of  input X.");
+                              "dimension size of  input X.")
+        .SetDefault(std::vector<int>());
   }
 };
 
@@ -113,8 +114,9 @@ class CropOpGrad : public framework::OperatorWithKernel {
                             "Input(Out@GRAD) should not be null");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-    x_grad->Resize(x_dims);
+    if (x_grad != nullptr) {
+      x_grad->Resize(x_dims);
+    }
   }
 };
 
