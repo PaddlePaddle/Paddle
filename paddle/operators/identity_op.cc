@@ -42,6 +42,11 @@ class IdentityOp : public NetOp {
              const framework::VariableNameMap &outputs,
              const framework::AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
+    PADDLE_ENFORCE_NE(Input("X"), framework::kEmptyVarName,
+                      "Input(X) of IdentityOp should not be null.");
+    PADDLE_ENFORCE_NE(Output("Out"), framework::kEmptyVarName,
+                      "Output(Out) of IdentityOp should not be null.");
+
     AppendOp(framework::OpRegistry::CreateOp(
         "scale", {{"X", {Input("X")}}}, {{"Out", {Output("Y")}}},
         {{"scale", static_cast<AttrType>(1)}}));

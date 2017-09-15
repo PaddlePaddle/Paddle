@@ -36,7 +36,7 @@ TEST(Tensor, DataAssert) {
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg =
-        "holder_ should not be null\nTenosr holds no memory. Call "
+        "holder_ should not be null\nTensor holds no memory. Call "
         "Tensor::mutable_data first.";
     const char* what = err.what();
     for (size_t i = 0; i < msg.length(); ++i) {
@@ -112,7 +112,7 @@ TEST(Tensor, ShareDataWith) {
     } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
       std::string msg =
-          "holder_ should not be null\nTenosr holds no memory. Call "
+          "holder_ should not be null\nTensor holds no memory. Call "
           "Tensor::mutable_data first.";
       const char* what = err.what();
       for (size_t i = 0; i < msg.length(); ++i) {
