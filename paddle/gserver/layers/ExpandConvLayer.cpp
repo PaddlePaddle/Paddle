@@ -53,14 +53,15 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
     weights_.emplace_back(w);
     index++;
   }
+
   if (biasParameter_.get()) {
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
-      biases_ =
-          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
+      biases_ = std::unique_ptr<Weight>(
+          new Weight(1, numFilters_, biasParameter_, 0));
     } else {
       biases_ =
-          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
+          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_, 0));
     }
   }
 
@@ -189,12 +190,7 @@ void ExpandConvLayer::forward(PassType passType) {
 
   /* add the bias-vector */
   if (biases_.get()) {
-    MatrixPtr bias = Matrix::create(biases_->getW()->getData(),
-                                    1,
-                                    biases_->getW()->getElementCnt(),
-                                    false,
-                                    useGpu_);
-    output_.value->addBias(*bias, 1.0, sharedBiases_);
+    output_.value->addBias(*biases_->getW(), 1.0, sharedBiases_);
   }
 
   /* activation */
@@ -206,13 +202,7 @@ void ExpandConvLayer::backward(const UpdateCallback &callback) {
 
   MatrixPtr outGrad = getOutputGrad();
   if (biases_ && biases_->getWGrad()) {
-    // bpropBiases(outGrad);
-    MatrixPtr bias = Matrix::create(biases_->getWGrad()->getData(),
-                                    1,
-                                    biases_->getWGrad()->getElementCnt(),
-                                    false,
-                                    useGpu_);
-    bias->collectBias(*getOutputGrad(), 1, sharedBiases_);
+    biases_->getWGrad()->collectBias(*getOutputGrad(), 1, sharedBiases_);
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);
   }
