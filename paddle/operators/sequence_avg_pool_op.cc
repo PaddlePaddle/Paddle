@@ -60,7 +60,9 @@ class SequenceAvgPoolGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Gradient of Out should not be null");
+                            "Gradient of Out should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "The input X should not be null.");
     auto og_dims =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->dims();
     auto x_dims = ctx.Input<framework::LoDTensor>("X")->dims();
