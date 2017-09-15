@@ -8,7 +8,6 @@ class TestSplitOp(OpTest):
         self.op_type = "split"
         axis = 0
         indices = 2
-        sections = [1, 3]
         x = np.random.random((4, 2)).astype('float32')
         out = np.split(x, indices, axis)
         self.inputs = {'X': x}
