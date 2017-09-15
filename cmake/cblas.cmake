@@ -172,29 +172,9 @@ if (REFERENCE_CBLAS_INCLUDE_DIR AND REFERENCE_CBLAS_LIBRARY)
   message(STATUS "Found reference-cblas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
 endif()
 
-if(IOS)
-  # Find vecLib for iOS
-  set(VECLIB_SEARCH_DIRS
-      ${IOS_SDK_ROOT}/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks
-      ${IOS_SDK_ROOT}/System/Library/Frameworks/Accelerate.framework/Frameworks
-      )
-  find_path(VECLIB_INC_DIR vecLib.h PATHS ${VECLIB_SEARCH_DIRS}/vecLib.framework/Headers)
-
-  include(FindPackageHandleStandardArgs)
-  find_package_handle_standard_args(vecLib DEFAULT_MSG VECLIB_INC_DIR)
-
-  if(VECLIB_FOUND)
-    set(CBLAS_FOUND ON)
-    set(CBLAS_PROVIDER vecLib)
-    set(CBLAS_INC_DIR ${VECLIB_INC_DIR})
-    if(VECLIB_INC_DIR MATCHES "^/System/Library/Frameworks/vecLib.framework.*")
-      set(CBLAS_LIBRARIES -lcblas "-framework vecLib")
-      message(STATUS "Found standalone vecLib.framework")
-    else()
-      set(CBLAS_LIBRARIES -lcblas "-framework Accelerate")
-      message(STATUS "Found vecLib as part of Accelerate.framework")
-    endif()
-
-    add_definitions(-DPADDLE_USE_VECLIB)
-  endif()
+if(IOS_USE_VECLIB_FOR_BLAS AND VECLIB_FOUND)
+  set(CBLAS_FOUND ON)
+  set(CBLAS_PROVIDER vecLib)
+  set(CBLAS_INC_DIR ${VECLIB_INC_DIR})
+  add_definitions(-DPADDLE_USE_VECLIB)
 endif()

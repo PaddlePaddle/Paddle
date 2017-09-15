@@ -28,6 +28,7 @@
 # IOS_DEPLOYMENT_TARGET
 #   The minimum iOS deployment version, such as "7.0"
 # IOS_ENABLE_BITCODE = ON (default) or OFF
+# IOS_USE_VECLIB_FOR_BLAS = OFF (default) or ON
 # IOS_DEVELOPER_ROOT = automatic(default) or /path/to/platform/Developer folder
 #   By default this location is automatcially chosen based on the IOS_PLATFORM value above.
 #   If set manually, it will override the default location and force the user of a particular Developer Platform
@@ -96,6 +97,11 @@ if(NOT DEFINED IOS_ENABLE_BITCODE)
   set(IOS_ENABLE_BITCODE ON)
 endif()
 set(IOS_ENABLE_BITCODE ${IOS_ENABLE_BITCODE} CACHE BOOL "Whether to enable bitcode")
+
+if(NOT DEFINED IOS_USE_VECLIB_FOR_BLAS)
+  set(IOS_USE_VECLIB_FOR_BLAS OFF)
+endif()
+set(IOS_USE_VECLIB_FOR_BLAS ${IOS_UES_VECLIB_FOR_BLAS} CACHE BOOL "Whether to use veclib")
 
 # Check the platform selection and setup for developer root
 if(${IOS_PLATFORM} STREQUAL "OS")
@@ -245,8 +251,33 @@ set(IOS_COMPILER_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} ${XCODE_IOS_BITCODE_
 set(CMAKE_C_FLAGS "${IOS_COMPILER_FLAGS} ${CMAKE_C_FLAGS}" CACHE STRING "C flags")
 set(CMAKE_CXX_FLAGS "${IOS_COMPILER_FLAGS} -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}" CACHE STRING "CXX flags")
 
-set(CMAKE_C_LINK_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} -Wl,-search_paths_first ${CMAKE_C_LINK_FLAGS}")
-set(CMAKE_CXX_LINK_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} -Wl,-search_paths_first ${CMAKE_CXX_LINK_FLAGS}")
+set(IOS_LINK_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} -Wl,-search_paths_first")
+
+if(IOS_USE_VECLIB_FOR_BLAS)
+  # Find vecLib for iOS
+  set(VECLIB_SEARCH_DIRS
+      ${IOS_SDK_ROOT}/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks
+      ${IOS_SDK_ROOT}/System/Library/Frameworks/Accelerate.framework/Frameworks
+      )
+  find_path(VECLIB_INC_DIR vecLib.h PATHS ${VECLIB_SEARCH_DIRS}/vecLib.framework/Headers)
+
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(vecLib DEFAULT_MSG VECLIB_INC_DIR)
+
+  if(VECLIB_FOUND)
+    if(VECLIB_INC_DIR MATCHES "^/System/Library/Frameworks/vecLib.framework.*")
+      set(IOS_LINK_FLAGS ${IOS_LINK_FLAGS} -lcblas "-framework vecLib")
+      message(STATUS "Found standalone vecLib.framework")
+    else()
+      set(IOS_LINK_FLAGS ${IOS_LINK_FLAGS} -lcblas "-framework Accelerate")
+      message(STATUS "Found vecLib as part of Accelerate.framework")
+    endif()
+
+  endif()
+endif()
+
+set(CMAKE_C_LINK_FLAGS "${IOS_LINK_FLAGS} ${CMAKE_C_LINK_FLAGS}")
+set(CMAKE_CXX_LINK_FLAGS "${IOS_LINK_FLAGS} ${CMAKE_CXX_LINK_FLAGS}")
 
 set(CMAKE_PLATFORM_HAS_INSTALLNAME 1)
 if(NOT IOS_ENABLE_BITCODE)
