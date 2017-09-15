@@ -27,6 +27,13 @@ class MinusOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of MinusOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of MinusOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of MinusOp should not be null.");
+
     auto *left_tensor = ctx.Input<framework::Tensor>("X");
     auto *right_tensor = ctx.Input<framework::Tensor>("Y");
 
@@ -77,8 +84,6 @@ class MinusGradOp : public NetOp {
 }  // namespace operators
 }  // namespace paddle
 
-USE_OP(scale);
-USE_NO_KERNEL_OP(identity);
 namespace ops = paddle::operators;
 REGISTER_OP(minus, ops::MinusOp, ops::MinusOpMaker, minus_grad,
             ops::MinusGradOp<float>);

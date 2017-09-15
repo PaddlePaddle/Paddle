@@ -23,9 +23,12 @@ class SequenceAvgPoolOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input of SequenceAvgPoolOp"
-                            "must be initialized.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("X"), "Input(X) of SequenceAvgPoolOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of SequenceAvgPoolOp should not be null.");
+
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto dims = x->dims();
     auto lod = x->lod();

@@ -23,6 +23,16 @@ class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("X"),
+        "Input(X) of OnehotCrossEntropyOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("label"),
+        "Input(label) of OnehotCrossEntropyOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Y"),
+        "Output(Y) of OnehotCrossEntropyOp should not be null.");
+
     auto *X = ctx.Input<Tensor>("X");
     auto *label = ctx.Input<Tensor>("label");
 
