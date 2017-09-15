@@ -28,8 +28,28 @@ typedef mkldnn::pooling_backward pool_bwd;
  */
 class MKLDNNPoolLayer : public MKLDNNLayer {
 protected:
+  // padding height and width
+  int ph_, pw_;
+  // stride height and width
+  int sh_, sw_;
+  // filter(kenerl) height and width
+  int fh_, fw_;
+
+  // pooling_avg or pooling_max
+  mkldnn::algorithm poolAlgo_;
+
+  // MKLDNNMatrixPtr which should be created from CPU Device
+  MKLDNNMatrixPtr cpuOutVal_;
+  MKLDNNMatrixPtr cpuOutGrad_;
+  // convert handle between CPU device and MKLDNN device
+  std::shared_ptr<mkldnn::reorder> cvtOutVal_;
+  std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
+
   // save forward primitive_desc, which can be used backward
   std::shared_ptr<pool_fwd::primitive_desc> fwdPD_;
+  // according to https://github.com/01org/mkl-dnn/blob/master/tests/gtests/
+  // test_pooling_forward.cpp, pool need workspace for backward
+  std::shared_ptr<mkldnn::memory> workspace_;
 
 public:
   explicit MKLDNNPoolLayer(const LayerConfig& config) : MKLDNNLayer(config) {}
@@ -55,6 +75,13 @@ public:
                 MKLDNNMatrixPtr& out) override;
 
   void updateInputData() override;
+
+  void printSizeInfo() override {
+    MKLDNNLayer::printSizeInfo();
+    VLOG(MKLDNN_SIZES) << getName() << ": fh: " << fh_ << ", fw: " << fw_
+                       << ": ph: " << ph_ << ", pw: " << pw_ << ", sh: " << sh_
+                       << ", sw: " << sw_;
+  }
 
 protected:
   /**
@@ -88,6 +115,24 @@ protected:
                         std::shared_ptr<pool_bwd::primitive_desc>& pd,
                         MKLDNNMatrixPtr& in,
                         MKLDNNMatrixPtr& out);
+
+  /**
+   * get padding_r according to
+   * https://github.com/01org/mkl-dnn/blob/master/tests/gtests/
+   * test_pooling_forward.cpp
+   */
+  mkldnn::memory::dims getPaddingR() const {
+    mkldnn::memory::dims padR = {ph_, pw_};
+    for (int i = 0; i < 2; ++i) {
+      if ((ih_ + ph_ + padR[0] - fh_) / sh_ + 1 < oh_) {
+        ++padR[0];
+      }
+      if ((iw_ + pw_ + padR[1] - fw_) / sw_ + 1 < ow_) {
+        ++padR[1];
+      }
+    }
+    return padR;
+  }
 };
 
 }  // namespace paddle
