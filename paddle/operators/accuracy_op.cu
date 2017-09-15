@@ -21,13 +21,14 @@ namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
+template <int BlockSize>
 __global__ void AccuracyCudaKernel(const int N, const int D, const int* Xdata,
                                    const int* labeldata, float* accuracy) {
   int count = 0;
-  __shared__ int total[PADDLE_CUDA_NUM_THREADS];
+  __shared__ int total[BlockSize];
 
   // support only 1 block
-  for (int i = threadIdx.x; i < (N); i += blockDim.x * gridDim.x) {
+  for (int i = threadIdx.x; i < (N); i += BlockSize) {
     for (int j = 0; j < D; ++j) {
       if (Xdata[i * D + j] == labeldata[i]) {
         ++count;
@@ -39,8 +40,7 @@ __global__ void AccuracyCudaKernel(const int N, const int D, const int* Xdata,
   __syncthreads();
 
   // reduce the count with init value 0, and output accuracy.
-  int result =
-      thrust::reduce(thrust::device, total, total + PADDLE_CUDA_NUM_THREADS, 0);
+  int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
   if (threadIdx.x == 0) {
     *accuracy = static_cast<float>(result) / static_cast<float>(N);
   }
@@ -69,7 +69,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel {
       return;
     }
 
-    AccuracyCudaKernel<<<1, PADDLE_CUDA_NUM_THREADS>>>(
+    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<1, PADDLE_CUDA_NUM_THREADS>>>(
         num_samples, infer_width, inference_data, label_data, accuracy_data);
   }
 };
