@@ -18,15 +18,15 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ElementWiseMulKernel : public framework::OpKernel {
+class ElementwiseMulKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementWiseCompute<EigenMulFunctor, Place, T>(ctx);
+    ElementwiseCompute<EigenMulFunctor, Place, T>(ctx);
   }
 };
 
 template <typename Place, typename T>
-class ElementWiseMulGradKernel : public framework::OpKernel {
+class ElementwiseMulGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {}
 };
@@ -35,11 +35,11 @@ class ElementWiseMulGradKernel : public framework::OpKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_mul, ops::ElementWiseOp, ops::ElementWiseOpMaker,
-            elementwise_mul_grad, ops::ElementWiseOpGrad);
+REGISTER_OP(elementwise_mul, ops::ElementwiseOp, ops::ElementwiseOpMaker,
+            elementwise_mul_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
-    ops::ElementWiseMulKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad,
-    ops::ElementWiseMulGradKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, float>);

@@ -90,7 +90,7 @@ inline void get_mid_dims(const framework::DDim& x_dims,
   }
 
 template <class functor, typename Place, typename T>
-void ElementWiseCompute(const framework::ExecutionContext& ctx) {
+void ElementwiseCompute(const framework::ExecutionContext& ctx) {
   using Tensor = framework::Tensor;
 
   auto* x = ctx.Input<Tensor>("X");
@@ -141,7 +141,7 @@ EIGEN_FUNCTOR(Div, EIGEN_DIV);
 
 template <typename Place, typename T, typename functor, typename functor1,
           typename broadcastfunctor, typename broadcast2functor>
-void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
+void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
   using Tensor = framework::Tensor;
 
   auto* x = ctx.Input<Tensor>("X");
@@ -191,7 +191,7 @@ void ElementWiseGradCompute(const framework::ExecutionContext& ctx) {
   }
 }
 
-class ElementWiseOp : public framework::OperatorWithKernel {
+class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -208,13 +208,13 @@ class ElementWiseOp : public framework::OperatorWithKernel {
   }
 };
 
-class ElementWiseOpMaker : public framework::OpProtoAndCheckerMaker {
+class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ElementWiseOpMaker(framework::OpProto* proto,
+  ElementwiseOpMaker(framework::OpProto* proto,
                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of elementwise mul op");
-    AddInput("Y", "The second input of elementwise mul op");
+    AddInput("X", "The first input of elementwise op");
+    AddInput("Y", "The second input of elementwise op");
     AddAttr<int>("axis",
                  R"DOC(
 When shape(Y) does not equal shape(X),Y will be broadcasted 
@@ -225,7 +225,7 @@ to match the shape of X and axis should be dimension index Y in X
 
     AddOutput("Out", "The output of elementwise mul op");
     AddComment(R"DOC(
-Limited elementwise multiple operator.The equation is: Out = X ⊙ Y.
+Limited elementwise operator.The equation is: Out = X (⊙|+|*|/) Y.
 1. The shape of Y should be same with X or
 2. Y's shape is a subset of X. 
    Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
@@ -237,9 +237,28 @@ Limited elementwise multiple operator.The equation is: Out = X ⊙ Y.
       shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
 )DOC");
   }
+
+  static std::string GetComment(std::string name, std::string equation) {
+    char buf[2048];
+    snprintf(buf, sizeof(buf) - 1,
+             "DOC( \
+Limited elementwise %s operator.The equation is: %s. \
+1. The shape of Y should be same with X or  \
+2. Y's shape is a subset of X. \
+   Y will be broadcasted to match the shape of X and axis should be dimension index Y in X. \
+   example: \
+      shape(X) = (2, 3, 4, 5), shape(Y) = (,) \
+      shape(X) = (2, 3, 4, 5), shape(Y) = (5,) \
+      shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5) \
+      shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1 \
+      shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0 \
+)DOC",
+             name.c_str(), equation.c_str());
+    return std::string(buf);
+  }
 };
 
-class ElementWiseOpGrad : public framework::OperatorWithKernel {
+class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   using Tensor = framework::Tensor;
