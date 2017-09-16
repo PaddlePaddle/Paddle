@@ -45,7 +45,7 @@ class TestCrossEntropySoftLabel(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.05)
+        self.check_grad(['X'], 'Y')
 
 
 if __name__ == "__main__":

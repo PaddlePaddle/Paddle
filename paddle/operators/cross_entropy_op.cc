@@ -54,6 +54,9 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of CrossEntropyOp must not be null.");
+
     auto dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     auto x = ctx.Input<Tensor>("X");
 
@@ -74,11 +77,14 @@ CrossEntropy Operator.
 
 The second input (Label tensor) supports two kinds of shapes:
 1) Rank(Label) = 1, Label[i] indicates the class index for sample i:
+
                 Y[i] = -log(X[i, Label[i]])
 
 2) Rank(Label) = 2, Label[i, j] indicates the soft label of class j
    for sample i:
+
                 Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
+
    Please make sure that in this case the summuation of each row of Label
    equals one. If each row of Label has only one non-zero element (equals 1),
    it degenerates to a standard one-hot representation.

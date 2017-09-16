@@ -14,6 +14,7 @@
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/assert.h"
+#include "paddle/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -21,7 +22,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-__host__ __device__ T tolerable_value(const T x) {
+HOSTDEVICE T tolerable_value(const T x) {
   PADDLE_ASSERT(std::is_floating_point<T>::value);
   const T kApproInf = 1e20;
   if (x == INFINITY) {
