@@ -17,12 +17,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::LoDTensor;
+
 class CrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of CrossEntropyOp must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
+                            "Input(Label) of CrossEntropyOp must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
+                            "Output(Y) of CrossEntropyOp must not be null.");
+
     auto *x = ctx.Input<Tensor>("X");
     auto *label = ctx.Input<Tensor>("Label");
 
@@ -35,7 +44,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
       // normal cross entropy
       PADDLE_ENFORCE_EQ(x->dims()[0], label->dims()[0]);
     }
-    ctx.Output<Tensor>("Y")->Resize({x->dims()[0]});
+    ctx.Output<LoDTensor>("Y")->Resize({x->dims()[0], 1});
   }
 };
 
@@ -45,7 +54,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     auto x = ctx.Input<Tensor>("X");
 
     dx->Resize(x->dims());

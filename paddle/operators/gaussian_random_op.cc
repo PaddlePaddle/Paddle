@@ -43,8 +43,12 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
+  void InferShape(const framework::InferShapeContext& ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of GaussianRandomOp should not be null.");
+
+    auto* tensor = ctx.Output<framework::LoDTensor>("Out");
     auto dims = Attr<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());

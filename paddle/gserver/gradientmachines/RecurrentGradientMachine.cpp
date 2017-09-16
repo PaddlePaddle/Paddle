@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <memory>
 #include "NeuralNetwork.h"
 #include "paddle/gserver/layers/AgentLayer.h"
 #include "paddle/utils/Flags.h"
@@ -429,7 +430,11 @@ void RecurrentGradientMachine::reorganizeInput(PassType passType) {
   }
 
   {
-    AsyncGpuBlock asyncGpuBlock;
+    std::unique_ptr<AsyncGpuBlock> asyncBlock;
+
+    if (useGpu_) {
+      asyncBlock.reset(new AsyncGpuBlock());
+    }
 
     // inFrameLine select rows in real layer one time
     for (size_t i = 0; i < inFrameLines_.size(); i++) {
