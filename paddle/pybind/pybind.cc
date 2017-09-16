@@ -37,6 +37,7 @@ USE_OP(sgd);
 USE_OP(mul);
 USE_OP(elementwise_mul);
 USE_OP(elementwise_add);
+USE_OP(elementwise_sub);
 USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
