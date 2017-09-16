@@ -1,30 +1,23 @@
 import unittest
 import numpy as np
-from gradient_checker import GradientChecker, create_op
-from op_test_util import OpTestMeta
+from op_test import OpTest
 
 
-class MinusOpTest(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestMinusOp(OpTest):
     def setUp(self):
-        self.type = "minus"
+        self.op_type = "minus"
         self.inputs = {
             'X': np.random.random((32, 84)).astype("float32"),
             'Y': np.random.random((32, 84)).astype("float32")
         }
         self.outputs = {'Out': (self.inputs['X'] - self.inputs['Y'])}
 
+    def test_check_output(self):
+        self.check_output()
 
-class MinusGradTest(GradientChecker):
-    def test_left(self):
-        op = create_op("minus")
-        inputs = {
-            "X": np.random.random((10, 10)).astype("float32"),
-            "Y": np.random.random((10, 10)).astype("float32")
-        }
-        self.check_grad(op, inputs, ["X", 'Y'], "Out")
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'], 'Out')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

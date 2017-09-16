@@ -102,7 +102,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is test op");
   }
 };
@@ -140,7 +140,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
     AddOutput("ys", "outputs of test op").AsDuplicable();
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is test op");
   }
 };

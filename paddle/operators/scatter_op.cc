@@ -24,6 +24,15 @@ class ScatterOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Ref"),
+                            "Input(Ref) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Index"),
+                            "Input(Index) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Updates"),
+                            "Input(Updates) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ScatterOp should not be null.");
+
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Index")->dims().size(), 1,
                       "Update Index should be 1-D.");
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Ref")->dims().size(),
@@ -35,7 +44,8 @@ class ScatterOp : public framework::OperatorWithKernel {
     framework::DDim data_dim(ctx.Input<Tensor>("Updates")->dims());
     for (int i = 1; i < data_dim.size(); ++i)
       PADDLE_ENFORCE_EQ(data_dim[i], ctx.Input<Tensor>("Updates")->dims()[i]);
-    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("Ref")->dims());
+    ctx.Output<framework::LoDTensor>("Out")->Resize(
+        ctx.Input<Tensor>("Ref")->dims());
   }
 };
 
@@ -45,9 +55,11 @@ class ScatterGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
+    auto *dUpdates =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Updates"));
     auto *Updates = ctx.Input<Tensor>("Updates");
-    auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));
+    auto *dRef =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Ref"));
     auto *Ref = ctx.Input<Tensor>("Ref");
 
     dRef->Resize(Ref->dims());

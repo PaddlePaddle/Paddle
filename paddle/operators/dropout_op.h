@@ -40,8 +40,8 @@ class CPUDropoutKernel : public framework::OpKernel {
     T* y_data = y->mutable_data<T>(context.GetPlace());
     const T* x_data = x->data<T>();
 
-    float dropout_prob = context.GetAttr<float>("dropout_prob");
-    int seed = context.GetAttr<int>("seed");
+    float dropout_prob = context.Attr<float>("dropout_prob");
+    int seed = context.Attr<int>("seed");
 
     std::minstd_rand engine;
     engine.seed(seed);
@@ -56,7 +56,7 @@ class CPUDropoutKernel : public framework::OpKernel {
         y_data[i] = x_data[i];
       }
     }
-    // TODO: add test time logits.
+    // TODO: add test phase logits.
   }
 };
 
@@ -93,8 +93,8 @@ class GPUDropoutKernel : public framework::OpKernel {
     auto* mask = context.Output<Tensor>("Mask");
     y->mutable_data<T>(context.GetPlace());
 
-    float dropout_prob = context.GetAttr<float>("dropout_prob");
-    int seed = context.GetAttr<int>("seed");
+    float dropout_prob = context.Attr<float>("dropout_prob");
+    int seed = context.Attr<int>("seed");
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int size = framework::product(mask->dims());
     T* mask_data = mask->mutable_data<T>(context.GetPlace());

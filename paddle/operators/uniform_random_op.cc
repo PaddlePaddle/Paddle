@@ -26,16 +26,16 @@ class CPUUniformRandomKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed = static_cast<unsigned int>(context.GetAttr<int>("seed"));
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
     }
     engine.seed(seed);
     std::uniform_real_distribution<T> dist(
-        static_cast<T>(context.GetAttr<float>("min")),
-        static_cast<T>(context.GetAttr<float>("max")));
-    int64_t size = framework::product(tensor->dims());
+        static_cast<T>(context.Attr<float>("min")),
+        static_cast<T>(context.Attr<float>("max")));
+    int64_t size = tensor->numel();
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
@@ -48,10 +48,14 @@ class UniformRandomOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE(GetAttr<float>("min") < GetAttr<float>("max"),
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of UniformRandomOp should not be null.");
+
+    PADDLE_ENFORCE(Attr<float>("min") < Attr<float>("max"),
                    "uniform_random's min must less then max");
-    auto* tensor = ctx.Output<framework::Tensor>("Out");
-    auto dims = GetAttr<std::vector<int>>("dims");
+    auto* tensor = ctx.Output<framework::LoDTensor>("Out");
+    auto dims = Attr<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());
     for (auto dim : dims) {

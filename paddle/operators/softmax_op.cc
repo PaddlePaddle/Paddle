@@ -23,9 +23,15 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of SoftmaxOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
+                            "Output(Y) of SoftmaxOp should not be null.");
+
     PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
                    "The input of softmax op must be a matrix.");
-    ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
+    ctx.Output<framework::LoDTensor>("Y")->Resize(
+        ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -51,7 +57,7 @@ the other dimensions in the K-dimensional vector input. Then the ratio of the
 exponential of the given dimension and the sum of exponential values of all
 the other dimensions is the output of the softmax operator.
 
-For each row `i` and each column `j` in X, we have:
+For each row `i` and each column `j` in input X, we have:
     Y[i, j] = exp(X[i, j]) / sum_j(exp(X[i, j]))
 
 )DOC");
@@ -64,14 +70,15 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(Y) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should be not null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
-                            "Input(Y@GRAD) should not be null");
-    PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
-                       ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
-                   "the shape of Input(0) and Input(1) should be the same");
-    ctx.Output<Tensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<Tensor>("Y")->dims());
+                            "Input(Y@GRAD) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Y")->dims(),
+                      ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
+                      "Input(Y) and its gradients should have a same shape.");
+
+    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
+        ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
 

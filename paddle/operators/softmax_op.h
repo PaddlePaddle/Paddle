@@ -28,12 +28,12 @@ template <typename Place, typename T>
 class SoftmaxKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto input = context.Input<Tensor>("X");
-    auto output = context.Output<Tensor>("Y");
-    output->mutable_data<T>(context.GetPlace());
+    auto X = context.Input<Tensor>("X");
+    auto Y = context.Output<Tensor>("Y");
+    Y->mutable_data<T>(context.GetPlace());
 
-    auto logits = EigenMatrix<T>::From(*input);
-    auto softmax = EigenMatrix<T>::From(*output);
+    auto logits = EigenMatrix<T>::From(*X);
+    auto softmax = EigenMatrix<T>::From(*Y);
 
     const int kBatchDim = 0;
     const int kClassDim = 1;

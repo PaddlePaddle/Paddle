@@ -83,8 +83,8 @@ void Conv3DLayer::forward(PassType passType) {
   int outWidth = getSize();
   resetOutput(batchSize, outWidth);
 
+  REGISTER_TIMER_INFO("FwdConv3D", getName().c_str());
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    REGISTER_TIMER_INFO("FwdConv3D", getName().c_str());
     const MatrixPtr &inMat = getInputValue(i);
     const MatrixPtr &outMat = getOutputValue();
     int M = M_[i];
@@ -120,7 +120,6 @@ void Conv3DLayer::forward(PassType passType) {
     }
   }
   if (nullptr != this->biasParameter_) {
-    REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
     this->addBias();
   }
   forwardActivation();
@@ -134,15 +133,14 @@ void Conv3DLayer::backward(const UpdateCallback &callback) {
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
+  REGISTER_TIMER_INFO("BwdConv3D", getName().c_str());
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    REGISTER_TIMER_INFO("BwdConv3D", getName().c_str());
     if (weights_[i]->getWGrad()) {
       bpropWeights(i);
     }
     if (getInputGrad(i)) {
       bpropData(i);
     }
-    REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
     weights_[i]->getParameterPtr()->incUpdate(callback);
   }
 }

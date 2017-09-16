@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+using framework::LoDTensor;
 
 class DropoutOp : public framework::OperatorWithKernel {
  public:
@@ -27,12 +28,12 @@ class DropoutOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     // validity check
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_GE(ctx.GetAttr<float>("dropout_prob"), 0);
-    PADDLE_ENFORCE_LE(ctx.GetAttr<float>("dropout_prob"), 1);
+    PADDLE_ENFORCE_GE(ctx.Attr<float>("dropout_prob"), 0);
+    PADDLE_ENFORCE_LE(ctx.Attr<float>("dropout_prob"), 1);
     // resize
     auto dims = ctx.Input<Tensor>("X")->dims();
-    ctx.Output<Tensor>("Out")->Resize(dims);
-    ctx.Output<Tensor>("Mask")->Resize(dims);
+    ctx.Output<LoDTensor>("Out")->Resize(dims);
+    ctx.Output<LoDTensor>("Mask")->Resize(dims);
   }
 };
 
@@ -71,8 +72,8 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Mask"), "Mask must not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) must not be null.");
-    PADDLE_ENFORCE_GE(ctx.GetAttr<float>("dropout_prob"), 0);
-    PADDLE_ENFORCE_LE(ctx.GetAttr<float>("dropout_prob"), 1);
+    PADDLE_ENFORCE_GE(ctx.Attr<float>("dropout_prob"), 0);
+    PADDLE_ENFORCE_LE(ctx.Attr<float>("dropout_prob"), 1);
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto mask_dims = ctx.Input<Tensor>("Mask")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
@@ -81,7 +82,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dims, mask_dims,
                       "Dimensions of Input(X) and Mask must be the same.");
     // resize
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     x_grad->Resize(x_dims);
   }
 };

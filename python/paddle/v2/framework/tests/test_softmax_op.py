@@ -1,9 +1,6 @@
 import unittest
-
 import numpy as np
-
-from gradient_checker import GradientChecker, create_op
-from op_test_util import OpTestMeta
+from op_test import OpTest
 
 
 def stable_softmax(x):
@@ -13,23 +10,22 @@ def stable_softmax(x):
     return exps / np.sum(exps)
 
 
-class TestSoftmaxOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestSoftmaxOp(OpTest):
     def setUp(self):
-        self.type = "softmax"
-        self.inputs = {'X': np.random.random((32, 100)).astype("float32")}
+        self.op_type = "softmax"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [10, 10]).astype("float32")
+        }
         self.outputs = {
             'Y': np.apply_along_axis(stable_softmax, 1, self.inputs['X'])
         }
 
+    def test_check_output(self):
+        self.check_output()
 
-class SoftmaxGradOpTest(GradientChecker):
-    def test_softmax(self):
-        op = create_op("softmax")
-        inputs = {"X": np.random.uniform(0.1, 1, [10, 10]).astype("float32")}
-        self.check_grad(op, inputs, set("X"), "Y")
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

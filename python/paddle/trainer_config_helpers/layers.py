@@ -131,6 +131,7 @@ __all__ = [
     'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
+    'switch_order_layer',
     'gated_unit_layer',
     'crop_layer',
     'sub_nested_seq_layer',
@@ -168,6 +169,7 @@ class LayerType(object):
     EXCONV_LAYER = 'exconv'
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
+    CUDNNCONVTRANS_LAYER = 'cudnn_convt'
     POOL_LAYER = 'pool'
     POOL3D_LAYER = 'pool3d'
     BATCH_NORM_LAYER = 'batch_norm'
@@ -239,6 +241,7 @@ class LayerType(object):
     SMOOTH_L1 = 'smooth_l1'
 
     PRELU = 'prelu'
+    SWITCH_ORDER_LAYER = 'switch_order'
     CROP_LAYER = 'crop'
     SUB_NESTED_SEQ = 'sub_nested_seq'
     CLIP_LAYER = 'clip'
@@ -351,6 +354,10 @@ class LayerOutput(object):
     @property
     def height(self):
         return cp.g_layer_map[self.full_name].height
+
+    @property
+    def depth(self):
+        return cp.g_layer_map[self.full_name].depth
 
     def set_input(self, input):
         """
@@ -941,7 +948,7 @@ def data_layer(name, size, depth=None, height=None, width=None,
     if height is not None and width is not None:
         num_filters = size / (width * height * depth)
         assert num_filters * width * height * depth == size, \
-                "size=%s width=%s height=%s depth=%s"  % (size, width, height, depth)
+                "size=%s width=%s height=%s depth=%s" % (size, width, height, depth)
 
     return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
@@ -1217,7 +1224,8 @@ def detection_output_layer(input_loc,
                            name=None):
     """
     Apply the NMS to the output of network and compute the predict bounding
-    box location.
+    box location. The output of this layer could be None if there is no valid
+    bounding box.
 
     :param name: The Layer Name.
     :type name: basestring
@@ -2951,13 +2959,15 @@ def img_cmrnorm_layer(input,
 def batch_norm_layer(input,
                      act=None,
                      name=None,
+                     img3D=False,
                      num_channels=None,
                      bias_attr=None,
                      param_attr=None,
                      layer_attr=None,
                      batch_norm_type=None,
                      moving_average_fraction=0.9,
-                     use_global_stats=None):
+                     use_global_stats=None,
+                     mean_var_names=None):
     """
     Batch Normalization Layer. The notation of this layer as follow.
 
@@ -3024,6 +3034,8 @@ def batch_norm_layer(input,
                                    :math:`runningMean = newMean*(1-factor)
                                    + runningMean*factor`
     :type moving_average_fraction: float.
+    :param mean_var_names: [mean name, variance name]
+    :type mean_var_names: string list
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3037,6 +3049,7 @@ def batch_norm_layer(input,
            (batch_norm_type == "cudnn_batch_norm")
     l = Layer(
         name=name,
+        img3D=img3D,
         inputs=Input(
             input.name, image=Image(channels=num_channels), **param_attr.attr),
         active_type=act.name,
@@ -3045,6 +3058,7 @@ def batch_norm_layer(input,
         bias=ParamAttr.to_bias(bias_attr),
         moving_average_fraction=moving_average_fraction,
         use_global_stats=use_global_stats,
+        mean_var_names=mean_var_names,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     return LayerOutput(
@@ -6402,6 +6416,55 @@ def gated_unit_layer(input,
         name="%s_gated_act" % name,
         input=dotmul_operator(input_proj, gate),
         layer_attr=layer_attr)
+
+
+@layer_support()
+@wrap_name_default('switch_order')
+def switch_order_layer(input,
+                       name=None,
+                       reshape_axis=None,
+                       act=None,
+                       layer_attr=None):
+    """
+    This layer switch dimension order of image input. 
+    From order "batchSize, channels, height, width"
+    to order "batchSize, height, width, channels".
+
+    The example usage is:
+
+    .. code-block:: python
+       reshape_axis = 3
+       switch = switch_order(input=layer, name='switch', reshape_axis=reshape_axis)
+       reshape = {'height':[ 0, 1, 2], 'width':[3]}
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param name: Name of this layer.
+    :type name: basestring
+    :param reshape: reshape matrix by axises.
+    :type reshape: Dict
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert reshape_axis != None and (reshape_axis > 0 and reshape_axis < 4)
+    height = [ele for ele in xrange(reshape_axis)]
+    width = [ele for ele in range(reshape_axis, 4)]
+    reshape = {'height': height, 'width': width}
+
+    l = Layer(
+        name=name,
+        inputs=input.name,
+        reshape=reshape,
+        type=LayerType.SWITCH_ORDER_LAYER,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SWITCH_ORDER_LAYER,
+        activation=act,
+        parents=input,
+        size=l.config.size)
 
 
 @wrap_name_default()
