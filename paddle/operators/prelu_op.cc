@@ -27,13 +27,14 @@ class PReluOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     auto *in = ctx.Input<framework::Tensor>("X");
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(in->dims());
   }
 };
 
-// template <typename AttrType>
+template <typename AttrType>
 class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PReluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -43,10 +44,12 @@ class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(PRelu operator
 
 The equation is:
-f(x) = alpha * x , for x < 0
-f(x) = x         , for x >= 0
+
+  f(x) = alpha * x , for x < 0
+  f(x) = x         , for x >= 0
+
 )DOC");
-    AddAttr<float>("alpha", "The scaling factor alpha of prelu.")
+    AddAttr<AttrType>("alpha", "The scaling factor alpha of prelu.")
         .SetDefault(0.0);
   }
 };
@@ -59,6 +62,8 @@ class PReluGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) should not be null");
     auto *X_grad =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     auto *X = ctx.Input<framework::Tensor>("X");
@@ -72,7 +77,7 @@ class PReluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(prelu, ops::PReluOp, ops::PReluOpMaker, prelu_grad,
+REGISTER_OP(prelu, ops::PReluOp, ops::PReluOpMaker<float>, prelu_grad,
             ops::PReluGradOp);
 REGISTER_OP_CPU_KERNEL(prelu,
                        ops::PReluKernel<paddle::platform::CPUPlace, float>);
