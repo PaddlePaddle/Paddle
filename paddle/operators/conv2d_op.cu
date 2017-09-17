@@ -12,11 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/gemm_conv_op.h"
+#include "paddle/operators/gemm_conv2d_op.h"
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(conv2d,
-                       ops::GemmConvKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    conv2d_grad, ops::GemmConvGradKernel<paddle::platform::GPUPlace, float>);
+    conv2d, ops::GemmConv2dKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    conv2d_grad, ops::GemmConvGrad2dKernel<paddle::platform::GPUPlace, float>);
