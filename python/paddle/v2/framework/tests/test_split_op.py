@@ -7,11 +7,11 @@ class TestSplitOp(OpTest):
     def setUp(self):
         self.op_type = "split"
         axis = 0
-        indices = 2
+        num = 2
         x = np.random.random((4, 2)).astype('float32')
-        out = np.split(x, indices, axis)
+        out = np.split(x, num, axis)
         self.inputs = {'X': x}
-        self.attrs = {'axis': axis, 'num': indices}
+        self.attrs = {'axis': axis, 'num': num}
         self.outputs = {'Out': [('out%d' % i, out[i]) \
             for i in xrange(len(out))]}
 
