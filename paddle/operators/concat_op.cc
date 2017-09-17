@@ -25,8 +25,11 @@ class ConcatOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ConcatOp should not be null.");
+
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
     size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
     size_t n = ins.size();
 

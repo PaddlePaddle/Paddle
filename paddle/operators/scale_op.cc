@@ -27,8 +27,13 @@ class ScaleOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ScaleOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ScaleOp should not be null.");
+
     auto *in = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(in->dims());
   }
 };
