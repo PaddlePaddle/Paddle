@@ -15,7 +15,7 @@ Let's take `add` and `mul` as example：
 #### 2. for `Mul_Operator`:
 
 1. there should be two inputs `X` and `Y`, one output `Out`.
-1. `X` and `Y` should be matrix. Assum the shape of `X` is `[x1, x2]`, the shape of `Y` is `[y1, y1]`. Then:
+1. `X` and `Y` should be matrix. Assum the shape of `X` is `[x1, x2]`, the shape of `Y` is `[y1, y2]`. Then:
 1. x2 must equal to y1.
 1. the output shape should be `[x1, y2]`. A user did not need to set the shape of `Out`.
 
@@ -23,8 +23,7 @@ Let's take `add` and `mul` as example：
 From the background above we can see, every Operator will have some similar things to do: check the shape of inputs, set shape of outputs. so we design a uniform interface to do these works.
 
 
-#### What should InferShape do
-`InferShape` is used to do the things above. It mainly does two things:
+### What should InferShape do
 
 1. check if the shape of inputs meets the constraint.
 1. Set the shape of outputs according to the shape of inputs.
