@@ -119,6 +119,7 @@ void copy_matrix<platform::CPUPlace, float>(const framework::Tensor* in,
     const float* src = in->data<float>() + in_dim * m * j;
     float* dest = out->mutable_data<float>(platform::CPUPlace()) + offset +
                   out_dim * m * j;
+    printf("j->%ld, src->%p, dest->%p, len->%ld\n", j, src, dest, len);
     memcpy(dest, src, len);
   }
 }

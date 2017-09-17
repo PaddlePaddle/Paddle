@@ -84,6 +84,7 @@ class ConcatGradKernel : public framework::OpKernel {
     for (size_t i = 0; i < n; i++) {
       auto& out = outs[i];
       size_t axis_dim = out->dims()[axis];
+      printf("i->%ld before->%ld after->%ld\n", i, before, after);
       math::copy_matrix<Place, T>(in, axis_dim, out, input_axis_dim,
                                   axis_dim * after * sizeof(T), after, before,
                                   input_offset);

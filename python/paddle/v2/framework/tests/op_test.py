@@ -126,10 +126,8 @@ def get_numeric_gradient(scope,
         origin = tensor_to_check.get_float_element(i)
         # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
-        print tensor_to_check
         tensor_to_check.set_float_element(i, x_pos)
         y_pos = get_output()
-        print tensor_to_check
         if in_place:
             set_input(scope, op, inputs, core.CPUPlace())
 
