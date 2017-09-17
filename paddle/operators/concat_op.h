@@ -88,15 +88,6 @@ class ConcatGradKernel : public framework::OpKernel {
       math::copy_matrix<Place, T>(in, axis_dim, out, input_axis_dim,
                                   axis_dim * after * sizeof(T), after, before,
                                   input_offset);
-      /**
-      for (size_t j = 0; j < before; j++) {
-        size_t len = axis_dim * after * sizeof(T);
-        T* dest =
-            out->mutable_data<T>(platform::CPUPlace()) + axis_dim * after * j;
-        const T* src =
-            in->data<T>() + input_offset + input_axis_dim * after * j;
-        memcpy(dest, src, len);
-      }**/
       input_offset += axis_dim * after;
     }
   }
