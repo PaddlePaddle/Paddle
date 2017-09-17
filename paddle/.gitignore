@@ -41,4 +41,3 @@ unittest.list
 proto
 dist
 setup.py
-pybind.h
