@@ -36,69 +36,64 @@ class LoDTensorTester : public ::testing::Test {
 
     ASSERT_EQ(lod.size(), 3UL);
 
-    tensor.Resize({20 /*batch size*/, 128 /*dim*/});
+    lod_tensor_.Resize({20 /*batch size*/, 128 /*dim*/});
     // malloc memory
-    tensor.mutable_data<float>(place);
+    lod_tensor_.mutable_data<float>(place);
 
-    lod_tensor.set_lod(lod);
-    lod_tensor.set_tensor(&tensor);
+    lod_tensor_.set_lod(lod);
   }
 
  protected:
   platform::CPUPlace place;
-  Tensor tensor;
-  LoDTensor lod_tensor;
+  LoDTensor lod_tensor_;
 };
 
-TEST_F(LoDTensorTester, NumLevels) { ASSERT_EQ(lod_tensor.NumLevels(), 3UL); }
+TEST_F(LoDTensorTester, NumLevels) { ASSERT_EQ(lod_tensor_.NumLevels(), 3UL); }
 
 TEST_F(LoDTensorTester, NumElements) {
-  ASSERT_EQ(lod_tensor.NumElements(0), 2UL);
-  ASSERT_EQ(lod_tensor.NumElements(1), 4UL);
-  ASSERT_EQ(lod_tensor.NumElements(2), 8UL);
+  ASSERT_EQ(lod_tensor_.NumElements(0), 2UL);
+  ASSERT_EQ(lod_tensor_.NumElements(1), 4UL);
+  ASSERT_EQ(lod_tensor_.NumElements(2), 8UL);
 }
 
 TEST_F(LoDTensorTester, SliceLevels) {
   // slice 1 level
   for (size_t level = 0; level < 3UL; ++level) {
-    LoDTensor new_lod_tensor = lod_tensor;
+    LoDTensor new_lod_tensor = lod_tensor_;
     new_lod_tensor.SliceLevels(level, level + 1);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
-    ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor.NumElements(level));
-    ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
-              lod_tensor.tensor().data<float>());
+    ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor_.NumElements(level));
+    ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
   }
   // slice 2 level
   for (size_t level = 0; level < 2UL; ++level) {
-    LoDTensor new_lod_tensor = lod_tensor;
+    LoDTensor new_lod_tensor = lod_tensor_;
     new_lod_tensor.SliceLevels(level, level + 2);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
-    ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor.NumElements(level));
-    ASSERT_EQ(new_lod_tensor.NumElements(1), lod_tensor.NumElements(level + 1));
-    ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
-              lod_tensor.tensor().data<float>());
+    ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor_.NumElements(level));
+    ASSERT_EQ(new_lod_tensor.NumElements(1),
+              lod_tensor_.NumElements(level + 1));
+    ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
   }
 }
 
 TEST_F(LoDTensorTester, SliceInLevel) {
   size_t level = 0;
-  LoDTensor new_lod_tensor = lod_tensor;
+  LoDTensor new_lod_tensor = lod_tensor_;
   new_lod_tensor.SliceInLevel(level, 0, 2);
   EXPECT_EQ(new_lod_tensor.NumLevels(), 3UL);
   EXPECT_EQ(new_lod_tensor.NumElements(0), 2UL);
   EXPECT_EQ(new_lod_tensor.NumElements(1), 4UL);
   EXPECT_EQ(new_lod_tensor.NumElements(2), 8UL);
-  ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
-            lod_tensor.tensor().data<float>());
+  ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
 
   level = 1;
-  new_lod_tensor = lod_tensor;
+  new_lod_tensor = lod_tensor_;
   new_lod_tensor.SliceInLevel(level, 0, 2);
   ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);
-  ASSERT_EQ(new_lod_tensor.tensor().data<float>(),
-            lod_tensor.tensor().data<float>());
+  ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
 }
 
 }  // namespace framework

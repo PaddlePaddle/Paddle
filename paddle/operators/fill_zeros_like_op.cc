@@ -23,7 +23,14 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<framework::Tensor>("Dst")->Resize(
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("Src"),
+        "Input(Src) of FillZerosLikeOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Dst"),
+        "Output(Dst) of FillZerosLikeOp should not be null.");
+
+    ctx.Output<framework::LoDTensor>("Dst")->Resize(
         ctx.Input<framework::Tensor>("Src")->dims());
   }
 };
