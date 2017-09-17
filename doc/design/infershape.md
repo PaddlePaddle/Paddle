@@ -1,4 +1,4 @@
-## InferShap Design
+## InferShape Design
 
 ### BackGround
 In a DeepLearning framework like PaddlePaddle, a data is a multi-dimension Vector, Operator takes some data as input, do some computation and fulfill other data as output.
