@@ -29,6 +29,8 @@ class PReluOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     auto *in = ctx.Input<framework::Tensor>("X");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) should not be null");
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(in->dims());
   }
@@ -41,6 +43,8 @@ class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of prelu operator.");
     AddOutput("Out", "The output tensor of prelu operator.");
+    AddAttr<AttrType>("alpha", "The scaling factor alpha of prelu.")
+        .SetDefault(0.0);
     AddComment(R"DOC(PRelu operator
 
 The equation is:
@@ -49,8 +53,6 @@ The equation is:
   f(x) = x         , for x >= 0
 
 )DOC");
-    AddAttr<AttrType>("alpha", "The scaling factor alpha of prelu.")
-        .SetDefault(0.0);
   }
 };
 
