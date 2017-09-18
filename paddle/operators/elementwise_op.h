@@ -197,7 +197,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
  protected:
   using Tensor = framework::Tensor;
-  virtual void InferShape(const framework::InferShapeContext& ctx) const override {
+  void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), 
             "Input(X) of elementwise op should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
