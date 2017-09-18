@@ -75,6 +75,12 @@ class TestConv2dOp(OpTest):
     def test_check_grad(self):
         self.check_grad(set(['Input', 'Filter']), 'Output')
 
+    def test_check_grad_no_filter(self):
+        self.check_grad(['Input'], 'Output', no_grad_set=set(['Filter']))
+
+    def test_check_grad_no_input(self):
+        self.check_grad(['Filter'], 'Output', no_grad_set=set(['Input']))
+
     def init_groups(self):
         self.groups = 1
 

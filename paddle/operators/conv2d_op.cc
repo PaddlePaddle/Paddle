@@ -28,6 +28,13 @@ class Conv2DOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Input"),
+                            "Input(Input) of Conv2DOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Filter"),
+                            "Input(Filter) of Conv2DOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Output"),
+                            "Output(Output) of Conv2DOp should not be null.");
+
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto out = ctx.Output<framework::LoDTensor>("Output");
@@ -108,8 +115,8 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
         ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
     auto d_filter =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("Filter"));
-    d_in->Resize(in->dims());
-    d_filter->Resize(filter->dims());
+    if (d_in) d_in->Resize(in->dims());
+    if (d_filter) d_filter->Resize(filter->dims());
   }
 };
 
