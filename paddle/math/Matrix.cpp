@@ -1080,7 +1080,6 @@ void GpuMatrix::maxPoolBackward(Matrix& inputMat,
   size_t channels = outV.getWidth() / outputH / outputW;
   CHECK(imgSizeH * imgSizeW * channels == inputMat.getWidth());
   CHECK(height_ == inputMat.getHeight());
-  CHECK(width_ == imgSizeW * imgSizeH * channels);
   CHECK(outGrad.getHeight() == outV.getHeight() &&
         outGrad.getWidth() == outV.getWidth());
 
@@ -1259,7 +1258,6 @@ void GpuMatrix::maxPool3DBackward(Matrix& outGrad,
   size_t frameNum = getHeight();
   size_t channels = outGrad.getWidth() / outputD / outputH / outputW;
   CHECK(imgSizeD * imgSizeH * imgSizeW * channels == getWidth());
-  CHECK(width_ == imgSizeD * imgSizeH * imgSizeW * channels);
   CHECK(outGrad.getHeight() == maxPoolIdx.getHeight() &&
         outGrad.getWidth() == maxPoolIdx.getWidth());
 
