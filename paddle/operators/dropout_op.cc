@@ -30,6 +30,10 @@ class DropoutOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE_GE(ctx.Attr<float>("dropout_prob"), 0);
     PADDLE_ENFORCE_LE(ctx.Attr<float>("dropout_prob"), 1);
+    // TODO(xinghai-sun): remove this check after swtiching to bool
+    PADDLE_ENFORCE(ctx.Attr<int>("is_training") == 0 ||
+                   ctx.Attr<int>("is_training") == 1);
+
     // resize
     auto dims = ctx.Input<Tensor>("X")->dims();
     ctx.Output<LoDTensor>("Out")->Resize(dims);
@@ -37,13 +41,16 @@ class DropoutOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename AttrType>
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   DropoutOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("dropout_prob", "Probability for dropping out units.")
+    AddAttr<AttrType>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f);
+    // TODO(xinghai-sun): use bool for is_training after bool is supported.
+    AddAttr<int>("is_training", "Whether in training phase.").SetDefault(1);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
@@ -61,6 +68,7 @@ being set to their inputs.
   }
 };
 
+template <typename AttrType>
 class DropoutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -72,8 +80,11 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Mask"), "Mask must not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) must not be null.");
-    PADDLE_ENFORCE_GE(ctx.Attr<float>("dropout_prob"), 0);
-    PADDLE_ENFORCE_LE(ctx.Attr<float>("dropout_prob"), 1);
+    PADDLE_ENFORCE_GE(ctx.Attr<AttrType>("dropout_prob"), 0);
+    PADDLE_ENFORCE_LE(ctx.Attr<AttrType>("dropout_prob"), 1);
+    // TODO(xinghai-sun): remove this check after swtiching to bool
+    PADDLE_ENFORCE(ctx.Attr<int>("is_training") == 0 ||
+                   ctx.Attr<int>("is_training") == 1);
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto mask_dims = ctx.Input<Tensor>("Mask")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
@@ -91,9 +102,9 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(dropout, ops::DropoutOp, ops::DropoutOpMaker, dropout_grad,
-            ops::DropoutOpGrad);
+REGISTER_OP(dropout, ops::DropoutOp, ops::DropoutOpMaker<float>, dropout_grad,
+            ops::DropoutOpGrad<float>);
 REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUPlace, float>);
+    dropout, ops::CPUDropoutKernel<paddle::platform::CPUPlace, float, float>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad, ops::DropoutGradKernel<paddle::platform::CPUPlace, float>);

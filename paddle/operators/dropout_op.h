@@ -25,34 +25,42 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename Place, typename T, typename AttrType>
 class CPUDropoutKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
     auto* mask = context.Output<Tensor>("Mask");
-    T* mask_data = mask->mutable_data<T>(context.GetPlace());
-    T* y_data = y->mutable_data<T>(context.GetPlace());
-    const T* x_data = x->data<T>();
+    auto* mask_data = mask->mutable_data<T>(context.GetPlace());
+    auto* y_data = y->mutable_data<T>(context.GetPlace());
+    const auto* x_data = x->data<T>();
 
-    float dropout_prob = context.Attr<float>("dropout_prob");
-    int seed = context.Attr<int>("seed");
+    AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
 
-    std::minstd_rand engine;
-    engine.seed(seed);
-    std::uniform_real_distribution<T> dist(0, 1);
-    size_t size = framework::product(mask->dims());
-    for (size_t i = 0; i < size; ++i) {
-      if (dist(engine) < dropout_prob) {
-        mask_data[i] = 0;
-        y_data[i] = 0;
-      } else {
-        mask_data[i] = 1;
-        y_data[i] = x_data[i];
+    if (context.Attr<int>("is_training") == 1) {
+      int seed = context.Attr<int>("seed");
+      std::minstd_rand engine;
+      engine.seed(seed);
+      std::uniform_real_distribution<AttrType> dist(0, 1);
+      size_t size = framework::product(mask->dims());
+      for (size_t i = 0; i < size; ++i) {
+        if (dist(engine) < dropout_prob) {
+          mask_data[i] = 0;
+          y_data[i] = 0;
+        } else {
+          mask_data[i] = 1;
+          y_data[i] = x_data[i];
+        }
       }
+    } else {
+      size_t size = framework::product(mask->dims());
+      memset(mask_data, 0, sizeof(T) * size);
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
+      auto place = context.GetEigenDevice<Place>();
+      Y.device(place) = X * dropout_prob;
     }
-    // TODO: add test phase logits.
   }
 };
 
@@ -60,21 +68,19 @@ template <typename Place, typename T>
 class DropoutGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_ENFORCE_EQ(context.Attr<int>("is_training"), 1,
+                      "Only callable when is_training is true");
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* mask = context.Input<Tensor>("Mask");
     grad_x->mutable_data<T>(context.GetPlace());
 
-    auto dims = grad_x->dims();
-    int size = static_cast<int>(framework::product(dims));
-    auto new_dims = framework::make_ddim({dims[0], size / dims[0]});
-    auto M = EigenMatrix<T>::From(*mask, new_dims);
-    auto dX = EigenMatrix<T>::From(*grad_x, new_dims);
-    auto dY = EigenMatrix<T>::From(*grad_y, new_dims);
+    auto M = EigenMatrix<T>::Reshape(*mask, 1);
+    auto dX = EigenMatrix<T>::Reshape(*grad_x, 1);
+    auto dY = EigenMatrix<T>::Reshape(*grad_y, 1);
 
     auto place = context.GetEigenDevice<Place>();
     dX.device(place) = dY * M;
-    // TODO: add test time logits.
   }
 };
 

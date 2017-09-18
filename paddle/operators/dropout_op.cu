@@ -22,18 +22,18 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename AttrType>
 struct MaskGenerator {
-  float dropout_prob;
+  AttrType dropout_prob;
   int seed;
 
-  __host__ __device__ MaskGenerator(float dropout_prob, int seed)
+  __host__ __device__ MaskGenerator(AttrType dropout_prob, int seed)
       : dropout_prob(dropout_prob), seed(seed) {}
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
-    thrust::uniform_real_distribution<T> dist(0, 1);
+    thrust::uniform_real_distribution<AttrType> dist(0, 1);
     rng.discard(n);
     if (dist(rng) < dropout_prob) {
       return static_cast<T>(0);
@@ -46,33 +46,35 @@ struct MaskGenerator {
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
-template <typename Place, typename T>
+template <typename Place, typename T, typename AttrType>
 class GPUDropoutKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
-    auto* mask = context.Output<Tensor>("Mask");
     y->mutable_data<T>(context.GetPlace());
+    auto* mask = context.Output<Tensor>("Mask");
+    auto* mask_data = mask->mutable_data<T>(context.GetPlace());
 
-    float dropout_prob = context.Attr<float>("dropout_prob");
-    int seed = context.Attr<int>("seed");
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-    int size = framework::product(mask->dims());
-    T* mask_data = mask->mutable_data<T>(context.GetPlace());
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                      thrust::device_ptr<T>(mask_data),
-                      MaskGenerator<T>(dropout_prob, seed));
+    AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
 
-    auto dims = x->dims();
-    auto new_dims = framework::make_ddim({dims[0], size / dims[0]});
-    auto X = EigenMatrix<T>::From(*x, new_dims);
-    auto Y = EigenMatrix<T>::From(*y, new_dims);
-    auto M = EigenMatrix<T>::From(*mask, new_dims);
+    auto X = EigenMatrix<T>::Reshape(*x, 1);
+    auto Y = EigenMatrix<T>::Reshape(*y, 1);
+    auto M = EigenMatrix<T>::Reshape(*mask, 1);
 
     auto place = context.GetEigenDevice<Place>();
-    Y.device(place) = X * M;
-    // TODO(xinghai-sun): add test time logits.
+    int size = framework::product(mask->dims());
+    if (context.Attr<int>("is_training") == 1) {
+      int seed = context.Attr<int>("seed");
+      thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(mask_data),
+                        MaskGenerator<T, AttrType>(dropout_prob, seed));
+      Y.device(place) = X * M;
+    } else {
+      cudaMemset(mask_data, 0, sizeof(T) * size);
+      Y.device(place) = X * dropout_prob;
+    }
   }
 };
 
@@ -81,6 +83,6 @@ class GPUDropoutKernel : public framework::OpKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    dropout, ops::GPUDropoutKernel<paddle::platform::GPUPlace, float>);
+    dropout, ops::GPUDropoutKernel<paddle::platform::GPUPlace, float, float>);
 REGISTER_OP_GPU_KERNEL(
     dropout_grad, ops::DropoutGradKernel<paddle::platform::GPUPlace, float>);

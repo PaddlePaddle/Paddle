@@ -7,7 +7,7 @@ class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.0}
+        self.attrs = {'dropout_prob': 0.0, 'is_training': 1}
         self.outputs = {'Out': self.inputs['X'], 'Mask': np.ones((32, 64))}
 
     def test_check_output(self):
@@ -21,7 +21,7 @@ class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-        self.attrs = {'dropout_prob': 1.0}
+        self.attrs = {'dropout_prob': 1.0, 'is_training': 1}
         self.outputs = {'Out': np.zeros((32, 64)), 'Mask': np.zeros((32, 64))}
 
 
@@ -29,8 +29,36 @@ class TestDropoutOp3(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.0}
+        self.attrs = {'dropout_prob': 0.0, 'is_training': 1}
         self.outputs = {'Out': self.inputs['X'], 'Mask': np.ones((32, 64, 2))}
+
+
+class TestDropoutOp4(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.35, 'is_training': 0}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.attrs['dropout_prob'],
+            'Mask': np.zeros((32, 64))
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestDropoutOp5(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.75, 'is_training': 0}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.attrs['dropout_prob'],
+            'Mask': np.zeros((32, 64, 3))
+        }
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':
