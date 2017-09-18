@@ -30,7 +30,7 @@ class Conv2DOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
-    auto out = ctx.Output<Tensor>("Output");
+    auto out = ctx.Output<framework::LoDTensor>("Output");
     std::vector<int> strides = Attr<std::vector<int>>("strides");
     std::vector<int> paddings = Attr<std::vector<int>>("paddings");
     int groups = Attr<int>("groups");
@@ -102,8 +102,10 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
-    auto d_in = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    auto d_filter = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto d_in =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
+    auto d_filter =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Filter"));
     d_in->Resize(in->dims());
     d_filter->Resize(filter->dims());
   }
@@ -117,6 +119,6 @@ REGISTER_OP(conv2d, ops::Conv2DOp, ops::Conv2DOpMaker, conv2d_grad,
             ops::Conv2DOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    conv2d, ops::GemmConv2dKernel<paddle::platform::CPUPlace, float>);
+    conv2d, ops::GemmConv2DKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    conv2d_grad, ops::GemmConvGrad2dKernel<paddle::platform::CPUPlace, float>);
+    conv2d_grad, ops::GemmConvGrad2DKernel<paddle::platform::CPUPlace, float>);
