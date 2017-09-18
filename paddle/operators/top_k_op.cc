@@ -24,7 +24,12 @@ class TopkOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input of TopkOP must be initialized.");
+                            "Input(X) of TopkOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of TopkOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Indices"),
+                            "Output(Indices) of TopkOp should not be null.");
+
     auto *input = ctx.Input<framework::Tensor>("X");
     const int k = static_cast<int>(ctx.Attr<int>("k"));
 
@@ -35,8 +40,8 @@ class TopkOp : public framework::OperatorWithKernel {
 
     framework::DDim dims = input->dims();
     dims[dims.size() - 1] = k;
-    ctx.Output<Tensor>("Out")->Resize(dims);
-    ctx.Output<Tensor>("Indices")->Resize(dims);
+    ctx.Output<framework::LoDTensor>("Out")->Resize(dims);
+    ctx.Output<framework::LoDTensor>("Indices")->Resize(dims);
   }
 };
 

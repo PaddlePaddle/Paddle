@@ -23,7 +23,13 @@ class SigmoidOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of SigmoidOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
+                            "Output(Y) of SigmoidOp should not be null.");
+
+    ctx.Output<framework::LoDTensor>("Y")->Resize(
+        ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -44,7 +50,7 @@ class SigmoidOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<Tensor>(framework::GradVarName("X"))
+    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("Y")->dims());
   }
 };

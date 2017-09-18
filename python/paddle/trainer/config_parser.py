@@ -2034,6 +2034,7 @@ class ParameterReluLayer(LayerBase):
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
         self.set_layer_size(input_layer.size)
+        self.config.partial_sum = partial_sum
         self.create_input_parameter(0, input_layer.size / partial_sum)
 
 
@@ -2054,20 +2055,26 @@ class ConvLayerBase(LayerBase):
         if num_filters is not None:
             self.config.num_filters = num_filters
 
+        use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
         use_gpu = int(g_command_config_args.get("use_gpu", 0))
         parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
 
-        # Automatically select cudnn_type for GPU and exconv for CPU
+        # Automatically select cudnn_type for GPU, exconv for CPU
+        # and mkldnn_conv for MKLDNN
         # if set type=conv, but still reserve the way user specify
-        # exconv or cudnn_conv manually.
+        # exconv, mkldnn_conv or cudnn_conv manually.
         if self.layer_type == "cudnn_conv":
             config_assert(use_gpu, "cudnn_conv only support GPU")
 
+        if self.layer_type == "mkldnn_conv":
+            config_assert(use_mkldnn, "mkldnn_conv only support MKLDNN")
+
         if (use_gpu == 1 and self.layer_type != "exconv" and
+                self.layer_type != "mkldnn_conv" and
             (parallel_nn == 0 or self.config.device > -1)):
             self.layer_type = "cudnn_conv"
         else:
-            self.layer_type = "exconv"
+            self.layer_type = "mkldnn_conv" if use_mkldnn else "exconv"
         # need to specify layer in config
         self.config.type = self.layer_type
 
@@ -2097,6 +2104,11 @@ class ConvLayerBase(LayerBase):
 @config_layer('exconv')
 class ConvLayer(ConvLayerBase):
     layer_type = 'exconv'
+
+
+@config_layer('mkldnn_conv')
+class ConvLayer(ConvLayerBase):
+    layer_type = 'mkldnn_conv'
 
 
 @config_layer('cudnn_conv')

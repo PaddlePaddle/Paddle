@@ -39,7 +39,7 @@ class SquaredL2DistanceKernel : public framework::OpKernel {
     auto in0_dims = in0->dims();
     auto in1_dims = in1->dims();
 
-    int cols = framework::product(in0_dims) / in0_dims[0];
+    int cols = in0->numel() / in0_dims[0];
     // reduce dimensions except the first
     auto x =
         EigenMatrix<T>::From(*in0, framework::make_ddim({in0_dims[0], cols}));
@@ -82,7 +82,7 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel {
     auto x_dims = x_g->dims();
     auto y_dims = y_g->dims();
 
-    int cols = framework::product(x_dims) / x_dims[0];
+    int cols = x_g->numel() / x_dims[0];
     // calculate gradient
     auto grad_mat = 2 *
                     (out_grad.broadcast(Eigen::array<int, 2>({{1, cols}}))) *

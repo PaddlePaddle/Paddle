@@ -22,9 +22,9 @@ namespace framework {
 template <typename T>
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
-      holder_, "Tenosr holds no memory. Call Tensor::mutable_data first.");
+      holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
   PADDLE_ENFORCE_GE(
-      holder_->size(), product(dims_) * sizeof(T) + offset_,
+      holder_->size(), numel() * sizeof(T) + offset_,
       "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
       "first to re-allocate memory.\n"
       "or maybe the required data-type mismatches the data already stored.");
@@ -54,11 +54,11 @@ inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
 template <typename T>
 inline T* Tensor::mutable_data(platform::Place place) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  PADDLE_ENFORCE_GT(product(dims_), 0,
+  PADDLE_ENFORCE_GT(numel(), 0,
                     "Tensor's numel must be larger than zero to call "
                     "Tensor::mutable_data. Call Tensor::set_dim first.");
   /* some versions of boost::variant don't have operator!= */
-  int64_t size = product(dims_) * sizeof(T);
+  int64_t size = numel() * sizeof(T);
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
     if (platform::is_cpu_place(place)) {
@@ -97,7 +97,7 @@ inline void Tensor::CopyFrom(const Tensor& src,
 
   auto dst_ptr = static_cast<void*>(mutable_data<T>(dst_place));
 
-  auto size = product(src.dims_) * sizeof(T);
+  auto size = src.numel() * sizeof(T);
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
@@ -131,7 +131,7 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   PADDLE_ENFORCE_LT(begin_idx, end_idx,
                     "Begin index must be less than end index.");
   PADDLE_ENFORCE_NE(dims_[0], 1, "Can not slice a tensor with dims_[0] = 1.");
-  size_t base = product(dims_) / dims_[0];
+  size_t base = numel() / dims_[0];
   Tensor dst;
   dst.holder_ = holder_;
   DDim dst_dims = dims_;
@@ -143,10 +143,13 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
 
 inline Tensor& Tensor::Resize(const DDim& dims) {
   dims_ = dims;
+  numel_ = product(dims_);
   return *this;
 }
 
 inline const DDim& Tensor::dims() const { return dims_; }
+
+inline int64_t Tensor::numel() const { return numel_; }
 
 template <typename T>
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {

@@ -53,8 +53,8 @@ class GPUUniformRandomKernel : public framework::OpKernel {
     T min = static_cast<T>(context.Attr<float>("min"));
     T max = static_cast<T>(context.Attr<float>("max"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-    ssize_t N = framework::product(tensor->dims());
-    thrust::transform(index_sequence_begin, index_sequence_begin + N,
+    int64_t size = tensor->numel();
+    thrust::transform(index_sequence_begin, index_sequence_begin + size,
                       thrust::device_ptr<T>(data),
                       UniformGenerator<T>(min, max, seed));
   }

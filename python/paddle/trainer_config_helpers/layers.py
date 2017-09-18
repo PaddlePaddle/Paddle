@@ -169,6 +169,7 @@ class LayerType(object):
     EXCONV_LAYER = 'exconv'
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
+    CUDNNCONVTRANS_LAYER = 'cudnn_convt'
     POOL_LAYER = 'pool'
     POOL3D_LAYER = 'pool3d'
     BATCH_NORM_LAYER = 'batch_norm'
@@ -5328,7 +5329,7 @@ def crf_layer(input,
     :type weight: LayerOutput
     :param param_attr: Parameter attribute. None means default attribute
     :type param_attr: ParameterAttribute
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
@@ -5398,7 +5399,7 @@ def crf_decoding_layer(input,
     :type label: LayerOutput or None
     :param param_attr: Parameter attribute. None means default attribute
     :type param_attr: ParameterAttribute
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
@@ -5595,7 +5596,7 @@ def rank_cost(left,
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
@@ -5660,7 +5661,7 @@ def lambda_cost(input,
                           than the size of a list, the algorithm will sort the
                           entire list of get gradient.
     :type max_sort_size: int
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -5704,7 +5705,7 @@ def cross_entropy(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring.
     :param coeff: The cost is multiplied with coeff.
                   The coefficient affects the gradient in the backward.
@@ -5752,7 +5753,7 @@ def cross_entropy_with_selfnorm(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
@@ -5792,7 +5793,7 @@ def sum_cost(input, name=None, layer_attr=None):
 
     :param input: The first input layer.
     :type input: LayerOutput.
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring.
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -5837,7 +5838,7 @@ def huber_regression_cost(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring.
     :param delta: The difference between the observed and predicted values.
     :type delta: float.
@@ -5887,7 +5888,7 @@ def huber_classification_cost(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
@@ -5930,7 +5931,7 @@ def multi_binary_label_cross_entropy(input,
     :type input: LayerOutput
     :param label: The input label.
     :type input: LayerOutput
-    :param name: The name of this layer. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
@@ -6098,7 +6099,7 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     :type input: LayerOutput
     :param label: The input label.
     :type input: LayerOutput
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is optional.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
