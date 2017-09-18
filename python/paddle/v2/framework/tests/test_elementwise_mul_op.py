@@ -6,11 +6,6 @@ from op_test import OpTest
 class ElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"
-        """ Warning
-        CPU gradient check error!
-        'X': np.random.random((32,84)).astype("float32"),
-        'Y': np.random.random((32,84)).astype("float32")
-        """
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
             'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
