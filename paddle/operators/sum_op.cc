@@ -22,8 +22,13 @@ class SumOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
+                   "Input(X) of SumOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of SumOp should not be null.");
+
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
     int N = ins.size();
 
     auto in_dim = ins[0]->dims();
@@ -55,7 +60,8 @@ class SumGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto outputs = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+    auto outputs =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
     auto dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
     for (auto output : outputs) {
       output->Resize(dims);
