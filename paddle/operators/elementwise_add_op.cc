@@ -12,103 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/elementwise_op.h"
+#include "paddle/operators/elementwise_add_op.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename Place, typename T>
-class ElementwiseAddKernel : public framework::OpKernel {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenAddFunctor, Place, T>(ctx);
-  }
-};
-
-template <typename T>
-struct ElementwiseAddGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = dz_e;
-    }
-  }
-};
-
-template <typename T>
-struct ElementwiseAddOneGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = dz_e.sum();
-    }
-  }
-};
-
-template <typename T>
-struct ElementwiseAddBroadCastGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ, typename Pre, typename N>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = dz_e.reshape(Eigen::DSizes<int, 2>(pre, n))
-                           .sum(Eigen::array<int, 1>{{0}});
-    }
-  }
-};
-
-template <typename T>
-struct ElementwiseAddBroadCast2GradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ, typename Pre, typename N, typename Post>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n,
-                  Post post) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = dz_e.reshape(Eigen::DSizes<int, 3>(pre, n, post))
-                           .sum(Eigen::array<int, 2>{{0, 2}});
-    }
-  }
-};
-
-template <typename Place, typename T>
-class ElementwiseAddGradKernel : public framework::OpKernel {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseGradCompute<Place, T, ElementwiseAddGradFunctor<T>,
-                           ElementwiseAddOneGradFunctor<T>,
-                           ElementwiseAddBroadCastGradFunctor<T>,
-                           ElementwiseAddBroadCast2GradFunctor<T>>(ctx);
-  }
-};
-
 class ElementwiseAddOpMaker : public ElementwiseOpMaker {
  public:
   ElementwiseAddOpMaker(framework::OpProto* proto,

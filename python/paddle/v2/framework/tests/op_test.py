@@ -201,8 +201,10 @@ class OpTest(unittest.TestCase):
     def check_output(self):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
+            print "gpu"
             places.append(core.GPUPlace(0))
         for place in places:
+            print place
             self.check_output_with_place(place)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,

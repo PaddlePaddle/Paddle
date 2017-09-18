@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/elementwise_op.h"
+#include "paddle/operators/elementwise_mul_op.h"
 
 namespace ops = paddle::operators;
 
