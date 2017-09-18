@@ -23,10 +23,15 @@ class AccuracyOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Inference"),
-                            "Input of Inference must be initialized.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("Inference"),
+        "Input(Inference) of AccuracyOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input of Inference must be initialized.");
+                            "Input(Label) of AccuracyOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Accuracy"),
+        "Output(Accuracy) of AccuracyOp should not be null.");
+
     auto *inference = ctx.Input<framework::Tensor>("Inference");
     auto *label = ctx.Input<framework::Tensor>("Label");
 

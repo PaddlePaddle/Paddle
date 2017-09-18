@@ -56,7 +56,7 @@ class CosSimKernel : public framework::OpKernel {
     x_norm.device(place) = x.square().sum(row_along).sqrt();
     y_norm.device(place) = y.square().sum(row_along).sqrt();
     if (rows_x == rows_y) {
-      auto xy = (x * y).sum(Eigen::array<int, 1>({1}));
+      auto xy = (x * y).sum(Eigen::array<int, 1>({{1}}));
       z.device(place) = xy / x_norm / y_norm;
     } else {
       Eigen::DSizes<int, 2> bcast(rows_x, 1);
@@ -134,7 +134,7 @@ class CosSimGradKernel : public framework::OpKernel {
         out_grad_y->mutable_data<T>(context.GetPlace());
         auto dy = EigenMatrix<T>::Reshape(*out_grad_y, 1);
         auto grad = x / norm_prod_bcast - z_bcast * y_bcast / y_snorm_bcast;
-        dy.device(place) = (dz_bcast * grad).sum(Eigen::array<int, 1>({0}));
+        dy.device(place) = (dz_bcast * grad).sum(Eigen::array<int, 1>({{0}}));
       }
     }
   }
