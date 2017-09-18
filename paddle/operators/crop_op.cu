@@ -20,6 +20,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T, int D>
 __global__ void CropKernel(const int N, const int64_t* out_shape,
@@ -48,9 +49,8 @@ template <typename T, int D>
 void CropCUDAFunctoin(const framework::ExecutionContext& context) {
   PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
                  "It must use GPUPlace.");
-  LOG(INFO) << "CropCUDAFunctoin step1";
-  auto* x = context.Input<Tensor>("X");
-  auto* out = context.Output<Tensor>("Out");
+  auto* x = context.Input<LoDTensor>("X");
+  auto* out = context.Output<LoDTensor>("Out");
   auto x_data = x->data<T>();
   T* out_data = out->mutable_data<T>(paddle::platform::GPUPlace());
   auto x_dims = x->dims();
@@ -100,7 +100,7 @@ template <typename T>
 class CropOpCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    size_t rank = context.Input<Tensor>("X")->dims().size();
+    size_t rank = context.Input<LoDTensor>("X")->dims().size();
     switch (rank) {
       case 1:
         CropCUDAFunctoin<T, 1>(context);

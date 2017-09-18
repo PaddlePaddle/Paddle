@@ -19,6 +19,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+using framework::LoDTensor;
 
 class CropOp : public framework::OperatorWithKernel {
  public:
@@ -26,8 +27,8 @@ class CropOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto x_dim = ctx.Input<Tensor>("X")->dims();
-    auto Y = ctx.Input<Tensor>("Y");
+    auto x_dim = ctx.Input<LoDTensor>("X")->dims();
+    auto Y = ctx.Input<LoDTensor>("Y");
     if (Y == nullptr) {
       auto shape = Attr<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
@@ -37,9 +38,9 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = (int64_t)shape[i];
       }
-      ctx.Output<Tensor>("Out")->Resize(framework::make_ddim(tensor_shape));
+      ctx.Output<LoDTensor>("Out")->Resize(framework::make_ddim(tensor_shape));
     } else {
-      ctx.Output<Tensor>("Out")->Resize(Y->dims());
+      ctx.Output<LoDTensor>("Out")->Resize(Y->dims());
     }
   }
 };
@@ -112,8 +113,8 @@ class CropOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
+    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     if (x_grad != nullptr) {
       x_grad->Resize(x_dims);
     }
@@ -141,23 +142,17 @@ template <typename T>
 class CropCPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    LOG(INFO) << "CropCPUKernel step1";
-    auto *x = context.Input<Tensor>("X");
-    LOG(INFO) << "CropCPUKernel step2";
-    auto *out = context.Output<Tensor>("Out");
-    LOG(INFO) << "CropCPUKernel step3";
+    auto *x = context.Input<LoDTensor>("X");
+    auto *out = context.Output<LoDTensor>("Out");
     auto x_data = x->data<T>();
-    T *out_data = out->mutable_data<T>(paddle::platform::CPUPlace());
-    LOG(INFO) << "CropCPUKernel step4";
+    T *out_data = out->mutable_data<T>(context.GetPlace());
     auto x_dims = x->dims();
     auto out_dims = out->dims();
-    LOG(INFO) << "CropCPUKernel step5";
     int64_t out_count = framework::product(out_dims);
     std::vector<int64_t> x_shape = framework::vectorize(x_dims);
     std::vector<int64_t> out_shape = framework::vectorize(out_dims);
 
     auto offsets = context.op().Attr<std::vector<int>>("offsets");
-    LOG(INFO) << "CropCPUKernel step6";
     PADDLE_ENFORCE_EQ(
         x_dims.size(), offsets.size(),
         "Offsets size should be equal to dimension size of input tensor.");
@@ -171,7 +166,6 @@ class CropCPUKernel : public framework::OpKernel {
     for (int64_t i = 0; i < out_count; ++i) {
       out_data[i] = x_data[transIndex(out_shape, x_shape, crop_rules, i)];
     }
-    LOG(INFO) << "CropCPUKernel step7";
   }
 };
 

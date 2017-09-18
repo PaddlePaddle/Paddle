@@ -25,11 +25,12 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename Place, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
-  auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-  auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+  auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
+  auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
   if (d_x != nullptr) {
     d_x->mutable_data<T>(context.GetPlace());
     auto d_x_dims = d_x->dims();
@@ -52,7 +53,7 @@ class CropGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     size_t rank =
-        context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
+        context.Input<LoDTensor>(framework::GradVarName("Out"))->dims().size();
     switch (rank) {
       case 1:
         CropGradFunction<Place, T, 1>(context);

@@ -47,45 +47,44 @@ class TestCropOp(OpTest):
 
     def initTestCase(self):
         self.x_shape = (8, 8)
-        self.crop_shape = [2, 2]
+        self.crop_shape = (2, 2)
         self.offsets = [1, 2]
 
     def test_check_output(self):
         self.check_output()
-        print "finish check_output"
 
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['X'], 'Out', max_relative_error=0.006)
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.006)
 
-    #class TestCase1(TestCropOp):
-    #    def initTestCase(self):
-    #        self.x_shape = (16, 16, 16)
-    #        self.crop_shape = [2, 2, 3]
-    #        self.offsets = [1, 5, 3]
-    #
-    #
-    #class TestCase2(TestCropOp):
-    #    def initTestCase(self):
-    #        self.x_shape = (4, 4)
-    #        self.crop_shape = [4, 4]
-    #        self.offsets = [0, 0]
-    #
-    #
-    #class TestCase3(TestCropOp):
-    #    def initTestCase(self):
-    #        self.x_shape = (16, 16, 16)
-    #        self.crop_shape = [2, 2, 3]
-    #        self.offsets = [1, 5, 3]
-    #        self.crop_by_input = True
-    #
-    #
-    #class TestCase4(TestCropOp):
-    #    def initTestCase(self):
-    #        self.x_shape = (4, 4)
-    #        self.crop_shape = [4, 4]
-    #        self.offsets = [0, 0]
-    #        self.crop_by_input = True
-    #
+
+class TestCase1(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (16, 8, 32)
+        self.crop_shape = [2, 2, 3]
+        self.offsets = [1, 5, 3]
+
+
+class TestCase2(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (4, 8)
+        self.crop_shape = [4, 8]
+        self.offsets = [0, 0]
+
+
+class TestCase3(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (4, 8, 16)
+        self.crop_shape = [2, 2, 3]
+        self.offsets = [1, 5, 3]
+        self.crop_by_input = True
+
+
+class TestCase4(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (4, 4)
+        self.crop_shape = [4, 4]
+        self.offsets = [0, 0]
+        self.crop_by_input = True
 
 
 if __name__ == '__main__':
