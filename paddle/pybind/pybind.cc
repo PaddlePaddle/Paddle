@@ -74,10 +74,8 @@ static size_t UniqueIntegerGenerator() {
 
 bool IsCompileGPU() {
 #ifdef PADDLE_ONLY_CPU
-  printf("compile without gpu!");
   return false;
 #else
-  printf("compile with gpu!");
   return true;
 #endif
 }
