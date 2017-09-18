@@ -19,8 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using framework::LoDTensor;
 
 template <typename T, int D>
 __global__ void CropKernel(const int N, const int64_t* out_shape,

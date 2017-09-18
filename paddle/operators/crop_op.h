@@ -24,8 +24,7 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using framework::LoDTensor;
 
 template <typename Place, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {

@@ -29,6 +29,10 @@ class CropOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto x_dim = ctx.Input<LoDTensor>("X")->dims();
     auto Y = ctx.Input<LoDTensor>("Y");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of CropOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of CropOp should not be null.");
     if (Y == nullptr) {
       auto shape = Attr<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
@@ -40,6 +44,9 @@ class CropOp : public framework::OperatorWithKernel {
       }
       ctx.Output<LoDTensor>("Out")->Resize(framework::make_ddim(tensor_shape));
     } else {
+      PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(Y->dims()),
+                        "Tensor rank of both CropOp's "
+                        "inputs must be same.");
       ctx.Output<LoDTensor>("Out")->Resize(Y->dims());
     }
   }
