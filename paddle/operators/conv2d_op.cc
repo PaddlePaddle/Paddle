@@ -37,7 +37,7 @@ class Conv2DOp : public framework::OperatorWithKernel {
     int input_channels = in->dims()[1];
     int output_channels = filter->dims()[0];
 
-    PADDLE_ENFORCE_EQ(in->dims().size(), 4, "Conv2DOp intput should be 4-D.");
+    PADDLE_ENFORCE_EQ(in->dims().size(), 4, "Conv2DOp input should be 4-D.");
     PADDLE_ENFORCE_EQ(filter->dims().size(), 4,
                       "Conv2DOp filter should be 4-D.");
     PADDLE_ENFORCE_EQ(input_channels, filter->dims()[1] * groups,
@@ -76,13 +76,10 @@ class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Output",
               "The output tensor of convolution operator."
               "The format of output tensor is also NCHW.");
-    AddComment(R"DOC(
-The convolution operation calculates the output based on the input, filter
-and strides, paddings, groups parameters. The size of each dimension of the
-parameters is checked in the infer-shape.
-)DOC");
-    AddAttr<std::vector<int>>("strides", "strides of convolution operator.");
-    AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.");
+    AddAttr<std::vector<int>>("strides", "strides of convolution operator.")
+        .SetDefault({1, 1});
+    AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.")
+        .SetDefault({0, 0});
     AddAttr<int>(
         "groups",
         "group size of convolution operator. "
@@ -91,6 +88,11 @@ parameters is checked in the infer-shape.
         "first half of the input channels, and the second half only connected "
         "to the second half.")
         .SetDefault(1);
+    AddComment(R"DOC(
+The convolution operation calculates the output based on the input, filter
+and strides, paddings, groups parameters. The size of each dimension of the
+parameters is checked in the infer-shape.
+)DOC");
   }
 };
 
