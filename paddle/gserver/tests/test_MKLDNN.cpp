@@ -192,11 +192,6 @@ void testPoolLayer(const testPoolDesc& pm) {
 }
 
 TEST(MkldnnLayer, PoolLayer) {
-  // For max pooling, MKLDNN has the same result with Paddle.
-  // For avg pooling, MKLDNN use either inclusive or exclusive pooling, while
-  //                  Paddle mixes these two types. So, when encountering some
-  //                  test cases with padding>0, they may get different results.
-  //                  Then MKLDNN layer will give warnning for these cases.
   /* bs, ch, ih, iw, oh, ow, fh, fw, ph, pw, sh, sw*/
   testPoolLayer({2, 1, 4, 4, 2, 2, 3, 3, 0, 0, 2, 2});
   testPoolLayer({10, 8, 16, 16, 8, 8, 2, 2, 0, 0, 2, 2});
@@ -205,6 +200,7 @@ TEST(MkldnnLayer, PoolLayer) {
   testPoolLayer({8, 16, 14, 14, 7, 7, 3, 3, 0, 0, 2, 2});
   testPoolLayer({4, 16, 7, 7, 1, 1, 7, 7, 0, 0, 1, 1});
   testPoolLayer({4, 2, 5, 5, 3, 3, 5, 5, 1, 1, 1, 1});
+  testPoolLayer({2, 8, 56, 56, 29, 29, 3, 3, 1, 1, 2, 2});
 }
 
 // TODO(TJ): add branch test

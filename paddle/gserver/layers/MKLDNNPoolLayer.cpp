@@ -49,11 +49,8 @@ bool MKLDNNPoolLayer::init(const LayerMap& layerMap,
   if (type == "max-projection") {
     poolAlgo_ = algorithm::pooling_max;
   } else if (type == "avg-projection") {
-    // TODO(TJ): support choosing exclusive or inclusive when paddle support it
-    // only can make sure that paddle use exclude when ph==pw==0
-    // otherwise, paddle may used mixed or only include.
-    poolAlgo_ = (ph_ == 0 && pw_ == 0) ? algorithm::pooling_avg_exclude_padding
-                                       : algorithm::pooling_avg_include_padding;
+    // paddle only use exclude_padding
+    poolAlgo_ = algorithm::pooling_avg_exclude_padding;
   } else {
     LOG(FATAL) << "unknow pooling type!";
   }
@@ -178,12 +175,6 @@ void MKLDNNPoolLayer::resetFwdPD(std::shared_ptr<pool_fwd::primitive_desc>& pd,
                                 padR,
                                 padKind);
   pd.reset(new pool_fwd::primitive_desc(fwdDesc, engine_));
-  if ((ph_ != 0 || pw_ != 0) && (padR[0] > padL[0] || padR[1] > padL[1])) {
-    LOG(WARNING)
-        << "With this layer " << getName() << ", mkldnn_pool use "
-        << "inclusive pooling, while paddle mix inclusice and exclusive."
-        << "So they may have different results for this layer.";
-  }
 
   // prepare workspace if necessary
   workspace_ =
