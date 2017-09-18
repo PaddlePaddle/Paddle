@@ -71,7 +71,7 @@ class MinusGradOp : public NetOp {
 
     // x_grad = out_grad
     AppendOp(framework::OpRegistry::CreateOp("identity", {{"X", {out_grad}}},
-                                             {{"Out", {x_grad}}}, {}));
+                                             {{"Y", {x_grad}}}, {}));
 
     framework::AttributeMap scale_attr;
     scale_attr["scale"] = static_cast<AttrType>(-1);
