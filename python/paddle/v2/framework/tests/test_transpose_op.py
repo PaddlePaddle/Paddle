@@ -1,26 +1,49 @@
 import unittest
 import numpy as np
-from gradient_checker import GradientChecker
-from op_test_util import OpTestMeta
-from paddle.v2.framework.op import Operator
+from op_test import OpTest
 
 
-class TestTransposeOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestTransposeOp(OpTest):
     def setUp(self):
-        self.type = "transpose"
-        self.inputs = {'X': np.random.random((3, 4)).astype("float32"), }
-        self.attrs = {'axis': [1, 0]}
-        self.outputs = {'Out': self.inputs['X'].transpose((1, 0))}
+        self.initTestCase()
+        self.op_type = "transpose"
+        self.inputs = {'Input': np.random.random(self.shape).astype("float32")}
+        self.attrs = {'axis': list(self.axis)}
+        self.outputs = {'Output': self.inputs['Input'].transpose(self.axis)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['Input'], 'Output')
+
+    def initTestCase(self):
+        self.shape = (3, 4)
+        self.axis = (1, 0)
 
 
-class TransposeGradOpTest(GradientChecker):
-    def test_transpose(self):
-        op = Operator("transpose", X="X", Out="Out", axis=[1, 0])
-        inputs = {'X': np.random.random((32, 84)).astype("float32"), }
+class TestCase1(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (3, 4, 5)
+        self.axis = (0, 2, 1)
 
-        self.check_grad(op, inputs, set(["X"]), "Out", max_relative_error=0.5)
+
+class TestCase2(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5)
+        self.axis = (0, 2, 3, 1)
+
+
+class TestCase3(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.axis = (4, 2, 3, 1, 0)
+
+
+class TestCase4(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6, 1)
+        self.axis = (4, 2, 3, 1, 0, 5)
 
 
 if __name__ == '__main__':

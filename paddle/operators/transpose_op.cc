@@ -13,8 +13,6 @@
    limitations under the License. */
 
 #include "paddle/operators/transpose_op.h"
-#include <vector>
-#include "paddle/framework/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -27,28 +25,31 @@ class TransposeOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto in_dim = ctx.Input<Tensor>("X")->dims();
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Input"),
+                            "Input(Input) should not be null");
+    auto input_dim = ctx.Input<Tensor>("Input")->dims();
     auto axis = ctx.Attr<std::vector<int>>("axis");
-    size_t in_dim_size = in_dim.size();
+    size_t input_dim_size = input_dim.size();
     size_t axis_size = axis.size();
 
-    PADDLE_ENFORCE_EQ(
-        in_dim_size, axis_size,
-        "the input tensor dimensions should be equal to the axis size");
+    PADDLE_ENFORCE_EQ(input_dim_size, axis_size,
+                      "the input tensor's dimension(%d) "
+                      "should be equal to the axis's size(%d)",
+                      input_dim_size, axis_size);
 
     std::vector<int> axis_sorted(axis);
     std::sort(axis_sorted.begin(), axis_sorted.end());
     for (size_t i = 0; i < axis_sorted.size(); i++) {
-      PADDLE_ENFORCE_EQ(axis_sorted[i], (int)i,
+      PADDLE_ENFORCE_EQ(axis_sorted[i], static_cast<int>(i),
                         "the sorted axis should be [0, 1, ... dims - 1], "
-                        "the dims equals to the input tensor dimensions");
+                        "where the dims is the axis's size");
     }
 
-    framework::DDim out_dim(in_dim);
+    framework::DDim output_dim(input_dim);
     for (size_t i = 0; i < axis.size(); i++) {
-      out_dim[i] = in_dim[axis[i]];
+      output_dim[i] = input_dim[axis[i]];
     }
-    ctx.Output<Tensor>("Out")->Resize(out_dim);
+    ctx.Output<framework::LoDTensor>("Output")->Resize(output_dim);
   }
 };
 
@@ -57,16 +58,30 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
   TransposeOpMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input of transpose op");
-    AddOutput("Out", "The output of transpose op");
+    AddInput(
+        "Input",
+        "(Tensor)The input tensor, tensors with rank at most 7 are supported");
+    AddOutput("Output", "(Tensor)The output tensor");
     AddAttr<std::vector<int>>(
         "axis",
-        "a list of values, and the size of the list should be "
+        "(vector<int>)a list of values, and the size of the list should be "
         "the same with the input tensor dimensions, the tensor will "
         "permute the axes according the the values given");
     AddComment(R"DOC(
 The Tensor will be permuted according to the axis values given.
-For example, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
+The op is very much like the numpy.transpose function in python
+For example:
+ >> input = numpy.arange(6).reshape((2,3))
+ >> input
+ array([[0, 1, 2],
+        [3, 4, 5]])
+ >> axis = [1, 0]
+ >> output = input.transpose(axis)
+ >> output 
+ array([[0, 3],
+        [1, 4],
+		[2, 5]])
+So, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
 the output tensor shape will be (N, H, W, C)
 )DOC");
   }
@@ -78,20 +93,22 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Input"),
+                            "Input(Input) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Output")),
+                            "Input(Output@GRAD) should not be null");
+    auto input_dims = ctx.Input<Tensor>("Input")->dims();
+    auto *input_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
 
-    auto out_grad_dims =
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto out_dims = ctx.Input<Tensor>("Out")->dims();
+    auto output_grad_dims =
+        ctx.Input<Tensor>(framework::GradVarName("Output"))->dims();
+    auto output_dims = ctx.Input<Tensor>("Output")->dims();
 
-    PADDLE_ENFORCE(out_grad_dims == out_dims,
-                   "Out@GRAD dims must equal to Input(X) dims");
+    PADDLE_ENFORCE(output_grad_dims == output_dims,
+                   "Output@GRAD dims must equal to Input(Input) dims");
 
-    x_grad->Resize(x_dims);
+    input_grad->Resize(input_dims);
   }
 };
 
