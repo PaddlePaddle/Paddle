@@ -53,27 +53,27 @@ bool DeConv3DLayer::init(const LayerMap &layerMap,
 
 size_t DeConv3DLayer::getSize() {
   CHECK_NE(inputLayers_.size(), 0UL);
-  outputH_.clear();
-  outputW_.clear();
-  outputD_.clear();
+  imgSizeW_.clear();
+  imgSizeH_.clear();
+  imgSizeD_.clear();
   N_.clear();
   NOut_.clear();
   size_t layerSize = 0;
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
-    outputW_.push_back(
-        imageSize(imgSizeW_[i], filterSize_[i], padding_[i], stride_[i], true));
-    outputH_.push_back(imageSize(
-        imgSizeH_[i], filterSizeY_[i], paddingY_[i], strideY_[i], true));
-    outputD_.push_back(imageSize(
-        imgSizeD_[i], filterSizeZ_[i], paddingZ_[i], strideZ_[i], true));
-    NOut_.push_back(outputD_[i] * outputH_[i] * outputW_[i]);
-    N_.push_back(imgSizeD_[i] * imgSizeH_[i] * imgSizeW_[i]);
+    imgSizeW_.push_back(
+        imageSize(outputW_[i], filterSize_[i], padding_[i], stride_[i], true));
+    imgSizeH_.push_back(imageSize(
+        outputH_[i], filterSizeY_[i], paddingY_[i], strideY_[i], true));
+    imgSizeD_.push_back(imageSize(
+        outputD_[i], filterSizeZ_[i], paddingZ_[i], strideZ_[i], true));
+    NOut_.push_back(imgSizeD_[i] * imgSizeH_[i] * imgSizeW_[i]);
+    N_.push_back(outputD_[i] * outputH_[i] * outputW_[i]);
     CHECK(layerSize == 0 || N_[i] * size_t(numFilters_) == layerSize);
     layerSize += NOut_[i] * numFilters_;
   }
-  getOutput().setFrameHeight(outputH_[0]);
-  getOutput().setFrameWidth(outputW_[0]);
-  getOutput().setFrameDepth(outputD_[0]);
+  getOutput().setFrameHeight(imgSizeH_[0]);
+  getOutput().setFrameWidth(imgSizeW_[0]);
+  getOutput().setFrameDepth(imgSizeD_[0]);
   return layerSize;
 }
 
@@ -103,9 +103,9 @@ void DeConv3DLayer::forward(PassType passType) {
       }
       colBuf_->col2Vol(outMat->getData() + n * outMat->getStride(),
                        numFilters_,
-                       outputD_[i],
-                       outputH_[i],
-                       outputW_[i],
+                       imgSizeD_[i],
+                       imgSizeH_[i],
+                       imgSizeW_[i],
                        filterSizeZ_[i],
                        filterSizeY_[i],
                        filterSize_[i],
@@ -144,9 +144,9 @@ void DeConv3DLayer::backward(const UpdateCallback &callback) {
         colBuf_->vol2Col(
             getOutputGrad()->getData() + n * getOutputGrad()->getStride(),
             numFilters_,
-            outputD_[i],
-            outputH_[i],
-            outputW_[i],
+            imgSizeD_[i],
+            imgSizeH_[i],
+            imgSizeW_[i],
             filterSizeZ_[i],
             filterSizeY_[i],
             filterSize_[i],

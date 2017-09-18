@@ -80,6 +80,7 @@ protected:
 
   /// Height or width of input image feature.
   /// Both of them are 1 if the input is fully-connected layer.
+  int imageD_;
   int imageH_;
   int imageW_;
   /// Height * Width.

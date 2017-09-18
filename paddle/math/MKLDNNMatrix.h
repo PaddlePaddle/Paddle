@@ -30,11 +30,10 @@ typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
  */
 class MKLDNNMatrix : public CpuMatrix, public mkldnn::memory {
 public:
-  MKLDNNMatrix(real* data,
-               size_t height,
-               size_t width,
-               mkldnn::memory::primitive_desc pd)
-      : CpuMatrix(data, height, width, false), mkldnn::memory(pd, data) {}
+  MKLDNNMatrix(CpuMatrixPtr m, mkldnn::memory::primitive_desc pd)
+      : CpuMatrix(m->getData(), m->getHeight(), m->getWidth(), false),
+        mkldnn::memory(pd, m->getData()),
+        m_(m) {}
 
   ~MKLDNNMatrix() {}
 
@@ -52,6 +51,32 @@ public:
       mkldnn::memory::format fmt,
       mkldnn::engine& eg,
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
+
+  /**
+   * Create Memory descriptor.
+   * default with any format and f32 dtype
+   */
+  static mkldnn::memory::desc createMemoryDesc(
+      const mkldnn::memory::dims& dims,
+      const mkldnn::memory::format& fmt = mkldnn::memory::format::any,
+      const mkldnn::memory::data_type& dtype = mkldnn::memory::data_type::f32) {
+    return mkldnn::memory::desc(dims, dtype, fmt);
+  }
+
+  /**
+   * Create reorder primitive.
+   * Create a mkldnn::reorder handle for converting src MKLDNNMatrix to dst.
+   * checkData: whether to check the data handle of src and dst.
+   *            if true, it will check the data and do not allow them equal;
+   *            otherwise, it will not check them, then the reorder created
+   *            may have inplace buffer.
+   *            Do not set false, if you can not guarantee the inplace logical
+   *            would work with your reorder.
+   */
+  static std::shared_ptr<mkldnn::reorder> createReorder(
+      const MKLDNNMatrixPtr& src,
+      const MKLDNNMatrixPtr& dst,
+      bool checkData = true);
 
 public:
   /**
@@ -81,11 +106,29 @@ public:
   void downSpatial();
 
   /**
-   * Update the memory data handle.
+   * set the memory data handle.
    * Caution: This will not check the buffer size of the data,
    *          it should be coverd by user.
    */
-  void updateData(void* data) { set_data_handle(data); }
+  void setData(real* data) {
+    set_data_handle(data);
+    CpuMatrix::setData(data);
+    m_.reset();
+  }
+
+  /**
+   * override Matrix::getData
+   * check data before return
+   */
+  real* getData() override {
+    CHECK_EQ((void*)data_, get_data_handle());
+    return data_;
+  }
+
+  const real* getData() const override {
+    CHECK_EQ((void*)data_, get_data_handle());
+    return data_;
+  }
 
   /**
    * Get primitive descriptor.
@@ -143,6 +186,10 @@ protected:
                    memory::format srcFmt,
                    memory::format dstFmt,
                    memory::dims dm);
+
+private:
+  // save the CpuMatrixPtr in case the buffer released outside
+  CpuMatrixPtr m_;
 };
 
 }  // namespace paddle

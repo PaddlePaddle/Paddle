@@ -28,6 +28,7 @@ limitations under the License. */
 #include "hl_top_k.h"
 #include "paddle/utils/Logging.h"
 
+#include "paddle/function/GemmFunctor.h"
 #include "paddle/utils/ThreadLocal.h"
 
 #include "SIMDFunctions.h"
@@ -2773,24 +2774,24 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   CHECK(!isTransposed()) << "Not supported";
 
   size_t a_col, b_col, a_row, b_row;
-  CBLAS_TRANSPOSE a_trans, b_trans;
+  bool a_trans, b_trans;
   if (!a->isTransposed()) {
     a_col = a->getWidth();
     a_row = a->getHeight();
-    a_trans = CblasNoTrans;
+    a_trans = false;
   } else {
     a_col = a->getHeight();
     a_row = a->getWidth();
-    a_trans = CblasTrans;
+    a_trans = true;
   }
   if (!b->isTransposed()) {
     b_col = b->getWidth();
     b_row = b->getHeight();
-    b_trans = CblasNoTrans;
+    b_trans = false;
   } else {
     b_col = b->getHeight();
     b_row = b->getWidth();
-    b_trans = CblasTrans;
+    b_trans = true;
   }
 
   CHECK_EQ(a_col, b_row);
@@ -2807,7 +2808,7 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   int lda = a->getStride();
   int ldb = b->getStride();
   int ldc = getStride();
-  gemm<real>(
+  BlasGemm<DEVICE_TYPE_CPU, real>::compute(
       a_trans, b_trans, M, N, K, scaleAB, A, lda, B, ldb, scaleT, C, ldc);
 }
 

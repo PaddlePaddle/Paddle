@@ -27,8 +27,13 @@ class ScaleOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ScaleOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ScaleOp should not be null.");
+
     auto *in = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(in->dims());
   }
 };
@@ -44,11 +49,13 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
 
 The equation is: Out = scale*X
 )DOC");
-    AddAttr<AttrType>("scale", "scale of scale operator.").SetDefault(1.0);
+    AddAttr<AttrType>("scale", "The scaling factor of the scale operator.")
+        .SetDefault(1.0);
   }
 };
 
-// Scale Op's gradient is scale op, too.
+// The operator to calculate gradients of a scale operator is just the scale
+// operator itself.
 // Grad(Out=scale(X)) => Grad(X) = scale(Grad(Out))
 template <typename AttrType>
 class ScaleGradOp : public NetOp {

@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
 #include "paddle/operators/clip_op.h"
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                            \
@@ -22,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using framework::LoDTensor;
 
 template <typename T>
 __global__ void ClipGradientKernel(const int N, const T min, const T max,
@@ -40,16 +39,13 @@ template <typename T>
 class ClipGradientOpCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto max = context.op().Attr<float>("max");
-    auto min = context.op().Attr<float>("min");
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* x = context.Input<Tensor>("X");
+    auto max = context.Attr<float>("max");
+    auto min = context.Attr<float>("min");
+    auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* x = context.Input<LoDTensor>("X");
     auto dims = d_x->dims();
-    size_t count = 1;
-    for (int i = 0; i < dims.size(); ++i) {
-      count *= dims[i];
-    }
+    int64_t count = d_out->numel();
     auto d_x_data = d_x->mutable_data<T>(context.GetPlace());
     auto d_out_data = d_out->data<T>();
     auto x_data = x->data<T>();
@@ -58,9 +54,12 @@ class ClipGradientOpCUDAKernel : public framework::OpKernel {
     int D = d_x->dims()[1];
     int block = 512;
     int grid = (N * D + block - 1) / block;
-
-    ClipGradientKernel<T><<<grid, block>>>(count, min, max, x_data, d_out_data,
-                                           d_x_data);
+    auto* device_context =
+        const_cast<platform::DeviceContext*>(context.device_context_);
+    ClipGradientKernel<
+        T><<<grid, block, 0,
+             reinterpret_cast<platform::CUDADeviceContext*>(device_context)
+                 ->stream()>>>(count, min, max, x_data, d_out_data, d_x_data);
   }
 };
 

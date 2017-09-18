@@ -19,6 +19,7 @@ limitations under the License. */
 #include "MKLDNNBase.h"
 #include "mkldnn.hpp"
 #include "paddle/math/MKLDNNMatrix.h"
+#include "paddle/utils/Stat.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -33,6 +34,8 @@ typedef std::shared_ptr<MKLDNNLayer> MKLDNNLayerPtr;
  */
 class MKLDNNLayer : public Layer {
 protected:
+  // input value element count
+  size_t inputElemenCnt_;
   // batch size
   int bs_;
   // input image channel, height and width
@@ -52,7 +55,7 @@ protected:
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-  // MKLDNNMatrixPtr
+  // MKLDNNMatrixPtr with internal format
   MKLDNNMatrixPtr inVal_;
   MKLDNNMatrixPtr inGrad_;
   MKLDNNMatrixPtr outVal_;
@@ -65,6 +68,7 @@ protected:
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
+        inputElemenCnt_(0),
         bs_(0),
         ic_(0),
         ih_(0),
@@ -95,11 +99,103 @@ public:
     if (!Layer::init(layerMap, parameterMap)) {
       return false;
     }
+    checkCPUOutputsNumber();
 
     stream_.reset(new MKLDNNStream());
     engine_ = CPUEngine::Instance().getEngine();
     return true;
   }
+
+  void forward(PassType passType) override {
+    passType_ = passType;
+
+    {
+      REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
+      CHECK(!inputLayers_.empty());
+      copySeqInfoToOutputs();
+      size_t elemenCnt = inputLayers_[0]->getOutput().value->getElementCnt();
+      if (inputElemenCnt_ != elemenCnt) {
+        // reset when input total sizes changed, not only the batchsize
+        inputElemenCnt_ = elemenCnt;
+        reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
+        resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
+        convertWeightsFromPaddle();
+        needResetBwd_ = true;
+      }
+
+      if (inputLayers_[0]->getType() == "data") {
+        updateInputData();
+      }
+
+      stream_->submit(pipelineFwd_);
+    }
+
+    /* activation */ {
+      REGISTER_TIMER_INFO("FwActTimer", getName().c_str());
+      forwardActivation();
+    }
+  }
+
+  void backward(const UpdateCallback& callback) override {
+    /* Do derivation */ {
+      REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
+      backwardActivation();
+    }
+
+    {
+      REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
+      if (needResetBwd_) {
+        resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
+        needResetBwd_ = false;
+      }
+
+      stream_->submit(pipelineBwd_);
+    }
+
+    {
+      REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
+      updateWeights(callback);
+    }
+  }
+
+  /**
+   * reshape the input image sizes
+   * and reset output image and buffer size
+   * output channel can not be changed
+   */
+  virtual void reshape(
+      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) = 0;
+
+  /**
+   * reset the mkldnn forward primitve and memory
+   * only would be called when input size changes
+   */
+  virtual void resetFwd(std::vector<mkldnn::primitive>& pipeline,
+                        MKLDNNMatrixPtr& in,
+                        MKLDNNMatrixPtr& wgt,
+                        MKLDNNMatrixPtr& bias,
+                        MKLDNNMatrixPtr& out) = 0;
+
+  /**
+   * reset the mkldnn backward primitve and memory for mkldnn fc
+   * only would be called when needed
+   */
+  virtual void resetBwd(std::vector<mkldnn::primitive>& pipeline,
+                        MKLDNNMatrixPtr& in,
+                        MKLDNNMatrixPtr& wgt,
+                        MKLDNNMatrixPtr& bias,
+                        MKLDNNMatrixPtr& out) = 0;
+
+  /**
+   * Update input value data when input layer is "data" type.
+   * Since the input value data address might be changed.
+   */
+  virtual void updateInputData() {}
+
+  /**
+   * Update weights and biases if necessary.
+   */
+  virtual void updateWeights(const UpdateCallback& callback) {}
 
   /**
    * convert weight from paddle format to mkldnn format
@@ -114,10 +210,38 @@ public:
   virtual void convertWeightsToPaddle() {}
 
   /**
-   * convert MKLDNN output to other device.
-   * only support CPU device yet
+   * add this interface as public for unit test
    */
-  virtual void convertOutputToOtherDevice() {}
+  void addOutputArgument(int deviceId) { Layer::addOutputArgument(deviceId); }
+
+protected:
+  /**
+   * reshape the input image sizes and input batchsize
+   */
+  virtual void reshapeInput(int& batchsize, int& height, int& width) {
+    const Argument& input = inputLayers_[0]->getOutput();
+    batchsize = input.getBatchSize();
+    int h = input.getFrameHeight();
+    int w = input.getFrameWidth();
+    if (h != 0) {
+      height = h;
+    }
+    if (w != 0) {
+      width = w;
+    }
+  }
+
+  /**
+   * reshape output image sizes
+   */
+  virtual void reshapeOutput(size_t height, size_t width) {
+    output_.setFrameHeight(height);
+    output_.setFrameWidth(width);
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      outputOtherDevice_[i].setFrameHeight(height);
+      outputOtherDevice_[i].setFrameWidth(width);
+    }
+  }
 
   /**
    * print info about sizes
@@ -133,8 +257,8 @@ public:
    */
   virtual void printValueFormatFlow() {
     if (inVal_ && outVal_) {
-      VLOG(MKLDNN_FMTS) << "value format flow --- " << inVal_->getFormat()
-                        << " >>> " << outVal_->getFormat();
+      VLOG(MKLDNN_FMTS) << inVal_->getFormat() << " >>> "
+                        << outVal_->getFormat();
     }
   }
 
@@ -143,29 +267,12 @@ public:
    */
   virtual void printGradFormatFlow() {
     if (inGrad_ && outGrad_) {
-      VLOG(MKLDNN_FMTS) << "grad format flow --- " << inGrad_->getFormat()
-                        << " <<< " << outGrad_->getFormat();
+      VLOG(MKLDNN_FMTS) << inGrad_->getFormat() << " <<< "
+                        << outGrad_->getFormat();
     }
   }
 
 protected:
-  /**
-   * copy image size and sequence info to other device
-   * @note: can not directly use Layer::copyOutputToOtherDevice since here only
-   *        copy base info and do not copy data value
-   */
-  void copyOutputInfoToOtherDevice() {
-    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-      outputOtherDevice_[i].setFrameHeight(output_.getFrameHeight());
-      outputOtherDevice_[i].setFrameWidth(output_.getFrameWidth());
-      outputOtherDevice_[i].sequenceStartPositions =
-          output_.sequenceStartPositions;
-      outputOtherDevice_[i].subSequenceStartPositions =
-          output_.subSequenceStartPositions;
-      outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
-    }
-  }
-
   /**
    * If input only has MKLDNN device.
    * Otherwise, only support the previous layer using CPU device.
@@ -194,36 +301,11 @@ protected:
   }
 
   /**
-   * Sync input value data
-   */
-  void syncInputValue() {
-    if (inputIsOnlyMKLDNN()) {
-      return;
-    }
-    real* iData = getInputValue(0, CPU_DEVICE)->getData();
-    // update input data
-    // since it might be changed if this is after data layer
-    inVal_->updateData(iData);
-  }
-
-  /**
-   * Sync output grad data
-   */
-  void syncOutputGrad() {
-    if (outputIsOnlyMKLDNN()) {
-      return;
-    }
-
-    // update diff
-    real* oDiff = getOutput(CPU_DEVICE).grad->getData();
-    outGrad_->updateData(oDiff);
-  }
-
-  /**
    * Set deviceId of this layer.
    */
   void setDevice(int id) { deviceId_ = id; }
 
+private:
   /**
    * Set deviceId of the params used in this layer.
    */
@@ -245,6 +327,42 @@ protected:
           << "Cannot find bias parameter " << name << " for layer "
           << getName();
       parameter->setDevice(id);
+    }
+  }
+
+  /**
+   * Check the cpu device number of outputOtherDevice_.
+   * should have only one at most.
+   */
+  void checkCPUOutputsNumber(int max = 1) {
+    int cnt = 0;
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
+        ++cnt;
+      }
+    }
+    CHECK_LE(cnt, max) << "too much CPU devies";
+  }
+
+  /**
+   * copy SeqInfo from input layer to this output and other output devices.
+   * @note: do not use getInput(0) since it used this deviceId_,
+   *        use "inputLayers_[0]->getOutput()" instead.
+   */
+  void copySeqInfoToOutputs() {
+    if (inputLayers_.empty() || !needSequenceInfo_) {
+      return;
+    }
+    const Argument& input = inputLayers_[0]->getOutput();
+    output_.sequenceStartPositions = input.sequenceStartPositions;
+    output_.subSequenceStartPositions = input.subSequenceStartPositions;
+    output_.cpuSequenceDims = input.cpuSequenceDims;
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      outputOtherDevice_[i].sequenceStartPositions =
+          output_.sequenceStartPositions;
+      outputOtherDevice_[i].subSequenceStartPositions =
+          output_.subSequenceStartPositions;
+      outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
     }
   }
 };

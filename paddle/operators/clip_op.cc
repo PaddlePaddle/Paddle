@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
+using framework::LoDTensor;
 
 class ClipOp : public framework::OperatorWithKernel {
  public:
@@ -25,25 +25,35 @@ class ClipOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ClipOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ClipOp should not be null.");
+    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
     auto max = Attr<float>("max");
     auto min = Attr<float>("min");
     PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
-    ctx.Output<Tensor>("Out")->Resize(x_dims);
+    ctx.Output<LoDTensor>("Out")->Resize(x_dims);
   }
 };
 
+template <typename AttrType>
 class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ClipOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input of clip op");
-    AddOutput("Out", "The output of clip op");
+    AddInput("X",
+             "(Tensor)The input of clip op."
+             "The input should be a k-D tensor(k > 0 and k < 7)");
+    AddOutput("Out", "(Tensor)The output of clip op with shape as input(X)");
+    AddAttr<AttrType>(
+        "min", "(float)Minimum value, under which element is replaced by min.");
+    AddAttr<AttrType>(
+        "max", "(float)Maximum value, above which element is replaced by max");
     AddComment(R"DOC(
-Clip Operator.
+Clip operator limits the given input within an interval. The interval is
+specified with arguments 'min' and 'max'.
 )DOC");
-    AddAttr<float>("min", "min value to be clipped.");
-    AddAttr<float>("max", "max value to be clipped.");
   }
 };
 
@@ -56,8 +66,8 @@ class ClipOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
+    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
 
     x_grad->Resize(x_dims);
   }
@@ -67,7 +77,8 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(clip, ops::ClipOp, ops::ClipOpMaker, clip_grad, ops::ClipOpGrad);
+REGISTER_OP(clip, ops::ClipOp, ops::ClipOpMaker<float>, clip_grad,
+            ops::ClipOpGrad);
 REGISTER_OP_CPU_KERNEL(clip,
                        ops::ClipKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(clip_grad, ops::ClipGradKernel<float>);

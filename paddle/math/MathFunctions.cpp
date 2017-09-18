@@ -84,6 +84,7 @@ LAPACK_ROUTINE_EACH(DYNAMIC_LOAD_LAPACK_WRAP)
 
 namespace paddle {
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void gemm<float>(const CBLAS_TRANSPOSE transA,
                  const CBLAS_TRANSPOSE transB,
@@ -143,6 +144,7 @@ void gemm<double>(const CBLAS_TRANSPOSE transA,
               C,
               ldc);
 }
+#endif
 
 template <>
 int getrf<float>(const CBLAS_ORDER order,
@@ -182,6 +184,7 @@ int getri<double>(const CBLAS_ORDER order,
   return dynload::PADDLE_DGETRI(order, N, A, lda, ipiv);
 }
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void axpy<float>(const int n, const float alpha, const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
@@ -201,6 +204,7 @@ template <>
 double dotProduct<double>(const int n, const double* x, const double* y) {
   return cblas_ddot(n, x, 1, y, 1);
 }
+#endif
 
 #if defined(PADDLE_USE_MKL) || defined(PADDLE_USE_MKLML)
 

@@ -9,6 +9,7 @@ cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor)
+nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
 

@@ -20,25 +20,53 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using framework::LoDTensor;
 
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
+template <typename Place, typename T, size_t D>
+void ClipFunction(const framework::ExecutionContext& context) {
+  auto max = context.op().Attr<float>("max");
+  auto min = context.op().Attr<float>("min");
+  auto* x = context.Input<LoDTensor>("X");
+  auto* out = context.Output<LoDTensor>("Out");
+  out->mutable_data<T>(context.GetPlace());
+  auto x_tensor = EigenTensor<T, D>::From(*x);
+  auto out_tensor = EigenTensor<T, D>::From(*out);
+  auto place = context.GetEigenDevice<Place>();
+  out_tensor.device(place) = x_tensor.cwiseMin(max).cwiseMax(min);
+}
+
 template <typename Place, typename T>
 class ClipKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto max = context.op().Attr<float>("max");
-    auto min = context.op().Attr<float>("min");
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
-    auto x_tensor = EigenTensor<T, 2>::From(*x);
-    auto out_tensor = EigenTensor<T, 2>::From(*out);
-    auto place = context.GetEigenDevice<Place>();
-    out_tensor.device(place) = x_tensor.cwiseMin(max).cwiseMax(min);
+    int rank = context.Input<LoDTensor>("X")->dims().size();
+    switch (rank) {
+      case 1:
+        ClipFunction<Place, T, 1>(context);
+        break;
+      case 2:
+        ClipFunction<Place, T, 2>(context);
+        break;
+      case 3:
+        ClipFunction<Place, T, 3>(context);
+        break;
+      case 4:
+        ClipFunction<Place, T, 4>(context);
+        break;
+      case 5:
+        ClipFunction<Place, T, 5>(context);
+        break;
+      case 6:
+        ClipFunction<Place, T, 6>(context);
+        break;
+      default:
+        PADDLE_THROW(
+            "PadOp only support tensors with no more than 6 dimensions.");
+    }
   }
 };
 
@@ -48,20 +76,20 @@ class ClipGradKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto max = context.op().Attr<float>("max");
     auto min = context.op().Attr<float>("min");
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* x = context.Input<Tensor>("X");
+    auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* x = context.Input<LoDTensor>("X");
     auto dims = d_x->dims();
-    size_t count = 1;
-    for (int i = 0; i < dims.size(); ++i) {
-      count *= dims[i];
-    }
-
+    int64_t count = d_out->numel();
     auto d_x_data = d_x->mutable_data<T>(context.GetPlace());
     auto d_out_data = d_out->data<T>();
     auto x_data = x->data<T>();
     for (int i = 0; i < count; ++i) {
-      d_x_data[i] = d_out_data[i] * (x_data[i] > min && x_data[i] < max);
+      if (x_data[i] > min && x_data[i] < max) {
+        d_x_data[i] = d_out_data[i];
+      } else {
+        d_x_data[i] = 0;
+      }
     }
   }
 };

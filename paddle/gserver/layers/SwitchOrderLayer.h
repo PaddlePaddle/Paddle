@@ -14,44 +14,34 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
-#include "ConvBaseLayer.h"
-#include "paddle/math/Matrix.h"
+#include "Layer.h"
 
 namespace paddle {
 
 /**
- * @brief A subclass of ConvBaseLayer that is a superclass of both
- * ExpandConvLayer and ExpandConvTransLayer
+ * \brief  This layer calculate softmax in image channel dimension.
  */
-class ExpandConvBaseLayer : public ConvBaseLayer {
-protected:
-  /// The transpose of output, which is an auxiliary matrix.
-  MatrixPtr transOutValue_;
-
+class SwitchOrderLayer : public Layer {
 public:
-  explicit ExpandConvBaseLayer(const LayerConfig& config)
-      : ConvBaseLayer(config) {}
+  explicit SwitchOrderLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~ExpandConvBaseLayer() {}
+  ~SwitchOrderLayer() {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
+  void setInDims();
+  void setOutDims();
 
-  size_t getOutputSize();
-
-  /**
-   * Add shared bias.
-   */
-  void addSharedBias();
-
-  /**
-   * Add unshared bias.
-   */
-  void addUnsharedBias();
-
-  void bpropSharedBias(MatrixPtr biases, MatrixPtr v);
-  void bpropBiases(MatrixPtr v);
+protected:
+  std::vector<std::shared_ptr<FunctionBase>> nchw2nhwc_;
+  std::vector<std::shared_ptr<FunctionBase>> nhwc2nchw_;
+  TensorShape inDims_;
+  TensorShape outDims_;
+  std::vector<int> heightAxis_;
+  std::vector<int> widthAxis_;
+  size_t reshapeHeight_;
+  size_t reshapeWidth_;
 };
-
 }  // namespace paddle
