@@ -238,6 +238,7 @@ class GradientChecker(unittest.TestCase):
         :type msf_prefix: string
         """
         for a, b, name in itertools.izip(numeric_grads, analytic_grads, names):
+            print "a=%s ; b=%s" % (a, b)
             abs_a = numpy.abs(a)
             # if abs_a is nearly zero, then use abs error for a, not relative
             # error.

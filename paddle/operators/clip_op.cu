@@ -27,7 +27,13 @@ using Tensor = framework::Tensor;
 template <typename T>
 __global__ void ClipGradientKernel(const int N, const T min, const T max,
                                    const T* Y, const T* dY, T* dX) {
-  CUDA_1D_KERNEL_LOOP(i, N) { dX[i] = dY[i] * (Y[i] > min && Y[i] < max); }
+  CUDA_1D_KERNEL_LOOP(i, N) {
+    if (Y[i] > min && Y[i] < max) {
+      dX[i] = dY[i];
+    } else {
+      dX[i] = 0;
+    }
+  }
 }
 
 template <typename T>
@@ -38,7 +44,7 @@ class ClipGradientOpCUDAKernel : public framework::OpKernel {
     auto min = context.op().Attr<float>("min");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* x = context.Output<Tensor>("X");
+    auto* x = context.Input<Tensor>("X");
     auto dims = d_x->dims();
     size_t count = 1;
     for (int i = 0; i < dims.size(); ++i) {

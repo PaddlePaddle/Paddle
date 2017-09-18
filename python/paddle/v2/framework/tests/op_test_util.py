@@ -34,10 +34,8 @@ class OpTestMeta(type):
                         arr = self.inputs[in_name]
                         var.set_dims(arr.shape)
                         var.set(arr, place)
-                        print "var: %s" % in_name
                     else:
                         kwargs[in_name] = "@EMPTY@"
-                        print "var: %s=EMPTY" % in_name
 
                 for out_name in Operator.get_op_output_names(self.type):
                     if not hasattr(self, "outputs"):
@@ -48,7 +46,6 @@ class OpTestMeta(type):
                                          (out_name))
                     kwargs[out_name] = out_name
                     scope.new_var(out_name).get_tensor()
-                    print "var: %s" % out_name
 
                 for attr_name in Operator.get_op_attr_names(self.type):
                     if hasattr(self, "attrs") and attr_name in self.attrs:
@@ -65,9 +62,7 @@ class OpTestMeta(type):
 
                 for out_name in Operator.get_op_output_names(self.type):
                     actual = numpy.array(scope.find_var(out_name).get_tensor())
-                    print "actual: %s" % actual
                     expect = self.outputs[out_name]
-                    print "expect: %s" % expect
                     self.assertTrue(
                         numpy.allclose(
                             actual, expect, atol=1e-05),

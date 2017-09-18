@@ -50,7 +50,7 @@ class ClipGradKernel : public framework::OpKernel {
     auto min = context.op().Attr<float>("min");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* x = context.Output<Tensor>("X");
+    auto* x = context.Input<Tensor>("X");
     auto dims = d_x->dims();
     size_t count = 1;
     for (int i = 0; i < dims.size(); ++i) {
