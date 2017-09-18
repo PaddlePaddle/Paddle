@@ -25,8 +25,14 @@ class ElementWiseMulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ElementWiseMulOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of ElementWiseMulOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of ElementWiseMulOp should not be null.");
+
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto y_dim = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),

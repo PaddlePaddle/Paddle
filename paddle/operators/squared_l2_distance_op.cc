@@ -23,12 +23,18 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input of SquaredL2DistanceOp "
-                            "must be initialized.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
-                            "Target of SquaredL2DistanceOp "
-                            "must be initialized.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("X"),
+        "Input(X) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("Y"),
+        "Input(Y) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("sub_result"),
+        "Output(sub_result) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of SquaredL2DistanceOp should not be null.");
 
     auto* x = ctx.Input<Tensor>("X");
     auto x_dims = x->dims();

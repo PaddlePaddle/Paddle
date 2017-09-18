@@ -25,6 +25,11 @@ class PadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of PadOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of PadOp should not be null.");
+
     auto x_dim = ctx.Input<Tensor>("X")->dims();
     auto paddings = Attr<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),

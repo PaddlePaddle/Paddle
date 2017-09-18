@@ -106,7 +106,7 @@ class TestBRelu(OpTest):
         t_max = 4
         # The same with TestAbs
         x[np.abs(x - t_min) < 0.005] = t_min + 0.02
-        x[np.abs(x - t_max) < 0.005] = t_min + 0.02
+        x[np.abs(x - t_max) < 0.005] = t_max + 0.02
 
         self.inputs = {'X': x}
         self.attrs = {'t_min': t_min, 't_max': t_max}
