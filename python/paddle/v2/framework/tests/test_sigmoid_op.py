@@ -3,7 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestSigmoid(OpTest):
+class TestSigmoidOp(OpTest):
     def setUp(self):
         self.op_type = "sigmoid"
         self.inputs = {
