@@ -16,5 +16,5 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(concat,
                        ops::ConcatKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(concat,
-                       ops::ConcatKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    concat_grad, ops::ConcatGradKernel<paddle::platform::GPUPlace, float>);
