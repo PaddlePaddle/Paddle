@@ -5,6 +5,7 @@ from op_test import OpTest
 
 class TestConv2dOp(OpTest):
     def setUp(self):
+        self.init_groups()
         self.op_type = "conv2d"
         batch_size = 2
         input_channels = 3
@@ -15,7 +16,6 @@ class TestConv2dOp(OpTest):
         filter_width = 3
         stride = 1
         padding = 0
-        groups = 3
         output_height = (input_height - filter_height + 2 * padding
                          ) / stride + 1
         output_width = (input_width - filter_width + 2 * padding) / stride + 1
@@ -23,18 +23,22 @@ class TestConv2dOp(OpTest):
                                   input_width)).astype("float32")
 
         filter = np.random.random(
-            (output_channels, input_channels / groups, filter_height,
+            (output_channels, input_channels / self.groups, filter_height,
              filter_width)).astype("float32")
         output = np.ndarray(
             (batch_size, output_channels, output_height, output_width))
 
         self.inputs = {'Input': input, 'Filter': filter}
-        self.attrs = {'strides': [1, 1], 'paddings': [0, 0], 'groups': groups}
+        self.attrs = {
+            'strides': [1, 1],
+            'paddings': [0, 0],
+            'groups': self.groups
+        }
 
-        output_group_channels = output_channels / groups
-        input_group_channels = input_channels / groups
+        output_group_channels = output_channels / self.groups
+        input_group_channels = input_channels / self.groups
         for batchid in xrange(batch_size):
-            for group in xrange(groups):
+            for group in xrange(self.groups):
                 for outchannelid in range(group * output_group_channels,
                                           (group + 1) * output_group_channels):
                     for rowid in xrange(output_height):
@@ -70,6 +74,14 @@ class TestConv2dOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(set(['Input', 'Filter']), 'Output')
+
+    def init_groups(self):
+        self.groups = 1
+
+
+class TestWithGroup(TestConv2dOp):
+    def init_groups(self):
+        self.groups = 3
 
 
 if __name__ == '__main__':
