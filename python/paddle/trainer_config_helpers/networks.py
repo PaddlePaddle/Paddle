@@ -11,10 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
 
-"""
-# from activations import *
+
 from activations import LinearActivation, ReluActivation, SoftmaxActivation, \
     IdentityActivation, TanhActivation, SequenceSoftmaxActivation
 from attrs import ExtraAttr
@@ -55,49 +53,49 @@ def sequence_conv_pool(input,
                        context_attr=None,
                        pool_attr=None):
     """
-    Text convolution pooling layers helper.
+    Text convolution pooling group.
 
     Text input => Context Projection => FC Layer => Pooling => Output.
 
-    :param name: name of output layer(pooling layer name)
+    :param name: group name.
     :type name: basestring
-    :param input: name of input layer
+    :param input: input layer.
     :type input: LayerOutput
     :param context_len: context projection length. See
                         context_projection's document.
     :type context_len: int
     :param hidden_size: FC Layer size.
     :type hidden_size: int
-    :param context_start: context projection length. See
+    :param context_start: context start position. See
                           context_projection's context_start.
-    :type context_start: int or None
+    :type context_start: int|None
     :param pool_type: pooling layer type. See pooling_layer's document.
-    :type pool_type: BasePoolingType.
+    :type pool_type: BasePoolingType
     :param context_proj_layer_name: context projection layer name.
                                     None if user don't care.
     :type context_proj_layer_name: basestring
-    :param context_proj_param_attr: context projection parameter attribute.
-                                    None if user don't care.
-    :type context_proj_param_attr: ParameterAttribute or None.
+    :param context_proj_param_attr: padding parameter attribute of context projection layer.
+                                    If false, it means padding always be zero.
+    :type context_proj_param_attr: ParameterAttribute|None
     :param fc_layer_name: fc layer name. None if user don't care.
     :type fc_layer_name: basestring
     :param fc_param_attr: fc layer parameter attribute. None if user don't care.
-    :type fc_param_attr: ParameterAttribute or None
+    :type fc_param_attr: ParameterAttribute|None
     :param fc_bias_attr: fc bias parameter attribute. False if no bias,
                          None if user don't care.
-    :type fc_bias_attr: ParameterAttribute or None
-    :param fc_act: fc layer activation type. None means tanh
+    :type fc_bias_attr: ParameterAttribute|False|None
+    :param fc_act: fc layer activation type. None means tanh.
     :type fc_act: BaseActivation
-    :param pool_bias_attr: pooling layer bias attr. None if don't care.
-                           False if no bias.
-    :type pool_bias_attr: ParameterAttribute or None.
+    :param pool_bias_attr: pooling layer bias attr. False if no bias.
+                           None if user don't care.
+    :type pool_bias_attr: ParameterAttribute|False|None
     :param fc_attr: fc layer extra attribute.
     :type fc_attr: ExtraLayerAttribute
     :param context_attr: context projection layer extra attribute.
     :type context_attr: ExtraLayerAttribute
     :param pool_attr: pooling layer extra attribute.
     :type pool_attr: ExtraLayerAttribute
-    :return: output layer name.
+    :return: layer's output.
     :rtype: LayerOutput
     """
     # Set Default Value to param
@@ -163,45 +161,45 @@ def simple_img_conv_pool(input,
     """
     Simple image convolution and pooling group.
 
-    Input => conv => pooling
+    Img input => Conv => Pooling => Output.
 
-    :param name: group name
+    :param name: group name.
     :type name: basestring
-    :param input: input layer name.
+    :param input: input layer.
     :type input: LayerOutput
-    :param filter_size: see img_conv_layer for details
+    :param filter_size: see img_conv_layer for details.
     :type filter_size: int
-    :param num_filters: see img_conv_layer for details
+    :param num_filters: see img_conv_layer for details.
     :type num_filters: int
-    :param pool_size: see img_pool_layer for details
+    :param pool_size: see img_pool_layer for details.
     :type pool_size: int
-    :param pool_type: see img_pool_layer for details
+    :param pool_type: see img_pool_layer for details.
     :type pool_type: BasePoolingType
-    :param act: see img_conv_layer for details
+    :param act: see img_conv_layer for details.
     :type act: BaseActivation
-    :param groups: see img_conv_layer for details
+    :param groups: see img_conv_layer for details.
     :type groups: int
-    :param conv_stride: see img_conv_layer for details
+    :param conv_stride: see img_conv_layer for details.
     :type conv_stride: int
-    :param conv_padding: see img_conv_layer for details
+    :param conv_padding: see img_conv_layer for details.
     :type conv_padding: int
-    :param bias_attr: see img_conv_layer for details
+    :param bias_attr: see img_conv_layer for details.
     :type bias_attr: ParameterAttribute
-    :param num_channel: see img_conv_layer for details
+    :param num_channel: see img_conv_layer for details.
     :type num_channel: int
-    :param param_attr: see img_conv_layer for details
+    :param param_attr: see img_conv_layer for details.
     :type param_attr: ParameterAttribute
-    :param shared_bias: see img_conv_layer for details
+    :param shared_bias: see img_conv_layer for details.
     :type shared_bias: bool
-    :param conv_layer_attr: see img_conv_layer for details
+    :param conv_layer_attr: see img_conv_layer for details.
     :type conv_layer_attr: ExtraLayerAttribute
-    :param pool_stride: see img_pool_layer for details
+    :param pool_stride: see img_pool_layer for details.
     :type pool_stride: int
-    :param pool_padding: see img_pool_layer for details
+    :param pool_padding: see img_pool_layer for details.
     :type pool_padding: int
-    :param pool_layer_attr: see img_pool_layer for details
+    :param pool_layer_attr: see img_pool_layer for details.
     :type pool_layer_attr: ExtraLayerAttribute
-    :return: Layer's output
+    :return: layer's output
     :rtype: LayerOutput
     """
     _conv_ = img_conv_layer(
@@ -252,48 +250,52 @@ def img_conv_bn_pool(input,
                      pool_layer_attr=None):
     """
     Convolution, batch normalization, pooling group.
+    
+    Img input => Conv => BN => Pooling => Output.
 
-    :param name: group name
+    :param name: group name.
     :type name: basestring
-    :param input: layer's input
-    :type input: LayerOutput
-    :param filter_size: see img_conv_layer's document
+    :param input: input layer.
+    :type input: LayerOutput 
+    :param filter_size: see img_conv_layer for details.
     :type filter_size: int
-    :param num_filters: see img_conv_layer's document
+    :param num_filters: see img_conv_layer for details.
     :type num_filters: int
-    :param pool_size: see img_pool_layer's document.
+    :param pool_size: see img_pool_layer for details.
     :type pool_size: int
-    :param pool_type: see img_pool_layer's document.
+    :param pool_type: see img_pool_layer for details.
     :type pool_type: BasePoolingType
-    :param act: see batch_norm_layer's document.
+    :param act: see batch_norm_layer for details.
     :type act: BaseActivation
-    :param groups: see img_conv_layer's document
+    :param groups: see img_conv_layer for details.
     :type groups: int
-    :param conv_stride: see img_conv_layer's document.
+    :param conv_stride: see img_conv_layer for details.
     :type conv_stride: int
-    :param conv_padding: see img_conv_layer's document.
+    :param conv_padding: see img_conv_layer for details.
     :type conv_padding: int
-    :param conv_bias_attr: see img_conv_layer's document.
+    :param conv_bias_attr: see img_conv_layer for details.
     :type conv_bias_attr: ParameterAttribute
-    :param num_channel: see img_conv_layer's document.
+    :param num_channel: see img_conv_layer for details.
     :type num_channel: int
-    :param conv_param_attr: see img_conv_layer's document.
+    :param conv_param_attr: see img_conv_layer for details.
     :type conv_param_attr: ParameterAttribute
-    :param shared_bias: see img_conv_layer's document.
+    :param shared_bias: see img_conv_layer for details.
     :type shared_bias: bool
-    :param conv_layer_attr: see img_conv_layer's document.
+    :param conv_layer_attr: see img_conv_layer for details.
     :type conv_layer_attr: ExtraLayerOutput
-    :param bn_param_attr: see batch_norm_layer's document.
-    :type bn_param_attr: ParameterAttribute.
-    :param bn_bias_attr: see batch_norm_layer's document.
-    :param bn_layer_attr: ParameterAttribute.
-    :param pool_stride: see img_pool_layer's document.
+    :param bn_param_attr: see batch_norm_layer for details.
+    :type bn_param_attr: ParameterAttribute
+    :param bn_bias_attr: see batch_norm_layer for details.
+    :type bn_bias_attr: ParameterAttribute
+    :param bn_layer_attr: see batch_norm_layer for details.
+    :type bn_layer_attr: ExtraLayerAttribute
+    :param pool_stride: see img_pool_layer for details.
     :type pool_stride: int
-    :param pool_padding: see img_pool_layer's document.
+    :param pool_padding: see img_pool_layer for details.
     :type pool_padding: int
-    :param pool_layer_attr: see img_pool_layer's document.
+    :param pool_layer_attr: see img_pool_layer for details.
     :type pool_layer_attr: ExtraLayerAttribute
-    :return: Layer groups output
+    :return: layer's output
     :rtype: LayerOutput
     """
     __conv__ = img_conv_layer(
@@ -348,10 +350,10 @@ def img_conv_group(input,
     :param conv_batchnorm_drop_rate: if conv_with_batchnorm[i] is true,
         conv_batchnorm_drop_rate[i] represents the drop rate of each batch norm.
     :type conv_batchnorm_drop_rate: list
-    :param input: layer's input.
+    :param input: input layer.
     :type input: LayerOutput
-    :param conv_num_filter: output channels num.
-    :type conv_num_filter: int
+    :param conv_num_filter: list of output channels num.
+    :type conv_num_filter: list|tuple
     :param pool_size: pooling filter size.
     :type pool_size: int
     :param num_channels: input channels num.
@@ -362,18 +364,18 @@ def img_conv_group(input,
     :type conv_filter_size: int
     :param conv_act: activation funciton after convolution.
     :type conv_act: BaseActivation
-    :param conv_with_batchnorm: conv_with_batchnorm[i] represents
-        if there is a batch normalization after each convolution.
+    :param conv_with_batchnorm: if conv_with_batchnorm[i] is true,
+        there is a batch normalization operation after each convolution.
     :type conv_with_batchnorm: list
     :param pool_stride: pooling stride size.
     :type pool_stride: int
     :param pool_type: pooling type.
     :type pool_type: BasePoolingType
-    :param param_attr: Convolution param attribute.
-        None means default attribute.
+    :param param_attr: param attribute of convolution layer,
+                       None means default attribute.
     :type param_attr: ParameterAttribute
-    :return: Layer's output
-    :type: LayerOutput
+    :return: layer's output
+    :rtype: LayerOutput
     """
     tmp = input
 
@@ -466,12 +468,14 @@ def vgg_16_network(input_image, num_channels, num_classes=1000):
     """
     Same model from https://gist.github.com/ksimonyan/211839e770f7b538e2d8
 
-    :param num_classes:
-    :param input_image:
+    :param num_classes: number of class.
+    :type num_classes: int
+    :param input_image: input layer.
     :type input_image: LayerOutput
-    :param num_channels:
+    :param num_channels: input channels num.
     :type num_channels: int
-    :return:
+    :return: layer's output
+    :rtype: LayerOutput
     """
 
     tmp = img_conv_group(
@@ -560,8 +564,8 @@ def simple_lstm(input,
     """
     Simple LSTM Cell.
 
-    It just combine a mixed layer with fully_matrix_projection and a lstmemory
-    layer. The simple lstm cell was implemented as follow equations.
+    It just combines a mixed layer with fully_matrix_projection and a lstmemory
+    layer. The simple lstm cell was implemented with follow equations.
 
     ..  math::
 
@@ -575,37 +579,37 @@ def simple_lstm(input,
 
         h_t & = o_t tanh(c_t)
 
-    Please refer **Generating Sequences With Recurrent Neural Networks** if you
-    want to know what lstm is. Link_ is here.
+    Please refer to **Generating Sequences With Recurrent Neural Networks** for more
+    details about lstm. Link_ is here.
 
     .. _Link: http://arxiv.org/abs/1308.0850
 
     :param name: lstm layer name.
     :type name: basestring
-    :param input: input layer name.
+    :param input: layer's input.
     :type input: LayerOutput
     :param size: lstm layer size.
     :type size: int
-    :param reverse: whether to process the input data in a reverse order
+    :param reverse: process the input in a reverse order or not.
     :type reverse: bool
-    :param mat_param_attr: mixed layer's matrix projection parameter attribute.
+    :param mat_param_attr: parameter attribute of matrix projection in mixed layer.
     :type mat_param_attr: ParameterAttribute
     :param bias_param_attr: bias parameter attribute. False means no bias, None
                             means default bias.
     :type bias_param_attr: ParameterAttribute|False
-    :param inner_param_attr: lstm cell parameter attribute.
+    :param inner_param_attr: parameter attribute of lstm cell.
     :type inner_param_attr: ParameterAttribute
-    :param act: lstm final activiation type
+    :param act: last activiation type of lstm.
     :type act: BaseActivation
-    :param gate_act: lstm gate activiation type
+    :param gate_act: gate activiation type of lstm.
     :type gate_act: BaseActivation
-    :param state_act: lstm state activiation type.
+    :param state_act: state activiation type of lstm.
     :type state_act: BaseActivation
-    :param mixed_layer_attr: mixed layer's extra attribute.
+    :param mixed_layer_attr: extra attribute of mixed layer.
     :type mixed_layer_attr: ExtraLayerAttribute
-    :param lstm_cell_attr: lstm layer's extra attribute.
+    :param lstm_cell_attr: extra attribute of lstm.
     :type lstm_cell_attr: ExtraLayerAttribute
-    :return: lstm layer name.
+    :return: layer's output.
     :rtype: LayerOutput
     """
     fc_name = 'lstm_transform_%s' % name
@@ -643,9 +647,9 @@ def lstmemory_unit(input,
                    lstm_bias_attr=None,
                    lstm_layer_attr=None):
     """
-    Define calculations that a LSTM unit performs during a single time step.
-    This function itself is not a recurrent layer, so it can not be
-    directly used to process sequence inputs. This function is always used in
+    lstmemory_unit defines the caculation process of a LSTM unit during a 
+    single time step. This function is not a recurrent layer, so it can not be
+    directly used to process sequence input. This function is always used in
     recurrent_group (see layers.py for more details) to implement attention
     mechanism.
 
@@ -676,7 +680,7 @@ def lstmemory_unit(input,
                                    state_act=TanhActivation())
 
 
-    :param input: input layer name.
+    :param input: input layer.
     :type input: LayerOutput
     :param out_memory: output of previous time step
     :type out_memory: LayerOutput | None
@@ -684,15 +688,15 @@ def lstmemory_unit(input,
     :type name: basestring
     :param size: lstmemory unit size.
     :type size: int
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: parameter attribute, None means default attribute.
     :type param_attr: ParameterAttribute
-    :param act: lstm final activiation type
+    :param act: last activiation type of lstm.
     :type act: BaseActivation
-    :param gate_act: lstm gate activiation type
+    :param gate_act: gate activiation type of lstm.
     :type gate_act: BaseActivation
-    :param state_act: lstm state activiation type.
+    :param state_act: state activiation type of lstm.
     :type state_act: BaseActivation
-    :param input_proj_bias_attr: bias attribute for input-to-hidden projection.
+    :param input_proj_bias_attr: bias attribute for input to hidden projection.
                 False means no bias, None means default bias.
     :type input_proj_bias_attr: ParameterAttribute|False|None
     :param input_proj_layer_attr: extra layer attribute for input to hidden
@@ -700,8 +704,8 @@ def lstmemory_unit(input,
     :type input_proj_layer_attr: ExtraLayerAttribute
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
                 False means no bias, None means default bias.
-    :type lstm_bias_attr: ParameterAttribute|False
-    :param lstm_layer_attr: lstm layer's extra attribute.
+    :type lstm_bias_attr: ParameterAttribute|False|None
+    :param lstm_layer_attr: extra attribute of lstm layer.
     :type lstm_layer_attr: ExtraLayerAttribute
     :return: lstmemory unit name.
     :rtype: LayerOutput
@@ -758,9 +762,9 @@ def lstmemory_group(input,
     lstm_group is a recurrent_group version of Long Short Term Memory. It
     does exactly the same calculation as the lstmemory layer (see lstmemory in
     layers.py for the maths) does. A promising benefit is that LSTM memory
-    cell states, or hidden states in every time step are accessible to the
+    cell states(or hidden states) in every time step are accessible to the
     user. This is especially useful in attention model. If you do not need to
-    access the internal states of the lstm, but merely use its outputs,
+    access the internal states of the lstm and merely use its outputs,
     it is recommended to use the lstmemory, which is relatively faster than
     lstmemory_group.
 
@@ -781,28 +785,28 @@ def lstmemory_group(input,
                                     gate_act=SigmoidActivation(),
                                     state_act=TanhActivation())
 
-    :param input: input layer name.
+    :param input: input layer.
     :type input: LayerOutput
     :param size: lstmemory group size.
     :type size: int
-    :param name: name of the lstmemory group.
+    :param name: name of lstmemory group.
     :type name: basestring
-    :param out_memory: output of previous time step
+    :param out_memory: output of previous time step.
     :type out_memory: LayerOutput | None
-    :param reverse: is lstm reversed
+    :param reverse: process the input in a reverse order or not.
     :type reverse: bool
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: parameter attribute, None means default attribute.
     :type param_attr: ParameterAttribute
-    :param act: lstm final activiation type
+    :param act: last activiation type of lstm.
     :type act: BaseActivation
-    :param gate_act: lstm gate activiation type
+    :param gate_act: gate activiation type of lstm.
     :type gate_act: BaseActivation
-    :param state_act: lstm state activiation type.
+    :param state_act: state activiation type of lstm.
     :type state_act: BaseActivation
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
                            False means no bias, None means default bias.
-    :type lstm_bias_attr: ParameterAttribute|False
-    :param input_proj_bias_attr: bias attribute for input-to-hidden projection.
+    :type lstm_bias_attr: ParameterAttribute|False|None
+    :param input_proj_bias_attr: bias attribute for input to hidden projection.
                 False means no bias, None means default bias.
     :type input_proj_bias_attr: ParameterAttribute|False|None
     :param input_proj_layer_attr: extra layer attribute for input to hidden
@@ -848,15 +852,15 @@ def gru_unit(input,
              gru_layer_attr=None,
              naive=False):
     """
-    Define calculations that a gated recurrent unit performs in a single time
-    step. This function itself is not a recurrent layer, so it can not be
-    directly used to process sequence inputs. This function is always used in
+    gru_unit defines the calculation process of a gated recurrent unit during a single 
+    time step. This function is not a recurrent layer, so it can not be
+    directly used to process sequence input. This function is always used in
     the recurrent_group (see layers.py for more details) to implement attention
     mechanism.
 
     Please see grumemory in layers.py for the details about the maths.
 
-    :param input: input layer name.
+    :param input: input layer.
     :type input: LayerOutput
     :param memory_boot: the initialization state of the LSTM cell.
     :type memory_boot: LayerOutput | None
@@ -864,12 +868,12 @@ def gru_unit(input,
     :type name: basestring
     :param size: hidden size of the gru.
     :type size: int
-    :param act: type of the activation
+    :param act: activation type of gru
     :type act: BaseActivation
-    :param gate_act: type of the gate activation
+    :param gate_act: gate activation type or gru
     :type gate_act: BaseActivation
-    :param gru_layer_attr: Extra parameter attribute of the gru layer.
-    :type gru_layer_attr: ParameterAttribute|False
+    :param gru_layer_attr: Extra attribute of the gru layer.
+    :type gru_layer_attr: ExtraLayerAttribute
     :return: the gru output layer.
     :rtype: LayerOutput
     """
@@ -915,7 +919,7 @@ def gru_group(input,
     does exactly the same calculation as the grumemory layer does. A promising
     benefit is that gru hidden states are accessible to the user. This is
     especially useful in attention model. If you do not need to access
-    any internal state, but merely use the outputs of a GRU, it is recommended
+    any internal state and merely use the outputs of a GRU, it is recommended
     to use the grumemory, which is relatively faster.
 
     Please see grumemory in layers.py for more detail about the maths.
@@ -924,12 +928,12 @@ def gru_group(input,
 
     ..  code-block:: python
 
-        gru = gur_group(input=[layer1],
+        gru = gru_group(input=[layer1],
                         size=256,
                         act=TanhActivation(),
                         gate_act=SigmoidActivation())
 
-    :param input: input layer name.
+    :param input: input layer.
     :type input: LayerOutput
     :param memory_boot: the initialization state of the LSTM cell.
     :type memory_boot: LayerOutput | None
@@ -937,16 +941,17 @@ def gru_group(input,
     :type name: basestring
     :param size: hidden size of the gru.
     :type size: int
-    :param reverse: whether to process the input data in a reverse order
+    :param reverse: process the input in a reverse order or not.
     :type reverse: bool
-    :param act: type of the activiation
+    :param act: activiation type of gru
     :type act: BaseActivation
-    :param gate_act: type of the gate activiation
+    :param gate_act: gate activiation type of gru
     :type gate_act: BaseActivation
-    :param gru_bias_attr: bias. False means no bias, None means default bias.
-    :type gru_bias_attr: ParameterAttribute|False
-    :param gru_layer_attr: Extra parameter attribute of the gru layer.
-    :type gru_layer_attr: ParameterAttribute|False
+    :param gru_bias_attr: bias parameter attribute of gru layer,
+                          False means no bias, None means default bias.
+    :type gru_bias_attr: ParameterAttribute|False|None
+    :param gru_layer_attr: Extra attribute of the gru layer.
+    :type gru_layer_attr: ExtraLayerAttribute
     :return: the gru group.
     :rtype: LayerOutput
     """
@@ -986,11 +991,11 @@ def simple_gru(input,
                gru_layer_attr=None,
                naive=False):
     """
-    You maybe see gru_step_layer, grumemory in layers.py, gru_unit, gru_group,
+    You may see gru_step_layer, grumemory in layers.py, gru_unit, gru_group,
     simple_gru in network.py. The reason why there are so many interfaces is
     that we have two ways to implement recurrent neural network. One way is to
     use one complete layer to implement rnn (including simple rnn, gru and lstm)
-    with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But,
+    with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But 
     the multiplication operation :math:`W x_t` is not computed in these layers.
     See details in their interfaces in layers.py.
     The other implementation is to use an recurrent group which can ensemble a
@@ -1018,22 +1023,23 @@ def simple_gru(input,
 
         gru = simple_gru(input=[layer1], size=256)
 
-    :param input: input layer name.
+    :param input: input layer.
     :type input: LayerOutput
     :param name: name of the gru group.
     :type name: basestring
     :param size: hidden size of the gru.
     :type size: int
-    :param reverse: whether to process the input data in a reverse order
+    :param reverse: process the input in a reverse order or not.
     :type reverse: bool
-    :param act: type of the activiation
+    :param act: activiation type of gru
     :type act: BaseActivation
-    :param gate_act: type of the gate activiation
+    :param gate_act: gate activiation type of gru
     :type gate_act: BaseActivation
-    :param gru_bias_attr: bias. False means no bias, None means default bias.
-    :type gru_bias_attr: ParameterAttribute|False
-    :param gru_layer_attr: Extra parameter attribute of the gru layer.
-    :type gru_layer_attr: ParameterAttribute|False
+    :param gru_bias_attr: bias parameter attribute of gru layer,
+                          False means no bias, None means default bias.
+    :type gru_bias_attr: ParameterAttribute|False|None
+    :param gru_layer_attr: Extra attribute of the gru layer.
+    :type gru_layer_attr: ExtraLayerAttribute
     :return: the gru group.
     :rtype: LayerOutput
     """
@@ -1071,8 +1077,8 @@ def simple_gru2(input,
                 mixed_layer_attr=None,
                 gru_cell_attr=None):
     """
-    simple_gru2 is the same with simple_gru, but using grumemory instead
-    Please see grumemory in layers.py for more detail about the maths.
+    simple_gru2 is the same with simple_gru, but using grumemory instead.
+    Please refer to grumemory in layers.py for more detail about the math.
     simple_gru2 is faster than simple_gru.
 
     The example usage is:
@@ -1081,22 +1087,23 @@ def simple_gru2(input,
 
         gru = simple_gru2(input=[layer1], size=256)
 
-    :param input: input layer name.
+    :param input: input layer.
     :type input: LayerOutput
     :param name: name of the gru group.
     :type name: basestring
     :param size: hidden size of the gru.
     :type size: int
-    :param reverse: whether to process the input data in a reverse order
+    :param reverse: process the input in a reverse order or not.
     :type reverse: bool
-    :param act: type of the activiation
+    :param act: activiation type of gru
     :type act: BaseActivation
-    :param gate_act: type of the gate activiation
+    :param gate_act: gate activiation type of gru
     :type gate_act: BaseActivation
-    :param gru_bias_attr: bias. False means no bias, None means default bias.
-    :type gru_bias_attr: ParameterAttribute|False
-    :param gru_layer_attr: Extra parameter attribute of the gru layer.
-    :type gru_layer_attr: ParameterAttribute|False
+    :param gru_bias_attr: bias parameter attribute of gru layer, 
+                          False means no bias, None means default bias.
+    :type gru_bias_attr: ParameterAttribute|False|None
+    :param gru_layer_attr: Extra attribute of the gru layer.
+    :type gru_layer_attr: ExtraLayerAttribute
     :return: the gru group.
     :rtype: LayerOutput
     """
@@ -1145,7 +1152,7 @@ def bidirectional_gru(input,
                       concat_act=None):
     """
     A bidirectional_gru is a recurrent unit that iterates over the input
-    sequence both in forward and bardward orders, and then concatenate two
+    sequence both in forward and backward orders, and then concatenate two
     outputs to form a final output. However, concatenation of two outputs
     is not the only way to form the final output, you can also, for example,
     just add them together.
@@ -1162,11 +1169,10 @@ def bidirectional_gru(input,
     :type input: LayerOutput
     :param size: gru layer size.
     :type size: int
-    :param return_seq: If set False, outputs of the last time step are
+    :param return_seq: If set False, the last time step of output are
                        concatenated and returned.
-                       If set True, the entire output sequences that are
-                       processed in forward and backward directions are
-                       concatenated and returned.
+                       If set True, the entire output sequences in forward 
+                       and backward directions are concatenated and returned.
     :type return_seq: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1230,8 +1236,8 @@ def bidirectional_lstm(input,
                        concat_act=None):
     """
     A bidirectional_lstm is a recurrent unit that iterates over the input
-    sequence both in forward and bardward orders, and then concatenate two
-    outputs form a final output. However, concatenation of two outputs
+    sequence both in forward and backward orders, and then concatenate two
+    outputs to form a final output. However, concatenation of two outputs
     is not the only way to form the final output, you can also, for example,
     just add them together.
 
@@ -1252,13 +1258,12 @@ def bidirectional_lstm(input,
     :type input: LayerOutput
     :param size: lstm layer size.
     :type size: int
-    :param return_seq: If set False, outputs of the last time step are
+    :param return_seq: If set False, the last time step of output are
                        concatenated and returned.
-                       If set True, the entire output sequences that are
-                       processed in forward and backward directions are
-                       concatenated and returned.
+                       If set True, the entire output sequences in forward 
+                       and backward directions are concatenated and returned.
     :type return_seq: bool
-    :return: LayerOutput object accroding to the return_seq.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     args = locals()
@@ -1303,7 +1308,7 @@ def simple_attention(encoded_sequence,
                      weight_act=None,
                      name=None):
     """
-    Calculate and then return a context vector by attention machanism.
+    Calculate and return a context vector with attention mechanism.
     Size of the context vector equals to size of the encoded_sequence.
 
     ..  math::
@@ -1336,10 +1341,10 @@ def simple_attention(encoded_sequence,
     :param name: name of the attention model.
     :type name: basestring
     :param softmax_param_attr: parameter attribute of sequence softmax
-                               that is used to produce attention weight
+                               that is used to produce attention weight.
     :type softmax_param_attr: ParameterAttribute
-    :param weight_act: activation of the attention model
-    :type weight_act: Activation
+    :param weight_act: activation of the attention model.
+    :type weight_act: BaseActivation
     :param encoded_sequence: output of the encoder
     :type encoded_sequence: LayerOutput
     :param encoded_proj: attention weight is computed by a feed forward neural
@@ -1411,7 +1416,7 @@ def inputs(layers, *args):
 
 def outputs(layers, *args):
     """
-    Declare the outputs of network. If user have not defined the inputs of
+    Declare the outputs of network. If user has not defined the inputs of
     network, this method will calculate the input order by dfs travel.
 
     :param layers: Output layers.
