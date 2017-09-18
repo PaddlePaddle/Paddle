@@ -73,10 +73,34 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class ConcatOpGrad : public framework::OperatorWithKernel {
+ public:
+  ConcatOpGrad(const std::string &type,
+               const framework::VariableNameMap &inputs,
+               const framework::VariableNameMap &outputs,
+               const framework::AttributeMap &attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    auto grad_x =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    size_t n = grad_x.size();
+    for (size_t i = 0; i < n; ++i) {
+      printf("set dims :%ld\n", i);
+      grad_x[i]->Resize(ins[i]->dims());
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(concat, ops::ConcatOp, ops::ConcatOpMaker)
+REGISTER_OP(concat, ops::ConcatOp, ops::ConcatOpMaker, concat_grad,
+            ops::ConcatOpGrad)
 REGISTER_OP_CPU_KERNEL(concat,
                        ops::ConcatKernel<paddle::platform::CPUPlace, float>)
+REGISTER_OP_CPU_KERNEL(concat_grad,
+                       ops::ConcatGradKernel<paddle::platform::CPUPlace, float>)

@@ -109,6 +109,21 @@ void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
       matrix_b.data<double>(), beta, matrix_out->data<double>(), context);
 }
 
+template <>
+void copy_matrix<platform::CPUPlace, float>(const framework::Tensor* in,
+                                            size_t in_dim,
+                                            framework::Tensor* out,
+                                            size_t out_dim, size_t len,
+                                            size_t m, size_t n, size_t offset) {
+  for (size_t j = 0; j < n; j++) {
+    const float* src = in->data<float>() + in_dim * m * j;
+    float* dest = out->mutable_data<float>(platform::CPUPlace()) + offset +
+                  out_dim * m * j;
+    printf("j->%ld, src->%p, dest->%p, len->%ld\n", j, src, dest, len);
+    memcpy(dest, src, len);
+  }
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
