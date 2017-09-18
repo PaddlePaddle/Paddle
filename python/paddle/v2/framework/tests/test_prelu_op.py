@@ -3,13 +3,15 @@ import numpy as np
 from op_test import OpTest
 
 
-class PreluTest(OpTest):
+class PReluTest(OpTest):
     def setUp(self):
         self.op_type = "prelu"
-        self.inputs = {'X': np.random.normal(size=(10, 10)).astype("float32")}
-        self.attrs = {'alpha': 0.1}
+        x_np = np.random.normal(size=(10, 10)).astype("float32")
+        alpha_np = np.array([.1])
+        self.inputs = {'X': x_np, 'Alpha': alpha_np}
         out_np = np.maximum(self.inputs['X'], 0.)
-        out_np = out_np + np.minimum(self.inputs['X'], 0.) * self.attrs['alpha']
+        out_np = out_np + np.minimum(self.inputs['X'],
+                                     0.) * self.inputs['Alpha']
         assert out_np is not self.inputs['X']
         self.outputs = {'Out': out_np}
 
