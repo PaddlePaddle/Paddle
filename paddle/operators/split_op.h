@@ -28,11 +28,9 @@ class SplitKernel : public framework::OpKernel {
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
     size_t before = 1, after = 1;
-    size_t n = outs.size();
-    size_t input_axis_dim = 0;
-    for (size_t i = 0; i < n; i++) {
-      input_axis_dim += outs[i]->dims()[axis];
-    }
+    const size_t n = outs.size();
+    size_t input_axis_dim = in->dims()[axis];
+
     for (int64_t i = 0; i < in->dims().size(); ++i) {
       if (i == axis) {
         continue;

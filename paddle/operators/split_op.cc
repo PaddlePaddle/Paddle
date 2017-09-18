@@ -32,7 +32,7 @@ class SplitOp : public framework::OperatorWithKernel {
     size_t num = static_cast<size_t>(ctx.Attr<int>("num"));
     std::vector<int> sections =
         static_cast<std::vector<int>>(ctx.Attr<std::vector<int>>("sections"));
-    size_t n = outs.size();
+    const size_t n = outs.size();
 
     if (num > 0) {
       int64_t in_axis_dim = in->dims()[axis];
@@ -78,12 +78,16 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
         Output[0] = [[1,2],
                      [3,4]]
         Output[1] = [[5,6]]
+
     )DOC");
     AddAttr<std::vector<int>>("sections",
                               "the length for each"
                               "output along with the specify axis.")
         .SetDefault(std::vector<int>{});
-    AddAttr<int>("num", "number of splits.").SetDefault(0);
+    AddAttr<int>("num",
+                 "number of the sub-tensors, it must evenly divide "
+                 "Input.dims()[axis]")
+        .SetDefault(0);
     AddAttr<int>("axis", "The axis which the input will be splited on.")
         .SetDefault(0);
   }
