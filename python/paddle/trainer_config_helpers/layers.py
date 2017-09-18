@@ -5457,9 +5457,9 @@ def nce_layer(input,
                         param_attr=[attr1, attr2], weight=layer3,
                         num_classes=3, neg_distribution=[0.1,0.3,0.6])
 
-    :param name: layer name
+    :param name: The name of this layer.
     :type name: basestring
-    :param input: input layers. It could be a LayerOutput of list/tuple of LayerOutput.
+    :param input: The input layers. It could be a LayerOutput of list/tuple of LayerOutput.
     :type input: LayerOutput|list|tuple|collections.Sequence
     :param label: label layer
     :type label: LayerOutput
@@ -5477,7 +5477,9 @@ def nce_layer(input,
                              A uniform distribution will be used if not provided.
                              If not None, its length must be equal to num_classes.
     :type neg_distribution: list|tuple|collections.Sequence|None
-    :param bias_attr: Bias parameter attribute. True if no bias.
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
     :type bias_attr: ParameterAttribute|None|False
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -5593,7 +5595,7 @@ def rank_cost(left,
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
@@ -5647,7 +5649,7 @@ def lambda_cost(input,
     :param score: The 2nd input. Score of each sample.
     :type input: LayerOutput
     :param NDCG_num: The size of NDCG (Normalized Discounted Cumulative Gain),
-                     e.g., 5 for NDCG@5. It must be less than for equal to the
+                     e.g., 5 for NDCG@5. It must be less than or equal to the
                      minimum size of lists.
     :type NDCG_num: int
     :param max_sort_size: The size of partial sorting in calculating gradient.
@@ -5658,7 +5660,7 @@ def lambda_cost(input,
                           than the size of a list, the algorithm will sort the
                           entire list of get gradient.
     :type max_sort_size: int
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -5702,7 +5704,7 @@ def cross_entropy(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring.
     :param coeff: The cost is multiplied with coeff.
                   The coefficient affects the gradient in the backward.
@@ -5750,7 +5752,7 @@ def cross_entropy_with_selfnorm(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
@@ -5790,7 +5792,7 @@ def sum_cost(input, name=None, layer_attr=None):
 
     :param input: The first input layer.
     :type input: LayerOutput.
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring.
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -5835,7 +5837,7 @@ def huber_regression_cost(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring.
     :param delta: The difference between the observed and predicted values.
     :type delta: float.
@@ -5885,7 +5887,7 @@ def huber_classification_cost(input,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
@@ -5928,7 +5930,7 @@ def multi_binary_label_cross_entropy(input,
     :type input: LayerOutput
     :param label: The input label.
     :type input: LayerOutput
-    :param name: The name of this layers. It is not necessary.
+    :param name: The name of this layer. It is not necessary.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
@@ -6033,9 +6035,9 @@ def cross_entropy_over_beam(input, name=None):
        ])
 
 
-    :param input: input beams for this layer.
+    :param input: Input beams for this layer.
     :type input: BeamInput
-    :param name: input beams for this layer.
+    :param name: The name of this layer.
     :type name: basestring
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6175,12 +6177,21 @@ def multiplex_layer(input, name=None, layer_attr=None):
 @wrap_name_default("dropout")
 def dropout_layer(input, dropout_rate, name=None):
     """
-    @TODO(yuyang18): Add comments.
 
-    :param name:
-    :param input:
-    :param dropout_rate:
-    :return:
+    The example usage is:
+
+    .. code-block:: python
+
+        dropout = dropout_layer(input=input_layer, dropout_rate=0.5)
+
+    :param name: The name of this layer.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param dropout_rate: The probability of dropout.
+    :type dropout_rate: float
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     return addto_layer(
         name=name,
@@ -6203,7 +6214,7 @@ def row_conv_layer(input,
     """
 
     The row convolution is called lookahead convolution. It is firstly
-    introduced in paper of `Deep Speech 2: End-toEnd Speech Recognition
+    introduced in paper of `Deep Speech 2: End-to-End Speech Recognition
     in English and Mandarin <https://arxiv.org/pdf/1512.02595v1.pdf>`_ .
 
     The bidirectional RNN that learns representation for a sequence by
@@ -6211,9 +6222,9 @@ def row_conv_layer(input,
     However, unlike unidirectional RNNs, bidirectional RNNs are challenging
     to deploy in an online and low-latency setting. The lookahead convolution
     incorporates information from future subsequences in a computationally
-    efficient manner to improve unidirectional recurrent neural networks.
+    efficient manner to improve unidirectional RNNs.
 
-    The connection of row convolution is different form the 1D sequence
+    The connection of row convolution is different from the 1D sequence
     convolution. Assumed that, the future context-length is k, that is to say,
     it can get the output at timestep t by using the the input feature from t-th
     timestep to (t+k+1)-th timestep. Assumed that the hidden dim of input
@@ -6242,7 +6253,7 @@ def row_conv_layer(input,
     :param act: Activation Type. Default is linear activation.
     :type act: BaseActivation
     :param param_attr: The Parameter Attribute. If None, the parameter will be
-                       initialized smartly. It's better set it by yourself.
+                       initialized smartly. It's better to set it by yourself.
     :type param_attr: ParameterAttribute
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
@@ -6342,7 +6353,7 @@ def gated_unit_layer(input,
     The gated unit layer implements a simple gating mechanism over the input.
     The input :math:`X` is first projected into a new space :math:`X'`, and
     it is also used to produce a gate weight :math:`\sigma`. Element-wise
-    prodict between :match:`X'` and :math:`\sigma` is finally returned.
+    product between :match:`X'` and :math:`\sigma` is finally returned.
 
     Reference:
         Language Modeling with Gated Convolutional Networks
@@ -6440,8 +6451,8 @@ def switch_order_layer(input,
     :type input: LayerOutput
     :param name: Name of this layer.
     :type name: basestring
-    :param reshape: reshape matrix by axises.
-    :type reshape: Dict
+    :param reshape_axis: Specify the axises of 'height'. Its value should be positive and less than 4.
+    :type reshape_axis: int
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -6869,7 +6880,9 @@ def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
     :type input: LayerOutput.
     :param param_attr: The parameter attribute of scaling.
     :type param_attr: ParameterAttribute
-    :param bias_attr: The parameter attribute of shifting.
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
     :type bias_attr: ParameterAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
