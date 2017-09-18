@@ -20,6 +20,7 @@ namespace paddle {
 namespace operators {
 
 using framework::LoDTensor;
+using framework::Tensor;
 
 template <typename T, int D>
 __global__ void CropKernel(const int N, const int64_t* out_shape,
@@ -54,35 +55,36 @@ void CropCUDAFunctoin(const framework::ExecutionContext& context) {
   T* out_data = out->mutable_data<T>(paddle::platform::GPUPlace());
   auto x_dims = x->dims();
   auto out_dims = out->dims();
-  int64_t out_count = framework::product(out_dims);
-  int64_t x_shape[D];
-  int64_t out_shape[D];
+  int64_t out_count = out->numel();
+  Tensor x_shape;
+  Tensor out_shape;
+  int64_t* x_shape_data =
+      x_shape.mutable_data<int64_t>({D}, paddle::platform::CPUPlace());
+  int64_t* out_shape_data =
+      out_shape.mutable_data<int64_t>({D}, paddle::platform::CPUPlace());
   for (int i = 0; i < D; ++i) {
-    x_shape[i] = x_dims[i];
-    out_shape[i] = out_dims[i];
+    x_shape_data[i] = x_dims[i];
+    out_shape_data[i] = out_dims[i];
   }
-  int64_t* x_shape_gpu;
-  int64_t* out_shape_gpu;
-  cudaMalloc((void**)&x_shape_gpu, sizeof(int64_t) * D);
-  cudaMemcpy(x_shape_gpu, x_shape, sizeof(int64_t) * D, cudaMemcpyHostToDevice);
-  cudaMalloc((void**)&out_shape_gpu, sizeof(int64_t) * D);
-  cudaMemcpy(out_shape_gpu, out_shape, sizeof(int64_t) * D,
-             cudaMemcpyHostToDevice);
+  Tensor x_shape_gpu;
+  Tensor out_shape_gpu;
+  x_shape_gpu.CopyFrom<int64_t>(x_shape, paddle::platform::GPUPlace());
+  out_shape_gpu.CopyFrom<int64_t>(out_shape, paddle::platform::GPUPlace());
   auto offsets = context.op().Attr<std::vector<int>>("offsets");
   PADDLE_ENFORCE_EQ(
       D, offsets.size(),
       "Offsets size should be equal to dimension size of input tensor.");
 
-  int crop_rules[D * 2];
-  for (size_t i = 0; i < x_dims.size(); ++i) {
-    crop_rules[i * 2] = offsets[i];
-    crop_rules[i * 2 + 1] = x_dims[i] - out_dims[i] - offsets[i];
+  Tensor crop_rules;
+  int* crop_rules_data =
+      crop_rules.mutable_data<int>({D * 2}, paddle::platform::CPUPlace());
+  for (size_t i = 0; i < D; ++i) {
+    crop_rules_data[i * 2] = offsets[i];
+    crop_rules_data[i * 2 + 1] = x_dims[i] - out_dims[i] - offsets[i];
   }
 
-  int* crop_rules_gpu;
-  cudaMalloc((void**)&crop_rules_gpu, sizeof(int) * D * 2);
-  cudaMemcpy(crop_rules_gpu, crop_rules, sizeof(int) * D * 2,
-             cudaMemcpyHostToDevice);
+  Tensor crop_rules_gpu;
+  crop_rules_gpu.CopyFrom<int>(crop_rules, paddle::platform::GPUPlace());
 
   int n = out_dims[0];
   int d = out_dims[1];
@@ -94,11 +96,9 @@ void CropCUDAFunctoin(const framework::ExecutionContext& context) {
   CropKernel<T,
              D><<<grid, block, 0,
                   reinterpret_cast<platform::CUDADeviceContext*>(device_context)
-                      ->stream()>>>(out_count, out_shape_gpu, x_shape_gpu,
-                                    crop_rules_gpu, x_data, out_data);
-  cudaFree(crop_rules_gpu);
-  cudaFree(x_shape_gpu);
-  cudaFree(out_shape_gpu);
+                      ->stream()>>>(
+      out_count, out_shape_gpu.data<int64_t>(), x_shape_gpu.data<int64_t>(),
+      crop_rules_gpu.data<int>(), x_data, out_data);
 }
 
 template <typename T>

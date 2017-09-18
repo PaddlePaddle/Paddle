@@ -27,12 +27,12 @@ class CropOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto x_dim = ctx.Input<LoDTensor>("X")->dims();
-    auto Y = ctx.Input<LoDTensor>("Y");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
                             "Input(X) of CropOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) of CropOp should not be null.");
+    auto x_dim = ctx.Input<LoDTensor>("X")->dims();
+    auto Y = ctx.Input<LoDTensor>("Y");
     if (Y == nullptr) {
       auto shape = Attr<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
@@ -40,7 +40,7 @@ class CropOp : public framework::OperatorWithKernel {
           "Shape size should be equal to dimention size of input tensor.");
       std::vector<int64_t> tensor_shape(shape.size());
       for (size_t i = 0; i < shape.size(); ++i) {
-        tensor_shape[i] = (int64_t)shape[i];
+        tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
       ctx.Output<LoDTensor>("Out")->Resize(framework::make_ddim(tensor_shape));
     } else {
@@ -65,6 +65,15 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "The output of crop op "
               "with the same dimension as X.");
+    AddAttr<std::vector<int>>("offsets",
+                              "A list<int> describing offsets to be cropped."
+                              "The size of offsets list should be as same as "
+                              "dimension size of  input X.");
+    AddAttr<std::vector<int>>("shape",
+                              "A list<int> describing the shape of output."
+                              "The size of shape list should be as same as "
+                              "dimension size of  input X.")
+        .SetDefault(std::vector<int>());
     AddComment(R"DOC(
 Crop Operator.
 Crop input into output, as specified by offsets and shape.
@@ -81,33 +90,24 @@ The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:
 
-X = [[0, 1, 2, 0, 0]
-       [0, 3, 4, 0, 0]
-       [0, 0, 0, 0, 0]]
+    X = [[0, 1, 2, 0, 0]
+         [0, 3, 4, 0, 0]
+         [0, 0, 0, 0, 0]]
 
 and 
 
-offsets = [0, 1]
+    offsets = [0, 1]
 
 and
  
-shape = [2, 2]
+    shape = [2, 2]
 
 then we get 
 
-Out = [[1, 2],
-   [3, 4]]
+    Out = [[1, 2],
+           [3, 4]]
 
 )DOC");
-    AddAttr<std::vector<int>>("offsets",
-                              "A list<int> describing offsets to be cropped."
-                              "The size of offsets list should be as same as "
-                              "dimension size of  input X.");
-    AddAttr<std::vector<int>>("shape",
-                              "A list<int> describing the shape of output."
-                              "The size of shape list should be as same as "
-                              "dimension size of  input X.")
-        .SetDefault(std::vector<int>());
   }
 };
 
@@ -149,17 +149,17 @@ template <typename T>
 class CropCPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
-    auto *out = context.Output<LoDTensor>("Out");
+    auto *x = context.Input<Tensor>("X");
+    auto *out = context.Output<Tensor>("Out");
     auto x_data = x->data<T>();
     T *out_data = out->mutable_data<T>(context.GetPlace());
     auto x_dims = x->dims();
     auto out_dims = out->dims();
-    int64_t out_count = framework::product(out_dims);
+    int64_t out_count = out->numel();
     std::vector<int64_t> x_shape = framework::vectorize(x_dims);
     std::vector<int64_t> out_shape = framework::vectorize(out_dims);
 
-    auto offsets = context.op().Attr<std::vector<int>>("offsets");
+    auto offsets = context.Attr<std::vector<int>>("offsets");
     PADDLE_ENFORCE_EQ(
         x_dims.size(), offsets.size(),
         "Offsets size should be equal to dimension size of input tensor.");
