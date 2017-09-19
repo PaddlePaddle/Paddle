@@ -23,6 +23,8 @@ enum AttrType {
   FLOATS = 4;
   STRINGS = 5;
   INT_PAIRS = 6;
+  BOOL = 7;
+  BOOLS = 8;
 }
 
 message IntPair {
@@ -44,6 +46,8 @@ message OpDesc {
     repeated float floats = 7;
     repeated string strings = 8;
     repeated IntPair int_pairs = 9;
+    optional bool b = 10;
+    repeated bool bools = 6;
   };
 
   message Var {

@@ -20,6 +20,10 @@ namespace paddle {
 namespace framework {
 
 template <>
+AttrType AttrTypeID<bool>() {
+  return BOOL;
+}
+template <>
 AttrType AttrTypeID<int>() {
   return INT;
 }
@@ -30,6 +34,10 @@ AttrType AttrTypeID<float>() {
 template <>
 AttrType AttrTypeID<std::string>() {
   return STRING;
+}
+template <>
+AttrType AttrTypeID<std::vector<bool>>() {
+  return BOOLS;
 }
 template <>
 AttrType AttrTypeID<std::vector<int>>() {
@@ -50,6 +58,9 @@ AttrType AttrTypeID<std::vector<std::pair<int, int>>>() {
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
+    case paddle::framework::AttrType::BOOL: {
+      return attr_desc.b();
+    }
     case paddle::framework::AttrType::INT: {
       return attr_desc.i();
     }
@@ -58,6 +69,13 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
     }
     case paddle::framework::AttrType::STRING: {
       return attr_desc.s();
+    }
+    case paddle::framework::AttrType::BOOLS: {
+      std::vector<bool> val(attr_desc.bools_size());
+      for (int i = 0; i < attr_desc.bools_size(); ++i) {
+        val[i] = attr_desc.bools(i);
+      }
+      return val;
     }
     case paddle::framework::AttrType::INTS: {
       std::vector<int> val(attr_desc.ints_size());
