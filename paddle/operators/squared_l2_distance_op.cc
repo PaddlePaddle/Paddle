@@ -23,12 +23,18 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input of SquaredL2DistanceOp "
-                            "must be initialized.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
-                            "Target of SquaredL2DistanceOp "
-                            "must be initialized.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("X"),
+        "Input(X) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.InputVar("Y"),
+        "Input(Y) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("sub_result"),
+        "Output(sub_result) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of SquaredL2DistanceOp should not be null.");
 
     auto* x = ctx.Input<Tensor>("X");
     auto x_dims = x->dims();
@@ -48,9 +54,9 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
                    "First dimension of target must be equal to input "
                    "or to 1.");
 
-    ctx.Output<Tensor>("sub_result")
+    ctx.Output<framework::LoDTensor>("sub_result")
         ->Resize({x_dims[0], x->numel() / x_dims[0]});
-    ctx.Output<Tensor>("Out")->Resize({x_dims[0], 1});
+    ctx.Output<framework::LoDTensor>("Out")->Resize({x_dims[0], 1});
   }
 };
 
@@ -94,8 +100,10 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(out_dims[1], 1,
                       "Second dimension of output gradient "
                       "must be 1.");
-    auto* x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* y_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
     if (x_grad) x_grad->Resize(x_dims);
     if (y_grad) y_grad->Resize(y_dims);
   }
