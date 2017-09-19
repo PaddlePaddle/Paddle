@@ -22,10 +22,10 @@ limitations under the License. */
  */
 typedef enum {
   HL_POOLING_MAX = 0,
-  // average includes padded values
-  HL_POOLING_AVERAGE = 1,
   // average does not include padded values
-  HL_POOLING_AVERAGE_EXCLUDE_PADDING = 2,
+  HL_POOLING_AVERAGE = 1,
+  // average includes padded values
+  HL_POOLING_AVERAGE_INCLUDE_PADDING = 2,
   HL_POOLING_END
 } hl_pooling_mode_t;
 
