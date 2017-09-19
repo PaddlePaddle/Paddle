@@ -94,13 +94,15 @@ class Tensor {
   /**
    * @brief   Copy the content of external tensor to a new place.
    *
-   * @param[in] src   The external tensor.
-   * @param[in] ctx   The device context contains place where to store.
+   * @param[in] src         The external tensor.
+   * @param[in] dst_place   Destination Place copy to.
+   * @param[in] is_sync     Flag for sync or async
    *
    * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
    */
   template <typename T>
-  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                       bool is_sync = false);
 
   /**
    * @brief   Return the slice of the tensor.

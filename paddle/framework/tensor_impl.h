@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/memory/memcpy.h"
+#include "paddle/platform/device_context_manager.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
@@ -88,7 +89,7 @@ inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
 
 template <typename T>
 inline void Tensor::CopyFrom(const Tensor& src,
-                             const platform::Place& dst_place) {
+                             const platform::Place& dst_place, bool is_sync) {
   src.check_memory_size<T>();
   Resize(src.dims());
 
@@ -106,20 +107,35 @@ inline void Tensor::CopyFrom(const Tensor& src,
 #ifndef PADDLE_ONLY_CPU
   else if (platform::is_gpu_place(src_place) &&
            platform::is_cpu_place(dst_place)) {
+    auto device_context = reinterpret_cast<const platform::CUDADeviceContext&>(
+        ContextDeviceManager::Get()->GetDeviceContext(place));
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
-                 boost::get<platform::GPUPlace>(src_place), src_ptr, size, 0);
+                 boost::get<platform::GPUPlace>(src_place), src_ptr, size,
+                 device_context.stream());
+    if (is_sync) {
+      device_context.Wait();
+    }
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    auto device_context = reinterpret_cast<const platform::CUDADeviceContext&>(
+        ContextDeviceManager::Get()->GetDeviceContext(place));
     memory::Copy(boost::get<platform::GPUPlace>(dst_place), dst_ptr,
-                 boost::get<platform::CPUPlace>(src_place), src_ptr, size, 0);
+                 boost::get<platform::CPUPlace>(src_place), src_ptr, size,
+                 device_context.stream());
+    if (is_sync) {
+      device_context.Wait();
+    }
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    auto device_context = reinterpret_cast<const platform::CUDADeviceContext&>(
+        ContextDeviceManager::Get()->GetDeviceContext(place));
     memory::Copy(boost::get<platform::GPUPlace>(dst_place), dst_ptr,
-                 boost::get<platform::GPUPlace>(src_place), src_ptr, size, 0);
+                 boost::get<platform::GPUPlace>(src_place), src_ptr, size,
+                 device_context.stream());
+    if (is_sync) {
+      device_context.Wait();
+    }
   }
-  PADDLE_ENFORCE(cudaStreamSynchronize(0),
-                 "cudaStreamSynchronize failed in Tensor CopyFrom");
-
 #endif
 }
 

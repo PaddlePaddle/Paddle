@@ -19,7 +19,12 @@ class DeviceContextManager {
   DeviceContextManager();
   ~DeviceContextManager();
 
-  DeviceContext& GetDeviceContext(Place& place);
+  DeviceContext& GetDeviceContext(const Place& place);
+
+  static DeviceContextManager* Get() {
+    static std::unique_ptr<DeviceContextManager> inst;
+    return inst.get();
+  }
 
  private:
   CPUDeviceContext* cpu_context_{nullptr};

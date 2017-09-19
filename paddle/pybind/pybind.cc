@@ -238,7 +238,20 @@ All parameter, weight, gradient are variables in Paddle.
              return Backward(forwardOp, no_grad_vars).release();
            })
       .def("infer_shape", &OperatorBase::InferShape)
-      .def("run", &OperatorBase::Run)
+      .def("run",
+           [](OperatorBase &self,
+              const Scope &scope,
+              const platform::CPUPlace &place) { self.Run(scope, place); })
+      .def_static("run",
+                  [](OperatorBase &self,
+                     const Scope &scope,
+                     const platform::GPUPlace &place) {
+#ifdef PADDLE_ONLY_CPU
+                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
+#else
+                    self.Run(scope, place);
+#endif
+                  })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",

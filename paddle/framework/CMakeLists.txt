@@ -3,7 +3,7 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
-cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
+cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context device_context_manager)
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 

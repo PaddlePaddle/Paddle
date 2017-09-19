@@ -231,11 +231,11 @@ TEST(Tensor, CopyFrom) {
 
     // CPU Tensor to GPU Tensor
     auto gpu_place = new paddle::platform::GPUPlace(0);
-    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_place);
+    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_place, true);
 
     // GPU Tensor to CPU Tensor
     auto cpu_place = new paddle::platform::CPUPlace();
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, true);
 
     // Compare Tensors
     const int* dst_ptr = dst_tensor.data<int>();
@@ -247,10 +247,10 @@ TEST(Tensor, CopyFrom) {
     Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
 
     // CPU Slice Tensor to GPU Tensor
-    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_place);
+    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_place, true);
 
     // GPU Tensor to CPU Tensor
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, true);
 
     // Compare Slice Tensors
     const int* slice_ptr = slice_tensor.data<int>();

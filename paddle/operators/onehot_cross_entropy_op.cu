@@ -86,9 +86,11 @@ class OnehotCrossEntropyOpCUDAKernel : public framework::OpKernel {
     int D = X->dims()[1];
     int block = 512;
     int grid = (N + block - 1) / block;
-    // TODO(qingqing) launch kernel on specified stream
-    // base on ExecutionContext.
-    CrossEntropyKernel<T><<<grid, block>>>(Ydata, Xdata, label_data, N, D);
+    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                      ctx.device_context())
+                      .stream();
+    CrossEntropyKernel<T><<<grid, block, 0, stream>>>(Ydata, Xdata, label_data,
+                                                      N, D);
   }
 };
 
@@ -116,8 +118,9 @@ class OnehotCrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
     zero<T><<<grid, block>>>(dXdata, N * D);
 
     grid = (N + block - 1) / block;
-    // TODO(qingqing): launch kernel on specified stream
-    // base on ExecutionContext.
+    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                      ctx.device_context())
+                      .stream();
     CrossEntropyGradientKernel<T><<<grid, block>>>(dXdata, dYdata, Xdata,
                                                    label_data, N, D);
   }

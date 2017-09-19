@@ -57,7 +57,12 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       }
       framework::Tensor dst_tensor;
       if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
-        dst_tensor.CopyFrom<CUR_TYPE>(tensor, platform::CPUPlace());
+#ifndef PADDLE_ONLY_CPU
+        dst_tensor.CopyFrom<CUR_TYPE>(
+            tensor, platform::CPUPlace(), /* is_sync = true*/ true);
+#else
+        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#endif
       } else if (paddle::platform::is_cpu_place(tensor.holder_->place())) {
         dst_tensor = tensor;
       }
@@ -110,8 +115,15 @@ void PyCUDATensorSetFromArray(
 
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
-  paddle::platform::GpuMemcpySync(
-      dst, array.data(), sizeof(T) * array.size(), cudaMemcpyHostToDevice);
+
+  auto device_context = reinterpret_cast<const platform::CUDADeviceContext &>(
+      ContextDeviceManager::Get()->GetDeviceContext(place));
+  paddle::platform::GpuMemcpyASync(dst,
+                                   array.data(),
+                                   sizeof(T) * array.size(),
+                                   cudaMemcpyHostToDevice,
+                                   device_context.stream());
+  device_context.Wait();
 }
 #endif
 

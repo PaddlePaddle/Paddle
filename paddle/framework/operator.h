@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
+#include "paddle/platform/device_context_manager.h"
 #include "paddle/platform/place.h"
 #include "paddle/platform/variant.h"
 #include "paddle/utils/Error.h"
@@ -81,6 +82,10 @@ class OperatorBase {
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
   virtual void InferShape(const Scope& scope) const = 0;
+
+  void Run(const Scope& scope, const platform::Place& place) {
+    Run(scope, platform::DeviceContextManager::Get()->GetDeviceContext(place));
+  }
 
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope,

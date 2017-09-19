@@ -21,7 +21,7 @@ DeviceContextManager::DeviceContextManager() {
 #endif
 }
 
-DeviceContext& DeviceContextManager::GetDeviceContext(Place& place) {
+DeviceContext& DeviceContextManager::GetDeviceContext(const Place& place) {
   if (is_cpu_place(place)) {
     if (!cpu_context_) {
       cpu_context_ = new CPUDeviceContext();
@@ -54,9 +54,5 @@ DeviceContextManager::~DeviceContextManager() {
 #endif
 }
 
-DeviceContextManager* Get() {
-  static std::unique_ptr<DeviceContextManager> inst;
-  return inst.get();
-}
 }  // namespace platform
 }  // namespace paddle

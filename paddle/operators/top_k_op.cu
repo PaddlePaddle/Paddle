@@ -306,7 +306,11 @@ class TopkOpCUDAKernel : public framework::OpKernel {
     dim3 threads(256, 1);
     dim3 grid(input_height, 1);
 
-    KeMatrixTopK<T, 5, 256><<<grid, threads>>>(
+    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                      ctx.device_context())
+                      .stream();
+
+    KeMatrixTopK<T, 5, 256><<<grid, threads, 0, stream>>>(
         output_data, output->dims()[1], indices_data, input_data, input_width,
         input_width, int(k));
   }
