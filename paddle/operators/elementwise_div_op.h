@@ -41,7 +41,7 @@ struct ElementwiseDivGradFunctor {
 
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = -1.0  * dz_e * x_e / (y_e * y_e);
+      dy_e.device(d) = -1.0 * dz_e * x_e / (y_e * y_e);
     }
   }
 };
@@ -113,5 +113,3 @@ class ElementwiseDivGradKernel : public framework::OpKernel {
 
 }  // namespace operators
 }  // namespace paddle
-
-

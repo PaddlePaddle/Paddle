@@ -114,4 +114,3 @@ class ElementwiseMulGradKernel : public framework::OpKernel {
 
 }  // namespace operators
 }  // namespace paddle
-

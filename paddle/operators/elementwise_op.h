@@ -198,10 +198,10 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  protected:
   using Tensor = framework::Tensor;
   void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), 
-            "Input(X) of elementwise op should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of elementwise op should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
-            "Input(Y) of elementwise op should not be null");
+                            "Input(Y) of elementwise op should not be null");
     PADDLE_ENFORCE_NOT_NULL(
         ctx.OutputVar("Out"),
         "Output(Out) of elementwise op should not be null.");
@@ -279,8 +279,10 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto y_dims = ctx.Input<Tensor>("Y")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto* x_grad = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto* y_grad = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
+    auto* x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* y_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
