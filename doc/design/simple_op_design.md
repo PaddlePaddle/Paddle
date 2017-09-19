@@ -147,7 +147,7 @@ class CosineOp {
 struct CosineOpProtoMaker : public OpProtoMaker {
 	CosineOpProtoMaker(OpProto* proto) : OpProtoMaker(proto) {
 		AddInput("input", "input of cosine op");
-		AddAttr("scale", "scale of cosine op", float).Default(1.0).LargerThan(0.0);
+		AddAttr("scale", "scale of cosine op", float).Default(1.0).GreaterThan(0.0);
 		AddType("cos");
 		AddComment("This is cos op");
 	}

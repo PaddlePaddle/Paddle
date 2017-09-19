@@ -23,10 +23,18 @@ class AddOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of AddOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of AddOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of AddOp should not be null.");
+
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
                       ctx.Input<Tensor>("Y")->dims(),
                       "Two input of Add Op's dimension must be same.");
-    ctx.Output<Tensor>("Out")->Resize(ctx.Input<Tensor>("X")->dims());
+    ctx.Output<framework::LoDTensor>("Out")->Resize(
+        ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -57,7 +65,6 @@ class AddOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(add_two, ops::AddOp, ops::AddOpMaker, add_two_grad, ops::AddOpGrad);
+REGISTER_OP(add, ops::AddOp, ops::AddOpMaker, add_grad, ops::AddOpGrad);
 
-REGISTER_OP_CPU_KERNEL(add_two,
-                       ops::AddKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(add, ops::AddKernel<paddle::platform::CPUPlace, float>);

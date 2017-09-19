@@ -12,467 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "neon_util.h"
+#include "NeonDepthwiseConv.h"
 #include "paddle/function/ConvOp.h"
-#include "paddle/function/Im2Col.h"
 
 namespace paddle {
 
-namespace neon {
-
 #if defined(__ARM_NEON__) || defined(__ARM_NEON)
-
-template <int filterSize, int stride>
-struct DepthwiseConvKernel {};
-
-inline float32_t conv3x3(float32x4_t r0,
-                         float32x4_t r1,
-                         float32x4_t r2,
-                         float32x4_t k0,
-                         float32x4_t k1,
-                         float32x4_t k2) {
-  float32x4_t tmp;
-  tmp = vmulq_f32(r0, k0);
-  tmp = vmlaq_f32(tmp, r1, k1);
-  tmp = vmlaq_f32(tmp, r2, k2);
-  return vaddvq_f32(tmp);
-}
-
-inline float32_t conv4x4(float32x4_t r0,
-                         float32x4_t r1,
-                         float32x4_t r2,
-                         float32x4_t r3,
-                         float32x4_t k0,
-                         float32x4_t k1,
-                         float32x4_t k2,
-                         float32x4_t k3) {
-  float32x4_t tmp;
-  tmp = vmulq_f32(r0, k0);
-  tmp = vmlaq_f32(tmp, r1, k1);
-  tmp = vmlaq_f32(tmp, r2, k2);
-  tmp = vmlaq_f32(tmp, r3, k3);
-  return vaddvq_f32(tmp);
-}
-
-/**
- * Each step calculates four elements of the output.
- * First step:
- *   R0[0, 1, 2, 3...] * K[0][0]
- *   R0[1, 2, 3, 4...] * K[0][1]
- *   R0[2, 3, 4, 5...] * K[0][2]
- *   R1[0, 1, 2, 3...] * K[1][0]
- *   R1[1, 2, 3, 4...] * K[1][1]
- *   R1[2, 3, 4, 5...] * K[1][2]
- *   R2[0, 1, 2, 3...] * K[2][0]
- *   R2[1, 2, 3, 4...] * K[2][1]
- * + R2[2, 3, 4, 5...] * K[2][2]
- * ------------------------------
- *     Output[0, 1, 2, 3]
- */
-template <>
-struct DepthwiseConvKernel<3, 1> {
-  static void run(const float* inputData,
-                  const float* filterData,
-                  int inputHeight,
-                  int inputWidth,
-                  int outputChannels,
-                  int outputHeight,
-                  int outputWidth,
-                  int filterMultiplier,
-                  float* outputData) {
-    const int steps = outputWidth >> 2;
-    const int remain = outputWidth & 3;
-    for (int c = 0; c < outputChannels; c++, filterData += 9) {
-      // Load the filters
-      float32x4_t k[3];
-      k[0] = vld1q_f32(filterData);
-      k[1] = vld1q_f32(filterData + 3);
-      k[2] = vld1q_f32(filterData + 6);
-      k[0] = vsetq_lane_f32(0.f, k[0], 3);
-      k[1] = vsetq_lane_f32(0.f, k[1], 3);
-      k[2] = vsetq_lane_f32(0.f, k[2], 3);
-
-      const float* r0 =
-          inputData + (c / filterMultiplier) * (inputHeight * inputWidth);
-      const float* r1 = r0 + inputWidth;
-      const float* r2 = r0 + inputWidth * 2;
-      float32x4_t input[3][3];
-      for (int h = 0; h < outputHeight; h++) {
-        for (int s = 0; s < steps; s++) {
-          // Load the inputs
-          float32x4_t tmp;
-          input[0][0] = vld1q_f32(r0);
-          tmp = vld1q_f32(r0 + 4);
-          input[0][1] = vextq_f32(input[0][0], tmp, 1);
-          input[0][2] = vextq_f32(input[0][0], tmp, 2);
-          input[1][0] = vld1q_f32(r1);
-          tmp = vld1q_f32(r1 + 4);
-          input[1][1] = vextq_f32(input[1][0], tmp, 1);
-          input[1][2] = vextq_f32(input[1][0], tmp, 2);
-          input[2][0] = vld1q_f32(r2);
-          tmp = vld1q_f32(r2 + 4);
-          input[2][1] = vextq_f32(input[2][0], tmp, 1);
-          input[2][2] = vextq_f32(input[2][0], tmp, 2);
-
-          float32x4_t tmp1 = vdupq_n_f32(0.f);
-          float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][0], k[1], 0);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[1][1], k[1], 1);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][2], k[1], 2);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
-          tmp1 = vaddq_f32(tmp1, tmp2);
-
-          vst1q_f32(outputData, tmp1);
-          r0 += 4;
-          r1 += 4;
-          r2 += 4;
-          outputData += 4;
-        }
-
-        for (int r = 0; r < remain; r++) {
-          float32x4_t i0 = vld1q_f32(r0);
-          float32x4_t i1 = vld1q_f32(r1);
-          float32x4_t i2 = vld1q_f32(r2);
-          *outputData = conv3x3(i0, i1, i2, k[0], k[1], k[2]);
-          r0++;
-          r1++;
-          r2++;
-          outputData++;
-        }
-
-        r0 += 2;
-        r1 += 2;
-        r2 += 2;
-      }
-    }
-  }
-};
-
-/**
- * Each step calculates four elements of the output.
- * First step:
- *   R0[0, 2, 4, 6...] * K[0][0]
- *   R0[1, 3, 5, 7...] * K[0][1]
- *   R0[2, 4, 6, 8...] * K[0][2]
- *   R1[0, 2, 4, 6...] * K[1][0]
- *   R1[1, 3, 5, 7...] * K[1][1]
- *   R1[2, 4, 6, 8...] * K[1][2]
- *   R2[0, 2, 4, 6...] * K[2][0]
- *   R2[1, 3, 5, 7...] * K[2][1]
- *   R2[2, 4, 6, 8...] * K[2][2]
- * ------------------------------
- *     Output[0, 1, 2, 3]
- */
-template <>
-struct DepthwiseConvKernel<3, 2> {
-  static void run(const float* inputData,
-                  const float* filterData,
-                  int inputHeight,
-                  int inputWidth,
-                  int outputChannels,
-                  int outputHeight,
-                  int outputWidth,
-                  int filterMultiplier,
-                  float* outputData) {
-    const int steps = outputWidth >> 2;
-    const int remain = outputWidth & 3;
-    for (int c = 0; c < outputChannels; c++, filterData += 9) {
-      // Load the filters
-      float32x4_t k[3];
-      k[0] = vld1q_f32(filterData);
-      k[1] = vld1q_f32(filterData + 3);
-      k[2] = vld1q_f32(filterData + 6);
-      k[0] = vsetq_lane_f32(0.f, k[0], 3);
-      k[1] = vsetq_lane_f32(0.f, k[1], 3);
-      k[2] = vsetq_lane_f32(0.f, k[2], 3);
-
-      const float* start =
-          inputData + (c / filterMultiplier) * (inputHeight * inputWidth);
-      float32x4_t input[3][3];
-      for (int h = 0; h < outputHeight; h++) {
-        const float* r0 = start + 2 * h * inputWidth;
-        const float* r1 = start + (2 * h + 1) * inputWidth;
-        const float* r2 = start + (2 * h + 2) * inputWidth;
-        for (int s = 0; s < steps; s++) {
-          // Load the inputs
-          float32x4_t data1;
-          float32x4x2_t data2;
-
-          data2 = vld2q_f32(r0);
-          input[0][0] = data2.val[0];
-          input[0][1] = data2.val[1];
-          data1 = vld1q_f32(r0 + 8);
-          input[0][2] = vextq_f32(data2.val[0], data1, 1);
-
-          data2 = vld2q_f32(r1);
-          input[1][0] = data2.val[0];
-          input[1][1] = data2.val[1];
-          data1 = vld1q_f32(r1 + 8);
-          input[1][2] = vextq_f32(data2.val[0], data1, 1);
-
-          data2 = vld2q_f32(r2);
-          input[2][0] = data2.val[0];
-          input[2][1] = data2.val[1];
-          data1 = vld1q_f32(r2 + 8);
-          input[2][2] = vextq_f32(data2.val[0], data1, 1);
-
-          float32x4_t tmp1 = vdupq_n_f32(0.f);
-          float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][0], k[1], 0);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[1][1], k[1], 1);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][2], k[1], 2);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
-          tmp1 = vaddq_f32(tmp1, tmp2);
-
-          vst1q_f32(outputData, tmp1);
-          r0 += 8;
-          r1 += 8;
-          r2 += 8;
-          outputData += 4;
-        }
-
-        for (int r = 0; r < remain; r++) {
-          float32x4_t i0 = vld1q_f32(r0);
-          float32x4_t i1 = vld1q_f32(r1);
-          float32x4_t i2 = vld1q_f32(r2);
-          *outputData = conv3x3(i0, i1, i2, k[0], k[1], k[2]);
-          r0 += 2;
-          r1 += 2;
-          r2 += 2;
-          outputData++;
-        }
-      }
-    }
-  }
-};
-
-/**
- * Each step calculates four elements of the output.
- */
-template <>
-struct DepthwiseConvKernel<4, 1> {
-  static void run(const float* inputData,
-                  const float* filterData,
-                  int inputHeight,
-                  int inputWidth,
-                  int outputChannels,
-                  int outputHeight,
-                  int outputWidth,
-                  int filterMultiplier,
-                  float* outputData) {
-    const int steps = outputWidth >> 2;
-    const int remain = outputWidth & 3;
-    for (int c = 0; c < outputChannels; c++, filterData += 16) {
-      // Load the filters
-      float32x4_t k[4];
-      k[0] = vld1q_f32(filterData);
-      k[1] = vld1q_f32(filterData + 4);
-      k[2] = vld1q_f32(filterData + 8);
-      k[3] = vld1q_f32(filterData + 12);
-
-      const float* r0 =
-          inputData + (c / filterMultiplier) * (inputHeight * inputWidth);
-      const float* r1 = r0 + inputWidth;
-      const float* r2 = r0 + inputWidth * 2;
-      const float* r3 = r0 + inputWidth * 3;
-      float32x4_t input[4][4];
-      for (int h = 0; h < outputHeight; h++) {
-        for (int s = 0; s < steps; s++) {
-          // Load the inputs
-          float32x4_t tmp;
-          input[0][0] = vld1q_f32(r0);
-          tmp = vld1q_f32(r0 + 4);
-          input[0][1] = vextq_f32(input[0][0], tmp, 1);
-          input[0][2] = vextq_f32(input[0][0], tmp, 2);
-          input[0][3] = vextq_f32(input[0][0], tmp, 3);
-
-          input[1][0] = vld1q_f32(r1);
-          tmp = vld1q_f32(r1 + 4);
-          input[1][1] = vextq_f32(input[1][0], tmp, 1);
-          input[1][2] = vextq_f32(input[1][0], tmp, 2);
-          input[1][3] = vextq_f32(input[1][0], tmp, 3);
-
-          input[2][0] = vld1q_f32(r2);
-          tmp = vld1q_f32(r2 + 4);
-          input[2][1] = vextq_f32(input[2][0], tmp, 1);
-          input[2][2] = vextq_f32(input[2][0], tmp, 2);
-          input[2][3] = vextq_f32(input[2][0], tmp, 3);
-
-          input[3][0] = vld1q_f32(r3);
-          tmp = vld1q_f32(r3 + 4);
-          input[3][1] = vextq_f32(input[3][0], tmp, 1);
-          input[3][2] = vextq_f32(input[3][0], tmp, 2);
-          input[3][3] = vextq_f32(input[3][0], tmp, 3);
-
-          float32x4_t tmp1 = vdupq_n_f32(0.f);
-          float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[0][3], k[0], 3);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[1][0], k[1], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][1], k[1], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[1][2], k[1], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][3], k[1], 3);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[2][3], k[2], 3);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[3][0], k[3], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[3][1], k[3], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[3][2], k[3], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[3][3], k[3], 3);
-          tmp1 = vaddq_f32(tmp1, tmp2);
-
-          vst1q_f32(outputData, tmp1);
-          r0 += 4;
-          r1 += 4;
-          r2 += 4;
-          r3 += 4;
-          outputData += 4;
-        }
-
-        for (int r = 0; r < remain; r++) {
-          float32x4_t i0 = vld1q_f32(r0);
-          float32x4_t i1 = vld1q_f32(r1);
-          float32x4_t i2 = vld1q_f32(r2);
-          float32x4_t i3 = vld1q_f32(r3);
-          *outputData = conv4x4(i0, i1, i2, i3, k[0], k[1], k[2], k[3]);
-          r0++;
-          r1++;
-          r2++;
-          r3++;
-          outputData++;
-        }
-
-        r0 += 3;
-        r1 += 3;
-        r2 += 3;
-        r3 += 3;
-      }
-    }
-  }
-};
-
-/**
- * Each step calculates four elements of the output.
- */
-template <>
-struct DepthwiseConvKernel<4, 2> {
-  static void run(const float* inputData,
-                  const float* filterData,
-                  int inputHeight,
-                  int inputWidth,
-                  int outputChannels,
-                  int outputHeight,
-                  int outputWidth,
-                  int filterMultiplier,
-                  float* outputData) {
-    const int steps = outputWidth >> 2;
-    const int remain = outputWidth & 3;
-    for (int c = 0; c < outputChannels; c++, filterData += 16) {
-      // Load the filters
-      float32x4_t k[4];
-      k[0] = vld1q_f32(filterData);
-      k[1] = vld1q_f32(filterData + 4);
-      k[2] = vld1q_f32(filterData + 8);
-      k[3] = vld1q_f32(filterData + 12);
-
-      const float* start =
-          inputData + (c / filterMultiplier) * (inputHeight * inputWidth);
-      float32x4_t input[4][4];
-      for (int h = 0; h < outputHeight; h++) {
-        const float* r0 = start + 2 * h * inputWidth;
-        const float* r1 = start + (2 * h + 1) * inputWidth;
-        const float* r2 = start + (2 * h + 2) * inputWidth;
-        const float* r3 = start + (2 * h + 3) * inputWidth;
-        for (int s = 0; s < steps; s++) {
-          // Load the inputs
-          float32x4x2_t data1;
-          float32x4x2_t data2;
-
-          data1 = vld2q_f32(r0);
-          data2 = vld2q_f32(r0 + 8);
-          input[0][0] = data1.val[0];
-          input[0][1] = data1.val[1];
-          input[0][2] = vextq_f32(data1.val[0], data2.val[0], 1);
-          input[0][3] = vextq_f32(data1.val[1], data2.val[1], 1);
-
-          data1 = vld2q_f32(r1);
-          data2 = vld2q_f32(r1 + 8);
-          input[1][0] = data1.val[0];
-          input[1][1] = data1.val[1];
-          input[1][2] = vextq_f32(data1.val[0], data2.val[0], 1);
-          input[1][3] = vextq_f32(data1.val[1], data2.val[1], 1);
-
-          data1 = vld2q_f32(r2);
-          data2 = vld2q_f32(r2 + 8);
-          input[2][0] = data1.val[0];
-          input[2][1] = data1.val[1];
-          input[2][2] = vextq_f32(data1.val[0], data2.val[0], 1);
-          input[2][3] = vextq_f32(data1.val[1], data2.val[1], 1);
-
-          data1 = vld2q_f32(r3);
-          data2 = vld2q_f32(r3 + 8);
-          input[3][0] = data1.val[0];
-          input[3][1] = data1.val[1];
-          input[3][2] = vextq_f32(data1.val[0], data2.val[0], 1);
-          input[3][3] = vextq_f32(data1.val[1], data2.val[1], 1);
-
-          float32x4_t tmp1 = vdupq_n_f32(0.f);
-          float32x4_t tmp2 = vdupq_n_f32(0.f);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][0], k[0], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[0][1], k[0], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[0][2], k[0], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[0][3], k[0], 3);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[1][0], k[1], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][1], k[1], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[1][2], k[1], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[1][3], k[1], 3);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][0], k[2], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[2][1], k[2], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[2][2], k[2], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[2][3], k[2], 3);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[3][0], k[3], 0);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[3][1], k[3], 1);
-          tmp1 = vmlaq_laneq_f32(tmp1, input[3][2], k[3], 2);
-          tmp2 = vmlaq_laneq_f32(tmp2, input[3][3], k[3], 3);
-          tmp1 = vaddq_f32(tmp1, tmp2);
-
-          vst1q_f32(outputData, tmp1);
-          r0 += 8;
-          r1 += 8;
-          r2 += 8;
-          r3 += 8;
-          outputData += 4;
-        }
-
-        for (int r = 0; r < remain; r++) {
-          float32x4_t i0 = vld1q_f32(r0);
-          float32x4_t i1 = vld1q_f32(r1);
-          float32x4_t i2 = vld1q_f32(r2);
-          float32x4_t i3 = vld1q_f32(r3);
-          *outputData = conv4x4(i0, i1, i2, i3, k[0], k[1], k[2], k[3]);
-          r0 += 2;
-          r1 += 2;
-          r2 += 2;
-          r3 += 2;
-          outputData++;
-        }
-      }
-    }
-  }
-};
 
 template <DeviceType Device>
 class NeonDepthwiseConvFunction : public ConvFunctionBase {
@@ -497,16 +42,16 @@ public:
     const TensorShape& filter = inputs[1].shape();
     const TensorShape& output = outputs[0].shape();
 
-    size_t batchSize = input[0];
-    size_t inputChannels = input[1];
-    size_t inputHeight = input[2];
-    size_t inputWidth = input[3];
-    size_t filterHeight = getFilterHeight(filter);
-    size_t filterWidth = getFilterWidth(filter);
-    size_t outputChannels = output[1];
-    size_t outputHeight = output[2];
-    size_t outputWidth = output[3];
-    size_t filterMultiplier = outputChannels / groups_;
+    int batchSize = input[0];
+    int inputChannels = input[1];
+    int inputHeight = input[2];
+    int inputWidth = input[3];
+    int filterHeight = getFilterHeight(filter);
+    int filterWidth = getFilterWidth(filter);
+    int outputChannels = output[1];
+    int outputHeight = output[2];
+    int outputWidth = output[3];
+    int filterMultiplier = outputChannels / groups_;
     CHECK_EQ(inputChannels, groups_);
 
     // only support strideH() == strideW() and filterHeight == filterWidth.
@@ -519,22 +64,19 @@ public:
 
     // padding the input
     float* inputPadding = inputData;
+    int padInputHeight = inputHeight + 2 * paddingH();
+    int padInputWidth = inputWidth + 2 * paddingW();
     if (paddingH() > 0 || paddingW() > 0) {
-      int newSize = batchSize * inputChannels * (inputHeight + 2 * paddingH()) *
-                    (inputWidth + 2 * paddingW());
+      int newSize = batchSize * inputChannels * padInputHeight * padInputWidth;
       resizeBuffer<Device>(newSize);
       inputPadding = reinterpret_cast<float*>(memory_->getBuf());
-      Padding<float>::run(inputData,
-                          inputPadding,
-                          batchSize * inputChannels,
-                          inputHeight,
-                          inputWidth,
-                          paddingH(),
-                          paddingW());
-
-      // height and width of padding data
-      inputHeight += 2 * paddingH();
-      inputWidth += 2 * paddingW();
+      neon::Padding<float>::run(inputData,
+                                inputPadding,
+                                batchSize * inputChannels,
+                                inputHeight,
+                                inputWidth,
+                                padInputHeight,
+                                padInputWidth);
     }
 
     std::function<void(
@@ -542,36 +84,37 @@ public:
         DepthWiseConv;
 
     if (filterWidth == 3 && strideW() == 1) {
-      DepthWiseConv = DepthwiseConvKernel<3, 1>::run;
+      DepthWiseConv = neon::DepthwiseConvKernel<3, 1>::run;
     } else if (filterWidth == 3 && strideW() == 2) {
-      DepthWiseConv = DepthwiseConvKernel<3, 2>::run;
+      DepthWiseConv = neon::DepthwiseConvKernel<3, 2>::run;
     } else if (filterWidth == 4 && strideW() == 1) {
-      DepthWiseConv = DepthwiseConvKernel<4, 1>::run;
+      DepthWiseConv = neon::DepthwiseConvKernel<4, 1>::run;
     } else if (filterWidth == 4 && strideW() == 2) {
-      DepthWiseConv = DepthwiseConvKernel<4, 2>::run;
+      DepthWiseConv = neon::DepthwiseConvKernel<4, 2>::run;
     } else {
       LOG(FATAL) << "Not supported";
     }
 
-    for (size_t i = 0; i < batchSize; i++) {
+    for (int i = 0; i < batchSize; i++) {
       DepthWiseConv(inputPadding,
                     filterData,
-                    inputHeight,
-                    inputWidth,
+                    padInputHeight,
+                    padInputWidth,
                     outputChannels,
                     outputHeight,
                     outputWidth,
                     filterMultiplier,
                     outputData);
-      inputPadding += inputChannels * inputHeight * inputWidth;
+      inputPadding += inputChannels * padInputHeight * padInputWidth;
       outputData += outputChannels * outputHeight * outputWidth;
     }
   }
 };
 
+#ifndef PADDLE_TYPE_DOUBLE
 REGISTER_TYPED_FUNC(NeonDepthwiseConv, CPU, NeonDepthwiseConvFunction);
+#endif
 
 #endif
 
-}  // namespace neon
 }  // namespace paddle

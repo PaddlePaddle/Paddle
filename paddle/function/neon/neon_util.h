@@ -33,12 +33,8 @@ inline float32_t vaddvq_f32(float32x4_t a) {
   return vget_lane_f32(vpadd_f32(v, v), 0);
 }
 
-inline float32x4_t vmlaq_laneq_f32(float32x4_t a,
-                                   float32x4_t b,
-                                   float32x4_t v,
-                                   const int lane) {
-  return vmlaq_n_f32(a, b, vgetq_lane_f32(v, lane));
-}
+#define vmlaq_laneq_f32(a, b, v, lane) \
+  vmlaq_n_f32(a, b, vgetq_lane_f32(v, lane))
 #endif
 
 }  // namespace neon

@@ -28,7 +28,8 @@ namespace paddle {
 namespace framework {
 
 typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                       std::vector<float>, std::vector<std::string>>
+                       std::vector<float>, std::vector<std::string>,
+                       std::vector<std::pair<int, int>>>
     Attribute;
 
 typedef std::unordered_map<std::string, Attribute> AttributeMap;
@@ -40,11 +41,23 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
 
 // check whether a value(attribute) fit a certain limit
 template <typename T>
-class LargerThanChecker {
+class GreaterThanChecker {
  public:
-  explicit LargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
+  explicit GreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(T& value) const {
-    PADDLE_ENFORCE(value > lower_bound_, "larger_than check fail");
+    PADDLE_ENFORCE(value > lower_bound_, "larger_than check fails.");
+  }
+
+ private:
+  T lower_bound_;
+};
+
+template <typename T>
+class EqualGreaterThanChecker {
+ public:
+  explicit EqualGreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
+  void operator()(T& value) const {
+    PADDLE_ENFORCE_GE(value, lower_bound_, "equal_larger_than check fails.");
   }
 
  private:
@@ -109,8 +122,13 @@ class TypedAttrChecker {
     return *this;
   }
 
-  TypedAttrChecker& LargerThan(const T& lower_bound) {
-    value_checkers_.push_back(LargerThanChecker<T>(lower_bound));
+  TypedAttrChecker& GreaterThan(const T& lower_bound) {
+    value_checkers_.push_back(GreaterThanChecker<T>(lower_bound));
+    return *this;
+  }
+
+  TypedAttrChecker& EqualGreaterThan(const T& lower_bound) {
+    value_checkers_.push_back(EqualGreaterThanChecker<T>(lower_bound));
     return *this;
   }
 

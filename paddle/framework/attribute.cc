@@ -43,6 +43,10 @@ template <>
 AttrType AttrTypeID<std::vector<std::string>>() {
   return STRINGS;
 }
+template <>
+AttrType AttrTypeID<std::vector<std::pair<int, int>>>() {
+  return INT_PAIRS;
+}
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
@@ -73,6 +77,14 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
       std::vector<std::string> val(attr_desc.strings_size());
       for (int i = 0; i < attr_desc.strings_size(); ++i) {
         val[i] = attr_desc.strings(i);
+      }
+      return val;
+    }
+    case paddle::framework::AttrType::INT_PAIRS: {
+      std::vector<std::pair<int, int>> val(attr_desc.int_pairs_size());
+      for (int i = 0; i < attr_desc.int_pairs_size(); ++i) {
+        val[i].first = attr_desc.int_pairs(i).first();
+        val[i].second = attr_desc.int_pairs(i).second();
       }
       return val;
     }

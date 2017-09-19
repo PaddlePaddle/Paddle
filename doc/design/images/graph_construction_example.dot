@@ -2,6 +2,8 @@ digraph ImageClassificationGraph {
         ///////// The forward part /////////
         FeedX [label="Feed", color=blue, shape=box];
         FeedY [label="Feed", color=blue, shape=box];
+        InitW [label="Init", color=blue, shape=diamond];
+        Initb [label="Init", color=blue, shape=diamond];
         FC [label="FC", color=blue, shape=box];
         MSE [label="MSE", color=blue, shape=box];
 
@@ -14,6 +16,8 @@ digraph ImageClassificationGraph {
 
         FeedX -> x -> FC -> y -> MSE -> cost [color=blue];
         FeedY -> l [color=blue];
+        InitW -> W [color=blue];
+        Initb -> b [color=blue];
         W -> FC [color=blue];
         b -> FC [color=blue];
         l -> MSE [color=blue];

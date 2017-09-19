@@ -85,7 +85,7 @@ void PyCPUTensorSetFromArray(
     framework::Tensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
     paddle::platform::CPUPlace &place) {
-  std::vector<int> dims;
+  std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
     dims.push_back((int)array.shape()[i]);
@@ -102,7 +102,7 @@ void PyCUDATensorSetFromArray(
     framework::Tensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
     paddle::platform::GPUPlace &place) {
-  std::vector<int> dims;
+  std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
     dims.push_back((int)array.shape()[i]);

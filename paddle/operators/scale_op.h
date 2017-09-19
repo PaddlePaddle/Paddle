@@ -27,7 +27,7 @@ class ScaleKernel : public framework::OpKernel {
     auto* in = context.Input<framework::Tensor>("X");
     tensor->mutable_data<T>(in->place());
 
-    auto scale = static_cast<T>(context.GetAttr<AttrType>("scale"));
+    auto scale = static_cast<T>(context.Attr<AttrType>("scale"));
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*tensor);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);

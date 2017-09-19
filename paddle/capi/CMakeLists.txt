@@ -64,9 +64,29 @@ link_paddle_exe(paddle_capi_shared)
 install(FILES ${CAPI_HEADERS} DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
 if(ANDROID)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} log --pretty=oneline -1
+    OUTPUT_VARIABLE GIT_COMMITS_LIST
+    RESULT_VARIABLE GIT_COMMITS_LIST_RESULT
+    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(${GIT_COMMITS_LIST_RESULT})
+    set(GIT_COMMITS_LIST "No commits.")
+  endif()
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library}
           DESTINATION lib/${ANDROID_ABI})
   install(TARGETS paddle_capi_shared DESTINATION lib/${ANDROID_ABI})
+  install(CODE "FILE(WRITE ${CMAKE_INSTALL_PREFIX}/lib/${ANDROID_ABI}/BUILD.txt
+          \"Compiler:\n\"
+          \"\\t${CMAKE_C_COMPILER}\\n\"
+          \"\\t${CMAKE_CXX_COMPILER}\\n\"
+          \"Compiler Flags:\\n\"
+          \"\\t${CMAKE_F_FLAGS}\\n\"
+          \"\\t${CMAKE_CXX_FLAGS}\\n\"
+          \"Android API: ${CMAKE_SYSTEM_VERSION}\\n\"
+          \"Lastest commit:\\n\"
+          \"\\t${GIT_COMMITS_LIST}\\n\"
+      )"
+  )
 else(ANDROID)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library} DESTINATION lib)
   install(TARGETS paddle_capi_shared DESTINATION lib)
