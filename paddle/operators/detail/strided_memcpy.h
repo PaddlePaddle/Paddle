@@ -22,10 +22,10 @@ namespace operators {
 namespace detail {
 
 template <typename T, int Rank>
-struct TensorCopyFunctor;
+struct StridedMemcpyFunctor;
 
 template <typename T>
-struct TensorCopyFunctor<T, 1> {
+struct StridedMemcpyFunctor<T, 1> {
   void operator()(const platform::DeviceContext& dev_ctx, const T* src,
                   framework::Dim<1> src_stride, framework::Dim<1> dst_dim,
                   framework::Dim<1> dst_stride, T* dst) const {
@@ -48,12 +48,12 @@ struct TensorCopyFunctor<T, 1> {
 };
 
 template <typename T, int Rank>
-struct TensorCopyFunctor {
+struct StridedMemcpyFunctor {
   void operator()(const platform::DeviceContext& dev_ctx, const T* src,
                   framework::Dim<Rank> src_stride, framework::Dim<Rank> dst_dim,
                   framework::Dim<Rank> dst_stride, T* dst) const {
     for (int64_t i = 0; i < dst_dim.head; ++i) {
-      TensorCopyFunctor<T, Rank - 1> func;
+      StridedMemcpyFunctor<T, Rank - 1> func;
       func(dev_ctx, src, src_stride.tail, dst_dim.tail, dst_stride.tail, dst);
       src += src_stride.head;
       dst += dst_stride.head;
@@ -62,10 +62,10 @@ struct TensorCopyFunctor {
 };
 
 template <typename T>
-struct TensorCopyDimVisitor : public boost::static_visitor<void> {
-  TensorCopyDimVisitor(const platform::DeviceContext& dev_ctx, const T* src,
-                       const framework::DDim& src_stride,
-                       const framework::DDim& dst_stride, T* dst)
+struct StridedCopyDimVisitor : public boost::static_visitor<void> {
+  StridedCopyDimVisitor(const platform::DeviceContext& dev_ctx, const T* src,
+                        const framework::DDim& src_stride,
+                        const framework::DDim& dst_stride, T* dst)
       : dev_ctx_(dev_ctx),
         src_(src),
         src_stride_(src_stride),
@@ -77,7 +77,7 @@ struct TensorCopyDimVisitor : public boost::static_visitor<void> {
     Dim src_stride = boost::get<Dim>(src_stride_);
     Dim dst_stride = boost::get<Dim>(dst_stride_);
     constexpr int dim = Dim::dimensions;
-    TensorCopyFunctor<T, dim> functor;
+    StridedMemcpyFunctor<T, dim> functor;
     functor(dev_ctx_, src_, src_stride, dst_dim, dst_stride, dst_);
   }
 
