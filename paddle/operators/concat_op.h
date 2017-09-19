@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -50,9 +49,15 @@ class ConcatKernel : public framework::OpKernel {
     for (size_t i = 0; i < n; i++) {
       auto& in = ins[i];
       auto axis_dim = in->dims()[axis];
-      math::copy_matrix<Place, T>(
-          in->data<T>(), axis_dim, out->data<T>() + output_offset,
-          output_axis_dim, axis_dim * after * sizeof(T), before, after);
+
+      for (size_t j = 0; j < before; j++) {
+        const T* src = in->data<T>() + axis_dim * after * j;
+        T* dst = out->data<T>() + output_offset + output_axis_dim * after * j;
+        paddle::memory::Copy<Place, Place>(
+            boost::get<Place>(ctx.GetPlace()), static_cast<void*>(dst),
+            boost::get<Place>(ctx.GetPlace()), static_cast<const void*>(src),
+            axis_dim * after * sizeof(T));
+      }
       output_offset += axis_dim * after;
     }
   }
@@ -86,10 +91,16 @@ class ConcatGradKernel : public framework::OpKernel {
       auto& out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
       size_t axis_dim = out->dims()[axis];
-      // TODO(Yancey1989): Excute memory copy with multi threads
-      math::copy_matrix<Place, T>(in->data<T>() + input_offset, input_axis_dim,
-                                  out->data<T>(), axis_dim,
-                                  axis_dim * after * sizeof(T), before, after);
+
+      for (size_t j = 0; j < before; j++) {
+        T* dst = out->data<T>() + axis_dim * after * j;
+        const T* src =
+            in->data<T>() + input_offset + input_axis_dim * after * j;
+        paddle::memory::Copy<Place, Place>(
+            boost::get<Place>(ctx.GetPlace()), static_cast<void*>(dst),
+            boost::get<Place>(ctx.GetPlace()), static_cast<const void*>(src),
+            axis_dim * after * sizeof(T));
+      }
       input_offset += axis_dim * after;
     }
   }

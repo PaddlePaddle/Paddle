@@ -109,18 +109,6 @@ void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
       matrix_b.data<double>(), beta, matrix_out->data<double>(), context);
 }
 
-template <>
-void copy_matrix<platform::CPUPlace, float>(const float* a, size_t a_offset,
-                                            float* b, size_t b_offset,
-                                            size_t len, size_t before,
-                                            size_t after) {
-  for (size_t i = 0; i < before; i++) {
-    const float* src = a + a_offset * after * i;
-    float* dest = b + b_offset * after * i;
-    memcpy(dest, src, len);
-  }
-}
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

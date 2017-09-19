@@ -118,4 +118,4 @@ USE_CPU_ONLY_OP(concat);
 REGISTER_OP(split, ops::SplitOp, ops::SplitOpMaker, split_grad,
             ops::SplitOpGrad);
 REGISTER_OP_CPU_KERNEL(split,
-                       ops::SplitKernel<paddle::platform::CPUPlace, float>);
+                       ops::SplitOpKernel<paddle::platform::CPUPlace, float>);
