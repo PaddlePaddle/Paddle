@@ -29,24 +29,27 @@ static ClassRegistrar<ActivationFunction> gMKLDNNActivationRegistrar;
 /**
  * @def DEFINE_MKLDNN_ELTWISE_ACTIVATION
  */
-#define DEFINE_MKLDNN_ELTWISE_ACTIVATION(ACT_TYPE, ALPHA)            \
-  class MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)                       \
-      : public MKLDNNEltwiseActivation {                             \
-  private:                                                           \
-    static const std::string name;                                   \
-    static const float alpha;                                        \
-                                                                     \
-  public:                                                            \
-    const std::string& getName() const { return name; }              \
-    float getAlpha() const { return alpha; }                         \
-  };                                                                 \
-  const std::string MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)::name =   \
-      "mkldnn_" #ACT_TYPE;                                           \
-  const float MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)::alpha = ALPHA; \
-  static InitFunction __reg_activation__mkldnn_##ACT_TYPE([] {       \
-    gMKLDNNActivationRegistrar                                       \
-        .registerClass<MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)>(      \
-            "mkldnn_" #ACT_TYPE);                                    \
+#define DEFINE_MKLDNN_ELTWISE_ACTIVATION(ACT_TYPE, ALPHA, BWD_ALPHA)        \
+  class MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)                              \
+      : public MKLDNNEltwiseActivation {                                    \
+  private:                                                                  \
+    static const std::string name;                                          \
+    static const float alpha;                                               \
+    static const float bwdAlpha;                                            \
+                                                                            \
+  public:                                                                   \
+    const std::string& getName() const { return name; }                     \
+    float getAlpha() const { return alpha; }                                \
+    float getBwdAlpha() const { return bwdAlpha; }                          \
+  };                                                                        \
+  const std::string MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)::name =          \
+      "mkldnn_" #ACT_TYPE;                                                  \
+  const float MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)::alpha = ALPHA;        \
+  const float MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)::bwdAlpha = BWD_ALPHA; \
+  static InitFunction __reg_activation__mkldnn_##ACT_TYPE([] {              \
+    gMKLDNNActivationRegistrar                                              \
+        .registerClass<MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)>(             \
+            "mkldnn_" #ACT_TYPE);                                           \
   });
 
 /**
@@ -54,21 +57,21 @@ static ClassRegistrar<ActivationFunction> gMKLDNNActivationRegistrar;
  * Actually mkldnn_relu is Leaky Relu.
  *  f(x) = x                   (x >= 0)
  *  f(x) = negative_slope * x  (x <  0)
- * @note the negative_slope should be -0.f
+ * @note the negative_slope should be -0.f in forward
  */
-DEFINE_MKLDNN_ELTWISE_ACTIVATION(relu, -0.f)
+DEFINE_MKLDNN_ELTWISE_ACTIVATION(relu, -0.f, 0.f)
 
 /**
  * @brief MKLDNN Tanh Activation.
  */
-DEFINE_MKLDNN_ELTWISE_ACTIVATION(tanh, 0.f)
+DEFINE_MKLDNN_ELTWISE_ACTIVATION(tanh, 0.f, 0.f)
 
 /**
  * @brief MKLDNN ELU(Exponential Linear Unit) Activation.
  *  f(x) = x                              (x >= 0)
  *  f(x) = negative_slope * (exp(x) - 1)  (x <  0)
  */
-DEFINE_MKLDNN_ELTWISE_ACTIVATION(elu, 0.f)
+DEFINE_MKLDNN_ELTWISE_ACTIVATION(elu, 0.f, 0.f)
 
 ActivationFunction* MKLDNNActivation::create(const std::string& type) {
   return gMKLDNNActivationRegistrar.createByType(type);
