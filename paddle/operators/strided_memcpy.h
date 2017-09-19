@@ -13,15 +13,17 @@
    limitations under the License. */
 
 #pragma once
-#include "paddle/operators/detail/tensor_copy.h"
+#include "paddle/operators/detail/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
 
-// Copy a tensor from src to dst.
-// The src and dst should be both on dev_ctx.GetPlace()
+// Strided memory copy from src to dst.
 //
-// the stride of an array (also referred to as increment, pitch or step size) is
+// The src and dst should be both on dev_ctx.GetPlace(), otherwise, there will
+// be a segment fault.
+//
+// The stride of an array (also referred to as increment, pitch or step size) is
 // the number of locations in memory between beginnings of successive array
 // elements
 //
@@ -31,12 +33,12 @@ namespace operators {
 // NOTE: When use GPU, the memcpy is async. To sync memcpy, please invoke
 // `dev_ctx.Wait()`.
 template <typename T>
-inline void TensorCopy(const platform::DeviceContext& dev_ctx, const T* src,
-                       const framework::DDim& src_stride,
-                       const framework::DDim& dst_dim,
-                       const framework::DDim& dst_stride, T* dst) {
+inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
+                          const framework::DDim& src_stride,
+                          const framework::DDim& dst_dim,
+                          const framework::DDim& dst_stride, T* dst) {
   using namespace detail;
-  TensorCopyDimVisitor<T> func(dev_ctx, src, src_stride, dst_stride, dst);
+  StridedCopyDimVisitor<T> func(dev_ctx, src, src_stride, dst_stride, dst);
   boost::apply_visitor(func, dst_dim);
 }
 }  // namespace operators
