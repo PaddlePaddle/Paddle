@@ -24,6 +24,11 @@ namespace platform {
 #define USE_CUDA_ATOMIC(op, T) \
   CUDA_ATOMIC_WRAPPER(op, T) { return atomic##op(address, val); }
 
+// Default thread count per block(or block size).
+// TODO(typhoonzero): need to benchmark against setting this value
+//                    to 1024.
+constexpr int PADDLE_CUDA_NUM_THREADS = 512;
+
 // For atomicAdd.
 USE_CUDA_ATOMIC(Add, float);
 

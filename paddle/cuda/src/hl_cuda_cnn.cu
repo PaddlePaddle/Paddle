@@ -211,13 +211,11 @@ __global__ void KeAvgPoolForward(const int nthreads,
 
     int hstart = ph * strideH - padH;
     int wstart = pw * strideW - padW;
-    int hend = min(hstart + sizeY, height + padH);
-    int wend = min(wstart + sizeX, width + padW);
-    int pool_size = (hend - hstart) * (wend - wstart);
+    int hend = min(hstart + sizeY, height);
+    int wend = min(wstart + sizeX, width);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
-    hend = min(hend, height);
-    wend = min(wend, width);
+    int pool_size = (hend - hstart) * (wend - wstart);
 
     real aveval = 0;
     inputData += (frameNum * channels + c) * height * width;
@@ -299,12 +297,14 @@ __global__ void KeAvgPoolBackward(const int nthreads,
     outGrad += (frameNum * outStride + offsetC * pooledH * pooledW);
 
     for (int ph = phstart; ph < phend; ++ph) {
+      int hstart = ph * strideH - padH;
+      int hend = min(hstart + sizeY, height);
+      hstart = max(hstart, 0);
       for (int pw = pwstart; pw < pwend; ++pw) {
         // figure out the pooling size
-        int hstart = ph * strideH - padH;
         int wstart = pw * strideW - padW;
-        int hend = min(hstart + sizeY, height + padH);
-        int wend = min(wstart + sizeX, width + padW);
+        int wend = min(wstart + sizeX, width);
+        wstart = max(wstart, 0);
         int poolsize = (hend - hstart) * (wend - wstart);
         gradient += outGrad[ph * pooledW + pw] / poolsize;
       }
@@ -600,16 +600,13 @@ __global__ void KeAvgPool3DForward(const int nthreads,
     int dstart = pd * strideD - padD;
     int hstart = ph * strideH - padH;
     int wstart = pw * strideW - padW;
-    int dend = min(dstart + sizeZ, depth + padD);
-    int hend = min(hstart + sizeY, height + padH);
-    int wend = min(wstart + sizeX, width + padW);
-    int pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
+    int dend = min(dstart + sizeZ, depth);
+    int hend = min(hstart + sizeY, height);
+    int wend = min(wstart + sizeX, width);
     dstart = max(dstart, 0);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
-    dend = min(dend, depth);
-    hend = min(hend, height);
-    wend = min(wend, width);
+    int pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
 
     real aveval = 0;
     inputData += (frameNum * channels + c) * depth * height * width;
@@ -712,15 +709,18 @@ __global__ void KeAvgPool3DBackward(const int nthreads,
     outGrad += (frameNum * channels + offsetC) * pooledD * pooledH * pooledW;
 
     for (int pd = pdstart; pd < pdend; ++pd) {
+      int dstart = pd * strideD - padD;
+      int dend = min(dstart + sizeZ, depth);
+      dstart = max(dstart, 0);
       for (int ph = phstart; ph < phend; ++ph) {
+        int hstart = ph * strideH - padH;
+        int hend = min(hstart + sizeY, height);
+        hstart = max(hstart, 0);
         for (int pw = pwstart; pw < pwend; ++pw) {
           // figure out the pooling size
-          int dstart = pd * strideD - padD;
-          int hstart = ph * strideH - padH;
           int wstart = pw * strideW - padW;
-          int dend = min(dstart + sizeZ, depth + padD);
-          int hend = min(hstart + sizeY, height + padH);
-          int wend = min(wstart + sizeX, width + padW);
+          int wend = min(wstart + sizeX, width);
+          wstart = max(wstart, 0);
           int poolsize = (dend - dstart) * (hend - hstart) * (wend - wstart);
           gradient += outGrad[(pd * pooledH + ph) * pooledW + pw] / poolsize;
         }
