@@ -22,6 +22,12 @@ class TestTransposeOp(OpTest):
         self.axis = (1, 0)
 
 
+class TestCase0(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (3, )
+        self.axis = (0, )
+
+
 class TestCase1(TestTransposeOp):
     def initTestCase(self):
         self.shape = (3, 4, 5)

@@ -27,26 +27,29 @@ class TransposeOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Input"),
                             "Input(Input) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Output"),
+                            "Output(Output) should not be null");
     auto input_dim = ctx.Input<Tensor>("Input")->dims();
-    auto axis = ctx.Attr<std::vector<int>>("axis");
-    size_t input_dim_size = input_dim.size();
+    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
+    size_t input_rank = input_dim.size();
     size_t axis_size = axis.size();
 
-    PADDLE_ENFORCE_EQ(input_dim_size, axis_size,
-                      "the input tensor's dimension(%d) "
+    PADDLE_ENFORCE_EQ(input_rank, axis_size,
+                      "the input tensor's rank(%d) "
                       "should be equal to the axis's size(%d)",
-                      input_dim_size, axis_size);
+                      input_rank, axis_size);
 
-    std::vector<int> axis_sorted(axis);
-    std::sort(axis_sorted.begin(), axis_sorted.end());
-    for (size_t i = 0; i < axis_sorted.size(); i++) {
-      PADDLE_ENFORCE_EQ(axis_sorted[i], static_cast<int>(i),
-                        "the sorted axis should be [0, 1, ... dims - 1], "
-                        "where the dims is the axis's size");
+    std::vector<int> count(axis_size, 0);
+    for (size_t i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE(
+          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
+          "Each element of Attribute axis should be a unique value "
+          "range from 0 to (dims - 1), "
+          "where the dims is the axis's size");
     }
 
     framework::DDim output_dim(input_dim);
-    for (size_t i = 0; i < axis.size(); i++) {
+    for (size_t i = 0; i < axis_size; i++) {
       output_dim[i] = input_dim[axis[i]];
     }
     ctx.Output<framework::LoDTensor>("Output")->Resize(output_dim);
@@ -60,12 +63,12 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "Input",
-        "(Tensor)The input tensor, tensors with rank at most 7 are supported");
+        "(Tensor)The input tensor, tensors with rank at most 6 are supported");
     AddOutput("Output", "(Tensor)The output tensor");
     AddAttr<std::vector<int>>(
         "axis",
         "(vector<int>)a list of values, and the size of the list should be "
-        "the same with the input tensor dimensions, the tensor will "
+        "the same with the input tensor rank, the tensor will "
         "permute the axes according the the values given");
     AddComment(R"DOC(
 The Tensor will be permuted according to the axis values given.
@@ -97,18 +100,11 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
                             "Input(Input) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Output")),
                             "Input(Output@GRAD) should not be null");
-    auto input_dims = ctx.Input<Tensor>("Input")->dims();
+    auto input_dim = ctx.Input<Tensor>("Input")->dims();
     auto *input_grad =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
 
-    auto output_grad_dims =
-        ctx.Input<Tensor>(framework::GradVarName("Output"))->dims();
-    auto output_dims = ctx.Input<Tensor>("Output")->dims();
-
-    PADDLE_ENFORCE(output_grad_dims == output_dims,
-                   "Output@GRAD dims must equal to Input(Input) dims");
-
-    input_grad->Resize(input_dims);
+    if (input_grad) input_grad->Resize(input_dim);
   }
 };
 

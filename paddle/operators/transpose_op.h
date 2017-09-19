@@ -20,19 +20,19 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T, int Dims>
+template <typename Place, typename T, int Rank>
 void EigenTranspose(const framework::ExecutionContext& context,
                     const framework::Tensor& in, framework::Tensor& out,
                     std::vector<int> axis) {
-  Eigen::array<int, Dims> permute;
-  for (int i = 0; i < Dims; i++) {
+  Eigen::array<int, Rank> permute;
+  for (int i = 0; i < Rank; i++) {
     permute[i] = axis[i];
   }
   auto in_dim = in.dims();
   auto out_dim = out.dims();
 
-  auto eigen_in = framework::EigenTensor<T, Dims>::From(in);
-  auto eigen_out = framework::EigenTensor<T, Dims>::From(out);
+  auto eigen_in = framework::EigenTensor<T, Rank>::From(in);
+  auto eigen_out = framework::EigenTensor<T, Rank>::From(out);
   auto& dev = context.GetEigenDevice<Place>();
   eigen_out.device(dev) = eigen_in.shuffle(permute);
 }
@@ -45,10 +45,11 @@ class TransposeKernel : public framework::OpKernel {
     auto* output = context.Output<framework::Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
-    auto axis = context.Attr<std::vector<int>>("axis");
+    std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
     switch (ndims) {
       case 1:
+        EigenTranspose<Place, T, 1>(context, *input, *output, axis);
         break;
       case 2:
         EigenTranspose<Place, T, 2>(context, *input, *output, axis);
@@ -79,37 +80,46 @@ class TransposeGradKernel : public framework::OpKernel {
         context.Input<framework::Tensor>(framework::GradVarName("Output"));
     auto* input_grad =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
-    input_grad->mutable_data<T>(context.GetPlace());
+    if (input_grad) {
+      input_grad->mutable_data<T>(context.GetPlace());
 
-    auto axis_temp = context.Attr<std::vector<int>>("axis");
-    std::vector<int> axis(axis_temp);
+      std::vector<int> axis = context.Attr<std::vector<int>>("axis");
+      std::vector<int> reversed_axis(axis);
 
-    for (size_t i = 0; i < axis.size(); i++) {
-      axis[axis_temp[i]] = i;
-    }
+      for (size_t i = 0; i < axis.size(); i++) {
+        reversed_axis[axis[i]] = i;
+      }
 
-    int ndims = axis.size();
+      int ndims = axis.size();
 
-    switch (ndims) {
-      case 1:
-        break;
-      case 2:
-        EigenTranspose<Place, T, 2>(context, *output_grad, *input_grad, axis);
-        break;
-      case 3:
-        EigenTranspose<Place, T, 3>(context, *output_grad, *input_grad, axis);
-        break;
-      case 4:
-        EigenTranspose<Place, T, 4>(context, *output_grad, *input_grad, axis);
-        break;
-      case 5:
-        EigenTranspose<Place, T, 5>(context, *output_grad, *input_grad, axis);
-        break;
-      case 6:
-        EigenTranspose<Place, T, 6>(context, *output_grad, *input_grad, axis);
-        break;
-      default:
-        PADDLE_THROW("Tensors with rank at most 6 are supported");
+      switch (ndims) {
+        case 1:
+          EigenTranspose<Place, T, 1>(context, *output_grad, *input_grad,
+                                      reversed_axis);
+          break;
+        case 2:
+          EigenTranspose<Place, T, 2>(context, *output_grad, *input_grad,
+                                      reversed_axis);
+          break;
+        case 3:
+          EigenTranspose<Place, T, 3>(context, *output_grad, *input_grad,
+                                      reversed_axis);
+          break;
+        case 4:
+          EigenTranspose<Place, T, 4>(context, *output_grad, *input_grad,
+                                      reversed_axis);
+          break;
+        case 5:
+          EigenTranspose<Place, T, 5>(context, *output_grad, *input_grad,
+                                      reversed_axis);
+          break;
+        case 6:
+          EigenTranspose<Place, T, 6>(context, *output_grad, *input_grad,
+                                      reversed_axis);
+          break;
+        default:
+          PADDLE_THROW("Tensors with rank at most 6 are supported");
+      }
     }
   }
 };
