@@ -14,23 +14,34 @@
 
 #pragma once
 
-#include "paddle/operators/conv_base.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-// If CudnnConvOp is running on CPU use the implementation
-// from ConvBaseKernel.
+using Tensor = framework::Tensor;
+
+// FIXME(typhoonzer): If CudnnConvOp is running on CPU
+// reuse the code.
 template <typename Place, typename T>
-class CudnnConvKernel : ConvBaseKernel {
+class CudnnConvKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* output = ctx.Output<Tensor>("Output");
+    output->mutable_data<T>(ctx.GetPlace());
+  }
 };
 
 template <typename Place, typename T>
-class CudnnConvGradKernel : ConvBaseGradKernel {
+class CudnnConvGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* output = ctx.Output<Tensor>("Input");
+    auto* filter = ctx.Output<Tensor>("Filter");
+
+    output->mutable_data<T>(ctx.GetPlace());
+    filter->mutable_data<T>(ctx.GetPlace());
+  }
 };
 
 }  // namespace operators

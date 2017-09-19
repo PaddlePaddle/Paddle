@@ -19,6 +19,12 @@ namespace operators {
 
 using framework::Tensor;
 
+inline int OutputSize(int input_size, int filter_size, int padding,
+                      int stride) {
+  int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
+  return output_size;
+}
+
 class CudnnConvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -30,8 +36,6 @@ class CudnnConvOp : public framework::OperatorWithKernel {
     auto out = ctx.Output<framework::LoDTensor>("Output");
     std::vector<int> strides = Attr<std::vector<int>>("strides");
     std::vector<int> paddings = Attr<std::vector<int>>("paddings");
-    int input_channels = in->dims()[1];
-    int output_channels = filter->dims()[0];
 
     PADDLE_ENFORCE_EQ(in->dims().size(), 4,
                       "CudnnConvOp intput should be 4-D tensor.");
@@ -39,9 +43,9 @@ class CudnnConvOp : public framework::OperatorWithKernel {
                       "CudnnConvOp filter should be 4-D tensor.");
 
     auto output_height =
-        outputSize(in->dims()[2], filter->dims()[2], paddings[0], strides[0]);
+        OutputSize(in->dims()[2], filter->dims()[2], paddings[0], strides[0]);
     auto output_width =
-        outputSize(in->dims()[3], filter->dims()[3], paddings[1], strides[1]);
+        OutputSize(in->dims()[3], filter->dims()[3], paddings[1], strides[1]);
     out->Resize(
         {in->dims()[0], filter->dims()[0], output_height, output_width});
   }
@@ -49,7 +53,8 @@ class CudnnConvOp : public framework::OperatorWithKernel {
 
 class CudnnConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConvOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  CudnnConvOpMaker(framework::OpProto *proto,
+                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input", "A 4-D tensor in NCHW order.");
     AddInput("Filter", "The conv kernel");
@@ -71,8 +76,8 @@ class CudnnConvGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    Tensor *in = ctx.Input<Tensor>("Input");
-    Tensor *filter = ctx.Input<Tensor>("Filter");
+    auto in = ctx.Input<Tensor>("Input");
+    auto filter = ctx.Input<Tensor>("Filter");
     auto d_in =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
     auto d_filter =

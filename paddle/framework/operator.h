@@ -380,6 +380,13 @@ class ExecutionContext : public InferShapeContext {
     return device_context_;
   }
 
+  const platform::CUDADeviceContext& cuda_device_context() const {
+    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    auto cuda_ctx =
+        reinterpret_cast<const platform::CUDADeviceContext*>(&device_context_);
+    return *cuda_ctx;
+  }
+
   // redefine Output function,
   // use Variable::Get instead of Variable::GetMutable
   template <typename T>
