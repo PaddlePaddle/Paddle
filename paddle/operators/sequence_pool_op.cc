@@ -12,22 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/sequence_avg_pool_op.h"
+#include "paddle/operators/sequence_pool_op.h"
 
 namespace paddle {
 namespace operators {
 
-class SequenceAvgPoolOp : public framework::OperatorWithKernel {
+class SequencePoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.InputVar("X"), "Input(X) of SequenceAvgPoolOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of SequencePoolOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(
         ctx.OutputVar("Out"),
-        "Output(Out) of SequenceAvgPoolOp should not be null.");
+        "Output(Out) of SequencePoolOp should not be null.");
 
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto dims = x->dims();
@@ -42,21 +42,44 @@ class SequenceAvgPoolOp : public framework::OperatorWithKernel {
   }
 };
 
-class SequenceAvgPoolOpMaker : public framework::OpProtoAndCheckerMaker {
+class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceAvgPoolOpMaker(framework::OpProto* proto,
-                         framework::OpAttrChecker* op_checker)
+  SequencePoolOpMaker(framework::OpProto* proto,
+                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of SequenceAvgPoolOp.");
-    AddOutput("Out", "The output of SequenceAvgPoolOp.");
+    AddInput("X", "A LoDTensor, the variable-length input of SequencePoolOp");
+    AddOutput("Out",
+              "A LoDTensor, the variable-length output of SequencePoolOp.");
+    AddAttr<int>(
+        "strategy",
+        "(int, default AVERAGE) the pooling strategy of SequencePoolOp.")
+        .SetDefault(AVERAGE)
+        .InEnum({AVERAGE, SUM, SQRT, MAX, LAST, FIRST});
     AddComment(R"DOC(
-    SequenceAvgPoolOp averages features of all time-steps of each instance.
-    More detailed comments will be added later.
+    SequencePoolOp pools features of all time-steps of each instance.
+
+    For a mini-batch of 3 variable lengths sentences, containing 2, 3, and 2 words:
+
+    X = [[1, 3], [2, 4, 6], [5, 1]], 
+
+    and X->lod()[0] = [0, 2, 5, 7]
+
+    then, for different strategy, we get: 
+
+    - AVERAGE: Out = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+    - SUM: Out = [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
+    - SQRT: Out = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2), 6.93=(2+4+6)/sqrt(3), 
+                                            4.24=(5+1)/sqrt(2)
+    - MAX: Out = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+    - LAST: Out = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+    - FIRST: Out = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+
+    and X->lod() is nullptr.
     )DOC");
   }
 };
 
-class SequenceAvgPoolGradOp : public framework::OperatorWithKernel {
+class SequencePoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -84,12 +107,10 @@ class SequenceAvgPoolGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_avg_pool, ops::SequenceAvgPoolOp,
-            ops::SequenceAvgPoolOpMaker, sequence_avg_pool_grad,
-            ops::SequenceAvgPoolGradOp);
+REGISTER_OP(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
+            sequence_pool_grad, ops::SequencePoolGradOp);
 REGISTER_OP_CPU_KERNEL(
-    sequence_avg_pool,
-    ops::SequenceAvgPoolKernel<paddle::platform::CPUPlace, float>);
+    sequence_pool, ops::SequencePoolKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    sequence_avg_pool_grad,
-    ops::SequenceAvgPoolGradKernel<paddle::platform::CPUPlace, float>);
+    sequence_pool_grad,
+    ops::SequencePoolGradKernel<paddle::platform::CPUPlace, float>);
