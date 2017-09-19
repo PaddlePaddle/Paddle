@@ -40,7 +40,7 @@ class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
-  virtual ~CPUDeviceContext() {}
+  virtual ~CPUDeviceContext();
 
   Eigen::DefaultDevice* eigen_device() const;
 

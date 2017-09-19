@@ -29,6 +29,8 @@ CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
+CPUDeviceContext::~CPUDeviceContext() { eigen_device_.reset(); }
+
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }

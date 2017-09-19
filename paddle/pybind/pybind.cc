@@ -53,6 +53,10 @@ bool IsCompileGPU() {
 #endif
 }
 
+platform::DeviceContext *GetDeviceContext(const platform::CPUPlace &place) {
+  return platform::DeviceContextManager::Get()->GetDeviceContext(place);
+}
+
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -195,23 +199,28 @@ All parameter, weight, gradient are variables in Paddle.
        "The module will return special predefined variable name in Paddle")
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
-  // clang-format off
+
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
-                  [](paddle::platform::CPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
-                    return new paddle::platform::CPUDeviceContext();
-                  })
-      .def_static("create",
-                  [](paddle::platform::GPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
+                  [](paddle::platform::CPUPlace &place)
+                      -> paddle::platform::DeviceContext * {
+                        // return new platform::CPUDeviceContext();
+                        // return
+                        // platform::DeviceContextManager::Get()->GetDeviceContext(
+                        //     place);
+                        return GetDeviceContext(place);
+                      })
+      .def_static(
+          "create",
+          [](paddle::platform::GPUPlace &place)
+              -> paddle::platform::DeviceContext * {
 #ifdef PADDLE_ONLY_CPU
-                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
+                PADDLE_THROW("GPUPlace is not supported in CPU device.");
 #else
-                    return new paddle::platform::CUDADeviceContext(place);
+                return platform::DeviceContextManager::Get()->GetDeviceContext(
+                    place);
 #endif
-                  });
-  // clang-format on
+              });
 
   py::class_<platform::GPUPlace>(m, "GPUPlace")
       .def(py::init<int>())
@@ -238,20 +247,7 @@ All parameter, weight, gradient are variables in Paddle.
              return Backward(forwardOp, no_grad_vars).release();
            })
       .def("infer_shape", &OperatorBase::InferShape)
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const platform::CPUPlace &place) { self.Run(scope, place); })
-      .def_static("run",
-                  [](OperatorBase &self,
-                     const Scope &scope,
-                     const platform::GPUPlace &place) {
-#ifdef PADDLE_ONLY_CPU
-                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
-#else
-                    self.Run(scope, place);
-#endif
-                  })
+      .def("run", &OperatorBase::Run)
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",

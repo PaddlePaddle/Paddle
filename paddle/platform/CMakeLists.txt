@@ -26,4 +26,5 @@ nv_test(device_context_test SRCS device_context_test.cc DEPS device_context gpu_
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
 nv_test(transform_test SRCS transform_test.cu DEPS paddle_memory place device_context)
 
-cc_library(device_context_manager SRCS device_context_manager.cc)
+cc_library(device_context_manager SRCS device_context_manager.cc DEPS device_context)
+cc_test(device_context_manager_test SRCS device_context_manager_test.cc DEPS device_context_manager)

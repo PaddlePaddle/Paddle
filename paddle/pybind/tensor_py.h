@@ -116,13 +116,13 @@ void PyCUDATensorSetFromArray(
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
 
-  auto device_context = reinterpret_cast<const platform::CUDADeviceContext &>(
+  auto *device_context = reinterpret_cast<platform::CUDADeviceContext *>(
       ContextDeviceManager::Get()->GetDeviceContext(place));
-  paddle::platform::GpuMemcpyASync(dst,
+  paddle::platform::GpuMemcpyAsync(dst,
                                    array.data(),
                                    sizeof(T) * array.size(),
                                    cudaMemcpyHostToDevice,
-                                   device_context.stream());
+                                   device_context->stream());
   device_context.Wait();
 }
 #endif

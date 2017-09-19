@@ -14,23 +14,42 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+template <typename T>
+struct Converter;
+
+template <>
+struct Converter<CPUPlace> {
+  using DeviceContextType = CPUDeviceContext;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct Converter<GPUPlace> {
+  using DeviceContextType = CUDADeviceContext;
+};
+#endif
+
 class DeviceContextManager {
  public:
   DeviceContextManager();
-  ~DeviceContextManager();
+  // ~DeviceContextManager();
 
-  DeviceContext& GetDeviceContext(const Place& place);
+  template <typename PlaceType, typename DeviceType = typename Converter<
+                                    PlaceType>::DeviceContextType>
+  DeviceType* GetDeviceContext(const PlaceType& place);
+
+  // DeviceContext* GetDeviceContext(const Place& place);
 
   static DeviceContextManager* Get() {
-    static std::unique_ptr<DeviceContextManager> inst;
-    return inst.get();
+    static DeviceContextManager inst;
+    return &inst;
   }
 
  private:
-  CPUDeviceContext* cpu_context_{nullptr};
+  std::unique_ptr<CPUDeviceContext> cpu_context_;
 #ifndef PADDLE_ONLY_CPU
   int device_count_;
-  std::vector<CUDADeviceContext*> cuda_contexts_;
+  std::vector<std::unique_ptr<CUDADeviceContext>> cuda_contexts_;
 #endif
 };
 }  // namespace platform
