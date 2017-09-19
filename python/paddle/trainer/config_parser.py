@@ -1332,6 +1332,12 @@ def parse_image(image, input_layer_name, image_conf):
         get_img_size(input_layer_name, image_conf.channels)
 
 
+def parse_image3d(image, input_layer_name, image_conf):
+    image_conf.channels = image.channels
+    image_conf.img_size, image_conf.img_size_y, image_conf.img_size_z = \
+        get_img3d_size(input_layer_name, image_conf.channels)
+
+
 def parse_norm(norm, input_layer_name, norm_conf):
     norm_conf.norm_type = norm.norm_type
     config_assert(
@@ -2028,6 +2034,7 @@ class ParameterReluLayer(LayerBase):
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
         self.set_layer_size(input_layer.size)
+        self.config.partial_sum = partial_sum
         self.create_input_parameter(0, input_layer.size / partial_sum)
 
 
@@ -2048,20 +2055,26 @@ class ConvLayerBase(LayerBase):
         if num_filters is not None:
             self.config.num_filters = num_filters
 
+        use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
         use_gpu = int(g_command_config_args.get("use_gpu", 0))
         parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
 
-        # Automatically select cudnn_type for GPU and exconv for CPU
+        # Automatically select cudnn_type for GPU, exconv for CPU
+        # and mkldnn_conv for MKLDNN
         # if set type=conv, but still reserve the way user specify
-        # exconv or cudnn_conv manually.
+        # exconv, mkldnn_conv or cudnn_conv manually.
         if self.layer_type == "cudnn_conv":
             config_assert(use_gpu, "cudnn_conv only support GPU")
 
+        if self.layer_type == "mkldnn_conv":
+            config_assert(use_mkldnn, "mkldnn_conv only support MKLDNN")
+
         if (use_gpu == 1 and self.layer_type != "exconv" and
+                self.layer_type != "mkldnn_conv" and
             (parallel_nn == 0 or self.config.device > -1)):
             self.layer_type = "cudnn_conv"
         else:
-            self.layer_type = "exconv"
+            self.layer_type = "mkldnn_conv" if use_mkldnn else "exconv"
         # need to specify layer in config
         self.config.type = self.layer_type
 
@@ -2091,6 +2104,11 @@ class ConvLayerBase(LayerBase):
 @config_layer('exconv')
 class ConvLayer(ConvLayerBase):
     layer_type = 'exconv'
+
+
+@config_layer('mkldnn_conv')
+class ConvLayer(ConvLayerBase):
+    layer_type = 'mkldnn_conv'
 
 
 @config_layer('cudnn_conv')
@@ -2268,8 +2286,15 @@ class NormLayer(LayerBase):
 
 @config_layer('pool')
 class PoolLayer(LayerBase):
+    layer_type = 'pool'
+
     def __init__(self, name, inputs, ceil_mode=True, **xargs):
-        super(PoolLayer, self).__init__(name, 'pool', 0, inputs=inputs, **xargs)
+        use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
+        if self.layer_type == "mkldnn_pool":
+            config_assert(use_mkldnn, "mkldnn_pool only support MKLDNN")
+        self.layer_type = 'mkldnn_pool' if use_mkldnn else 'pool'
+        super(PoolLayer, self).__init__(
+            name, self.layer_type, 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
@@ -2277,6 +2302,11 @@ class PoolLayer(LayerBase):
                        pool_conf, ceil_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
+
+
+@config_layer('mkldnn_pool')
+class MKLDNNPoolLayer(PoolLayer):
+    layer_type = 'mkldnn_pool'
 
 
 @config_layer('pool3d')
@@ -2365,9 +2395,11 @@ class BatchNormLayer(LayerBase):
                  name,
                  inputs,
                  bias=True,
+                 img3D=False,
                  use_global_stats=True,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
+                 mean_var_names=None,
                  **xargs):
         if inputs is None:
             inputs = []
@@ -2409,23 +2441,68 @@ class BatchNormLayer(LayerBase):
 
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
-        parse_image(self.inputs[0].image, input_layer.name, image_conf)
-
-        # Only pass the width and height of input to batch_norm layer
-        # when either of it is non-zero.
-        if input_layer.width != 0 or input_layer.height != 0:
-            self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                               image_conf.channels, False)
+        if img3D:
+            parse_image3d(self.inputs[0].image, input_layer.name, image_conf)
+            # Only pass the width and height of input to batch_norm layer
+            # when either of it is non-zero.
+            if input_layer.width != 0 or input_layer.height != 0:
+                self.set_cnn_layer(
+                    input_layer_name=name,
+                    depth=image_conf.img_size_z,
+                    height=image_conf.img_size_y,
+                    width=image_conf.img_size,
+                    channels=image_conf.channels,
+                    is_print=True)
+            else:
+                self.set_layer_size(input_layer.size)
         else:
-            self.set_layer_size(input_layer.size)
+            parse_image(self.inputs[0].image, input_layer.name, image_conf)
+            # Only pass the width and height of input to batch_norm layer
+            # when either of it is non-zero.
+            if input_layer.width != 0 or input_layer.height != 0:
+                self.set_cnn_layer(
+                    input_layer_name=name,
+                    height=image_conf.img_size_y,
+                    width=image_conf.img_size,
+                    channels=image_conf.channels,
+                    is_print=True)
+            else:
+                self.set_layer_size(input_layer.size)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
+        if mean_var_names is not None:
+            assert len(mean_var_names) == 2
+            self.inputs[1].parameter_name = mean_var_names[0]
+            self.inputs[2].parameter_name = mean_var_names[1]
+
         self.create_input_parameter(0, psize)
         self.create_input_parameter(1, psize, dims)
         self.create_input_parameter(2, psize, dims)
 
         self.create_bias_parameter(bias, psize)
+
+    def set_cnn_layer(self,
+                      input_layer_name,
+                      depth=None,
+                      height=None,
+                      width=None,
+                      channels=None,
+                      is_print=True):
+        depthIsNone = False
+        if depth is None:
+            depth = 1
+            depthIsNone = True
+        size = depth * height * width * channels
+        self.set_layer_size(size)
+        self.set_layer_height_width(height, width)
+        self.set_layer_depth(depth)
+        if is_print and depthIsNone:
+            print("output for %s: c = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, height, width, size))
+        elif is_print:
+            print("output for %s: c = %d, d = %d, h = %d, w = %d, size = %d" %
+                  (input_layer_name, channels, depth, height, width, size))
 
     def calc_parameter_size(self, image_conf):
         return image_conf.channels
@@ -2688,9 +2765,20 @@ class AddToLayer(LayerBase):
         super(AddToLayer, self).__init__(
             name, 'addto', 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            self.set_layer_size(input_layer.size)
+
+        if len(self.inputs) > 1:
+            for input_index in xrange(len(self.inputs)):
+                assert self.get_input_layer(0).height == self.get_input_layer(
+                    input_index).height
+                assert self.get_input_layer(0).width == self.get_input_layer(
+                    input_index).width
+                assert self.get_input_layer(0).depth == self.get_input_layer(
+                    input_index).depth
+
+        self.set_layer_size(self.get_input_layer(0).size)
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                        self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
         self.create_bias_parameter(bias, self.config.size)
 
 
@@ -3370,11 +3458,20 @@ class ConcatenateLayer(LayerBase):
             name, 'concat', 0, inputs=inputs, **xargs)
         size = 0
         for input_index in xrange(len(self.inputs)):
+            assert self.get_input_layer(0).height == self.get_input_layer(
+                input_index).height
+            assert self.get_input_layer(0).width == self.get_input_layer(
+                input_index).width
+            assert self.get_input_layer(0).depth == self.get_input_layer(
+                input_index).depth
             input_layer = self.get_input_layer(input_index)
             input = self.inputs[input_index]
             if self.config.size == 0:
                 size += input_layer.size
 
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                    self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
         self.set_layer_size(size)
 
 
@@ -3668,6 +3765,15 @@ class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
         super(RecurrentLayerGroup, self).__init__(
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
+
+
+@config_layer('switch_order')
+class SwitchOrderLayer(LayerBase):
+    def __init__(self, name, inputs, reshape, **xargs):
+        super(SwitchOrderLayer, self).__init__(
+            name, 'switch_order', 0, inputs=inputs, **xargs)
+        self.config.reshape_conf.height_axis.extend(reshape['height'])
+        self.config.reshape_conf.width_axis.extend(reshape['width'])
 
 
 # Deprecated, use a new layer specific class instead

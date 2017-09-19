@@ -14,13 +14,9 @@ limitations under the License. */
 
 #include "MKLDNNFcLayer.h"
 #include "paddle/utils/Logging.h"
-#include "paddle/utils/Stat.h"
 
 using namespace mkldnn;  // NOLINT
 typedef memory::format format;
-typedef inner_product_forward fc_fwd;
-typedef inner_product_backward_weights fc_bwdWgt;
-typedef inner_product_backward_data fc_bwdData;
 
 namespace paddle {
 
@@ -40,6 +36,8 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
   oc_ = getSize();
   oh_ = 1;
   ow_ = 1;
+  ih_ = 1;
+  iw_ = 1;
 
   // input size can not change in FC
   iLayerSize_ = inputLayers_[0]->getSize();
@@ -77,122 +75,163 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
-void MKLDNNFcLayer::convertOutputToOtherDevice() {
-  copyOutputInfoToOtherDevice();
-  // find other cpu device and reorder output to cpu device
-  int cnt = 0;
-  for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-    if (outputOtherDevice_[i].deviceId == CPU_DEVICE) {
-      // fc cpu output value do not need convert
-      // just share point
-      outputOtherDevice_[i].value = output_.value;
-      ++cnt;
-    }
-  }
+void MKLDNNFcLayer::reshape(
+    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+  reshapeInput(bs, ih, iw);
 
-  if (cnt > 1) {
-    LOG(WARNING) << "should not have more than one CPU devie";
-  }
-}
-
-void MKLDNNFcLayer::reshape() {
-  const Argument& input = getInput(0, getPrev(0)->getDeviceId());
-  int batchSize = input.getBatchSize();
-  if (bs_ == batchSize) {
-    return;
-  }
-  bs_ = batchSize;
-  ih_ = input.getFrameHeight();
-  iw_ = input.getFrameWidth();
-  if (ih_ == 0) {
-    ih_ = 1;
-  }
-  if (iw_ == 0) {
-    iw_ = 1;
-  }
   CHECK_EQ(iLayerSize_, inputLayers_[0]->getSize());
-  ic_ = iLayerSize_ / (ih_ * iw_);
-  CHECK_EQ(size_t(ic_ * ih_ * iw_), iLayerSize_) << "not divisible";
-  CHECK_EQ(size_t(oc_), getSize());
+  ic = iLayerSize_ / (ih * iw);
+  CHECK_EQ(size_t(ic * ih * iw), iLayerSize_) << "not divisible";
+  CHECK_EQ(size_t(oc), getSize());
+
+  reshapeOutput(oh, ow);
+  resizeOutput(bs, oc);
+
   printSizeInfo();
-
-  // reset output
-  output_.setFrameHeight(oh_);
-  output_.setFrameWidth(ow_);
-  resetOutput(bs_, oc_);
-
-  // reset mkldnn forward
-  resetFwd();
-  needResetBwd_ = true;
-
-  convertWeightsFromPaddle();
 }
 
-void MKLDNNFcLayer::resetFwd() {
-  bool hasBias = biases_ && biases_->getW();
-  const MatrixPtr& wgt = weight_->getW();
-  const MatrixPtr& bias = hasBias ? biases_->getW() : nullptr;
-  const MatrixPtr& out = output_.value;
+void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
+                             MKLDNNMatrixPtr& in,
+                             MKLDNNMatrixPtr& wgt,
+                             MKLDNNMatrixPtr& bias,
+                             MKLDNNMatrixPtr& out) {
+  resetFwdBuffers(in, wgt, bias, out);
 
+  resetFwdPD(fwdPD_, in, wgt, bias, out);
+
+  resetFwdPipeline(pipeline, fwdPD_, in, wgt, bias, out);
+
+  printValueFormatFlow();
+}
+
+void MKLDNNFcLayer::resetBwd(std::vector<primitive>& pipeline,
+                             MKLDNNMatrixPtr& in,
+                             MKLDNNMatrixPtr& wgt,
+                             MKLDNNMatrixPtr& bias,
+                             MKLDNNMatrixPtr& out) {
+  std::shared_ptr<fc_bwdWgt::primitive_desc> bwdWgtPD;
+  std::shared_ptr<fc_bwdData::primitive_desc> bwdDataPD;
+
+  resetBwdBuffers(in, wgt, bias, out);
+
+  resetBwdWgtPD(bwdWgtPD, wgt, bias, out);
+
+  resetBwdDataPD(bwdDataPD, in, out);
+
+  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgt, bias, out);
+
+  printGradFormatFlow();
+}
+
+void MKLDNNFcLayer::updateInputData() {
+  inVal_->setData(getInputValue(0, CPU_DEVICE)->getData());
+}
+
+void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {
+  weight_->getParameterPtr()->incUpdate(callback);
+  if (biases_ && biases_->getWGrad()) {
+    biases_->getParameterPtr()->incUpdate(callback);
+  }
+}
+
+void MKLDNNFcLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,
+                                    MKLDNNMatrixPtr& wgt,
+                                    MKLDNNMatrixPtr& bias,
+                                    MKLDNNMatrixPtr& out) {
+  resetInValue(in);
+
+  resetWgtBiasValue(wgt, bias);
+
+  resetOutValue(out);
+}
+
+void MKLDNNFcLayer::resetInValue(MKLDNNMatrixPtr& in) {
   if (inputIsOnlyMKLDNN()) {
-    const MatrixPtr& in = getInputValue(0);
-    inVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(in);
-    CHECK(inVal_) << "Input should be MKLDNNMatrix";
+    const MatrixPtr& dnnIn = getInputValue(0);
+    in = std::dynamic_pointer_cast<MKLDNNMatrix>(dnnIn);
+    CHECK(in) << "Input should be MKLDNNMatrix";
   } else {
     CHECK_EQ(getPrev(0)->getDeviceId(), CPU_DEVICE) << "Only support CPU yet";
-    const MatrixPtr& in = getInputValue(0, CPU_DEVICE);
-    inVal_ = MKLDNNMatrix::create(
-        in, memory::dims{bs_, ic_, ih_, iw_}, format::nchw, engine_);
+    const MatrixPtr& cpuIn = getInputValue(0, CPU_DEVICE);
+    in = MKLDNNMatrix::create(
+        cpuIn, {bs_, ic_, ih_, iw_}, format::nchw, engine_);
   }
-  inVal_->downSpatial();
-  wgtVal_ = MKLDNNMatrix::create(
-      wgt, memory::dims{oc_, ic_, ih_, iw_}, format::oihw, engine_);
-  wgtVal_->downSpatial();
-  biasVal_ =
-      hasBias ? MKLDNNMatrix::create(bias, {oc_}, format::x, engine_) : nullptr;
-  outVal_ = MKLDNNMatrix::create(out, {bs_, oc_}, format::nc, engine_);
-
-  // change original output value to mkldnn output value
-  output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
-  if (!outputIsOnlyMKLDNN()) {
-    convertOutputToOtherDevice();
-  }
-
-  // create forward handle
-  prop_kind pk = prop_kind::forward;
-  fc_fwd::desc fwdDesc = hasBias ? fc_fwd::desc(pk,
-                                                inVal_->getMemoryDesc(),
-                                                wgtVal_->getMemoryDesc(),
-                                                biasVal_->getMemoryDesc(),
-                                                outVal_->getMemoryDesc())
-                                 : fc_fwd::desc(pk,
-                                                inVal_->getMemoryDesc(),
-                                                wgtVal_->getMemoryDesc(),
-                                                outVal_->getMemoryDesc());
-  fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
-  if (hasBias) {
-    fwd_.reset(new fc_fwd(fwdPD, *inVal_, *wgtVal_, *biasVal_, *outVal_));
-  } else {
-    fwd_.reset(new fc_fwd(fwdPD, *inVal_, *wgtVal_, *outVal_));
-  }
-  printValueFormatFlow();
-
-  pipelineFwd_.clear();
-  pipelineFwd_.push_back(*fwd_);
+  in->downSpatial();
 }
 
-void MKLDNNFcLayer::resetBwd() {
-  if (!needResetBwd_) {
-    return;
+void MKLDNNFcLayer::resetWgtBiasValue(MKLDNNMatrixPtr& wgt,
+                                      MKLDNNMatrixPtr& bias) {
+  wgt = MKLDNNMatrix::create(
+      weight_->getW(), {oc_, ic_, ih_, iw_}, format::oihw, engine_);
+  wgt->downSpatial();
+
+  bias = (biases_ && biases_->getW())
+             ? MKLDNNMatrix::create(biases_->getW(), {oc_}, format::x, engine_)
+             : nullptr;
+}
+
+void MKLDNNFcLayer::resetOutValue(MKLDNNMatrixPtr& out) {
+  out = MKLDNNMatrix::create(output_.value, {bs_, oc_}, format::nc, engine_);
+  // change original output value to mkldnn output value
+  output_.value = std::dynamic_pointer_cast<Matrix>(out);
+  if (!outputIsOnlyMKLDNN()) {
+    // fc cpu output value do not need create convert
+    // just share point
+    getOutput(CPU_DEVICE).value->setData(output_.value->getData());
   }
-  needResetBwd_ = false;
-  bool hasBias = biases_ && biases_->getWGrad();
+}
 
-  /// backward weight
-  CHECK(inVal_) << "Should have input value";
-  const MatrixPtr& wgt = weight_->getWGrad();
-  const MatrixPtr& bias = hasBias ? biases_->getWGrad() : nullptr;
+void MKLDNNFcLayer::resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,
+                               MKLDNNMatrixPtr in,
+                               MKLDNNMatrixPtr wgt,
+                               MKLDNNMatrixPtr bias,
+                               MKLDNNMatrixPtr out) {
+  CHECK(in);
+  CHECK(wgt);
+  CHECK(out);
+  prop_kind pk = prop_kind::forward;
+  fc_fwd::desc fwdDesc = bias != nullptr ? fc_fwd::desc(pk,
+                                                        in->getMemoryDesc(),
+                                                        wgt->getMemoryDesc(),
+                                                        bias->getMemoryDesc(),
+                                                        out->getMemoryDesc())
+                                         : fc_fwd::desc(pk,
+                                                        in->getMemoryDesc(),
+                                                        wgt->getMemoryDesc(),
+                                                        out->getMemoryDesc());
+  pd.reset(new fc_fwd::primitive_desc(fwdDesc, engine_));
+}
 
+void MKLDNNFcLayer::resetFwdPipeline(
+    std::vector<primitive>& pipeline,
+    std::shared_ptr<fc_fwd::primitive_desc>& pd,
+    MKLDNNMatrixPtr& in,
+    MKLDNNMatrixPtr& wgt,
+    MKLDNNMatrixPtr& bias,
+    MKLDNNMatrixPtr& out) {
+  pipeline.clear();
+
+  if (bias) {
+    fwd_.reset(new fc_fwd(*pd, *in, *wgt, *bias, *out));
+  } else {
+    fwd_.reset(new fc_fwd(*pd, *in, *wgt, *out));
+  }
+
+  pipeline.push_back(*fwd_);
+}
+
+void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
+                                    MKLDNNMatrixPtr& wgt,
+                                    MKLDNNMatrixPtr& bias,
+                                    MKLDNNMatrixPtr& out) {
+  resetOutGrad(out);
+
+  resetWgtBiasGrad(wgt, bias);
+
+  resetInGrad(in);
+}
+
+void MKLDNNFcLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
   // TODO(TJ): merge outgrad
   int device = outputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
   // for MKLDNN device:
@@ -202,101 +241,88 @@ void MKLDNNFcLayer::resetBwd() {
   // for CPU device:
   // fc do not need to convert from cpu device since output is always nc format
   // only need create from cpu device
-  const MatrixPtr& out = getOutput(device).grad;
-  outGrad_ = MKLDNNMatrix::create(out, outVal_->getPrimitiveDesc());
-  wgtGrad_ = MKLDNNMatrix::create(wgt, wgtVal_->getPrimitiveDesc());
-  biasGrad_ = hasBias ? MKLDNNMatrix::create(bias, biasVal_->getPrimitiveDesc())
-                      : nullptr;
+  CHECK(outVal_);
+  out =
+      MKLDNNMatrix::create(getOutput(device).grad, outVal_->getPrimitiveDesc());
+}
 
-  // create memory primitive desc
-  fc_fwd::desc fwdDesc = fc_fwd::desc(prop_kind::forward,
-                                      inVal_->getMemoryDesc(),
-                                      wgtGrad_->getMemoryDesc(),
-                                      outGrad_->getMemoryDesc());
-  fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
-  fc_bwdWgt::desc bwdWgtDesc = hasBias
-                                   ? fc_bwdWgt::desc(inVal_->getMemoryDesc(),
-                                                     wgtGrad_->getMemoryDesc(),
-                                                     biasGrad_->getMemoryDesc(),
-                                                     outGrad_->getMemoryDesc())
-                                   : fc_bwdWgt::desc(inVal_->getMemoryDesc(),
-                                                     wgtGrad_->getMemoryDesc(),
-                                                     outGrad_->getMemoryDesc());
-  fc_bwdWgt::primitive_desc bwdWgtPD =
-      fc_bwdWgt::primitive_desc(bwdWgtDesc, engine_, fwdPD);
+void MKLDNNFcLayer::resetWgtBiasGrad(MKLDNNMatrixPtr& wgt,
+                                     MKLDNNMatrixPtr& bias) {
+  CHECK(wgtVal_);
+  wgt = MKLDNNMatrix::create(weight_->getWGrad(), wgtVal_->getPrimitiveDesc());
 
-  if (hasBias) {
-    bwdWgt_.reset(
-        new fc_bwdWgt(bwdWgtPD, *inVal_, *outGrad_, *wgtGrad_, *biasGrad_));
-  } else {
-    bwdWgt_.reset(new fc_bwdWgt(bwdWgtPD, *inVal_, *outGrad_, *wgtGrad_));
+  bias = nullptr;
+  if (biasVal_ == nullptr) {
+    return;
   }
-  pipelineBwd_.clear();
-  pipelineBwd_.push_back(*bwdWgt_);
+  bias =
+      MKLDNNMatrix::create(biases_->getWGrad(), biasVal_->getPrimitiveDesc());
+}
 
-  /// backward data
-  device = inputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
-  const MatrixPtr& in = getInputGrad(0, device);
+void MKLDNNFcLayer::resetInGrad(MKLDNNMatrixPtr& in) {
+  in = nullptr;
+  const MatrixPtr& inGrad = inputLayers_[0]->getOutput().grad;
+  if (inGrad == nullptr) {
+    return;
+  }
+  // TODO(TJ): use outputMaps_ ways to get the inGrad_ when merge outgrad done
+  CHECK(inVal_);
+  in = MKLDNNMatrix::create(inGrad, inVal_->getPrimitiveDesc());
+}
+
+void MKLDNNFcLayer::resetBwdWgtPD(
+    std::shared_ptr<fc_bwdWgt::primitive_desc>& pd,
+    MKLDNNMatrixPtr& wgt,
+    MKLDNNMatrixPtr& bias,
+    MKLDNNMatrixPtr& out) {
+  CHECK(inVal_);
+  fc_bwdWgt::desc bwdWgtDesc = bias ? fc_bwdWgt::desc(inVal_->getMemoryDesc(),
+                                                      wgt->getMemoryDesc(),
+                                                      bias->getMemoryDesc(),
+                                                      out->getMemoryDesc())
+                                    : fc_bwdWgt::desc(inVal_->getMemoryDesc(),
+                                                      wgt->getMemoryDesc(),
+                                                      out->getMemoryDesc());
+  pd.reset(new fc_bwdWgt::primitive_desc(bwdWgtDesc, engine_, *fwdPD_));
+}
+
+void MKLDNNFcLayer::resetBwdDataPD(
+    std::shared_ptr<fc_bwdData::primitive_desc>& pd,
+    MKLDNNMatrixPtr& in,
+    MKLDNNMatrixPtr& out) {
+  pd = nullptr;
   if (in == nullptr) {
     return;
   }
-  if (getInput(0, device).getAllCount() > 1) {
-    // TODO(TJ): use outputMaps_ ways when merge outgrad done
+  CHECK(wgtVal_);
+  fc_bwdData::desc bwdDataDesc = fc_bwdData::desc(
+      in->getMemoryDesc(), wgtVal_->getMemoryDesc(), out->getMemoryDesc());
+  pd.reset(new fc_bwdData::primitive_desc(bwdDataDesc, engine_, *fwdPD_));
+}
+
+void MKLDNNFcLayer::resetBwdPipeline(
+    std::vector<primitive>& pipeline,
+    std::shared_ptr<fc_bwdWgt::primitive_desc>& bwdWgtPD,
+    std::shared_ptr<fc_bwdData::primitive_desc>& bwdDataPD,
+    MKLDNNMatrixPtr& in,
+    MKLDNNMatrixPtr& wgt,
+    MKLDNNMatrixPtr& bias,
+    MKLDNNMatrixPtr& out) {
+  pipeline.clear();
+  CHECK(inVal_);
+  if (bias) {
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVal_, *out, *wgt, *bias));
   } else {
-    inGrad_ = MKLDNNMatrix::create(in, inVal_->getPrimitiveDesc());
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVal_, *out, *wgt));
   }
+  pipeline.push_back(*bwdWgt_);
 
-  fc_bwdData::desc bwdDataDesc = fc_bwdData::desc(inVal_->getMemoryDesc(),
-                                                  wgtGrad_->getMemoryDesc(),
-                                                  outGrad_->getMemoryDesc());
-  fc_bwdData::primitive_desc bwdDataPD =
-      fc_bwdData::primitive_desc(bwdDataDesc, engine_, fwdPD);
-
+  if (bwdDataPD == nullptr) {
+    return;
+  }
   CHECK(wgtVal_) << "Should have weight memory";
-  bwdData_.reset(new fc_bwdData(bwdDataPD, *outGrad_, *wgtVal_, *inGrad_));
-  printGradFormatFlow();
-  pipelineBwd_.push_back(*bwdData_);
+  bwdData_.reset(new fc_bwdData(*bwdDataPD, *out, *wgtVal_, *in));
+  pipeline.push_back(*bwdData_);
 }
 
-void MKLDNNFcLayer::forward(PassType passType) {
-  Layer::forward(passType);
-  reshape();
-
-  {
-    REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
-    syncInputValue();
-
-    // just submit forward pipeline
-    stream_->submit(pipelineFwd_);
-  }
-
-  /* activation */ {
-    REGISTER_TIMER_INFO("FwActTimer", getName().c_str());
-    forwardActivation();
-  }
-}
-
-void MKLDNNFcLayer::backward(const UpdateCallback& callback) {
-  /* Do derivation */ {
-    REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
-    backwardActivation();
-  }
-
-  {
-    REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
-    resetBwd();
-
-    syncOutputGrad();
-    // just sumbmit backward pipeline
-    stream_->submit(pipelineBwd_);
-  }
-
-  {
-    REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
-    weight_->getParameterPtr()->incUpdate(callback);
-    if (biases_ && biases_->getWGrad()) {
-      biases_->getParameterPtr()->incUpdate(callback);
-    }
-  }
-}
 }  // namespace paddle

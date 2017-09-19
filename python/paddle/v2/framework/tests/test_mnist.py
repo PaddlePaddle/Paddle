@@ -38,9 +38,9 @@ def feed_data(name, data):
     assert isinstance(data, numpy.ndarray)
     tensor = scope.find_var(name).get_tensor()
     tensor.set_dims(data.shape)
-    if data.dtype == numpy.dtype('int32'):
+    if data.dtype == numpy.dtype("int32"):
         tensor.alloc_int(place)
-    elif data.dtype == numpy.dtype('float32'):
+    elif data.dtype == numpy.dtype("float32"):
         tensor.alloc_float(place)
     else:
         raise ValueError("data type not supported")
@@ -74,22 +74,25 @@ def init_param(net, param_name, dims):
 # fc_layer
 def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
     """
-    Add a fc layer to net
+    The fully connected layer.
 
-    :param input: input variable name.
+    :param input: The name of input variable.
     :type input: str
-    :param size: fully connected layer size.
-    :param act: activation name
-    :param param: parameter attribute, used for initialize parameters.
-    :param bias: bias attribute. False will not have a bias.
-    :param name: the name of fc layer. If not set, model will generate a
-    readable name
-    :return: output variable name.
+    :param size: The size of fully connected layer.
+    :param act: The name of activation.
+    :param param: The attribute of learnable parameter which can be used to
+                  modify initialization mean and std of the parameter.
+    :param bias: The attribute of bias. If set False, this layer does not have
+                 a bias.
+    :param name: The name of this layer. If it is not set explictly, a name
+                 will be generated automatically.
+    :return: The name of the output variable.
     """
+
     if name is None:
-        name = 'fc_%d' % uniq_id()
+        name = "fc_%d" % uniq_id()
     if not isinstance(name, str):
-        raise ValueError("name should be string")
+        raise ValueError("The name of a layer should be a string.")
 
     input_dims = scope.find_var(input).get_tensor().get_dims()
 
@@ -123,9 +126,9 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
 
 
 def cross_entropy_layer(net, input, label):
-    cost_name = 'cross_entropy_%d' % uniq_id()
+    cost_name = "cross_entropy_%d" % uniq_id()
     cross_entropy_op = Operator(
-        "onehot_cross_entropy", X=input, label=label, Y=cost_name)
+        "cross_entropy", X=input, Label=label, Y=cost_name)
     net.append_op(cross_entropy_op)
     scope.new_var(cost_name)
     net.infer_shape(scope)
@@ -177,8 +180,8 @@ def error_rate(predict, label):
     return error_num / float(len(label))
 
 
-images = data_layer(name='pixel', dims=[BATCH_SIZE, 784])
-labels = data_layer(name='label', dims=[BATCH_SIZE])
+images = data_layer(name="pixel", dims=[BATCH_SIZE, 784])
+labels = data_layer(name="label", dims=[BATCH_SIZE, 1])
 fc1 = fc_layer(net=forward_net, input=images, size=100, act="sigmoid")
 fc2 = fc_layer(net=forward_net, input=fc1, size=100, act="sigmoid")
 predict = fc_layer(net=forward_net, input=fc2, size=10, act="softmax")
@@ -212,6 +215,7 @@ def test(cost_name):
     for data in test_reader():
         image_data = numpy.array(map(lambda x: x[0], data)).astype("float32")
         label_data = numpy.array(map(lambda x: x[1], data)).astype("int32")
+        label_data = numpy.expand_dims(label_data, axis=1)
         feed_data(images, image_data)
         feed_data(labels, label_data)
 
@@ -232,6 +236,7 @@ for pass_id in range(PASS_NUM):
     for data in train_reader():
         image_data = numpy.array(map(lambda x: x[0], data)).astype("float32")
         label_data = numpy.array(map(lambda x: x[1], data)).astype("int32")
+        label_data = numpy.expand_dims(label_data, axis=1)
         feed_data(images, image_data)
         feed_data(labels, label_data)
 

@@ -21,7 +21,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is cos op");
   }
 };

@@ -70,7 +70,7 @@ class LookupTableCUDAKernel : public framework::OpKernel {
 
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
-    size_t K = product(ids_t->dims());
+    size_t K = ids_t->numel();
     auto ids = ids_t->data<int32_t>();
     auto table = table_t->data<T>();
     auto output = output_t->mutable_data<T>(context.GetPlace());
@@ -91,7 +91,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel {
 
     int N = d_table_t->dims()[0];
     int D = d_table_t->dims()[1];
-    int K = product(ids_t->dims());
+    int K = ids_t->numel();
     const int32_t* ids = ids_t->data<int32_t>();
     const T* d_output = d_output_t->data<T>();
     T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
