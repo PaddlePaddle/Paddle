@@ -53,26 +53,24 @@ class GPUDropoutKernel : public framework::OpKernel {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
     y->mutable_data<T>(context.GetPlace());
-    auto* mask = context.Output<Tensor>("Mask");
-    auto* mask_data = mask->mutable_data<T>(context.GetPlace());
-
     AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
 
     auto X = EigenMatrix<T>::Reshape(*x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
-    auto M = EigenMatrix<T>::Reshape(*mask, 1);
 
     auto place = context.GetEigenDevice<Place>();
-    int size = framework::product(mask->dims());
     if (context.Attr<int>("is_training") == 1) {
+      auto* mask = context.Output<Tensor>("Mask");
+      auto* mask_data = mask->mutable_data<T>(context.GetPlace());
+      int size = framework::product(mask->dims());
       int seed = context.Attr<int>("seed");
       thrust::counting_iterator<unsigned int> index_sequence_begin(0);
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(mask_data),
                         MaskGenerator<T, AttrType>(dropout_prob, seed));
+      auto M = EigenMatrix<T>::Reshape(*mask, 1);
       Y.device(place) = X * M;
     } else {
-      cudaMemset(mask_data, 0, sizeof(T) * size);
       Y.device(place) = X * dropout_prob;
     }
   }

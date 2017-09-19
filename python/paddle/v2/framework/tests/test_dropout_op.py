@@ -38,10 +38,7 @@ class TestDropoutOp4(OpTest):
         self.op_type = "dropout"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.35, 'is_training': 0}
-        self.outputs = {
-            'Out': self.inputs['X'] * self.attrs['dropout_prob'],
-            'Mask': np.zeros((32, 64))
-        }
+        self.outputs = {'Out': self.inputs['X'] * self.attrs['dropout_prob']}
 
     def test_check_output(self):
         self.check_output()
@@ -52,10 +49,7 @@ class TestDropoutOp5(OpTest):
         self.op_type = "dropout"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
         self.attrs = {'dropout_prob': 0.75, 'is_training': 0}
-        self.outputs = {
-            'Out': self.inputs['X'] * self.attrs['dropout_prob'],
-            'Mask': np.zeros((32, 64, 3))
-        }
+        self.outputs = {'Out': self.inputs['X'] * self.attrs['dropout_prob']}
 
     def test_check_output(self):
         self.check_output()

@@ -31,14 +31,13 @@ class CPUDropoutKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
-    auto* mask = context.Output<Tensor>("Mask");
-    auto* mask_data = mask->mutable_data<T>(context.GetPlace());
-    auto* y_data = y->mutable_data<T>(context.GetPlace());
     const auto* x_data = x->data<T>();
-
+    auto* y_data = y->mutable_data<T>(context.GetPlace());
     AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
 
     if (context.Attr<int>("is_training") == 1) {
+      auto* mask = context.Output<Tensor>("Mask");
+      auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       int seed = context.Attr<int>("seed");
       std::minstd_rand engine;
       engine.seed(seed);
@@ -54,8 +53,6 @@ class CPUDropoutKernel : public framework::OpKernel {
         }
       }
     } else {
-      size_t size = framework::product(mask->dims());
-      memset(mask_data, 0, sizeof(T) * size);
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
       auto place = context.GetEigenDevice<Place>();
@@ -69,7 +66,8 @@ class DropoutGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(context.Attr<int>("is_training"), 1,
-                      "Only callable when is_training is true");
+                      "GradOp is only callable when is_training is true");
+
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* mask = context.Input<Tensor>("Mask");
