@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -27,7 +28,7 @@ class ConcatKernel : public framework::OpKernel {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
-    size_t n = ins.size();
+    const size_t n = ins.size();
     size_t output_axis_dim = 0;
     size_t before = 1, after = 1;
     for (size_t i = 0; i < n; i++) {
@@ -45,17 +46,51 @@ class ConcatKernel : public framework::OpKernel {
       }
     }
     size_t output_offset = 0;
+    out->mutable_data<T>(ctx.GetPlace());
     for (size_t i = 0; i < n; i++) {
       auto& in = ins[i];
       auto axis_dim = in->dims()[axis];
-      for (size_t j = 0; j < before; j++) {
-        size_t len = axis_dim * after * sizeof(T);
-        const T* src = in->data<T>() + axis_dim * after * j;
-        T* out_data = out->mutable_data<T>(platform::CPUPlace());
-        T* dest = out_data + output_offset + output_axis_dim * after * j;
-        memcpy(dest, src, len);
-      }
+      math::copy_matrix<Place, T>(
+          in->data<T>(), axis_dim, out->data<T>() + output_offset,
+          output_axis_dim, axis_dim * after * sizeof(T), before, after);
       output_offset += axis_dim * after;
+    }
+  }
+};
+
+template <typename Place, typename T>
+class ConcatGradKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    auto* in = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto outs = ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
+    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    size_t before = 1, after = 1;
+    const size_t n = outs.size();
+    size_t input_axis_dim = 0;
+    for (size_t i = 0; i < n; i++) {
+      input_axis_dim += outs[i]->dims()[axis];
+    }
+    for (int64_t i = 0; i < in->dims().size(); ++i) {
+      if (i == axis) {
+        continue;
+      }
+      if (i < axis) {
+        before *= in->dims()[i];
+      } else {
+        after *= in->dims()[i];
+      }
+    }
+    size_t input_offset = 0;
+    for (size_t i = 0; i < n; i++) {
+      auto& out = outs[i];
+      out->mutable_data<T>(ctx.GetPlace());
+      size_t axis_dim = out->dims()[axis];
+      // TODO(Yancey1989): Excute memory copy with multi threads
+      math::copy_matrix<Place, T>(in->data<T>() + input_offset, input_axis_dim,
+                                  out->data<T>(), axis_dim,
+                                  axis_dim * after * sizeof(T), before, after);
+      input_offset += axis_dim * after;
     }
   }
 };

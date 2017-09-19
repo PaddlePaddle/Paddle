@@ -77,6 +77,15 @@ void matmul(const framework::Tensor& matrix_a, bool trans_a,
             framework::Tensor* matrix_out, T beta,
             platform::DeviceContext* context);
 
+// Copy matrix memory from T* a to T* b, the pseudocode:
+//
+// for i = 0->before:
+//     src = a + a_offset * after * i
+//     dest = b + b_offset * after * i
+template <typename Place, typename T>
+void copy_matrix(const T* a, size_t a_offset, T* b, size_t b_offset, size_t len,
+                 size_t before, size_t after);
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

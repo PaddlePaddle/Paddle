@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -44,15 +45,12 @@ class SplitKernel : public framework::OpKernel {
     size_t input_offset = 0;
     for (size_t i = 0; i < n; i++) {
       auto& out = outs[i];
+      out->mutable_data<T>(ctx.GetPlace());
       size_t axis_dim = out->dims()[axis];
-      for (size_t j = 0; j < before; j++) {
-        size_t len = axis_dim * after * sizeof(T);
-        T* dest =
-            out->mutable_data<T>(platform::CPUPlace()) + axis_dim * after * j;
-        const T* src =
-            in->data<T>() + input_offset + input_axis_dim * after * j;
-        memcpy(dest, src, len);
-      }
+      // TODO(Yancey1989): Excute memory copy with multi threads
+      math::copy_matrix<Place, T>(in->data<T>() + input_offset, input_axis_dim,
+                                  out->data<T>(), axis_dim,
+                                  axis_dim * after * sizeof(T), before, after);
       input_offset += axis_dim * after;
     }
   }

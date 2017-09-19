@@ -25,7 +25,11 @@ class SplitOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    // infershape
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of SplitOp should not be null.");
+    PADDLE_ENFORCE(!ctx.MultiOutputVar("Out").empty(),
+                   "Output(Out) of SplitOp should not be null.");
+
     auto *in = ctx.Input<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
     size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
@@ -33,6 +37,8 @@ class SplitOp : public framework::OperatorWithKernel {
     std::vector<int> sections =
         static_cast<std::vector<int>>(ctx.Attr<std::vector<int>>("sections"));
     const size_t n = outs.size();
+    PADDLE_ENFORCE(num > 0 || sections.size() > 0,
+                   "SplitOp shoule specify one attribute of nums or sections.");
 
     if (num > 0) {
       int64_t in_axis_dim = in->dims()[axis];
@@ -45,7 +51,7 @@ class SplitOp : public framework::OperatorWithKernel {
         dim[axis] = out_axis_dim;
         outs[i]->Resize(dim);
       }
-    } else if (sections.size() > 0) {
+    } else {
       PADDLE_ENFORCE_EQ(sections.size(), n,
                         "tensor split sections size"
                         "should be equal to output size.");
@@ -54,9 +60,6 @@ class SplitOp : public framework::OperatorWithKernel {
         dim[axis] = sections[i];
         outs[i]->Resize(dim);
       }
-    } else {
-      PADDLE_ENFORCE_NOT_NULL(nullptr, "split operator should",
-                              " specify indices or sections.");
     }
   }
 };
