@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/framework/op_proto_maker.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/shape_inference_impl.h"
 
 namespace paddle {
 namespace framework {
