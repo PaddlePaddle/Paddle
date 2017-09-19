@@ -33,7 +33,7 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(inference->dims(), label->dims(),
                       "inference and label should have same shape");
 
-    ctx.Output<framework::Tensor>("AUC")->Resize({1});
+    ctx.Output<framework::LoDTensor>("AUC")->Resize({1});
   }
 };
 
