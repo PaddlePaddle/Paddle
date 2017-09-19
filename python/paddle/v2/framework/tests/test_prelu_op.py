@@ -7,6 +7,8 @@ class PReluTest(OpTest):
     def setUp(self):
         self.op_type = "prelu"
         x_np = np.random.normal(size=(10, 10)).astype("float32")
+        x_np_sign = np.sign(x_np)
+        x_np = x_np_sign * np.maximum(x_np, .005)
         alpha_np = np.array([.1])
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
         out_np = np.maximum(self.inputs['X'], 0.)
