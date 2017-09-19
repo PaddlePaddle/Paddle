@@ -6726,7 +6726,7 @@ def kmax_seq_score_layer(input, name=None, beam_size=1):
     :param input: The input layer. It stores scores over a sequence or a nested
         sequence and its size must be 1.
     :type input: LayerOutput.
-    :param beam_size: squence indices with top beam_size scores are returned.
+    :param beam_size: sequence indices with top beam_size scores are returned.
     :type beam_size: double
     :return: LayerOutput object.
     :rtype: LayerOutput
