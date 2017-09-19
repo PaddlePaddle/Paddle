@@ -78,12 +78,12 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
     return get_dim(op_.Input(name));
   }
 
-  const DDim get_output_dim(const std::string& name) const {
-    return get_dim(op_.Output(name));
-  }
-
   void set_input_dim(const std::string& name, const DDim& dim) const {
     set_dim(op_.Input(name), dim);
+  }
+
+  const DDim get_output_dim(const std::string& name) const {
+    return get_dim(op_.Output(name));
   }
 
   void set_output_dim(const std::string& name, const DDim& dim) const {
