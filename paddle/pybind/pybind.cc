@@ -19,10 +19,12 @@ limitations under the License. */
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/cond_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 #include "pybind11/numpy.h"
@@ -30,32 +32,6 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
-
-USE_OP(add);
-USE_OP(onehot_cross_entropy);
-USE_OP(sgd);
-USE_OP(mul);
-USE_OP(mean);
-USE_OP(sigmoid);
-USE_OP(softmax);
-USE_OP(rowwise_add);
-USE_OP(fill_zeros_like);
-USE_NO_KERNEL_OP(recurrent);
-USE_OP(gaussian_random);
-USE_OP(uniform_random);
-USE_OP(lookup_table);
-USE_OP(scale);
-USE_NO_KERNEL_OP(identity);
-USE_OP(minus);
-USE_OP(cos_sim);
-USE_CPU_ONLY_OP(gather);
-USE_CPU_ONLY_OP(scatter);
-USE_CPU_ONLY_OP(concat);
-USE_OP(top_k);
-USE_CPU_ONLY_OP(auc);
-USE_OP(squared_l2_distance);
-USE_OP(sum);
-USE_OP(reshape);
 
 namespace paddle {
 namespace framework {
@@ -122,27 +98,21 @@ PYBIND11_PLUGIN(core) {
         return self.data<float>()[offset];
       });
 
-  py::class_<LoDTensor>(m, "LoDTensor", R"DOC(LoD(Leval of Ddetails) Tensor.
-
-The tensor and LoD info should be created before creating the LoDTensor, then
-call the set_tensor and set_lod functions to set them.
-
-)DOC")
-      .def("__init__",
-           [](LoDTensor &instance,
-              const std::vector<std::vector<size_t>> &lod,
-              Tensor *t) {
+  py::class_<LoDTensor, Tensor>(m, "LoDTensor")
+      .def_buffer(
+          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def(
+          "__init__",
+          [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
 #ifdef PADDLE_ONLY_CPU
-             new (&instance) LoDTensor(lod, t);
+            new (&instance) LoDTensor(lod);
 #else
              paddle::framework::LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             new (&instance) LoDTensor(new_lod, t);
+             new (&instance) LoDTensor(new_lod);
 #endif
-           })
-      .def("set_tensor",
-           [](LoDTensor &self, Tensor *tensor) { self.set_tensor(tensor); })
+          })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
 #ifdef PADDLE_ONLY_CPU
@@ -154,9 +124,6 @@ call the set_tensor and set_lod functions to set them.
              self.set_lod(new_lod);
 #endif
            })
-      .def("tensor",
-           [](LoDTensor &self) -> Tensor & { return self.tensor(); },
-           py::return_value_policy::reference)
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
 #ifdef PADDLE_ONLY_CPU
         return self.lod();
@@ -185,9 +152,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
       .def("get_tensor",
-           [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
-           py::return_value_policy::reference)
-      .def("get_lod_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
            },
@@ -324,6 +288,28 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_stepnet",
            [](operators::RecurrentOp &self, const operators::NetOp &net)
                -> void { self.set_stepnet(net.Clone()); });
+
+  // cond_op
+  py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
+      .def_static("create",
+                  [](py::bytes protobin) -> operators::CondOp * {
+                    OpDesc desc;
+                    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                                   "Cannot parse user input to OpDesc");
+                    PADDLE_ENFORCE(desc.IsInitialized(),
+                                   "User OpDesc is not initialized, reason %s",
+                                   desc.InitializationErrorString());
+                    auto cond_op = OpRegistry::CreateOp(desc);
+                    return static_cast<operators::CondOp *>(cond_op.release());
+                  })
+      .def("set_truenet",
+           [](operators::CondOp &self, const operators::NetOp &net) -> void {
+             self.set_truenet(net.Clone());
+           })
+      .def("set_falsenet",
+           [](operators::CondOp &self, const operators::NetOp &net) -> void {
+             self.set_falsenet(net.Clone());
+           });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 

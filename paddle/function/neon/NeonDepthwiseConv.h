@@ -594,7 +594,7 @@ struct StridePadding {
         float32x4_t s1 = vdupq_n_f32(0.f);
         for (int s = 0; s < step; s++) {
           float32x4_t s0 = vld1q_f32(input);
-          float32x4x2_t v = {s0, s1};
+          float32x4x2_t v = {{s0, s1}};
           vst2q_f32(inputPadding, v);
           input += 4;
           inputPadding += 8;

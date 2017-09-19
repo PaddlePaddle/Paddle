@@ -48,9 +48,13 @@ class UniformRandomOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("Out"),
+        "Output(Out) of UniformRandomOp should not be null.");
+
     PADDLE_ENFORCE(Attr<float>("min") < Attr<float>("max"),
                    "uniform_random's min must less then max");
-    auto* tensor = ctx.Output<framework::Tensor>("Out");
+    auto* tensor = ctx.Output<framework::LoDTensor>("Out");
     auto dims = Attr<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());

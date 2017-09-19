@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "ExpandConvBaseLayer.h"
+#include "ConvBaseLayer.h"
 #include "paddle/math/Matrix.h"
 
 namespace paddle {
@@ -28,10 +28,9 @@ namespace paddle {
  * The config file api is img_conv_layer.
  */
 
-class ExpandConvLayer : public ExpandConvBaseLayer {
+class ExpandConvLayer : public ConvBaseLayer {
 public:
-  explicit ExpandConvLayer(const LayerConfig& config)
-      : ExpandConvBaseLayer(config) {}
+  explicit ExpandConvLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
 
   ~ExpandConvLayer() {}
 
@@ -40,6 +39,8 @@ public:
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
+
+  size_t getOutputSize();
 
 protected:
   std::vector<TensorShape> inputShape_;

@@ -22,14 +22,14 @@ namespace framework {
 template <>
 Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_->get_eigen_device<Eigen::DefaultDevice>();
+  return *device_context_.get_eigen_device<Eigen::DefaultDevice>();
 }
 
 #ifndef PADDLE_ONLY_CPU
 template <>
 Eigen::GpuDevice&
 ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_->get_eigen_device<Eigen::GpuDevice>();
+  return *device_context_.get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
 
@@ -184,6 +184,48 @@ void OperatorBase::GenerateTemporaryNames() {
       }
     }
   }
+}
+
+template <>
+const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const {
+  auto* var = InputVar(name);
+  return var == nullptr ? nullptr : GetTensorFromVar(var);
+}
+
+template <>
+const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+    const std::string& name) const {
+  auto names = op().Inputs(name);
+  std::vector<const Tensor*> res;
+  res.reserve(names.size());
+  std::transform(names.begin(), names.end(), std::back_inserter(res),
+                 [&](const std::string& sub_name) {
+                   auto var = scope_.FindVar(sub_name);
+                   return var == nullptr ? nullptr : GetTensorFromVar(var);
+                 });
+  return res;
+}
+
+template <>
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
+  auto* var = OutputVar(name);
+  return var == nullptr ? nullptr : const_cast<Tensor*>(GetTensorFromVar(var));
+}
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+    const std::string& name) const {
+  auto names = op().Outputs(name);
+  std::vector<Tensor*> res;
+  res.reserve(names.size());
+  std::transform(names.begin(), names.end(), std::back_inserter(res),
+                 [&](const std::string& sub_name) {
+                   auto var = scope().FindVar(sub_name);
+                   return var == nullptr
+                              ? nullptr
+                              : const_cast<Tensor*>(GetTensorFromVar(var));
+                 });
+  return res;
 }
 
 void OpProtoAndCheckerMaker::Validate() {

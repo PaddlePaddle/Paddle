@@ -38,9 +38,11 @@ public:
   AccumulateOpMaker(framework::OpProto *proto,
                             framework::OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) The input tensor that has to be accumulated to the output tensor. If the output size is not the same as input size, the output tensor is first reshaped and initialized to zero, and only then, accumulation is done.");
+    AddInput("X", "(Tensor) The input tensor that has to be accumulated to the output tensor. 
+    If the output size is not the same as input size, 
+    the output tensor is first reshaped and initialized to zero, and only then, accumulation is done.");
     AddOutput("Out", "(Tensor) Accumulated output tensor");
-    AddAttr<float>("gamma", "(float, default 1.0) Accumulation multiplier");
+    AddAttr<float>("gamma", "(float, default 1.0) Accumulation multiplier").SetDefault(1.0f);
     AddComment(R"DOC(
 Accumulate operator accumulates the input tensor to the output tensor. If the
 output tensor already has the right size, we add to it; otherwise, we first
@@ -51,7 +53,7 @@ Accumulation is done as shown:
 
 Out = 1*X + gamma*Out
 
-where X is the input tensor, Y is the output tensor and gamma is the multiplier
+where X is the input tensor, Out is the output tensor and gamma is the multiplier
 argument.
 )DOC");
   }
