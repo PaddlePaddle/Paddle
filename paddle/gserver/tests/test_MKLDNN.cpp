@@ -141,6 +141,68 @@ TEST(MKLDNNLayer, ConvLayer) {
   testConvLayer({4, 4, 16, 3, 3, 16, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1});
 }
 
+struct testPoolDesc {
+  int bs, ch;  // input channel and output channel are the same
+  int ih, iw;
+  int oh, ow;
+  int fh, fw;
+  int ph, pw;
+  int sh, sw;
+};
+
+void testPoolLayer(const testPoolDesc& pm) {
+  const std::string compareTypes[] = {"mkldnn_pool", "pool"};
+  TestConfig cfg;
+  cfg.layerConfig.set_type(compareTypes[0]);
+  cfg.layerConfig.set_size(pm.ch * pm.oh * pm.ow);
+  cfg.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       /* size of input layer= */ size_t(pm.ch * pm.ih * pm.iw),
+       0});
+  LayerInputConfig* input = cfg.layerConfig.add_inputs();
+  PoolConfig* pool = input->mutable_pool_conf();
+  // pool->set_pool_type(poolType);
+  pool->set_channels(pm.ch);
+  pool->set_img_size(pm.iw);
+  pool->set_img_size_y(pm.ih);
+  pool->set_output_x(pm.ow);
+  pool->set_output_y(pm.oh);
+  pool->set_size_x(pm.fw);
+  pool->set_size_y(pm.fh);
+  pool->set_padding(pm.pw);
+  pool->set_padding_y(pm.ph);
+  pool->set_stride(pm.sw);
+  pool->set_stride_y(pm.sh);
+
+  int oh = outputSize(pm.ih, pm.fh, pm.ph, pm.sh, false);
+  int ow = outputSize(pm.iw, pm.fw, pm.pw, pm.sw, false);
+  CHECK_EQ(ow, pm.ow) << "output size check failed";
+  CHECK_EQ(oh, pm.oh) << "output size check failed";
+
+  MKLDNNTester tester;
+  for (auto type : {"max-projection", "avg-projection"}) {
+    pool->set_pool_type(type);
+    TestConfig ref = cfg;
+    ref.layerConfig.set_type(compareTypes[1]);
+    for (auto bs : {pm.bs, 1}) {
+      tester.run(cfg, ref, bs, pm.ih, pm.iw);
+    }
+  }
+}
+
+TEST(MkldnnLayer, PoolLayer) {
+  /* bs, ch, ih, iw, oh, ow, fh, fw, ph, pw, sh, sw*/
+  testPoolLayer({2, 1, 4, 4, 2, 2, 3, 3, 0, 0, 2, 2});
+  testPoolLayer({10, 8, 16, 16, 8, 8, 2, 2, 0, 0, 2, 2});
+  testPoolLayer({4, 2, 5, 5, 3, 3, 3, 3, 1, 1, 2, 2});
+  testPoolLayer({8, 16, 56, 56, 28, 28, 3, 3, 0, 0, 2, 2});
+  testPoolLayer({8, 16, 14, 14, 7, 7, 3, 3, 0, 0, 2, 2});
+  testPoolLayer({4, 16, 7, 7, 1, 1, 7, 7, 0, 0, 1, 1});
+  testPoolLayer({4, 2, 5, 5, 3, 3, 5, 5, 1, 1, 1, 1});
+  testPoolLayer({2, 8, 56, 56, 29, 29, 3, 3, 1, 1, 2, 2});
+}
+
 // TODO(TJ): add branch test
 
 int main(int argc, char** argv) {
