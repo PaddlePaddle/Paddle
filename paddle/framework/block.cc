@@ -37,7 +37,7 @@ const VarDesc* SymbolTable::FindVar(const std::string& name,
   if (it != vars_.end()) {
     return &(it->second);
   }
-  if (recursive) {
+  if (recursive && parent_) {
     return parent_->FindVar(name, true);
   }
   // not found
