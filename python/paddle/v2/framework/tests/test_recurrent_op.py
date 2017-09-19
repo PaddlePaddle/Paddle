@@ -123,7 +123,6 @@ class TestRecurrentOp(unittest.TestCase):
         create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim],
                       h_boot_np_data)
         self.scope.new_var("step_scopes")
-        self.scope.new_var("h@alias")
         self.scope.new_var("h")
 
     def create_rnn_op(self):
@@ -137,17 +136,15 @@ class TestRecurrentOp(unittest.TestCase):
             outlinks=["h"],
             step_scopes="step_scopes",
             # attributes
-            inlink_alias=["x@alias"],
-            outlink_alias=["h@alias"],
             pre_memories=["h@pre"],
-            memories=["h@alias"])
+            memories=["h@mem"])
 
     def create_step_net(self):
         stepnet = core.Net.create()
-        x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
+        x_fc_op = Operator("mul", X="x", Y="W", Out="Wx")
         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
         sum_op = Operator("add", X="Wx", Y="Uh", Out="sum")
-        sig_op = Operator("sigmoid", X="sum", Y="h@alias")
+        sig_op = Operator("sigmoid", X="sum", Y="h@mem")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
             stepnet.append_op(op)
