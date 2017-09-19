@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/hostdevice.h"
 #include "paddle/platform/place.h"
@@ -21,6 +22,7 @@
 #include <algorithm>
 #include <type_traits>
 #ifdef __NVCC__
+#include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 #include "paddle/platform/details/device_ptr_cast.h"
 #endif
@@ -28,34 +30,39 @@
 namespace paddle {
 namespace platform {
 // Transform on host or device. It provides the same API in std library.
-template <typename Place, typename InputIter, typename OutputIter,
-          typename UnaryOperation>
-void Transform(Place place, InputIter first, InputIter last, OutputIter result,
-               UnaryOperation op) {
+template <typename InputIter, typename OutputIter, typename UnaryOperation>
+void Transform(const DeviceContext& context, InputIter first, InputIter last,
+               OutputIter result, UnaryOperation op) {
+  auto place = context.GetPlace();
   if (is_cpu_place(place)) {
     std::transform(first, last, result, op);
   } else {
 #ifdef __NVCC__
+    auto& ctx = reinterpret_cast<const CUDADeviceContext&>(context);
     using namespace details;
-    thrust::transform(DevPtrCast(first), DevPtrCast(last), DevPtrCast(result),
-                      op);
+    thrust::transform(thrust::cuda::par.on(ctx.stream()), DevPtrCast(first),
+                      DevPtrCast(last), DevPtrCast(result), op);
 #else
     PADDLE_THROW("Do not invoke `Transform<GPUPlace>` in .cc file");
 #endif
   }
 }
 
-template <typename Place, typename InputIter1, typename InputIter2,
-          typename OutputIter, typename BinaryOperation>
-void Transform(Place place, InputIter1 first1, InputIter1 last1,
-               InputIter2 first2, OutputIter result, BinaryOperation op) {
+template <typename InputIter1, typename InputIter2, typename OutputIter,
+          typename BinaryOperation>
+void Transform(const DeviceContext& context, InputIter1 first1,
+               InputIter1 last1, InputIter2 first2, OutputIter result,
+               BinaryOperation op) {
+  auto place = context.GetPlace();
   if (is_cpu_place(place)) {
     std::transform(first1, last1, first2, result, op);
   } else {
 #ifdef __NVCC__
+    auto& ctx = reinterpret_cast<const CUDADeviceContext&>(context);
     using namespace details;
-    thrust::transform(DevPtrCast(first1), DevPtrCast(last1), DevPtrCast(first2),
-                      DevPtrCast(result), op);
+    thrust::transform(thrust::cuda::par.on(ctx.stream()), DevPtrCast(first1),
+                      DevPtrCast(last1), DevPtrCast(first2), DevPtrCast(result),
+                      op);
 #else
     PADDLE_THROW("Do not invoke `Transform<GPUPlace>` in .cc file");
 #endif
