@@ -192,25 +192,29 @@ class OpTest(unittest.TestCase):
         self.op.run(self.scope, ctx)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
+            if out_name not in self.outputs:
+                continue
+
             if out_dup:
                 sub_out = self.outputs[out_name]
-                for sub_out_name, sub_out_array in sub_out:
+                if not isinstance(sub_out, list):
+                    raise AssertionError("sub_out type %s is not list",
+                                         type(sub_out))
+
+                for sub_out_name, expect in sub_out:
                     actual = np.array(
                         self.scope.find_var(sub_out_name).get_tensor())
-                    expect = sub_out_array
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=1e-05),
                         "output name: " + out_name + " has diff")
             else:
-                var = self.scope.find_var(out_name)
-                if var is not None:
-                    actual = np.array(var.get_tensor())
-                    expect = self.outputs[out_name]
-                    self.assertTrue(
-                        np.allclose(
-                            actual, expect, atol=1e-05),
-                        "output name: " + out_name + " has diff")
+                actual = np.array(self.scope.find_var(out_name).get_tensor())
+                expect = self.outputs[out_name]
+                self.assertTrue(
+                    np.allclose(
+                        actual, expect, atol=1e-05),
+                    "output name: " + out_name + " has diff")
 
     def check_output(self):
         places = [core.CPUPlace()]

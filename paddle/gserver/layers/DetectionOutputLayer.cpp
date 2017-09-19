@@ -143,7 +143,7 @@ void DetectionOutputLayer::forward(PassType passType) {
     resetOutput(numKept, 7);
   } else {
     MatrixPtr outV = getOutputValue();
-    outV = NULL;
+    if (outV) outV->resize(0, 0);
     return;
   }
   MatrixPtr outV = getOutputValue();

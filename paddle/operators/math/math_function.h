@@ -66,16 +66,16 @@ namespace math {
 // For more detailed info, please refer to
 // http://www.netlib.org/lapack/explore-html/d4/de2/sgemm_8f.html
 template <typename Place, typename T>
-void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
-          const int M, const int N, const int K, const T alpha, const T* A,
-          const T* B, const T beta, T* C, platform::DeviceContext* context);
+void gemm(const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+          const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+          const T alpha, const T* A, const T* B, const T beta, T* C);
 
 // matrix multiply with continuous memory
 template <typename Place, typename T>
-void matmul(const framework::Tensor& matrix_a, bool trans_a,
+void matmul(const platform::DeviceContext& context,
+            const framework::Tensor& matrix_a, bool trans_a,
             const framework::Tensor& matrix_b, bool trans_b, T alpha,
-            framework::Tensor* matrix_out, T beta,
-            platform::DeviceContext* context);
+            framework::Tensor* matrix_out, T beta);
 
 }  // namespace math
 }  // namespace operators
