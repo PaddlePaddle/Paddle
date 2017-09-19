@@ -91,12 +91,11 @@ void CropCUDAFunctoin(const framework::ExecutionContext& context) {
   int block = 512;
   int grid = (n * d + block - 1) / block;
 
-  auto* device_context =
-      const_cast<platform::DeviceContext*>(context.device_context_);
-  CropKernel<T,
-             D><<<grid, block, 0,
-                  reinterpret_cast<platform::CUDADeviceContext*>(device_context)
-                      ->stream()>>>(
+  CropKernel<
+      T,
+      D><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                               context.device_context())
+                               .stream()>>>(
       out_count, out_shape_gpu.data<int64_t>(), x_shape_gpu.data<int64_t>(),
       crop_rules_gpu.data<int>(), x_data, out_data);
 }
