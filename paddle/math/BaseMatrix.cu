@@ -17,6 +17,7 @@ limitations under the License. */
 #include <cmath>
 #include "BaseMatrix.h"
 #include "MathFunctions.h"
+#include "NEONFunctions.h"
 #include "SIMDFunctions.h"
 #include "hl_matrix_apply.cuh"
 #include "hl_matrix_base.cuh"
@@ -665,6 +666,13 @@ template <class T>
 void BaseMatrixT<T>::relu(BaseMatrixT& b) {
   applyBinary(binary::Relu<T>(), b);
 }
+
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+template <>
+void BaseMatrixT<float>::relu(BaseMatrixT& b) {
+  neon::relu(data_, b.data_, height_ * width_);
+}
+#endif
 
 DEFINE_MATRIX_BINARY_OP(ReluDerivative, a *= (b > 0.0f ? 1.0f : 0.0f));
 template <class T>
