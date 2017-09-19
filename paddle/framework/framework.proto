@@ -108,3 +108,8 @@ message VarDesc {
   required string name = 1;
   optional LoDTensorDesc lod_tensor = 2;
 }
+
+message BlockDesc {
+  repeated VarDesc vars = 1;
+  repeated OpDesc ops = 2;
+}
