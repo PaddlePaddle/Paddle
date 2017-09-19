@@ -55,6 +55,7 @@ class MulOp : public framework::OperatorWithKernel {
         "First matrix's width must be equal with second matrix's height.");
     ctx.Output<framework::LoDTensor>("Out")->Resize(
         {x_mat_dims[0], y_mat_dims[1]});
+    ctx.ShareLoD("X", "Out");
   }
 };
 
@@ -83,9 +84,14 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1)
         .EqualGreaterThan(1);
     AddComment(R"DOC(
-Two Element Mul Operator.
+Mul operator is used to perform matrix multiplication for input X and Y.
 
-The equation is: Out = X * Y
+The equation is:
+
+    Out = X * Y
+
+Both the input `X` and `Y` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };

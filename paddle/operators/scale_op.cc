@@ -35,6 +35,7 @@ class ScaleOp : public framework::OperatorWithKernel {
     auto *in = ctx.Input<framework::Tensor>("X");
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(in->dims());
+    ctx.ShareLoD("X", "Out");
   }
 };
 

@@ -186,6 +186,10 @@ W_i is a 2-D matrix of size (K x N), where N means the number of neurons
 in the fully connected layer. B is a 1-D vector of size N.
 Thus, the output Out is a 2-D matrix of size (M x N).
 Activation type can be set to `identity` (default), `sigmoid` or `softmax`.
+
+All the inputs can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with first input (`X[0]`).
+)DOC");
 )DOC");
   }
 };

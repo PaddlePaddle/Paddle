@@ -40,6 +40,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
                       "inference size must be the same as label size");
 
     ctx.Output<framework::LoDTensor>("Accuracy")->Resize({1});
+    ctx.ShareLoD("Inference", "Accuracy");
   }
 };
 
@@ -58,7 +59,11 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC(Accuracy. It will print accuracy rate for classification.
 The accuracy is:
 ..  math::
-accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})DOC");
+accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})
+
+Both the input `Inference` and `Label` can carry the LoD (Level of Details)
+information, or not. But the output only shares the LoD with input `Inference`.
+DOC");
   }
 };
 

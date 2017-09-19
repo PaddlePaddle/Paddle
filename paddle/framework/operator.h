@@ -336,6 +336,14 @@ class InferShapeContext {
     return &var->Get<Tensor>();
   }
 
+  void ShareLoD(const std::string& in, const std::string& out) const {
+    PADDLE_ENFORCE(InputVar(in)->IsType<LoDTensor>(),
+                   "The Input(%s) must be LoDTensor.", in);
+    PADDLE_ENFORCE(OutputVar(out)->IsType<LoDTensor>(),
+                   "The Output(%s) must be LoDTensor.", out);
+    Output<LoDTensor>(out)->set_lod(Input<LoDTensor>(in)->lod());
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;

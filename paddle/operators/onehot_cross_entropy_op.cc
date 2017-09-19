@@ -40,6 +40,7 @@ class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(label->dims().size(), 1, "label's dimension must be 1.");
     PADDLE_ENFORCE_EQ(X->dims()[0], label->dims()[0]);
     ctx.Output<framework::LoDTensor>("Y")->Resize({X->dims()[0], 1});
+    ctx.ShareLoD("X", "Y");
   }
 };
 
@@ -69,6 +70,8 @@ OnehotCrossEntropy Operator.
 
                 Y[i] = -log(X[i][j])
 
+Both the input `X` and `Label` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };

@@ -39,6 +39,7 @@ class SumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(in_dim == dim, "Input tensors must have same shape");
     }
     out->Resize(in_dim);
+    ctx.ShareLoD(ctx.op().Inputs("X")[0], "Out");
   }
 };
 
@@ -49,8 +50,11 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "the input tensors of sum operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of sum operator.");
     AddComment(R"DOC(
-            Sum the input tensors.
-        )DOC");
+Sum the input tensors.
+
+All the inputs can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with the first input.
+)DOC");
   }
 };
 

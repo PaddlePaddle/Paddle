@@ -38,6 +38,7 @@ class PReluOp : public framework::OperatorWithKernel {
                             "Output(Out) should not be null");
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(in->dims());
+    ctx.ShareLoD("X", "Out");
   }
 };
 
@@ -55,6 +56,8 @@ The equation is:
   f(x) = alpha * x , for x < 0
   f(x) = x         , for x >= 0
 
+The input `X` can carry the LoD (Level of Details) information,
+or not. And the output shares the LoD with input `X`.
 )DOC");
   }
 };

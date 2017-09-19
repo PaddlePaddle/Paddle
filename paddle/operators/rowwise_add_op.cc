@@ -45,6 +45,7 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
         "The width of two operands must be same");
     PADDLE_ENFORCE_EQ(ctx.OutputSize("Out"), 1, "The output size must be 1");
     ctx.Output<framework::LoDTensor>("Out")->Resize(x_dims);
+    ctx.ShareLoD("X", "Out");
   }
 };
 

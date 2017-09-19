@@ -30,6 +30,7 @@ class SigmoidOp : public framework::OperatorWithKernel {
 
     ctx.Output<framework::LoDTensor>("Y")->Resize(
         ctx.Input<Tensor>("X")->dims());
+    ctx.ShareLoD("X", "Y");
   }
 };
 
