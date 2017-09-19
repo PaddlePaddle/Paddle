@@ -78,17 +78,19 @@ class ClipGradKernel : public framework::OpKernel {
     auto min = context.op().Attr<float>("min");
     auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* x = context.Input<LoDTensor>("X");
-    auto dims = d_x->dims();
-    int64_t count = d_out->numel();
-    auto d_x_data = d_x->mutable_data<T>(context.GetPlace());
-    auto d_out_data = d_out->data<T>();
-    auto x_data = x->data<T>();
-    for (int i = 0; i < count; ++i) {
-      if (x_data[i] > min && x_data[i] < max) {
-        d_x_data[i] = d_out_data[i];
-      } else {
-        d_x_data[i] = 0;
+    if (d_x != nullptr) {
+      auto* x = context.Input<LoDTensor>("X");
+      auto dims = d_x->dims();
+      int64_t count = d_out->numel();
+      auto d_x_data = d_x->mutable_data<T>(context.GetPlace());
+      auto d_out_data = d_out->data<T>();
+      auto x_data = x->data<T>();
+      for (int i = 0; i < count; ++i) {
+        if (x_data[i] > min && x_data[i] < max) {
+          d_x_data[i] = d_out_data[i];
+        } else {
+          d_x_data[i] = 0;
+        }
       }
     }
   }

@@ -68,8 +68,9 @@ class ClipOpGrad : public framework::OperatorWithKernel {
                             "Input(Out@GRAD) should not be null");
     auto x_dims = ctx.Input<LoDTensor>("X")->dims();
     auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-
-    x_grad->Resize(x_dims);
+    if (x_grad != nullptr) {
+      x_grad->Resize(x_dims);
+    }
   }
 };
 
