@@ -376,6 +376,11 @@ class ExecutionContext : public InferShapeContext {
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
+  template <typename PlaceType>
+  platform::Place GetPlace() const {
+    return platform::to_place<PlaceType>(device_context_.GetPlace());
+  }
+
   const platform::DeviceContext& device_context() const {
     return device_context_;
   }

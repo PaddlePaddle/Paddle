@@ -51,6 +51,9 @@ typedef boost::variant<GPUPlace, CPUPlace> Place;
 void set_place(const Place &);
 const Place &get_place();
 
+template <typename T>
+const T to_place(Place p);
+
 const GPUPlace default_gpu();
 const CPUPlace default_cpu();
 
