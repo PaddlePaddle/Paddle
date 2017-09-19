@@ -73,18 +73,22 @@ An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator
 ```python
 import paddle as pd
 
-x = var(10)
-y = var(20)
+x = var([10, 20])
+# a scalar
+y = var([1])
+z = var(10, 20)
 cond = var(false)
-ie = pd.create_ifelseop(inputs=[x], output_num=1)
+ie = pd.create_ifelseop(output_num=1)
 with ie.true_block():
-    x = ie.inputs(true, 0)
+    x_ = x.as_ifelse_input()
     z = operator.add(x, y)
-    ie.set_output(true, 0, operator.softmax(z))
+    ie.set_output(0, operator.softmax(z))
+
 with ie.false_block():
-    x = ie.inputs(false, 0)
-    z = layer.fc(x)
-    ie.set_output(true, 0, operator.softmax(z))
+    z_ = z.as_ifelse_input()
+    d = layer.fc(z_)
+    ie.set_output(0, operator.softmax(z))
+
 out = b(cond)
 ```
 
@@ -97,24 +101,26 @@ A difference is that variables in the C++ program contain scalar values, whereas
 The following RNN model from the [RNN design doc](./rnn.md)
 
 ```python
-x = sequence([10, 20, 30])
-m = var(0)
-W = tensor()
-U = tensor()
+# x is a sequence
+x = Var(sequence([10, 20, 30]))
+m = Var(0)
+W = Var()
+U = Var()
 
-rnn = create_rnn(inputs=[input])
-with rnn.stepnet() as net:
-  x = net.set_inputs(0)
-  h = net.add_memory(init=m)
+rnn = create_rnn()
+with rnn.stepnet():
+  # mark the variables that need to be segmented for time steps.
+  x_ = x.as_step_input()
+  # mark the varialbe that used as a RNN state.
+  h_ = h.as_step_memory(init=m)
   fc_out = pd.matmul(W, x)
-  hidden_out = pd.matmul(U, h.pre(n=1))
+  hidden_out = pd.matmul(U, h.pre(nstep=1))
   sum = pd.add_two(fc_out, hidden_out)
   act = pd.sigmoid(sum)
-  h.update(act)                       # update memory with act
-  net.set_outputs(0, act, hidden_out) # two outputs
+  h.update(act)                    # update memory with act
+  net.set_outputs(act, hidden_out) # two outputs
 
 o1, o2 = rnn()
-print o1, o2
 ```
 
 has its equivalent C++ program as follows
