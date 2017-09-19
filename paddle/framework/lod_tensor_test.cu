@@ -26,18 +26,16 @@ __global__ void test(size_t* a, int size) {
 }
 
 TEST(LoDTensor, LoDInGPU) {
-  paddle::framework::Tensor tensor;
   paddle::framework::LoDTensor lod_tensor;
   paddle::platform::GPUPlace place(0);
 
   paddle::framework::LoD src_lod;
   src_lod.push_back(std::vector<size_t>{0, 2, 4, 6, 8, 10, 12, 14});
 
-  tensor.Resize({14, 16});
-  tensor.mutable_data<float>(place);
+  lod_tensor.Resize({14, 16});
+  lod_tensor.mutable_data<float>(place);
 
   lod_tensor.set_lod(src_lod);
-  lod_tensor.set_tensor(&tensor);
   CHECK_EQ(lod_tensor.lod_element(0, 2), 4);
   CHECK_EQ(lod_tensor.lod_element(0, 4), 8);
 
