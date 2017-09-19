@@ -162,7 +162,6 @@ void testPoolLayer(const testPoolDesc& pm) {
        0});
   LayerInputConfig* input = cfg.layerConfig.add_inputs();
   PoolConfig* pool = input->mutable_pool_conf();
-  // pool->set_pool_type(poolType);
   pool->set_channels(pm.ch);
   pool->set_img_size(pm.iw);
   pool->set_img_size_y(pm.ih);
