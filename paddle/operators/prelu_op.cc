@@ -46,8 +46,8 @@ class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
   PReluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of prelu operator.");
-    AddInput("Alpha", "The alpha weight of prelu operator.");
-    AddOutput("Out", "The output tensor of prelu operator.");
+    AddInput("Alpha", "The alpha weight of PRelu operator.");
+    AddOutput("Out", "The output tensor of PRelu operator.");
     AddComment(R"DOC(PRelu operator
 
 The equation is:
