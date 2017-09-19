@@ -174,13 +174,18 @@ class SGD(object):
                         pass_id=pass_id,
                         batch_id=batch_id,
                         cost=cost,
-                        evaluator=batch_evaluator))
+                        evaluator=batch_evaluator,
+                        gm=self.__gradient_machine__))
                 self.__parameter_updater__.finishBatch(cost)
                 batch_evaluator.finish()
 
             self.__parameter_updater__.finishPass()
             pass_evaluator.finish()
-            event_handler(v2_event.EndPass(pass_id, evaluator=pass_evaluator))
+            event_handler(
+                v2_event.EndPass(
+                    pass_id,
+                    evaluator=pass_evaluator,
+                    gm=self.__gradient_machine__))
         self.__gradient_machine__.finish()
 
     def test(self, reader, feeding=None):

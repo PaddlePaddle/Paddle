@@ -30,6 +30,8 @@ Configuring cmake in /paddle/build ...
       -DCMAKE_BUILD_TYPE=Release
       -DWITH_DOC=OFF
       -DWITH_GPU=${WITH_GPU:-OFF}
+      -DWITH_MKLDNN=${WITH_MKLDNN:-ON}
+      -DWITH_MKLML=${WITH_MKLML:-ON}
       -DWITH_AVX=${WITH_AVX:-OFF}
       -DWITH_GOLANG=${WITH_GOLANG:-ON}
       -DWITH_SWIG_PY=ON
@@ -50,6 +52,8 @@ cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
+      -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
+      -DWITH_MKLML=${WITH_MKLML:-ON} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
       -DWITH_GOLANG=${WITH_GOLANG:-ON} \
       -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \

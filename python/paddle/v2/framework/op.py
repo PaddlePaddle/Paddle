@@ -43,7 +43,6 @@ class OpDescCreationMethod(object):
         if len(args) != 0:
             raise ValueError("Only keyword arguments are supported.")
         op_desc = framework_pb2.OpDesc()
-
         for input_parameter in self.__op_proto__.inputs:
             input_arguments = kwargs.get(input_parameter.name, [])
             if is_str(input_arguments):
@@ -98,7 +97,7 @@ class OpDescCreationMethod(object):
                     new_attr.strings.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
-                        pair = new_attr.pairs.add()
+                        pair = new_attr.int_pairs.add()
                         pair.first = p[0]
                         pair.second = p[1]
                 else:
@@ -142,8 +141,8 @@ def create_op_creation_method(op_proto):
     return OpInfo(
         method=__impl__,
         name=op_proto.type,
-        inputs=[var.name for var in op_proto.inputs],
-        outputs=[var.name for var in op_proto.outputs],
+        inputs=[(var.name, var.duplicable) for var in op_proto.inputs],
+        outputs=[(var.name, var.duplicable) for var in op_proto.outputs],
         attrs=[attr.name for attr in op_proto.attrs])
 
 
@@ -180,9 +179,15 @@ class OperatorFactory(object):
         return self.op_methods.get(t)
 
     def get_op_input_names(self, type):
+        return map(lambda x: x[0], self.get_op_info(type).inputs)
+
+    def get_op_inputs(self, type):
         return self.get_op_info(type).inputs
 
     def get_op_output_names(self, type):
+        return map(lambda x: x[0], self.get_op_info(type).outputs)
+
+    def get_op_outputs(self, type):
         return self.get_op_info(type).outputs
 
     def get_op_attr_names(self, type):
@@ -210,5 +215,27 @@ class __RecurrentOp__(object):
         return core.RecurrentOp.create(proto.SerializeToString())
 
 
+class __CondOp__(object):
+    __proto__ = None
+    type = "cond"
+
+    def __init__(self):
+        # cache recurrent_op's proto
+        if self.__proto__ is None:
+            for op_proto in get_all_op_protos():
+                if op_proto.type == self.type:
+                    self.__proto__ = op_proto
+
+    def __call__(self, *args, **kwargs):
+        if self.type not in args and "type" not in kwargs:
+            kwargs["type"] = self.type
+        # create proto
+        create_method = OpDescCreationMethod(self.__proto__)
+        proto = create_method(*args, **kwargs)
+        # create condop
+        return core.CondOp.create(proto.SerializeToString())
+
+
 Operator = OperatorFactory()  # The default global factory
 RecurrentOp = __RecurrentOp__()
+CondOp = __CondOp__()

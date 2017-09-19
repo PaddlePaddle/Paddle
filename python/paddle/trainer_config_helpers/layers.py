@@ -169,6 +169,7 @@ class LayerType(object):
     EXCONV_LAYER = 'exconv'
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
+    CUDNNCONVTRANS_LAYER = 'cudnn_convt'
     POOL_LAYER = 'pool'
     POOL3D_LAYER = 'pool3d'
     BATCH_NORM_LAYER = 'batch_norm'
@@ -6461,6 +6462,7 @@ def switch_order_layer(input,
     return LayerOutput(
         name=name,
         layer_type=LayerType.SWITCH_ORDER_LAYER,
+        activation=act,
         parents=input,
         size=l.config.size)
 

@@ -1,14 +1,11 @@
 import unittest
 import numpy as np
-from gradient_checker import GradientChecker, create_op
-from op_test_util import OpTestMeta
+from op_test import OpTest
 
 
-class TestTopkOp(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestTopkOp(OpTest):
     def setUp(self):
-        self.type = "top_k"
+        self.op_type = "top_k"
         k = 1
         input = np.random.random((32, 84)).astype("float32")
         output = np.ndarray((32, k))
@@ -24,12 +21,13 @@ class TestTopkOp(unittest.TestCase):
 
         self.outputs = {'Out': output, 'Indices': indices}
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestTopkOp3d(unittest.TestCase):
-    __metaclass__ = OpTestMeta
 
+class TestTopkOp3d(OpTest):
     def setUp(self):
-        self.type = "top_k"
+        self.op_type = "top_k"
         k = 1
         input = np.random.random((32, 2, 84)).astype("float32")
         input_flat_2d = input.reshape(64, 84)
@@ -47,6 +45,9 @@ class TestTopkOp3d(unittest.TestCase):
 
         self.outputs = {'Out': output, 'Indices': indices}
 
+    def test_check_output(self):
+        self.check_output()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
