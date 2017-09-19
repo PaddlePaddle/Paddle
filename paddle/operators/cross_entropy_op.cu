@@ -13,26 +13,12 @@
    limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/cross_entropy_op.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-
-template <typename T>
-HOSTDEVICE T tolerable_value(const T x) {
-  PADDLE_ASSERT(std::is_floating_point<T>::value);
-  const T kApproInf = 1e20;
-  if (x == INFINITY) {
-    return kApproInf;
-  }
-  if (x == -INFINITY) {
-    return -kApproInf;
-  }
-  return x;
-}
 
 template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
@@ -53,9 +39,9 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
        i += blockDim.x * gridDim.x) {
     T sum = static_cast<T>(0);
     for (int j = 0; j < D; j++) {
-      sum += label[i * D + j] * log(X[i * D + j]);
+      sum += label[i * D + j] * tolerable_value(log(X[i * D + j]));
     }
-    Y[i] = -tolerable_value(sum);
+    Y[i] = -sum;
   }
 }
 
@@ -85,6 +71,7 @@ template <typename T>
 __global__ void SoftCrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
                                                const T* label, const int N,
                                                const int D) {
+  // TOOD(qingqing): optimize for this kernel
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     for (int j = 0; j < D; ++j) {
@@ -115,14 +102,11 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
     int grid = (n + block - 1) / block;
     // TODO(qingqing) launch kernel on specified stream
     // base on ExecutionContext.
-    int label_rank = label->dims().size();
-    if (label_rank == 2) {
-      // soft cross entropy
+    if (ctx.Attr<int>("soft_label") == 1) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
       SoftCrossEntropyKernel<T><<<grid, block>>>(y_data, x_data, label_data, n,
                                                  d);
     } else {
-      // normal cross entropy
       auto* label_data = ctx.Input<Tensor>("Label")->data<int>();
       CrossEntropyKernel<T><<<grid, block>>>(y_data, x_data, label_data, n, d);
     }
@@ -153,14 +137,11 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
     grid = (n + block - 1) / block;
     // TODO(qingqing): launch kernel on specified stream
     // base on ExecutionContext.
-    int label_rank = label->dims().size();
-    if (label_rank == 2) {
-      // soft cross entropy
+    if (ctx.Attr<int>("soft_label") == 1) {
       auto* label_data = label->data<T>();
       SoftCrossEntropyGradientKernel<T><<<grid, block>>>(
           dx_data, dy_data, x_data, label_data, n, d);
     } else {
-      // normal cross entropy
       auto* label_data = label->data<int>();
       CrossEntropyGradientKernel<T><<<grid, block>>>(dx_data, dy_data, x_data,
                                                      label_data, n, d);

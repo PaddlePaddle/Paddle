@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -21,21 +22,15 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-inline T tolerable_value(const T x) {
-  static_assert(std::is_floating_point<T>::value,
-                "tolerable_value works only on float, "
-                "double and double double.");
-
+HOSTDEVICE T tolerable_value(const T x) {
+  PADDLE_ASSERT(std::is_floating_point<T>::value);
   const T kApproInf = 1e20;
-
   if (x == INFINITY) {
     return kApproInf;
   }
-
   if (x == -INFINITY) {
     return -kApproInf;
   }
-
   return x;
 }
 
@@ -55,22 +50,19 @@ class CrossEntropyOpKernel : public framework::OpKernel {
 
     int batch_size = x->dims()[0];
     int class_num = x->dims()[1];
-    int label_rank = ctx.Input<Tensor>("Label")->dims().size();
 
-    if (label_rank == 2) {
-      // soft cross entropy
+    if (ctx.Attr<int>("soft_label") == 1) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
       int index = 0;
       for (int i = 0; i < batch_size; ++i) {
         T sum = static_cast<T>(0);
         for (int j = 0; j < class_num; ++j) {
-          sum += label_data[index] * std::log(x_data[index]);
-          y_data[i] = -tolerable_value(sum);
+          sum += label_data[index] * tolerable_value(std::log(x_data[index]));
+          y_data[i] = -sum;
           index++;
         }
       }
     } else {
-      // normal cross entropy
       auto* label_data = ctx.Input<Tensor>("Label")->data<int>();
       for (int i = 0; i < batch_size; ++i) {
         int index = i * class_num + label_data[i];
@@ -98,11 +90,9 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel {
 
     int batch_size = x->dims()[0];
     int class_num = x->dims()[1];
-    int label_rank = ctx.Input<Tensor>("Label")->dims().size();
 
     // TODO(qingqing): make zero setting an common function.
-    if (label_rank == 2) {
-      // soft cross entropy
+    if (ctx.Attr<int>("soft_label") == 1) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
       int index = 0;
       for (int i = 0; i < batch_size; ++i) {
@@ -112,7 +102,6 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel {
         }
       }
     } else {
-      // normal cross entropy
       auto* label_data = label->data<int>();
       memset(dx_data, 0, sizeof(T) * batch_size * class_num);
       for (int i = 0; i < batch_size; ++i) {
