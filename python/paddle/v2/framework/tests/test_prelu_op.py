@@ -17,7 +17,7 @@ class PReluTest(OpTest):
         assert out_np is not self.inputs['X']
         self.outputs = {'Out': out_np}
 
-    def not_test_check_output(self):
+    def test_check_output(self):
         self.check_output()
 
     def not_test_check_grad(self):

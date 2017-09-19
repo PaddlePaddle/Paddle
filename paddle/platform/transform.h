@@ -31,13 +31,14 @@ namespace paddle {
 namespace platform {
 // Transform on host or device. It provides the same API in std library.
 template <typename InputIter, typename OutputIter, typename UnaryOperation>
-void Transform(const DeviceContext& context, InputIter first, InputIter last,
-               OutputIter result, UnaryOperation op) {
+inline static void Transform(const DeviceContext& context, InputIter first,
+                             InputIter last, OutputIter result,
+                             UnaryOperation op) {
   auto place = context.GetPlace();
   if (is_cpu_place(place)) {
     std::transform(first, last, result, op);
   } else {
-#ifdef __NVCC__
+#ifdef __CUDACC__
     auto& ctx = reinterpret_cast<const CUDADeviceContext&>(context);
     using namespace details;
     thrust::transform(thrust::cuda::par.on(ctx.stream()), DevPtrCast(first),
@@ -50,14 +51,14 @@ void Transform(const DeviceContext& context, InputIter first, InputIter last,
 
 template <typename InputIter1, typename InputIter2, typename OutputIter,
           typename BinaryOperation>
-void Transform(const DeviceContext& context, InputIter1 first1,
-               InputIter1 last1, InputIter2 first2, OutputIter result,
-               BinaryOperation op) {
+inline static void Transform(const DeviceContext& context, InputIter1 first1,
+                             InputIter1 last1, InputIter2 first2,
+                             OutputIter result, BinaryOperation op) {
   auto place = context.GetPlace();
   if (is_cpu_place(place)) {
     std::transform(first1, last1, first2, result, op);
   } else {
-#ifdef __NVCC__
+#ifdef __CUDACC__
     auto& ctx = reinterpret_cast<const CUDADeviceContext&>(context);
     using namespace details;
     thrust::transform(thrust::cuda::par.on(ctx.stream()), DevPtrCast(first1),
