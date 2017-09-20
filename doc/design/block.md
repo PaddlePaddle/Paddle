@@ -81,13 +81,13 @@ cond = var(false)
 ie = pd.ifelse_builder(output_num=1)
 with ie.true_block():
     x_ = x.as_ifelse_input()
-    z = operator.add(x, y)
+    z = operator.add(x_, y)
     ie.set_output(0, operator.softmax(z))
 
 with ie.false_block():
     z_ = z.as_ifelse_input()
     d = layer.fc(z_)
-    ie.set_output(0, operator.softmax(z))
+    ie.set_output(0, operator.softmax(z_))
 
 out = b(cond)
 ```
@@ -114,11 +114,12 @@ with rnn.stepnet():
   x_ = x.as_step_input()
   # mark the varialbe that used as a RNN state.
   h_ = h.as_step_memory(init=m)
-  fc_out = pd.matmul(W, x)
-  hidden_out = pd.matmul(U, h.pre(nstep=1))
+
+  fc_out = pd.matmul(W, x_)
+  hidden_out = pd.matmul(U, h_.pre(nstep=1))
   sum = pd.add_two(fc_out, hidden_out)
   act = pd.sigmoid(sum)
-  h.update(act)                    # update memory with act
+  h_.update(act)                    # update memory with act
   net.set_outputs(act, hidden_out) # two outputs
 
 o1, o2 = rnn()
