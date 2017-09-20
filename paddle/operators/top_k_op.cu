@@ -301,7 +301,6 @@ class TopkOpCUDAKernel : public framework::OpKernel {
 
     // NOTE: pass lds and dim same to input width.
     // NOTE: old matrix implementation of stride is different to eigen.
-    // TODO(typhoonzero): launch kernel on specified stream.
     // TODO(typhoonzero): refine this kernel.
     dim3 threads(256, 1);
     dim3 grid(input_height, 1);

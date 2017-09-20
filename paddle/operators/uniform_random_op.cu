@@ -12,7 +12,6 @@
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
-#include <thrust/transform.h>
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/platform/transform.h"
@@ -55,10 +54,11 @@ class GPUUniformRandomKernel : public framework::OpKernel {
     T max = static_cast<T>(context.Attr<float>("max"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    platform::Transform(context.device_context(), index_sequence_begin,
-                        index_sequence_begin + size,
-                        thrust::device_ptr<T>(data),
-                        GaussianGenerator<T>(mean, std, seed))
+
+    Transform<platform::GPUPlace> trans;
+    trans(context.device_context(), index_sequence_begin,
+          index_sequence_begin + size, thrust::device_ptr<T>(data),
+          UniformGenerator<T>(min, max, seed));
   }
 };
 
