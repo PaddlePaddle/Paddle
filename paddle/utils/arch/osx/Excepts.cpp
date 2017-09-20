@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include "paddle/utils/Excepts.h"
 
-#if defined(__APPLE__) || defined(__OSX__)
+#if (defined(__APPLE__) || defined(__OSX__)) && !defined(__arm__) && \
+    !defined(__aarch64__)
 
 int fegetexcept(void) {
   static fenv_t fenv;
