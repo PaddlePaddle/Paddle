@@ -27,7 +27,16 @@ class TestMultiplexOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["x1"], "Out")
+        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out')
+
+    def test_check_grad_ignore_x1(self):
+        self.check_grad(['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'))
+
+    def test_check_grad_ignore_x1_x2(self):
+        self.check_grad(['x3', 'x4'], 'Out', no_grad_set=set(['x1', 'x2']))
+
+    def test_check_grad_ignore_x3(self):
+        self.check_grad(['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'))
 
 
 if __name__ == '__main__':

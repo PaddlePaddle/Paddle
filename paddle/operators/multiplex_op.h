@@ -26,7 +26,7 @@ class MultiplexCPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     auto index = ins[0]->data<T>();
@@ -48,10 +48,12 @@ class MultiplexGradCPUKernel : public framework::OpKernel {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto d_ins =
         ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
-    for (auto d_in : d_ins) {
-      d_in->mutable_data<T>(ctx.GetPlace());
-      auto dims = d_in->dims();
-      memset(d_in->data<T>(), 0, framework::product(dims) * sizeof(T));
+    for (size_t i = 1; i < d_ins.size(); i++) {
+      if (d_ins[i]) {
+        d_ins[i]->mutable_data<T>(ctx.GetPlace());
+        auto dims = d_ins[i]->dims();
+        memset(d_ins[i]->data<T>(), 0, framework::product(dims) * sizeof(T));
+      }
     }
 
     auto index = ins[0]->data<T>();
@@ -59,8 +61,10 @@ class MultiplexGradCPUKernel : public framework::OpKernel {
     auto cols = ins[1]->dims()[1];
     for (auto i = 0; i < rows; i++) {
       int k = (int)index[i] + 1;
-      memcpy(d_ins[k]->data<T>() + i * cols, d_out->data<T>() + i * cols,
-             cols * sizeof(T));
+      if (d_ins[k]) {
+        memcpy(d_ins[k]->data<T>() + i * cols, d_out->data<T>() + i * cols,
+               cols * sizeof(T));
+      }
     }
   }
 };

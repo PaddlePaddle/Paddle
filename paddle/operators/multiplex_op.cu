@@ -18,13 +18,14 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 class MultiplexGPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto ins = ctx.MultiInput<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     auto rows = ins[1]->dims()[0];
@@ -48,10 +49,13 @@ class MultiplexGradGPUKernel : public framework::OpKernel {
     auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<Tensor>("X");
     auto d_ins = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
-    for (auto d_in : d_ins) {
-      d_in->mutable_data<T>(ctx.GetPlace());
-      auto dims = d_in->dims();
-      cudaMemset(d_in->data<T>(), 0, framework::product(dims) * sizeof(T));
+    for (size_t i = 1; i < d_ins.size(); ++i) {
+      if (d_ins[i]) {
+        d_ins[i]->mutable_data<T>(ctx.GetPlace());
+        auto dims = d_ins[i]->dims();
+        cudaMemset(d_ins[i]->data<T>(), 0,
+                   framework::product(dims) * sizeof(T));
+      }
     }
 
     auto rows = ins[1]->dims()[0];
@@ -62,8 +66,10 @@ class MultiplexGradGPUKernel : public framework::OpKernel {
     auto index = index_t_cpu.data<T>();
     for (auto i = 0; i < rows; i++) {
       int k = (int)index[i] + 1;
-      cudaMemcpy(d_ins[k]->data<T>() + i * cols, d_out->data<T>() + i * cols,
-                 cols * sizeof(T), cudaMemcpyDeviceToDevice);
+      if (d_ins[k]) {
+        cudaMemcpy(d_ins[k]->data<T>() + i * cols, d_out->data<T>() + i * cols,
+                   cols * sizeof(T), cudaMemcpyDeviceToDevice);
+      }
     }
   }
 };

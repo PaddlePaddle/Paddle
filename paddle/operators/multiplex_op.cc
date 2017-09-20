@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 class MultiplexOp : public framework::OperatorWithKernel {
  public:
@@ -29,8 +29,12 @@ class MultiplexOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
+                   "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) shouldn't be null.");
     auto ins = ctx.MultiInput<Tensor>("X");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *out = ctx.Output<LoDTensor>("Out");
     auto num_ins = ins.size();
     PADDLE_ENFORCE(num_ins > 2,
                    "multiplex operator should have more than 2 inputs.");
@@ -53,7 +57,7 @@ class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
   MultiplexOpMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input tensor of multiplex operator.").AsDuplicable();
+    AddInput("X", "The input tensors of multiplex operator.").AsDuplicable();
     AddOutput("Out", "The output tensor of multiplex operator.");
     AddComment(R"DOC(Multiplex operator
 
@@ -69,7 +73,7 @@ For each i-th row of output:
 
 y[i][j] = x_{k}[i][j], j = 0,1, ... , (x_{1}.width - 1)
 
-where y is the output tensor. `x_{k}` is the k-th input layer
+where y is the output tensor. `x_{k}` is the k-th input tensor
 and `k = x{0}[i] + 1`.
 
 )DOC");
@@ -86,13 +90,19 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
+                   "Input(X) should not be null");
+    PADDLE_ENFORCE(!ctx.MultiOutputVar(framework::GradVarName("X")).empty(),
+                   "Output(X@Grad) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) shouldn't be null.");
-    auto d_ins = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+    auto d_ins = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
     auto ins = ctx.MultiInput<Tensor>("X");
-    for (size_t i = 0; i < ins.size(); i++) {
-      auto dims = ins[i]->dims();
-      d_ins[i]->Resize(dims);
+    // don;t compute gradient for index
+    for (size_t i = 1; i < ins.size(); i++) {
+      if (d_ins[i]) {
+        d_ins[i]->Resize(ins[i]->dims());
+      }
     }
   }
 };
