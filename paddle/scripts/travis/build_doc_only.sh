@@ -4,19 +4,6 @@ set -e
 rm CMakeLists.txt
 mv CMakeLists.doc.txt CMakeLists.txt
 
-rm requirements.txt
-cat >> $TRAVIS_BUILD_DIR/requirements.txt <<EOF
-Sphinx==1.5.6
-sphinx_rtd_theme==0.1.9
-recommonmark
-numpy>=1.12
-protobuf==3.1
-nltk>=3.2.2
-rarfile
-scipy>=0.19.0
-Pillow
-EOF
-
 # Clean up before new builds.
 rm -rf $TRAVIS_BUILD_DIR/build
 rm -rf $TRAVIS_BUILD_DIR/build_docs
