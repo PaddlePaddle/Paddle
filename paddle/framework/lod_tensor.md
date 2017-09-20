@@ -10,7 +10,7 @@ Another example is that each mini-batch contains 32 sentences, where each word i
 
 ## LoD as a Solution
 
-### Mini-Batch of variable-length sentenses
+### Mini-Batch of variable-length sentences
 
 Let's imagine a mini-batch of 3 variable lengths sentences, containing 3, 1, and 2 words respectively.  We can represent it by a (3+1+2)xD tensor plus some index information:
 
@@ -51,17 +51,17 @@ The many 1's on the second level seem duplicated.  For this particular case of 2
 In summary, as long as that the essential elements (words  or images) have the same size, we can represent mini-batches by a LoD Tensor:
 
 - The underlying tensor has size LxD1xD2x..., where D1xD2... is the size of the essential elements, and
-- the first dimension size L has an additon property -- a LoD index as a nested vector:
+- The first dimension size L has an additonal property -- a LoD index as a nested vector:
 
   ```c++
   typedef std::vector<std::<vector>> LoD;
   ```
 
-- The LoD index can is not necessary when there are only two levels and all elements of the second level have length 1.
+- The LoD index is not necessary when there are only two levels and all elements of the second level have length 1.
 
 ## Slicing of LoD Tensor
 
-Consider that we have a network with three levels of RNN: the top level one handles articles, the second level one handles sentences, and the basic level one handles words.  This network requires that mini-batches represented by 4 level LoD Tensor, for example,
+Consider that we have a network with three levels of RNN: the top level one handles articles, the second level one handles sentences, and the basic level one handles words.  This network requires that mini-batches represented by 3 level LoD Tensor, for example,
 
 ```
          3
@@ -90,8 +90,9 @@ and the <1,2>-slice of above example is
 Let's go on slicing this slice.  Its <1,1>-slice is
 
 ```
-3
-|||
+1
+1
+|
 ```
 
 ### The Slicing Algorithm
