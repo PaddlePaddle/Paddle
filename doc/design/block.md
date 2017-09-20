@@ -78,7 +78,7 @@ x = var([10, 20])
 y = var([1])
 z = var(10, 20)
 cond = var(false)
-ie = pd.create_ifelseop(output_num=1)
+ie = pd.ifelse_builder(output_num=1)
 with ie.true_block():
     x_ = x.as_ifelse_input()
     z = operator.add(x, y)
@@ -96,6 +96,7 @@ In both examples, the left branch computes `softmax(x+y)` and the right branch c
 
 A difference is that variables in the C++ program contain scalar values, whereas those in the PaddlePaddle programs are mini-batches of instances.  The `ie.input(true, 0)` invocation returns instances in the 0-th input, `x`, that corresponds to true values in `cond` as the local variable `x`, where `ie.input(false, 0)` returns instances corresponding to false values.
 
+
 ### Blocks with `for` and `RNNOp`
 
 The following RNN model from the [RNN design doc](./rnn.md)
@@ -107,7 +108,7 @@ m = Var(0)
 W = Var()
 U = Var()
 
-rnn = create_rnn()
+rnn = rnn_builder()
 with rnn.stepnet():
   # mark the variables that need to be segmented for time steps.
   x_ = x.as_step_input()
