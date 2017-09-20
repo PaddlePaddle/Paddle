@@ -66,7 +66,7 @@ endif()
 
 if(ANDROID OR IOS)
     if(ANDROID)
-        if(AND ${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
+        if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
             message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
         elseif(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
             # TODO: support glog for Android api 16 ~ 19 in the future
