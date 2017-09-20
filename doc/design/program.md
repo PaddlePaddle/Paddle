@@ -21,8 +21,9 @@ message ProgramDesc {
 }
 
 message BlockDesc {
-  repeated VarDesc vars = 1;
-  repeated OpDesc ops = 2;
+  required int32 parent = 1;
+  repeated VarDesc vars = 2;
+  repeated OpDesc ops = 3;
 }
 
 message OpDesc {
@@ -46,9 +47,10 @@ A nested block is often an attribute of an operator, most likely, an IfElseOp or
 With this design, the InferShape function should take the following parameters:
 
 ```c++
-void InferShape(const ProgramDesc* program,
-                int current_block,
-                int current_operator) {
+void InferShape(int current_block,
+                int current_operator,
+                ProgramDesc* program // might change VarDesc values.
+                ) {
   ...
 }
 ```
