@@ -27,7 +27,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
                                std::map<std::string, VarDesc*>& var_descs)
       : op_(std::move(op)), var_descs_(var_descs) {}
 
-  const DDim get_input_dim(const std::string& name) const {
+  DDim get_input_dim(const std::string& name) const {
     return get_dim(op_->Input(name));
   }
 
@@ -35,7 +35,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
     set_dim(op_->Input(name), dim);
   }
 
-  const DDim get_output_dim(const std::string& name) const {
+  DDim get_output_dim(const std::string& name) const {
     return get_dim(op_->Output(name));
   }
 
@@ -43,10 +43,10 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
     set_dim(op_->Output(name), dim);
   }
 
-  const AttrReader Attrs() const { return AttrReader(op_->Attrs()); }
+  AttrReader attrs() const { return AttrReader(op_->Attrs()); }
 
  private:
-  const DDim get_dim(const std::string& name) const {
+  DDim get_dim(const std::string& name) const {
     VarDesc* desc = var_descs_.at(name);
     std::vector<int64_t> dim;
     int length = desc->lod_tensor().dims().size();
@@ -74,7 +74,7 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   RunTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
-  const DDim get_input_dim(const std::string& name) const {
+  DDim get_input_dim(const std::string& name) const {
     return get_dim(op_.Input(name));
   }
 
@@ -82,7 +82,7 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
     set_dim(op_.Input(name), dim);
   }
 
-  const DDim get_output_dim(const std::string& name) const {
+  DDim get_output_dim(const std::string& name) const {
     return get_dim(op_.Output(name));
   }
 
@@ -90,10 +90,10 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
     set_dim(op_.Output(name), dim);
   }
 
-  const AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
+  AttrReader attrs() const { return AttrReader(op_.Attrs()); }
 
  private:
-  const DDim get_dim(const std::string& name) const {
+  DDim get_dim(const std::string& name) const {
     Tensor* t = scope_.FindVar(op_.Input(name))->GetMutable<Tensor>();
     return t->dims();
   }

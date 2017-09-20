@@ -80,7 +80,7 @@ Use to initialize tensor with gaussian random generator.
                  "0 means use system wide seed")
         .SetDefault(0);
     SetShapeInferenceFn([](const framework::InferShapeContextBase& ctx) {
-      auto dims = ctx.Attrs().Get<std::vector<int>>("dims");
+      auto dims = ctx.attrs().Get<std::vector<int>>("dims");
       std::vector<int64_t> temp;
       temp.reserve(dims.size());
       for (auto& dim : dims) {

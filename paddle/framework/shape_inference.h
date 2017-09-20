@@ -27,18 +27,16 @@ using ShapeInferenceFn =
 class InferShapeContextBase {
  public:
   virtual ~InferShapeContextBase() {}
-  virtual const framework::DDim get_input_dim(
-      const std::string& name) const = 0;
+  virtual framework::DDim get_input_dim(const std::string& name) const = 0;
   virtual void set_input_dim(const std::string& name,
                              const framework::DDim& dim) const = 0;
-  virtual const framework::DDim get_output_dim(
-      const std::string& name) const = 0;
+  virtual framework::DDim get_output_dim(const std::string& name) const = 0;
   virtual void set_output_dim(const std::string& name,
                               const DDim& dim) const = 0;
-  virtual const AttrReader Attrs() const = 0;
+  virtual AttrReader attrs() const = 0;
 
  protected:
-  virtual const framework::DDim get_dim(const std::string& name) const = 0;
+  virtual framework::DDim get_dim(const std::string& name) const = 0;
   virtual void set_dim(const std::string& name,
                        const framework::DDim& dim) const = 0;
 };
