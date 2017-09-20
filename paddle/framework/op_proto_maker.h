@@ -25,7 +25,7 @@ class OpProtoAndCheckerMaker {
   OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : proto_(proto), op_checker_(op_checker) {}
 
-  ~OpProtoAndCheckerMaker() {
+  virtual ~OpProtoAndCheckerMaker() {
     PADDLE_ENFORCE(validated_, "should call Validate after build");
   }
 
