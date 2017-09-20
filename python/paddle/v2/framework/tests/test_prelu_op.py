@@ -20,7 +20,7 @@ class PReluTest(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def not_test_check_grad(self):
+    def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
 
