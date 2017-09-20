@@ -4,7 +4,7 @@ PaddlePaddle's RNN doesn't require that all instances have the same length.  To 
 
 ## Challenge of Variable-length Inputs
 
-People usually represent a mini-batch by a Tensor.  For example, a mini-batch of 10 images, each of size 32x32, is a 10x32x32 Tensor.  So a transformation, T, of all images can be a matrix multiplication of the 32x32xO-dimensional tensor T and the 10x32x32 Tensor.
+People usually represent a mini-batch by a Tensor. For example, a mini-batch of 10 images, each of size 32x32, is a 10x32x32 Tensor.  So a transformation, T, of all images can be a matrix multiplication of the 10xOx32-dimensional tensor T and the 10x32x32 Tensor.
 
 Another example is that each mini-batch contains 32 sentences, where each word is a D-dimensional one-hot vector.  If all sentences have the same length L, we can represent this mini-batch by a 32xLxD tensor.  However, in most cases, sentences have variable lengths, and we will need an index data structure to record these variable lengths.
 
@@ -54,7 +54,7 @@ In summary, as long as that the essential elements (words  or images) have the s
 - The first dimension size L has an additonal property -- a LoD index as a nested vector:
 
   ```c++
-  typedef std::vector<std::vector> > LoD;
+  typedef std::vector<std::<vector>> LoD;
   ```
 
 - The LoD index is not necessary when there are only two levels and all elements of the second level have length 1.
@@ -100,7 +100,7 @@ Let's go on slicing this slice.  Its <1,1>-slice is
 The algorithm, with over-simplified data structure, is defined as
 
 ```c++
-typedef vector<vector<int> > LoD;
+typedef std::vector<std::vector<int>> LoD;
 
 struct LoDTensor {
   LoD lod_;
