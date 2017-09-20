@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #pragma once
+#include "glog/logging.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {

@@ -64,7 +64,7 @@ class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(Lstm-Unit Operator
 
 Equation: 
-  i, j, f, o = split(X)
+  i, f, o, j = split(X)
   C = C_prev * sigm(f + forget_bias) + sigm(i) * tanh(j)
   H = C * sigm(o)
    
@@ -99,3 +99,5 @@ REGISTER_OP(lstm_unit, ops::LstmUnitOp, ops::LstmUnitOpMaker<float>,
             lstm_unit_grad, ops::LstmUnitGradOp);
 REGISTER_OP_CPU_KERNEL(lstm_unit,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    lstm_unit_grad, ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>);
