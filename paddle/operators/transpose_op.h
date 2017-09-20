@@ -41,30 +41,30 @@ template <typename Place, typename T>
 class TransposeKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<framework::Tensor>("Input");
-    auto* output = context.Output<framework::Tensor>("Output");
-    output->mutable_data<T>(context.GetPlace());
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(context.GetPlace());
 
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
     switch (ndims) {
       case 1:
-        EigenTranspose<Place, T, 1>(context, *input, *output, axis);
+        EigenTranspose<Place, T, 1>(context, *x, *out, axis);
         break;
       case 2:
-        EigenTranspose<Place, T, 2>(context, *input, *output, axis);
+        EigenTranspose<Place, T, 2>(context, *x, *out, axis);
         break;
       case 3:
-        EigenTranspose<Place, T, 3>(context, *input, *output, axis);
+        EigenTranspose<Place, T, 3>(context, *x, *out, axis);
         break;
       case 4:
-        EigenTranspose<Place, T, 4>(context, *input, *output, axis);
+        EigenTranspose<Place, T, 4>(context, *x, *out, axis);
         break;
       case 5:
-        EigenTranspose<Place, T, 5>(context, *input, *output, axis);
+        EigenTranspose<Place, T, 5>(context, *x, *out, axis);
         break;
       case 6:
-        EigenTranspose<Place, T, 6>(context, *input, *output, axis);
+        EigenTranspose<Place, T, 6>(context, *x, *out, axis);
         break;
       default:
         PADDLE_THROW("Tensors with rank at most 6 are supported");
@@ -76,12 +76,12 @@ template <typename Place, typename T>
 class TransposeGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output_grad =
-        context.Input<framework::Tensor>(framework::GradVarName("Output"));
-    auto* input_grad =
-        context.Output<framework::Tensor>(framework::GradVarName("Input"));
-    if (input_grad) {
-      input_grad->mutable_data<T>(context.GetPlace());
+    auto* out_grad =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad =
+        context.Output<framework::Tensor>(framework::GradVarName("X"));
+    if (x_grad) {
+      x_grad->mutable_data<T>(context.GetPlace());
 
       std::vector<int> axis = context.Attr<std::vector<int>>("axis");
       std::vector<int> reversed_axis(axis);
@@ -94,27 +94,27 @@ class TransposeGradKernel : public framework::OpKernel {
 
       switch (ndims) {
         case 1:
-          EigenTranspose<Place, T, 1>(context, *output_grad, *input_grad,
+          EigenTranspose<Place, T, 1>(context, *out_grad, *x_grad,
                                       reversed_axis);
           break;
         case 2:
-          EigenTranspose<Place, T, 2>(context, *output_grad, *input_grad,
+          EigenTranspose<Place, T, 2>(context, *out_grad, *x_grad,
                                       reversed_axis);
           break;
         case 3:
-          EigenTranspose<Place, T, 3>(context, *output_grad, *input_grad,
+          EigenTranspose<Place, T, 3>(context, *out_grad, *x_grad,
                                       reversed_axis);
           break;
         case 4:
-          EigenTranspose<Place, T, 4>(context, *output_grad, *input_grad,
+          EigenTranspose<Place, T, 4>(context, *out_grad, *x_grad,
                                       reversed_axis);
           break;
         case 5:
-          EigenTranspose<Place, T, 5>(context, *output_grad, *input_grad,
+          EigenTranspose<Place, T, 5>(context, *out_grad, *x_grad,
                                       reversed_axis);
           break;
         case 6:
-          EigenTranspose<Place, T, 6>(context, *output_grad, *input_grad,
+          EigenTranspose<Place, T, 6>(context, *out_grad, *x_grad,
                                       reversed_axis);
           break;
         default:

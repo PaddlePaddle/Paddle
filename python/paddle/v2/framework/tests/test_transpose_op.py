@@ -7,15 +7,15 @@ class TestTransposeOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = "transpose"
-        self.inputs = {'Input': np.random.random(self.shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
         self.attrs = {'axis': list(self.axis)}
-        self.outputs = {'Output': self.inputs['Input'].transpose(self.axis)}
+        self.outputs = {'Out': self.inputs['X'].transpose(self.axis)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Output')
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.shape = (3, 4)
