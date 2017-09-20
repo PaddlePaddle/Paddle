@@ -67,16 +67,14 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
-  // clang-format off
   /*! \brief  Return cublas handle in the device context. */
-  cublasHandle_t    cublas_handle();
+  cublasHandle_t cublas_handle() const;
 
   /*! \brief  Return cudnn  handle in the device context. */
-  cudnnHandle_t     cudnn_handle();
+  cudnnHandle_t cudnn_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
-  cudaStream_t      stream();
-  // clang-format on
+  cudaStream_t stream() const;
 
  private:
   GPUPlace place_;
@@ -84,11 +82,9 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
-  // clang-format off
-  cudaStream_t       stream_{nullptr};
-  cudnnHandle_t      cudnn_handle_{nullptr};
-  cublasHandle_t     cublas_handle_{nullptr};
-  // clang-format on
+  cudaStream_t stream_;
+  cudnnHandle_t cudnn_handle_;
+  cublasHandle_t cublas_handle_;
 };
 
 #endif

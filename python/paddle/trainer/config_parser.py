@@ -2286,8 +2286,15 @@ class NormLayer(LayerBase):
 
 @config_layer('pool')
 class PoolLayer(LayerBase):
+    layer_type = 'pool'
+
     def __init__(self, name, inputs, ceil_mode=True, **xargs):
-        super(PoolLayer, self).__init__(name, 'pool', 0, inputs=inputs, **xargs)
+        use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
+        if self.layer_type == "mkldnn_pool":
+            config_assert(use_mkldnn, "mkldnn_pool only support MKLDNN")
+        self.layer_type = 'mkldnn_pool' if use_mkldnn else 'pool'
+        super(PoolLayer, self).__init__(
+            name, self.layer_type, 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
@@ -2295,6 +2302,11 @@ class PoolLayer(LayerBase):
                        pool_conf, ceil_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
+
+
+@config_layer('mkldnn_pool')
+class MKLDNNPoolLayer(PoolLayer):
+    layer_type = 'mkldnn_pool'
 
 
 @config_layer('pool3d')
