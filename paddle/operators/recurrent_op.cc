@@ -80,7 +80,6 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
   PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
