@@ -24,25 +24,20 @@ template <typename Place, typename T>
 class RankLossKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* p_t = ctx.Input<framework::Tensor>("P");
-    auto* oi_t = ctx.Input<framework::Tensor>("Oi");
-    auto* oj_t = ctx.Input<framework::Tensor>("Oj");
-    out->mutable_data<T>(ctx.GetPlace());
+    auto* out_t = ctx.Output<framework::LoDTensor>("Out");
+    auto* label_t = ctx.Input<framework::Tensor>("Label");
+    auto* left_t = ctx.Input<framework::Tensor>("Left");
+    auto* right_t = ctx.Input<framework::Tensor>("Right");
+    out_t->mutable_data<T>(ctx.GetPlace());
+
+    auto out = framework::EigenVector<T>::Flatten(*out_t);
+    auto label = framework::EigenVector<T>::Flatten(*label_t);
+    auto left = framework::EigenVector<T>::Flatten(*left_t);
+    auto right = framework::EigenVector<T>::Flatten(*right_t);
 
     auto& dev = ctx.GetEigenDevice<Place>();
-    auto out_eig = framework::EigenVector<T>::Flatten(*out);
-    auto p_eig = framework::EigenVector<T>::Flatten(*p_t);
-    auto oi_eig = framework::EigenVector<T>::Flatten(*oi_t);
-    auto oj_eig = framework::EigenVector<T>::Flatten(*oj_t);
-
-    framework::Tensor o_t;
-    o_t.Resize(oi_t->dims());
-    o_t.mutable_data<T>(ctx.GetPlace());
-    auto o_eig = framework::EigenVector<T>::Flatten(o_t);
-    o_eig.device(dev) = oi_eig - oj_eig;
-
-    out_eig.device(dev) = (1. + (o_eig).exp()).log() - p_eig * o_eig;
+    out.device(dev) =
+        (1. + (left - right).exp()).log() - label * (left - right);
   }
 };
 
@@ -50,40 +45,35 @@ template <typename Place, typename T>
 class RankLossGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* d_oi = ctx.Output<framework::Tensor>(framework::GradVarName("Oi"));
-    auto* d_oj = ctx.Output<framework::Tensor>(framework::GradVarName("Oj"));
-    auto* d_p = ctx.Output<framework::Tensor>(framework::GradVarName("P"));
+    auto* d_left_t =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Left"));
+    auto* d_right_t =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Right"));
 
-    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* p_t = ctx.Input<framework::Tensor>("P");
-    auto* oi_t = ctx.Input<framework::Tensor>("Oi");
-    auto* oj_t = ctx.Input<framework::Tensor>("Oj");
-
-    d_oi->mutable_data<T>(ctx.GetPlace());
-    d_oj->mutable_data<T>(ctx.GetPlace());
-    d_p->mutable_data<T>(ctx.GetPlace());
+    auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* label_t = ctx.Input<framework::Tensor>("Label");
+    auto* left_t = ctx.Input<framework::Tensor>("Left");
+    auto* right_t = ctx.Input<framework::Tensor>("Right");
 
     auto& dev = ctx.GetEigenDevice<Place>();
-    auto d_out_eig = framework::EigenVector<T>::Flatten(*d_out);
-    auto p_eig = framework::EigenVector<T>::Flatten(*p_t);
-    auto oi_eig = framework::EigenVector<T>::Flatten(*oi_t);
-    auto oj_eig = framework::EigenVector<T>::Flatten(*oj_t);
+    auto d_out = framework::EigenVector<T>::Flatten(*d_out_t);
+    auto label = framework::EigenVector<T>::Flatten(*label_t);
+    auto left = framework::EigenVector<T>::Flatten(*left_t);
+    auto right = framework::EigenVector<T>::Flatten(*right_t);
 
-    auto d_oi_eig = framework::EigenVector<T>::Flatten(*d_oi);
-    auto d_oj_eig = framework::EigenVector<T>::Flatten(*d_oj);
-
-    framework::Tensor o_t;
-    o_t.Resize(oi_t->dims());
-    o_t.mutable_data<T>(ctx.GetPlace());
-    auto o_eig = framework::EigenVector<T>::Flatten(o_t);
-    o_eig.device(dev) = oi_eig - oj_eig;
-
-    // dOi & dOj
-    d_oi_eig.device(dev) =
-        d_out_eig * (o_eig.exp() / (1. + o_eig.exp()) - p_eig);
-    d_oj_eig.device(dev) = -d_oi_eig;
-    // dP
-    framework::EigenVector<T>::Flatten(*d_p).device(dev) = -o_eig;
+    // compute d_left
+    if (d_left_t) {
+      d_left_t->mutable_data<T>(ctx.GetPlace());
+      auto d_left = framework::EigenVector<T>::Flatten(*d_left_t);
+      d_left.device(dev) = d_out * (1. / (1. + (right - left).exp()) - label);
+    }
+    // compute d_right
+    if (d_right_t) {
+      d_right_t->mutable_data<T>(ctx.GetPlace());
+      auto d_right = framework::EigenVector<T>::Flatten(*d_right_t);
+      d_right.device(dev) =
+          -d_out * (1.0 / (1. + (right - left).exp()) - label);
+    }
   }
 };
 }  // namespace operators
