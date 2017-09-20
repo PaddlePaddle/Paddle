@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "MKLDNNTester.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/activations/MKLDNNActivation.h"
 #include "paddle/math/MathUtils.h"
 
 using namespace paddle;  // NOLINT
@@ -162,7 +163,6 @@ void testPoolLayer(const testPoolDesc& pm) {
        0});
   LayerInputConfig* input = cfg.layerConfig.add_inputs();
   PoolConfig* pool = input->mutable_pool_conf();
-  // pool->set_pool_type(poolType);
   pool->set_channels(pm.ch);
   pool->set_img_size(pm.iw);
   pool->set_img_size_y(pm.ih);
@@ -191,7 +191,7 @@ void testPoolLayer(const testPoolDesc& pm) {
   }
 }
 
-TEST(MkldnnLayer, PoolLayer) {
+TEST(MKLDNNLayer, PoolLayer) {
   /* bs, ch, ih, iw, oh, ow, fh, fw, ph, pw, sh, sw*/
   testPoolLayer({2, 1, 4, 4, 2, 2, 3, 3, 0, 0, 2, 2});
   testPoolLayer({10, 8, 16, 16, 8, 8, 2, 2, 0, 0, 2, 2});
@@ -201,6 +201,49 @@ TEST(MkldnnLayer, PoolLayer) {
   testPoolLayer({4, 16, 7, 7, 1, 1, 7, 7, 0, 0, 1, 1});
   testPoolLayer({4, 2, 5, 5, 3, 3, 5, 5, 1, 1, 1, 1});
   testPoolLayer({2, 8, 56, 56, 29, 29, 3, 3, 1, 1, 2, 2});
+}
+
+struct testActDesc {
+  int bs, ch;
+  int ih, iw;
+};
+
+static void getAddtoConfig(TestConfig& cfg, const testActDesc& pm) {
+  cfg.biasSize = 0;
+  cfg.layerConfig.set_type("addto");
+  cfg.layerConfig.set_size(pm.ch * pm.ih * pm.iw);
+  cfg.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       /* size of input layer= */ size_t(pm.ch * pm.ih * pm.iw),
+       0});
+  cfg.layerConfig.add_inputs();
+}
+
+void testActivation(std::string& type, const testActDesc& pm) {
+  const std::string compareTypes[] = {type, type.erase(0, 7)};
+  TestConfig cfg;
+  getAddtoConfig(cfg, pm);
+
+  TestConfig ref = cfg;
+  cfg.layerConfig.set_active_type(compareTypes[0]);
+  ref.layerConfig.set_active_type(compareTypes[1]);
+  MKLDNNTester tester;
+  for (auto bs : {pm.bs, 1}) {
+    tester.run(cfg, ref, bs, pm.ih, pm.iw);
+  }
+}
+
+TEST(MKLDNNActivation, Activations) {
+  auto types = MKLDNNActivation::getAllRegisteredTypes();
+  // TODO(TJ): mkldnn_softmax not implemented, paddle do not have elu activation
+  std::set<string> excluded{"mkldnn_softmax", "mkldnn_elu"};
+  for (auto type : types) {
+    if (excluded.count(type)) {
+      continue;
+    }
+    testActivation(type, {16, 64, 32, 32});
+  }
 }
 
 // TODO(TJ): add branch test
