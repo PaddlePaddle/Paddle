@@ -27,24 +27,22 @@ class ExpandOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "X must be initialized.");
     std::vector<int> expand_times = Attr<std::vector<int>>("expandTimes");
-    auto* x = ctx.Input<Tensor>("X");
-    auto x_dims = x->dims();
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
 
-    PADDLE_ENFORCE_EQ(static_cast<size_t>(framework::arity(x_dims)),
-                      expand_times.size(),
-                      "Number of attribute (expandTimes) value must be equal "
-                      "to rank of X.");
-    PADDLE_ENFORCE_LE(framework::arity(x_dims), 6,
-                      "Rank of X must not be greater than 6.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), expand_times.size(),
+                      "The number of expandTimes's value must be equal "
+                      "to the rank of X.");
+    PADDLE_ENFORCE_LE(x_dims.size(), 6,
+                      "The rank of X must not be greater than 6.");
 
     std::vector<int64_t> out_shape(x_dims.size());
     for (size_t i = 0; i < expand_times.size(); ++i) {
       PADDLE_ENFORCE_GE(expand_times[i], 1,
-                        "Each value of expand times should not be "
+                        "Each value of expandTimes should not be "
                         "less than 1.");
       out_shape[i] = x_dims[i] * expand_times[i];
     }
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->Resize(framework::make_ddim(out_shape));
   }
 };
@@ -53,15 +51,21 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ExpandOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input tensor.");
-    AddOutput("Out", "Expanded result by tiling input X.");
+    AddInput("X",
+             "The input tensor of expand op."
+             "The rank of X should be between in 1 and 6.");
+    AddOutput("Out",
+              "Output tensor of expand op."
+              "The rank of Out is same as X except that each dimension size "
+              "of Out equals to corresponding dimension size of X multiplying "
+              "corresponding value of expandTimes.");
     AddAttr<std::vector<int>>("expandTimes",
-                              "Expand times for each dimension.");
+                              "Expand times number for each dimension.");
     AddComment(R"DOC(
 Expand operator tiles the input by given times number. You should set times
-number for each dimension by providing attribute 'expandTimes'. Rank of input
-tensor should be in [1, 6]. Please draw an attention that size of
-'expandTimes' must be same with rank of input tensor.
+number for each dimension by providing attribute 'expandTimes'. The rank of X
+should be between in 1 and 6. Please notice that size of 'expandTimes' must be
+same with X's rank.
 )DOC");
   }
 };
@@ -77,14 +81,16 @@ class ExpandGradOp : public framework::OperatorWithKernel {
                             "Input(Out@GRAD) should not be null.");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     std::vector<int> expand_times = Attr<std::vector<int>>("expandTimes");
-    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto* x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto out_dims =
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->dims();
+    auto* x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
     for (size_t i = 0; i < expand_times.size(); ++i) {
       PADDLE_ENFORCE_EQ(x_dims[i] * expand_times[i], out_dims[i],
-                        "Size of each dimension of Input(Out@GRAD) should be "
-                        "equal to multiplication of crroresponding sizes of "
-                        "Input(X) and expandTimes.");
+                        "Each dimension size of Input(Out@GRAD) should be "
+                        "equal to multiplication of crroresponding dimension "
+                        "size of Input(X) and expandTimes value.");
     }
 
     if (x_grad) x_grad->Resize(x_dims);

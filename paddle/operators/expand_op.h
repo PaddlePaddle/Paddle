@@ -38,14 +38,13 @@
     ExpandBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
     break;                                                         \
   }
-#define EXPAND_TEMPLATE_GRAD(z, n, data) \
+#define EXPAND_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), EXPAND_GRAD_CASE(n), )
-#define REP_EXPAND_GRAD_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_TEMPLATE_GRAD, ~)
+#define REP_EXPAND_GRAD_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_GRAD_TEMPLATE, ~)
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -57,20 +56,21 @@ template <typename Place, typename T>
 class ExpandKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto rank = framework::arity(context.Input<Tensor>("X")->dims());
+    auto rank = context.Input<framework::Tensor>("X")->dims().size();
     switch (rank) {
       REP_EXPAND_TEMPLATE(6)
       default:
-        PADDLE_ENFORCE(false, "Only support tensor whose rank in [1, 6].");
+        PADDLE_ENFORCE(false,
+                       "Only support tensor with rank being between 1 and 6.");
     };
   }
 
  protected:
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
-    auto* in0 = context.Input<Tensor>("X");
-    auto expand_times = context.Attr<std::vector<int>>("expandTimes");
-    auto* out0 = context.Output<Tensor>("Out");
+    auto* in0 = context.Input<framework::Tensor>("X");
+    auto& expand_times = context.Attr<std::vector<int>>("expandTimes");
+    auto* out0 = context.Output<framework::LoDTensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     auto x_dims = in0->dims();
     for (size_t i = 0; i < expand_times.size(); ++i) {
@@ -88,8 +88,8 @@ template <typename Place, typename T>
 class ExpandGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto expand_times = context.Attr<std::vector<int>>("expandTimes");
+    auto* in0 = context.Input<framework::Tensor>("X");
+    auto& expand_times = context.Attr<std::vector<int>>("expandTimes");
     auto x_dims = in0->dims();
     std::vector<int> reshape_dims_vec;
     std::vector<int> reduce_dims_vec;
@@ -111,8 +111,10 @@ class ExpandGradKernel : public framework::OpKernel {
     int dims = reshape_dims_vec.size() * 6 + reduce_dims_vec.size() - 7;
     // no need reduce, just copy
     if (reduce_dims_vec.size() == 0) {
-      auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+      auto* in0 =
+          context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+      auto* out0 =
+          context.Output<framework::LoDTensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
       if (platform::is_cpu_place(context.GetPlace())) {
         out0->CopyFrom<T>(*in0, platform::CPUPlace());
@@ -123,7 +125,8 @@ class ExpandGradKernel : public framework::OpKernel {
       switch (dims) {
         REP_EXPAND_GRAD_TEMPLATE(72)
         default:
-          PADDLE_ENFORCE(false, "Only support tensor whose rank in [1, 6].");
+          PADDLE_ENFORCE(
+              false, "Only support tensor with rank being between 1 and 6.");
       };
     }
   }
@@ -136,14 +139,16 @@ class ExpandGradKernel : public framework::OpKernel {
     size_t reshape_size = Dims / 6 + 1;
     size_t reduce_size = Dims % 6 + 1;
     PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
-                      "Inconsistent size between Dims and "
+                      "Inconsistent size between template Dims and "
                       "reshape dimensions.");
     PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
-                      "Inconsistent size between Dims and "
+                      "Inconsistent size between template Dims and "
                       "reduce dimensions.");
-    auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto x = EigenVector<T>::Flatten(*(context.Input<Tensor>("X")));
+    auto* in0 =
+        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* out0 =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto x = EigenVector<T>::Flatten(*(context.Input<framework::Tensor>("X")));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<int, Dims / 6 + 1> reshape_dims;

@@ -26,10 +26,11 @@ namespace operators {
 using Scope = framework::Scope;
 using Variable = framework::Variable;
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 void RecurrentAlgorithm::InferShape(const Scope& scope) const {
   seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
-                 ->GetMutable<Tensor>()
+                 ->GetMutable<LoDTensor>()
                  ->dims()[0];
   CreateScopes(scope);
   auto step_scopes = GetStepScopes(scope);
@@ -88,7 +89,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
         // the weight are located in parent scope
         for (auto& var_name : input.second) {
           if (!step_scope.FindVar(var_name)) {
-            step_scope.NewVar(var_name)->GetMutable<Tensor>();
+            step_scope.NewVar(var_name)->GetMutable<LoDTensor>();
           }
         }
       }
@@ -106,11 +107,12 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
 void RecurrentAlgorithm::InitMemories(Scope* step_scope,
                                       bool infer_shape_mode) const {
   for (auto& attr : arg_->memories) {
-    Tensor* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<Tensor>();
+    auto* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<LoDTensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists", attr.var,
                    attr.boot_var);
-    Tensor* boot_mem = step_scope->FindVar(attr.boot_var)->GetMutable<Tensor>();
+    auto* boot_mem =
+        step_scope->FindVar(attr.boot_var)->GetMutable<LoDTensor>();
     if (infer_shape_mode) {
       pre_mem->Resize(boot_mem->dims());
       PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
@@ -192,9 +194,9 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
                    "memory variable [%s] does not exists", attr.var);
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "boot variable [%s] does not exists", attr.boot_var);
-    Tensor* mem_grad = step_scope->NewVar(attr.var)->GetMutable<Tensor>();
-    Tensor* boot_mem_grad =
-        step_scope->NewVar(attr.boot_var)->GetMutable<Tensor>();
+    auto* mem_grad = step_scope->NewVar(attr.var)->GetMutable<LoDTensor>();
+    auto* boot_mem_grad =
+        step_scope->NewVar(attr.boot_var)->GetMutable<LoDTensor>();
     if (infer_shape_mode) {
       boot_mem_grad->Resize(mem_grad->dims());
     } else {
@@ -205,7 +207,7 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
 
 void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
   seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
-                 ->GetMutable<Tensor>()
+                 ->GetMutable<LoDTensor>()
                  ->dims()[0];
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
