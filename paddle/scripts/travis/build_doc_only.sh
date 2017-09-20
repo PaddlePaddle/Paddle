@@ -15,8 +15,8 @@ make -j `nproc` paddle_docs paddle_docs_cn
 
 mkdir -p $TRAVIS_BUILD_DIR/build_docs/en
 mkdir -p $TRAVIS_BUILD_DIR/build_docs/cn
-mv docs/en/* $TRAVIS_BUILD_DIR/build_docs/en
-mv docs/cn/* $TRAVIS_BUILD_DIR/build_docs/en
+mv docs/en/ $TRAVIS_BUILD_DIR/build_docs/en/
+mv docs/cn/ $TRAVIS_BUILD_DIR/build_docs/en/
 
 # deploy to remote server
 openssl aes-256-cbc -d -a -in $TRAVIS_BUILD_DIR/paddle/scripts/travis/ubuntu.pem.enc -out ubuntu.pem -k $DEC_PASSWD
