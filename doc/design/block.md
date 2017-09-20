@@ -57,14 +57,15 @@ The following C++ programs shows how blocks are used with the `if-else` structur
 ```c++
 int x = 10;
 int y = 20;
+int z = 30;
 int out;
 bool cond = false;
 if (cond) {
   int z = x + y;
   out = softmax(z);
 } else {
-  int z = fc(x);
-  out = z;
+  int d = fc(z);
+  out = d;
 }
 ```
 
