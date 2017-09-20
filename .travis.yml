@@ -24,8 +24,8 @@ addons:
   ssh_known_hosts: 52.76.173.135
 before_install:
   - |
-    sudo pip install -r Sphinx==1.5.6 sphinx_rtd_theme==0.1.9
-    recommonmark==0.4.0numpy>=1.12 protobuf==3.1 nltk>=3.2.2
+    sudo pip install Sphinx==1.5.6 sphinx_rtd_theme==0.1.9 \
+    recommonmark==0.4.0numpy>=1.12 protobuf==3.1 nltk>=3.2.2 \
     rarfile scipy>=0.19.0 Pillow
 script:
   - paddle/scripts/travis/build_doc_only.sh
