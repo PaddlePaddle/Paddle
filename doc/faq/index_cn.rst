@@ -322,10 +322,39 @@ pip uninstall py_paddle paddle
 
 pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
 
-16. 如何加载预训练embedding参数
+16. PaddlePaddle存储的参数格式是什么，如何和明文进行相互转化
+---------------------------------------------------------
+
+PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数两部分组成。头信息中，1~4字节表示PaddlePaddle版本信息；5~8字节表示每个参数占用的字节数，当保存的网络参数为float类型时为4，double类型时为8；9~16字节表示保存的参数总个数。
+
+将PaddlePaddle保存的模型参数还原回明文时，可以使用相应数据类型的 :code:`numpy.array` 加载具体网络参数，此时需要跳过PaddlePaddle模型参数文件的头信息。一般情况下，PaddlePaddle保存的模型参数数据类型为float，所以在使用 :code:`numpy.array` 时一般设置 :code:`dtype=float32` 。示例如下：
+
+..  code-block:: python
+
+    def read_parameter(fname, width):
+        s = open(fname).read()
+        # skip header
+        vec = np.fromstring(s[16:], dtype=np.float32)
+        # width is the size of the corresponding layer
+        np.savetxt(fname + ".csv", vec.reshape(width, -1),
+                fmt="%.6f", delimiter=",")
+
+
+将明文参数转化为PaddlePaddle可加载的模型参数时，先根据数据类型和参数规模写入头信息，再写入具体网络参数。以下为将随机生成的矩阵转化为PaddlePaddle可加载的模型参数示例:
+
+..  code-block:: python
+
+    def gen_rand_param(param_file, width, height, need_trans):
+        np.random.seed()
+        header = struct.pack("iil", 0, 4, height * width)
+        param = np.float32(np.random.rand(height, width))
+        with open(param_file, "w") as fparam:
+            fparam.write(header + param.tostring())
+
+17. 如何加载预训练embedding参数
 ------------------------------
 
-设置embedding的参数属性 :code:`is_static=True`，使embedding参数在训练过程中保持不变，在创建parameters后，使用 :code:`parameters.set()` 加载预训练参数。
+设置embedding的参数属性 :code:`is_static=True`，使embedding参数在训练过程中保持不变，从模型文件将预训练参数载入 :code:`numpy.array`，在创建parameters后，使用 :code:`parameters.set()` 加载预训练参数。PaddlePaddle保存的模型参数文件前16字节为头信息，用户将参数载入 :code:`numpy.array` 时须从第17字节开始。
 
 ..  code-block:: python
 
@@ -341,33 +370,3 @@ pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
 
     parameters = paddle.parameters.create(my_cost)
     parameters.set('emb', load_parameter(emb_param_file, 30000, 256))
-
-
-17. PaddlePaddle存储的参数格式是什么，如何和明文进行相互转化
----------------------------------------------------------
-
-PaddlePaddle保存的二进制参数文件内容由16位头信息和网络参数两部分组成。头信息中，第一位固定为0，第二位为4，在使用double精度时，第二位为8，第三位记录共有多少个数值。
-
-将PaddlePaddle保存的二进制参数还原回明文时，先跳过PaddlePaddle模型参数文件的头信息，再提取网络参数，示例如下：
-
-..  code-block:: python
-
-    def read_parameter(fname, width):
-        s = open(fname).read()
-        # skip header
-        vec = np.fromstring(s[16:], dtype=np.float32)
-        # width is the size of the corresponding layer
-        np.savetxt(fname + ".csv", vec.reshape(width, -1),
-                fmt="%.6f", delimiter=",")
-
-
-将明文参数转化为PaddlePaddle可加载的模型参数时，先根据参数规模写入头信息，再写入具体网络参数。以下为将随机生成的矩阵转化为PaddlePaddle可加载的模型参数示例:
-
-..  code-block:: python
-
-    def gen_rand_param(param_file, width, height, need_trans):
-        np.random.seed()
-        header = struct.pack("iil", 0, 4, height * width)
-        param = np.float32(np.random.rand(height, width))
-        with open(param_file, "w") as fparam:
-            fparam.write(header + param.tostring())
