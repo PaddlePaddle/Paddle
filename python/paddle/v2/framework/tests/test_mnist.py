@@ -9,7 +9,7 @@ scope = core.Scope()
 place = core.CPUPlace()
 # if you want to test GPU training, you can use gpu place
 # place = core.GPUPlace(0)
-dev_ctx = core.DeviceContext.create(place)
+dev_ctx = core.DeviceContext.get(place)
 
 init_net = core.Net.create()
 forward_net = core.Net.create()

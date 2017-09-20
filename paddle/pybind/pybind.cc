@@ -53,10 +53,6 @@ bool IsCompileGPU() {
 #endif
 }
 
-platform::DeviceContext *GetDeviceContext(const platform::CPUPlace &place) {
-  return platform::DeviceContextManager::Get()->GetDeviceContext(place);
-}
-
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -201,17 +197,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def("temp", []() { return kTempVarName; });
 
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
-      .def_static("create",
-                  [](paddle::platform::CPUPlace &place)
-                      -> paddle::platform::DeviceContext * {
-                        // return new platform::CPUDeviceContext();
-                        // return
-                        // platform::DeviceContextManager::Get()->GetDeviceContext(
-                        //     place);
-                        return GetDeviceContext(place);
-                      })
       .def_static(
-          "create",
+          "get",
+          [](paddle::platform::CPUPlace &place)
+              -> paddle::platform::DeviceContext * {
+                return platform::DeviceContextManager::Get()->GetDeviceContext(
+                    place);
+              },
+          py::return_value_policy::reference)
+      .def_static(
+          "get",
           [](paddle::platform::GPUPlace &place)
               -> paddle::platform::DeviceContext * {
 #ifdef PADDLE_ONLY_CPU
@@ -220,7 +215,8 @@ All parameter, weight, gradient are variables in Paddle.
                 return platform::DeviceContextManager::Get()->GetDeviceContext(
                     place);
 #endif
-              });
+              },
+          py::return_value_policy::reference);
 
   py::class_<platform::GPUPlace>(m, "GPUPlace")
       .def(py::init<int>())

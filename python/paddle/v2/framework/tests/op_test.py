@@ -105,7 +105,7 @@ def get_numeric_gradient(scope,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
-    ctx = core.DeviceContext.create(core.CPUPlace())
+    ctx = core.DeviceContext.get(core.CPUPlace())
 
     def get_output():
         sum = 0.0
@@ -156,7 +156,7 @@ def get_backward_op(scope, op, no_grad_set):
 
 def get_gradient(scope, op, inputs, outputs, grad_name, place,
                  no_grad_set=None):
-    ctx = core.DeviceContext.create(place)
+    ctx = core.DeviceContext.get(place)
 
     set_input(scope, op, inputs, place)
 
@@ -188,7 +188,7 @@ class OpTest(unittest.TestCase):
             return
         set_input(self.scope, self.op, self.inputs, place)
         self.op.infer_shape(self.scope)
-        ctx = core.DeviceContext.create(place)
+        ctx = core.DeviceContext.get(place)
         self.op.run(self.scope, ctx)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op.type()):

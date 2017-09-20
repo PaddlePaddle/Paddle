@@ -105,38 +105,6 @@ inline void Tensor::CopyFrom(const Tensor& src,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
 #ifndef PADDLE_ONLY_CPU
-  // else if (platform::is_gpu_place(src_place) &&
-  //          platform::is_cpu_place(dst_place)) {
-  //   auto* device_context = reinterpret_cast<platform::CUDADeviceContext*>(
-  //       ContextDeviceManager::Get()->GetDeviceContext(src_place));
-  //   memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
-  //                boost::get<platform::GPUPlace>(src_place), src_ptr, size,
-  //                device_context->stream());
-  //   if (is_sync) {
-  //     device_context->Wait();
-  //   }
-  // } else if (platform::is_cpu_place(src_place) &&
-  //            platform::is_gpu_place(dst_place)) {
-  //   auto* device_context = reinterpret_cast<platform::CUDADeviceContext*>(
-  //       ContextDeviceManager::Get()->GetDeviceContext(dst_place));
-  //   memory::Copy(boost::get<platform::GPUPlace>(dst_place), dst_ptr,
-  //                boost::get<platform::CPUPlace>(src_place), src_ptr, size,
-  //                device_context->stream());
-  //   if (is_sync) {
-  //     device_context->Wait();
-  //   }
-  // } else if (platform::is_gpu_place(src_place) &&
-  //            platform::is_gpu_place(dst_place)) {
-  //   auto* device_context = reinterpret_cast<platform::CUDADeviceContext*>(
-  //       ContextDeviceManager::Get()->GetDeviceContext(src_place));
-  //   memory::Copy(boost::get<platform::GPUPlace>(dst_place), dst_ptr,
-  //                boost::get<platform::GPUPlace>(src_place), src_ptr, size,
-  //                device_context->stream());
-  //   if (is_sync) {
-  //     device_context->Wait();
-  //   }
-  // }
-
   else if (platform::is_gpu_place(src_place) &&
            platform::is_cpu_place(dst_place)) {
     auto* device_context = ContextDeviceManager::Get()->GetDeviceContext(

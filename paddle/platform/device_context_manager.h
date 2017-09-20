@@ -32,13 +32,10 @@ struct Converter<GPUPlace> {
 class DeviceContextManager {
  public:
   DeviceContextManager();
-  // ~DeviceContextManager();
 
   template <typename PlaceType, typename DeviceType = typename Converter<
                                     PlaceType>::DeviceContextType>
   DeviceType* GetDeviceContext(const PlaceType& place);
-
-  // DeviceContext* GetDeviceContext(const Place& place);
 
   static DeviceContextManager* Get() {
     static DeviceContextManager inst;

@@ -49,42 +49,5 @@ CUDADeviceContext* DeviceContextManager::GetDeviceContext<
 }
 #endif
 
-// DeviceContext* DeviceContextManager::GetDeviceContext(const Place& place) {
-//   if (is_cpu_place(place)) {
-//     if (!cpu_context_) {
-//       cpu_context_ = new CPUDeviceContext();
-//     }
-//     return cpu_context_;
-//   } else {
-// #ifndef PADDLE_ONLY_CPU
-//     auto gpu_place = boost::get<GPUPlace>(place);
-//     auto gpu_id = gpu_place.device;
-//     PADDLE_ENFORCE(gpu_id < device_count_,
-//                    "GPU device id must less than device count");
-//     SetDeviceId(gpu_id);
-//     auto* ctx = cuda_contexts_[gpu_id];
-//     if (!ctx) {
-//       ctx = new CUDADeviceContext(gpu_place);
-//     }
-//     return ctx;
-// #else
-//     PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
-// #endif
-//   }
-// }
-
-// DeviceContextManager::~DeviceContextManager() {
-//   if (cpu_context_) {
-//     delete cpu_context_;
-//   }
-// #ifndef PADDLE_ONLY_CPU
-//   for (int i = 0; i < device_count_; i++) {
-//     if (cuda_contexts_[i]) {
-//       delete cuda_contexts_[i];
-//     }
-//   }
-// #endif
-// }
-
 }  // namespace platform
 }  // namespace paddle
