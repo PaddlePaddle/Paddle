@@ -190,7 +190,6 @@ Activation type can be set to `identity` (default), `sigmoid` or `softmax`.
 All the inputs can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD with first input (`X[0]`).
 )DOC");
-)DOC");
   }
 };
 

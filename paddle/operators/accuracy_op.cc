@@ -55,15 +55,15 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
 
-    AddComment(
-        R"DOC(Accuracy. It will print accuracy rate for classification.
+    AddComment(R"DOC(
+Accuracy. It will print accuracy rate for classification.
 The accuracy is:
 ..  math::
 accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})
 
 Both the input `Inference` and `Label` can carry the LoD (Level of Details)
 information, or not. But the output only shares the LoD with input `Inference`.
-DOC");
+)DOC");
   }
 };
 

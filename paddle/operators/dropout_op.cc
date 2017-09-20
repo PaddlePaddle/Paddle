@@ -38,6 +38,7 @@ class DropoutOp : public framework::OperatorWithKernel {
     if (ctx.Attr<int>("is_training") == 1) {
       ctx.Output<LoDTensor>("Mask")->Resize(dims);
     }
+    ctx.ShareLoD("X", "Out");
   }
 };
 
