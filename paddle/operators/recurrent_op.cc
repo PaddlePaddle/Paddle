@@ -29,8 +29,11 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 void RecurrentAlgorithm::InferShape(const Scope& scope) const {
-  seq_len_ =
-      scope.FindVar(arg_->inlinks[0])->GetMutable<LoDTensor>()->dims()[0];
+  auto* input0 = scope.FindVar(arg_->inlinks[0]);
+  PADDLE_ENFORCE_NOT_NULL(input0);
+  seq_len_ = input0->GetMutable<LoDTensor>()->dims()[0];
+  PADDLE_ENFORCE_GT(seq_len_, 0);
+
   CreateScopes(scope);
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,

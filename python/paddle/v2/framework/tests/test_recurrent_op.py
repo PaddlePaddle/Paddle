@@ -59,7 +59,6 @@ class PySimpleRNNTest(unittest.TestCase):
 
     def test_forward(self):
         output = self.rnn.forward()
-        print 'output', output
 
 
 def create_tensor(scope, name, shape, np_data):
@@ -103,7 +102,7 @@ class TestRecurrentOp(unittest.TestCase):
         ctx = core.DeviceContext.create(core.CPUPlace())
         self.rnnop.infer_shape(self.scope)
         self.rnnop.run(self.scope, ctx)
-        return np.array(self.scope.find_var("h").get_tensor())
+        return np.array(self.scope.find_var("h@mem").get_tensor())
 
     def create_global_variables(self):
         # create inlink
@@ -123,7 +122,7 @@ class TestRecurrentOp(unittest.TestCase):
         create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim],
                       h_boot_np_data)
         self.scope.new_var("step_scopes")
-        self.scope.new_var("h")
+        self.scope.new_var("h@mem")
 
     def create_rnn_op(self):
         # create RNNOp
@@ -133,7 +132,7 @@ class TestRecurrentOp(unittest.TestCase):
             boot_memories=["h_boot"],
             step_net="stepnet",
             # outputs
-            outlinks=["h"],
+            outlinks=["h@mem"],
             step_scopes="step_scopes",
             # attributes
             pre_memories=["h@pre"],
