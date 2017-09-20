@@ -34,8 +34,8 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x->dims().size(), 2, "The tensor rank of X must be 2.");
     PADDLE_ENFORCE_EQ(x->dims()[1], 1, "The 2nd dimension of X must be 1.");
 
-    context.Output<Tensor>("IntermediateVal")->Resize(x->dims());
-    context.Output<Tensor>("Out")->Resize({x->dims()[0], 1});
+    context.Output<framework::LoDTensor>("IntermediateVal")->Resize(x->dims());
+    context.Output<framework::LoDTensor>("Out")->Resize({x->dims()[0], 1});
   }
 };
 
@@ -80,7 +80,8 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
     auto* y = context.Input<Tensor>("Y");
     auto* intermediate_val = context.Input<Tensor>("IntermediateVal");
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* x_grad =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_NOT_NULL(x, "X must be initialized.");
     PADDLE_ENFORCE_NOT_NULL(y, "Y must be initialized.");
