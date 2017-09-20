@@ -102,11 +102,11 @@ A difference is that variables in the C++ program contain scalar values, whereas
 The following RNN model from the [RNN design doc](./rnn.md)
 
 ```python
-# x is a sequence
-x = Var(sequence([10, 20, 30]))
-m = Var(0)
-W = Var()
-U = Var()
+# x is a LoDTensor and stores sequences
+x = var(sequence=([10, 20, 30]))
+m = var(0)
+W = var()
+U = var()
 
 rnn = rnn_builder()
 with rnn.stepnet():
