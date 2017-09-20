@@ -14,7 +14,7 @@ def smooth_l1_loss_forward(val, sigma2):
 class TestSmoothL1LossOp1(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (6, 10)
+        dims = (5, 10)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32")
@@ -35,17 +35,17 @@ class TestSmoothL1LossOp1(OpTest):
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.02, no_grad_set=set("X"))
+            ['Y'], 'Out', max_relative_error=0.03, no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.02, no_grad_set=set('Y'))
+            ['X'], 'Out', max_relative_error=0.03, no_grad_set=set('Y'))
 
 
 class TestSmoothL1LossOp2(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (6, 10)
+        dims = (5, 10)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32"),
@@ -66,20 +66,20 @@ class TestSmoothL1LossOp2(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.03)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
-            max_relative_error=0.02,
+            max_relative_error=0.03,
             no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']))
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.02,
+            max_relative_error=0.03,
             no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']))
 
 

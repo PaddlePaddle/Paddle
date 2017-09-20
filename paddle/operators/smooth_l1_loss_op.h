@@ -59,7 +59,7 @@ class SmoothL1LossKernel : public framework::OpKernel {
     out1->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
 
-    auto sigma = static_cast<T>(context.op().Attr<AttrType>("sigma"));
+    auto sigma = static_cast<T>(context.Attr<AttrType>("sigma"));
     T sigma2 = sigma * sigma;
     bool has_weight = (in2 != nullptr) && (in3 != nullptr);
 
@@ -122,7 +122,7 @@ class SmoothL1LossGradKernel : public framework::OpKernel {
     auto* in1 = context.Input<Tensor>("OutsideWeight");
     auto* in2 = context.Input<Tensor>("Diff");
     auto* og = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto sigma = static_cast<T>(context.op().Attr<AttrType>("sigma"));
+    auto sigma = static_cast<T>(context.Attr<AttrType>("sigma"));
     T sigma2 = sigma * sigma;
     bool has_weight = (in0 != nullptr) && (in1 != nullptr);
 
