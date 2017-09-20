@@ -134,7 +134,6 @@ void MKLDNNPoolLayer::resetOutValue(MKLDNNMatrixPtr& out) {
   memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
   out = MKLDNNMatrix::create(
       output_.value, outDims, inVal_->getFormat(), engine_);
-  output_.value = std::dynamic_pointer_cast<Matrix>(out);
 
   // create reorder if output value has cpu device and pd do not match
   cpuOutVal_ = nullptr;
