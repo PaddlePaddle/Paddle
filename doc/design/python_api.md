@@ -1,6 +1,6 @@
 # Design Doc: Python API
 
-The top level user API in Python should be as same as API in `paddle.v2` after refactoring Paddle from a layer based framework to an operator based framework. There are many new classes in C++ in [compile time] for describing neural networks, such as `Variable`, `Operator`, `Block`. The issue about current design is how to give a proper way to wrap the C++ API to `paddle.v2` API and writing layers in Python.
+The top level user API in Python should be as same as API in `paddle.v2` after refactoring Paddle from a layer based framework to an operator based framework. There are many new classes in C++ in [compile time] for describing neural networks, such as `Variable`, `Operator`, `Block`. The issue about current design is how to give a proper way to wrap the C++ API to `paddle.v2` API and write layers in Python.
 
 This implementation of Python API includes two steps.
 
@@ -57,7 +57,7 @@ class Block(objects):
        self.ops.prepend(...)
 ```
 
-Users are able to create a global variable inside any block since they many create parameters inside a RNN or IfElseOp. All parameters should be stored in the global block, not the step block in RNN.
+Users are able to create a global variable inside any block since they many create parameters inside a RNN or IfElse. All parameters should be stored in the global block, not the step block in RNN.
 
 Users can create local variables for outputs of operators. Users can also append and prepend an operator in current block. Prepending `random initialize` operator or `load` operator is very useful to initialize parameters before training.
 
@@ -147,7 +147,7 @@ def fc_layer(input, size, block=None, ...):
         block = g_block
     w = block.create_parameter(...)
     b = block.create_parameter(...)
-    out = stack.create_var()
+    out = block.create_var()
     op = block.append_operator(Operator("FC", X=input, W=w, b=b, Out=out))
     out.op = op
     return out
