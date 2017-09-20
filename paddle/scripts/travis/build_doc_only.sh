@@ -17,6 +17,10 @@ scipy>=0.19.0
 Pillow
 EOF
 
+# Clean up before new builds.
+rm -rf $TRAVIS_BUILD_DIR/build
+rm -rf $TRAVIS_BUILD_DIR/build_docs
+
 # Create the build directory for CMake.
 mkdir -p $TRAVIS_BUILD_DIR/build
 cd $TRAVIS_BUILD_DIR/build
