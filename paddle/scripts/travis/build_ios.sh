@@ -17,4 +17,4 @@ cmake -DCMAKE_SYSTEM_NAME=iOS \
       -DCMAKE_BUILD_TYPE=Release \
       ..
 
-make
+make -j 2

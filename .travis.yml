@@ -4,7 +4,6 @@ cache:
     - $HOME/.ccache
     - $HOME/.cache/pip
     - $TRAVIS_BUILD_DIR/build/third_party
-    - $TRAVIS_BUILD_DIR/build_ios/third_party
 sudo: required
 dist: trusty
 os:
@@ -12,12 +11,6 @@ os:
 env:
   - JOB=build_doc
   - JOB=check_style
-matrix:
-  include:
-    - env: JOB=build_ios
-      os: osx
-      osx_image: xcode8.3
-      compiler: clang
 addons:
   apt:
     packages:
