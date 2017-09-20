@@ -119,13 +119,13 @@ with rnn.stepnet():
   # mark the variables that need to be segmented for time steps.
   x_ = x.as_step_input()
   # mark the varialbe that used as a RNN state.
-  h_ = h.as_step_memory(init=m)
+  h = m.as_step_memory()
 
   fc_out = pd.matmul(W, x_)
-  hidden_out = pd.matmul(U, h_.pre(nstep=1))
+  hidden_out = pd.matmul(U, h.pre(nstep=1))
   sum = pd.add_two(fc_out, hidden_out)
   act = pd.sigmoid(sum)
-  h_.update(act)                    # update memory with act
+  h.update(act)                    # update memory with act
   net.set_outputs(act, hidden_out) # two outputs
 
 o1, o2 = rnn()
