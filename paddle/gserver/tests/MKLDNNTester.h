@@ -41,8 +41,7 @@ protected:
   vector<LayerMap> layerMaps_;
   vector<vector<ParameterPtr>> parameters_;
   vector<LayerPtr> testLayers_;
-  LayerPtr refLayer_;
-  MKLDNNLayerPtr dnnLayer_;
+  LayerPtr refLayer_, dnnLayer_;
 
   /// run some iterations, all the result should pass
   size_t iter_;

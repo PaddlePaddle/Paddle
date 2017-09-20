@@ -19,12 +19,13 @@ namespace operators {
 namespace math {
 
 template <>
-void gemm<platform::CPUPlace, float>(const CBLAS_TRANSPOSE transA,
+void gemm<platform::CPUPlace, float>(const platform::DeviceContext& context,
+                                     const CBLAS_TRANSPOSE transA,
                                      const CBLAS_TRANSPOSE transB, const int M,
                                      const int N, const int K,
                                      const float alpha, const float* A,
-                                     const float* B, const float beta, float* C,
-                                     platform::DeviceContext* context) {
+                                     const float* B, const float beta,
+                                     float* C) {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -33,13 +34,13 @@ void gemm<platform::CPUPlace, float>(const CBLAS_TRANSPOSE transA,
 }
 
 template <>
-void gemm<platform::CPUPlace, double>(const CBLAS_TRANSPOSE transA,
+void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
+                                      const CBLAS_TRANSPOSE transA,
                                       const CBLAS_TRANSPOSE transB, const int M,
                                       const int N, const int K,
                                       const double alpha, const double* A,
                                       const double* B, const double beta,
-                                      double* C,
-                                      platform::DeviceContext* context) {
+                                      double* C) {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -48,13 +49,10 @@ void gemm<platform::CPUPlace, double>(const CBLAS_TRANSPOSE transA,
 }
 
 template <>
-void matmul<platform::CPUPlace, float>(const framework::Tensor& matrix_a,
-                                       bool trans_a,
-                                       const framework::Tensor& matrix_b,
-                                       bool trans_b, float alpha,
-                                       framework::Tensor* matrix_out,
-                                       float beta,
-                                       platform::DeviceContext* context) {
+void matmul<platform::CPUPlace, float>(
+    const platform::DeviceContext& context, const framework::Tensor& matrix_a,
+    bool trans_a, const framework::Tensor& matrix_b, bool trans_b, float alpha,
+    framework::Tensor* matrix_out, float beta) {
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
   auto dim_out = matrix_out->dims();
@@ -74,18 +72,15 @@ void matmul<platform::CPUPlace, float>(const framework::Tensor& matrix_a,
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
   gemm<platform::CPUPlace, float>(
-      transA, transB, M, N, K, alpha, matrix_a.data<float>(),
-      matrix_b.data<float>(), beta, matrix_out->data<float>(), context);
+      context, transA, transB, M, N, K, alpha, matrix_a.data<float>(),
+      matrix_b.data<float>(), beta, matrix_out->data<float>());
 }
 
 template <>
-void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
-                                        bool trans_a,
-                                        const framework::Tensor& matrix_b,
-                                        bool trans_b, double alpha,
-                                        framework::Tensor* matrix_out,
-                                        double beta,
-                                        platform::DeviceContext* context) {
+void matmul<platform::CPUPlace, double>(
+    const platform::DeviceContext& context, const framework::Tensor& matrix_a,
+    bool trans_a, const framework::Tensor& matrix_b, bool trans_b, double alpha,
+    framework::Tensor* matrix_out, double beta) {
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
   auto dim_out = matrix_out->dims();
@@ -105,8 +100,8 @@ void matmul<platform::CPUPlace, double>(const framework::Tensor& matrix_a,
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
   gemm<platform::CPUPlace, double>(
-      transA, transB, M, N, K, alpha, matrix_a.data<double>(),
-      matrix_b.data<double>(), beta, matrix_out->data<double>(), context);
+      context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
+      matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
 }  // namespace math
