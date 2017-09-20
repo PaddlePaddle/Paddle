@@ -30,9 +30,9 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     auto* y = context.Input<Tensor>("Y");
 
     PADDLE_ENFORCE_EQ(x->dims(), y->dims(),
-                      "Dimensions of X and Y must be the same.");
-    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "Tensor rank of X must be 2.");
-    PADDLE_ENFORCE_EQ(x->dims()[1], 1, "2nd dimension of X must be 1.");
+                      "The shape of X and Y must be the same.");
+    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "The tensor rank of X must be 2.");
+    PADDLE_ENFORCE_EQ(x->dims()[1], 1, "The 2nd dimension of X must be 1.");
 
     context.Output<Tensor>("IntermediateVal")->Resize(x->dims());
     context.Output<Tensor>("Out")->Resize({x->dims()[0], 1});
@@ -44,16 +44,20 @@ class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
   ModifiedHuberLossOpMaker(framework::OpProto* proto,
                            framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input value of ModifiedHuberLossOp.");
-    AddInput("Y", "Target labels of ModifiedHuberLossOp.");
+    AddInput("X",
+             "The input tensor of modified huber loss op."
+             "X is 2-D tensor with shape [batch_size, 1].");
+    AddInput("Y",
+             "The target labels of modified huber loss op."
+             "The shape of Y is same as X. Values of Y must be 0 or 1.");
     AddOutput("IntermediateVal",
               "Variable to save intermediate result which will be reused in "
               "backward processing.")
         .AsIntermediate();
-    AddOutput("Out", "Classification loss for input X.");
+    AddOutput("Out", "Classification loss for X.");
     AddComment(R"DOC(
-Modified huber loss is used in binary classification problem. Dimensions of
-input X and target Y are both (N, 1) and so is the dimension of output loss.
+Modified huber loss is used in binary classification problem. The shape of
+input X and target Y are both [N, 1] and so is the shape of output loss.
 Since target Y is not differentiable, cacluating gradient for Y is illegal.
 The formulation of modified huber loss is:
 
@@ -61,7 +65,7 @@ L(y, f(x)) = max(0, 1 - yf(x))^2  for yf(x) >= -1,
              -4yf(x)              otherwise.
 
 Make sure the values of target label Y are in {0, 1} here. The operator will
-scale values of Y to {-1, +1} when computing loss and gradients.
+scale values of Y to {-1, +1} when computing losses and gradients.
 )DOC");
   }
 };
@@ -78,18 +82,17 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_NOT_NULL(x, "Input X must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(y, "Target Y must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(x, "X must be initialized.");
+    PADDLE_ENFORCE_NOT_NULL(y, "Y must be initialized.");
     PADDLE_ENFORCE_NOT_NULL(intermediate_val,
                             "Intermediate value must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(out_grad, "Out gradient must not be null.");
+    PADDLE_ENFORCE_NOT_NULL(out_grad, "Input(Out@Grad) must not be null.");
 
     PADDLE_ENFORCE_EQ(
         intermediate_val->dims(), x->dims(),
-        "Dimension of X and intermediate value must be the same.");
-    PADDLE_ENFORCE_EQ(
-        out_grad->dims(), x->dims(),
-        "Dimension of Out gradient and X must be the same (N*1).");
+        "The shape of X and intermediate value must be the same.");
+    PADDLE_ENFORCE_EQ(out_grad->dims(), x->dims(),
+                      "The shape of Input(Out@Grad) and X must be the same.");
 
     if (x_grad) x_grad->Resize(x->dims());
   }

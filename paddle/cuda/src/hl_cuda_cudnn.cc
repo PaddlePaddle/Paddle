@@ -432,10 +432,10 @@ void hl_create_pooling_descriptor(hl_pooling_descriptor* pooling_desc,
       cudnn_mode = CUDNN_POOLING_MAX;
       break;
     case HL_POOLING_AVERAGE:
-      cudnn_mode = CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
-      break;
-    case HL_POOLING_AVERAGE_EXCLUDE_PADDING:
       cudnn_mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+      break;
+    case HL_POOLING_AVERAGE_INCLUDE_PADDING:
+      cudnn_mode = CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
       break;
     default:
       LOG(FATAL) << "parameter mode error";

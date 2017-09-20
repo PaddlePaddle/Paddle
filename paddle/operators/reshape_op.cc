@@ -28,7 +28,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     // input check
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) shouldn't be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ReshapeOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ReshapeOp should not be null.");
+
     auto shape = ctx.Attr<std::vector<int>>("shape");
     PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
     for (auto dim : shape) {
@@ -46,7 +50,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
                    [](int a) { return static_cast<int64_t>(a); });
     auto out_dims = framework::make_ddim(shape_int64);
-    ctx.Output<framework::Tensor>("Out")->Resize(out_dims);
+    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
   }
 };
 
@@ -90,7 +94,7 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) shouldn't be null.");
     auto dims = ctx.Input<framework::Tensor>("X")->dims();
-    auto *d_in = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_in = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     d_in->Resize(dims);
   }
 };
