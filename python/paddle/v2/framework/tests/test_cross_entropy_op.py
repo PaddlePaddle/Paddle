@@ -19,7 +19,7 @@ class TestCrossEntropyOp1(OpTest):
             dtype="float32")
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": cross_entropy}
-        self.attrs = {'soft_label': 0}
+        self.attrs = {"soft_label": 0}
 
     def test_check_output(self):
         self.check_output()
@@ -34,8 +34,8 @@ class TestCrossEntropyOp2(OpTest):
 
     def setUp(self):
         self.op_type = "cross_entropy"
-        batch_size = 10
-        class_num = 5
+        batch_size = 13
+        class_num = 37
         X = np.random.uniform(0.1, 1.0,
                               [batch_size, class_num]).astype("float32")
         label = np.random.uniform(0.1, 1.0,
@@ -43,15 +43,16 @@ class TestCrossEntropyOp2(OpTest):
         label /= label.sum(axis=1, keepdims=True)
         cross_entropy = (-label * np.log(X)).sum(
             axis=1, keepdims=True).astype("float32")
-        self.inputs = {'X': X, 'Label': label}
-        self.outputs = {'Y': cross_entropy}
-        self.attrs = {'soft_label': 1}
+
+        self.inputs = {"X": X, "Label": label}
+        self.outputs = {"Y": cross_entropy}
+        self.attrs = {"soft_label": 1}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(["X"], "Y", max_relative_error=0.05)
 
 
 class TestCrossEntropyOp3(OpTest):
@@ -61,8 +62,8 @@ class TestCrossEntropyOp3(OpTest):
 
     def setUp(self):
         self.op_type = "cross_entropy"
-        batch_size = 30
-        class_num = 10
+        batch_size = 13
+        class_num = 37
         X = np.random.uniform(0.1, 1.0,
                               [batch_size, class_num]).astype("float32")
         label_index = np.random.randint(
@@ -74,15 +75,15 @@ class TestCrossEntropyOp3(OpTest):
             dtype="float32")
         cross_entropy2 = (-label * np.log(X)).sum(
             axis=1, keepdims=True).astype("float32")
-        self.inputs = {'X': X, 'Label': label}
-        self.outputs = {'Y': cross_entropy}
-        self.attrs = {'soft_label': 1}
+        self.inputs = {"X": X, "Label": label}
+        self.outputs = {"Y": cross_entropy}
+        self.attrs = {"soft_label": 1}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(["X"], "Y", max_relative_error=0.05)
 
 
 if __name__ == "__main__":

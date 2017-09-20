@@ -32,16 +32,33 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
   }
 }
 
-template <typename T>
+template <typename T, int blockSize>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int N, const int D) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    T sum = static_cast<T>(0);
-    for (int j = 0; j < D; j++) {
-      sum += label[i * D + j] * tolerable_value(log(X[i * D + j]));
+  int tid = threadIdx.x;
+  __shared__ T d_sum[blockSize];
+  int next_idx = blockIdx.x * D + tid;
+
+  d_sum[tid] = 0;
+  int cur_idx = tid;
+  while (cur_idx < D) {
+    d_sum[tid] += tolerable_value(std::log(X[next_idx])) * label[next_idx];
+    next_idx += blockSize;
+    cur_idx += blockSize;
+  }
+  __syncthreads();
+
+  for (int stride = blockSize >> 1; stride > 0; stride >>= 1) {
+    __syncthreads();
+    if (tid < stride) {
+      next_idx = tid + stride;
+      d_sum[tid] += d_sum[next_idx];
     }
-    Y[i] = -sum;
+  }
+  __syncthreads();
+
+  if (tid == 0) {
+    Y[blockIdx.x] = -d_sum[0];
   }
 }
 
@@ -104,8 +121,9 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
     // base on ExecutionContext.
     if (ctx.Attr<int>("soft_label") == 1) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
-      SoftCrossEntropyKernel<T><<<grid, block>>>(y_data, x_data, label_data, n,
-                                                 d);
+      grid = d;
+      SoftCrossEntropyKernel<T, 512><<<grid, block>>>(y_data, x_data,
+                                                      label_data, n, d);
     } else {
       auto* label_data = ctx.Input<Tensor>("Label")->data<int>();
       CrossEntropyKernel<T><<<grid, block>>>(y_data, x_data, label_data, n, d);
