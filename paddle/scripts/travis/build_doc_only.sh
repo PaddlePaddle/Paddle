@@ -29,7 +29,11 @@ eval "$(ssh-agent -s)"
 chmod 400 ubuntu.pem
 
 ssh-add ubuntu.pem
-rsync -r $TRAVIS_BUILD_DIR/build_docs/ ubuntu@52.76.173.135:/var/content/documentation/develop
+
+mkdir -p $TRAVIS_BUILD_DIR/build_docs_versioned/develop
+mv $TRAVIS_BUILD_DIR/build_docs/* $TRAVIS_BUILD_DIR/build_docs_versioned/develop/
+
+rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/ ubuntu@52.76.173.135:/var/content/documentation/
 
 chmod 644 ubuntu.pem
 rm ubuntu.pem
