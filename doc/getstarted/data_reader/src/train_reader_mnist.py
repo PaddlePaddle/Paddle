@@ -1,8 +1,7 @@
 def train_reader(file_name):
-
     def reader():
         # open one of training file
-        with open(file_name,'r') as f:
+        with open(file_name, 'r') as f:
             # read each line
             for line in f:
                 label, pixel, _ = line.strip().split(';')
@@ -11,7 +10,6 @@ def train_reader(file_name):
                 pixels_float = []
                 for each_pixel_str in pixels_str:
                     pixels_float.append(float(each_pixel_str))
-
                 # give data to paddle.
                 yield pixels_float, int(label)
 
