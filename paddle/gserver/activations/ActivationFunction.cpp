@@ -22,8 +22,11 @@ limitations under the License. */
 #include <type_traits>
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/ClassRegistrar.h"
-
 #include "paddle/utils/Logging.h"
+
+#ifdef PADDLE_USE_MKLDNN
+#include "MKLDNNActivation.h"
+#endif
 
 namespace paddle {
 
@@ -456,6 +459,12 @@ Error __must_check backward(Argument& act) {
 END_DEFINE_ACTIVATION(log)
 
 ActivationFunction* ActivationFunction::create(const std::string& type) {
+#ifdef PADDLE_USE_MKLDNN
+  if (!type.empty() && type.compare(0, 7, "mkldnn_") == 0) {
+    return MKLDNNActivation::create(type);
+  }
+#endif
+
   return gActivationRegistrar.createByType(type);
 }
 

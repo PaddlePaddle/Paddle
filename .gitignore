@@ -22,7 +22,9 @@ cmake-build-*
 
 # generated while compiling
 python/paddle/v2/framework/core.so
+paddle/pybind/pybind.h
 CMakeFiles
 cmake_install.cmake
 paddle/.timestamp
 python/paddlepaddle.egg-info/
+paddle/pybind/pybind.h

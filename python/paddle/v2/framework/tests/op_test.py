@@ -28,10 +28,10 @@ def create_op(scope, op_type, inputs, outputs, attrs):
         if out_name in outputs:
             kwargs[out_name] = []
             if out_dup:
-                sub_in = outputs[out_name]
-                for sub_in_name, _ in sub_in:
-                    var = scope.new_var(sub_in_name)
-                    kwargs[out_name].append(sub_in_name)
+                sub_out = outputs[out_name]
+                for sub_out_name, _ in sub_out:
+                    var = scope.new_var(sub_out_name)
+                    kwargs[out_name].append(sub_out_name)
             else:
                 var = scope.new_var(out_name)
                 kwargs[out_name].append(out_name)
@@ -39,6 +39,7 @@ def create_op(scope, op_type, inputs, outputs, attrs):
     for attr_name in Operator.get_op_attr_names(op_type):
         if attr_name in attrs:
             kwargs[attr_name] = attrs[attr_name]
+
     return Operator(op_type, **kwargs)
 
 
@@ -47,17 +48,24 @@ def set_input(scope, op, inputs, place):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]
-                for sub_in_name, sub_in_array in sub_in:
+                for sub_in_name, sub_in_val in sub_in:
                     var = scope.find_var(sub_in_name)
                     tensor = var.get_tensor()
+                    sub_in_array = sub_in_val[0] \
+                        if isinstance(sub_in_val, tuple) else sub_in_val
                     tensor.set_dims(sub_in_array.shape)
                     tensor.set(sub_in_array, place)
+                    if isinstance(sub_in_val, tuple):
+                        tensor.set_lod(sub_in_val[1])
             else:
                 var = scope.find_var(in_name)
                 tensor = var.get_tensor()
-                arr = inputs[in_name]
-                tensor.set_dims(arr.shape)
-                tensor.set(arr, place)
+                in_val = inputs[in_name]
+                in_array = in_val[0] if isinstance(in_val, tuple) else in_val
+                tensor.set_dims(in_array.shape)
+                tensor.set(in_array, place)
+                if isinstance(in_val, tuple):
+                    tensor.set_lod(in_val[1])
 
 
 def set_output_grad(scope, op, outputs, place):
@@ -85,7 +93,7 @@ def get_numeric_gradient(scope,
                          op,
                          inputs,
                          input_to_check,
-                         output_name,
+                         output_names,
                          delta=0.005,
                          in_place=False):
 
@@ -100,8 +108,11 @@ def get_numeric_gradient(scope,
     ctx = core.DeviceContext.create(core.CPUPlace())
 
     def get_output():
-        op.run(scope, ctx)
-        return np.array(scope.find_var(output_name).get_tensor()).sum()
+        sum = 0.0
+        for output_name in output_names:
+            op.run(scope, ctx)
+            sum += np.array(scope.find_var(output_name).get_tensor()).sum()
+        return sum
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
@@ -169,8 +180,9 @@ class OpTest(unittest.TestCase):
     def check_output_with_place(self, place):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
+        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, self.outputs,
+        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
                             op_attrs)
         if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
             return
@@ -180,23 +192,29 @@ class OpTest(unittest.TestCase):
         self.op.run(self.scope, ctx)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
+            if out_name not in self.outputs:
+                continue
+
             if out_dup:
                 sub_out = self.outputs[out_name]
-                for sub_out_name in sub_out:
+                if not isinstance(sub_out, list):
+                    raise AssertionError("sub_out type %s is not list",
+                                         type(sub_out))
+
+                for sub_out_name, expect in sub_out:
                     actual = np.array(
                         self.scope.find_var(sub_out_name).get_tensor())
-                    expect = sub_out[sub_out_name]
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=1e-05),
-                        "output name: " + out_name + "has diff")
+                        "output name: " + out_name + " has diff")
             else:
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
                 expect = self.outputs[out_name]
                 self.assertTrue(
                     np.allclose(
                         actual, expect, atol=1e-05),
-                    "output name: " + out_name + "has diff")
+                    "output name: " + out_name + " has diff")
 
     def check_output(self):
         places = [core.CPUPlace()]
@@ -225,17 +243,21 @@ class OpTest(unittest.TestCase):
 
     def check_grad(self,
                    inputs_to_check,
-                   output_name,
+                   output_names,
                    no_grad_set=None,
                    in_place=False,
                    max_relative_error=0.005):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
+        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, self.outputs,
+        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
                             op_attrs)
         if no_grad_set is None:
             no_grad_set = set()
+
+        if not type(output_names) is list:
+            output_names = [output_names]
 
         numeric_grads = [
             get_numeric_gradient(
@@ -243,7 +265,7 @@ class OpTest(unittest.TestCase):
                 self.op,
                 self.inputs,
                 input_to_check,
-                output_name,
+                output_names,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
         grad_names = [

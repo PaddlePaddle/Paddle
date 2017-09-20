@@ -52,7 +52,7 @@ public:
     int outputHeight = output[2];
     int outputWidth = output[3];
     int filterMultiplier = outputChannels / groups_;
-    CHECK_EQ(inputChannels, groups_);
+    CHECK_EQ(static_cast<size_t>(inputChannels), groups_);
 
     // only support strideH() == strideW() and filterHeight == filterWidth.
     CHECK_EQ(strideH(), strideW());

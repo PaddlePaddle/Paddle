@@ -1,8 +1,8 @@
-# Paddle发行规范
+# PaddlePaddle发行规范
 
-Paddle使用git-flow branching model做分支管理，使用[Semantic Versioning](http://semver.org/)标准表示Paddle版本号。
+PaddlePaddle使用git-flow branching model做分支管理，使用[Semantic Versioning](http://semver.org/)标准表示PaddlePaddle版本号。
 
-Paddle每次发新的版本，遵循以下流程:
+PaddlePaddle每次发新的版本，遵循以下流程:
 
 1. 从`develop`分支派生出新的分支，分支名为`release/版本号`。例如，`release/0.10.0`
 2. 将新分支的版本打上tag，tag为`版本号rc.Patch号`。第一个tag为`0.10.0rc1`，第二个为`0.10.0rc2`，依次类推。
@@ -27,14 +27,14 @@ Paddle每次发新的版本，遵循以下流程:
 
 需要注意的是:
 
-* `release/版本号`分支一旦建立，一般不允许再从`develop`分支合入`release/版本号`。这样保证`release/版本号`分支功能的封闭，方便测试人员测试Paddle的行为。
+* `release/版本号`分支一旦建立，一般不允许再从`develop`分支合入`release/版本号`。这样保证`release/版本号`分支功能的封闭，方便测试人员测试PaddlePaddle的行为。
 * 在`release/版本号`分支存在的时候，如果有bugfix的行为，需要将bugfix的分支同时merge到`master`, `develop`和`release/版本号`这三个分支。
 
-# Paddle 分支规范
+# PaddlePaddle 分支规范
 
-Paddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范，并适应github的特性做了一些区别。
+PaddlePaddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范，并适应github的特性做了一些区别。
 
-* Paddle的主版本库遵循[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范。其中:
+* PaddlePaddle的主版本库遵循[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范。其中:
 	* `master`分支为稳定(stable branch)版本分支。每一个`master`分支的版本都是经过单元测试和回归测试的版本。
 	* `develop`分支为开发(develop branch)版本分支。每一个`develop`分支的版本都经过单元测试，但并没有经过回归测试。
 	* `release/版本号`分支为每一次Release时建立的临时分支。在这个阶段的代码正在经历回归测试。
@@ -42,18 +42,18 @@ Paddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-branch
 * 其他用户的fork版本库并不需要严格遵守[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范，但所有fork的版本库的所有分支都相当于特性分支。
 	* 建议，开发者fork的版本库使用`develop`分支同步主版本库的`develop`分支
 	* 建议，开发者fork的版本库中，再基于`develop`版本fork出自己的功能分支。
-	* 当功能分支开发完毕后，向Paddle的主版本库提交`Pull Reuqest`，进而进行代码评审。
+	* 当功能分支开发完毕后，向PaddlePaddle的主版本库提交`Pull Reuqest`，进而进行代码评审。
 		* 在评审过程中，开发者修改自己的代码，可以继续在自己的功能分支提交代码。 
 
 * BugFix分支也是在开发者自己的fork版本库维护，与功能分支不同的是，BugFix分支需要分别给主版本库的`master`、`develop`与可能有的`release/版本号`分支，同时提起`Pull Request`。
 
-# Paddle回归测试列表
+# PaddlePaddle回归测试列表
 
-本列表说明Paddle发版之前需要测试的功能点。
+本列表说明PaddlePaddle发版之前需要测试的功能点。
 
-## Paddle Book中所有章节
+## PaddlePaddle Book中所有章节
 
-Paddle每次发版本首先要保证Paddle Book中所有章节功能的正确性。功能的正确性包括验证Paddle目前的`paddle_trainer`训练和纯使用`Python`训练模型正确性。
+PaddlePaddle每次发版本首先要保证PaddlePaddle Book中所有章节功能的正确性。功能的正确性包括验证PaddlePaddle目前的`paddle_trainer`训练和纯使用`Python`训练模型正确性。
 
 | | 新手入门章节 | 识别数字 | 图像分类 | 词向量 | 情感分析 | 语意角色标注 | 机器翻译 | 个性化推荐 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

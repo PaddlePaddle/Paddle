@@ -22,6 +22,7 @@ limitations under the License. */
 #include "op_info.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -326,10 +327,26 @@ class InferShapeContext {
     return res;
   }
 
+  const Tensor* GetTensorFromVar(const Variable* var) const {
+    if (var->IsType<LoDTensor>()) {
+      return &var->Get<LoDTensor>();
+    }
+    PADDLE_ENFORCE(var->IsType<Tensor>(),
+                   "The Input(%s) must be LoDTensor or Tensor.");
+    return &var->Get<Tensor>();
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
+
+template <>
+const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const;
+
+template <>
+const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+    const std::string& name) const;
 
 template <typename T>
 struct EigenDeviceConverter;
@@ -349,7 +366,7 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext* device_context)
+                   const platform::DeviceContext& device_context)
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
@@ -357,14 +374,43 @@ class ExecutionContext : public InferShapeContext {
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
-  platform::Place GetPlace() const { return device_context_->GetPlace(); }
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
-  const platform::DeviceContext* device_context() const {
+  const platform::DeviceContext& device_context() const {
     return device_context_;
   }
 
-  const platform::DeviceContext* device_context_;
+  // redefine Output function,
+  // use Variable::Get instead of Variable::GetMutable
+  template <typename T>
+  T* Output(const std::string& name) const {
+    auto var = OutputVar(name);
+    return var == nullptr ? nullptr : const_cast<T*>(&var->Get<T>());
+  }
+
+  // redefine MultiOutput function.
+  // use Variable::Get instead of Variable::GetMutable
+  template <typename T>
+  std::vector<T*> MultiOutput(const std::string& name) const {
+    auto names = op().Outputs(name);
+    std::vector<T*> res;
+    res.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(res),
+        [&](const std::string& sub_name) { return Output<T>(sub_name); });
+    return res;
+  }
+
+ private:
+  const platform::DeviceContext& device_context_;
 };
+
+template <>
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+    const std::string& name) const;
 
 class OpKernel {
  public:
@@ -416,7 +462,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
+    opKernel->Compute(ExecutionContext(*this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&

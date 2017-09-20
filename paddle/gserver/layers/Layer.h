@@ -49,6 +49,12 @@ struct LayerState {
 };
 typedef std::shared_ptr<LayerState> LayerStatePtr;
 
+/// Paddle device ID, MKLDNN is -2, CPU is -1
+enum PADDLE_DEVICE_ID {
+  MKLDNN_DEVICE = -2,
+  CPU_DEVICE = -1,
+};
+
 /**
  * @brief Base class for layer.
  * Define necessary variables and functions for every layer.
@@ -59,11 +65,6 @@ protected:
   LayerConfig config_;
   /// whether to use GPU
   bool useGpu_;
-  /// Paddle device ID, MKLDNN is -2, CPU is -1
-  enum PADDLE_DEVICE_ID {
-    MKLDNN_DEVICE = -2,
-    CPU_DEVICE = -1,
-  };
   /// Device Id. MKLDNN is -2, CPU is -1, and GPU is 0, 1, 2 ...
   int deviceId_;
   /// Input layers

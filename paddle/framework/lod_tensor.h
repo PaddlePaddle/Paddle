@@ -18,8 +18,10 @@
 #ifndef PADDLE_ONLY_CPU
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include <thrust/system/cuda/experimental/pinned_allocator.h>
 #endif
 
+#include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
@@ -32,7 +34,8 @@ template <typename T>
 using Vector = std::vector<T>;
 #else
 template <typename T>
-using Vector = thrust::host_vector<T>;
+using Vector = thrust::host_vector<
+    T, thrust::system::cuda::experimental::pinned_allocator<T>>;
 #endif
 
 using LoD = std::vector<Vector<size_t>>;
@@ -48,18 +51,15 @@ bool operator==(const LoD& a, const LoD& b);
  * LoDTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */
-class LoDTensor {
+class LoDTensor : public Tensor {
  public:
   LoDTensor() {}
-  LoDTensor(const LoD& lod, Tensor* t) : lod_(lod), tensor_(t) {}
+
+  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 
   void set_lod(const LoD& lod) { lod_ = lod; }
 
-  void set_tensor(Tensor* tensor) { tensor_ = tensor; }
-
-  Tensor& tensor() { return *tensor_; }
-
-  LoD lod() { return lod_; }
+  LoD lod() const { return lod_; }
 
   /*
    * Get a element from LoD.
@@ -101,7 +101,6 @@ class LoDTensor {
 
  private:
   LoD lod_;
-  Tensor* tensor_;  // not owned
 };
 }  // namespace framework
 }  // namespace paddle

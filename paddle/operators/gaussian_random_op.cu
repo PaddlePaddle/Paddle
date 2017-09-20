@@ -50,8 +50,8 @@ class GPUGaussianRandomKernel : public framework::OpKernel {
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-    ssize_t N = framework::product(tensor->dims());
-    thrust::transform(index_sequence_begin, index_sequence_begin + N,
+    int64_t size = tensor->numel();
+    thrust::transform(index_sequence_begin, index_sequence_begin + size,
                       thrust::device_ptr<T>(data),
                       GaussianGenerator<T>(mean, std, seed));
   }
