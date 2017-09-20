@@ -119,6 +119,10 @@ public:
         inputElemenCnt_ = elemenCnt;
         reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
         resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
+        if (outVal_) {
+          // change original output value to mkldnn output value
+          output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
+        }
         convertWeightsFromPaddle();
         needResetBwd_ = true;
       }
