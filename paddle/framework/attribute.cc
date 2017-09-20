@@ -21,7 +21,7 @@ namespace framework {
 
 template <>
 AttrType AttrTypeID<bool>() {
-  return BOOL;
+  return BOOLEAN;
 }
 template <>
 AttrType AttrTypeID<int>() {
@@ -37,7 +37,7 @@ AttrType AttrTypeID<std::string>() {
 }
 template <>
 AttrType AttrTypeID<std::vector<bool>>() {
-  return BOOLS;
+  return BOOLEANS;
 }
 template <>
 AttrType AttrTypeID<std::vector<int>>() {
@@ -58,7 +58,7 @@ AttrType AttrTypeID<std::vector<std::pair<int, int>>>() {
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
-    case paddle::framework::AttrType::BOOL: {
+    case paddle::framework::AttrType::BOOLEAN: {
       return attr_desc.b();
     }
     case paddle::framework::AttrType::INT: {
@@ -70,7 +70,7 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
     case paddle::framework::AttrType::STRING: {
       return attr_desc.s();
     }
-    case paddle::framework::AttrType::BOOLS: {
+    case paddle::framework::AttrType::BOOLEANS: {
       std::vector<bool> val(attr_desc.bools_size());
       for (int i = 0; i < attr_desc.bools_size(); ++i) {
         val[i] = attr_desc.bools(i);
