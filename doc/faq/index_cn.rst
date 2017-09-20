@@ -325,7 +325,7 @@ pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
 16. PaddlePaddle存储的参数格式是什么，如何和明文进行相互转化
 ---------------------------------------------------------
 
-PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数两部分组成。头信息中，1~4字节表示PaddlePaddle版本信息，在多数情况下，可以直接填充0；5~8字节表示每个参数占用的字节数，当保存的网络参数为float类型时为4，double类型时为8；9~16字节表示保存的参数总个数。
+PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数两部分组成。头信息中，1~4字节表示PaddlePaddle版本信息，请直接填充0；5~8字节表示每个参数占用的字节数，当保存的网络参数为float类型时为4，double类型时为8；9~16字节表示保存的参数总个数。
 
 将PaddlePaddle保存的模型参数还原回明文时，可以使用相应数据类型的 :code:`numpy.array` 加载具体网络参数，此时可以跳过PaddlePaddle模型参数文件的头信息。若在PaddlePaddle编译时，未指定按照double精度编译，默认情况下按照float精度计算，保存的参数也是float类型。这时在使用 :code:`numpy.array` 时，一般设置 :code:`dtype=float32` 。示例如下：
 
@@ -340,7 +340,7 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
                 fmt="%.6f", delimiter=",")
 
 
-将明文参数转化为PaddlePaddle可加载的模型参数时，首先构造头信息，再写入网络参数。下面将随机生成的矩阵转化为可以被PaddlePaddle加载的模型参数。
+将明文参数转化为PaddlePaddle可加载的模型参数时，首先构造头信息，再写入网络参数。下面的代码将随机生成的矩阵转化为可以被PaddlePaddle加载的模型参数。
 
 ..  code-block:: python
 
