@@ -111,6 +111,7 @@ class Pool2dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
             int wend = std::min(wstart + ksize_width, input_width);
             wstart = std::max(wstart, 0);
             int pool_size = (hend - hstart) * (wend - wstart);
+            float scale = 1.0 / pool_size;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 pool_process.gradProcess(
@@ -118,7 +119,7 @@ class Pool2dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
                     output_data[ph * output_width + pw],
                     output_grad_data[ph * output_width + pw],
                     input_grad_data[h * input_width + w],
-                    static_cast<T>(pool_size));
+                    static_cast<T>(scale));
               }
             }
           }
@@ -244,7 +245,6 @@ class Pool3dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
     const int padding_depth = paddings[0];
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
-
     const int input_stride = input_depth * input_height * input_width;
     const int output_stride = output_depth * output_height * output_width;
 
@@ -271,6 +271,7 @@ class Pool3dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
 
               int pool_size =
                   (dend - dstart) * (hend - hstart) * (wend - wstart);
+              float scale = 1.0 / pool_size;
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {
                   for (int w = wstart; w < wend; ++w) {
@@ -280,17 +281,17 @@ class Pool3dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
                     pool_process.gradProcess(
                         input_data[input_idx], output_data[output_idx],
                         output_grad_data[output_idx],
-                        input_grad_data[input_idx], static_cast<T>(pool_size));
+                        input_grad_data[input_idx], static_cast<T>(scale));
                   }
                 }
               }
             }
           }
-          input_data += input_stride;
-          output_data += output_stride;
-          input_grad_data += input_stride;
-          output_grad_data += output_stride;
         }
+        input_data += input_stride;
+        output_data += output_stride;
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
       }
     }
   }

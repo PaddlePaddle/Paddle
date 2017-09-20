@@ -95,7 +95,7 @@ __global__ void KernelPool2dBackward(
         int output_sub_idx = ph * output_width + pw;
         pool_process.gradProcess(input, output_data[output_sub_idx],
                                  output_grad[output_sub_idx], gradient,
-                                 static_cast<T>(pool_size));
+                                 static_cast<T>(1.0 / pool_size));
       }
     }
     input_grad[index] = gradient;
@@ -264,7 +264,7 @@ __global__ void KernelPool3DBackward(
 
     int pdstart = (offsetD < ksize_depth)
                       ? 0
-                      : (offsetD + ksize_depth) / stride_depth + 1;
+                      : (offsetD - ksize_depth) / stride_depth + 1;
     int phstart = (offsetH < ksize_height)
                       ? 0
                       : (offsetH - ksize_height) / stride_height + 1;
@@ -296,10 +296,10 @@ __global__ void KernelPool3DBackward(
           hstart = max(hstart, 0);
           wstart = max(wstart, 0);
           int pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
-          int output_sub_idx = ph * output_width + pw;
+          int output_sub_idx = (pd * output_height + ph) * output_width + pw;
           pool_process.gradProcess(input, output_data[output_sub_idx],
                                    output_grad[output_sub_idx], gradient,
-                                   static_cast<T>(pool_size));
+                                   static_cast<T>(1.0 / pool_size));
         }
       }
     }
@@ -385,7 +385,8 @@ class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad.mutable_data<T>(context->GetPlace());
 
-    int nthreads = batch_size * input_channels * input_height * input_width;
+    int nthreads =
+        batch_size * input_channels * input_depth * input_height * input_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
