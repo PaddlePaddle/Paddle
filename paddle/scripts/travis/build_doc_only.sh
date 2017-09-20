@@ -5,7 +5,7 @@ rm CMakeLists.txt
 mv CMakeLists.doc.txt CMakeLists.txt
 
 rm requirements.txt
-cat >> requirements.txt <<EOF
+cat >> $TRAVIS_BUILD_DIR/requirements.txt <<EOF
 Sphinx==1.5.6
 sphinx_rtd_theme==0.1.9
 recommonmark
