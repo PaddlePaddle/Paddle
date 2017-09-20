@@ -100,6 +100,7 @@ public:
     if (cnt_ == act.value->getElementCnt()) {
       return;
     }
+    VLOG(MKLDNN_BASE) << getName() << " reset mkldnn forward";
     cnt_ = act.value->getElementCnt();
     stream_.reset(new MKLDNNStream());
     auto eng = CPUEngine::Instance().getEngine();
@@ -110,7 +111,6 @@ public:
     float alpha = getAlpha();
     float beta = getBeta();
 
-    /// forward
     pipelineFwd_.clear();
     val_ = std::dynamic_pointer_cast<MKLDNNMatrix>(act.value);
     if (val_ == nullptr) {
@@ -152,6 +152,7 @@ public:
     if (!needResetBwd_) {
       return;
     }
+    VLOG(MKLDNN_BASE) << getName() << " reset mkldnn backward";
     needResetBwd_ = false;
     mkldnn::algorithm algo = getAlgo(this->getName());
     float alpha = getBwdAlpha();

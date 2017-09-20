@@ -64,7 +64,7 @@ bool MKLDNNConvLayer::init(const LayerMap& layerMap,
 
   // create biases
   if (biasParameter_.get() != NULL) {
-    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_));
+    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_, 0));
   }
   return true;
 }
@@ -535,7 +535,7 @@ void MKLDNNConvLayer::resetWgtValBwdData(
   } else {
     wgtValBwdData_ = wgtVal_;
   }
-  VLOG(MKLDNN_FMTS) << "weight value format for backward data"
+  VLOG(MKLDNN_FMTS) << "weight value format for backward data: "
                     << wgtValBwdData_->getFormat();
 }
 
