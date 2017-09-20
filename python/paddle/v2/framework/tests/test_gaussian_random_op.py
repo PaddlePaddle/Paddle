@@ -25,7 +25,7 @@ class TestGaussianRandomOp(unittest.TestCase):
             seed=10)
 
         op.infer_shape(scope)
-        context = core.DeviceContext.create(place)
+        context = core.DeviceContext.get(place)
         op.run(scope, context)
         tensor = numpy.array(scope.find_var('Out').get_tensor())
         self.assertAlmostEqual(numpy.mean(tensor), .0, delta=0.1)

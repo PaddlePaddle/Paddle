@@ -55,7 +55,7 @@ class GPUUniformRandomKernel : public framework::OpKernel {
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
 
-    Transform<platform::GPUPlace> trans;
+    platform::Transform<platform::GPUPlace> trans;
     trans(context.device_context(), index_sequence_begin,
           index_sequence_begin + size, thrust::device_ptr<T>(data),
           UniformGenerator<T>(min, max, seed));

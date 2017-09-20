@@ -25,7 +25,7 @@ class TestUniformRandomOp(unittest.TestCase):
             seed=10)
 
         op.infer_shape(scope)
-        ctx = core.DeviceContext.create(place)
+        ctx = core.DeviceContext.get(place)
         op.run(scope, ctx)
         tensor = numpy.array(scope.find_var('X').get_tensor())
         self.assertAlmostEqual(tensor.mean(), 2.5, delta=0.1)

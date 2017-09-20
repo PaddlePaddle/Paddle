@@ -32,6 +32,7 @@ struct Converter<GPUPlace> {
 class DeviceContextManager {
  public:
   DeviceContextManager();
+  ~DeviceContextManager();
 
   template <typename PlaceType, typename DeviceType = typename Converter<
                                     PlaceType>::DeviceContextType>
@@ -43,10 +44,10 @@ class DeviceContextManager {
   }
 
  private:
-  std::unique_ptr<CPUDeviceContext> cpu_context_;
+  CPUDeviceContext* cpu_context_;
 #ifndef PADDLE_ONLY_CPU
   int device_count_;
-  std::vector<std::unique_ptr<CUDADeviceContext>> cuda_contexts_;
+  std::vector<CUDADeviceContext*> cuda_contexts_;
 #endif
 };
 }  // namespace platform

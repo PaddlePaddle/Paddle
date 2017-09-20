@@ -15,9 +15,18 @@ limitations under the License. */
 #include "paddle/platform/device_context_manager.h"
 #include "gtest/gtest.h"
 
-TEST(DeviceContextManager, Get) {
+TEST(DeviceContextManager, CPU) {
   paddle::platform::CPUPlace place;
   paddle::platform::CPUDeviceContext* ctx =
       paddle::platform::DeviceContextManager::Get()->GetDeviceContext(place);
   ASSERT_NE(nullptr, ctx);
 }
+
+#ifndef PADDLE_ONLY_CPU
+TEST(DeviceContextManager, GPU) {
+  paddle::platform::GPUPlace place(0);
+  paddle::platform::CUDADeviceContext* ctx =
+      paddle::platform::DeviceContextManager::Get()->GetDeviceContext(place);
+  ASSERT_NE(nullptr, ctx);
+}
+#endif

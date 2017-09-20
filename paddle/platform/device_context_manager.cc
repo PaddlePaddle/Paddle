@@ -28,9 +28,9 @@ template <>
 CPUDeviceContext* DeviceContextManager::GetDeviceContext<
     CPUPlace, CPUDeviceContext>(const CPUPlace& place) {
   if (!cpu_context_) {
-    cpu_context_.reset(new CPUDeviceContext(place));
+    cpu_context_ = new CPUDeviceContext(place);
   }
-  return cpu_context_.get();
+  return cpu_context_;
 }
 
 #ifndef PADDLE_ONLY_CPU
@@ -41,13 +41,25 @@ CUDADeviceContext* DeviceContextManager::GetDeviceContext<
   PADDLE_ENFORCE(gpu_id < device_count_,
                  "GPU device id must less than device count");
   SetDeviceId(gpu_id);
-  auto ctx = cuda_contexts_[gpu_id];
-  if (!ctx) {
-    ctx.reset(new CUDADeviceContext(gpu_place));
+  if (!cuda_contexts_[gpu_id]) {
+    cuda_contexts_[gpu_id] = new CUDADeviceContext(place);
   }
-  return ctx.get();
+  return cuda_contexts_[gpu_id];
 }
 #endif
+
+DeviceContextManager::~DeviceContextManager() {
+  if (cpu_context_) {
+    delete cpu_context_;
+  }
+#ifndef PADDLE_ONLY_CPU
+  for (int i = 0; i < device_count_; i++) {
+    if (cuda_contexts_[i]) {
+      delete cuda_contexts_[i];
+    }
+  }
+#endif
+}
 
 }  // namespace platform
 }  // namespace paddle

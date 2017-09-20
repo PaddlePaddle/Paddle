@@ -53,11 +53,11 @@ TEST(Transform, GPUUnary) {
   CUDADeviceContext ctx(gpu0);
   float cpu_buf[4] = {0.1, 0.2, 0.3, 0.4};
   float* gpu_buf = static_cast<float*>(Alloc(gpu0, sizeof(float) * 4));
-  Copy(gpu0, gpu_buf, CPUPlace(), cpu_buf, sizeof(cpu_buf));
+  Copy(gpu0, gpu_buf, CPUPlace(), cpu_buf, sizeof(cpu_buf), ctx.stream());
   Transform<paddle::platform::GPUPlace> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, Scale<float>(10));
+  Copy(CPUPlace(), cpu_buf, gpu0, gpu_buf, sizeof(cpu_buf), ctx.stream());
   ctx.Wait();
-  Copy(CPUPlace(), cpu_buf, gpu0, gpu_buf, sizeof(cpu_buf));
   Free(gpu0, gpu_buf);
   for (int i = 0; i < 4; ++i) {
     ASSERT_NEAR(cpu_buf[i], static_cast<float>(i + 1), 1e-5);
@@ -83,11 +83,11 @@ TEST(Transform, GPUBinary) {
   GPUPlace gpu0(0);
   CUDADeviceContext ctx(gpu0);
   int* gpu_buf = static_cast<int*>(Alloc(gpu0, sizeof(buf)));
-  Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf));
+  Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf), ctx.stream());
   Transform<paddle::platform::GPUPlace> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, gpu_buf, Multiply<int>());
+  Copy(CPUPlace(), buf, gpu0, gpu_buf, sizeof(buf), ctx.stream());
   ctx.Wait();
-  Copy(CPUPlace(), buf, gpu0, gpu_buf, sizeof(buf));
   Free(gpu0, gpu_buf);
   for (int i = 0; i < 4; ++i) {
     ASSERT_EQ((i + 1) * (i + 1), buf[i]);
