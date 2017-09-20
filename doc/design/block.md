@@ -58,14 +58,16 @@ The following C++ programs shows how blocks are used with the `if-else` structur
 int x = 10;
 int y = 20;
 int z = 30;
-int out;
+int out, out1;
 bool cond = false;
 if (cond) {
   int z = x + y;
-  out = softmax(z);
+  out = z;
+  out1 = softmax(z);
 } else {
   int d = fc(z);
   out = d;
+  out1 = d+1;
 }
 ```
 
@@ -79,21 +81,24 @@ x = var([10, 20])
 y = var([1])
 z = var(10, 20)
 cond = var(false)
-ie = pd.ifelse_builder(output_num=1)
+# output_num should be set to ensure the outputs of the true_block and false_block can be merged,
+# so the numbers of both blocks should be same as `output_num`.
+ie = pd.ifelse_builder(output_num=2)
+
 with ie.true_block():
     x_ = x.as_ifelse_input()
     z = operator.add(x_, y)
-    ie.set_output(0, operator.softmax(z))
+    ie.set_outputs(z, operator.softmax(z))
 
 with ie.false_block():
     z_ = z.as_ifelse_input()
     d = layer.fc(z_)
-    ie.set_output(0, operator.softmax(z_))
+    ie.set_outputs(d+1, operator.softmax(d))
 
 out = b(cond)
 ```
 
-In both examples, the left branch computes `softmax(x+y)` and the right branch computes `fc(x)`.
+In both examples, the left branch computes `x+y` and `softmax(x+y)`, the right branch computes `x+1` and `fc(x)`.
 
 A difference is that variables in the C++ program contain scalar values, whereas those in the PaddlePaddle programs are mini-batches of instances.  The `ie.input(true, 0)` invocation returns instances in the 0-th input, `x`, that corresponds to true values in `cond` as the local variable `x`, where `ie.input(false, 0)` returns instances corresponding to false values.
 
