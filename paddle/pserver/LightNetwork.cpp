@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <sys/ioctl.h>
 #include <sstream>
 

@@ -110,7 +110,7 @@ set(COMMON_FLAGS
     -Wno-error=literal-suffix
     -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs
-    -Wno-error=parentheses-equality # Warnings in Pybind11
+    -Wno-error=parentheses-equality # Warnings in pybind11
 )
 
 set(GPU_COMMON_FLAGS
@@ -128,8 +128,10 @@ set(GPU_COMMON_FLAGS
 )
 
 if (APPLE)
-    # On Mac OS X build fat binaries with x86_64 architectures by default.
-    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+    if(NOT CMAKE_CROSSCOMPILING)
+        # On Mac OS X build fat binaries with x86_64 architectures by default.
+        set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+    endif()
 else()
     set(GPU_COMMON_FLAGS
         -Wall
@@ -153,7 +155,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-LIST(APPEND CUDA_NVCC_FLAGS -std=c++11 --default-stream per-thread)
+LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
 LIST(APPEND CUDA_NVCC_FLAGS --use_fast_math)
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
@@ -190,6 +192,7 @@ endif()
 # Modern gpu architectures: Pascal
 if (CUDA_VERSION VERSION_GREATER "8.0" OR CUDA_VERSION VERSION_EQUAL "8.0")
       list(APPEND __arch_flags " -gencode arch=compute_60,code=sm_60")
+      list(APPEND CUDA_NVCC_FLAGS --expt-relaxed-constexpr)
 endif()
 
 # Custom gpu architecture

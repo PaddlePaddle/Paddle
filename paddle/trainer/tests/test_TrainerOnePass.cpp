@@ -100,25 +100,25 @@ TEST(average_window, gpu) {
 }
 
 TEST(average_window, gpu2) {
-  FLAGS_num_passes = 100;
+  FLAGS_num_passes = 20;
   trainerOnePassTest(configFile1, true, false, 2, 0.01);
   FLAGS_num_passes = 1;
 }
 
 TEST(average_window, gpu4) {
-  FLAGS_num_passes = 100;
+  FLAGS_num_passes = 20;
   trainerOnePassTest(configFile1, true, false, 4, 0.01);
   FLAGS_num_passes = 1;
 }
 
 TEST(average_window_cpu, gpu2) {
-  FLAGS_num_passes = 100;
+  FLAGS_num_passes = 20;
   trainerOnePassTest(configFile1, true, false, 2, 0.01, true);
   FLAGS_num_passes = 1;
 }
 
 TEST(average_window_cpu, gpu4) {
-  FLAGS_num_passes = 100;
+  FLAGS_num_passes = 20;
   trainerOnePassTest(configFile1, true, false, 4, 0.01, true);
   FLAGS_num_passes = 1;
 }

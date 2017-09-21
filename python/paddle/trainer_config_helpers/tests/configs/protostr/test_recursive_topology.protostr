@@ -16,6 +16,9 @@ layers {
   inputs {
     input_layer_name: "data"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_1__"
@@ -28,6 +31,9 @@ layers {
   inputs {
     input_layer_name: "__addto_0__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_2__"
@@ -40,6 +46,9 @@ layers {
   inputs {
     input_layer_name: "__addto_1__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_3__"
@@ -52,6 +61,9 @@ layers {
   inputs {
     input_layer_name: "__addto_2__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_4__"
@@ -64,6 +76,9 @@ layers {
   inputs {
     input_layer_name: "__addto_3__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_5__"
@@ -76,6 +91,9 @@ layers {
   inputs {
     input_layer_name: "__addto_4__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_6__"
@@ -88,6 +106,9 @@ layers {
   inputs {
     input_layer_name: "__addto_5__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_7__"
@@ -100,6 +121,9 @@ layers {
   inputs {
     input_layer_name: "__addto_6__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_8__"
@@ -112,6 +136,9 @@ layers {
   inputs {
     input_layer_name: "__addto_7__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_9__"
@@ -124,6 +151,9 @@ layers {
   inputs {
     input_layer_name: "__addto_8__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_10__"
@@ -136,6 +166,9 @@ layers {
   inputs {
     input_layer_name: "__addto_9__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_11__"
@@ -148,6 +181,9 @@ layers {
   inputs {
     input_layer_name: "__addto_10__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_12__"
@@ -160,6 +196,9 @@ layers {
   inputs {
     input_layer_name: "__addto_11__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_13__"
@@ -172,6 +211,9 @@ layers {
   inputs {
     input_layer_name: "__addto_12__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_14__"
@@ -184,6 +226,9 @@ layers {
   inputs {
     input_layer_name: "__addto_13__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_15__"
@@ -196,6 +241,9 @@ layers {
   inputs {
     input_layer_name: "__addto_14__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_16__"
@@ -208,6 +256,9 @@ layers {
   inputs {
     input_layer_name: "__addto_15__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_17__"
@@ -220,6 +271,9 @@ layers {
   inputs {
     input_layer_name: "__addto_16__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_18__"
@@ -232,6 +286,9 @@ layers {
   inputs {
     input_layer_name: "__addto_17__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_19__"
@@ -244,6 +301,9 @@ layers {
   inputs {
     input_layer_name: "__addto_18__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_20__"
@@ -256,6 +316,9 @@ layers {
   inputs {
     input_layer_name: "__addto_19__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_21__"
@@ -268,6 +331,9 @@ layers {
   inputs {
     input_layer_name: "__addto_20__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_22__"
@@ -280,6 +346,9 @@ layers {
   inputs {
     input_layer_name: "__addto_21__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_23__"
@@ -292,6 +361,9 @@ layers {
   inputs {
     input_layer_name: "__addto_22__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_24__"
@@ -304,6 +376,9 @@ layers {
   inputs {
     input_layer_name: "__addto_23__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_25__"
@@ -316,6 +391,9 @@ layers {
   inputs {
     input_layer_name: "__addto_24__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_26__"
@@ -328,6 +406,9 @@ layers {
   inputs {
     input_layer_name: "__addto_25__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_27__"
@@ -340,6 +421,9 @@ layers {
   inputs {
     input_layer_name: "__addto_26__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_28__"
@@ -352,6 +436,9 @@ layers {
   inputs {
     input_layer_name: "__addto_27__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_29__"
@@ -364,6 +451,9 @@ layers {
   inputs {
     input_layer_name: "__addto_28__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_30__"
@@ -376,6 +466,9 @@ layers {
   inputs {
     input_layer_name: "__addto_29__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__addto_31__"
@@ -388,6 +481,9 @@ layers {
   inputs {
     input_layer_name: "__addto_30__"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__fc_layer_0__"

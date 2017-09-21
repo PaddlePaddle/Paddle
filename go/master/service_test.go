@@ -1,24 +1,30 @@
 package master_test
 
 import (
+	"io/ioutil"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/embed"
-	"github.com/docker/docker/pkg/ioutils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewServiceWithEtcd(t *testing.T) {
 	// setup an embed etcd server
-	etcdDir, err := ioutils.TempDir("", "")
+	etcdDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg := embed.NewConfig()
+	lpurl, _ := url.Parse("http://localhost:0")
+	lcurl, _ := url.Parse("http://localhost:0")
+	cfg.LPUrls = []url.URL{*lpurl}
+	cfg.LCUrls = []url.URL{*lcurl}
 	cfg.Dir = etcdDir
 	e, err := embed.StartEtcd(cfg)
 	if err != nil {
@@ -30,15 +36,13 @@ func TestNewServiceWithEtcd(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	select {
-	case <-e.Server.ReadyNotify():
-		t.Log("Server is ready!")
-	case <-time.After(60 * time.Second):
-		e.Server.Stop() // trigger a shutdown
-		t.Fatal("Server took too long to start!")
-	}
 
-	ep := []string{"127.0.0.1:2379"}
+	<-e.Server.ReadyNotify()
+
+	port := strings.Split(e.Clients[0].Addr().String(), ":")[1]
+	endpoint := "127.0.0.1:" + port
+
+	ep := []string{endpoint}
 	masterAddr := "127.0.0.1:3306"
 	store, err := master.NewEtcdClient(ep, masterAddr, master.DefaultLockPath, master.DefaultAddrPath, master.DefaultStatePath, 30)
 	if err != nil {

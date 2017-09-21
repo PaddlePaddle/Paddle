@@ -1,17 +1,21 @@
 import unittest
-import numpy
-from op_test_util import OpTestMeta
+import numpy as np
+from op_test import OpTest
 
 
-class TestSGD(unittest.TestCase):
-    __metaclass__ = OpTestMeta
-
+class TestSGDOp(OpTest):
     def setUp(self):
-        self.type = "sgd"
-        self.param = numpy.random.random((342, 345)).astype("float32")
-        self.grad = numpy.random.random((342, 345)).astype("float32")
-        self.learning_rate = 0.1
-        self.param_out = self.param - self.learning_rate * self.grad
+        self.op_type = "sgd"
+        w = np.random.random((102, 105)).astype("float32")
+        g = np.random.random((102, 105)).astype("float32")
+        lr = 0.1
+
+        self.inputs = {'param': w, 'grad': g}
+        self.attrs = {'learning_rate': lr}
+        self.outputs = {'param_out': w - lr * g}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == "__main__":

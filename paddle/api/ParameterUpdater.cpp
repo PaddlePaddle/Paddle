@@ -41,7 +41,7 @@ ParameterUpdater *ParameterUpdater::createNewRemoteUpdater(
       config->m->getConfig(), pserverSpec, useEtcd));
   return updater;
 #else
-  throw UnsupportError();
+  throw UnsupportError("not compiled with WITH_GOLANG");
 #endif
 }
 

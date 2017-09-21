@@ -39,8 +39,8 @@ public:
   // size_ is 0.
   Piece();
   Piece(const char* d, size_t n);
-  Piece(const char* d);
-  Piece(const std::string& s);
+  Piece(const char* d);         // NOLINT: accept C string into Piece.
+  Piece(const std::string& s);  // NOLINT: accept C++ string into Piece.
 
   const char* data() const { return data_; }
   size_t len() const { return size_; }

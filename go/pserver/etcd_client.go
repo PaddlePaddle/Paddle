@@ -206,6 +206,7 @@ func (e *EtcdClient) GetKey(key string, timeout time.Duration) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
+
 	kvs := resp.Kvs
 	if len(kvs) == 0 {
 		return []byte{}, nil
@@ -215,9 +216,14 @@ func (e *EtcdClient) GetKey(key string, timeout time.Duration) ([]byte, error) {
 }
 
 // PutKey put into etcd with value by key specified
-func (e *EtcdClient) PutKey(key string, value []byte, timeout time.Duration) error {
+func (e *EtcdClient) PutKey(key string, value []byte, timeout time.Duration, withLease bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	_, err := e.client.Put(ctx, key, string(value), clientv3.WithLease(e.sess.Lease()))
+	var err error
+	if withLease {
+		_, err = e.client.Put(ctx, key, string(value), clientv3.WithLease(e.sess.Lease()))
+	} else {
+		_, err = e.client.Put(ctx, key, string(value))
+	}
 	cancel()
 	return err
 }

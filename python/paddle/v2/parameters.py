@@ -1,5 +1,20 @@
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
+from collections import OrderedDict
 import paddle.trainer.config_parser as cp
 import struct
 import tarfile
@@ -28,9 +43,25 @@ def create(layers):
 
 class Parameters(object):
     """
-    Parameters is a dictionary contains Paddle's parameter. The key of
-    Parameters is the name of parameter. The value of Parameters is a plain
-    :code:`numpy.ndarry` .
+    `Parameters` manages all the learnable parameters in a neural network.
+    It stores parameters' information in an OrderedDict. The key is
+    the name of a parameter, and value is a parameter's configuration(in
+    protobuf format), such as initialization mean and std, its size, whether it
+    is a static parameter, and so on.
+
+    :param __param_conf__: store the configurations of learnable parameters in
+        the network in an OrderedDict. Parameter is added one by one into the
+        dict by following their created order in the network: parameters of
+        the previous layers in a network are careted first. You can visit the
+        parameters from bottom to top by iterating over this dict.
+    :type __param_conf__: OrderedDict
+    :param __gradient_machines__: all of the parameters in a neural network are
+        appended to a PaddlePaddle gradient machine, which is used internally to
+        copy parameter values between C++ and Python end.
+    :type __gradient_machines__: list
+    :param __tmp_params__: a dict to store dummy parameters if no
+        __gradient_machines__ is appended to `Parameters`.
+    :type __tmp_params__: dict
 
     Basically usage is
 
@@ -48,7 +79,7 @@ class Parameters(object):
     """
 
     def __init__(self):
-        self.__param_conf__ = dict()
+        self.__param_conf__ = OrderedDict()
         self.__gradient_machines__ = []
         self.__tmp_params__ = dict()
 
@@ -113,16 +144,7 @@ class Parameters(object):
         """
         return iter(self.__param_conf__)
 
-    def __getitem__(self, key):
-        """
-        Get parameter by parameter name. It uses Python dict syntax.
-
-        :note: It will always copy the parameter from C++ side.
-        :param key: Parameter name
-        :type key: basestring
-        :return: parameter value
-        :rtype: np.ndarray
-        """
+    def __getter_inner(self, key, param_type):
         import py_paddle.swig_paddle as api
         shape = self.get_shape(key)
 
@@ -138,13 +160,26 @@ class Parameters(object):
                     each_gradient_machine, key)
                 # for simplify implementation now, we always copy from C++
                 assert isinstance(param, api.Parameter)
-                val = param.getBuf(api.PARAMETER_VALUE)
+                val = param.getBuf(param_type)
                 assert isinstance(val, api.Vector)
                 val = val.copyToNumpyArray()
                 return val
                 # else continue
 
             raise RuntimeError("Unexpected branch")
+
+    def __getitem__(self, key):
+        """
+        Get parameter by parameter name. It uses Python dict syntax.
+
+        :note: It will always copy the parameter from C++ side.
+        :param key: Parameter name
+        :type key: basestring
+        :return: parameter value
+        :rtype: np.ndarray
+        """
+        import py_paddle.swig_paddle as api
+        return self.__getter_inner(key, api.PARAMETER_VALUE)
 
     def get_shape(self, key):
         """
@@ -202,6 +237,22 @@ class Parameters(object):
         """
         return self.__getitem__(key=parameter_name)
 
+    def get_grad(self, key):
+        """
+        Get grandient by parameter name.
+
+        :note: It will always copy the parameter from C++ side.
+        :param key: parameter name
+        :type key: basestring
+        :return: The grandient matrix.
+        :rtype: np.ndarray
+        """
+        import py_paddle.swig_paddle as api
+        if self.__param_conf__[key].is_static:
+            return np.zeros(self.__param_conf__[key].size, dtype=np.float32)
+
+        return self.__getter_inner(key, api.PARAMETER_GRADIENT)
+
     def set(self, parameter_name, value):
         """
         Set parameter by parameter name & matrix.
@@ -219,7 +270,7 @@ class Parameters(object):
         append gradient machine to parameters. This method is used internally in
         Trainer.train.
 
-        :param gradient_machine: Paddle C++ GradientMachine object.
+        :param gradient_machine: PaddlePaddle C++ GradientMachine object.
         :type gradient_machine: api.GradientMachine
         :return:
         """
@@ -250,7 +301,13 @@ class Parameters(object):
         size = reduce(lambda a, b: a * b, param.shape)
         f.write(struct.pack("IIQ", 0, 4, size))
         param = param.astype(np.float32)
-        f.write(param.tostring())
+        s = param.tostring()
+        wrote_size = 0
+        buf = buffer(s, wrote_size, 65535)
+        while buf:  # f.write crashes with big data blog.
+            f.write(buf)
+            wrote_size += 65535
+            buf = buffer(s, wrote_size, 65535)
 
     def deserialize(self, name, f):
         """

@@ -1,5 +1,5 @@
 syntax = "proto2";
- 
+
 option optimize_for = LITE_RUNTIME;
 
 package paddle;
@@ -9,12 +9,10 @@ message SGDConfig {
   // momentum: float >= 0. Parameter updates momentum.
   // decay: float >= 0. Learning rate decay over each update.
   // nesterov: boolean. Whether to apply Nesterov momentum.
-  optional double momentum = 21 [default = 0.0];
-  optional double decay = 23 [default = 0.0];
-  optional bool nesterov =24 [default = false];
-
+  optional double momentum = 21 [ default = 0.0 ];
+  optional double decay = 23 [ default = 0.0 ];
+  optional bool nesterov = 24 [ default = false ];
 }
-
 
 message AdadeltaConfig {
   // Adadelta
@@ -23,21 +21,23 @@ message AdadeltaConfig {
   // epsilon: float >= 0. Fuzz factor.
   // decay: float >= 0. Learning rate decay over each update.
 
-  // reference : [Adadelta - an adaptive learning rate method](http://arxiv.org/abs/1212.5701)
-  optional double rho = 33 [default = 0.90];
-  optional double epsilon = 31 [default = 1e-5];
-  optional double decay = 32 [default = 0.0];
-
+  // reference : [Adadelta - an adaptive learning rate
+  // method](http://arxiv.org/abs/1212.5701)
+  optional double rho = 33 [ default = 0.90 ];
+  optional double epsilon = 31 [ default = 1e-5 ];
+  optional double decay = 32 [ default = 0.0 ];
 }
 
 message AdagradConfig {
-// Adagrad
-// epsilon: float >= 0.
-// decay: float >= 0. Learning rate decay over each update.
+  // Adagrad
+  // epsilon: float >= 0.
+  // decay: float >= 0. Learning rate decay over each update.
 
-// reference : [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
-  optional double epsilon = 41 [default = 1e-5];
-  optional double decay = 42 [default = 0.0];
+  // reference : [Adaptive Subgradient Methods for Online Learning and
+  // Stochastic
+  // Optimization](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+  optional double epsilon = 41 [ default = 1e-5 ];
+  optional double decay = 42 [ default = 0.0 ];
 }
 
 message AdamConfig {
@@ -46,7 +46,8 @@ message AdamConfig {
   // beta_2: float, 0 < beta < 1. Generally close to 1.
   // epsilon: float >= 0. Fuzz factor.
   // decay: float >= 0. Learning rate decay over each update.
-  // reference : [Adam - A Method for Stochastic Optimization](http://arxiv.org/abs/1412.6980v8)
+  // reference : [Adam - A Method for Stochastic
+  // Optimization](http://arxiv.org/abs/1412.6980v8)
   optional double beta_1 = 41;
   optional double beta_2 = 42;
   optional double epsilon = 43;
@@ -55,32 +56,32 @@ message AdamConfig {
 
 message ConstLrConfig {
   // learninRate Policy
-  optional double learning_rate = 1 [default = 1.0];
+  optional double learning_rate = 1 [ default = 1.0 ];
 }
 
 message LinearLrConfig {
   // learninRate Policy
-  optional double learning_rate = 1 [default = 1.0];
+  optional double learning_rate = 1 [ default = 1.0 ];
   optional double lr_decay_a = 2;
   optional double lr_decay_b = 3;
 }
 
 message TensorProto {
-enum DataType {
-  PADDLE_ELEMENT_TYPE_INT32 = 0;
-  PADDLE_ELEMENT_TYPE_UINT32 = 1;
-  PADDLE_ELEMENT_TYPE_INT64 = 2;
-  PADDLE_ELEMENT_TYPE_UINT64 = 3;
-  PADDLE_ELEMENT_TYPE_FLOAT32 = 4;
-  PADDLE_ELEMENT_TYPE_FLOAT64 = 5;
-}
+  enum DataType {
+    PADDLE_ELEMENT_TYPE_INT32 = 0;
+    PADDLE_ELEMENT_TYPE_UINT32 = 1;
+    PADDLE_ELEMENT_TYPE_INT64 = 2;
+    PADDLE_ELEMENT_TYPE_UINT64 = 3;
+    PADDLE_ELEMENT_TYPE_FLOAT32 = 4;
+    PADDLE_ELEMENT_TYPE_FLOAT64 = 5;
+  }
   optional DataType data_type = 1;
   repeated bytes content = 2;
 }
 
 message LrPolicyState {
   // learninRate Policy
-  optional double learning_rate = 1 [default = 1.0];
+  optional double learning_rate = 1 [ default = 1.0 ];
   optional double lr_decay_a = 2;
   optional double lr_decay_b = 3;
 }
@@ -104,7 +105,6 @@ message AdadeltaOptimizerState {
   optional TensorProto update_delta = 4;
 }
 
-
 message AdagradOptimizerState {
   optional LrPolicyState lr_state = 101;
   optional double num_sample_passed = 104;
@@ -124,10 +124,10 @@ message AdamOptimizerState {
 
 message OptimizerConfig {
   enum Optimizer {
-   SGD = 1;
-   Adadelta = 2;
-   Adagrad = 3;
-   Adam = 4;
+    SGD = 1;
+    Adadelta = 2;
+    Adagrad = 3;
+    Adam = 4;
   }
   optional Optimizer optimizer = 1;
   optional SGDConfig sgd = 3;
@@ -136,8 +136,8 @@ message OptimizerConfig {
   optional AdamConfig adam = 6;
 
   enum LrPolicy {
-   Const = 0;
-   Linear = 1;
+    Const = 0;
+    Linear = 1;
   }
   optional LrPolicy lr_policy = 11;
   optional ConstLrConfig const_lr = 12;

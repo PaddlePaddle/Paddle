@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_ONLY_CPU
+#include <cudnn.h>
+#endif
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
@@ -152,6 +155,26 @@ TEST(Projection, identity) {
   }
 }
 
+TEST(Projection, slice) {
+  ProjectionConfig conf;
+  conf.set_type("slice");
+  conf.set_input_size(100);
+  SliceConfig& slice1 = *conf.add_slices();
+  slice1.set_start(10);
+  slice1.set_end(20);
+  SliceConfig& slice2 = *conf.add_slices();
+  slice2.set_start(50);
+  slice2.set_end(70);
+  conf.set_output_size(30);
+  for (auto useGpu : {false, true}) {
+    testProjectionGrad(conf,
+                       INPUT_DATA,
+                       /* parameterSize */ 0,
+                       /* batchSize */ 10,
+                       useGpu);
+  }
+}
+
 TEST(Projection, scaling) {
   ProjectionConfig conf;
   conf.set_type("scaling");
@@ -169,9 +192,15 @@ TEST(Projection, scaling) {
 void testProjectionConv(size_t groups, bool isDeconv) {
   const int NUM_FILTERS = 18;
   const int FILTER_SIZE = 2;
-  const int FILTER_SIZE_Y = 4;
+  const int FILTER_SIZE_Y = 2;
   const int CHANNELS = 3;
   const int IMAGE_SIZE = 16;
+
+#if CUDNN_VERSION >= 6000
+  const int DILATION = 2;
+#else
+  const int DILATION = 1;
+#endif
 
   ProjectionConfig conf;
   if (isDeconv) {
@@ -189,6 +218,8 @@ void testProjectionConv(size_t groups, bool isDeconv) {
   conv->set_padding_y(1);
   conv->set_stride(2);
   conv->set_stride_y(2);
+  conv->set_dilation(DILATION);
+  conv->set_dilation_y(DILATION);
   conv->set_groups(groups);
   if (isDeconv) {
     conv->set_filter_channels(NUM_FILTERS / conv->groups());
@@ -197,12 +228,12 @@ void testProjectionConv(size_t groups, bool isDeconv) {
   }
   conv->set_img_size(IMAGE_SIZE);
   int output_x = outputSize(conv->img_size(),
-                            conv->filter_size(),
+                            (conv->filter_size() - 1) * DILATION + 1,
                             conv->padding(),
                             conv->stride(),
                             /* caffeMode */ true);
   int output_y = outputSize(conv->img_size(),
-                            conv->filter_size_y(),
+                            (conv->filter_size_y() - 1) * DILATION + 1,
                             conv->padding_y(),
                             conv->stride_y(),
                             /* caffeMode */ true);
@@ -404,27 +435,38 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 384, 288});
+  int dilation = 1;
+  if (type == "cudnn_conv") {
+#if CUDNN_VERSION >= 6000
+    dilation = 2;
+#else
+    dilation = 1;
+#endif
+  }
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 768, 192});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(2);
-  conv->set_filter_size_y(3);
+  conv->set_filter_size_y(2);
   conv->set_channels(3);
   conv->set_padding(0);
   conv->set_padding_y(1);
   conv->set_stride(2);
   conv->set_stride_y(2);
+  conv->set_dilation(dilation);
+  conv->set_dilation_y(dilation);
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(16);
-  conv->set_img_size_y(8);
+  conv->set_img_size_y(16);
   conv->set_output_x(outputSize(conv->img_size(),
-                                conv->filter_size(),
+                                (conv->filter_size() - 1) * dilation + 1,
                                 conv->padding(),
                                 conv->stride(),
                                 /* caffeMode */ true));
   conv->set_output_y(outputSize(conv->img_size_y(),
-                                conv->filter_size_y(),
+                                (conv->filter_size_y() - 1) * dilation + 1,
                                 conv->padding_y(),
                                 conv->stride_y(),
                                 /* caffeMode */ true));
@@ -808,9 +850,27 @@ TEST(Layer, square_error_weighted) {
   }
 }
 
+TEST(Layer, huber_regression_loss) {
+  TestConfig config;
+  config.layerConfig.set_type("huber_regression");
+  config.biasSize = 0;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 10, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    for (auto delta : {1, 3, 5}) {
+      config.layerConfig.set_delta(delta);
+      testLayerGrad(config, "huber_regression", 100, /* trans */ false, useGpu);
+    }
+  }
+}
+
 TEST(Layer, huber_two_class) {
   TestConfig config;
-  config.layerConfig.set_type("huber");
+  config.layerConfig.set_type("huber_classification");
   config.biasSize = 0;
 
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
@@ -819,7 +879,7 @@ TEST(Layer, huber_two_class) {
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "huber", 100, /* trans */ false, useGpu);
+    testLayerGrad(config, "huber_two_class", 100, /* trans */ false, useGpu);
   }
 }
 
@@ -1183,6 +1243,75 @@ TEST(Layer, PoolLayer) {
   testPoolLayer("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
+#endif
+}
+
+void setPool3DConfig(TestConfig* config,
+                     PoolConfig* pool,
+                     const string& poolType) {
+  // filter size
+  const int NUM_FILTERS = 16;
+  const int FILTER_SIZE = 3;
+  const int FILTER_SIZE_Y = 3;
+  const int FILTER_SIZE_Z = 3;
+  const int CHANNELS = 16;
+
+  (*config).biasSize = 0;
+  (*config).layerConfig.set_type("pool3d");
+  (*config).layerConfig.set_num_filters(NUM_FILTERS);
+
+  int kw = FILTER_SIZE, kh = FILTER_SIZE_Y, kd = FILTER_SIZE_Z;
+  int pw = 0, ph = 0, pd = 0;
+  int sw = 2, sh = 2, sd = 2;
+
+  pool->set_pool_type(poolType);
+  pool->set_pool_type("avg");
+  pool->set_channels(CHANNELS);
+  pool->set_size_x(kw);
+  pool->set_size_y(kh);
+  pool->set_size_z(kd);
+  pool->set_padding(0);
+  pool->set_padding_y(0);
+  pool->set_padding_z(0);
+  pool->set_stride(sw);
+  pool->set_stride_y(sh);
+  pool->set_stride_z(sd);
+  pool->set_start(0);
+  int ow = outputSize(pool->img_size(), kw, pw, sw, /* caffeMode */ false);
+  int oh = outputSize(pool->img_size_y(), kh, ph, sh, /* caffeMode */ false);
+  int od = outputSize(pool->img_size_z(), kd, pd, sd, /* caffeMode */ false);
+  pool->set_output_x(ow);
+  pool->set_output_y(oh);
+  pool->set_output_z(od);
+}
+
+void testPool3DLayer(const string& poolType, bool trans, bool useGpu) {
+  TestConfig config;
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 11664, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  PoolConfig* pool = input->mutable_pool_conf();
+
+  const int IMAGE_SIZE = 9;
+  const int IMAGE_SIZE_Y = 9;
+  const int IMAGE_SIZE_Z = 9;
+
+  pool->set_img_size(IMAGE_SIZE);
+  pool->set_img_size_y(IMAGE_SIZE_Y);
+  pool->set_img_size_z(IMAGE_SIZE_Z);
+
+  setPool3DConfig(&config, pool, poolType);
+  config.layerConfig.set_size(pool->output_x() * pool->output_y() *
+                              pool->channels());
+
+  testLayerGrad(config, "pool3d", 100, trans, useGpu);
+}
+
+TEST(Layer, Pool3DLayer) {
+  testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ false);
+  testPool3DLayer("max", /* trans= */ false, /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ true);
+  testPool3DLayer("max", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
 
@@ -1574,6 +1703,55 @@ TEST(Layer, BatchNormalizationLayer) {
 #endif
 }
 
+void testBatchNorm3DLayer(const string& type, bool trans, bool useGpu) {
+  TestConfig config;
+  const int CHANNELS = 10;
+  const int IMG_SIZE = 16;
+  const int IMG_SIZE_Y = 8;
+  const int IMG_SIZE_Z = 8;
+  size_t size = CHANNELS * IMG_SIZE * IMG_SIZE_Y * IMG_SIZE_Z;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_size(size);
+  config.layerConfig.set_active_type("sigmoid");
+  config.biasSize = CHANNELS;
+  config.inputDefs.push_back({INPUT_DATA,
+                              "layer_0",
+                              /* dim= */ size,
+                              /* paraSize= */ CHANNELS});
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_1_running_mean", 1, CHANNELS});
+  config.inputDefs.back().isStatic = true;
+  config.inputDefs.push_back({INPUT_DATA, "layer_2_running_var", 1, CHANNELS});
+  config.inputDefs.back().isStatic = true;
+
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  ImageConfig* img_conf = input->mutable_image_conf();
+  img_conf->set_channels(CHANNELS);
+  img_conf->set_img_size(IMG_SIZE);
+  img_conf->set_img_size_y(IMG_SIZE_Y);
+  img_conf->set_img_size_z(IMG_SIZE_Z);
+
+  testLayerGrad(config,
+                "batch_norm",
+                64,
+                /* trans= */ trans,
+                useGpu,
+                /* useWeight */ true);
+}
+
+TEST(Layer, testBatchNorm3DLayer) {
+  testBatchNorm3DLayer("batch_norm", false, false);
+#ifndef PADDLE_ONLY_CPU
+  testBatchNorm3DLayer("batch_norm", false, true);
+  if (hl_get_cudnn_lib_version() >= int(4000)) {
+    testBatchNorm3DLayer("cudnn_batch_norm", false, true);
+  }
+#endif
+}
+
 void testConvOperator(bool isDeconv) {
   TestConfig config;
   const int NUM_FILTERS = 16;
@@ -1876,6 +2054,308 @@ TEST(Layer, CropLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "crop", 100, false, useGpu, false);
+  }
+}
+
+TEST(Layer, SwitchOrderLayer) {
+  TestConfig config;
+  // config input_0
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ImageConfig* img = input->mutable_image_conf();
+  img->set_channels(4);
+  img->set_img_size(16);
+  img->set_img_size_y(16);
+
+  ReshapeConfig* reshape = config.layerConfig.mutable_reshape_conf();
+  reshape->add_height_axis(0);
+  reshape->add_height_axis(1);
+  reshape->add_height_axis(2);
+  reshape->add_width_axis(3);
+
+  // config softmax layer
+  config.layerConfig.set_type("switch_order");
+  config.layerConfig.set_name("switchOrderLayer");
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "switch_order", 100, false, useGpu, true);
+  }
+}
+
+vector<real> randSampling(real range, int n) {
+  CHECK_GE(range, n);
+  vector<real> num(range);
+  iota(begin(num), end(num), 0.);
+  if (range == n) return num;
+
+  random_shuffle(begin(num), end(num));
+  num.resize(n);
+  sort(begin(num), end(num));
+  return num;
+}
+
+TEST(Layer, SubNestedSequenceLayer) {
+  // layer size is not crutial for this layer,
+  // so use a small layer size in unittest
+  const int layerSize = 4;
+
+  const int maxSeqNum = 50;
+  const int maxSeqLen = 50;
+  const int maxBeamSize = 32;
+
+  srand((size_t)(time(NULL)));
+  int beamSize = 1 + (rand() % maxBeamSize);
+
+  TestConfig config;
+  config.layerConfig.set_type("sub_nested_seq");
+  config.layerConfig.set_name("sub_nested_seq_layer");
+  config.layerConfig.set_size(layerSize);
+
+  int seqNum = 1 + (rand() % maxSeqNum);
+
+  // sequence information for the first input, it is a nested sequence
+  vector<int> seqStartPos(seqNum + 1, 0);
+  vector<int> subSeqStartPos(1, 0);
+
+  // selected indices
+  MatrixPtr selectedIndices = Matrix::create(seqNum, beamSize, false, false);
+  selectedIndices->one();
+  selectedIndices->mulScalar(-1.);
+  real* indicesData = selectedIndices->getData();
+
+  for (int i = 0; i < seqNum; ++i) {
+    int subSeqNum = 1 + (rand() % maxSeqNum);
+    for (int j = 0; j < subSeqNum; ++j) {
+      subSeqStartPos.push_back(subSeqStartPos.back() +
+                               (1 + (rand() % maxSeqLen)));
+    }
+    vector<real> selSeqs =
+        randSampling(static_cast<real>(subSeqNum), min(beamSize, subSeqNum));
+    memcpy(indicesData + (i * beamSize),
+           selSeqs.data(),
+           selSeqs.size() * sizeof(real));
+    seqStartPos[i + 1] = subSeqStartPos.back();
+  }
+
+  MatrixPtr seqInputPtr =
+      Matrix::create(seqStartPos.back(), layerSize, false, false);
+  seqInputPtr->randomizeUniform();
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA,
+                              "nested_seq_input",
+                              seqInputPtr,
+                              seqStartPos,
+                              subSeqStartPos});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "selected_indices", selectedIndices});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "sub_nested_seq",
+                  /* batchSize */ seqNum,
+                  /* trans */ false,
+                  /* useGpu*/ useGpu,
+                  /* useWeight */ false);
+  }
+}
+
+TEST(Layer, ClipLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("clip");
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ClipConfig* layerConf = input->mutable_clip_conf();
+  double p1 = std::rand() / (double)RAND_MAX;
+  double p2 = std::rand() / (double)RAND_MAX;
+  layerConf->set_min(std::min(p1, p2));
+  layerConf->set_max(std::max(p1, p2));
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "clip", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, RowL2NormLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("row_l2_norm");
+  config.layerConfig.set_size(size);
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  config.layerConfig.add_inputs();
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "row_l2_norm", batchSize, false, useGpu, false);
+  }
+}
+
+void test3DConvLayer(const string& type, bool trans, bool useGpu) {
+  // filter size
+  const int NUM_FILTERS = 6;
+  // const int CHANNELS = 3;
+  const int FILTER_SIZE = 3;
+  const int FILTER_SIZE_Y = 3;
+  const int FILTER_SIZE_Z = 3;
+
+  // input image
+  const int CHANNELS = 3;
+  const int IMAGE_SIZE = 9;
+  const int IMAGE_SIZE_Y = 9;
+  const int IMAGE_SIZE_Z = 9;
+
+  TestConfig config;
+  config.biasSize = NUM_FILTERS;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_num_filters(NUM_FILTERS);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  // Setting up conv3D-trans layer
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+
+  conv->set_channels(CHANNELS);
+  conv->set_filter_size(FILTER_SIZE);
+  conv->set_filter_size_y(FILTER_SIZE_Y);
+  conv->set_filter_size_z(FILTER_SIZE_Z);
+  conv->set_padding(0);
+  conv->set_padding_y(0);
+  conv->set_padding_z(0);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_stride_z(2);
+  conv->set_img_size(IMAGE_SIZE);
+  conv->set_img_size_y(IMAGE_SIZE_Y);
+  conv->set_img_size_z(IMAGE_SIZE_Z);
+  conv->set_output_x(outputSize(conv->img_size(),
+                                conv->filter_size(),
+                                conv->padding(),
+                                conv->stride(),
+                                /*  caffeMode */ true));
+  conv->set_output_y(outputSize(conv->img_size_y(),
+                                conv->filter_size_y(),
+                                conv->padding_y(),
+                                conv->stride_y(),
+                                /*  caffeMode */ true));
+  conv->set_output_z(outputSize(conv->img_size_z(),
+                                conv->filter_size_z(),
+                                conv->padding_z(),
+                                conv->stride_z(),
+                                /*  caffeMode */ true));
+
+  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
+                              conv->output_z() * NUM_FILTERS);
+  conv->set_groups(1);
+  conv->set_filter_channels(conv->channels() / conv->groups());
+  config.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       CHANNELS * IMAGE_SIZE * IMAGE_SIZE_Y * IMAGE_SIZE_Z,
+       conv->filter_channels() * FILTER_SIZE * FILTER_SIZE_Y * FILTER_SIZE_Z *
+           NUM_FILTERS});
+
+  testLayerGrad(config, "conv3D", 10, trans, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "conv3D", 2, trans, useGpu, true, 0.02);
+}
+
+TEST(Layer, test3DConvLayer) {
+  test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ true);
+#endif
+}
+
+void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
+  // filter size
+  const int NUM_FILTERS = 6;
+  // const int CHANNELS = 3;
+  const int FILTER_SIZE = 3;
+  const int FILTER_SIZE_Y = 3;
+  const int FILTER_SIZE_Z = 3;
+
+  // input image
+  const int CHANNELS = 3;
+  const int IMAGE_SIZE = 4;
+  const int IMAGE_SIZE_Y = 6;
+  const int IMAGE_SIZE_Z = 6;
+
+  // Setting up conv-trans layer
+  TestConfig config;
+  config.biasSize = NUM_FILTERS;
+  config.layerConfig.set_type("deconv3d");
+  config.layerConfig.set_num_filters(NUM_FILTERS);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+
+  conv->set_channels(CHANNELS);
+  conv->set_filter_size(FILTER_SIZE);
+  conv->set_filter_size_y(FILTER_SIZE_Y);
+  conv->set_filter_size_z(FILTER_SIZE_Z);
+  conv->set_padding(0);
+  conv->set_padding_y(0);
+  conv->set_padding_z(0);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_stride_z(2);
+  conv->set_output_x(IMAGE_SIZE);
+  conv->set_output_y(IMAGE_SIZE_Y);
+  conv->set_output_z(IMAGE_SIZE_Z);
+
+  conv->set_img_size(imageSize(conv->output_x(),
+                               conv->filter_size(),
+                               conv->padding(),
+                               conv->stride(),
+                               true));
+  conv->set_img_size_y(imageSize(conv->output_y(),
+                                 conv->filter_size_y(),
+                                 conv->padding_y(),
+                                 conv->stride_y(),
+                                 true));
+  conv->set_img_size_z(imageSize(conv->output_z(),
+                                 conv->filter_size_z(),
+                                 conv->padding_z(),
+                                 conv->stride_z(),
+                                 true));
+  config.layerConfig.set_size(conv->img_size() * conv->img_size_y() *
+                              conv->img_size_z() * NUM_FILTERS);
+  conv->set_groups(1);
+  conv->set_filter_channels(conv->channels() / conv->groups());
+  config.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       CHANNELS * IMAGE_SIZE * IMAGE_SIZE_Y * IMAGE_SIZE_Z,
+       conv->filter_channels() * FILTER_SIZE * FILTER_SIZE_Y * FILTER_SIZE_Z *
+           NUM_FILTERS});
+
+  testLayerGrad(config, "deconv3D", 10, trans, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "deconv3D", 2, trans, useGpu, true, 0.02);
+}
+
+TEST(Layer, test3DDeConvLayer) {
+  test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ true);
+#endif
+}
+
+TEST(Layer, ScaleShiftLayer) {
+  const size_t batchSize = 16;
+  const size_t size = 32;
+  TestConfig config;
+  config.layerConfig.set_type("scale_shift");
+  config.layerConfig.set_size(size);
+  config.biasSize = 1;
+  config.inputDefs.push_back(
+      {INPUT_DATA, "input", /* dim= */ size, /* paraSize= */ 1});
+  config.layerConfig.add_inputs();
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "scale_shift", batchSize, false, useGpu, false);
   }
 }
 

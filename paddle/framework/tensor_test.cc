@@ -19,7 +19,7 @@ TEST(Tensor, Dims) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor tt;
-  tt.Resize(make_ddim({2, 3, 4}));
+  tt.Resize({2, 3, 4});
   DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
@@ -36,7 +36,8 @@ TEST(Tensor, DataAssert) {
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg =
-        "Tenosr holds no memory. Call Tensor::mutable_data first.";
+        "holder_ should not be null\nTensor holds no memory. Call "
+        "Tensor::mutable_data first.";
     const char* what = err.what();
     for (size_t i = 0; i < msg.length(); ++i) {
       ASSERT_EQ(what[i], msg[i]);
@@ -111,7 +112,8 @@ TEST(Tensor, ShareDataWith) {
     } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
       std::string msg =
-          "Tenosr holds no memory. Call Tensor::mutable_data first.";
+          "holder_ should not be null\nTensor holds no memory. Call "
+          "Tensor::mutable_data first.";
       const char* what = err.what();
       for (size_t i = 0; i < msg.length(); ++i) {
         ASSERT_EQ(what[i], msg[i]);
@@ -259,4 +261,17 @@ TEST(Tensor, CopyFrom) {
     }
   }
 #endif
+}
+
+TEST(Tensor, ReshapeToMatrix) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, CPUPlace());
+  for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
+    src_ptr[i] = i;
+  }
+  Tensor res = ReshapeToMatrix<int>(src, 2);
+  ASSERT_EQ(res.dims()[0], 2 * 3);
+  ASSERT_EQ(res.dims()[1], 4 * 9);
 }

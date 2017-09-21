@@ -27,7 +27,7 @@ limitations under the License. */
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, false, "If set, allocate cpu pinned memory.");
+DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
 
 namespace paddle {
 namespace memory {

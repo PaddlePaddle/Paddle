@@ -1,30 +1,39 @@
 import paddle.v2.framework.core as core
-from paddle.v2.framework.create_op_creation_methods import op_creations
+from paddle.v2.framework.op import Operator
 import unittest
+
+
+def fc(X, W, Y):
+    ret_v = core.Net.create()
+
+    ret_v.append_op(Operator("mul", X="X", Y="W", Out="pre_activation"))
+    ret_v.append_op(Operator("sigmoid", X="pre_activation", Y=Y))
+    ret_v.complete_add_op(True)
+    return ret_v
 
 
 class TestNet(unittest.TestCase):
     def test_net_all(self):
         net = core.Net.create()
-        op1 = op_creations.add_two(X="X", Y="Y", Out="Out")
-        net.add_op(op1)
+        op1 = Operator("add", X="X", Y="Y", Out="Out")
+        net.append_op(op1)
 
         net2 = core.Net.create()
-        net2.add_op(op_creations.fc(X="X", W="w", Y="fc.out"))
+        net2.append_op(fc(X="X", W="w", Y="fc.out"))
         net2.complete_add_op(True)
-        net.add_op(net2)
+        net.append_op(net2)
         net.complete_add_op(True)
 
         expected = '''
-Op(plain_net), inputs:(@EMPTY@, X, Y, w), outputs:(@TEMP@fc@0, Out, fc.out).
-    Op(add_two), inputs:(X, Y), outputs:(Out).
-    Op(plain_net), inputs:(@EMPTY@, X, w), outputs:(@TEMP@fc@0, fc.out).
-        Op(fc), inputs:(X, w, @EMPTY@), outputs:(fc.out, @TEMP@fc@0).
-            Op(mul), inputs:(X, w), outputs:(@TEMP@fc@0).
-            Op(sigmoid), inputs:(@TEMP@fc@0), outputs:(fc.out).
+Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}.
+    Op(add), inputs:{X[X], Y[Y]}, outputs:{Out[Out]}.
+    Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
+        Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
+            Op(mul), inputs:{X[X], Y[W]}, outputs:{Out[pre_activation]}.
+            Op(sigmoid), inputs:{X[pre_activation]}, outputs:{Y[fc.out]}.
 '''
         self.assertEqual(expected, "\n" + str(net))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

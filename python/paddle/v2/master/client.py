@@ -76,3 +76,6 @@ class client(object):
         # Memory created from C should be freed.
         get_c_lib().mem_free(ret.contents)
         return record, 0
+
+    def paddle_start_get_records(self, pass_id):
+        get_c_lib().paddle_start_get_records(self.c, pass_id)

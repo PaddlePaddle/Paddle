@@ -66,19 +66,25 @@ public:
     real* inputData = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
     real* outputData = outputs[0].data<real>();
+    bool needIm2col = isNeedIm2col(filter);
+
     TensorShape imShape =
         TensorShape({inputChannels / groups_, inputHeight, inputWidth});
-    TensorShape colShape = TensorShape({inputChannels / groups_,
-                                        filterHeight,
-                                        filterWidth,
-                                        outputHeight,
-                                        outputWidth});
 
-    resizeBuffer<Device>(colShape.getElements());
-    real* colData = reinterpret_cast<real*>(memory_->getBuf());
+    TensorShape colShape;
+    real* colData = NULL;
+
+    if (needIm2col) {
+      colShape = TensorShape({inputChannels / groups_,
+                              filterHeight,
+                              filterWidth,
+                              outputHeight,
+                              outputWidth});
+      resizeBuffer<Device>(colShape.getElements());
+      colData = reinterpret_cast<real*>(memory_->getBuf());
+    }
 
     Im2ColFunctor<kCFO, Device, real> im2col;
-    GemmFunctor<Device, real> gemm;
     size_t inputOffset = imShape.getElements();
     size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
@@ -86,31 +92,34 @@ public:
 
     for (size_t i = 0; i < batchSize; i++) {
       for (size_t g = 0; g < groups_; g++) {
-        im2col(inputData + g * inputOffset,
-               imShape,
-               colData,
-               colShape,
-               strideH(),
-               strideW(),
-               paddingH(),
-               paddingW());
-
+        if (needIm2col) {
+          im2col(inputData + g * inputOffset,
+                 imShape,
+                 colData,
+                 colShape,
+                 strideH(),
+                 strideW(),
+                 paddingH(),
+                 paddingW());
+        } else {
+          colData = inputData + g * inputOffset;
+        }
         int M = outputChannels / groups_;
         int N = outputHeight * outputWidth;
         int K = inputChannels / groups_ * filterHeight * filterWidth;
-        gemm(CblasNoTrans,
-             CblasNoTrans,
-             M,
-             N,
-             K,
-             1.0f,
-             filterData + g * filterOffset,
-             K,
-             colData,
-             N,
-             beta,
-             outputData + g * outputOffset,
-             N);
+        BlasGemm<Device, real>::compute(false,
+                                        false,
+                                        M,
+                                        N,
+                                        K,
+                                        1.0f,
+                                        filterData + g * filterOffset,
+                                        K,
+                                        colData,
+                                        N,
+                                        beta,
+                                        outputData + g * outputOffset,
+                                        N);
       }
       inputData += inputChannels * inputHeight * inputWidth;
       outputData += outputChannels * outputHeight * outputWidth;
@@ -159,19 +168,25 @@ public:
     real* outputGrad = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
     real* inputGrad = outputs[0].data<real>();
+    bool needIm2col = isNeedIm2col(filter);
+
     TensorShape imShape =
         TensorShape({inputChannels / groups_, inputHeight, inputWidth});
-    TensorShape colShape = TensorShape({inputChannels / groups_,
-                                        filterHeight,
-                                        filterWidth,
-                                        outputHeight,
-                                        outputWidth});
 
-    resizeBuffer<Device>(colShape.getElements());
-    real* colData = reinterpret_cast<real*>(memory_->getBuf());
+    TensorShape colShape;
+    real* colData = NULL;
+
+    if (needIm2col) {
+      colShape = TensorShape({inputChannels / groups_,
+                              filterHeight,
+                              filterWidth,
+                              outputHeight,
+                              outputWidth});
+      resizeBuffer<Device>(colShape.getElements());
+      colData = reinterpret_cast<real*>(memory_->getBuf());
+    }
 
     Col2ImFunctor<kCFO, Device, real> col2im;
-    GemmFunctor<Device, real> gemm;
     size_t inputOffset = imShape.getElements();
     size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
@@ -182,27 +197,34 @@ public:
         int K = outputChannels / groups_;
         int N = outputHeight * outputWidth;
         int M = inputChannels / groups_ * filterHeight * filterWidth;
-        gemm(CblasTrans,
-             CblasNoTrans,
-             M,
-             N,
-             K,
-             1.0f,
-             filterData + g * filterOffset,
-             M,
-             outputGrad + g * outputOffset,
-             N,
-             0.0f,
-             colData,
-             N);
-        col2im(inputGrad + g * inputOffset,
-               imShape,
-               colData,
-               colShape,
-               strideH(),
-               strideW(),
-               paddingH(),
-               paddingW());
+        real scale = 0.0f;
+        if (!needIm2col) {
+          colData = inputGrad + g * inputOffset;
+          scale = 1.0f;
+        }
+        BlasGemm<Device, real>::compute(true,
+                                        false,
+                                        M,
+                                        N,
+                                        K,
+                                        1.0f,
+                                        filterData + g * filterOffset,
+                                        M,
+                                        outputGrad + g * outputOffset,
+                                        N,
+                                        scale,
+                                        colData,
+                                        N);
+        if (needIm2col) {
+          col2im(inputGrad + g * inputOffset,
+                 imShape,
+                 colData,
+                 colShape,
+                 strideH(),
+                 strideW(),
+                 paddingH(),
+                 paddingW());
+        }
       }
       inputGrad += inputChannels * inputHeight * inputWidth;
       outputGrad += outputChannels * outputHeight * outputWidth;
@@ -255,50 +277,59 @@ public:
     real* outputGrad = inputs[0].data<real>();
     real* inputData = inputs[1].data<real>();
     real* filterGrad = outputs[0].data<real>();
+    bool needIm2col = isNeedIm2col(filter);
+
     TensorShape imShape =
         TensorShape({inputChannels / groups_, inputHeight, inputWidth});
-    TensorShape colShape = TensorShape({inputChannels / groups_,
-                                        filterHeight,
-                                        filterWidth,
-                                        outputHeight,
-                                        outputWidth});
 
-    resizeBuffer<Device>(colShape.getElements());
-    real* colData = reinterpret_cast<real*>(memory_->getBuf());
+    TensorShape colShape;
+    real* colData = NULL;
+
+    if (needIm2col) {
+      colShape = TensorShape({inputChannels / groups_,
+                              filterHeight,
+                              filterWidth,
+                              outputHeight,
+                              outputWidth});
+      resizeBuffer<Device>(colShape.getElements());
+      colData = reinterpret_cast<real*>(memory_->getBuf());
+    }
 
     Im2ColFunctor<kCFO, Device, real> im2col;
-    GemmFunctor<Device, real> gemm;
     size_t inputOffset = imShape.getElements();
     size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
     size_t filterOffset = filter.getElements() / groups_;
     for (size_t i = 0; i < batchSize; i++) {
       for (size_t g = 0; g < groups_; g++) {
-        im2col(inputData + g * inputOffset,
-               imShape,
-               colData,
-               colShape,
-               strideH(),
-               strideW(),
-               paddingH(),
-               paddingW());
-
+        if (needIm2col) {
+          im2col(inputData + g * inputOffset,
+                 imShape,
+                 colData,
+                 colShape,
+                 strideH(),
+                 strideW(),
+                 paddingH(),
+                 paddingW());
+        } else {
+          colData = inputData + g * inputOffset;
+        }
         int M = outputChannels / groups_;
         int K = outputHeight * outputWidth;
         int N = inputChannels / groups_ * filterHeight * filterWidth;
-        gemm(CblasNoTrans,
-             CblasTrans,
-             M,
-             N,
-             K,
-             1.0f,
-             outputGrad + g * outputOffset,
-             K,
-             colData,
-             K,
-             i == 0 ? beta : 1.0f,
-             filterGrad + g * filterOffset,
-             N);
+        BlasGemm<Device, real>::compute(false,
+                                        true,
+                                        M,
+                                        N,
+                                        K,
+                                        1.0f,
+                                        outputGrad + g * outputOffset,
+                                        K,
+                                        colData,
+                                        K,
+                                        i == 0 ? beta : 1.0f,
+                                        filterGrad + g * filterOffset,
+                                        N);
       }
       inputData += inputChannels * inputHeight * inputWidth;
       outputGrad += outputChannels * outputHeight * outputWidth;

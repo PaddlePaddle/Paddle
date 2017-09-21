@@ -1,20 +1,74 @@
+import logging
 import paddle.v2.framework.core as core
 import unittest
 import numpy as np
-import paddle.v2.framework.create_op_creation_methods as creation
-
-ops = creation.op_creations
+from paddle.v2.framework.op import Operator, RecurrentOp
 
 
-def create_tensor(scope, name, shape):
-    tensor = scope.create_var(name).get_tensor()
+def py_sigmoid(x):
+    return 1. / (1. + np.exp(-x))
+
+
+class PySimpleRNN(object):
+    '''
+    A simple implementation of RNN based on numpy, to futhur test RecurrentOp's alogorithm
+    '''
+
+    def __init__(self, input_dim=30, batch_size=50, weight_dim=15, sent_len=11):
+        self.x = np.random.normal(size=(sent_len, batch_size, input_dim))
+        self.W = np.random.normal(size=(input_dim, input_dim))
+        self.U = np.random.normal(size=(input_dim, input_dim))
+        self.h_boot = np.random.normal(size=(batch_size, input_dim))
+
+        # memories
+        self.mems = [
+            np.zeros(shape=(batch_size, input_dim)) for i in range(sent_len)
+        ]
+
+    def forward(self):
+        xs = self.segment_inputs()
+        for step_id in range(self.x.shape[0]):
+            self.step(step_id, xs[step_id])
+        return self.concat_outputs()
+
+    def segment_inputs(self):
+        return [self.x[i] for i in range(self.x.shape[0])]
+
+    def concat_outputs(self):
+        return np.array(self.mems)
+
+    def step(self, step_id, x):
+        '''
+        run a step
+        '''
+        mem = self.mems[step_id]
+        if step_id > 0:
+            pre_mem = self.mems[step_id - 1]
+        else:
+            pre_mem = self.h_boot
+        xW = np.matmul(x, self.W)
+        hU = np.matmul(mem, self.U)
+
+        sum = xW + hU
+        self.mems[step_id] = py_sigmoid(sum)
+
+
+class PySimpleRNNTest(unittest.TestCase):
+    def setUp(self):
+        self.rnn = PySimpleRNN()
+
+    def test_forward(self):
+        output = self.rnn.forward()
+
+
+def create_tensor(scope, name, shape, np_data):
+    tensor = scope.new_var(name).get_tensor()
     tensor.set_dims(shape)
-    tensor.alloc_float()
-    tensor.set(np.random.random(shape))
+    tensor.set(np_data, core.CPUPlace())
     return tensor
 
 
-class TestRNN(unittest.TestCase):
+class TestRecurrentOp(unittest.TestCase):
     '''
     Test RNNOp
 
@@ -28,64 +82,82 @@ class TestRNN(unittest.TestCase):
     memories:
         - h
     outputs:
-        - h
+       - h
     '''
 
-    def init(self):
-        input_dim = 30
-        batch_size = 50
-        weight_dim = 15
+    input_dim = 30
+    batch_size = 50
+    weight_dim = 15
+    sent_len = 11
 
-        self.scope = core.Scope(None)
+    def setUp(self):
+        self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
+                                  self.weight_dim, self.sent_len)
 
-        # create vars
-        create_tensor(self.scope, "x", [batch_size, input_dim])
-        create_tensor(self.scope, "W", [input_dim, weight_dim])
-        create_tensor(self.scope, "U", [weight_dim, weight_dim])
-        create_tensor(self.scope, "h_boot", [batch_size, weight_dim])
+    def forward(self):
+        self.scope = core.Scope()
+        self.create_global_variables()
+        self.create_rnn_op()
+        self.create_step_net()
+        ctx = core.DeviceContext.create(core.CPUPlace())
+        self.rnnop.infer_shape(self.scope)
+        self.rnnop.run(self.scope, ctx)
+        return np.array(self.scope.find_var("h@mem").get_tensor())
 
-        x_alias = "x@alias"
-        y_alias = "y@alias"
-        memory = "h@alias"
-        prememory = "h@pre"
-        output = "rnn_out"
-        output_alias = "rnn_out@alias"
+    def create_global_variables(self):
+        # create inlink
+        x_np_data = self.py_rnn.x
+        create_tensor(self.scope, "x",
+                      [self.sent_len, self.batch_size, self.input_dim],
+                      x_np_data)
+        W_np_data = self.py_rnn.W
+        create_tensor(self.scope, "W", [self.input_dim, self.input_dim],
+                      W_np_data)
 
-        # create step net
-        stepnet_var = self.scope.create_var("stepnet")
-        stepnet = stepnet_var.get_net()
-        # stepnet = core.Net.create()
-        x_fc_op = ops.fc(X=x_alias, W="W", Y="Wx")
-        h_fc_op = ops.fc(X=prememory, W="U", Y="Uh")
-        sum_op = ops.add_two(X="Wx", Y="Uh", Out="sum")
-        sig_op = ops.sigmoid(X="sum", Y=memory)
-        stepnet.add_op(x_fc_op)
-        stepnet.add_op(h_fc_op)
-        stepnet.add_op(sum_op)
-        stepnet.add_op(sig_op)
-        stepnet.complete_add_op(True)
+        U_np_data = self.py_rnn.U
+        create_tensor(self.scope, "U", [self.input_dim, self.input_dim],
+                      U_np_data)
 
+        h_boot_np_data = self.py_rnn.h_boot
+        create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim],
+                      h_boot_np_data)
+        self.scope.new_var("step_scopes")
+        self.scope.new_var("h@mem")
+
+    def create_rnn_op(self):
         # create RNNOp
-        rnnop = ops.recurrent_op(
+        self.rnnop = RecurrentOp(
             # inputs
             inlinks=["x"],
             boot_memories=["h_boot"],
             step_net="stepnet",
             # outputs
-            outlinks=[output],
+            outlinks=["h@mem"],
             step_scopes="step_scopes",
             # attributes
-            inlink_alias=["x@alias"],
-            outlink_alias=[output_alias],
-            pre_memories=[prememory],
-            memories=[memory])
+            pre_memories=["h@pre"],
+            memories=["h@mem"])
 
-        ctx = core.DeviceContext.cpu_context()
-        rnnop.infer_shape(self.scope)
-        rnnop.run(self.scope, ctx)
+    def create_step_net(self):
+        stepnet = core.Net.create()
+        x_fc_op = Operator("mul", X="x", Y="W", Out="Wx")
+        h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
+        sum_op = Operator("add", X="Wx", Y="Uh", Out="sum")
+        sig_op = Operator("sigmoid", X="sum", Y="h@mem")
 
-    def test_recurrent(self):
-        self.init()
+        for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
+            stepnet.append_op(op)
+        stepnet.complete_add_op(True)
+        self.rnnop.set_stepnet(stepnet)
+
+    def test_forward(self):
+        print 'test recurrent op forward'
+        pd_output = self.forward()
+        py_output = self.py_rnn.forward()
+        print 'pd_output', pd_output
+        print
+        print 'py_output', py_output
+        self.assertEqual(pd_output.shape, py_output.shape)
 
 
 if __name__ == '__main__':

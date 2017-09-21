@@ -63,47 +63,12 @@ CPU-only version and a CUDA GPU version and their no-AVX versions.
 
 We put the docker images on `dockerhub.com
 <https://hub.docker.com/r/paddlepaddle/paddle/tags/>`_. You can find the
-latest versions under "tags" tab at dockerhub.com. If you are in
-China, you can use our Docker image registry mirror to speed up the
-download process. To use it, please replace all paddlepaddle/paddle in
-the commands to docker.paddlepaddle.org/paddle.
+latest versions under "tags" tab at dockerhub.com. 
 
-1. Production images, this image might have multiple variants:
+** NOTE: If you are in China, you can use our Docker image registry mirror to speed up the download process. To use it, please replace all paddlepaddle/paddle in the commands to docker.paddlepaddle.org/paddle.**
 
-   - GPU/AVX：:code:`paddlepaddle/paddle:<version>-gpu`
-   - GPU/no-AVX：:code:`paddlepaddle/paddle:<version>-gpu-noavx`
-   - CPU/AVX：:code:`paddlepaddle/paddle:<version>`
-   - CPU/no-AVX：:code:`paddlepaddle/paddle:<version>-noavx`
 
-   Please be aware that the CPU-only and the GPU images both use the
-   AVX instruction set, but old computers produced before 2008 do not
-   support AVX.  The following command checks if your Linux computer
-   supports AVX:
-
-   .. code-block:: bash
-
-      if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
-
-   
-   To run the CPU-only image as an interactive container:
-
-   .. code-block:: bash
-
-      docker run -it --rm paddlepaddle/paddle:0.10.0 /bin/bash
-
-   Above method work with the GPU image too -- the recommended way is
-   using `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_.
-
-   Please install nvidia-docker first following this `tutorial
-   <https://github.com/NVIDIA/nvidia-docker#quick-start>`_.
-
-   Now you can run a GPU image:
-
-   .. code-block:: bash
-
-      nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0-gpu /bin/bash
-
-2. development image :code:`paddlepaddle/paddle:<version>-dev`
+1. development image :code:`paddlepaddle/paddle:<version>-dev`
 
    This image has packed related develop tools and runtime
    environment. Users and developers can use this image instead of
@@ -125,6 +90,41 @@ the commands to docker.paddlepaddle.org/paddle.
    container and start their work.  Also they can start a development
    docker image with SSHD service, so they can login to the container
    and start work.
+
+2. Production images, this image might have multiple variants:
+
+   - GPU/AVX：:code:`paddlepaddle/paddle:<version>-gpu`
+   - GPU/no-AVX：:code:`paddlepaddle/paddle:<version>-gpu-noavx`
+   - CPU/AVX：:code:`paddlepaddle/paddle:<version>`
+   - CPU/no-AVX：:code:`paddlepaddle/paddle:<version>-noavx`
+
+   Please be aware that the CPU-only and the GPU images both use the
+   AVX instruction set, but old computers produced before 2008 do not
+   support AVX.  The following command checks if your Linux computer
+   supports AVX:
+
+   .. code-block:: bash
+
+      if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
+
+   **NOTE：versions after 0.10.0 will automatically detect system AVX support, so manual detect is not needed in this case.**
+   To run the CPU-only image as an interactive container:
+
+   .. code-block:: bash
+
+      docker run -it --rm paddlepaddle/paddle:0.10.0 /bin/bash
+
+   Above method work with the GPU image too -- the recommended way is
+   using `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_.
+
+   Please install nvidia-docker first following this `tutorial
+   <https://github.com/NVIDIA/nvidia-docker#quick-start>`_.
+
+   Now you can run a GPU image:
+
+   .. code-block:: bash
+
+      nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0-gpu /bin/bash
 
 
 Train Model Using Python API

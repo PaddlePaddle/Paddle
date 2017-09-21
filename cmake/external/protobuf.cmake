@@ -173,7 +173,8 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
             "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
             "-Dprotobuf_WITH_ZLIB=ON"
-            "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}")
+            "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}"
+            ${EXTERNAL_OPTIONAL_ARGS})
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
     ENDIF()
 
@@ -222,6 +223,15 @@ IF(NOT PROTOBUF_FOUND)
         CACHE FILEPATH "protobuf library." FORCE)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
+
+    IF(WITH_C_API)
+        INSTALL(DIRECTORY ${PROTOBUF_INCLUDE_DIR} DESTINATION third_party/protobuf)
+        IF(ANDROID)
+            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
+        ELSE()
+            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib)
+        ENDIF()
+    ENDIF()
 
     IF(CMAKE_CROSSCOMPILING)
         PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)

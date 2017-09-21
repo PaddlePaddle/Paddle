@@ -12,15 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_base.h"
 #include "CropOp.h"
+#include "hl_base.h"
 
 namespace paddle {
 
-__global__ void KeCrop(real* outputs, const real* inputs,
-                      int inC, int inH, int inW,
-                      int cropC, int cropH, int cropW,
-                      int outC, int outH, int outW, int nthreads) {
+__global__ void KeCrop(real* outputs,
+                       const real* inputs,
+                       int inC,
+                       int inH,
+                       int inW,
+                       int cropC,
+                       int cropH,
+                       int cropW,
+                       int outC,
+                       int outH,
+                       int outW,
+                       int nthreads) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < nthreads) {
     const int w = idx % outW;
@@ -35,12 +43,12 @@ __global__ void KeCrop(real* outputs, const real* inputs,
 
 template <>
 void Crop<DEVICE_TYPE_GPU>(real* outputs,
-                          const real* inputs,
-                          const TensorShape inShape,
-                          const TensorShape outShape,
-                          const FuncConfig& conf) {
+                           const real* inputs,
+                           const TensorShape inShape,
+                           const TensorShape outShape,
+                           const FuncConfig& conf) {
   std::vector<uint32_t> crop_corner =
-        conf.get<std::vector<uint32_t>>("crop_corner");
+      conf.get<std::vector<uint32_t>>("crop_corner");
   int cropC = crop_corner[1];
   int cropH = crop_corner[2];
   int cropW = crop_corner[3];
@@ -58,16 +66,33 @@ void Crop<DEVICE_TYPE_GPU>(real* outputs,
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;
 
-  KeCrop<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (outputs, inputs, inC, inH, inW, cropC, cropH, cropW,
-     outC, outH, outW, nth);
+  KeCrop<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(outputs,
+                                                     inputs,
+                                                     inC,
+                                                     inH,
+                                                     inW,
+                                                     cropC,
+                                                     cropH,
+                                                     cropW,
+                                                     outC,
+                                                     outH,
+                                                     outW,
+                                                     nth);
   CHECK_SYNC("Crop");
 }
 
-__global__ void KeCropDiff(const real* inGrad, real* outGrad,
-                          int inC, int inH, int inW,
-                          int cropC, int cropH, int cropW,
-                          int outC, int outH, int outW, int nthreads) {
+__global__ void KeCropDiff(const real* inGrad,
+                           real* outGrad,
+                           int inC,
+                           int inH,
+                           int inW,
+                           int cropC,
+                           int cropH,
+                           int cropW,
+                           int outC,
+                           int outH,
+                           int outW,
+                           int nthreads) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < nthreads) {
     const int w = idx % inW;
@@ -84,12 +109,12 @@ __global__ void KeCropDiff(const real* inGrad, real* outGrad,
 
 template <>
 void CropGrad<DEVICE_TYPE_GPU>(const real* inGrad,
-                              real* outGrad,
-                              const TensorShape inShape,
-                              const TensorShape outShape,
-                              const FuncConfig& conf) {
+                               real* outGrad,
+                               const TensorShape inShape,
+                               const TensorShape outShape,
+                               const FuncConfig& conf) {
   std::vector<uint32_t> crop_corner =
-        conf.get<std::vector<uint32_t>>("crop_corner");
+      conf.get<std::vector<uint32_t>>("crop_corner");
   int cropC = crop_corner[1];
   int cropH = crop_corner[2];
   int cropW = crop_corner[3];
@@ -107,9 +132,18 @@ void CropGrad<DEVICE_TYPE_GPU>(const real* inGrad,
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;
 
-  KeCropDiff <<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (inGrad, outGrad, inC, inH, inW, cropC, cropH, cropW,
-     outC, outH, outW, nth);
+  KeCropDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(inGrad,
+                                                         outGrad,
+                                                         inC,
+                                                         inH,
+                                                         inW,
+                                                         cropC,
+                                                         cropH,
+                                                         cropW,
+                                                         outC,
+                                                         outH,
+                                                         outW,
+                                                         nth);
   CHECK_SYNC("CropGrad");
 }
 

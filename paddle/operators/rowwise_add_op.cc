@@ -13,28 +13,45 @@
    limitations under the License. */
 
 #include "paddle/operators/rowwise_add_op.h"
+
 namespace paddle {
 namespace operators {
 
-class RowWiseAddOp : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2UL, "Two inputs is needed by rowwise add");
-    auto dim0 = inputs[0]->dims();
-    auto dim1 = inputs[1]->dims();
+using framework::Tensor;
 
-    PADDLE_ENFORCE(dim0.size() == 2, "Input 0 must be matrix");
-    PADDLE_ENFORCE(dim1.size() == 1, "The second input must be vector");
-    PADDLE_ENFORCE(dim0[1] == dim1[0], "The width of two input must be same");
-    PADDLE_ENFORCE(outputs.size() == 1, "The output size must be 1");
-    outputs[0]->Resize(inputs[0]->dims());
+class RowwiseAddOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of RowwiseAddOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("b"),
+                            "Input(b) of RowwiseAddOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of RowwiseAddOp should not be null.");
+
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto b_dims = ctx.Input<Tensor>("b")->dims();
+    PADDLE_ENFORCE_GT(
+        x_dims.size(), b_dims.size(),
+        "The rank of input `X` must be larger than the one of input `b`.");
+
+    int num_col_dims = x_dims.size() - b_dims.size();
+
+    PADDLE_ENFORCE_EQ(
+        framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
+        "The width of two operands must be same");
+    PADDLE_ENFORCE_EQ(ctx.OutputSize("Out"), 1, "The output size must be 1");
+    ctx.Output<framework::LoDTensor>("Out")->Resize(x_dims);
   }
 };
 
-class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
-public:
-  RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+class RowwiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  RowwiseAddOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
     AddInput("b", "The right input of row-wise add op, must be vector");
@@ -46,10 +63,41 @@ for i in xrange(X.shape[0]):
 )DOC");
   }
 };
+class RowwiseAddGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "X should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("b"), "b should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto b_dims = ctx.Input<Tensor>("b")->dims();
+    PADDLE_ENFORCE_GT(
+        x_dims.size(), b_dims.size(),
+        "The rank of input `X` must be larger than the one of input `b`.");
+
+    int num_col_dims = x_dims.size() - b_dims.size();
+    PADDLE_ENFORCE_EQ(
+        framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
+        "The width of two operands must be same");
+    auto *dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *db = ctx.Output<framework::LoDTensor>(framework::GradVarName("b"));
+    if (dx) dx->Resize(x_dims);
+    if (db) db->Resize(b_dims);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(rowwise_add, ops::RowWiseAddOp, ops::RowWiseAddOpMaker);
-REGISTER_OP_CPU_KERNEL(rowwise_add,
-                       ops::RowWiseAddKernel<ops::CPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP(rowwise_add, ops::RowwiseAddOp, ops::RowwiseAddOpMaker,
+            rowwise_add_grad, ops::RowwiseAddGradOp);
+REGISTER_OP_CPU_KERNEL(
+    rowwise_add, ops::RowwiseAddKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    rowwise_add_grad,
+    ops::RowwiseAddGradKernel<paddle::platform::CPUPlace, float>);

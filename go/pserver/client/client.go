@@ -27,9 +27,13 @@ import (
 
 // TODO(helin): add RPC call retry logic
 
-// Selector selects if the client should initialize parameter servers.
+// Selector selects if the client should initialize parameters and
+// reports the initialization process done.
 type Selector interface {
-	Select() bool
+	// Select selects if the client should initialize parameter servers.
+	Select() (bool, error)
+	// Done indicates the initialization process is done.
+	Done() error
 }
 
 // Server is the identification of a parameter Server.
@@ -115,7 +119,7 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 // servers. Other trainers will be blocked until the initialization is
 // done, and they need to get the initialized parameters from
 // parameter servers using GetParams.
-func (c *Client) BeginInitParams() bool {
+func (c *Client) BeginInitParams() (bool, error) {
 	return c.sel.Select()
 }
 

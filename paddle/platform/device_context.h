@@ -17,7 +17,6 @@ limitations under the License. */
 #ifndef PADDLE_ONLY_CPU
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
-#include "paddle/platform/dynload/curand.h"
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
@@ -40,7 +39,7 @@ class DeviceContext {
 class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
-  CPUDeviceContext(CPUPlace);
+  explicit CPUDeviceContext(CPUPlace place);
   virtual ~CPUDeviceContext() {}
 
   Eigen::DefaultDevice* eigen_device() const;
@@ -52,10 +51,11 @@ class CPUDeviceContext : public DeviceContext {
 };
 
 #ifndef PADDLE_ONLY_CPU
+class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
-  explicit CUDADeviceContext(GPUPlace);
+  explicit CUDADeviceContext(GPUPlace place);
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */
@@ -67,32 +67,24 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
-  // clang-format off
   /*! \brief  Return cublas handle in the device context. */
-  cublasHandle_t    cublas_handle   ();
+  cublasHandle_t cublas_handle() const;
 
   /*! \brief  Return cudnn  handle in the device context. */
-  cudnnHandle_t     cudnn_handle    ();
+  cudnnHandle_t cudnn_handle() const;
 
-  /*! \brief  Return curand handle in the device context. */
-  curandGenerator_t curand_generator();
-  // clang-format on
+  /*! \brief  Return cuda stream in the device context. */
+  cudaStream_t stream() const;
 
  private:
   GPUPlace place_;
 
- private:
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
-  std::unique_ptr<Eigen::CudaStreamDevice> eigen_stream_;
+  std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
- private:
-  uint64_t seed_;
-
-  // clang-format off
-  cudnnHandle_t     cudnn_handle_     = nullptr;
-  cublasHandle_t    cublas_handle_    = nullptr;
-  curandGenerator_t curand_generator_ = nullptr;
-  // clang-format on
+  cudaStream_t stream_;
+  cudnnHandle_t cudnn_handle_;
+  cublasHandle_t cublas_handle_;
 };
 
 #endif

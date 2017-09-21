@@ -13,22 +13,30 @@
    limitations under the License. */
 
 #include "paddle/operators/sigmoid_op.h"
+
 namespace paddle {
 namespace operators {
 
-class SigmoidOp : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 1, "Sigmoid Op only have one input");
-    PADDLE_ENFORCE(outputs.size() == 1, "Sigmoid Op only have one output");
-    outputs[0]->Resize(inputs[0]->dims());
+class SigmoidOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of SigmoidOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
+                            "Output(Y) of SigmoidOp should not be null.");
+
+    ctx.Output<framework::LoDTensor>("Y")->Resize(
+        ctx.Input<Tensor>("X")->dims());
   }
 };
 
-class SigmoidOpMaker : public OpProtoAndCheckerMaker {
-public:
-  SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SigmoidOpMaker(framework::OpProto *proto,
+                 framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "sigmoid input");
     AddOutput("Y", "sigmoid output");
@@ -36,20 +44,24 @@ public:
   }
 };
 
-class SigmoidOpGrad : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "SigmoidGrad";
-    return "";
+class SigmoidOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
+        ->Resize(ctx.Input<Tensor>("Y")->dims());
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(sigmoid, ops::SigmoidOp, ops::SigmoidOpMaker);
-REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, ops::SigmoidOpGrad);
-
-REGISTER_OP_CPU_KERNEL(sigmoid, ops::SigmoidKernel<ops::CPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP(sigmoid, ops::SigmoidOp, ops::SigmoidOpMaker, sigmoid_grad,
+            ops::SigmoidOpGrad);
+REGISTER_OP_CPU_KERNEL(sigmoid,
+                       ops::SigmoidKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_grad, ops::SigmoidGradKernel<paddle::platform::CPUPlace, float>);

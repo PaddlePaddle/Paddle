@@ -3,24 +3,11 @@ import paddle.v2.dataset.uci_housing as uci_housing
 import paddle.v2.master as master
 import os
 import cPickle as pickle
+from paddle.v2.reader.creator import cloud_reader
 
 etcd_ip = os.getenv("MASTER_IP", "127.0.0.1")
-etcd_endpoint = "http://" + etcd_ip + ":2379"
-print "connecting to master, etcd endpoints: ", etcd_endpoint
-master_client = master.client(etcd_endpoint, 5, 64)
-
-
-def cloud_reader():
-    global master_client
-    master_client.set_dataset(
-        ["/pfs/dlnel/public/dataset/uci_housing/uci_housing-*"], passes=30)
-    while 1:
-        r, e = master_client.next_record()
-        if not r:
-            if e != -2:  # other errors
-                print "get record error:", e
-            break
-        yield pickle.loads(r)
+etcd_endpoints = "http://" + etcd_ip + ":2379"
+print "etcd endpoints: ", etcd_endpoints
 
 
 def main():
@@ -30,12 +17,10 @@ def main():
     # network config
     x = paddle.layer.data(name='x', type=paddle.data_type.dense_vector(13))
     y_predict = paddle.layer.fc(input=x,
-                                param_attr=paddle.attr.Param(
-                                    name='w', learning_rate=1e-3),
+                                param_attr=paddle.attr.Param(name='w'),
                                 size=1,
                                 act=paddle.activation.Linear(),
-                                bias_attr=paddle.attr.Param(
-                                    name='b', learning_rate=1e-3))
+                                bias_attr=paddle.attr.Param(name='b'))
     y = paddle.layer.data(name='y', type=paddle.data_type.dense_vector(1))
     cost = paddle.layer.mse_cost(input=y_predict, label=y)
 
@@ -49,7 +34,7 @@ def main():
                                  parameters=parameters,
                                  update_equation=optimizer,
                                  is_local=False,
-                                 pserver_spec=etcd_endpoint,
+                                 pserver_spec=etcd_endpoints,
                                  use_etcd=True)
 
     # event_handler to print training and testing info
@@ -75,7 +60,11 @@ def main():
     trainer.train(
         reader=paddle.batch(
             paddle.reader.shuffle(
-                cloud_reader, buf_size=500), batch_size=2),
+                cloud_reader(
+                    ["/pfs/dlnel/public/dataset/uci_housing/uci_housing*"],
+                    etcd_endpoints),
+                buf_size=500),
+            batch_size=2),
         feeding={'x': 0,
                  'y': 1},
         event_handler=event_handler,

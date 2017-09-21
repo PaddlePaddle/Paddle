@@ -18,9 +18,14 @@ limitations under the License. */
 
 #include <cuda_runtime.h>
 #include <stddef.h>
+#include <string>
 
 namespace paddle {
 namespace platform {
+
+//! Environment variable: fraction of GPU memory to use on each device.
+const std::string kEnvFractionGpuMemoryToUse =
+    "PADDLE_FRACTION_GPU_MEMORY_TO_USE";
 
 //! Get the total number of GPU devices in system.
 int GetDeviceCount();

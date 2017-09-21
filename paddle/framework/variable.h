@@ -16,7 +16,7 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "paddle/platform/assert.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +25,7 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    PADDLE_ASSERT(IsType<T>());
+    PADDLE_ENFORCE(IsType<T>(), "Variable must be type %s", typeid(T).name());
     return *static_cast<const T*>(holder_->Ptr());
   }
 
@@ -65,6 +65,17 @@ class Variable {
 
   std::unique_ptr<Placeholder>
       holder_;  // pointers to a PlaceholderImpl object indeed.
+
+  // name_ is only meaningful with a Scope and accessible by it.
+  //
+  // NOTE: Please don't expose name_ by adding methods like
+  // Variable::Name or Scope::VarName!  A variable could have a human
+  // readable name or an auto-generated scope-unique name.  In the
+  // former case, the caller knows the name and doesn't need to access
+  // the name; in the latter case, the variable should be identified
+  // by its address but not the unreadable name.
+  friend class Scope;
+  const std::string* name_;
 };
 
 }  // namespace framework

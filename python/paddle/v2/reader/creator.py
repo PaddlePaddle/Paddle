@@ -16,7 +16,7 @@ Creator package contains some simple reader creator, which could
 be used in user program.
 """
 
-__all__ = ['np_array', 'text_file', "recordio"]
+__all__ = ['np_array', 'text_file', "cloud_reader"]
 
 
 def np_array(x):
@@ -57,7 +57,7 @@ def text_file(path):
     return reader
 
 
-def recordio_local(paths, buf_size=100):
+def recordio(paths, buf_size=100):
     """
     Creates a data reader from given RecordIO file paths separated by ",",
         glob pattern is supported.
@@ -67,49 +67,59 @@ def recordio_local(paths, buf_size=100):
 
     import recordio as rec
     import paddle.v2.reader.decorator as dec
+    import cPickle as pickle
 
     def reader():
-        a = ','.join(paths)
-        f = rec.reader(a)
+        if isinstance(paths, basestring):
+            path = paths
+        else:
+            path = ",".join(paths)
+        f = rec.reader(path)
         while True:
             r = f.read()
             if r is None:
                 break
-            yield r
+            yield pickle.loads(r)
         f.close()
 
     return dec.buffered(reader, buf_size)
 
 
-def recordio(paths, buf_size=100):
+pass_num = 0
+
+
+def cloud_reader(paths, etcd_endpoints, timeout_sec=5, buf_size=64):
     """
-    Creates a data reader that outputs record one one by one
-        from given local or cloud recordio path.
+    Create a data reader that yield a record one by one from
+        the paths:
     :path: path of recordio files.
+    :etcd_endpoints: the endpoints for etcd cluster
     :returns: data reader of recordio files.
+
+    ..  code-block:: python
+        from paddle.v2.reader.creator import cloud_reader
+        etcd_endpoints = "http://127.0.0.1:2379"
+        trainer.train.(
+            reader=cloud_reader(["/work/dataset/uci_housing/uci_housing*"], etcd_endpoints),
+        )
     """
     import os
-    import paddle.v2.master.client as cloud
-
-    if "KUBERNETES_SERVICE_HOST" not in os.environ.keys():
-        return recordio_local(paths)
-
-    host_name = "MASTER_SERVICE_HOST"
-    if host_name not in os.environ.keys():
-        raise Exception('not find ' + host_name + ' in environment variable.')
-
-    addr = os.environ(host)
+    import cPickle as pickle
+    import paddle.v2.master as master
+    c = master.client(etcd_endpoints, timeout_sec, buf_size)
+    c.set_dataset(paths)
 
     def reader():
-        c = cloud(addr, buf_size)
-        c.set_dataset(paths)
+        global pass_num
+        c.paddle_start_get_records(pass_num)
+        pass_num += 1
 
         while True:
-            r, err = client.next_record()
-            if err < 0:
+            r, e = c.next_record()
+            if not r:
+                if e != -2:
+                    print "get record error: ", e
                 break
-            yield r
-
-        c.release()
+            yield pickle.loads(r)
 
     return reader

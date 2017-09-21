@@ -13,33 +13,102 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/operators/type_alias.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
-class OnehotCrossEntropyOpKernel : public OpKernel {
-public:
-  constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
+using Tensor = framework::Tensor;
 
-  void Compute(const KernelContext& context) const override {
-    auto X = context.Input(0)->Get<Tensor>();
-    const T* X_data = X.data<T>();
-    const int* label_data = context.Input(1)->Get<Tensor>().data<int>();
-    auto* Y = context.Output(0)->GetMutable<Tensor>();
+template <typename T>
+HOSTDEVICE T tolerable_value(const T x) {
+  PADDLE_ASSERT(std::is_floating_point<T>::value);
+  const T kApproInf = 1e20;
+  if (x == INFINITY) {
+    return kApproInf;
+  }
+  if (x == -INFINITY) {
+    return -kApproInf;
+  }
+  return x;
+}
 
-    Y->mutable_data<T>(context.GetPlace());
+template <typename T>
+class CrossEntropyOpKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "It must use CPUPlace.");
 
-    T* Y_data = Y->data<T>();
+    auto x = ctx.Input<Tensor>("X");
+    auto y = ctx.Output<Tensor>("Y");
 
-    int batch_size = X.dims()[0];
-    int class_num = X.dims()[1];
+    auto* x_data = x->data<T>();
+    y->mutable_data<T>(ctx.GetPlace());
+    auto* y_data = y->data<T>();
 
-    // Y[i] = -log(X[i][j])
-    for (int i = 0; i < batch_size; ++i) {
-      Y_data[i] = -std::log(
-          std::max(X_data[i * class_num + label_data[i]], LOG_THRESHOLD()));
+    int batch_size = x->dims()[0];
+    int class_num = x->dims()[1];
+
+    if (ctx.Attr<int>("soft_label") == 1) {
+      auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
+      int index = 0;
+      for (int i = 0; i < batch_size; ++i) {
+        T sum = static_cast<T>(0);
+        for (int j = 0; j < class_num; ++j) {
+          sum += label_data[index] * tolerable_value(std::log(x_data[index]));
+          y_data[i] = -sum;
+          index++;
+        }
+      }
+    } else {
+      auto* label_data = ctx.Input<Tensor>("Label")->data<int>();
+      for (int i = 0; i < batch_size; ++i) {
+        int index = i * class_num + label_data[i];
+        y_data[i] = -tolerable_value(std::log(x_data[index]));
+      }
+    }
+  }
+};
+
+template <typename T>
+class CrossEntropyGradientOpKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "It must use CPUPlace.");
+
+    auto x = ctx.Input<Tensor>("X");
+    auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto label = ctx.Input<Tensor>("Label");
+
+    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    auto* dy_data = dy->data<T>();
+    auto* x_data = x->data<T>();
+
+    int batch_size = x->dims()[0];
+    int class_num = x->dims()[1];
+
+    // TODO(qingqing): make zero setting an common function.
+    if (ctx.Attr<int>("soft_label") == 1) {
+      auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
+      int index = 0;
+      for (int i = 0; i < batch_size; ++i) {
+        for (int j = 0; j < class_num; ++j) {
+          dx_data[index] = -label_data[index] * dy_data[i] / x_data[index];
+          index++;
+        }
+      }
+    } else {
+      auto* label_data = label->data<int>();
+      memset(dx_data, 0, sizeof(T) * batch_size * class_num);
+      for (int i = 0; i < batch_size; ++i) {
+        PADDLE_ASSERT(label_data[i] >= 0 || label_data[i] < class_num);
+        int index = i * class_num + label_data[i];
+        dx_data[index] = -dy_data[i] / x_data[index];
+      }
     }
   }
 };

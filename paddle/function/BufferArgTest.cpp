@@ -32,7 +32,7 @@ TEST(BufferTest, SequenceIdArg) {
                          sizeOfValuType(VALUE_TYPE_INT32));
   SequenceIdArg buffer(memory.getBuf(), shape);
   EXPECT_EQ(buffer.data(), memory.getBuf());
-  EXPECT_EQ(buffer.numSeqs(), 9);
+  EXPECT_EQ(buffer.numSeqs(), 9U);
 }
 
 }  // namespace paddle

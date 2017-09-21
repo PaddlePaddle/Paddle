@@ -6,14 +6,12 @@
 安装流程
 ++++++++
 
-PaddlePaddle提供数个预编译的二进制来进行安装，包括Docker镜像，ubuntu的deb安装包等。我们推荐使用Docker镜像来部署环境，同时欢迎贡献更多的安装包。
+PaddlePaddle提供Docker镜像来部署环境。
 
 .. toctree::
    :maxdepth: 1
    
    docker_install_cn.rst 
-   ubuntu_install_cn.rst
-
 
 
 编译流程

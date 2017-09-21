@@ -19,11 +19,9 @@ if(Boost_FOUND)
 endif()
 
 if(WITH_C_API)
-    add_subdirectory(capi)
+  add_subdirectory(capi)
 endif()
 
 if(WITH_SWIG_PY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-          ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
   add_subdirectory(api)
 endif()

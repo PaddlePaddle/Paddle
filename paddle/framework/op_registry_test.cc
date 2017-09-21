@@ -7,9 +7,10 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
  public:
-  void Run(const std::shared_ptr<Scope>& scope,
+  using OperatorBase::OperatorBase;
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void InferShape(const Scope& scope) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -20,15 +21,16 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is cos op");
   }
 };
 
 class MyTestOp : public OperatorBase {
  public:
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  using OperatorBase::OperatorBase;
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 };
 
@@ -36,9 +38,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInputs("input", "input of cosine op");
-    AddOutput("output", "output of cosine op",
-              /*temporary*/ true);
+    AddInput("input", "input of cosine op").AsDuplicable();
+    AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };
@@ -50,16 +51,24 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(cos_sim, paddle::framework::CosineOp,
-            paddle::framework::CosineOpProtoAndCheckerMaker);
-REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
-            paddle::framework::MyTestOpProtoAndCheckerMaker);
+static void BuildVar(const std::string& param_name,
+                     std::initializer_list<const char*> arguments,
+                     paddle::framework::OpDesc::Var* var) {
+  var->set_parameter(param_name);
+  for (auto& arg_name : arguments) {
+    var->add_arguments(arg_name);
+  }
+}
+REGISTER_OP_WITHOUT_GRADIENT(cos_sim, paddle::framework::CosineOp,
+                             paddle::framework::CosineOpProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(my_test_op, paddle::framework::MyTestOp,
+                             paddle::framework::MyTestOpProtoAndCheckerMaker);
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
@@ -67,20 +76,19 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
-  float scale_get = op->GetAttr<float>("scale");
+  float scale_get = op->Attr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
 
 TEST(OpRegistry, IllegalAttr) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
@@ -104,33 +112,23 @@ TEST(OpRegistry, IllegalAttr) {
 TEST(OpRegistry, DefaultValue) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
-  op_desc.add_inputs("aa");
-  op_desc.add_outputs("bb");
+  BuildVar("input", {"aa"}, op_desc.add_inputs());
+  BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
-  ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
-}
-
-static void SetInputFormat(paddle::framework::OpDesc* desc) {
-  auto attr = desc->add_attrs();
-  attr->set_name("input_format");
-  attr->set_type(paddle::framework::INTS);
-  attr->mutable_ints()->Add(0);
-  attr->mutable_ints()->Add(1);
+  ASSERT_EQ(op->Attr<float>("scale"), 1.0);
 }
 
 TEST(OpRegistry, CustomChecker) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
-  op_desc.add_inputs("ii");
-  op_desc.add_outputs("oo");
-  SetInputFormat(&op_desc);
+  BuildVar("input", {"ii"}, op_desc.add_inputs());
+  BuildVar("output", {"oo"}, op_desc.add_outputs());
 
   // attr 'test_attr' is not set
   bool caught = false;
@@ -170,43 +168,10 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  SetInputFormat(&op_desc);
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
   op->Run(scope, dev_ctx);
-  int test_attr = op->GetAttr<int>("test_attr");
+  int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
-}
-
-class TestAttrProtoMaker : public pd::OpProtoAndCheckerMaker {
- public:
-  TestAttrProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("scale", "scale of test op");
-    AddAttr<float>("scale", "scale of test op");
-  }
-};
-
-TEST(ProtoMaker, DuplicatedAttr) {
-  pd::OpProto op_proto;
-  pd::OpAttrChecker op_checker;
-  auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
-}
-
-class TestInOutProtoMaker : public pd::OpProtoAndCheckerMaker {
- public:
-  TestInOutProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of test op");
-    AddInput("input", "input of test op");
-  }
-};
-
-TEST(ProtoMaker, DuplicatedInOut) {
-  pd::OpProto op_proto;
-  pd::OpAttrChecker op_checker;
-  auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
 }

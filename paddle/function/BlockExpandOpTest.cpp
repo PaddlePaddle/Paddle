@@ -18,10 +18,10 @@ limitations under the License. */
 namespace paddle {
 
 TEST(BlockExpandForward, real) {
-  for (size_t batchSize : {5, 32}) {
-    for (size_t channels : {1, 5, 32}) {
-      for (size_t inputHeight : {5, 33, 100}) {
-        for (size_t inputWidth : {5, 32, 96}) {
+  for (size_t batchSize : {5}) {
+    for (size_t channels : {1, 5}) {
+      for (size_t inputHeight : {5, 33}) {
+        for (size_t inputWidth : {5, 32}) {
           for (size_t block : {1, 3, 5}) {
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
@@ -61,10 +61,10 @@ TEST(BlockExpandForward, real) {
 }
 
 TEST(BlockExpandBackward, real) {
-  for (size_t batchSize : {5, 32}) {
-    for (size_t channels : {1, 5, 32}) {
-      for (size_t inputHeight : {5, 33, 100}) {
-        for (size_t inputWidth : {5, 32, 96}) {
+  for (size_t batchSize : {5}) {
+    for (size_t channels : {1, 5}) {
+      for (size_t inputHeight : {5, 33}) {
+        for (size_t inputWidth : {5, 32}) {
           for (size_t block : {1, 3, 5}) {
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {

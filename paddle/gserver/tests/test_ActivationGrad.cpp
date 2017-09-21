@@ -57,6 +57,39 @@ TEST(Activation, activation) {
   }
 }
 
+void testSequenceSoftmaxAct(bool hasSubseq) {
+  LOG(INFO) << "test activation: sequence softmax";
+
+  const size_t size = 1;
+  TestConfig config;
+  config.biasSize = 0;
+  config.layerConfig.set_type("addto");
+  config.layerConfig.set_size(size);
+  config.layerConfig.set_active_type("sequence_softmax");
+  config.inputDefs.push_back(
+      {hasSubseq ? INPUT_HASSUB_SEQUENCE_DATA : INPUT_SEQUENCE_DATA,
+       "layer_0",
+       1,
+       0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "sequence_softmax",
+                  100,
+                  /* trans= */ false,
+                  useGpu,
+                  /* useWeight */ true);
+  }
+}
+
+TEST(SequenceSoftmaxActivation, activation) {
+  for (auto hasSubseq : {false, true}) {
+    LOG(INFO) << "hasSubseq = " << hasSubseq;
+    testSequenceSoftmaxAct(hasSubseq);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

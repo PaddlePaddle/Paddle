@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "CudnnBatchNormLayer.h"
 #include "Layer.h"
+#include "paddle/cuda/include/hl_batch_norm.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -36,7 +37,7 @@ bool CudnnBatchNormLayer::init(const LayerMap& layerMap,
 }
 
 void CudnnBatchNormLayer::reshape(int batchSize) {
-  hl_tensor_reshape(ioDesc_, batchSize, channels_, imageH_, imageW_);
+  hl_tensor_reshape(ioDesc_, batchSize, channels_, imageH_ * imageD_, imageW_);
 }
 
 void CudnnBatchNormLayer::forward(PassType passType) {
@@ -79,16 +80,33 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    savedInvVar);
   } else {
     // used movingMean and movingVar in testing
-    hl_batch_norm_forward_inference(ioDesc_,
-                                    input,
-                                    ioDesc_,
-                                    output,
-                                    bnParamDesc_,
-                                    gamma,
-                                    beta,
-                                    movingMean,
-                                    movingVar,
-                                    EPS);
+    if (batchSize <= 1024) {
+      hl_batch_norm_forward_inference(ioDesc_,
+                                      input,
+                                      ioDesc_,
+                                      output,
+                                      bnParamDesc_,
+                                      gamma,
+                                      beta,
+                                      movingMean,
+                                      movingVar,
+                                      EPS);
+    } else {
+      // There is a limitation in cudnn library.
+      // When the batch size is larger than 1024 in cuDNN v5.1,
+      // the cudnnBatchNormalizationForwardInference will fail.
+      hl_batch_norm_cuda_inference(input,
+                                   output,
+                                   gamma,
+                                   beta,
+                                   movingMean,
+                                   movingVar,
+                                   EPS,
+                                   batchSize,
+                                   channels_,
+                                   imageH_ * imageD_,
+                                   imageW_);
+    }
   }
 
   /* activation */ {

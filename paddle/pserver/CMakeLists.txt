@@ -45,14 +45,18 @@ add_dependencies(paddle_pserver paddle_proto ${external_project_dependencies})
 set(PSERVER_MAIN_SOURCES
     ParameterServer2Main.cpp)
 
-add_executable(paddle_pserver_main
-    ${PSERVER_MAIN_SOURCES})
-link_paddle_exe(paddle_pserver_main)
 if(WITH_TESTING)
   add_subdirectory(test)
 endif()
-install(TARGETS paddle_pserver_main
-    RUNTIME DESTINATION opt/paddle/bin
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-        GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
-set_target_properties(paddle_pserver_main PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+if(NOT WITH_C_API)
+  add_executable(paddle_pserver_main ${PSERVER_MAIN_SOURCES})
+  link_paddle_exe(paddle_pserver_main)
+
+  install(TARGETS paddle_pserver_main
+          RUNTIME DESTINATION opt/paddle/bin
+          PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+          GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+  set_target_properties(paddle_pserver_main PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()

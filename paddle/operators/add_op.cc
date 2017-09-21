@@ -17,24 +17,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class AddOp : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "Input size of AddOp must be two");
-    PADDLE_ENFORCE(outputs.size() == 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE(
-        inputs[0] != nullptr && inputs[1] != nullptr && outputs[0] != nullptr,
-        "Inputs/Outputs of AddOp must all be set");
-    PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
-                   "Two input of Add Op's dimension must be same.");
-    outputs[0]->Resize(inputs[0]->dims());
+class AddOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of AddOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
+                            "Input(Y) of AddOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of AddOp should not be null.");
+
+    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
+                      ctx.Input<Tensor>("Y")->dims(),
+                      "Two input of Add Op's dimension must be same.");
+    ctx.Output<framework::LoDTensor>("Out")->Resize(
+        ctx.Input<Tensor>("X")->dims());
   }
 };
 
-class AddOpMaker : public OpProtoAndCheckerMaker {
-public:
-  AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+class AddOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  AddOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of add op");
     AddInput("Y", "The second input of add op");
@@ -47,19 +53,18 @@ The equation is: Out = X + Y
   }
 };
 
-class AddOpGrad : public OperatorWithKernel {
-protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {}
-  std::string DebugString() const override {
-    LOG(INFO) << "AddOpGrad";
-    return "";
-  }
+class AddOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(const framework::InferShapeContext &ctx) const override {}
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(add_two, ops::AddOp, ops::AddOpMaker);
-REGISTER_GRADIENT_OP(add_two, add_two_grad, ops::AddOpGrad);
-REGISTER_OP_CPU_KERNEL(add_two, ops::AddKernel<ops::CPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP(add, ops::AddOp, ops::AddOpMaker, add_grad, ops::AddOpGrad);
+
+REGISTER_OP_CPU_KERNEL(add, ops::AddKernel<paddle::platform::CPUPlace, float>);

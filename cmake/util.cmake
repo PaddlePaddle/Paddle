@@ -25,7 +25,9 @@ function(target_circle_link_libraries TARGET_NAME)
             endif()
         endforeach()
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-            list(APPEND LIBS "-undefined dynamic_lookup")
+            if(IOS AND NOT IOS_ENABLE_BITCODE)
+                list(APPEND LIBS "-undefined dynamic_lookup")
+            endif()
         endif()
         list(REVERSE libsInArgn)
         target_link_libraries(${TARGET_NAME}
@@ -118,7 +120,6 @@ endfunction()
 macro(add_unittest_without_exec TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
     link_paddle_test(${TARGET_NAME})
-    add_style_check_target(${TARGET_NAME} ${ARGN})
 endmacro()
 
 # add_unittest
@@ -142,17 +143,20 @@ endmacro()
 function(create_resources res_file output_file)
   add_custom_command(
     OUTPUT ${output_file}
-    COMMAND python ARGS ${PROJ_ROOT}/cmake/make_resource.py ${res_file} ${output_file}
-    DEPENDS ${res_file} ${PROJ_ROOT}/cmake/make_resource.py)
+    COMMAND python ARGS ${PADDLE_SOURCE_DIR}/cmake/make_resource.py ${res_file} ${output_file}
+    DEPENDS ${res_file} ${PADDLE_SOURCE_DIR}/cmake/make_resource.py)
 endfunction()
 
 
 # Create a python unittest using run_python_tests.sh,
 # which takes care of making correct running environment
 function(add_python_test TEST_NAME)
-  add_test(NAME ${TEST_NAME}
-        COMMAND env PADDLE_PACKAGE_DIR=${PADDLE_PYTHON_PACKAGE_DIR}
-        bash ${PROJ_ROOT}/paddle/scripts/run_python_tests.sh
-        ${USE_VIRTUALENV_FOR_TEST} ${PYTHON_EXECUTABLE} ${ARGN}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    foreach(arg ${ARGN})
+        get_filename_component(py_fn ${arg} NAME_WE)
+        set(TRG_NAME ${TEST_NAME}_${py_fn})
+        add_test(NAME ${TRG_NAME}
+                COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
+                python2 ${arg}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endforeach()
 endfunction()

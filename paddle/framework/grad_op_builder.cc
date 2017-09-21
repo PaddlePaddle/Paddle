@@ -8,108 +8,50 @@ You may obtain a copy of the License at
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+WITHOpArgType::OUT WARRANTIES OR CONDITIONS OF ANY KOpArgType::IND, either
+express or implied. See the License for the specific language governing
+permissions and limitations under the License. */
 
 #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
+enum class OpArgType { IN, OUT };
 
-OperatorBase* GradOpBuilder::Build() {
-  BuildOpInOutArgList();
-  std::string grad_op_type = OpRegistry::grad_ops().at(op_->type_);
-  OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)();
-  grad_op->type_ = grad_op_type;
-  CompleteGradOp(grad_op);
-  return grad_op;
-}
-
-OpInOutArg* GradOpBuilder::BuildArg(const VarProto& var,
-                                    const VarIndexMap& var_map,
-                                    const std::vector<int>& format,
-                                    InOutType type) {
-  int idx = var_map.at(var.name());
-  int begin_idx = format.empty() ? idx : format.at(idx);
-  int end_idx = format.empty() ? idx + 1 : format.at(idx + 1);
-  return new OpInOutArg(var.name(), type, !var.ignore_gradient(), begin_idx,
-                        end_idx);
-}
-
-void GradOpBuilder::BuildOpInOutArgList() {
-  const OpProto& op_proto = OpRegistry::protos().at(op_->type_);
-  const auto& var_map = *(OpRegistry::VarIndexMaps().at(op_->type_));
-  const std::vector<int>& in_format =
-      op_->attrs_.count("input_format")
-          ? op_->GetAttr<std::vector<int>>("input_format")
-          : std::vector<int>();
-  const std::vector<int>& out_format =
-      op_->attrs_.count("output_format")
-          ? op_->GetAttr<std::vector<int>>("output_format")
-          : std::vector<int>();
-  for (const auto& var : op_proto.inputs()) {
-    arg_list_.emplace_back(
-        std::shared_ptr<OpInOutArg>(BuildArg(var, var_map, in_format, IN)));
-  }
-  for (const auto& var : op_proto.outputs()) {
-    arg_list_.emplace_back(
-        std::shared_ptr<OpInOutArg>(BuildArg(var, var_map, out_format, OUT)));
-  }
-}
-
-void GradOpBuilder::AddArgIntoGradOp(const OpInOutArg* arg,
-                                     std::vector<std::string>& in_out,
-                                     std::vector<int>& format,
-                                     VarIndexMap* varmap, int& idx,
-                                     bool is_grad) const {
-  std::string var_name = arg->proto_name_;
-  if (is_grad) {
-    var_name += OperatorBase::GRAD_VAR_SUFFIX();
-  }
-  (*varmap)[var_name] = idx++;
-  size_t pre_sz = in_out.size();
-  auto base_it =
-      arg->type_ == IN ? op_->inputs_.begin() : op_->outputs_.begin();
-  std::copy(base_it + arg->begin_idx_, base_it + arg->end_idx_,
-            std::back_inserter(in_out));
-  if (is_grad) {
-    for (size_t i = pre_sz; i < in_out.size(); ++i) {
-      in_out[i] += OperatorBase::GRAD_VAR_SUFFIX();
+static void TransOpArg(const OperatorBase* src_op, const OpArgType& src_type,
+                       bool is_grad, VariableNameMap* vars) {
+  const auto& src_inout =
+      src_type == OpArgType::IN ? src_op->Inputs() : src_op->Outputs();
+  auto& dst_inout = *vars;
+  auto& proto = OpInfoMap::Instance().Get(src_op->Type()).Proto();
+  const auto& src_arg_list =
+      src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
+  for (const auto& arg : src_arg_list) {
+    if (arg.not_in_gradient() && !is_grad) continue;
+    const std::string src_name = arg.name();
+    std::string dst_name = is_grad ? GradVarName(src_name) : src_name;
+    dst_inout[dst_name].reserve(src_inout.at(src_name).size());
+    for (auto& var_name : src_inout.at(src_name)) {
+      std::string s = is_grad ? GradVarName(var_name) : var_name;
+      dst_inout[dst_name].emplace_back(s);
     }
   }
-  format.push_back(in_out.size());
 }
 
-void GradOpBuilder::CompleteGradOp(OperatorBase* grad_op) const {
-  grad_op->attrs_ = op_->attrs_;
-  grad_op->attrs_.erase("input_format");
-  grad_op->attrs_.erase("output_format");
-  VarIndexMap* grad_varmap = new VarIndexMap();
-  int in_idx = 0;
-  int out_idx = 0;
-  std::vector<int> in_format({0});
-  std::vector<int> out_format({0});
-  for (const auto& arg : arg_list_) {
-    // op_'s inputs_ and outputs_
-    if (arg->needed_in_grad_) {
-      AddArgIntoGradOp(arg.get(), grad_op->inputs_, in_format, grad_varmap,
-                       in_idx, false);
-    }
-    if (arg->type_ == IN) {
-      // gradients of op_'s inputs_
-      AddArgIntoGradOp(arg.get(), grad_op->outputs_, out_format, grad_varmap,
-                       out_idx, true);
-    } else {
-      // gradients of op_'s outputs_
-      AddArgIntoGradOp(arg.get(), grad_op->inputs_, in_format, grad_varmap,
-                       in_idx, true);
-    }
-  }
-  grad_op->attrs_["input_format"] = in_format;
-  grad_op->attrs_["output_format"] = out_format;
-  grad_op->in_out_idxs_.reset(grad_varmap);
+OperatorBase* BuildGradOp(const OperatorBase* op) {
+  auto& info = OpInfoMap::Instance().Get(op->Type());
+  PADDLE_ENFORCE(info.HasGradientOp());
+
+  VariableNameMap inputs;
+  VariableNameMap outputs;
+  TransOpArg(op, OpArgType::IN, false, &inputs);   // I
+  TransOpArg(op, OpArgType::OUT, false, &inputs);  // O
+  TransOpArg(op, OpArgType::OUT, true, &inputs);   // OG
+  TransOpArg(op, OpArgType::IN, true, &outputs);   // IG
+
+  auto& grad_info = OpInfoMap::Instance().Get(info.grad_op_type_);
+  return grad_info.Creator()(info.grad_op_type_, inputs, outputs, op->Attrs());
 }
 
 }  // namespace framework

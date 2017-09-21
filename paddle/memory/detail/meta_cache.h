@@ -33,17 +33,17 @@ namespace detail {
  */
 class MetadataCache {
  public:
-  MetadataCache(bool uses_gpu);
+  explicit MetadataCache(bool uses_gpu);
 
  public:
   /*! \brief Load the associated metadata for the specified memory block. */
-  Metadata load(const MemoryBlock*);
+  Metadata load(const MemoryBlock* memory_block);
 
   /*! \brief Store the associated metadata for the specified memory block. */
-  void store(MemoryBlock*, const Metadata&);
+  void store(MemoryBlock* memory_block, const Metadata& meta_data);
 
   /*! \brief Indicate that the specified metadata will no longer be used. */
-  void invalidate(MemoryBlock*);
+  void invalidate(MemoryBlock* memory_block);
 
  public:
   MetadataCache(const MetadataCache&) = delete;
