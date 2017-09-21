@@ -294,12 +294,9 @@ void MKLDNNConvLayer::resetOutValue(
     std::shared_ptr<conv_fwd::primitive_desc>& pd, MKLDNNMatrixPtr& out) {
   out = MKLDNNMatrix::create(output_.value, pd->dst_primitive_desc());
 
-  // change original output value from cpu matrix to mkldnn matrix
-  output_.value = std::dynamic_pointer_cast<Matrix>(out);
-
   // create reorder if output value has cpu device and pd do not match
   cpuOutVal_ = nullptr;
-  cpuOutVal_ = nullptr;
+  cvtOutVal_ = nullptr;
   if (!outputIsOnlyMKLDNN()) {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
     memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
@@ -452,13 +449,14 @@ void MKLDNNConvLayer::resetOutGrad(
   cvtOutGrad_ = nullptr;
   if (!outputIsOnlyMKLDNN()) {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
+    outMat->setData(cpuOut->getData());
     // same PrimitiveDesc with cpuInVal_
     CHECK(cpuOutVal_);
     cpuOutGrad_ = MKLDNNMatrix::create(cpuOut, cpuOutVal_->getPrimitiveDesc());
     if (cpuOutGrad_->getPrimitiveDesc() == out->getPrimitiveDesc()) {
-      outMat->setData(cpuOut->getData());
       out = cpuOutGrad_;
     } else {
+      out = MKLDNNMatrix::create(nullptr, wgtPD->diff_dst_primitive_desc());
       cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
       CHECK(cvtOutGrad_);
     }
