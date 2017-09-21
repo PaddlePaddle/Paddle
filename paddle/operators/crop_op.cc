@@ -32,8 +32,9 @@ class CropOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) of CropOp should not be null.");
     auto x_dim = ctx.Input<LoDTensor>("X")->dims();
-    auto Y = ctx.Input<LoDTensor>("Y");
-    if (Y == nullptr) {
+    auto *y = ctx.Input<LoDTensor>("Y");
+    auto *out = ctx.Output<LoDTensor>("Out");
+    if (y == nullptr) {
       auto shape = Attr<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
@@ -42,12 +43,12 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
-      ctx.Output<LoDTensor>("Out")->Resize(framework::make_ddim(tensor_shape));
+      out->Resize(framework::make_ddim(tensor_shape));
     } else {
-      PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(Y->dims()),
+      PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y->dims()),
                         "Tensor rank of both CropOp's "
                         "inputs must be same.");
-      ctx.Output<LoDTensor>("Out")->Resize(Y->dims());
+      out->Resize(y->dims());
     }
   }
 };
