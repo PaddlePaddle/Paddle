@@ -1,6 +1,6 @@
-##整体思路
+## 整体思路
 
-###执行流程：
+### 执行流程：
 
 - 用户通过Symbol来描述网络拓扑结构
 
@@ -13,7 +13,7 @@
 - push到Engine的操作是异步执行的，Eingine会对push进来的操作进行依赖分析；满足依赖的操作则发起执行，可以做一定程度的并行
 
 
-###Python接口设计
+### Python接口设计
 
 Python端暴露的核心概念是Symbol和Module
 
@@ -55,7 +55,7 @@ Mxnet对于计算中间结果的处理是符号式的，使用基于Operator组�
 
 
 
-##数据并行，单机多卡
+## 数据并行，单机多卡
 
 
 1. 构造DataParallelExecutorGroup
@@ -109,7 +109,7 @@ def update(self):
 
 kvstore和dependency engine的结合，可以使得Mxnet的参数更新过程被很好的调度，计算与通信相互掩盖，达到较好的加速比。
 
-##模型并行，单机上跨设备
+## 模型并行，单机上跨设备
 
 
 1. python端需要指定一个 group2ctx的参数，里面是一个key-value的map，value是设备id
