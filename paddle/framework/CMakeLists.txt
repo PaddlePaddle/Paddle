@@ -42,3 +42,4 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
 
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
+cc_test(queue_test SRCS queue_test.cc)
