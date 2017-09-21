@@ -15,7 +15,7 @@ The goal of refactorizaiton include:
 
 1. Users write Python programs to describe the graphs and run it (locally or remotely).
 
-1. A graph is composed of *variabels* and *operators*.
+1. A graph is composed of *variables* and *operators*.
 
 1. The description of graphs must be able to be serialized/deserialized, so it
 
@@ -140,7 +140,7 @@ Compile Time -> IR -> Runtime
     * `thrust` has the same API as C++ standard library. Using `transform` can quickly implement a customized elementwise kernel.
     * `thrust` has more complex API, like `scan`, `reduce`, `reduce_by_key`.
 * Hand-writing `GPUKernel` and `CPU` code
-    * Do not write `.h`. CPU Kernel should be in `.cc`. CPU kernel should be in `.cu`. (`GCC` cannot compile GPU code.)
+    * Do not write `.h`. CPU Kernel should be in `.cc`. GPU kernel should be in `.cu`. (`GCC` cannot compile GPU code.)
 ---
 # Operator Register
 

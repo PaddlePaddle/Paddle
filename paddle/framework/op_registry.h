@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_info.h"
+#include "paddle/framework/op_proto_maker.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
