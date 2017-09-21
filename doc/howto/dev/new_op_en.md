@@ -4,7 +4,10 @@
  - [Implementing C++ Types](#Implementing_C++_Types)
    - [Defining ProtoMaker](#Defining_ProtoMaker)
    - [Defining Operator](#Defining_Operator)
-
+   - [Registering Operator](#Registering_Operator)
+   - [Compilation](#Compilation)
+ - [Python Binding](#Python_Binding)
+ - [Unit Tests](#Unit_Tests)
 
 ## Background
 
@@ -140,3 +143,93 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
   - 2). configures the tensor shape in the output.
 
 Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, which also include the registration methods introduced later.
+
+### 3. Defining OpKernel
+
+`MulKernel` inherits `framework::OpKernel`, which includes the following templates:
+
+- `typename  Place` denotes device type. When different devices, namely the CPU and the GPU, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
+
+- `typename T` denotes data type, such as `float` or `double`.
+
+`MulKernel` types need to rewrite the interface for `Compute`.
+- `Compute` takes one input variable `const framework::ExecutionContext& context`.
+- Compared with `InferShapeContext`, `ExecutionContext` includes device types, and can similarly extract input, output, and attribute variables.
+- `Compute` implements the computation logics of an `OpKernel`.
+
+`MulKernel`'s implementation of `Compute` is as follows:
+
+  ```cpp
+  template <typename Place, typename T>
+  class MulKernel : public framework::OpKernel {
+  public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* X = context.Input<Tensor>("X");
+    auto* Y = context.Input<Tensor>("Y");
+    auto* Z = context.Output<Tensor>("Out");
+    Z->mutable_data<T>(context.GetPlace());
+    auto* device_context =
+        const_cast<platform::DeviceContext*>(context.device_context_);
+    math::matmul<Place, T>(*X, false, *Y, false, 1, Z, 0, device_context);
+  }
+  };
+  ```
+
+Note that **different devices (CPU, GPU)share an Op definition; whether or not they share the same `OpKernel` depends on whether `Compute` calls functions that support both devices.**
+
+`MulOp`'s CPU and GPU share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
+
+To ease the writing of `OpKernel` compute, and for reusing code cross-device, `Eigen unsupported Tensor` module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md).
+
+
+This concludes the forward implementation of an operator. Next its operation and kernel need to be registered in a `.cc` file.
+
+The definition of its corresponding backward operator, if applicable, is similar to that of an forward operator. **Note that a backward operator does not include a `ProtoMaker`**.
+
+### 4. Registering Operator
+
+- In `.cc` files, register forward and backward operator classes and the CPU kernel.
+
+    ```cpp
+    namespace ops = paddle::operators;
+    REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+    REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
+    REGISTER_OP_CPU_KERNEL(mul_grad,
+                  ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+    ```
+
+   In that code block,
+
+    - `REGISTER_OP` registers the `ops::MulOp` class, type named `mul`, its type `ProtoMaker` is `ops::MulOpMaker`, registering `ops::MulOpGrad` as `mul_grad`.
+    - `REGISTER_OP_WITHOUT_GRADIENT` registers an operator without gradient.
+    - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulKernel`.
+
+
+- Registering GPU Kernel in `.cu` files
+    - Note that if GPU Kernel is implemented using the `Eigen unsupported` module, then on top of `.cu`, a macro definition `#define EIGEN_USE_GPU` is needed, such as
+
+    ```cpp
+    // if use Eigen unsupported module before include head files
+    #define EIGEN_USE_GPU
+
+    namespace ops = paddle::operators;
+    REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
+    REGISTER_OP_GPU_KERNEL(mul_grad,
+                           ops::MulGradKernel<paddle::platform::GPUPlace, float>);
+    ```
+
+### 5. Compilation
+
+Run the following commands to compile.
+
+```
+make mul_op
+```
+
+## Python Binding
+
+The system will automatically bind to Python and link it to a generated library.
+
+## Unit Tests
+
+Unit tests include comparing a forward operator's implementations on different devices, comparing a backward operator's implementation on different devices, and a scaling test for the backward operator. Here, we introduce the [unit tests for `MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py).
