@@ -46,8 +46,8 @@ template <typename Place, typename T, typename AttrType = T>
 class MarginRankLossKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* out_t = ctx.Output<framework::LoDTensor>("Out");
-    auto* act_t = ctx.Output<framework::LoDTensor>("Activated");
+    auto* out_t = ctx.Output<framework::Tensor>("Out");
+    auto* act_t = ctx.Output<framework::Tensor>("Activated");
 
     auto* label_t = ctx.Input<framework::Tensor>("Label");
     auto* x1_t = ctx.Input<framework::Tensor>("X1");
@@ -65,8 +65,8 @@ class MarginRankLossKernel : public framework::OpKernel {
     auto x2 = framework::EigenVector<T>::Flatten(*x2_t);
 
     auto& dev = ctx.GetEigenDevice<Place>();
-    act.device(dev) = (-label * (x1 - x2) + margin).unaryExpr(Heaviside<T>());
     out.device(dev) = (-label * (x1 - x2) + margin).unaryExpr(ReLU<T>());
+    act.device(dev) = out.unaryExpr(Heaviside<T>());
   }
 };
 
@@ -78,15 +78,15 @@ class MarginRankLossGradKernel : public framework::OpKernel {
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X1"));
     auto* d_x2_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X2"));
-    auto* act_t = ctx.Output<framework::LoDTensor>("Activated");
 
+    auto* act_t = ctx.Input<framework::Tensor>("Activated");
     auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* label_t = ctx.Input<framework::Tensor>("Label");
 
-    auto& dev = ctx.GetEigenDevice<Place>();
     auto d_out = framework::EigenVector<T>::Flatten(*d_out_t);
     auto act = framework::EigenVector<T>::Flatten(*act_t);
     auto label = framework::EigenVector<T>::Flatten(*label_t);
+    auto& dev = ctx.GetEigenDevice<Place>();
 
     // compute d_x1
     if (d_x1_t) {

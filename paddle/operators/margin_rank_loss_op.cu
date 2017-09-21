@@ -14,9 +14,11 @@
 
 #include "paddle/operators/margin_rank_loss_op.h"
 
+namespace ops = paddle::operators;
+
 REGISTER_OP_GPU_KERNEL(
     margin_rank_loss,
-    paddle::operators::MarginRankLossKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(margin_rank_loss_grad,
-                       paddle::operators::MarginRankLossGradKernel<
-                           paddle::platform::GPUPlace, float>);
+    ops::MarginRankLossKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    margin_rank_loss_grad,
+    ops::MarginRankLossGradKernel<paddle::platform::GPUPlace, float>);
