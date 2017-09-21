@@ -78,8 +78,8 @@ void testIm2col() {
     PADDLE_THROW("no GPU support");
 #endif  // PADDLE_ONLY_CPU
   }
-  im2col(input, output_cfo, stride, stride, padding, padding, context);
-  im2col_ocf(input, output_ocf, stride, stride, padding, padding, context);
+  im2col(input, output_cfo, stride, stride, padding, padding, *context);
+  im2col_ocf(input, output_ocf, stride, stride, padding, padding, *context);
 
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {

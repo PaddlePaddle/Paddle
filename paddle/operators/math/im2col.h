@@ -74,7 +74,7 @@ class Im2ColFunctor {
  public:
   void operator()(const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width, platform::DeviceContext* context);
+                  int padding_width, const platform::DeviceContext& context);
 };
 
 template <ColFormat Format, typename Place, typename T>
@@ -82,7 +82,7 @@ class Col2ImFunctor {
  public:
   void operator()(framework::Tensor& im, const framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width, platform::DeviceContext* context);
+                  int padding_width, const platform::DeviceContext& context);
 };
 
 }  // namespace math
