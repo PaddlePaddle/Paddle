@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,11 +36,10 @@ class RankLossOp : public framework::OperatorWithKernel {
     auto label_dims = ctx.Input<framework::Tensor>("Label")->dims();
     auto left_dims = ctx.Input<framework::Tensor>("Left")->dims();
     auto right_dims = ctx.Input<framework::Tensor>("Right")->dims();
-    PADDLE_ENFORCE((label_dims.size() == 1) && (left_dims.size() == 1) &&
-                       (right_dims.size() == 1),
-                   "The rank of all inputs must be 1.");
     PADDLE_ENFORCE((label_dims == left_dims) && (left_dims == right_dims),
                    "All inputs must have the same size");
+    PADDLE_ENFORCE((label_dims.size() == 2) && (label_dims[1] == 1),
+                   "All inputs must be row vector with size batch_sizex1.");
     ctx.Output<framework::LoDTensor>("Out")->Resize(label_dims);
   }
 };
@@ -52,10 +50,10 @@ class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Label",
-             "The label indicating A ranked higher than B or not, 1-D tensor.");
-    AddInput("Left", "The output of RankNet for doc A, 1-D tensor.");
-    AddInput("Right", "The output of RankNet for doc B, 1-D tensor");
-    AddOutput("Out", "The output loss of RankLoss operator, 1-D tensor.");
+             "The label indicating A ranked higher than B or not, row vector.");
+    AddInput("Left", "The output of RankNet for doc A, vector.");
+    AddInput("Right", "The output of RankNet for doc B, vetor");
+    AddOutput("Out", "The output loss of RankLoss operator, vector.");
     AddComment(R"DOC(RankLoss operator
 
 Rank loss operator for RankNet[1]. RankNet is a pairwise ranking model with

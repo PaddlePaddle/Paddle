@@ -8,9 +8,9 @@ class TestRankLossOp(OpTest):
         self.op_type = "rank_loss"
         batch_size = 5
         # labels_{i} = {0, 1.0} or {0, 0.5, 1.0}
-        label = np.random.randint(0, 2, size=(batch_size, )).astype("float32")
-        left = np.random.random((batch_size, )).astype("float32")
-        right = np.random.random((batch_size, )).astype("float32")
+        label = np.random.randint(0, 2, size=(batch_size, 1)).astype("float32")
+        left = np.random.random((batch_size, 1)).astype("float32")
+        right = np.random.random((batch_size, 1)).astype("float32")
         loss = np.log(1.0 + np.exp(left - right)) - label * (left - right)
         self.inputs = {'Label': label, 'Left': left, 'Right': right}
         self.outputs = {'Out': loss}
