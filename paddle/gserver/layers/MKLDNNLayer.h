@@ -141,18 +141,16 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {
-    /* Do derivation */ {
+    if (needResetBwd_) {
+      resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
+      needResetBwd_ = false;
+    }
+    {
       REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
       backwardActivation();
     }
-
     {
       REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
-      if (needResetBwd_) {
-        resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
-        needResetBwd_ = false;
-      }
-
       stream_->submit(pipelineBwd_);
     }
 

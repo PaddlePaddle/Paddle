@@ -18,7 +18,6 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::LoDTensor;
 
 class MulOp : public framework::OperatorWithKernel {
  public:

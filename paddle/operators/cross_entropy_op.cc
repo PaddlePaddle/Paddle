@@ -17,8 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
-
 class CrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -51,7 +49,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
                         "Input(Label) must be 1.");
     }
 
-    ctx.Output<LoDTensor>("Y")->Resize({x->dims()[0], 1});
+    ctx.Output<Tensor>("Y")->Resize({x->dims()[0], 1});
     ctx.ShareLoD("X", /*->*/ "Y");
   }
 };
@@ -96,7 +94,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                         "Input(Label) must be 1.");
     }
 
-    auto dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     dx->Resize(x->dims());
   }
 };
