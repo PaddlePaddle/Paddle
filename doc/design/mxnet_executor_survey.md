@@ -4,13 +4,13 @@
 
 - 用户通过Symbol来描述网络拓扑结构
 
-- Symbol书写完毕后，会绑定到一个Executor上
+- Symbol书写完毕后，会bind到一个Executor上
 
-- Executor里面会完成Graph的构建，包括插入backward operator/copy operator等；同时完成InferShape/InferType等，并分配内存
+- Executor里面会完成Graph的构建，包括插入backward operator/copy operator等；同时完成InferShape/InferType等，并分配内存(这里需要注意的是，当输入数据的大小发生变化时，需要重新bind得到一个新的Executor)
 
 - Executor有一个RunOps方法，在这里依次把operator的操作push到Engine中
 
-- push到Engine的操作是异步执行的，Eingine会对push进来的操作进行依赖分析；满足依赖的操作则发起执行，可以做一定程度的并行
+- push到Engine的操作是异步执行的，Engine会对push进来的操作进行依赖分析；满足依赖的操作则发起执行，可以做一定程度的并行
 
 
 ### Python接口设计
@@ -37,7 +37,7 @@ def get_symbol(num_classes=10, **kwargs):
 
 - Module
 
-Module是用来执行Symbol的，在里面会完成绑定symbol得到executor，参数初始化，数据读取，forward/backward计算，参数optimizer等过程。
+Module是用来执行Symbol的，在里面会完成绑定Symbol得到Executor，参数初始化，数据读取，forward/backward计算，参数optimizer等过程。
 
 神经网络计算图中的数据有三大类，一类是输入数据，一类是参数，一类是计算的中间结果。
 
