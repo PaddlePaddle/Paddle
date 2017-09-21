@@ -83,15 +83,15 @@ z = var(10, 20)
 cond = var(false)
 # output_num should be set to ensure the outputs of the true_block and false_block can be merged,
 # so the numbers of both blocks should be same as `output_num`.
-ie = pd.ifelse_builder(output_num=2)
+ie = pd.ifelse_builder()
 
 with ie.true_block():
     d = operator.add(x, y)
-    ie.set_outputs(d, operator.softmax(d))
+    ie.outputs(d, operator.softmax(d))
 
 with ie.false_block():
     d = layer.fc(z)
-    ie.set_outputs(d+1, operator.softmax(d))
+    ie.outputs(d+1, operator.softmax(d))
 
 out = b(cond)
 ```
@@ -124,7 +124,7 @@ with rnn.stepnet():
   sum = pd.add_two(fc_out, hidden_out)
   act = pd.sigmoid(sum)
   h.update(act)                    # update memory with act
-  net.set_outputs(act, hidden_out) # two outputs
+  net.outputs(act, hidden_out) # two outputs
 
 o1, o2 = rnn()
 ```
@@ -222,11 +222,11 @@ a = pd.Varaible(shape=[20, 20])
 b = pd.fc(a, params=["fc.w", "fc.b"])
 
 rnn = pd.create_rnn()
-with rnn.stepnet() as net:
-    x = net.set_inputs(a)
+with rnn.stepnet()
+    x = a.as_step_input()
     # reuse fc's parameter
     fc_without_b = pd.get_variable("fc.w")
-    net.set_outputs(fc_without_b)
+    net.outputs(fc_without_b)
 
 out = rnn()
 ```
