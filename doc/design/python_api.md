@@ -17,24 +17,55 @@ Since we design our Python API concepts based on `compile-time`, we try to map o
 
 | Python Class | Compile-time protobuf |
 | --- | --- |
+| Program | ProgramDesc |
 | Block | BlockDesc |
 | Operator | OpDesc |
 | Variable | VarDesc |
 
+### Program
+
+`Program` is the description of the whole training process and there can only be one `Program` object, which is created automatically by the system at the very beginning. `Program` is formed by a series of `Block`.
+
+```python
+class Program(objects):
+    def __init__(self):
+        self.blocks = vector<Block>()
+        self.blocks.append(Block(None))
+        self.current_block_idx = 0
+
+    def get_block(block_idx):
+        return self.blocks[block_idx]
+
+    def current_block():
+        return self.get_block(self.current_block_idx)
+    
+    def fallback_current_block():
+        self.current_block_idx = self.current_block().parent_idx
+
+
+    def create_block():
+        new_block_idx = len(self.block)
+        self.blocks.append(Block(parent_idx=self.current_block_idx,
+                                 idx=new_block_idx))
+        self.current_block_idx = new_block_idx
+```
+
+`Program` will create the first block in its constructor. The first block is called 'global block'. It is where all parameters are stored.
 
 ### Block
 
 Block is just like programming languages `{}`, which contains many operators and variables. There are two data fields in `Block`.  1) An associate map, whose key is variable name and value is variable itself; 2) A list of operators.
 
-The block is hierarchical because PaddlePaddle supports RNN and IfElse. For example, RNN is like `for-loop` in programming languages. There is new `block` inside a `for-loop`. To represent hierarchies, `Block` stores the `parent Block` inside. If `parent=None`, the `Block` is the outermost block, i.e., the `global` block.
+The block is hierarchical because PaddlePaddle supports RNN and IfElse. For example, RNN is like `for-loop` in programming languages. There is new `block` inside a `for-loop`. To represent hierarchies, `Block` stores the index of `parent Block` inside. The 'index' means the block's position in `Program`'s `blocks`. If `parent_idx=None`, the block itself is the outermost block, i.e., the 'global block'.
 
 
 ```python
 class Block(objects):
-    def __init__(self, parent=None):
+    def __init__(self, parent_idx, idx):
         self.vars = map<string, Variable>()
         self.ops = vector<Operator>()
-        self.parent = parent
+        self.idx = idx
+        self.parent_idx = parent_idx
     
     def create_var(self, ...):
         # create variable in `self.vars`
@@ -42,8 +73,9 @@ class Block(objects):
     
     
     def create_global_var(self, ...):
-        if self.parent is not None:
-            return self.parent.create_global_var(...)
+        if self.parent_idx is not None:
+            parent_block = program.get_block(parent_idx)
+            return parent_block.create_global_var(...)
         else:
             return self.create_var(...)
     
@@ -126,9 +158,8 @@ Here are examples of how to write a data layer and FC layer:
 ### Data Layer
 
 ```python
-def data_layer(name, type, block=None):
-    if block is None:
-        block = g_block
+def data_layer(name, type):
+    block = program.current_block()
     # type = dense_vector(size=10) / integer_value(range=10)
     return block.create_global_var(
             name=name, 
@@ -137,14 +168,13 @@ def data_layer(name, type, block=None):
 
 ``` 
 
-Before building new variables, we need to specify which block to use. If we don't, the default one `g_block` will be used. In the above `data_layer` code, a variable is created and be inserted into the root block to make it global. This variable is going to be used as input data of the whole network.
+All the new variables and operators will be built in the `current block`. In the above `data_layer` code, a variable is created and be inserted into the root block to make it global. This variable is going to be used as input data of the whole network.
 
 ### FC Layer
 
 ```python
-def fc_layer(input, size, block=None, ...):
-    if block is None:
-        block = g_block
+def fc_layer(input, size, ...):
+    block = program.current_block()
     w = block.create_parameter(...)
     b = block.create_parameter(...)
     out = block.create_var()
@@ -153,4 +183,4 @@ def fc_layer(input, size, block=None, ...):
     return out
 ```
 
-In the `fc_layer` code, we create two parameters(`w` and `b`), one variable(`out`) and one operator(`FC operator`), then insert all of them into the specified block.
+In the `fc_layer` code, we create two parameters(`w` and `b`), one variable(`out`) and one operator(`FC operator`), then insert all of them into the `current block`.
