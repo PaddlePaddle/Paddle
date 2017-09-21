@@ -4,7 +4,7 @@ def train_reader(file_name):
         with open(file_name, 'r') as f:
             # read each line
             for line in f:
-                label, pixel, _ = line.strip().split(';')
+                label, pixel = line.strip().split(';')
                 # get features and label
                 pixels_str = pixel.split(' ')
                 pixels_float = []

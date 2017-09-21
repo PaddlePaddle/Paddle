@@ -328,14 +328,68 @@ pip uninstall py_paddle paddle
 
 pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
 
-16. paddle.v2中结合多个网络层进行预测时报出输入维度不匹配的错误
+16. PaddlePaddle存储的参数格式是什么，如何和明文进行相互转化
+---------------------------------------------------------
+
+PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数两部分组成。头信息中，1~4字节表示PaddlePaddle版本信息，请直接填充0；5~8字节表示每个参数占用的字节数，当保存的网络参数为float类型时为4，double类型时为8；9~16字节表示保存的参数总个数。
+
+将PaddlePaddle保存的模型参数还原回明文时，可以使用相应数据类型的 :code:`numpy.array` 加载具体网络参数，此时可以跳过PaddlePaddle模型参数文件的头信息。若在PaddlePaddle编译时，未指定按照double精度编译，默认情况下按照float精度计算，保存的参数也是float类型。这时在使用 :code:`numpy.array` 时，一般设置 :code:`dtype=float32` 。示例如下：
+
+..  code-block:: python
+
+    def read_parameter(fname, width):
+        s = open(fname).read()
+        # skip header
+        vec = np.fromstring(s[16:], dtype=np.float32)
+        # width is the size of the corresponding layer
+        np.savetxt(fname + ".csv", vec.reshape(width, -1),
+                fmt="%.6f", delimiter=",")
+
+
+将明文参数转化为PaddlePaddle可加载的模型参数时，首先构造头信息，再写入网络参数。下面的代码将随机生成的矩阵转化为可以被PaddlePaddle加载的模型参数。
+
+..  code-block:: python
+
+    def gen_rand_param(param_file, width, height, need_trans):
+        np.random.seed()
+        header = struct.pack("iil", 0, 4, height * width)
+        param = np.float32(np.random.rand(height, width))
+        with open(param_file, "w") as fparam:
+            fparam.write(header + param.tostring())
+
+17. 如何加载预训练参数
+------------------------------
+
+* 对加载预训练参数的层，设置其参数属性 :code:`is_static=True`，使该层的参数在训练过程中保持不变。以embedding层为例，代码如下：
+
+..  code-block:: python
+
+    emb_para = paddle.attr.Param(name='emb', is_static=True)
+    paddle.layer.embedding(size=word_dim, input=x, param_attr=emb_para)
+
+
+* 从模型文件将预训练参数载入 :code:`numpy.array`，在创建parameters后，使用 :code:`parameters.set()` 加载预训练参数。PaddlePaddle保存的模型参数文件前16字节为头信息，用户将参数载入 :code:`numpy.array` 时须从第17字节开始。以embedding层为例，代码如下：
+
+..  code-block:: python
+
+    def load_parameter(file_name, h, w):
+        with open(file_name, 'rb') as f:
+            f.read(16)  # skip header.
+            return np.fromfile(f, dtype=np.float32).reshape(h, w)
+
+    parameters = paddle.parameters.create(my_cost)
+    parameters.set('emb', load_parameter(emb_param_file, 30000, 256))
+
+
+18. PaddlePaddle V2 API中，调用infer接口时输出多个层的计算结果
 ------------------------------------------------------------------------
-用户在使用多个中间网络层进行预测时，通常会编写如下代码：
+用户在使用多个中间网络层进行预测时，需要先将指定的网络层进行拼接，并作为 :code:`paddle.inference.Inference` 接口中 :code:`output_layer` 属性的输入, 然后调用infer接口来获取多个层对应的计算结果。 示例代码如下：
 
 ..      code-block:: bash
 
     inferer = paddle.inference.Inference(output_layer=[layer1, layer2],
                                         parameters=parameters)
+    probs = inferer.infer(input=test_batch, field=["value"])
 
 这里需要注意的是：
 
