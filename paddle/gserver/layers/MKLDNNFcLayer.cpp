@@ -232,6 +232,7 @@ void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
 void MKLDNNFcLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
   // TODO(TJ): merge outgrad
   int device = outputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
+  output_.grad->setData(getOutput(device).grad->getData());
   // for MKLDNN device:
   // can not directly cast outputgrad to mkldnnmatrix,
   // since each layer can not write the inputgrad to mkldnn inputgrad.

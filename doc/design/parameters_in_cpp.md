@@ -1,19 +1,19 @@
 # Design Doc: The C++ Class `Parameters`
 
-`Parameters` is a concept we designed in Paddle V2 API. `Parameters` is a container of parameters, and make Paddle can shared parameter between topologies. We described usages of `Parameter` in [api.md](./api.md).
+`Parameters` is a concept we designed in PaddlePaddle V2 API. `Parameters` is a container of parameters, which makes PaddlePaddle capable of  sharing parameter between topologies. We described usages of `Parameter` in [api.md](./api.md).
 
-We used Python to implement Parameters when designing V2 API before. There are several defects for current implementation:
+We used Python to implement Parameters when designing V2 API before. There are several defects for the current implementation:
 * We just use `memcpy` to share Parameters between topologies, but this is very inefficient. 
-* We did not implement share Parameters while training. We just trigger `memcpy` when start training.
+* We did not support sharing Parameters while training. We just trigger `memcpy` when start training.
 
-It is necessary that we implement Parameters in CPP side. However, it could be a code refactoring for Paddle, because Paddle was designed for training only one topology before, i.e., each GradientMachine contains its Parameter as a data member. In current Paddle implementation, there are three concepts associated with `Parameters`:
+It is necessary that we implement Parameters in CPP side. However, it could result a code refactoring for PaddlePaddle, because PaddlePaddle was designed for training only one topology before, i.e., each GradientMachine contains its Parameter as a data member. In current PaddlePaddle implementation, there are three concepts associated with `Parameters`:
 
 1. `paddle::Parameter`. A `Parameters` is a container for `paddle::Parameter`.
 It is evident that we should use `paddle::Parameter` when developing `Parameters`.
 However, the `Parameter` class contains many functions and does not have a clear interface.
 It contains `create/store Parameter`, `serialize/deserialize`, `optimize(i.e SGD)`, `randomize/zero`.
 When we developing `Parameters`, we only use `create/store Parameter` functionality.
-We should extract functionalities of Parameter into many classes to clean Paddle CPP implementation.
+We should extract functionalities of Parameter into many classes to clean PaddlePaddle CPP implementation.
 
 2. `paddle::GradientMachine` and its sub-classes, e.g., `paddle::MultiGradientMachine`, `paddle::NeuralNetwork`.
 We should pass `Parameters` to `paddle::GradientMachine` when `forward/backward` to avoid `memcpy` between topologies.
@@ -24,7 +24,7 @@ Also, we should handle multi-GPU/CPU training, because `forward` and `backward` 
 So `Parameters` should be used by `paddle::ParameterUpdater`, and `paddle::ParameterUpdater` should optimize `Parameters` (by SGD).
 
 
-The step by step approach for implementation Parameters in Paddle C++ core is listed below. Each step should be a PR and could be merged into Paddle one by one.
+The step by step approach for implementation Parameters in PaddlePaddle C++ core is listed below. Each step should be a PR and could be merged into PaddlePaddle one by one.
 
 1. Clean `paddle::Parameter` interface. Extract the functionalities of `paddle::Parameter` to prepare for the implementation of Parameters.
 

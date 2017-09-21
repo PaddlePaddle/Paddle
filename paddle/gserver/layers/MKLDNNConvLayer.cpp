@@ -449,13 +449,14 @@ void MKLDNNConvLayer::resetOutGrad(
   cvtOutGrad_ = nullptr;
   if (!outputIsOnlyMKLDNN()) {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
+    outMat->setData(cpuOut->getData());
     // same PrimitiveDesc with cpuInVal_
     CHECK(cpuOutVal_);
     cpuOutGrad_ = MKLDNNMatrix::create(cpuOut, cpuOutVal_->getPrimitiveDesc());
     if (cpuOutGrad_->getPrimitiveDesc() == out->getPrimitiveDesc()) {
-      outMat->setData(cpuOut->getData());
       out = cpuOutGrad_;
     } else {
+      out = MKLDNNMatrix::create(nullptr, wgtPD->diff_dst_primitive_desc());
       cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
       CHECK(cvtOutGrad_);
     }
