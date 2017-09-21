@@ -342,10 +342,9 @@ class InferShapeContext {
     PADDLE_ENFORCE_LT(j, OutputSize(out));
     auto* in_var = MultiInputVar(in)[i];
     auto* out_var = MultiOutputVar(out)[j];
-    PADDLE_ENFORCE(in_var->IsType<LoDTensor>(),
-                   "The %d-th input of Input(%s) must be LoDTensor.", in);
+    if (!in_var->IsType<LoDTensor>()) return;
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", out);
+                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
     auto in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
@@ -361,6 +360,13 @@ const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const;
 
 template <>
 const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
+Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
     const std::string& name) const;
 
 template <typename T>
