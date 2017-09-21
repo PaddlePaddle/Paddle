@@ -40,8 +40,8 @@ class MinusOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         left_tensor->numel(), right_tensor->numel(),
         "Minus operator must take two tensor with same num of elements");
-    ctx.Output<framework::LoDTensor>("Out")->Resize(left_tensor->dims());
-    ctx.ShareLoD("X", "Out");
+    ctx.Output<framework::Tensor>("Out")->Resize(left_tensor->dims());
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 

@@ -27,7 +27,7 @@ class MeanOp : public framework::OperatorWithKernel {
                             "Input(X) of MeanOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) of MeanOp should not be null.");
-    ctx.Output<framework::LoDTensor>("Out")->Resize({1});
+    ctx.Output<framework::Tensor>("Out")->Resize({1});
   }
 };
 
@@ -48,7 +48,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
+    ctx.Output<framework::Tensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };

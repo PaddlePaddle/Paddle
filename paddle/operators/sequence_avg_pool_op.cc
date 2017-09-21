@@ -38,7 +38,7 @@ class SequenceAvgPoolOp : public framework::OperatorWithKernel {
         /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
         "The first dimension of Input(X) must be large than batch size.");
     dims[0] = lod[0].size() - 1;
-    ctx.Output<framework::LoDTensor>("Out")->Resize({dims});
+    ctx.Output<framework::Tensor>("Out")->Resize({dims});
   }
 };
 
@@ -74,8 +74,7 @@ class SequenceAvgPoolGradOp : public framework::OperatorWithKernel {
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     x_grad->Resize(x_dims);
   }
 };

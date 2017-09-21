@@ -39,8 +39,8 @@ class AccuracyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(inference->dims()[0], label->dims()[0],
                       "inference size must be the same as label size");
 
-    ctx.Output<framework::LoDTensor>("Accuracy")->Resize({1});
-    ctx.ShareLoD("Inference", "Accuracy");
+    ctx.Output<framework::Tensor>("Accuracy")->Resize({1});
+    ctx.ShareLoD("Inference", /*->*/ "Accuracy");
   }
 };
 

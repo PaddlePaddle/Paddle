@@ -44,8 +44,8 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
         framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
         "The width of two operands must be same");
     PADDLE_ENFORCE_EQ(ctx.OutputSize("Out"), 1, "The output size must be 1");
-    ctx.Output<framework::LoDTensor>("Out")->Resize(x_dims);
-    ctx.ShareLoD("X", "Out");
+    ctx.Output<framework::Tensor>("Out")->Resize(x_dims);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -84,8 +84,8 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
         "The width of two operands must be same");
-    auto *dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *db = ctx.Output<framework::LoDTensor>(framework::GradVarName("b"));
+    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *db = ctx.Output<framework::Tensor>(framework::GradVarName("b"));
     if (dx) dx->Resize(x_dims);
     if (db) db->Resize(b_dims);
   }

@@ -28,9 +28,9 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
                             "Output(Y) of FillZerosLikeOp should not be null.");
 
-    ctx.Output<framework::LoDTensor>("Y")->Resize(
+    ctx.Output<framework::Tensor>("Y")->Resize(
         ctx.Input<framework::Tensor>("X")->dims());
-    ctx.ShareLoD("X", "Y");
+    ctx.ShareLoD("X", /*->*/ "Y");
   }
 };
 

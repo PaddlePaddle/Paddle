@@ -52,7 +52,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     }
 
     ctx.Output<LoDTensor>("Y")->Resize({x->dims()[0], 1});
-    ctx.ShareLoD("X", "Y");
+    ctx.ShareLoD("X", /*->*/ "Y");
   }
 };
 
