@@ -12,12 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/sigmoid_op.h"
+#include "paddle/operators/rank_loss_op.h"
 
-namespace ops = paddle::operators;
-
-REGISTER_OP_GPU_KERNEL(sigmoid,
-                       ops::SigmoidKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    sigmoid_grad, ops::SigmoidGradKernel<paddle::platform::GPUPlace, float>);
+    rank_loss,
+    paddle::operators::RankLossKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    rank_loss_grad,
+    paddle::operators::RankLossGradKernel<paddle::platform::GPUPlace, float>);
