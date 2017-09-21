@@ -86,13 +86,11 @@ cond = var(false)
 ie = pd.ifelse_builder(output_num=2)
 
 with ie.true_block():
-    x_ = x.as_ifelse_input()
-    z = operator.add(x_, y)
-    ie.set_outputs(z, operator.softmax(z))
+    d = operator.add(x, y)
+    ie.set_outputs(d, operator.softmax(d))
 
 with ie.false_block():
-    z_ = z.as_ifelse_input()
-    d = layer.fc(z_)
+    d = layer.fc(z)
     ie.set_outputs(d+1, operator.softmax(d))
 
 out = b(cond)
