@@ -45,7 +45,7 @@ message OpDesc {
     repeated float floats = 7;
     repeated string strings = 8;
     repeated IntPair int_pairs = 9;
-    optional int32 block = 10;
+    optional int32 block_idx = 10;
   };
 
   message Var {
