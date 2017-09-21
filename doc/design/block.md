@@ -92,7 +92,7 @@ with ie.false_block():
     d = layer.fc(z)
     ie.outputs(d+1, operator.softmax(d))
 
-out = b(cond)
+out, out1 = b(cond)
 ```
 
 In both examples, the left branch computes `x+y` and `softmax(x+y)`, the right branch computes `x+1` and `fc(x)`.
