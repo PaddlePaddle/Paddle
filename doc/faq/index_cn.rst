@@ -379,3 +379,30 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 
     parameters = paddle.parameters.create(my_cost)
     parameters.set('emb', load_parameter(emb_param_file, 30000, 256))
+
+
+18. PaddlePaddle V2 API中，调用infer接口时输出多个层的计算结果
+------------------------------------------------------------------------
+用户在使用多个中间网络层进行预测时，需要先将指定的网络层进行拼接，并作为 :code:`paddle.inference.Inference` 接口中 :code:`output_layer` 属性的输入, 然后调用infer接口来获取多个层对应的计算结果。 示例代码如下：
+
+..      code-block:: bash
+
+    inferer = paddle.inference.Inference(output_layer=[layer1, layer2],
+                                        parameters=parameters)
+    probs = inferer.infer(input=test_batch, field=["value"])
+
+这里需要注意的是：
+
+* 如果指定了2个layer作为输出层，实际上需要的输出结果是两个矩阵；
+* 假设第一个layer的输出A是一个 N1 * M1 的矩阵，第二个 Layer 的输出B是一个 N2 * M2 的矩阵；
+* paddle.v2 默认会将A和B 横向拼接，当N1 和 N2 大小不一样时，会报如下的错误：
+
+..      code-block:: python
+
+    ValueError: all the input array dimensions except for the concatenation axis must match exactly
+
+此外还可以通过设置 :code:`flatten_result=False` 之后会去掉“拼接”这个步骤，返回的结果是一个list：
+
+* list元素的个数等于网络中输出层的个数；
+* list 中每个元素是一个layer的输出结果矩阵，类型是numpy的ndarray；
+* 每一个layer输出矩阵的高度，在非序列输入时：等于样本数；序列输入时等于：输入序列中元素的总数；宽度等于配置中layer的size；
