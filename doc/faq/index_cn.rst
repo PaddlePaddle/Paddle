@@ -401,7 +401,12 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 
     ValueError: all the input array dimensions except for the concatenation axis must match exactly
 
-此外还可以通过设置 :code:`flatten_result=False` 之后会去掉“拼接”这个步骤，返回的结果是一个list：
+多个层的输出矩阵的高度不一致，这种情况常常发生在：
+
+* 同时输出序列层和非序列层；
+* 多个输出层处理多个不同长度的序列;
+
+此时可以在调用infer接口时通过设置 :code:`flatten_result=False` , 跳过“拼接”步骤，来解决上面的问题。这时，infer接口的返回值是一个python list:
 
 * list元素的个数等于网络中输出层的个数；
 * list 中每个元素是一个layer的输出结果矩阵，类型是numpy的ndarray；
