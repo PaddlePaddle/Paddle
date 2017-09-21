@@ -52,7 +52,7 @@ Here are valid outputs:
 # a mini batch of three data items, each data item is a list (single column).
 [([1,1,1],),
 ([2,2,2],),
-([3,3,3],),
+([3,3,3],)]
 ```
 
 Please note that each item inside the list must be a tuple, below is an invalid output:
