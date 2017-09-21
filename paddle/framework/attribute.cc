@@ -19,6 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+static ProgramDesc* g_program_desc = nullptr;
+
+ProgramDesc& GetProgramDesc() {
+  if (g_program_desc == nullptr) {
+    g_program_desc = new ProgramDesc();
+  }
+  return *g_program_desc;
+}
+
 template <>
 AttrType AttrTypeID<int>() {
   return INT;
@@ -47,46 +56,53 @@ template <>
 AttrType AttrTypeID<std::vector<std::pair<int, int>>>() {
   return INT_PAIRS;
 }
+template <>
+AttrType AttrTypeID<BlockDesc>() {
+  return BLOCK;
+}
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
-    case paddle::framework::AttrType::INT: {
+    case framework::AttrType::INT: {
       return attr_desc.i();
     }
-    case paddle::framework::AttrType::FLOAT: {
+    case framework::AttrType::FLOAT: {
       return attr_desc.f();
     }
-    case paddle::framework::AttrType::STRING: {
+    case framework::AttrType::STRING: {
       return attr_desc.s();
     }
-    case paddle::framework::AttrType::INTS: {
+    case framework::AttrType::INTS: {
       std::vector<int> val(attr_desc.ints_size());
       for (int i = 0; i < attr_desc.ints_size(); ++i) {
         val[i] = attr_desc.ints(i);
       }
       return val;
     }
-    case paddle::framework::AttrType::FLOATS: {
+    case framework::AttrType::FLOATS: {
       std::vector<float> val(attr_desc.floats_size());
       for (int i = 0; i < attr_desc.floats_size(); ++i) {
         val[i] = attr_desc.floats(i);
       }
       return val;
     }
-    case paddle::framework::AttrType::STRINGS: {
+    case framework::AttrType::STRINGS: {
       std::vector<std::string> val(attr_desc.strings_size());
       for (int i = 0; i < attr_desc.strings_size(); ++i) {
         val[i] = attr_desc.strings(i);
       }
       return val;
     }
-    case paddle::framework::AttrType::INT_PAIRS: {
+    case framework::AttrType::INT_PAIRS: {
       std::vector<std::pair<int, int>> val(attr_desc.int_pairs_size());
       for (int i = 0; i < attr_desc.int_pairs_size(); ++i) {
         val[i].first = attr_desc.int_pairs(i).first();
         val[i].second = attr_desc.int_pairs(i).second();
       }
       return val;
+    }
+    case framework::AttrType::BLOCK: {
+      return GetProgramDesc().mutable_blocks(attr_desc.block_idx());
     }
   }
   PADDLE_ENFORCE(false, "Unknown OpDesc::AttrDesc::type !");
