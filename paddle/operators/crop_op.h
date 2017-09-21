@@ -16,6 +16,7 @@
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {  // Internal
@@ -24,26 +25,58 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-using framework::LoDTensor;
+using framework::Tensor;
+using framework::DDim;
+
+// TODO(wanghaoshuang):  move this function to other place
+DDim stride(const DDim& ddim) {
+  std::vector<int64_t> strides(ddim.size());
+  strides[ddim.size() - 1] = 1;
+  for (int i = ddim.size() - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * ddim[i + 1];
+  }
+  return make_ddim(strides);
+}
+
+template <typename T>
+class CropKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
+    T* x_data = x->data<T>();
+    T* out_data = out->mutable_data<T>(context.GetPlace());
+    auto x_stride = stride(x->dims());
+    auto out_stride = stride(out->dims());
+    auto offsets = context.Attr<std::vector<int>>("offsets");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), offsets.size(),
+        "Offsets size should be equal to dimension size of input tensor.");
+    int64_t offset = 0;
+    for (int i = 0; i < offsets.size(); ++i) {
+      offset += (x_stride[i] * offsets[i]);
+    }
+    StridedMemcpy<T>(context.device_context(), x_data + offset, x_stride,
+                     out->dims(), out_stride, out_data);
+  }
+};
 
 template <typename Place, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
-  auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-  auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+  auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
   if (d_x != nullptr) {
+    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     d_x->mutable_data<T>(context.GetPlace());
-    auto d_x_dims = d_x->dims();
-    auto d_out_dims = d_out->dims();
-    auto offsets = context.op().Attr<std::vector<int>>("offsets");
+    auto offsets = context.Attr<std::vector<int>>("offsets");
     Eigen::array<std::pair<int, int>, D> paddings;
-    for (int i = 0; i < d_out_dims.size(); ++i) {
+    for (int i = 0; i < D; ++i) {
       paddings[i].first = offsets[i];
       paddings[i].second = d_x_dims[i] - d_out_dims[i] - offsets[i];
     }
     auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-    auto place = context.GetEigenDevice<Place>();
-    d_x_tensor.device(place) = d_out_tensor.pad(paddings, 0);
+    d_x_tensor.device(context.GetEigenDevice<Place>()) =
+        d_out_tensor.pad(paddings, 0);
   }
 }
 
@@ -52,7 +85,7 @@ class CropGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     size_t rank =
-        context.Input<LoDTensor>(framework::GradVarName("Out"))->dims().size();
+        context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
     switch (rank) {
       case 1:
         CropGradFunction<Place, T, 1>(context);

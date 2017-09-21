@@ -128,59 +128,11 @@ class CropOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-int64_t transIndex(std::vector<int64_t> out_shape, std::vector<int64_t> x_shape,
-                   std::vector<std::pair<int, int>> crop_rules, size_t index) {
-  int64_t dim_size = out_shape.size();
-  std::vector<int64_t> pos(dim_size);
-
-  for (int64_t i = out_shape.size() - 1; i >= 0; --i) {
-    pos[i] = (index % out_shape[i]) + crop_rules[i].first;
-    index = index / out_shape[i];
-  }
-
-  size_t result = pos[0];
-  for (size_t i = 1; i < x_shape.size(); ++i) {
-    result = result * x_shape[i] + pos[i];
-  }
-  return result;
-}
-
-template <typename T>
-class CropCPUKernel : public framework::OpKernel {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<Tensor>("X");
-    auto *out = context.Output<Tensor>("Out");
-    auto x_data = x->data<T>();
-    T *out_data = out->mutable_data<T>(context.GetPlace());
-    auto x_dims = x->dims();
-    auto out_dims = out->dims();
-    int64_t out_count = out->numel();
-    std::vector<int64_t> x_shape = framework::vectorize(x_dims);
-    std::vector<int64_t> out_shape = framework::vectorize(out_dims);
-
-    auto offsets = context.Attr<std::vector<int>>("offsets");
-    PADDLE_ENFORCE_EQ(
-        x_dims.size(), offsets.size(),
-        "Offsets size should be equal to dimension size of input tensor.");
-
-    std::vector<std::pair<int, int>> crop_rules(x_dims.size());
-    for (size_t i = 0; i < crop_rules.size(); ++i) {
-      crop_rules[i].first = offsets[i];
-      crop_rules[i].second = x_dims[i] - out_dims[i] - offsets[i];
-    }
-
-    for (int64_t i = 0; i < out_count; ++i) {
-      out_data[i] = x_data[transIndex(out_shape, x_shape, crop_rules, i)];
-    }
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP(crop, ops::CropOp, ops::CropOpMaker, crop_grad, ops::CropOpGrad);
-REGISTER_OP_CPU_KERNEL(crop, ops::CropCPUKernel<float>);
+REGISTER_OP_CPU_KERNEL(crop, ops::CropKernel<float>);
 REGISTER_OP_CPU_KERNEL(crop_grad,
                        ops::CropGradKernel<paddle::platform::CPUPlace, float>);
