@@ -36,7 +36,7 @@ class SequenceAvgPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         dims[0],
         /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-        "The first dimension of Input(X) must be large than batch size.");
+        "The first dimension of Input(X) must be larger than batch size.");
     dims[0] = lod[0].size() - 1;
     ctx.Output<framework::LoDTensor>("Out")->Resize({dims});
   }
