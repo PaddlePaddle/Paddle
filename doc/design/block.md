@@ -93,7 +93,7 @@ with ie.false_block():
     d = pd.layer.fc(z)
     ie.output(d, d+1)
 
-o1, o2 = b(cond)
+o1, o2 = ie(cond)
 ```
 
 In both examples, the left branch computes `x+y` and `softmax(x+y)`, the right branch computes `x+1` and `fc(x)`.
@@ -107,10 +107,11 @@ The following RNN model from the [RNN design doc](./rnn.md)
 
 ```python
 # x is a LoDTensor and stores sequences
-x = var(sequence=([10, 20, 30]))
-m = var(0)
-W = var()
-U = var()
+x = sequence([10, 20, 30])
+m = var([...])
+# some parameters
+W = var([...])
+U = var([...])
 
 rnn = rnn_builder()
 with rnn.stepnet():
