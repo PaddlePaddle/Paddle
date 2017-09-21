@@ -72,7 +72,8 @@ class TestPool3d_Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Output', max_relative_error=0.07)
+        if self.pool_type != "max":
+            self.check_grad(set(['Input']), 'Output', max_relative_error=0.07)
 
     def initTestCase(self):
         self.pool_type = "ave"
@@ -94,15 +95,16 @@ class TestCase1(TestPool3d_Op):
         self.paddings = [1, 1, 1]
 
 
-# class TestCase2(TestPool3d_Op):
-#     def initTestCase(self):
-#         self.op_type = "pool3d"
-#         self.pool_type = "max"
-#         self.pool3D_forward_naive = max_pool3D_forward_naive
-#         self.shape = [2, 3, 5, 5, 5]
-#         self.ksize = [3, 3, 3]
-#         self.strides = [1, 1, 1]
-#         self.paddings = [1, 1, 1]
+class TestCase2(TestPool3d_Op):
+    def initTestCase(self):
+        self.op_type = "pool3d"
+        self.pool_type = "max"
+        self.pool3D_forward_naive = max_pool3D_forward_naive
+        self.shape = [2, 3, 5, 5, 5]
+        self.ksize = [3, 3, 3]
+        self.strides = [1, 1, 1]
+        self.paddings = [1, 1, 1]
+
 
 if __name__ == '__main__':
     unittest.main()
