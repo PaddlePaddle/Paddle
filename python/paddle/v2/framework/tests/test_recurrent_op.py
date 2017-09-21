@@ -59,7 +59,6 @@ class PySimpleRNNTest(unittest.TestCase):
 
     def test_forward(self):
         output = self.rnn.forward()
-        print 'output', output
 
 
 def create_tensor(scope, name, shape, np_data):
@@ -103,7 +102,7 @@ class TestRecurrentOp(unittest.TestCase):
         ctx = core.DeviceContext.create(core.CPUPlace())
         self.rnnop.infer_shape(self.scope)
         self.rnnop.run(self.scope, ctx)
-        return np.array(self.scope.find_var("h").get_tensor())
+        return np.array(self.scope.find_var("h@mem").get_tensor())
 
     def create_global_variables(self):
         # create inlink
@@ -123,8 +122,7 @@ class TestRecurrentOp(unittest.TestCase):
         create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim],
                       h_boot_np_data)
         self.scope.new_var("step_scopes")
-        self.scope.new_var("h@alias")
-        self.scope.new_var("h")
+        self.scope.new_var("h@mem")
 
     def create_rnn_op(self):
         # create RNNOp
@@ -134,20 +132,18 @@ class TestRecurrentOp(unittest.TestCase):
             boot_memories=["h_boot"],
             step_net="stepnet",
             # outputs
-            outlinks=["h"],
+            outlinks=["h@mem"],
             step_scopes="step_scopes",
             # attributes
-            inlink_alias=["x@alias"],
-            outlink_alias=["h@alias"],
             pre_memories=["h@pre"],
-            memories=["h@alias"])
+            memories=["h@mem"])
 
     def create_step_net(self):
         stepnet = core.Net.create()
-        x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
+        x_fc_op = Operator("mul", X="x", Y="W", Out="Wx")
         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
         sum_op = Operator("add", X="Wx", Y="Uh", Out="sum")
-        sig_op = Operator("sigmoid", X="sum", Y="h@alias")
+        sig_op = Operator("sigmoid", X="sum", Y="h@mem")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
             stepnet.append_op(op)

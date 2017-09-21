@@ -1,5 +1,4 @@
-/* Copyright (c) 2016 paddlepaddle Authors. All Rights
-Reserve.
+/* Copyright (c) 2016 paddlepaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/pooling.h"
+#include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -108,7 +108,7 @@ class Pool2dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
   void operator()(const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
                   std::vector<int>& paddings, PoolProcess pool_process,
-                  platform::DeviceContext* context) {
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -124,18 +124,22 @@ class Pool2dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
     const int padding_width = paddings[1];
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context->GetPlace());
+    T* output_data = output.mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool2dForward<PoolProcess, T><<<grid, threads, 0, 0>>>(
-        nthreads, input_data, output_data, input_channels, input_height,
-        input_width, output_height, output_width, ksize_height, ksize_width,
-        stride_height, stride_width, padding_height, padding_width,
-        pool_process);
+    KernelPool2dForward<
+        PoolProcess,
+        T><<<grid, threads, 0,
+             reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                 .stream()>>>(nthreads, input_data, output_data, input_channels,
+                              input_height, input_width, output_height,
+                              output_width, ksize_height, ksize_width,
+                              stride_height, stride_width, padding_height,
+                              padding_width, pool_process);
 
     // CHECK_SYNC("Pool2dForwardKernel failed");
   }
@@ -148,7 +152,8 @@ class Pool2dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, platform::DeviceContext* context) {
+                  PoolProcess pool_process,
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -165,14 +170,18 @@ class Pool2dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context->GetPlace());
+    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool2dBackward<PoolProcess, T><<<grid, threads, 0, 0>>>(
+    KernelPool2dBackward<
+        PoolProcess,
+        T><<<grid, threads, 0,
+             reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                 .stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_grad_data,
         input_channels, input_height, input_width, output_height, output_width,
         ksize_height, ksize_width, stride_height, stride_width, padding_height,
@@ -313,7 +322,7 @@ class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
   void operator()(const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
                   std::vector<int>& paddings, PoolProcess pool_process,
-                  platform::DeviceContext* context) {
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -334,7 +343,7 @@ class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
     const int padding_width = paddings[2];
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context->GetPlace());
+    T* output_data = output.mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
@@ -342,7 +351,11 @@ class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool3DForward<PoolProcess, T><<<grid, threads, 0, 0>>>(
+    KernelPool3DForward<
+        PoolProcess,
+        T><<<grid, threads, 0,
+             reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                 .stream()>>>(
         nthreads, input_data, output_data, input_channels, input_depth,
         input_height, input_width, output_depth, output_height, output_width,
         ksize_depth, ksize_height, ksize_width, stride_depth, stride_height,
@@ -360,7 +373,8 @@ class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, platform::DeviceContext* context) {
+                  PoolProcess pool_process,
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -383,7 +397,7 @@ class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context->GetPlace());
+    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
 
     int nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
@@ -391,7 +405,11 @@ class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool3DBackward<PoolProcess, T><<<grid, threads, 0, 0>>>(
+    KernelPool3DBackward<
+        PoolProcess,
+        T><<<grid, threads, 0,
+             reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                 .stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_grad_data,
         input_channels, input_depth, input_height, input_width, output_depth,
         output_height, output_width, ksize_depth, ksize_height, ksize_width,

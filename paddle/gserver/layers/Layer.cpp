@@ -14,25 +14,11 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
+#include "CostLayer.h"
+#include "ValidationLayer.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
-
-#include "AddtoLayer.h"
-#include "CRFLayer.h"
-#include "CosSimLayer.h"
-#include "CostLayer.h"
-#include "DataLayer.h"
-#include "ExpandConvLayer.h"
-#include "FullyConnectedLayer.h"
-#include "HierarchicalSigmoidLayer.h"
-#include "MaxLayer.h"
-#include "MixedLayer.h"
-#include "NormLayer.h"
-#include "PoolLayer.h"
-#include "TensorLayer.h"
-#include "TransLayer.h"
-#include "ValidationLayer.h"
 
 DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
@@ -109,6 +95,10 @@ ClassRegistrar<Layer, LayerConfig> Layer::registrar_;
 LayerPtr Layer::create(const LayerConfig& config) {
   std::string type = config.type();
 
+  // NOTE: As following types have illegal character '-',
+  // they can not use REGISTER_LAYER to registrar.
+  // Besides, to fit with old training models,
+  // they can not use '_' instead.
   if (type == "multi-class-cross-entropy")
     return LayerPtr(new MultiClassCrossEntropy(config));
   else if (type == "rank-cost")
@@ -117,8 +107,6 @@ LayerPtr Layer::create(const LayerConfig& config) {
     return LayerPtr(new AucValidation(config));
   else if (type == "pnpair-validation")
     return LayerPtr(new PnpairValidation(config));
-  // NOTE: stop adding "if" statements here.
-  // Instead, use REGISTER_LAYER to add more layer types
 
   return LayerPtr(registrar_.createByType(config.type(), config));
 }

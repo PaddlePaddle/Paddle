@@ -13,11 +13,12 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/sigmoid_op.h"
+
+#include "paddle/operators/smooth_l1_loss_op.h"
 
 namespace ops = paddle::operators;
-
-REGISTER_OP_GPU_KERNEL(sigmoid,
-                       ops::SigmoidKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    sigmoid_grad, ops::SigmoidGradKernel<paddle::platform::GPUPlace, float>);
+    smooth_l1_loss, ops::SmoothL1LossKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    smooth_l1_loss_grad,
+    ops::SmoothL1LossGradKernel<paddle::platform::GPUPlace, float>);

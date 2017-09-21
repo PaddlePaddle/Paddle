@@ -58,6 +58,8 @@ class Scope {
   /// nullptr if cannot find.
   Variable* FindVar(const std::string& name) const;
 
+  const Scope& parent() const { return *parent_; }
+
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 

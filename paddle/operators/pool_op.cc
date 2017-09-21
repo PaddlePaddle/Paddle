@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-int outputSize(int input_size, int filter_size, int padding, int stride) {
+int outputSize_pool(int input_size, int filter_size, int padding, int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
 }
@@ -65,8 +65,8 @@ class PoolOp : public framework::OperatorWithKernel {
     }
     std::vector<int64_t> output_shape({input->dims()[0], input->dims()[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(
-          outputSize(input->dims()[i + 2], ksize[i], paddings[i], strides[i]));
+      output_shape.push_back(outputSize_pool(input->dims()[i + 2], ksize[i],
+                                             paddings[i], strides[i]));
     }
     output->Resize(framework::make_ddim(output_shape));
   }

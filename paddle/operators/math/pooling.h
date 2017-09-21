@@ -62,7 +62,7 @@ class Pool2dForwardFunctor {
   void operator()(const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
                   std::vector<int>& paddings, PoolProcess pool_process,
-                  platform::DeviceContext* context);
+                  const platform::DeviceContext& context);
 };
 
 template <typename Place, typename PoolProcess, typename T>
@@ -72,7 +72,8 @@ class Pool2dBackwardFunctor {
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, platform::DeviceContext* context);
+                  PoolProcess pool_process,
+                  const platform::DeviceContext& context);
 };
 
 template <typename Place, typename PoolProcess, typename T>
@@ -81,7 +82,7 @@ class Pool3dForwardFunctor {
   void operator()(const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
                   std::vector<int>& paddings, PoolProcess pool_process,
-                  platform::DeviceContext* context);
+                  const platform::DeviceContext& context);
 };
 
 template <typename Place, typename PoolProcess, typename T>
@@ -91,7 +92,8 @@ class Pool3dBackwardFunctor {
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, platform::DeviceContext* context);
+                  PoolProcess pool_process,
+                  const platform::DeviceContext& context);
 };
 
 }  // namespace math

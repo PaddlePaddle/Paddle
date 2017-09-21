@@ -64,15 +64,17 @@ void MKLDNNTester::reset(const TestConfig& dnn,
         configs_[i], &(layerMaps_[i]), &(parameters_[i]), &(testLayers_[i]));
   }
   refLayer_ = testLayers_[REF];
-  dnnLayer_ = std::dynamic_pointer_cast<MKLDNNLayer>(testLayers_[DNN]);
-  CHECK(dnnLayer_);
-  // for comparison with Paddle reference results,
-  // need manually add cpu device output for test
-  dnnLayer_->addOutputArgument(CPU_DEVICE);
+  dnnLayer_ = testLayers_[DNN];
   EXPECT_EQ(dataLayers_[DNN].size(), dataLayers_[REF].size());
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
-
   setInputImgSize();
+
+  // for comparison with Paddle reference results,
+  // need manually add cpu device output for test
+  MKLDNNLayerPtr dnnLayer = std::dynamic_pointer_cast<MKLDNNLayer>(dnnLayer_);
+  if (dnnLayer) {
+    dnnLayer->addOutputArgument(CPU_DEVICE);
+  }
 }
 
 void MKLDNNTester::setInputImgSize() {
@@ -122,7 +124,7 @@ void MKLDNNTester::randomTopDiffs() {
 void MKLDNNTester::checkForward() {
   VLOG(MKLDNN_ALL) << "Check Forward";
   printTopDatas();
-  double delta = compareMatrix(dnnLayer_->getOutput(-1).value,
+  double delta = compareMatrix(dnnLayer_->getOutput(CPU_DEVICE).value,
                                refLayer_->getOutputValue());
   EXPECT_LE(fabs(delta), eps_);
 }
@@ -155,7 +157,10 @@ void MKLDNNTester::checkBackwardWgts() {
   vector<VectorPtr> dnnWgts;  // used to temply save mkldnn weights
   saveWgt(parameters_[DNN], dnnWgts);
 
-  dnnLayer_->convertWeightsToPaddle();
+  MKLDNNLayerPtr dnnLayer = std::dynamic_pointer_cast<MKLDNNLayer>(dnnLayer_);
+  if (dnnLayer) {
+    dnnLayer->convertWeightsToPaddle();
+  }
   for (size_t i = 0; i < parameters_[DNN].size(); ++i) {
     const VectorPtr& dnn = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& ref = parameters_[REF][i]->getBuf(PARAMETER_VALUE);
@@ -322,6 +327,10 @@ void MKLDNNTester::runOnce() {
   // and clearTopDatas(REF) should be coverd by ref layers
   clearBotDiffs(REF);
   clearWgtDiffs(REF);
+  // it is necessary to clear bottom diffs when only activation is dnn type
+  if (configs_[DNN].layerConfig.active_type().compare(0, 7, "mkldnn_") == 0) {
+    clearBotDiffs(DNN);
+  }
 }
 
 void MKLDNNTester::run(const TestConfig& dnn,
@@ -333,8 +342,19 @@ void MKLDNNTester::run(const TestConfig& dnn,
                        float epsilon,
                        bool log,
                        int level) {
-  VLOG(MKLDNN_TESTS) << "Test MKLDNN functionality: " << dnn.layerConfig.type()
-                     << " vs " << ref.layerConfig.type();
+  CHECK(dnn.layerConfig.type().compare(0, 7, "mkldnn_") == 0 ||
+        dnn.layerConfig.active_type().compare(0, 7, "mkldnn_") == 0)
+      << "should be MKLDNN layer or MKLDNN activation";
+  if (dnn.layerConfig.type() == ref.layerConfig.type()) {
+    VLOG(MKLDNN_TESTS) << "Test MKLDNN functionality: "
+                       << dnn.layerConfig.active_type() << " vs "
+                       << ref.layerConfig.active_type();
+  } else {
+    VLOG(MKLDNN_TESTS) << "Test MKLDNN functionality: "
+                       << dnn.layerConfig.type() << " vs "
+                       << ref.layerConfig.type();
+  }
+
   ih_ = inputImgH;
   iw_ = inputImgW;
   iter_ = iter;

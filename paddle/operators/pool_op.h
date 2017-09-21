@@ -41,8 +41,6 @@ class PoolKernel : public framework::OpKernel {
         ksize[i] = input->dims()[i + 2];
       }
     }
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(context.device_context_);
 
     switch (ksize.size()) {
       case 2: {
@@ -52,7 +50,7 @@ class PoolKernel : public framework::OpKernel {
               pool2d_forward;
           paddle::operators::math::pool::maxPool<T> pool_process;
           pool2d_forward(*input, *output, ksize, strides, paddings,
-                         pool_process, device_context);
+                         pool_process, context.device_context());
 
         } else if (pooling_type == "ave") {
           paddle::operators::math::Pool2dForwardFunctor<
@@ -60,7 +58,7 @@ class PoolKernel : public framework::OpKernel {
               pool2d_forward;
           paddle::operators::math::pool::avePool<T> pool_process;
           pool2d_forward(*input, *output, ksize, strides, paddings,
-                         pool_process, device_context);
+                         pool_process, (context.device_context()));
         }
       } break;
       case 3: {
@@ -70,14 +68,14 @@ class PoolKernel : public framework::OpKernel {
               pool3d_forward;
           paddle::operators::math::pool::maxPool<T> pool_process;
           pool3d_forward(*input, *output, ksize, strides, paddings,
-                         pool_process, device_context);
+                         pool_process, context.device_context());
         } else if (pooling_type == "ave") {
           paddle::operators::math::Pool3dForwardFunctor<
               Place, paddle::operators::math::pool::avePool<T>, T>
               pool3d_forward;
           paddle::operators::math::pool::avePool<T> pool_process;
           pool3d_forward(*input, *output, ksize, strides, paddings,
-                         pool_process, device_context);
+                         pool_process, context.device_context());
         }
       } break;
     }
@@ -104,8 +102,6 @@ class PoolGradKernel : public framework::OpKernel {
     if (global_pooling == 1) {
       for (size_t i = 0; i < ksize.size(); ++i) ksize[i] = input->dims()[i + 2];
     }
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(context.device_context_);
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
@@ -121,14 +117,16 @@ class PoolGradKernel : public framework::OpKernel {
                 pool2d_backward;
             paddle::operators::math::pool::maxPool<T> pool_process;
             pool2d_backward(*input, *input_grad, *output, *output_grad, ksize,
-                            strides, paddings, pool_process, device_context);
+                            strides, paddings, pool_process,
+                            context.device_context());
           } else if (pooling_type == "ave") {
             paddle::operators::math::Pool2dBackwardFunctor<
                 Place, paddle::operators::math::pool::avePool<T>, T>
                 pool2d_backward;
             paddle::operators::math::pool::avePool<T> pool_process;
             pool2d_backward(*input, *input_grad, *output, *output_grad, ksize,
-                            strides, paddings, pool_process, device_context);
+                            strides, paddings, pool_process,
+                            context.device_context());
           }
         } break;
         case 3: {
@@ -138,14 +136,16 @@ class PoolGradKernel : public framework::OpKernel {
                 pool3d_backward;
             paddle::operators::math::pool::maxPool<T> pool_process;
             pool3d_backward(*input, *input_grad, *output, *output_grad, ksize,
-                            strides, paddings, pool_process, device_context);
+                            strides, paddings, pool_process,
+                            context.device_context());
           } else if (pooling_type == "ave") {
             paddle::operators::math::Pool3dBackwardFunctor<
                 Place, paddle::operators::math::pool::avePool<T>, T>
                 pool3d_backward;
             paddle::operators::math::pool::avePool<T> pool_process;
             pool3d_backward(*input, *input_grad, *output, *output_grad, ksize,
-                            strides, paddings, pool_process, device_context);
+                            strides, paddings, pool_process,
+                            context.device_context());
           }
         } break;
       }

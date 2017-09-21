@@ -24,7 +24,7 @@ class Pool2dForwardFunctor<platform::CPUPlace, PoolProcess, T> {
   void operator()(const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
                   std::vector<int>& paddings, PoolProcess pool_process,
-                  platform::DeviceContext* context) {
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -42,7 +42,7 @@ class Pool2dForwardFunctor<platform::CPUPlace, PoolProcess, T> {
     const int output_stride = output_height * output_width;
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context->GetPlace());
+    T* output_data = output.mutable_data<T>(context.GetPlace());
 
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
@@ -79,7 +79,8 @@ class Pool2dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, platform::DeviceContext* context) {
+                  PoolProcess pool_process,
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -98,7 +99,7 @@ class Pool2dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context->GetPlace());
+    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
 
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
@@ -156,7 +157,7 @@ class Pool3dForwardFunctor<platform::CPUPlace, PoolProcess, T> {
   void operator()(const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
                   std::vector<int>& paddings, PoolProcess pool_process,
-                  platform::DeviceContext* context) {
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -179,7 +180,7 @@ class Pool3dForwardFunctor<platform::CPUPlace, PoolProcess, T> {
     const int output_stride = output_depth * output_height * output_width;
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context->GetPlace());
+    T* output_data = output.mutable_data<T>(context.GetPlace());
 
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
@@ -227,7 +228,8 @@ class Pool3dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, platform::DeviceContext* context) {
+                  PoolProcess pool_process,
+                  const platform::DeviceContext& context) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -251,7 +253,7 @@ class Pool3dBackwardFunctor<platform::CPUPlace, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context->GetPlace());
+    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
 
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {

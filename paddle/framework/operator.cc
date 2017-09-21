@@ -22,14 +22,14 @@ namespace framework {
 template <>
 Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_->get_eigen_device<Eigen::DefaultDevice>();
+  return *device_context_.get_eigen_device<Eigen::DefaultDevice>();
 }
 
 #ifndef PADDLE_ONLY_CPU
 template <>
 Eigen::GpuDevice&
 ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_->get_eigen_device<Eigen::GpuDevice>();
+  return *device_context_.get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
 
@@ -226,44 +226,6 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                               : const_cast<Tensor*>(GetTensorFromVar(var));
                  });
   return res;
-}
-
-void OpProtoAndCheckerMaker::Validate() {
-  validated_ = true;
-  CheckNoDuplicatedInOutAttrs();
-}
-
-OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(
-    const std::string& name, const std::string& comment) {
-  auto* input = proto_->add_inputs();
-  input->set_name(name);
-  input->set_comment(comment);
-  return OpProtoAndCheckerMaker::VariableBuilder{input};
-}
-
-OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
-    const std::string& name, const std::string& comment) {
-  auto* output = proto_->add_outputs();
-  output->set_name(name);
-  output->set_comment(comment);
-  return OpProtoAndCheckerMaker::VariableBuilder{output};
-}
-
-void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
-  std::unordered_set<std::string> names;
-  auto checker = [&](const std::string& name) {
-    PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
-    names.insert(name);
-  };
-  for (auto& attr : proto_->attrs()) {
-    checker(attr.name());
-  }
-  for (auto& input : proto_->inputs()) {
-    checker(input.name());
-  }
-  for (auto& output : proto_->outputs()) {
-    checker(output.name());
-  }
 }
 
 }  // namespace framework
