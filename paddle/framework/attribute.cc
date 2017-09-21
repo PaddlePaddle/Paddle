@@ -19,6 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+static ProgramDesc* g_program_desc = nullptr;
+
+ProgramDesc& GetProgramDesc() {
+  if (g_program_desc == nullptr) {
+    g_program_desc = new ProgramDesc();
+  }
+  return *g_program_desc;
+}
+
 template <>
 AttrType AttrTypeID<int>() {
   return INT;
@@ -93,7 +102,7 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
       return val;
     }
     case framework::AttrType::BLOCK: {
-      return g_program_desc.blocks(attr_desc.block_idx());
+      return GetProgramDesc().mutable_blocks(attr_desc.block_idx());
     }
   }
   PADDLE_ENFORCE(false, "Unknown OpDesc::AttrDesc::type !");
