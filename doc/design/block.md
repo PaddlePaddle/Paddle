@@ -61,13 +61,12 @@ int z = 30;
 int out, out1;
 bool cond = false;
 if (cond) {
-  int z = x + y;
-  out = z;
+  out = x + y;
   out1 = softmax(z);
 } else {
   int d = fc(z);
-  out = d;
-  out1 = d+1;
+  out = d + 1;
+  out1 = softmax(d);
 }
 ```
 
@@ -76,11 +75,11 @@ An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator
 ```python
 import paddle as pd
 
-x = var([10, 20])
+x = var(shape=[10, 20])
 # a scalar
-y = var([1])
-z = var(10, 20)
-cond = var(false)
+y = var(shape=[1])
+z = var(shape=[10, 20])
+cond = var(data=false)
 # output_num should be set to ensure the outputs of the true_block and false_block can be merged,
 # so the numbers of both blocks should be same as `output_num`.
 ie = pd.ifelse_builder()
