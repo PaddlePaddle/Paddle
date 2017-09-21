@@ -13,9 +13,10 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
+
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/softmax_function.h"
-#include "paddle/operators/math/utils.h"
+#include "paddle/operators/cross_entropy_op.h"
+#include "paddle/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {
@@ -27,9 +28,10 @@ __global__ void CrossEntropyKernel(T* out, const T* softmax_out,
                                    const int* label, const int batch_size,
                                    const int class_num) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= batch_size) return;
-  PADDLE_ASSERT(label[i] >= 0 && label[i] < class_num);
-  out[i] = -math::tolerable_value(log(softmax_out[i * class_num + label[i]]));
+  if (i < batch_size) {
+    PADDLE_ASSERT(label[i] >= 0 && label[i] < class_num);
+    out[i] = -tolerable_value(std::log(softmax_out[i * class_num + label[i]]));
+  }
 }
 
 template <typename T>
@@ -38,10 +40,10 @@ __global__ void CrossEntropyWithSoftmaxGradKernel(T* softmax_out,
                                                   const int batch_size,
                                                   const int class_num) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= batch_size) return;
-
-  PADDLE_ASSERT(label[i] >= 0 && label[i] < class_num);
-  softmax_out[i * class_num + label[i]] -= 1.;
+  if (i < batch_size) {
+    PADDLE_ASSERT(label[i] >= 0 && label[i] < class_num);
+    softmax_out[i * class_num + label[i]] -= 1.;
+  }
 }
 
 template <typename T>
@@ -60,7 +62,7 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel {
 
     // Calculate the cross entropy loss based on hard labels.
     const int* label_data = context.Input<Tensor>("Label")->data<int>();
-    Tensor* loss = context.Output<Tensor>("Out");
+    Tensor* loss = context.Output<Tensor>("Loss");
     loss->mutable_data<T>(context.GetPlace());
     T* loss_data = loss->data<T>();
 

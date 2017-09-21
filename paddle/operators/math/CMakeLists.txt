@@ -1,12 +1,12 @@
 if(WITH_GPU)
     nv_library(math_function SRCS math_function.cc math_function.cu im2col.cc
       im2col.cu DEPS cblas device_context operator)
-    nv_library(softmax_function SRCS softmax_function.cc softmax_function.cu
+    nv_library(softmax_function SRCS softmax.cc softmax.cu
       DEPS operator)
 else()
     cc_library(math_function SRCS math_function.cc im2col.cc
       DEPS cblas device_context operator)
-    cc_library(softmax_function SRCS softmax_function.cc DEPS operator)
+    cc_library(softmax_function SRCS softmax.cc DEPS operator)
 endif()
 
 nv_test(math_function_test SRCS math_function_test.cc DEPS math_function tensor)

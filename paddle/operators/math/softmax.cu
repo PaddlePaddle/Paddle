@@ -12,30 +12,15 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
-#include "paddle/platform/assert.h"
-#include "paddle/platform/hostdevice.h"
+#define EIGEN_USE_GPU
+
+#include "paddle/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename T>
-T HOSTDEVICE tolerable_value(const T x) {
-  PADDLE_ASSERT(std::is_floating_point<T>::value);
-
-  const T kApproInf = 1e20;
-
-  if (x == INFINITY) {
-    return kApproInf;
-  }
-
-  if (x == -INFINITY) {
-    return -kApproInf;
-  }
-
-  return x;
-}
+template class SoftmaxFunctor<platform::GPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators

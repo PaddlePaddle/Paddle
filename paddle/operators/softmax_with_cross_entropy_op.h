@@ -15,8 +15,8 @@
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/softmax_function.h"
-#include "paddle/operators/math/utils.h"
+#include "paddle/operators/cross_entropy_op.h"
+#include "paddle/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {
@@ -44,7 +44,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
     T* softmax_out = softmax->data<T>();
     const int* label_data = context.Input<Tensor>("Label")->data<int>();
 
-    Tensor* loss = context.Output<Tensor>("Out");
+    Tensor* loss = context.Output<Tensor>("Loss");
     loss->mutable_data<T>(context.GetPlace());
     T* loss_data = loss->data<T>();
 
@@ -53,7 +53,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
 
     for (int i = 0; i < batch_size; ++i) {
       int index = i * class_num + label_data[i];
-      loss_data[i] = -math::tolerable_value(std::log(softmax_out[index]));
+      loss_data[i] = -tolerable_value(std::log(softmax_out[index]));
     }
   }
 };

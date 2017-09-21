@@ -25,13 +25,13 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             dtype="float32")
 
         self.inputs = {"Logits": logits, "Label": labels}
-        self.outputs = {"Softmax": softmax, "Out": cross_entropy}
+        self.outputs = {"Softmax": softmax, "Loss": cross_entropy}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Out", max_relative_error=0.05)
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.05)
 
 
 if __name__ == "__main__":
