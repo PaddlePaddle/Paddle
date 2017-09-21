@@ -27,61 +27,60 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 struct SumFunctor {
-  template <typename Place, typename In, typename Out, typename Dim>
-  void operator()(const Place& place, In& in, Out& out, const Dim& dim) {
-    out.device(place) = in.sum(dim);
+  template <typename Place, typename X, typename Y, typename Dim>
+  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+    y.device(place) = x.sum(dim);
   }
 };
 
 struct SumGradFunctor {
-  template <typename Place, typename In, typename In_Const, typename Out,
+  template <typename Place, typename X, typename Y, typename DX, typename DY,
             typename Dim>
-  void operator()(const Place& place, In_Const& in, In& in_grad, Out& out,
-                  Out& out_grad, const Dim& dim, int size) {
-    in_grad.device(place) = out_grad.broadcast(dim);
+  void operator()(const Place& place, X& x, Y& y, DX& dx, DY& dy,
+                  const Dim& dim, int size) {
+    dx.device(place) = dy.broadcast(dim);
   }
 };
 
 struct MeanFunctor {
-  template <typename Place, typename In, typename Out, typename Dim>
-  void operator()(const Place& place, In& in, Out& out, const Dim& dim) {
-    out.device(place) = in.mean(dim);
+  template <typename Place, typename X, typename Y, typename Dim>
+  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+    y.device(place) = x.mean(dim);
   }
 };
 
 struct MeanGradFunctor {
-  template <typename Place, typename In, typename In_Const, typename Out,
+  template <typename Place, typename X, typename Y, typename DX, typename DY,
             typename Dim>
-  void operator()(const Place& place, In_Const& in, In& in_grad, Out& out,
-                  Out& out_grad, const Dim& dim, int size) {
-    in_grad.device(place) = out_grad.broadcast(dim) / in_grad.constant(size);
+  void operator()(const Place& place, X& x, Y& y, DX& dx, DY& dy,
+                  const Dim& dim, int size) {
+    dx.device(place) = dy.broadcast(dim) / dx.constant(size);
   }
 };
 
 struct MaxFunctor {
-  template <typename Place, typename In, typename Out, typename Dim>
-  void operator()(const Place& place, In& in, Out& out, const Dim& dim) {
-    out.device(place) = in.maximum(dim);
+  template <typename Place, typename X, typename Y, typename Dim>
+  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+    y.device(place) = x.maximum(dim);
   }
 };
 
 struct MinFunctor {
-  template <typename Place, typename In, typename Out, typename Dim>
-  void operator()(const Place& place, In& in, Out& out, const Dim& dim) {
-    out.device(place) = in.minimum(dim);
+  template <typename Place, typename X, typename Y, typename Dim>
+  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+    y.device(place) = x.minimum(dim);
   }
 };
 
 struct MaxOrMinGradFunctor {
-  template <typename Place, typename In, typename In_Const, typename Out,
+  template <typename Place, typename X, typename Y, typename DX, typename DY,
             typename Dim>
-  void operator()(const Place& place, In_Const& in, In& in_grad, Out& out,
-                  Out& out_grad, const Dim& dim, int size) {
-    auto equals = in == out.broadcast(dim);
-    auto ones = in_grad.constant(1);
-    auto zeros = in_grad.constant(0);
-    in_grad.device(place) =
-        out_grad.broadcast(dim) * equals.select(ones, zeros);
+  void operator()(const Place& place, X& x, Y& y, DX& dx, DY& dy,
+                  const Dim& dim, int size) {
+    auto equals = x == y.broadcast(dim);
+    auto ones = dx.constant(1);
+    auto zeros = dx.constant(0);
+    dx.device(place) = dy.broadcast(dim) * equals.select(ones, zeros);
   }
 };
 
@@ -125,7 +124,7 @@ class ReduceKernel : public framework::OpKernel {
     if (dim < 0) dim = x_rank + dim;
     auto reduce_dim = Eigen::array<int, 1>({{dim}});
     // construct the squeezed output tensor
-    bool keep_dim = context.Attr<int>("keep_dim") == 1;
+    bool keep_dim = context.Attr<bool>("keep_dim");
     DDim dims = output->dims();
     auto dims_vector = vectorize(dims);
     if (keep_dim && x_rank > 1) {
@@ -191,7 +190,7 @@ class ReduceGradKernel : public framework::OpKernel {
       braodcast_dim[dim] = input0->dims()[dim];
       auto& place = context.GetEigenDevice<Place>();
       Functor functor;
-      functor(place, x, x_grad, x_reduce, x_reduce_grad, braodcast_dim,
+      functor(place, x, x_reduce, x_grad, x_reduce_grad, braodcast_dim,
               braodcast_dim[dim]);
     }
   }
@@ -235,8 +234,8 @@ class ReduceGradEigenFreeKernel : public framework::OpKernel {
           out_offset = inner_count * i + j;
           for (int k = 0; k < mid_count; ++k) {
             x_offset = (inner_count * mid_count) * i + inner_count * k + j;
-            functor(x_data + x_offset, x_grad_data + x_offset,
-                    out_data + out_offset, out_grad_data + out_offset,
+            functor(x_data + x_offset, out_data + out_offset,
+                    x_grad_data + x_offset, out_grad_data + out_offset,
                     mid_count);
           }
         }

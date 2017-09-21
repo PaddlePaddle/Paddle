@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::DDim;
+using framework::LoDTensor;
 
 class ReduceOp : public framework::OperatorWithKernel {
  public:
@@ -26,18 +26,19 @@ class ReduceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "Input(X) of ReduceOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
+                            "Output(Out) of ReduceOp should not be null.");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported");
+    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
     int dim = ctx.Attr<int>("dim");
     if (dim < 0) dim = x_rank + dim;
     PADDLE_ENFORCE_LT(
         dim, x_rank,
-        "The dim should be in the range [-rank(input), rank(input))");
-    PADDLE_ENFORCE_GE(ctx.Attr<int>("keep_dim"), 0, "keep_dim must be 0 or 1");
-    PADDLE_ENFORCE_LE(ctx.Attr<int>("keep_dim"), 1, "keep_dim must be 0 or 1");
-    bool keep_dim = ctx.Attr<int>("keep_dim") == 1;
+        "The dim should be in the range [-rank(input), rank(input)).");
+    bool keep_dim = ctx.Attr<bool>("keep_dim");
     auto dims_vector = vectorize(x_dims);
     if (keep_dim || x_rank == 1) {
       dims_vector[dim] = 1;
@@ -45,7 +46,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       dims_vector.erase(dims_vector.begin() + dim);
     }
     auto out_dims = framework::make_ddim(dims_vector);
-    ctx.Output<Tensor>("Out")->Resize(out_dims);
+    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
   }
 };
 
@@ -55,119 +56,101 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
+                            "Input(Out@GRAD) should not be null.");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported");
+    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
     int dim = ctx.Attr<int>("dim");
     if (dim < 0) dim = x_rank + dim;
     PADDLE_ENFORCE_LT(
         dim, x_rank,
-        "The dim should be in the range [-rank(input), rank(input))");
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+        "The dim should be in the range [-rank(input), rank(input)).");
+    auto *x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     if (x_grad) x_grad->Resize(x_dims);
   }
 };
 
-class ReduceSumOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ReduceOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput(
+        "X",
+        "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
+    AddOutput("Out", "(Tensor) The result tensor.");
+    AddAttr<int>("dim",
+                 "(int, default 0) The dimension to reduce. "
+                 "Must be in the range [-rank(input), rank(input))")
+        .SetDefault(0);
+    AddAttr<bool>("keep_dim",
+                  "(bool, default false) "
+                  "If true, retain the reduced dimension with length 1.")
+        .SetDefault(false);
+    comment_ = R"DOC(
+{ReduceOP} operator computes the {reduce} of input tensor along the given dimension. 
+The result tensor has 1 fewer dimension than the input unless `keep_dim` is true.
+)DOC";
+    AddComment(comment_);
+  }
+
+ protected:
+  std::string comment_;
+
+  void Replace(std::string &src, std::string from, std::string to) {
+    std::size_t len_from = std::strlen(from.c_str());
+    std::size_t len_to = std::strlen(to.c_str());
+    for (std::size_t pos = src.find(from); pos != std::string::npos;
+         pos = src.find(from, pos + len_to)) {
+      src.replace(pos, len_from, to);
+    }
+  }
+
+  void SetComment(std::string name, std::string op) {
+    Replace(comment_, "{ReduceOP}", name);
+    Replace(comment_, "{reduce}", op);
+  }
+};
+
+class ReduceSumOpMaker : public ReduceOpMaker {
  public:
   ReduceSumOpMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
-    AddOutput("Out", "(Tensor) The result tensor.");
-    AddComment(R"DOC(
-ReduceMean operator computes the sum of input tensor along the given dimension. 
-The result tensor has 1 fewer dimension than the input unless `keep_dim` is true.
-)DOC");
-    AddAttr<int>("dim",
-                 "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input))")
-        .SetDefault(0);
-    AddAttr<int>(
-        "keep_dim",
-        "(int, default 0) "
-        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
-        .SetDefault(0);
+      : ReduceOpMaker(proto, op_checker) {
+    SetComment("ReduceSum", "sum");
+    AddComment(comment_);
   }
 };
 
-class ReduceMeanOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceMeanOpMaker : public ReduceOpMaker {
  public:
   ReduceMeanOpMaker(framework::OpProto *proto,
                     framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
-    AddOutput("Out", "(Tensor) The result tensor.");
-    AddComment(R"DOC(
-ReduceMean operator computes the mean of input tensor along the given dimension. 
-The result tensor has 1 fewer dimension than the input unless `keep_dim` is true.
-)DOC");
-    AddAttr<int>("dim",
-                 "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input))")
-        .SetDefault(0);
-    AddAttr<int>(
-        "keep_dim",
-        "(int, default 0) "
-        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
-        .SetDefault(0);
+      : ReduceOpMaker(proto, op_checker) {
+    SetComment("ReduceMean", "mean");
+    AddComment(comment_);
   }
 };
 
-class ReduceMaxOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceMaxOpMaker : public ReduceOpMaker {
  public:
   ReduceMaxOpMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
-    AddOutput("Out", "(Tensor) The result tensor.");
-    AddComment(R"DOC(
-ReduceMax operator computes the maximum of input tensor along the given dimension. 
-The result tensor has 1 fewer dimension than the input unless `keep_dim` is true.
-)DOC");
-    AddAttr<int>("dim",
-                 "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input))")
-        .SetDefault(0);
-    AddAttr<int>(
-        "keep_dim",
-        "(int, default 0) "
-        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
-        .SetDefault(0);
+      : ReduceOpMaker(proto, op_checker) {
+    SetComment("ReduceMax", "max");
+    AddComment(comment_);
   }
 };
 
-class ReduceMinOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceMinOpMaker : public ReduceOpMaker {
  public:
   ReduceMinOpMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
-    AddOutput("Out", "(Tensor) The result tensor.");
-    AddComment(R"DOC(
-ReduceMin operator computes the minimum of input tensor along the given dimension. 
-The result tensor has 1 fewer dimension than the input unless `keep_dim` is true.
-)DOC");
-    AddAttr<int>("dim",
-                 "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input))")
-        .SetDefault(0);
-    AddAttr<int>(
-        "keep_dim",
-        "(int, default 0) "
-        "Must be 0 or 1. If 1, retain the reduced dimension with length 1.")
-        .SetDefault(0);
+      : ReduceOpMaker(proto, op_checker) {
+    SetComment("ReduceMin", "min");
+    AddComment(comment_);
   }
 };
 

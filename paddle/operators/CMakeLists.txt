@@ -61,6 +61,13 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
+    
+    # reduce_op contains several operators
+    if ("${TARGET}" STREQUAL "reduce_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
+    endif()
 
     # pybind USE_NO_KERNEL_OP
     file(READ ${TARGET}.cc TARGET_CONTENT)
