@@ -55,18 +55,22 @@ Let us consolidate the discussion by presenting some examples.
 The following C++ programs shows how blocks are used with the `if-else` structure:
 
 ```c++
+namespace pd = paddle;
+
 int x = 10;
-int y = 20;
-int z = 30;
-int out, out1;
+int y = 1;
+int z = 10;
 bool cond = false;
+int o1, o2;
+
 if (cond) {
-  out = x + y;
-  out1 = softmax(z);
+  int z = x + y;
+  o1 = z;
+  o2 = pd::layer::softmax(z);
 } else {
-  int d = fc(z);
-  out = d + 1;
-  out1 = softmax(d);
+  int d = pd::layer::fc(z);
+  o1 = d;
+  o2 = d+1;
 }
 ```
 
@@ -75,24 +79,21 @@ An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator
 ```python
 import paddle as pd
 
-x = var(shape=[10, 20])
-# a scalar
-y = var(shape=[1])
-z = var(shape=[10, 20])
-cond = var(data=false)
-# output_num should be set to ensure the outputs of the true_block and false_block can be merged,
-# so the numbers of both blocks should be same as `output_num`.
-ie = pd.ifelse_builder()
+x = [10, 20]
+y = 1
+z = [10, 20]
+cond = [false, true]
 
+ie = pd.ifelse_builder()
 with ie.true_block():
-    d = operator.add(x, y)
-    ie.outputs(d, operator.softmax(d))
+    z = pd.layer.add(x, y)
+    ie.output(z, pd.layer.softmax(z))
 
 with ie.false_block():
-    d = layer.fc(z)
-    ie.outputs(d+1, operator.softmax(d))
+    d = pd.layer.fc(z)
+    ie.output(d, d+1)
 
-out, out1 = b(cond)
+o1, o2 = b(cond)
 ```
 
 In both examples, the left branch computes `x+y` and `softmax(x+y)`, the right branch computes `x+1` and `fc(x)`.
@@ -123,7 +124,7 @@ with rnn.stepnet():
   sum = pd.add_two(fc_out, hidden_out)
   act = pd.sigmoid(sum)
   h.update(act)                    # update memory with act
-  net.outputs(act, hidden_out) # two outputs
+  net.output(act, hidden_out) # two outputs
 
 o1, o2 = rnn()
 ```
@@ -225,7 +226,7 @@ with rnn.stepnet()
     x = a.as_step_input()
     # reuse fc's parameter
     fc_without_b = pd.get_variable("fc.w")
-    net.outputs(fc_without_b)
+    rnn.output(fc_without_b)
 
 out = rnn()
 ```
