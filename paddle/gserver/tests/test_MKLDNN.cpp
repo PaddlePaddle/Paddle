@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "MKLDNNTester.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/activations/MKLDNNActivation.h"
 #include "paddle/math/MathUtils.h"
 
 using namespace paddle;  // NOLINT
@@ -25,17 +26,26 @@ DECLARE_bool(thread_local_rand_use_global_seed);
 DECLARE_bool(use_gpu);
 DECLARE_bool(use_mkldnn);
 
-struct testFCDesc {
+#define RUN_MKLDNN_TEST(DNN_CONFIG, REF_CONFIG, DESC)         \
+  MKLDNNTester tester;                                        \
+  for (auto bs : {DESC.bs, 1}) {                              \
+    tester.run(DNN_CONFIG, REF_CONFIG, bs, DESC.ih, DESC.iw); \
+  }
+
+#define RUN_MKLDNN_TEST_LAYER(DNN_CONFIG, REF_TYPE, DESC) \
+  TestConfig ref = DNN_CONFIG;                            \
+  ref.layerConfig.set_type(REF_TYPE);                     \
+  RUN_MKLDNN_TEST(DNN_CONFIG, ref, DESC)
+
+struct testFcDesc {
   int bs;
   int ic;
   int oc;
   int ih, iw;  // oh == ow == 1
 };
 
-void testFcLayer(const testFCDesc& pm) {
-  const std::string compareTypes[] = {"mkldnn_fc", "fc"};
-  TestConfig cfg;
-  cfg.layerConfig.set_type(compareTypes[0]);
+static void getMKLDNNFcConfig(TestConfig& cfg, const testFcDesc& pm) {
+  cfg.layerConfig.set_type("mkldnn_fc");
   cfg.layerConfig.set_size(pm.oc);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
@@ -43,25 +53,25 @@ void testFcLayer(const testFCDesc& pm) {
        /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
        /* size of weight= */ size_t(pm.oc * pm.ic * pm.ih * pm.iw)});
   cfg.layerConfig.add_inputs();
+}
 
-  MKLDNNTester tester;
+void testFcLayer(const testFcDesc& pm) {
+  TestConfig dnnConfig;
+  getMKLDNNFcConfig(dnnConfig, pm);
   for (auto biasSize : {pm.oc, 0}) {
-    cfg.biasSize = biasSize;
-    TestConfig ref = cfg;
-    ref.layerConfig.set_type(compareTypes[1]);
-    for (auto bs : {pm.bs, 1}) {
-      tester.run(cfg, ref, bs, pm.ih, pm.iw);
-    }
+    dnnConfig.biasSize = biasSize;
+    RUN_MKLDNN_TEST_LAYER(dnnConfig, "fc", pm)
   }
 }
 
 TEST(MKLDNNLayer, FcLayer) {
-  testFcLayer({/*bs*/ 2, /*ic*/ 2, /*oc*/ 3, /*ih*/ 1, /*iw*/ 1});
-  testFcLayer({/*bs*/ 3, /*ic*/ 7, /*oc*/ 19, /*ih*/ 1, /*iw*/ 1});
-  testFcLayer({/*bs*/ 8, /*ic*/ 16, /*oc*/ 32, /*ih*/ 13, /*iw*/ 13});
-  testFcLayer({/*bs*/ 4, /*ic*/ 12, /*oc*/ 18, /*ih*/ 13, /*iw*/ 11});
-  testFcLayer({/*bs*/ 2, /*ic*/ 64, /*oc*/ 32, /*ih*/ 16, /*iw*/ 16});
-  testFcLayer({/*bs*/ 15, /*ic*/ 3, /*oc*/ 6, /*ih*/ 16, /*iw*/ 16});
+  /* bs, ic, ih, iw, oc */
+  testFcLayer({2, 2, 1, 1, 3});
+  testFcLayer({3, 7, 1, 1, 19});
+  testFcLayer({8, 16, 13, 13, 32});
+  testFcLayer({4, 12, 13, 13, 18});
+  testFcLayer({2, 64, 16, 16, 32});
+  testFcLayer({15, 3, 16, 16, 6});
 }
 
 struct testConvDesc {
@@ -74,13 +84,10 @@ struct testConvDesc {
   int dh, dw;
 };
 
-void testConvLayer(const testConvDesc& pm) {
-  const std::string compareTypes[] = {"mkldnn_conv", "exconv"};
-  TestConfig cfg;
-  cfg.layerConfig.set_type(compareTypes[0]);
+static void getMKLDNNConvConfig(TestConfig& cfg, const testConvDesc& pm) {
+  cfg.layerConfig.set_type("mkldnn_conv");
   cfg.layerConfig.set_num_filters(pm.oc);
   cfg.layerConfig.set_size(pm.oc * pm.oh * pm.ow);
-  // cfg.layerConfig.set_partial_sum(1); // TODO: check it
   cfg.layerConfig.set_shared_biases(true);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
@@ -114,15 +121,14 @@ void testConvLayer(const testConvDesc& pm) {
   int oh = outputSize(pm.ih, fh, pm.ph, pm.sh, true);
   CHECK_EQ(ow, pm.ow) << "output size check failed";
   CHECK_EQ(oh, pm.oh) << "output size check failed";
+}
 
-  MKLDNNTester tester;
+void testConvLayer(const testConvDesc& pm) {
+  TestConfig dnnConfig;
+  getMKLDNNConvConfig(dnnConfig, pm);
   for (auto biasSize : {pm.oc, 0}) {
-    cfg.biasSize = biasSize;
-    TestConfig ref = cfg;
-    ref.layerConfig.set_type(compareTypes[1]);
-    for (auto bs : {pm.bs, 1}) {
-      tester.run(cfg, ref, bs, pm.ih, pm.iw);
-    }
+    dnnConfig.biasSize = biasSize;
+    RUN_MKLDNN_TEST_LAYER(dnnConfig, "exconv", pm)
   }
 }
 
@@ -142,7 +148,7 @@ TEST(MKLDNNLayer, ConvLayer) {
 }
 
 struct testPoolDesc {
-  int bs, ch;  // input channel and output channel are the same
+  int bs, ic;  // input channel and output channel are the same
   int ih, iw;
   int oh, ow;
   int fh, fw;
@@ -150,20 +156,18 @@ struct testPoolDesc {
   int sh, sw;
 };
 
-void testPoolLayer(const testPoolDesc& pm) {
-  const std::string compareTypes[] = {"mkldnn_pool", "pool"};
-  TestConfig cfg;
-  cfg.layerConfig.set_type(compareTypes[0]);
-  cfg.layerConfig.set_size(pm.ch * pm.oh * pm.ow);
+static void getMKLDNNPoolConfig(TestConfig& cfg, const testPoolDesc& pm) {
+  cfg.layerConfig.set_type("mkldnn_pool");
+  cfg.layerConfig.set_size(pm.ic * pm.oh * pm.ow);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
        "layer_0",
-       /* size of input layer= */ size_t(pm.ch * pm.ih * pm.iw),
+       /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
        0});
   LayerInputConfig* input = cfg.layerConfig.add_inputs();
   PoolConfig* pool = input->mutable_pool_conf();
-  // pool->set_pool_type(poolType);
-  pool->set_channels(pm.ch);
+  pool->set_pool_type("avg-projection");
+  pool->set_channels(pm.ic);
   pool->set_img_size(pm.iw);
   pool->set_img_size_y(pm.ih);
   pool->set_output_x(pm.ow);
@@ -179,20 +183,21 @@ void testPoolLayer(const testPoolDesc& pm) {
   int ow = outputSize(pm.iw, pm.fw, pm.pw, pm.sw, false);
   CHECK_EQ(ow, pm.ow) << "output size check failed";
   CHECK_EQ(oh, pm.oh) << "output size check failed";
+}
 
-  MKLDNNTester tester;
+void testPoolLayer(const testPoolDesc& pm) {
+  TestConfig dnnConfig;
+  getMKLDNNPoolConfig(dnnConfig, pm);
+  LayerInputConfig* input = dnnConfig.layerConfig.mutable_inputs(0);
+  PoolConfig* pool = input->mutable_pool_conf();
   for (auto type : {"max-projection", "avg-projection"}) {
     pool->set_pool_type(type);
-    TestConfig ref = cfg;
-    ref.layerConfig.set_type(compareTypes[1]);
-    for (auto bs : {pm.bs, 1}) {
-      tester.run(cfg, ref, bs, pm.ih, pm.iw);
-    }
+    RUN_MKLDNN_TEST_LAYER(dnnConfig, "pool", pm)
   }
 }
 
-TEST(MkldnnLayer, PoolLayer) {
-  /* bs, ch, ih, iw, oh, ow, fh, fw, ph, pw, sh, sw*/
+TEST(MKLDNNLayer, PoolLayer) {
+  /* bs, ch, ih, iw, oh, ow, fh, fw, ph, pw, sh, sw */
   testPoolLayer({2, 1, 4, 4, 2, 2, 3, 3, 0, 0, 2, 2});
   testPoolLayer({10, 8, 16, 16, 8, 8, 2, 2, 0, 0, 2, 2});
   testPoolLayer({4, 2, 5, 5, 3, 3, 3, 3, 1, 1, 2, 2});
@@ -201,6 +206,41 @@ TEST(MkldnnLayer, PoolLayer) {
   testPoolLayer({4, 16, 7, 7, 1, 1, 7, 7, 0, 0, 1, 1});
   testPoolLayer({4, 2, 5, 5, 3, 3, 5, 5, 1, 1, 1, 1});
   testPoolLayer({2, 8, 56, 56, 29, 29, 3, 3, 1, 1, 2, 2});
+}
+
+struct testActDesc {
+  int bs, ic, ih, iw;
+};
+
+static void getAddtoConfig(TestConfig& cfg, const testActDesc& pm) {
+  cfg.biasSize = 0;
+  cfg.layerConfig.set_type("addto");
+  size_t layerSize = pm.ih * pm.ih * pm.iw;
+  cfg.layerConfig.set_size(layerSize);
+  cfg.inputDefs.push_back({INPUT_DATA, "layer_0", layerSize, 0});
+  cfg.layerConfig.add_inputs();
+}
+
+void testActivation(std::string& actType, const testActDesc& pm) {
+  // TODO(TJ): mkldnn_softmax not implemented, paddle do not have elu activation
+  if (actType == "mkldnn_softmax" || actType == "mkldnn_elu") {
+    return;
+  }
+  const std::string compareTypes[] = {actType, actType.erase(0, 7)};
+  TestConfig cfg;
+  getAddtoConfig(cfg, pm);
+  TestConfig ref = cfg;
+  cfg.layerConfig.set_active_type(compareTypes[0]);
+  ref.layerConfig.set_active_type(compareTypes[1]);
+  RUN_MKLDNN_TEST(cfg, ref, pm)
+}
+
+TEST(MKLDNNActivation, Activations) {
+  auto types = MKLDNNActivation::getAllRegisteredTypes();
+  for (auto type : types) {
+    /* bs, c, h, w*/
+    testActivation(type, {16, 64, 32, 32});
+  }
 }
 
 // TODO(TJ): add branch test

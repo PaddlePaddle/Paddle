@@ -29,9 +29,11 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 void RecurrentAlgorithm::InferShape(const Scope& scope) const {
-  seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
-                 ->GetMutable<LoDTensor>()
-                 ->dims()[0];
+  auto* input0 = scope.FindVar(arg_->inlinks[0]);
+  PADDLE_ENFORCE_NOT_NULL(input0);
+  seq_len_ = input0->GetMutable<LoDTensor>()->dims()[0];
+  PADDLE_ENFORCE_GT(seq_len_, 0);
+
   CreateScopes(scope);
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
@@ -123,14 +125,12 @@ void RecurrentAlgorithm::InitMemories(Scope* step_scope,
 }
 
 const rnn::ArgumentName RecurrentOp::kArgName{
-    "step_net", "step_scopes",  "inlinks",
-    "outlinks", "inlink_alias", "outlink_alias",
+    "step_net", "step_scopes",  "inlinks",      "outlinks",
     "memories", "pre_memories", "boot_memories"};
 
 const rnn::ArgumentName RecurrentGradientOp::kArgName{
-    "step_net",    "step_scopes",  "outlink@grad",
-    "inlink@grad", "inlink_alias", "outlink_alias",
-    "memories",    "pre_memories", "boot_memories@grad"};
+    "step_net", "step_scopes",  "outlink@grad",      "inlink@grad",
+    "memories", "pre_memories", "boot_memories@grad"};
 
 RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::VariableNameMap& inputs,
@@ -160,8 +160,6 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.inlink_alias, "alias of inlinks");
-    AddAttr<std::vector<std::string>>(name.outlink_alias, "alias of outlinks");
     AddAttr<std::vector<std::string>>(name.pre_memories,
                                       "names of pre-memories");
     AddAttr<std::vector<std::string>>(name.memories, "names of memories");
@@ -206,9 +204,8 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
 }
 
 void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
-  seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
-                 ->GetMutable<LoDTensor>()
-                 ->dims()[0];
+  seq_len_ =
+      scope.FindVar(arg_->inlinks[0])->GetMutable<LoDTensor>()->dims()[0];
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
                      true /*infer_shape_mode*/);
