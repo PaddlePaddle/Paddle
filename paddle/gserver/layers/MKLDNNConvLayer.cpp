@@ -285,22 +285,18 @@ void MKLDNNConvLayer::resetWgtBiasValue(
   wgt = MKLDNNMatrix::create(weight_->getW(), pd->weights_primitive_desc());
   VLOG(MKLDNN_FMTS) << "Weight value format: " << wgt->getFormat();
 
-  bias = nullptr;
-  if (biases_ && biases_->getW()) {
-    bias = MKLDNNMatrix::create(biases_->getW(), pd->bias_primitive_desc());
-  }
+  bias = (biases_ && biases_->getW())
+             ? MKLDNNMatrix::create(biases_->getW(), pd->bias_primitive_desc())
+             : nullptr;
 }
 
 void MKLDNNConvLayer::resetOutValue(
     std::shared_ptr<conv_fwd::primitive_desc>& pd, MKLDNNMatrixPtr& out) {
   out = MKLDNNMatrix::create(output_.value, pd->dst_primitive_desc());
 
-  // change original output value from cpu matrix to mkldnn matrix
-  output_.value = std::dynamic_pointer_cast<Matrix>(out);
-
   // create reorder if output value has cpu device and pd do not match
   cpuOutVal_ = nullptr;
-  cpuOutVal_ = nullptr;
+  cvtOutVal_ = nullptr;
   if (!outputIsOnlyMKLDNN()) {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
     memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
@@ -356,6 +352,7 @@ void MKLDNNConvLayer::resetBwdWgtPD(
 
 void MKLDNNConvLayer::resetBwdDataPD(
     std::shared_ptr<conv_bwdData::primitive_desc>& pd) {
+  pd = nullptr;
   if (inputLayers_[0]->getOutput().grad == nullptr) {
     return;
   }
@@ -476,6 +473,7 @@ void MKLDNNConvLayer::resetWgtBiasGrad(
       << "primitive desc of weight grad and value should be equal";
   VLOG(MKLDNN_FMTS) << "weight grad format: " << wgt->getFormat();
 
+  bias = nullptr;
   if (biasVal_ == nullptr) {
     return;
   }

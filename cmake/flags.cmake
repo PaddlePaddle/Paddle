@@ -128,8 +128,10 @@ set(GPU_COMMON_FLAGS
 )
 
 if (APPLE)
-    # On Mac OS X build fat binaries with x86_64 architectures by default.
-    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+    if(NOT CMAKE_CROSSCOMPILING)
+        # On Mac OS X build fat binaries with x86_64 architectures by default.
+        set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+    endif()
 else()
     set(GPU_COMMON_FLAGS
         -Wall
