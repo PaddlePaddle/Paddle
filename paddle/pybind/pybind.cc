@@ -311,15 +311,6 @@ All parameter, weight, gradient are variables in Paddle.
              self.set_falsenet(net.Clone());
            });
 
-  rnn.def("backward",
-          [](const operators::RecurrentOp &forwardOp,
-             const std::unordered_set<std::string> &no_grad_vars) {
-            const auto &op = *static_cast<const OperatorBase *>(&forwardOp);
-            return Backward(op, no_grad_vars);
-          });
-
-  ExposeOperator(rnn);
-
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);

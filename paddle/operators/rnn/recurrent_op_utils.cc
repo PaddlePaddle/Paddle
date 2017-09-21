@@ -109,14 +109,16 @@ void LinkMemories(const std::vector<Scope*>& scopes,
 }
 
 void InitArgument(const ArgumentName& name, Argument* arg,
-                  const framework::OperatorBase& op) {
-  arg->step_scopes = op.Output(name.step_scopes);
+                  const framework::OperatorBase& op, bool is_grad) {
+  arg->step_scopes =
+      is_grad ? op.Input(name.step_scopes) : op.Output(name.step_scopes);
 
   arg->inlinks = op.Inputs(name.inlinks);
 
   arg->outlinks = op.Outputs(name.outlinks);
 
-  auto boot_memories = op.Inputs(name.boot_memories);
+  auto boot_memories =
+      is_grad ? op.Outputs(name.boot_memories) : op.Inputs(name.boot_memories);
 
   // attributes
   auto memories = op.Attr<std::vector<std::string>>(name.memories);
