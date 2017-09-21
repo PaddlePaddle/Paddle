@@ -20,7 +20,7 @@
 
 - `framework::OperatorBase`: Operator(简写，Op)基类。
 - `framework::OpKernel`: Op计算函数的基类，称作Kernel。
-- `framework::OperatorWithKernel`：继承自OperatorBase，Op有计算函数，称作有Kernel。
+- `framework::OperatorWithKernel`：继承自OperatorBase，Op有计算函数，称作有Kernel。通常一个Op的每个kernel实现一种设备（比如 CUDA、ARM 或者 FPGA）上的计算。
 - `class OpProtoAndCheckerMaker`：描述该Op的输入、输出、属性、注释,主要用于Python API接口生成
 
 依据是否包含kernel，可以将Op分为两种：包含Kernel的Op和不包含kernel的Op，前者Op的定义继承自`OperatorBase`，后者继承自`OperatorWithKernel`。本教程主要介绍带Kernel的Op如何写，简单总结Op需要包含的内容如下：
@@ -28,22 +28,21 @@
 
  内容            | 定义位置
 --------------  | :----------------------
-OpProtoMake定义  | `.cc`文件，Backward Op不需要定义OpProtoMake
+op proto maker定义  | `.cc`文件，Backward Op不需要定义 op proto maker
 Op定义           | `.cc`文件
 Kernel实现       | CPU、GPU共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，GPU 实现在`.cu`文件中。
 注册Op           | Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，GPU实现在`.cu`文件中
 
 
-实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。**系统会根据文件名自动构建op和其对应的Python扩展。**
-
-
-下面以矩阵乘操作，即[MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc)为例来介绍如何写带Kernel的Operator。
+实现新的op都添加至目录[`paddle/operators`](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。**系统会根据文件名自动构建op和其对应的Python扩展。**
 
 
 ## 实现C++类
 
 
-### 1. 定义ProtoMaker类
+### 1. 定义Op Proto Maker类
+
+下面以矩阵乘操作，即[MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc)为例来介绍如何写带Kernel的Operator。
 
 矩阵乘法的公式：$Out = X * Y$, 可见该计算由两个输入，一个输出组成。
 
@@ -147,7 +146,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
   - 1). 做检查， 尽早报错：检查输入数据维度、类型等是否合法。
   - 2). 设置输出Tensor的形状。
 
-通常`OpProtoMaker`和`Op`类的定义写在`.cc`文件中，和下面将要介绍的注册函数一起放在`.cc`中
+通常 Op proto maker 和`Op`类的定义写在`.cc`文件中，和下面将要介绍的注册函数一起放在`.cc`中
 
 ### 3. 定义OpKernel类
 
