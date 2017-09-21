@@ -21,11 +21,26 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class BlockDesc {
+ public:
+  BlockDesc(const std::map<std::string, VarDesc*>& var_descs)
+      : var_descs_(var_descs) {}
+  ~BlockDesc() {}
+
+  VarDesc* get_var(const std::string& name) const {
+    PADDLE_ENFORCE(var_descs_.count(name) == 1, "%s must be in Block", name);
+    return var_descs_.at(name);
+  }
+
+ private:
+  const std::map<std::string, VarDesc*>& var_descs_;
+};
+
 class CompileTimeInferShapeContext : public InferShapeContextBase {
  public:
   CompileTimeInferShapeContext(std::unique_ptr<OperatorBase>& op,
-                               std::map<std::string, VarDesc*>& var_descs)
-      : op_(std::move(op)), var_descs_(var_descs) {}
+                               const BlockDesc& block_desc)
+      : op_(std::move(op)), block_desc_(block_desc) {}
 
   DDim get_input_dim(const std::string& name) const {
     return get_dim(op_->Input(name));
@@ -47,7 +62,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
 
  private:
   DDim get_dim(const std::string& name) const {
-    VarDesc* desc = var_descs_.at(name);
+    VarDesc* desc = block_desc_.get_var(name);
     std::vector<int64_t> dim;
     int length = desc->lod_tensor().dims().size();
     dim.reserve(length);
@@ -57,7 +72,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
   }
 
   void set_dim(const std::string& name, const DDim& dim) const {
-    VarDesc* desc = var_descs_.at(name);
+    VarDesc* desc = block_desc_.get_var(name);
     auto tensor = desc->mutable_lod_tensor();
     tensor->clear_dims();
     for (int i = 0; i < dim.size(); ++i) {
@@ -66,7 +81,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
   }
 
   std::unique_ptr<OperatorBase> op_;
-  std::map<std::string, VarDesc*>& var_descs_;
+  const BlockDesc& block_desc_;
 };
 
 class RunTimeInferShapeContext : public InferShapeContextBase {
