@@ -28,27 +28,27 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
-    Y[i] = -tolerable_value(log(X[i * D + label[i]]));
+    Y[i] = -TolerableValue<T>()(log(X[i * D + label[i]]));
   }
 }
 
-template <typename T, int blockSize>
+template <typename T, int BlockSize>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int N, const int D) {
   int tid = threadIdx.x;
-  __shared__ T d_sum[blockSize];
+  __shared__ T d_sum[BlockSize];
   int next_idx = blockIdx.x * D + tid;
 
   d_sum[tid] = 0;
   int cur_idx = tid;
   while (cur_idx < D) {
-    d_sum[tid] += tolerable_value(std::log(X[next_idx])) * label[next_idx];
-    next_idx += blockSize;
-    cur_idx += blockSize;
+    d_sum[tid] += TolerableValue<T>()(std::log(X[next_idx])) * label[next_idx];
+    next_idx += BlockSize;
+    cur_idx += BlockSize;
   }
   __syncthreads();
 
-  for (int stride = blockSize >> 1; stride > 0; stride >>= 1) {
+  for (int stride = BlockSize >> 1; stride > 0; stride >>= 1) {
     __syncthreads();
     if (tid < stride) {
       next_idx = tid + stride;
@@ -88,13 +88,12 @@ template <typename T>
 __global__ void SoftCrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
                                                const T* label, const int N,
                                                const int D) {
-  // TOOD(qingqing): optimize for this kernel
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    for (int j = 0; j < D; ++j) {
-      int idx = i * D + j;
-      dX[idx] = -label[idx] * dY[i] / X[idx];
-    }
+  int row_ids = blockIdx.x * blockDim.x + threadIdx.x;
+  int col_ids = blockIdx.y * blockDim.y + threadIdx.y;
+  int ids = row_ids * D + col_ids;
+
+  if (ids < N * D) {
+    dX[ids] = -label[ids] * dY[row_ids] / X[ids];
   }
 }
 
@@ -103,7 +102,7 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "This kernel only runs on GPU device.");
 
     auto x = ctx.Input<Tensor>("X");
     auto y = ctx.Output<Tensor>("Y");
@@ -136,7 +135,7 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "This kernel only runs on GPU device.");
 
     auto x = ctx.Input<Tensor>("X");
     auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -156,6 +155,11 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
     // TODO(qingqing): launch kernel on specified stream
     // base on ExecutionContext.
     if (ctx.Attr<int>("soft_label") == 1) {
+      int block_x = 32;
+      int block_y = 32;
+      dim3 block(block_x, block_y);
+      dim3 grid((n + block_x - 1) / block_x, (d + block_y - 1) / block_y);
+
       auto* label_data = label->data<T>();
       SoftCrossEntropyGradientKernel<T><<<grid, block>>>(
           dx_data, dy_data, x_data, label_data, n, d);
