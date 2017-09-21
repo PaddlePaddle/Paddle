@@ -64,9 +64,10 @@ template <class T>
 class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                     platform::GPUPlace, T> {
  public:
-  void operator()(const framework::Tensor& im, framework::Tensor& col,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width, const platform::DeviceContext& context) {
+                  int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
 
@@ -149,9 +150,9 @@ template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                     platform::GPUPlace, T> {
  public:
-  void operator()(framework::Tensor& im, const framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_height,
-                  int padding_width, const platform::DeviceContext& context) {
+  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
+                  const framework::Tensor& col, int stride_height,
+                  int stride_width, int padding_height, int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
 
@@ -235,9 +236,10 @@ template <class T>
 class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                     platform::GPUPlace, T> {
  public:
-  void operator()(const framework::Tensor& im, framework::Tensor& col,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width, const platform::DeviceContext& context) {
+                  int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -318,9 +320,9 @@ template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                     platform::GPUPlace, T> {
  public:
-  void operator()(framework::Tensor& im, const framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_height,
-                  int padding_width, const platform::DeviceContext& context) {
+  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
+                  const framework::Tensor& col, int stride_height,
+                  int stride_width, int padding_height, int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
