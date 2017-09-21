@@ -54,9 +54,9 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of mul op");
-    AddInput("Y", "The second input of mul op");
-    AddOutput("Out", "The output of mul op");
+    AddInput("X", "(Tensor), 2D tensor of size (M x K)");
+    AddInput("Y", "(Tensor), 2D tensor of size (K x N)");
+    AddOutput("Out", "(Tensor), 2D tensor of size (M x N)");
     AddComment(R"DOC(
 Two Element Mul Operator.
 The equation is: Out = X * Y
