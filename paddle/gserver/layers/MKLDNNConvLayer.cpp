@@ -251,22 +251,31 @@ void MKLDNNConvLayer::resetInValue(
   // create buffer and reorder if input value do not match
   cpuInVal_ = nullptr;
   cvtInVal_ = nullptr;
-  if (inputIsOnlyMKLDNN()) {
-    MKLDNNMatrixPtr dnnIn = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
-    CHECK(dnnIn) << "Input should be MKLDNNMatrix";
-    if (dnnIn->getPrimitiveDesc() != in->getPrimitiveDesc()) {
-      CHECK_EQ(dnnIn->getFormat(), format::nc);
+
+  MKLDNNMatrixPtr dnnIn = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
+  CHECK_EQ(inputIsOnlyMKLDNN(), dnnIn != nullptr);
+  if (dnnIn != nullptr && dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc()) {
+    in = dnnIn;
+    return;
+  }
+  if (dnnIn) {
+    if (dnnIn->getFormat() == format::nc) {
       CHECK(ih_ == 1 && iw_ == 1) << "when input is nc format";
       // create a new one with nchw format and same data
       memory::dims inDims = memory::dims{bs_, ic_, 1, 1};
       dnnIn = MKLDNNMatrix::create(inMat, inDims, format::nchw, engine_);
-      CHECK(dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc());
     }
-    in = dnnIn;
+    if (dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc()) {
+      in = dnnIn;
+      return;
+    }
+    cpuInVal_ = dnnIn;
+    in = MKLDNNMatrix::create(nullptr, pd->src_primitive_desc());
+    cvtInVal_ = MKLDNNMatrix::createReorder(cpuInVal_, in);
+    CHECK(cvtInVal_) << "should not be emptry";
   } else {
-    const MatrixPtr& cpuIn = getInputValue(0, CPU_DEVICE);
     memory::dims inDims = memory::dims{bs_, ic_, ih_, iw_};
-    cpuInVal_ = MKLDNNMatrix::create(cpuIn, inDims, format::nchw, engine_);
+    cpuInVal_ = MKLDNNMatrix::create(inMat, inDims, format::nchw, engine_);
     if (cpuInVal_->getPrimitiveDesc() != in->getPrimitiveDesc()) {
       // create new mkldnn matrix
       in = MKLDNNMatrix::create(nullptr, pd->src_primitive_desc());
