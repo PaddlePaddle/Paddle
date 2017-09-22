@@ -51,7 +51,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = x_dims[axis[i]];
     }
-    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
+    ctx.Output<framework::Tensor>("Out")->Resize(out_dims);
   }
 };
 
@@ -99,8 +99,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
     auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     if (x_grad) x_grad->Resize(x_dims);
   }
