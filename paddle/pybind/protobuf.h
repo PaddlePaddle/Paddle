@@ -46,9 +46,9 @@ inline void VectorToRepeated(const std::vector<T>& vec,
   }
 }
 
-void bind_program_desc(py::module& m);
-void bind_block_desc(py::module& m);
-void bind_var_dses(py::module& m);
-void bind_op_desc(py::module& m);
+void BindProgramDesc(py::module& m);
+void BindBlockDesc(py::module& m);
+void BindVarDsec(py::module& m);
+void BindOpDesc(py::module& m);
 }  // namespace framework
 }  // namespace paddle

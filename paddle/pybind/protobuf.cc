@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void bind_program_desc(py::module &m) {
+void BindProgramDesc(py::module &m) {
   py::class_<ProgramDesc>(m, "ProgramDesc", "")
       .def_static("instance",
                   [] { return &GetProgramDesc(); },
@@ -45,7 +45,7 @@ void bind_program_desc(py::module &m) {
       .def("__str__", [](ProgramDesc &self) { return self.DebugString(); });
 }
 
-void bind_block_desc(py::module &m) {
+void BindBlockDesc(py::module &m) {
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def("id", [](BlockDesc &self) { return self.idx(); })
       .def("parent", [](BlockDesc &self) { return self.parent_idx(); })
@@ -57,7 +57,7 @@ void bind_block_desc(py::module &m) {
            py::return_value_policy::reference);
 }
 
-void bind_var_dses(py::module &m) {
+void BindVarDsec(py::module &m) {
   py::class_<VarDesc>(m, "VarDesc", "")
       .def(py::init<>())
       .def("set_name",
@@ -85,7 +85,7 @@ void bind_var_dses(py::module &m) {
       });
 }
 
-void bind_op_desc(py::module &m) {
+void BindOpDesc(py::module &m) {
   auto op_desc_set_var = [](OpDesc::Var *var,
                             const std::string &parameter,
                             const std::vector<std::string> &arguments) {

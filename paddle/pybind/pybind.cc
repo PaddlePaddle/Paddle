@@ -307,10 +307,10 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("is_compile_gpu", IsCompileGPU);
 
-  bind_program_desc(m);
-  bind_block_desc(m);
-  bind_var_dses(m);
-  bind_op_desc(m);
+  BindProgramDesc(m);
+  BindBlockDesc(m);
+  BindVarDsec(m);
+  BindOpDesc(m);
 
   return m.ptr();
 }
