@@ -391,3 +391,89 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 * 如果发现最早的报错就是网络通信的问题，很有可能是非独占方式执行导致的端口冲突，可以联系OP，看当前MPI集群是否支持resource=full参数提交，如果支持增加此参数提交，并更换job 端口。
 
 * 如果当前MPI集群并不支持任务独占模式，可以联系OP是否可以更换集群或升级当前集群。
+
+19. PaddlePaddle如何输出多个层
+------------------------------
+
+* 将需要输出的层作为 :code:`paddle.inference.Inference()` 接口的 :code:`output_layer` 参数输入，代码如下：
+
+..  code-block:: python
+
+    inferer = paddle.inference.Inference(output_layer=[layer1, layer2], parameters=parameters)
+
+* 指定要输出的字段进行输出。以输出 :code:`value` 字段为例，代码如下：
+
+..  code-block:: python
+
+    out = inferer.infer(input=data_batch, flatten_result=False, field=["value"])
+
+这里设置 :code:`flatten_result=False`，得到的输出结果是元素个数等于输出字段数的 :code:`list`，该 :code:`list` 的每个元素是由所有输出层相应字段结果组成的 :code:`list`，每个字段结果的类型是 :code:`numpy.array`。:code:`flatten_result` 的默认值为 :code:`True`，该情况下，PaddlePaddle会分别对每个字段将所有输出层的结果按行进行拼接，如果各输出层该字段 :code:`numpy.array` 结果的相应维数不匹配，程序将不能正常运行。
+
+20. :code:`paddle.layer.memory` 的参数 :code:`name` 如何使用
+--------------------------------------------
+
+* :code:`paddle.layer.memory` 用于获取特定layer上一时间步的输出，该layer是通过参数 :code:`name` 指定，即，:code:`paddle.layer.memory` 会关联参数 :code:`name` 取值相同的layer，并将该layer上一时间步的输出作为自身当前时间步的输出。
+
+* PaddlePaddle的所有layer都有唯一的name，用户通过参数 :code:`name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。而 :code:`paddle.layer.memory` 不是真正的layer，其name由参数 :code:`memory_name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。:code:`paddle.layer.memory` 的参数 :code:`name` 用于指定其要关联的layer，需要用户显式设定。
+
+21. dropout 使用
+-----------------
+
+* 在PaddlePaddle中使用dropout有两种方式
+
+  * 在相应layer的 :code:`layer_atter` 设置 :code:`drop_rate`，以 :code:`paddle.layer.fc` 为例，代码如下：
+
+  ..  code-block:: python
+
+      fc = paddle.layer.fc(input=input, layer_attr=paddle.attr.ExtraLayerAttribute(drop_rate=0.5))
+
+  * 使用 :code:`paddle.layer.dropout`，以 :code:`paddle.layer.fc` 为例，代码如下：
+
+  ..  code-block:: python
+
+      fc = paddle.layer.fc(input=input)
+      drop_fc = paddle.layer.dropout(input=fc, dropout_rate=0.5)
+
+* :code:`paddle.layer.dropout` 实际上使用了 :code:`paddle.layer.add_to`，并在该layer里采用第一种方式设置 :code:`drop_rate` 来使用dropout的。这种方式对内存消耗较大。
+
+* PaddlePaddle在激活函数里实现dropout，而不是在layer里实现。
+
+* :code:`paddle.layer.lstmemory`、:code:`paddle.layer.grumemory`、:code:`paddle.layer.recurrent` 不是通过一般的方式来实现对输出的激活，所以不能采用第一种方式在这几个layer里设置 :code:`drop_rate` 来使用dropout。若要对这几个layer使用dropout，可采用第二种方式，即使用 :code:`paddle.layer.dropout`。
+
+
+22. 如何设置learning_rate_schedule
+---------------------------------
+
+在相应的优化算法里设置learning_rate_schedule及相关参数，以使用Adam算法为例，代码如下：
+
+..  code-block:: python
+
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=1e-3,
+        learning_rate_decay_a=0.5,
+        learning_rate_decay_b=0.75,
+        learning_rate_schedule="poly",)
+
+PaddlePaddle目前支持5种learning_rate_schedule，这5种learning_rate_schedule及其对应学习率计算方式如下：
+
+* "constant"
+
+  lr = learning_rate
+
+* "poly"
+
+  lr = learning_rate * pow(1 + learning_rate_decay_a * num_samples_processed, -learning_rate_decay_b)
+
+* "exp"
+
+  lr = learning_rate * pow(learning_rate_decay_a, num_samples_processed / learning_rate_decay_b)
+
+* "discexp"
+
+  lr = learning_rate * pow(learning_rate_decay_a, floor(num_samples_processed / learning_rate_decay_b))
+
+* "linear"
+
+  lr = max(learning_rate - learning_rate_decay_a * num_samples_processed, learning_rate_decay_b)
+
+其中，num_samples_processed为当前已处理的样本总数。
