@@ -215,7 +215,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto y_dim = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
                       "Rank of first input must >= rank of second input.")
-    ctx.Output<framework::LoDTensor>("Out")->Resize(x_dim);
+    ctx.Output<framework::Tensor>("Out")->Resize(x_dim);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -252,6 +253,9 @@ Limited elementwise {name} operator.The equation is: Out = {equation}.
       shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
       shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
       shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+
+Both the input X and Y can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input X.
 )DOC";
     AddComment(comment_);
   }
