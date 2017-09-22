@@ -9,21 +9,28 @@ class TestProgramDesc(unittest.TestCase):
         del program_desc
         program_desc = core.ProgramDesc.instance()
         self.assertIsNotNone(program_desc)
-        self.assertIsNotNone(program_desc.root_block())
+        self.assertIsNotNone(program_desc.block(0))
         del program_desc
 
     def test_append_block(self):
         prog_desc = core.ProgramDesc.__create_program_desc__()
         self.assertIsNotNone(prog_desc)
-        block_root = prog_desc.root_block()
-        self.assertEqual(block_root.id(), 0)
+        block_root = prog_desc.block(0)
+        self.assertIsNotNone(block_root)
+        print 'here'
+        self.assertEqual(block_root.id, 0)
         block1 = prog_desc.append_block(block_root)
         block2 = prog_desc.append_block(block1)
-        self.assertEqual(block1.id(), block2.parent())
-        self.assertEqual(block_root.id(), block1.parent())
+        self.assertIsNotNone(block1)
+        print 'here'
+        self.assertEqual(block1.id, block2.parent)
+        print 'here'
+        self.assertEqual(block_root.id, block1.parent)
+        print 'here'
         block3 = prog_desc.append_block(block_root)
-        self.assertEqual(block3.parent(), block_root.id())
-        self.assertEqual(prog_desc.block(1).id(), 1)
+        self.assertEqual(block3.parent, block_root.id)
+        self.assertEqual(prog_desc.block(1).id, 1)
+        self.assertEqual(4, prog_desc.num_blocks())
 
 
 class TestVarDesc(unittest.TestCase):
