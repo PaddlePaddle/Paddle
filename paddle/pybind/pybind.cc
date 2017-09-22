@@ -344,8 +344,12 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def("id", [](BlockDesc &self) { return self.idx(); })
       .def("parent", [](BlockDesc &self) { return self.parent_idx(); })
-      .def("append_op", [](BlockDesc &self) { return self.add_ops(); })
-      .def("new_var", [](BlockDesc &self) { return self.add_vars(); });
+      .def("append_op",
+           [](BlockDesc &self) { return self.add_ops(); },
+           py::return_value_policy::reference)
+      .def("new_var",
+           [](BlockDesc &self) { return self.add_vars(); },
+           py::return_value_policy::reference);
 
   py::class_<VarDesc>(m, "VarDesc", "")
       .def(py::init<>())
