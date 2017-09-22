@@ -40,7 +40,7 @@ class RankLossOp : public framework::OperatorWithKernel {
                    "All inputs must have the same size");
     PADDLE_ENFORCE((label_dims.size() == 2) && (label_dims[1] == 1),
                    "All inputs must be row vector with size batch_size x 1.");
-    ctx.Output<framework::LoDTensor>("Out")->Resize(label_dims);
+    ctx.Output<framework::Tensor>("Out")->Resize(label_dims);
   }
 };
 
@@ -102,9 +102,9 @@ class RankLossGradOp : public framework::OperatorWithKernel {
                             "Input(Out@GRAD) shouldn't be null.");
     auto dims = ctx.Input<framework::Tensor>("Left")->dims();
     auto *left_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Left"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Left"));
     auto *right_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Right"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Right"));
     if (left_grad) {
       left_grad->Resize(dims);
     }

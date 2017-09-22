@@ -6,8 +6,8 @@ from op_test import OpTest
 class TestFillZerosLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_zeros_like"
-        self.inputs = {'Src': np.random.random((219, 232)).astype("float32")}
-        self.outputs = {'Dst': np.zeros_like(self.inputs["Src"])}
+        self.inputs = {'X': np.random.random((219, 232)).astype("float32")}
+        self.outputs = {'Y': np.zeros_like(self.inputs["X"])}
 
     def test_check_output(self):
         self.check_output()

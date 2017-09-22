@@ -36,8 +36,9 @@ class PReluOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) should not be null");
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *out = ctx.Output<framework::Tensor>("Out");
     out->Resize(in->dims());
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -55,6 +56,8 @@ The equation is:
   f(x) = alpha * x , for x < 0
   f(x) = x         , for x >= 0
 
+The input `X` can carry the LoD (Level of Details) information,
+or not. And the output shares the LoD with input `X`.
 )DOC");
   }
 };
@@ -69,11 +72,11 @@ class PReluGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto *dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto *x = ctx.Input<framework::Tensor>("X");
 
     auto *dalpha =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Alpha"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Alpha"));
     auto *alpha = ctx.Input<framework::Tensor>("Alpha");
 
     dx->Resize(x->dims());

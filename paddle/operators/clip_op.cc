@@ -17,8 +17,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
-
 class ClipOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -29,11 +27,12 @@ class ClipOp : public framework::OperatorWithKernel {
                             "Input(X) of ClipOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) of ClipOp should not be null.");
-    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto max = Attr<float>("max");
     auto min = Attr<float>("min");
     PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
-    ctx.Output<LoDTensor>("Out")->Resize(x_dims);
+    ctx.Output<Tensor>("Out")->Resize(x_dims);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -66,8 +65,8 @@ class ClipOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (x_grad != nullptr) {
       x_grad->Resize(x_dims);
     }
