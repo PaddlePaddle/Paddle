@@ -27,25 +27,6 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-template <typename T>
-inline std::vector<T> RepeatedToVector(
-    const google::protobuf::RepeatedField<T>& repeated_field) {
-  std::vector<T> ret;
-  ret.reserve(repeated_field.size());
-  std::copy(
-      repeated_field.begin(), repeated_field.end(), std::back_inserter(ret));
-  return ret;
-}
-
-template <typename T, typename RepeatedField>
-inline void VectorToRepeated(const std::vector<T>& vec,
-                             RepeatedField* repeated_field) {
-  repeated_field->Reserve(vec.size());
-  for (auto& elem : vec) {
-    *repeated_field->Add() = elem;
-  }
-}
-
 void BindProgramDesc(py::module& m);
 void BindBlockDesc(py::module& m);
 void BindVarDsec(py::module& m);
