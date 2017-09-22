@@ -59,14 +59,7 @@ public:
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
 
-  ~BlockDescBind() {
-    std::cerr << "dtor " << this << "," << desc_ << std::endl;
-  }
-
-  int32_t id() const {
-    std::cerr << "desc ptr " << desc_ << std::endl;
-    return desc_->idx();
-  }
+  int32_t id() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
@@ -114,11 +107,9 @@ public:
     return *ptr;
   }
 
-  BlockDescBind *AppendBlock(BlockDescBind *parent) {
+  BlockDescBind *AppendBlock(const BlockDescBind &parent) {
     auto *b = prog_->add_blocks();
-    std::cerr << "block ptr " << b << std::endl;
-    std::cerr << "pass ptr " << parent << std::endl;
-    b->set_parent_idx(parent->id());
+    b->set_parent_idx(parent.id());
     b->set_idx(prog_->blocks_size() - 1);
     blocks_.emplace_back(this, b);
     return &blocks_.back();
@@ -141,6 +132,7 @@ public:
 
 private:
   explicit ProgramDescBind(ProgramDesc *prog) : prog_(prog) {
+    blocks_.reserve(100);
     for (auto &block : *prog->mutable_blocks()) {
       blocks_.emplace_back(this, &block);
     }
@@ -181,7 +173,6 @@ void BindProgramDesc(py::module &m) {
 }
 
 void BindBlockDesc(py::module &m) {
-  using namespace paddle::framework;  // NOLINT
   py::class_<BlockDescBind>(m, "BlockDesc", "")
       .def_property_readonly("id", &BlockDescBind::id)
       .def_property_readonly("parent", &BlockDescBind::Parent)

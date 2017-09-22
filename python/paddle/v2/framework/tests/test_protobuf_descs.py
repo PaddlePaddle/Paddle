@@ -17,16 +17,12 @@ class TestProgramDesc(unittest.TestCase):
         self.assertIsNotNone(prog_desc)
         block_root = prog_desc.block(0)
         self.assertIsNotNone(block_root)
-        print 'here'
         self.assertEqual(block_root.id, 0)
         block1 = prog_desc.append_block(block_root)
         block2 = prog_desc.append_block(block1)
         self.assertIsNotNone(block1)
-        print 'here'
         self.assertEqual(block1.id, block2.parent)
-        print 'here'
         self.assertEqual(block_root.id, block1.parent)
-        print 'here'
         block3 = prog_desc.append_block(block_root)
         self.assertEqual(block3.parent, block_root.id)
         self.assertEqual(prog_desc.block(1).id, 1)
