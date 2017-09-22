@@ -65,11 +65,8 @@ class LoDTensor : public Tensor {
    * Get a element from LoD.
    */
   size_t lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                   NumLevels());
-    PADDLE_ENFORCE(elem < NumElements(level),
-                   "element begin [%d] out of range [%d]", elem,
-                   NumElements(level));
+    PADDLE_ENFORCE_LT(level, NumLevels());
+    PADDLE_ENFORCE_LT(elem, NumElements(level));
     return (lod_)[level][elem];
   }
 
@@ -82,11 +79,22 @@ class LoDTensor : public Tensor {
    * Number of elements in a level.
    */
   size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                   NumLevels());
+    PADDLE_ENFORCE_LT(level, NumLevels());
     // the last offset is the end of last element
     return (lod_)[level].size() - 1;
   }
+
+  /*
+   * Number of lower-level elements.
+   * For example, a 2-level lod-tensor
+   *
+   * 0-th level   |   |
+   * 1-th level   ||  |||
+   *
+   * NumElements(0, 0) get 2
+   * NumElements(0, 1) get 3
+   */
+  size_t NumElements(size_t level, size_t idx) const;
 
   /*
    * Slice of levels[level_begin:level_end]
