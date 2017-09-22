@@ -33,8 +33,8 @@ public:
   ParameterPruningHook() : initCount_(0) {}
 
   void preprocess(Parameter *para,
-                          size_t currentPass,
-                          size_t currentBatch) override {}
+                  size_t currentPass,
+                  size_t currentBatch) override {}
   void update(Parameter *para) override {
     updateThreadChecker_.check();
     auto &vec = para->getBuf(PARAMETER_VALUE);

@@ -27,17 +27,21 @@ enum ParameterInitStrategy {
 message ParameterUpdaterHookConfig {
   // hook type, such as  'pruning', 'dynamic_pruning'.
   required string type = 1;
-  // pruning's parameter, this represents the ratio of zero element to be set by the Parameter.
-  optional double sparsity_ratio = 2 [default = 0.6];
-  // dynamic pruning's parameter, this represents the sparsity ratio of dynamic pruning finally reaching.
-  optional double sparsity_upper_bound = 3 [default = 0.8];
-  // dynamic pruning's parameter, sparsity ratio will not change until 'pass % interval_pass == 0', 
+  // pruning's parameter, this represents the ratio of zero element to be set by
+  // the Parameter.
+  optional double sparsity_ratio = 2 [ default = 0.6 ];
+  // dynamic pruning's parameter, this represents the sparsity ratio of dynamic
+  // pruning finally reaching.
+  optional double sparsity_upper_bound = 3 [ default = 0.8 ];
+  // dynamic pruning's parameter, sparsity ratio will not change until 'pass %
+  // interval_pass == 0',
   // the change in sparsity ratio is a log curve.
   // More details can be found https://github.com/PaddlePaddle/Paddle/pull/2603
-  optional int32 interval_pass = 4 [default = 3];
-  // dynamic pruning's parameter, when 'pass >= end_pass', the sparsity ratio will reach the sparsity_upper_bound,
+  optional int32 interval_pass = 4 [ default = 3 ];
+  // dynamic pruning's parameter, when 'pass >= end_pass', the sparsity ratio
+  // will reach the sparsity_upper_bound,
   // then no longer change.
-  optional int32 end_pass = 5 [default = 60];
+  optional int32 end_pass = 5 [ default = 60 ];
 }
 
 message ParameterConfig {
