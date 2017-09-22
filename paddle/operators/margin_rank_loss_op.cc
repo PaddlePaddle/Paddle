@@ -45,8 +45,8 @@ class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
   MarginRankLossOpMaker(framework::OpProto *proto,
                         framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X1", "The first input of MarginRankLossOp, row vector.");
-    AddInput("X2", "The second input of MarginRankLossOp, row vector.");
+    AddInput("X1", "The first variable to be ranked, row vector.");
+    AddInput("X2", "The second variable to be ranked, row vector.");
     AddInput("Label",
              "The label indicating X1 ranked higher than X2 "
              "or not, row vector.");
@@ -54,16 +54,16 @@ class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddOutput("Activated",
               "Intermediate tensor to indicate whether each element of "
-              "Output(Out) is activated")
+              "Output(Out) is activated.")
         .AsIntermediate();
     AddOutput("Out", "The output loss of MarginRankLoss operator");
     AddComment(R"DOC(
 
 MarginRankLoss operator measures the loss given a pair of input {`X1`, `X2`}
-and `Label` with attribuute `margin`, where `Label == 1` indicating X1 is
-ranked higher than `X2`, otherwise `Label == -1`. The loss turns out
+and the `Label` with attribute `margin`, where `Label = 1` indicating X1 is
+ranked higher than `X2`, otherwise `Label = -1`. The loss turns out
 
-loss(X1, X2, Label) = max(0, -Label * (X1-X2) + margin)
+loss(X1, X2, Label) = max(0, -Label * (X1 - X2) + margin)
 
 For batch input, `X1`, `X2` and `Label` all have the same size batch_size x 1.
 

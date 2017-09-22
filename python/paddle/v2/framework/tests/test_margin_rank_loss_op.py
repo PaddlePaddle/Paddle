@@ -7,7 +7,7 @@ class TestMarginRankLossOp(OpTest):
     def setUp(self):
         self.op_type = "margin_rank_loss"
         batch_size = 5
-        margin = 0.1
+        margin = 0.5
         # labels_{i} = {-1, 1}
         label = 2 * np.random.randint(
             0, 2, size=(batch_size, 1)).astype("float32") - 1
