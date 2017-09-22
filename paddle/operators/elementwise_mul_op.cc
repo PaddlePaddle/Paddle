@@ -37,7 +37,8 @@ class ElementWiseMulOp : public framework::OperatorWithKernel {
     auto y_dim = ctx.Input<Tensor>("Y")->dims();
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
                       "Rank of first input must >= rank of second input.")
-    ctx.Output<framework::LoDTensor>("Out")->Resize(x_dim);
+    ctx.Output<framework::Tensor>("Out")->Resize(x_dim);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -63,11 +64,15 @@ Limited elementwise multiple operator.The equation is: Out = X ⊙ Y.
 2. Y's shape is a subset of X. 
    Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
    example:
+
       shape(X) = (2, 3, 4, 5), shape(Y) = (,)
       shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
       shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
       shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
       shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+
+Both the input X and Y can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input X.
 )DOC");
   }
 };
@@ -86,10 +91,8 @@ class ElementWiseMulOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto y_dims = ctx.Input<Tensor>("Y")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto *x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *y_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
+    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")

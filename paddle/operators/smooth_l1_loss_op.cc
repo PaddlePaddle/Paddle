@@ -44,8 +44,8 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
                         "The shape of OutsideWeight must be same as X.");
     }
 
-    auto* diff = ctx.Output<framework::LoDTensor>("Diff");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* diff = ctx.Output<framework::Tensor>("Diff");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     diff->Resize(x->dims());
     // loss is a two-rank tensor
     out->Resize({x->dims()[0], 1});
@@ -103,10 +103,8 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
     auto in_dims = ctx.Input<framework::Tensor>("X")->dims();
     auto out_dims =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->dims();
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto* y_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
                       "The tensor rank of Input(Out@Grad) should be 2.");

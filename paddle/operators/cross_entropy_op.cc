@@ -17,8 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
-
 class CrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -48,7 +46,8 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
                         "Input(Label) must be 1.");
     }
 
-    ctx.Output<LoDTensor>("Y")->Resize({x->dims()[0], 1});
+    ctx.Output<Tensor>("Y")->Resize({x->dims()[0], 1});
+    ctx.ShareLoD("X", /*->*/ "Y");
   }
 };
 
@@ -89,7 +88,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                         "Input(Label) must be 1.");
     }
 
-    auto dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     dx->Resize(x->dims());
   }
 };
@@ -128,6 +127,9 @@ computation.
      As a special case of 2), when each row of Input(Label) has only one
      non-zero element (equals 1), soft-label cross-entropy degenerates to a
      one-hot cross-entropy with one-hot label representation.
+
+Both the input `X` and `Label` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };

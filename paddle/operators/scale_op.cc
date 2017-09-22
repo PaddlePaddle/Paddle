@@ -33,8 +33,9 @@ class ScaleOp : public framework::OperatorWithKernel {
                             "Output(Out) of ScaleOp should not be null.");
 
     auto *in = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *out = ctx.Output<framework::Tensor>("Out");
     out->Resize(in->dims());
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 

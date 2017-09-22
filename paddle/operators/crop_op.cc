@@ -19,7 +19,6 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::LoDTensor;
 
 class CropOp : public framework::OperatorWithKernel {
  public:
@@ -31,9 +30,9 @@ class CropOp : public framework::OperatorWithKernel {
                             "Input(X) of CropOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) of CropOp should not be null.");
-    auto x_dim = ctx.Input<LoDTensor>("X")->dims();
-    auto *y = ctx.Input<LoDTensor>("Y");
-    auto *out = ctx.Output<LoDTensor>("Out");
+    auto x_dim = ctx.Input<Tensor>("X")->dims();
+    auto *y = ctx.Input<Tensor>("Y");
+    auto *out = ctx.Output<Tensor>("Out");
     if (y == nullptr) {
       auto shape = Attr<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
@@ -121,8 +120,8 @@ class CropOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (x_grad != nullptr) {
       x_grad->Resize(x_dims);
     }
