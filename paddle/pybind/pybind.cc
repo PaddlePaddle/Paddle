@@ -321,18 +321,19 @@ All parameter, weight, gradient are variables in Paddle.
                   py::return_value_policy::reference)
       .def("append_block",
            [](ProgramDesc &self, BlockDesc &parent) {
-             auto desc = self.mutable_blocks()->Add();
+             auto desc = self.add_blocks();
              desc->set_idx(self.mutable_blocks()->size() - 1);
              desc->set_parent_idx(parent.idx());
              return desc;
            })
       .def("root_block",
            [](ProgramDesc &self) { return self.mutable_blocks()[0]; });
+
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def("idx", [](BlockDesc &self) { return self.idx(); })
       .def("parent", [](BlockDesc &self) { return self.parent_idx(); })
-      .def("append_op",
-           [](BlockDesc &self) { return self.mutable_ops()->Add(); });
+      .def("append_op", [](BlockDesc &self) { return self.add_ops(); })
+      .def("new_var", [](BlockDesc &self) { return self.add_vars(); });
 
   py::class_<VarDesc>(m, "VarDesc", "")
       .def(py::init<>())
@@ -372,7 +373,7 @@ All parameter, weight, gradient are variables in Paddle.
   };
 
   auto op_desc_set_attr = [](OpDesc &desc, const std::string &name) {
-    auto attr = desc.mutable_attrs()->Add();
+    auto attr = desc.add_attrs();
     attr->set_name(name);
     return attr;
   };
@@ -383,7 +384,7 @@ All parameter, weight, gradient are variables in Paddle.
            [op_desc_set_var](OpDesc &self,
                              const std::string &parameter,
                              const std::vector<std::string> &arguments) {
-             auto ipt = self.mutable_inputs()->Add();
+             auto ipt = self.add_inputs();
              op_desc_set_var(ipt, parameter, arguments);
            })
       .def("input_names",
@@ -402,7 +403,7 @@ All parameter, weight, gradient are variables in Paddle.
            [op_desc_set_var](OpDesc &self,
                              const std::string &parameter,
                              const std::vector<std::string> &arguments) {
-             auto opt = self.mutable_outputs()->Add();
+             auto opt = self.add_outputs();
              op_desc_set_var(opt, parameter, arguments);
            })
       .def("set_attr",
