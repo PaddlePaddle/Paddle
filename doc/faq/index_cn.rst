@@ -158,16 +158,23 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 这里 :code:`hidden_a` 和 :code:`hidden_b` 使用了同样的parameter和bias。并且softmax层的两个输入也使用了同样的参数 :code:`softmax_param`。
 
-7. \*-cp27mu-linux_x86_64.whl is not a supported wheel on this platform.
+7. paddlepaddle\*.whl is not a supported wheel on this platform.
 ------------------------------------------------------------------------
 
-出现这个问题的主要原因是，系统编译wheel包的时候，使用的 :code:`wheel` 包是最新的，
-而系统中的 :code:`pip` 包比较老。具体的解决方法是，更新 :code:`pip` 包并重新编译PaddlePaddle。
+出现这个问题的主要原因是，没有找到和当前系统匹配的paddlepaddle安装包。最新的paddlepaddle python安装包
+支持Linux x86_64和MacOS 10.12操作系统，并安装了python 2.7和pip 9.0.1。
+
 更新 :code:`pip` 包的方法是\:
 
 ..  code-block:: bash
 
     pip install --upgrade pip
+
+如果还不行，可以执行 :code:`python -c "import pip; print(pip.pep425tags.get_supported())"` 获取当前系统支持的python包的后缀，
+并对比是否和正在安装的后缀一致。
+
+如果系统支持的是 :code:`linux_x86_64` 而安装包是 :code:`manylinux1_x86_64` 需要升级pip版本到最新；
+如果系统支持 :code:`manylinux1_x86_64` 而安装包（本地）是 :code:`linux_x86_64` 可以重命名这个whl包为 :code:`manylinux1_x86_64` 再安装。
 
 8.  python相关的单元测试都过不了
 --------------------------------
@@ -373,3 +380,15 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 
     parameters = paddle.parameters.create(my_cost)
     parameters.set('emb', load_parameter(emb_param_file, 30000, 256))
+
+18. 集群多节点训练，日志中保存均为网络通信类错误
+------------------------------
+
+集群多节点训练，日志报错为网络通信类错误，比如 :code:`Connection reset by peer` 等。
+此类报错通常是由于某一个节点的错误导致这个节点的训练进程退出，从而引发其他节点无法连接导致，可以参考下面的步骤排查：
+
+* 从train.log, server.log找到最早报错的地方，查看是否是其他错误引发的报错(比如FPE，内存不足，磁盘空间不足等)
+
+* 如果发现最早的报错就是网络通信的问题，很有可能是非独占方式执行导致的端口冲突，可以联系OP，看当前MPI集群是否支持resource=full参数提交，如果支持增加此参数提交，并更换job 端口。
+
+* 如果当前MPI集群并不支持任务独占模式，可以联系OP是否可以更换集群或升级当前集群
