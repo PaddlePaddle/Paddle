@@ -293,10 +293,8 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto y_dims = ctx.Input<Tensor>("Y")->dims();
     auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto* y_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
