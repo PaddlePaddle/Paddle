@@ -62,7 +62,6 @@ int y = 1;
 int z = 10;
 bool cond = false;
 int o1, o2;
-
 if (cond) {
   int z = x + y;
   o1 = z;
@@ -72,6 +71,7 @@ if (cond) {
   o1 = d;
   o2 = d+1;
 }
+
 ```
 
 An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator](./if_else_op.md) is as follows:
@@ -79,20 +79,18 @@ An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator
 ```python
 import paddle as pd
 
-x = [10, 20]
-y = 1
-z = [10, 20]
-cond = [false, true]
+x = minibatch([10, 20, 30]) # shape=[None, 1]
+y = var(1) # shape=[1], value=1
+z = minibatch([10, 20, 30]) # shape=[None, 1]
+cond = larger_than(x, 15) # [false, true, true]
 
-ie = pd.ifelse_builder()
+ie = pd.ifelse()
 with ie.true_block():
-    z = pd.layer.add(x, y)
-    ie.output(z, pd.layer.softmax(z))
-
+    d = pd.layer.add_scalar(x, y)
+    ie.output(d, pd.layer.softmax(d))
 with ie.false_block():
     d = pd.layer.fc(z)
     ie.output(d, d+1)
-
 o1, o2 = ie(cond)
 ```
 
@@ -106,37 +104,30 @@ A difference is that variables in the C++ program contain scalar values, whereas
 The following RNN model from the [RNN design doc](./rnn.md)
 
 ```python
-# x is a LoDTensor and stores sequences
-x = sequence([10, 20, 30])
-m = var([...])
-# some parameters
-W = var([...])
-U = var([...])
+x = sequence([10, 20, 30]) # shape=[None, 1]
+m = var(0) # shape=[1]
+W = var(0.314, param=true) # shape=[1]
+U = var(0.375, param=true) # shape=[1]
 
-rnn = rnn_builder()
-with rnn.stepnet():
-  # mark the variables that need to be segmented for time steps.
-  x_ = x.as_step_input()
-  # mark the varialbe that used as a RNN state.
-  h = m.as_step_memory()
-
-  fc_out = pd.matmul(W, x_)
-  hidden_out = pd.matmul(U, h.pre(nstep=1))
-  sum = pd.add_two(fc_out, hidden_out)
-  act = pd.sigmoid(sum)
-  h.update(act)                    # update memory with act
-  net.output(act, hidden_out) # two outputs
-
+rnn = pd.rnn()
+with rnn.step():
+  h = rnn.memory(init = m)
+  hh = rnn.previous_memory(h)
+  a = layer.fc(W, x)
+  b = layer.fc(U, hh)  
+  s = pd.add(a, b)
+  act = pd.sigmoid(s)
+  rnn.update_memory(h, act)
+  rnn.output(a, b)
 o1, o2 = rnn()
 ```
-
 has its equivalent C++ program as follows
 
 ```c++
 int* x = {10, 20, 30};
-int m = 0;
-int W = some_value();
-int U = some_other_value();
+int* m = {0};
+int* W = {0.314};
+int* U = {0.375};
 
 int mem[sizeof(x) / sizeof(x[0]) + 1];
 int o1[sizeof(x) / sizeof(x[0]) + 1];
@@ -144,19 +135,15 @@ int o2[sizeof(x) / sizeof(x[0]) + 1];
 for (int i = 1; i <= sizeof(x)/sizeof(x[0]); ++i) {
   int x = x[i-1];
   if (i == 1) mem[0] = m;
-  int fc_out = W * x;
-  int hidden_out = Y * mem[i-1];
-  int sum = fc_out + hidden_out;
+  int a = W * x;
+  int b = Y * mem[i-1];
+  int s = fc_out + hidden_out;
   int act = sigmoid(sum);
   mem[i] = act;
   o1[i] = act;
   o2[i] = hidden_out;
 }
-
-print_array(o1);
-print_array(o2);
 ```
-
 
 ## Compilation and Execution
 
