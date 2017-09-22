@@ -47,23 +47,23 @@ class TestPool2d_Op(OpTest):
         input = np.random.random(self.shape).astype("float32")
         output = self.pool2D_forward_naive(input, self.ksize, self.strides,
                                            self.paddings)
-        self.inputs = {'Input': input}
+        self.inputs = {'X': input}
 
         self.attrs = {
             'strides': self.strides,
             'paddings': self.paddings,
             'ksize': self.ksize,
-            'pooling_type': self.pool_type,
+            'poolingType': self.pool_type,
         }
 
-        self.outputs = {'Output': output}
+        self.outputs = {'Out': output}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         if self.pool_type != "max":
-            self.check_grad(set(['Input']), 'Output', max_relative_error=0.07)
+            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
     def initTestCase(self):
         self.pool_type = "ave"

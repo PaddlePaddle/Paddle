@@ -105,10 +105,10 @@ __global__ void KernelPool2dBackward(
 template <typename PoolProcess, typename T>
 class Pool2dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& output,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process,
-                  const platform::DeviceContext& context) {
+                  std::vector<int>& paddings, PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -148,12 +148,12 @@ class Pool2dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
 template <typename PoolProcess, typename T>
 class Pool2dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& input_grad,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process,
-                  const platform::DeviceContext& context) {
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -319,10 +319,10 @@ __global__ void KernelPool3DBackward(
 template <typename PoolProcess, class T>
 class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& output,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process,
-                  const platform::DeviceContext& context) {
+                  std::vector<int>& paddings, PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -369,12 +369,12 @@ class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
 template <typename PoolProcess, class T>
 class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& input_grad,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process,
-                  const platform::DeviceContext& context) {
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];

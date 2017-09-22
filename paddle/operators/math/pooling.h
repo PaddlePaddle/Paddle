@@ -59,41 +59,41 @@ class avePool {
 template <typename Place, typename PoolProcess, typename T>
 class Pool2dForwardFunctor {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& output,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process,
-                  const platform::DeviceContext& context);
+                  std::vector<int>& paddings, PoolProcess pool_process);
 };
 
 template <typename Place, typename PoolProcess, typename T>
 class Pool2dBackwardFunctor {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& input_grad,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process,
-                  const platform::DeviceContext& context);
+                  PoolProcess pool_process);
 };
 
 template <typename Place, typename PoolProcess, typename T>
 class Pool3dForwardFunctor {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& output,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process,
-                  const platform::DeviceContext& context);
+                  std::vector<int>& paddings, PoolProcess pool_process);
 };
 
 template <typename Place, typename PoolProcess, typename T>
 class Pool3dBackwardFunctor {
  public:
-  void operator()(const framework::Tensor& input, framework::Tensor& input_grad,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process,
-                  const platform::DeviceContext& context);
+                  PoolProcess pool_process);
 };
 
 }  // namespace math
