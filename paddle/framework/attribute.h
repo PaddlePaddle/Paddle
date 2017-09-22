@@ -30,10 +30,12 @@ namespace framework {
 typedef boost::variant<boost::blank, bool, int, float, std::string,
                        std::vector<bool>, std::vector<int>, std::vector<float>,
                        std::vector<std::string>,
-                       std::vector<std::pair<int, int>>>
+                       std::vector<std::pair<int, int>>, BlockDesc*>
     Attribute;
 
 typedef std::unordered_map<std::string, Attribute> AttributeMap;
+
+ProgramDesc& GetProgramDesc();
 
 template <typename T>
 AttrType AttrTypeID();

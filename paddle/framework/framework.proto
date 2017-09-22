@@ -25,6 +25,7 @@ enum AttrType {
   INT_PAIRS = 6;
   BOOLEAN = 7;
   BOOLEANS = 8;
+  BLOCK = 9;
 }
 
 message IntPair {
@@ -48,6 +49,7 @@ message OpDesc {
     repeated IntPair int_pairs = 9;
     optional bool b = 10;
     repeated bool bools = 11;
+    optional int32 block_idx = 12;
   };
 
   message Var {
@@ -112,3 +114,12 @@ message VarDesc {
   required string name = 1;
   optional LoDTensorDesc lod_tensor = 2;
 }
+
+message BlockDesc {
+  required int32 idx = 1;
+  required int32 parent_idx = 2;
+  repeated VarDesc vars = 3;
+  repeated OpDesc ops = 4;
+}
+
+message ProgramDesc { repeated BlockDesc blocks = 1; }
