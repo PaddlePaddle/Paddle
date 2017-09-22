@@ -62,7 +62,7 @@ PYBIND11_PLUGIN(core) {
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
            [](Tensor &self, const std::vector<int64_t> &dim) {
-             self.Resize(framework::make_ddim(dim));
+             self.Resize(make_ddim(dim));
            })
       .def("alloc_float",
            [](Tensor &self, paddle::platform::GPUPlace &place) {
@@ -106,7 +106,7 @@ PYBIND11_PLUGIN(core) {
 #ifdef PADDLE_ONLY_CPU
             new (&instance) LoDTensor(lod);
 #else
-             paddle::framework::LoD new_lod;
+             LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              new (&instance) LoDTensor(new_lod);
@@ -117,7 +117,7 @@ PYBIND11_PLUGIN(core) {
 #ifdef PADDLE_ONLY_CPU
              self.set_lod(lod);
 #else
-             paddle::framework::LoD new_lod;
+             LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              self.set_lod(new_lod);
@@ -131,7 +131,7 @@ PYBIND11_PLUGIN(core) {
            std::vector<std::vector<size_t>> new_lod;
            new_lod.reserve(lod.size());
            std::transform(lod.begin(), lod.end(), std::back_inserter(new_lod),
-               [](paddle::framework::Vector<size_t> item) ->
+               [](Vector<size_t> item) ->
                    std::vector<size_t> {
                  std::vector<size_t> v;
                  v.reserve(item.size());
