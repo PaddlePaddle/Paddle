@@ -44,7 +44,7 @@ class ScatterOp : public framework::OperatorWithKernel {
     framework::DDim data_dim(ctx.Input<Tensor>("Updates")->dims());
     for (int i = 1; i < data_dim.size(); ++i)
       PADDLE_ENFORCE_EQ(data_dim[i], ctx.Input<Tensor>("Updates")->dims()[i]);
-    ctx.Output<framework::LoDTensor>("Out")->Resize(
+    ctx.Output<framework::Tensor>("Out")->Resize(
         ctx.Input<Tensor>("Ref")->dims());
   }
 };
@@ -56,10 +56,9 @@ class ScatterGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto *dUpdates =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Updates"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Updates"));
     auto *Updates = ctx.Input<Tensor>("Updates");
-    auto *dRef =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Ref"));
+    auto *dRef = ctx.Output<framework::Tensor>(framework::GradVarName("Ref"));
     auto *Ref = ctx.Input<Tensor>("Ref");
 
     dRef->Resize(Ref->dims());

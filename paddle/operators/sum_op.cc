@@ -28,7 +28,7 @@ class SumOp : public framework::OperatorWithKernel {
                             "Output(Out) of SumOp should not be null.");
 
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *out = ctx.Output<framework::Tensor>("Out");
     int N = ins.size();
 
     auto in_dim = ins[0]->dims();
@@ -39,6 +39,7 @@ class SumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(in_dim == dim, "Input tensors must have same shape");
     }
     out->Resize(in_dim);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -49,8 +50,11 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "the input tensors of sum operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of sum operator.");
     AddComment(R"DOC(
-            Sum the input tensors.
-        )DOC");
+Sum the input tensors.
+
+All the inputs can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with the first input.
+)DOC");
   }
 };
 
@@ -61,7 +65,7 @@ class SumGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto outputs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+        ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
     auto dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
     for (auto output : outputs) {
       output->Resize(dims);

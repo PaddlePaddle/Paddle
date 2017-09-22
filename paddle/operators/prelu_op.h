@@ -96,7 +96,7 @@ class PReluGradKernel : public framework::OpKernel {
     trans(context.device_context(), out_ptr, out_ptr + numel, dout_ptr, dx_ptr,
           PReluGradFunctor<T>(alpha_ptr));
 
-    // TODO (Zhuoyuan): add dalpha upgrade when GPU kernels ready
+    // TODO(Zhuoyuan): add dalpha upgrade when GPU kernels ready
   }
 };
 
