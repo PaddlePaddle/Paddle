@@ -19,7 +19,7 @@ class TestCrossEntropyOp1(OpTest):
             dtype="float32")
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": cross_entropy}
-        self.attrs = {'soft_label': False}
+        self.attrs = {"soft_label": False}
 
     def test_check_output(self):
         self.check_output()
@@ -34,7 +34,8 @@ class TestCrossEntropyOp2(OpTest):
 
     def setUp(self):
         self.op_type = "cross_entropy"
-        batch_size = 13
+        batch_size = 5
+        # this setting tests threads in more than one wrap.
         class_num = 37
         X = np.random.uniform(0.1, 1.0,
                               [batch_size, class_num]).astype("float32")
@@ -43,9 +44,9 @@ class TestCrossEntropyOp2(OpTest):
         label /= label.sum(axis=1, keepdims=True)
         cross_entropy = (-label * np.log(X)).sum(
             axis=1, keepdims=True).astype("float32")
-        self.inputs = {'X': X, 'Label': label}
-        self.outputs = {'Y': cross_entropy}
-        self.attrs = {'soft_label': True}
+        self.inputs = {"X": X, "Label": label}
+        self.outputs = {"Y": cross_entropy}
+        self.attrs = {"soft_label": True}
 
     def test_check_output(self):
         self.check_output()
@@ -61,8 +62,9 @@ class TestCrossEntropyOp3(OpTest):
 
     def setUp(self):
         self.op_type = "cross_entropy"
-        batch_size = 13
-        class_num = 37
+        batch_size = 5
+        # this setting tests all threads in one wrap.
+        class_num = 17
         X = np.random.uniform(0.1, 1.0,
                               [batch_size, class_num]).astype("float32")
         label_index = np.random.randint(
@@ -74,9 +76,36 @@ class TestCrossEntropyOp3(OpTest):
             dtype="float32")
         cross_entropy2 = (-label * np.log(X)).sum(
             axis=1, keepdims=True).astype("float32")
-        self.inputs = {'X': X, 'Label': label}
-        self.outputs = {'Y': cross_entropy}
-        self.attrs = {'soft_label': True}
+        self.inputs = {"X": X, "Label": label}
+        self.outputs = {"Y": cross_entropy}
+        self.attrs = {"soft_label": True}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Y", max_relative_error=0.05)
+
+
+class TestCrossEntropyOp4(OpTest):
+    """Test soft-label cross-entropy.
+    This unittest tests the gpu kernel for layer size excesses 512.
+    """
+
+    def setUp(self):
+        self.op_type = "cross_entropy"
+        batch_size = 2
+        class_num = 517
+        X = np.random.uniform(0.1, 1.0,
+                              [batch_size, class_num]).astype("float32")
+        label = np.random.uniform(0.1, 1.0,
+                                  [batch_size, class_num]).astype("float32")
+        label /= label.sum(axis=1, keepdims=True)
+        cross_entropy = (-label * np.log(X)).sum(
+            axis=1, keepdims=True).astype("float32")
+        self.inputs = {"X": X, "Label": label}
+        self.outputs = {"Y": cross_entropy}
+        self.attrs = {"soft_label": True}
 
     def test_check_output(self):
         self.check_output()

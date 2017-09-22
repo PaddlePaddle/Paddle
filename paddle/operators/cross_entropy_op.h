@@ -31,12 +31,8 @@ struct TolerableValue {
     PADDLE_ASSERT(std::is_floating_point<T>::value);
     const T kApproInf = 1e20;
 
-    if (x == INFINITY) {
-      return kApproInf;
-    }
-    if (x == -INFINITY) {
-      return -kApproInf;
-    }
+    if (x == INFINITY) return kApproInf;
+    if (x == -INFINITY) return -kApproInf;
     return x;
   }
 };
@@ -58,11 +54,8 @@ class CrossEntropyOpKernel : public framework::OpKernel {
       auto lbl_mat = EigenMatrix<T>::From(*labels);
       auto loss = EigenMatrix<T>::From(*y);
 
-      // loss.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
-      //     prob.log().unaryExpr(TolerableValue<T>());
-
       loss.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
-          -((lbl_mat * prob.log())
+          -((lbl_mat * prob.log().unaryExpr(TolerableValue<T>()))
                 .sum(Eigen::DSizes<int, 1>(1))
                 .reshape(Eigen::DSizes<int, 2>(batch_size, 1)));
     } else {
