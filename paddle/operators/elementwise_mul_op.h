@@ -28,9 +28,9 @@ class ElementwiseMulKernel : public framework::OpKernel {
 
 template <typename T>
 struct ElementwiseMulGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz) {
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
     auto x_e = framework::EigenVector<T>::Flatten(*x);
     auto y_e = framework::EigenVector<T>::Flatten(*y);
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
@@ -49,9 +49,9 @@ struct ElementwiseMulGradFunctor {
 
 template <typename T>
 struct ElementwiseMulBroadCastGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ, typename Pre, typename N>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n) {
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ, typename Pre, typename N>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n) {
     auto x_e = framework::EigenVector<T>::Flatten(*x);
     auto y_e = framework::EigenVector<T>::Flatten(*y);
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
@@ -76,9 +76,9 @@ struct ElementwiseMulBroadCastGradFunctor {
 
 template <typename T>
 struct ElementwiseMulBroadCast2GradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ, typename Pre, typename N, typename Post>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n,
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ, typename Pre, typename N, typename Post>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n,
                   Post post) {
     auto x_e = framework::EigenVector<T>::Flatten(*x);
     auto y_e = framework::EigenVector<T>::Flatten(*y);

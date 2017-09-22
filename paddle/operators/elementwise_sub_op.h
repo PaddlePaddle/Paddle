@@ -27,9 +27,9 @@ class ElementwiseSubKernel : public framework::OpKernel {
 
 template <typename T>
 struct ElementwiseSubGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz) {
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
@@ -44,9 +44,9 @@ struct ElementwiseSubGradFunctor {
 
 template <typename T>
 struct ElementwiseSubOneGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz) {
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
@@ -61,9 +61,9 @@ struct ElementwiseSubOneGradFunctor {
 
 template <typename T>
 struct ElementwiseSubBroadCastGradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ, typename Pre, typename N>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n) {
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ, typename Pre, typename N>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n) {
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
@@ -81,9 +81,9 @@ struct ElementwiseSubBroadCastGradFunctor {
 
 template <typename T>
 struct ElementwiseSubBroadCast2GradFunctor {
-  template <typename Device, typename X, typename Y, typename dX, typename dY,
-            typename dZ, typename Pre, typename N, typename Post>
-  void operator()(Device d, X x, Y y, dX dx, dY dy, dZ dz, Pre pre, N n,
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ, typename Pre, typename N, typename Post>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n,
                   Post post) {
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
     if (dx) {

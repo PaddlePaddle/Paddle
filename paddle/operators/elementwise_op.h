@@ -150,6 +150,7 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
 
   auto* x = ctx.Input<Tensor>("X");
   auto* y = ctx.Input<Tensor>("Y");
+  auto* out = ctx.Input<Tensor>("Out");
   auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
   auto place = ctx.GetEigenDevice<Place>();
@@ -168,13 +169,13 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
 
   if (x_dims == y_dims) {
     functor f;
-    f(place, x, y, dx, dy, dout);
+    f(place, x, y, out, dx, dy, dout);
     return;
   }
 
   if (product(y_dims) == 1) {
     functor1 f;
-    f(place, x, y, dx, dy, dout);
+    f(place, x, y, out, dx, dy, dout);
     return;
   }
 
@@ -186,11 +187,11 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
 
   if (post == 1) {
     broadcastfunctor f;
-    f(place, x, y, dx, dy, dout, pre, n);
+    f(place, x, y, out, dx, dy, dout, pre, n);
     return;
   } else {
     broadcast2functor f;
-    f(place, x, y, dx, dy, dout, pre, n, post);
+    f(place, x, y, out, dx, dy, dout, pre, n, post);
     return;
   }
 }
