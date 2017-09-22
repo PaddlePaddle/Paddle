@@ -34,12 +34,7 @@ limitations under the License. */
 namespace py = pybind11;
 
 namespace paddle {
-namespace framework {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using LoD = framework::LoD;
-
+namespace pybind {
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
   return generator.fetch_add(1);
@@ -56,6 +51,10 @@ bool IsCompileGPU() {
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
+  // using framework in this function. Since it is inside a function, it will
+  // not cause namespace pollution.
+  using namespace paddle::framework;  // NOLINT
+
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
@@ -63,7 +62,7 @@ PYBIND11_PLUGIN(core) {
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
            [](Tensor &self, const std::vector<int64_t> &dim) {
-             self.Resize(make_ddim(dim));
+             self.Resize(framework::make_ddim(dim));
            })
       .def("alloc_float",
            [](Tensor &self, paddle::platform::GPUPlace &place) {
@@ -317,5 +316,5 @@ All parameter, weight, gradient are variables in Paddle.
 
   return m.ptr();
 }
-}  // namespace framework
+}  // namespace pybind
 }  // namespace paddle

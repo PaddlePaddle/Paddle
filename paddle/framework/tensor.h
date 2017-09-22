@@ -29,16 +29,19 @@ limitations under the License. */
 
 namespace paddle {
 
-namespace framework {
+namespace pybind {
 namespace details {
 template <bool less, size_t i, typename... args>
 struct CastToPyBufferImpl;
 }
+}  // namespace pybind
+
+namespace framework {
 
 class Tensor {
  public:
   template <bool less, size_t i, typename... args>
-  friend struct details::CastToPyBufferImpl;
+  friend struct pybind::details::CastToPyBufferImpl;
 
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
