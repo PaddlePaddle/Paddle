@@ -24,6 +24,9 @@ static ProgramDesc* g_program_desc = nullptr;
 ProgramDesc& GetProgramDesc() {
   if (g_program_desc == nullptr) {
     g_program_desc = new ProgramDesc();
+    auto root_block = g_program_desc->mutable_blocks()->Add();
+    root_block->set_idx(0);
+    root_block->set_parent_idx(-1);
   }
   return *g_program_desc;
 }

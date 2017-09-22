@@ -316,21 +316,75 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compile_gpu", IsCompileGPU);
 
   py::class_<ProgramDesc>(m, "ProgramDesc", "")
-      .def_static("instance", [] { return &GetProgramDesc(); })
-      .def("append_block", [](ProgramDesc &self) {
-        auto desc = self.mutable_blocks()->Add();
-        desc->set_idx(self.mutable_blocks()->size() - 1);
-        return desc;
-      });
+      .def_static("instance",
+                  [] { return &GetProgramDesc(); },
+                  py::return_value_policy::reference)
+      .def("append_block",
+           [](ProgramDesc &self, BlockDesc &parent) {
+             auto desc = self.mutable_blocks()->Add();
+             desc->set_idx(self.mutable_blocks()->size() - 1);
+             desc->set_parent_idx(parent.idx());
+             return desc;
+           })
+      .def("root_block",
+           [](ProgramDesc &self) { return self.mutable_blocks()[0]; });
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def("idx", [](BlockDesc &self) { return self.idx(); })
-      .def("set_parent",
-           [](BlockDesc &self, int32_t idx) { self.set_parent_idx(idx); })
-      .def("parent", [](BlockDesc &self) { return self.parent_idx(); });
+      .def("parent", [](BlockDesc &self) { return self.parent_idx(); })
+      .def("append_op",
+           [](BlockDesc &self) { return self.mutable_ops()->Add(); });
 
   py::class_<VarDesc>(m, "VarDesc", "");
 
-  py::class_<OpDesc>(m, "OpDesc", "");
+  auto op_desc_set_var = [](OpDesc::Var *var,
+                            const std::string &parameter,
+                            const std::vector<std::string> &arguments) {
+    var->set_parameter(parameter);
+    auto args = var->mutable_arguments();
+    args->Reserve(static_cast<int>(arguments.size()));
+    for (auto &arg : arguments) {
+      *args->Add() = arg;
+    }
+  };
+
+  auto op_desc_set_attr = [](OpDesc &desc, const std::string &name) {
+    auto attr = desc.mutable_attrs()->Add();
+    attr->set_name(name);
+    return attr;
+  };
+
+  py::class_<OpDesc>(m, "OpDesc", "")
+      .def("type", [](OpDesc &op) { return op.type(); })
+      .def("set_input",
+           [op_desc_set_var](OpDesc &self,
+                             const std::string &parameter,
+                             const std::vector<std::string> &arguments) {
+             auto ipt = self.mutable_inputs()->Add();
+             op_desc_set_var(ipt, parameter, arguments);
+           })
+      .def("input_names",
+           [](OpDesc &self) {
+             std::vector<std::string> ret_val;
+             ret_val.reserve(static_cast<size_t>(self.inputs().size()));
+             std::transform(
+                 self.inputs().begin(),
+                 self.inputs().end(),
+                 std::back_inserter(ret_val),
+                 [](const OpDesc::Var &var) { return var.parameter(); });
+             return ret_val;
+           })
+      .def("__str__", [](OpDesc &self) { return self.DebugString(); })
+      .def("set_output",
+           [op_desc_set_var](OpDesc &self,
+                             const std::string &parameter,
+                             const std::vector<std::string> &arguments) {
+             auto opt = self.mutable_outputs()->Add();
+             op_desc_set_var(opt, parameter, arguments);
+           })
+      .def("set_attr",
+           [op_desc_set_attr](OpDesc &self, const std::string &name, int i) {
+             op_desc_set_attr(self, name)->set_i(i);
+           });
 
   return m.ptr();
 }
