@@ -18,7 +18,6 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::LoDTensor;
 
 class DropoutOp : public framework::OperatorWithKernel {
  public:
@@ -34,10 +33,11 @@ class DropoutOp : public framework::OperatorWithKernel {
                    ctx.Attr<int>("is_training") == 1);
 
     auto dims = ctx.Input<Tensor>("X")->dims();
-    ctx.Output<LoDTensor>("Out")->Resize(dims);
+    ctx.Output<Tensor>("Out")->Resize(dims);
     if (ctx.Attr<int>("is_training") == 1) {
-      ctx.Output<LoDTensor>("Mask")->Resize(dims);
+      ctx.Output<Tensor>("Mask")->Resize(dims);
     }
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -96,7 +96,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dims, mask_dims,
                       "Dimensions of Input(X) and Mask must be the same.");
 
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     x_grad->Resize(x_dims);
   }
 };

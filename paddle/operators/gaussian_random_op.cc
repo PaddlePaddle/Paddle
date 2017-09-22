@@ -48,7 +48,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
         ctx.OutputVar("Out"),
         "Output(Out) of GaussianRandomOp should not be null.");
 
-    auto* tensor = ctx.Output<framework::LoDTensor>("Out");
+    auto* tensor = ctx.Output<framework::Tensor>("Out");
     auto dims = Attr<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());

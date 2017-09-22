@@ -54,9 +54,10 @@ class CosSimOp : public framework::OperatorWithKernel {
                    " just 1 (which will be broadcasted to match Input(X)).");
 
     // resize tensor
-    ctx.Output<framework::LoDTensor>("Out")->Resize({x_dims[0], 1});
-    ctx.Output<framework::LoDTensor>("XNorm")->Resize({x_dims[0], 1});
-    ctx.Output<framework::LoDTensor>("YNorm")->Resize({y_dims[0], 1});
+    ctx.Output<framework::Tensor>("Out")->Resize({x_dims[0], 1});
+    ctx.Output<framework::Tensor>("XNorm")->Resize({x_dims[0], 1});
+    ctx.Output<framework::Tensor>("YNorm")->Resize({y_dims[0], 1});
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -81,10 +82,13 @@ Cosine Similarity Operator.
 
 The equation is: Out = X^T * Y / (sqrt(X^T * X) * sqrt(Y^T * Y)).
 
-Input(X) and Input(Y) must have the same shape, except that the 1st dimension
-of Input(Y) could be just 1 (different from Input(X)), which will be
-broadcasted to match the shape of Input(X) before computing their cosine
+The input `X` and `Y` must have the same shape, except that the 1st dimension
+of input `Y` could be just 1 (different from input `X`), which will be
+broadcasted to match the shape of input `X` before computing their cosine
 similarity.
+
+Both the input `X` and `Y` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };
@@ -139,10 +143,8 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
                       "Shape of Input(Out@Grad) must be [X.Dim(0), 1].");
 
     // resize tensor
-    auto *x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *y_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
+    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
     if (x_grad) x_grad->Resize(x_dims);
     if (y_grad) y_grad->Resize(y_dims);
   }
