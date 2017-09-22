@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
@@ -347,6 +348,107 @@ template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const;
 
+class BlockDesc {
+ public:
+  explicit BlockDesc(const std::map<std::string, VarDesc*>& var_descs)
+      : var_descs_(var_descs) {}
+  ~BlockDesc() {}
+
+  VarDesc* get_var(const std::string& name) const {
+    PADDLE_ENFORCE(var_descs_.count(name) == 1, "%s must be in Block", name);
+    return var_descs_.at(name);
+  }
+
+ private:
+  const std::map<std::string, VarDesc*>& var_descs_;
+};
+
+class CompileTimeInferShapeContext : public InferShapeContextBase {
+ public:
+  CompileTimeInferShapeContext(const OperatorBase& op,
+                               const BlockDesc& block_desc)
+      : op_(op), block_desc_(block_desc) {}
+
+  DDim get_input_dim(const std::string& name) const {
+    return get_dim(op_.Input(name));
+  }
+
+  void set_input_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_.Input(name), dim);
+  }
+
+  DDim get_output_dim(const std::string& name) const {
+    return get_dim(op_.Output(name));
+  }
+
+  void set_output_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_.Output(name), dim);
+  }
+
+  AttrReader attrs() const { return AttrReader(op_.Attrs()); }
+
+ private:
+  DDim get_dim(const std::string& name) const {
+    VarDesc* desc = block_desc_.get_var(name);
+    std::vector<int64_t> dim;
+    int length = desc->lod_tensor().dims().size();
+    dim.reserve(length);
+    std::copy(desc->lod_tensor().dims().begin(),
+              desc->lod_tensor().dims().end(), std::back_inserter(dim));
+    return make_ddim(dim);
+  }
+
+  void set_dim(const std::string& name, const DDim& dim) const {
+    VarDesc* desc = block_desc_.get_var(name);
+    auto tensor = desc->mutable_lod_tensor();
+    tensor->clear_dims();
+    for (int i = 0; i < dim.size(); ++i) {
+      tensor->add_dims(static_cast<int>(dim[i]));
+    }
+  }
+
+  const OperatorBase& op_;
+  const BlockDesc& block_desc_;
+};
+
+class RunTimeInferShapeContext : public InferShapeContextBase {
+ public:
+  RunTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
+
+  DDim get_input_dim(const std::string& name) const {
+    return get_dim(op_.Input(name));
+  }
+
+  void set_input_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_.Input(name), dim);
+  }
+
+  DDim get_output_dim(const std::string& name) const {
+    return get_dim(op_.Output(name));
+  }
+
+  void set_output_dim(const std::string& name, const DDim& dim) const {
+    set_dim(op_.Output(name), dim);
+  }
+
+  AttrReader attrs() const { return AttrReader(op_.Attrs()); }
+
+ private:
+  DDim get_dim(const std::string& name) const {
+    Tensor* t = scope_.FindVar(op_.Input(name))->GetMutable<Tensor>();
+    return t->dims();
+  }
+
+  void set_dim(const std::string& name, const DDim& dim) const {
+    Tensor* t = scope_.FindVar(name)->GetMutable<Tensor>();
+    t->Resize(dim);
+  }
+
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
+
 class OpKernel {
  public:
   /**
@@ -390,8 +492,14 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
+  // runtime infershape
   void InferShape(const Scope& scope) const override {
-    InferShape(InferShapeContext(*this, scope));
+    InferShape(RunTimeInferShapeContext(*this, scope));
+  }
+
+  // compile time infershape
+  void InferShape(const BlockDesc& block_desc) const {
+    InferShape(CompileTimeInferShapeContext(*this, block_desc));
   }
 
   void Run(const Scope& scope,
@@ -414,6 +522,7 @@ class OperatorWithKernel : public OperatorBase {
 
  protected:
   virtual void InferShape(const InferShapeContext& ctx) const = 0;
+  void InferShape(const InferShapeContextBase& ctx) const {}
 };
 
 }  // namespace framework
