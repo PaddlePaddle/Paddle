@@ -72,6 +72,16 @@ class Pool2dBackwardFunctor {
                   PoolProcess pool_process);
 };
 
+template <typename Place, class T>
+class MaxPool2dBackwardFunctor {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& input_grad,
+                  const framework::Tensor& output,
+                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings);
+};
+
 template <typename Place, typename PoolProcess, typename T>
 class Pool3dForwardFunctor {
  public:
@@ -90,6 +100,16 @@ class Pool3dBackwardFunctor {
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process);
+};
+
+template <typename Place, class T>
+class MaxPool3dBackwardFunctor {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& input_grad,
+                  const framework::Tensor& output,
+                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings);
 };
 
 }  // namespace math
