@@ -5,7 +5,7 @@ height = 224
 width = 224
 num_class = 1000
 batch_size = get_config_arg('batch_size', int, 64)
-layer_num = get_config_arg('layer_num', int, 16)
+layer_num = get_config_arg('layer_num', int, 19)
 
 args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
 define_py_data_sources2(

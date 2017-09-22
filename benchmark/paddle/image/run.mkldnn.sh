@@ -1,5 +1,9 @@
 set -e
 
+unset OMP_NUM_THREADS MKL_NUM_THREADS
+export OMP_DYNAMIC="FALSE"
+export KMP_AFFINITY="granularity=fine,compact,0,0"
+
 function train() {
   topology=$1
   bs=$2
