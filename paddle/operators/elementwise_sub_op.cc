@@ -21,7 +21,8 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   ElementwiseSubOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    AddComment(ElementwiseOpMaker::GetComment("Sub", "Out = X - Y"));
+    SetComment("Sub", "Out = X - Y");
+    AddComment(comment_);
   }
 };
 }  // namespace operators

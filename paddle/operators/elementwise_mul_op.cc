@@ -22,7 +22,8 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
   ElementwiseMulOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    AddComment(ElementwiseOpMaker::GetComment("Mul", "Out = X ⊙ Y"));
+    SetComment("Mul", "Out = X ⊙ Y");
+    AddComment(comment_);
   }
 };
 

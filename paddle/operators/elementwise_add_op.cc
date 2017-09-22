@@ -21,7 +21,8 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   ElementwiseAddOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    AddComment(ElementwiseOpMaker::GetComment("add", "Out = X + Y"));
+    SetComment("add", "Out = X + Y");
+    AddComment(comment_);
   }
 };
 }  // namespace operators

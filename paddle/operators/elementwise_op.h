@@ -223,48 +223,53 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   ElementwiseOpMaker(framework::OpProto* proto,
                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of elementwise op");
-    AddInput("Y", "The second input of elementwise op");
+    AddInput("X", R"DOC(
+The first input of elementwise op, it's a tensor of any dimensions.
+)DOC");
+    AddInput("Y", R"DOC(
+The sencond input of elementwise op, it's a tensor and it's dimensions
+must be small or equal to X's dimensions.
+)DOC");
     AddAttr<int>("axis",
                  R"DOC(
-When shape(Y) does not equal shape(X),Y will be broadcasted 
+When the shape(Y) does not equal the shape(X),Y will be broadcasted 
 to match the shape of X and axis should be dimension index Y in X
         )DOC")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
 
-    AddOutput("Out", "The output of elementwise mul op");
-    AddComment(R"DOC(
-Limited elementwise operator.The equation is: Out = X (⊙|+|*|/) Y.
+    AddOutput("Out", "The output of elementwise op");
+    comment_ = R"DOC(
+Limited elementwise {name} operator.The equation is: Out = {equation}.
 1. The shape of Y should be same with X or
 2. Y's shape is a subset of X. 
    Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
+
    example:
       shape(X) = (2, 3, 4, 5), shape(Y) = (,)
       shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
       shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
       shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
       shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
-)DOC");
+)DOC";
+    AddComment(comment_);
   }
 
-  static std::string GetComment(std::string name, std::string equation) {
-    char buf[2048];
-    snprintf(buf, sizeof(buf) - 1,
-             "DOC( \
-Limited elementwise %s operator.The equation is: %s. \
-1. The shape of Y should be same with X or  \
-2. Y's shape is a subset of X. \
-   Y will be broadcasted to match the shape of X and axis should be dimension index Y in X. \
-   example: \
-      shape(X) = (2, 3, 4, 5), shape(Y) = (,) \
-      shape(X) = (2, 3, 4, 5), shape(Y) = (5,) \
-      shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5) \
-      shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1 \
-      shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0 \
-)DOC",
-             name.c_str(), equation.c_str());
-    return std::string(buf);
+ protected:
+  std::string comment_;
+
+  void Replace(std::string& src, std::string from, std::string to) {
+    std::size_t len_from = std::strlen(from.c_str());
+    std::size_t len_to = std::strlen(to.c_str());
+    for (std::size_t pos = src.find(from); pos != std::string::npos;
+         pos = src.find(from, pos + len_to)) {
+      src.replace(pos, len_from, to);
+    }
+  }
+
+  void SetComment(std::string name, std::string equation) {
+    Replace(comment_, "{name}", name);
+    Replace(comment_, "{equation}", equation);
   }
 };
 

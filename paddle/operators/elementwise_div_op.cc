@@ -21,7 +21,8 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
   ElementwiseDivOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    AddComment(ElementwiseOpMaker::GetComment("Div", "Out = X / Y"));
+    SetComment("Div", "Out = X / Y");
+    AddComment(comment_);
   }
 };
 

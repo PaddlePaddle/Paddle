@@ -16,15 +16,15 @@ class TestElementwiseOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.1)
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.1, no_grad_set=set("X"))
+            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.1, no_grad_set=set('Y'))
+            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
