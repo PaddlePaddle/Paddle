@@ -12,103 +12,102 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
 #include "paddle/operators/elementwise_op.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ElementwiseMulKernel : public framework::OpKernel {
+class ElementwiseSubKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenMulFunctor, Place, T>(ctx);
+    ElementwiseCompute<EigenSubFunctor, Place, T>(ctx);
   }
 };
 
 template <typename T>
-struct ElementwiseMulGradFunctor {
+struct ElementwiseSubGradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ>
   void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
-    auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e * y_e;
+      dx_e.device(d) = dz_e;
     }
-
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = x_e * dz_e;
+      dy_e.device(d) = (-1.0) * dz_e;
     }
   }
 };
 
 template <typename T>
-struct ElementwiseMulBroadCastGradFunctor {
+struct ElementwiseSubOneGradFunctor {
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
+    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
+    if (dx) {
+      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
+      dx_e.device(d) = dz_e;
+    }
+    if (dy) {
+      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
+      dy_e.device(d) = (-1.0) * dz_e.sum();
+    }
+  }
+};
+
+template <typename T>
+struct ElementwiseSubBroadCastGradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ, typename Pre, typename N>
   void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n) {
-    auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-
-    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
-                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
-
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e * y_e_bcast;
+      dx_e.device(d) = dz_e;
     }
 
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (x_e * dz_e)
-                           .reshape(Eigen::DSizes<int, 2>(pre, n))
+      dy_e.device(d) = (-1.0) *
+                       dz_e.reshape(Eigen::DSizes<int, 2>(pre, n))
                            .sum(Eigen::array<int, 1>{{0}});
     }
   }
 };
 
 template <typename T>
-struct ElementwiseMulBroadCast2GradFunctor {
+struct ElementwiseSubBroadCast2GradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ, typename Pre, typename N, typename Post>
   void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n,
                   Post post) {
-    auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-
-    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
-                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e * y_e_bcast;
+      dx_e.device(d) = dz_e;
     }
 
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (x_e * dz_e)
-                           .reshape(Eigen::DSizes<int, 3>(pre, n, post))
+      dy_e.device(d) = (-1.0) *
+                       dz_e.reshape(Eigen::DSizes<int, 3>(pre, n, post))
                            .sum(Eigen::array<int, 2>{{0, 2}});
     }
   }
 };
 
 template <typename Place, typename T>
-class ElementwiseMulGradKernel : public framework::OpKernel {
+class ElementwiseSubGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseGradCompute<Place, T, ElementwiseMulGradFunctor<T>,
-                           ElementwiseMulGradFunctor<T>,
-                           ElementwiseMulBroadCastGradFunctor<T>,
-                           ElementwiseMulBroadCast2GradFunctor<T>>(ctx);
+    ElementwiseGradCompute<Place, T, ElementwiseSubGradFunctor<T>,
+                           ElementwiseSubOneGradFunctor<T>,
+                           ElementwiseSubBroadCastGradFunctor<T>,
+                           ElementwiseSubBroadCast2GradFunctor<T>>(ctx);
   }
 };
 

@@ -12,17 +12,16 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/elementwise_mul_op.h"
+#include "paddle/operators/elementwise_div_op.h"
 
 namespace paddle {
 namespace operators {
-
-class ElementwiseMulOpMaker : public ElementwiseOpMaker {
+class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  public:
-  ElementwiseMulOpMaker(framework::OpProto* proto,
+  ElementwiseDivOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Mul", "Out = X ⊙ Y");
+    SetComment("Div", "Out = X / Y");
     AddComment(comment_);
   }
 };
@@ -31,11 +30,11 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_mul, ops::ElementwiseOp, ops::ElementwiseMulOpMaker,
-            elementwise_mul_grad, ops::ElementwiseOpGrad);
+REGISTER_OP(elementwise_div, ops::ElementwiseOp, ops::ElementwiseDivOpMaker,
+            elementwise_div_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, float>);
+    elementwise_div,
+    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    elementwise_mul_grad,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, float>);
+    elementwise_div_grad,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, float>);
