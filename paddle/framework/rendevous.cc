@@ -1,1 +1,1 @@
-#include "paddle/framework/rendevous.cc"
+#include "paddle/framework/rendevous.h"

@@ -121,6 +121,7 @@ class OperatorBase {
 
  protected:
   std::string type_;
+  int node_id_ = -1;  // -1 means not assign
   // NOTE: in case of OpGrad, inputs_ contains:
   // I (Inputs)opear
   // O (Outputs)

@@ -15,7 +15,11 @@ namespace framework {
 struct PairKey {
   std::string src_device;
   std::string dst_device;
-  int edge_id;  // a unique id in graph
+  std::string src_name;
+  std::string dst_name;
+  // int edge_id;  // a unique id in graph
+  int src_id;
+  int dst_id;
 };
 
 class MarkNode {
@@ -29,12 +33,12 @@ class MarkNode {
 
  private:
   MarkNode* buf_ = nullptr;
-}
+};
 
 class Rendevous {
  public:
-  typedef std::function<void(DefaultDevice* src_device,
-                             DefaultDevice* dst_device, const Variable& t,
+  typedef std::function<void(DeviceContext* src_device,
+                             DeviceContext* dst_device, const Variable& t,
                              int* status)>
       DoneCallback;
   struct Msg {
@@ -45,6 +49,10 @@ class Rendevous {
 
   static PairKey CreateKey(std::string src_device, std::string dst_device,
                            int edge_id);
+  void Send(const PairKey& key, DeviceContext* src_device,
+            DeviceContext* dst_device, const Variable& t);
+  void Recv(const PairKey& key, DeviceContext* src_device,
+            DeviceContext* dst_device, Variable t);
 
  private:
   typedef std::deque<Msg*> Channel;
