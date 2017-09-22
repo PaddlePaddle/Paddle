@@ -60,8 +60,8 @@ std::string OperatorBase::Output(const std::string& name) const {
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output %s", type_,
-                 name);
+  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output called %s",
+                 type_, name);
   return it->second;
 }
 
