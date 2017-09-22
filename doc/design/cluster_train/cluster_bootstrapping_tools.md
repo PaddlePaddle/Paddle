@@ -47,7 +47,7 @@ Matchbox's Approach is similar to Sexstant.
 2. [Not fully supporting](https://github.com/coreos/matchbox/issues/550) centOS deployment yet.
 
 ## Conclusion
-Sextant is a better solution overall for paddle cloud deploying to a bare metal cluster. It would be great if Sextant can also can 1) k8s api server deployed with high availability by default; 2) not designed as a one-off service.
+Sextant is a better solution overall for paddle cloud deploying to a bare metal cluster. It would be great if Sextant can also 1) deploy k8s api server with high availability by default; 2) not designed as a one-off service.
 
 
 
