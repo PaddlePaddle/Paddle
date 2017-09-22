@@ -19,6 +19,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/gserver/dataproviders/MultiDataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
@@ -1050,4 +1051,46 @@ private:
 
 private:
   SequenceGeneratorPrivate* m;
+};
+
+using MultiDataProvider = paddle::MultiDataProvider;
+using DataBatch = paddle::DataBatch;
+
+class MultiDataProvider {
+private:
+  paddle::MultiDataProvider* m;
+
+public:
+  MultiDataProvider(const DataConfig& config,
+                    const ModelConfig& modelConfig,
+                    bool useGpu);
+  ~MultiDataProvider() {}
+  void reset();
+  void shuffle();
+  int64_t getSize();
+  int64_t getNextBatch(int64_t size, DataBatch* batch);
+  bool isTestMode() const;
+};
+
+class DataBatch {
+private:
+  paddle::DataBatch* m;
+
+public:
+  DataBatch();
+  int64_t getSize() const;
+  int64_t getNumSequences() const;
+  void setSize(int64_t size);
+  int64_t getNumStreams() const;
+  const Argument& getStream(int i) const;
+  std::vector<Argument>& getStreams();
+  std::vector<Argument> getStreams();
+  void clear();
+  void appendData(MatrixPtr data);
+  void appendData(const MatrixPtr& data,
+                  const ICpuGpuVectorPtr& sequenceStartPositions);
+  void appendLabel(IVectorPtr label, MatrixPtr value = nullptr);
+  void appendArguments(const std::vector<Argument>& argus,
+                       int size,
+                       int dataId);
 };

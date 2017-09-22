@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/gemm_conv2d_op.h"
 
 namespace paddle {
 namespace operators {
@@ -22,25 +23,20 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 // FIXME(typhoonzer): If CudnnConvOp is running on CPU
-// reuse the code.
+// reuse the code from gemm_conv2d_op.h.
 template <typename Place, typename T>
 class CudnnConvKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* output = ctx.Output<Tensor>("Output");
-    output->mutable_data<T>(ctx.GetPlace());
+  void Compute(const framework::ExecutionContext& context) const override {
+    GemmConv2DCompute<Place, T>(context);
   }
 };
 
 template <typename Place, typename T>
 class CudnnConvGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* output = ctx.Output<Tensor>("Input");
-    auto* filter = ctx.Output<Tensor>("Filter");
-
-    output->mutable_data<T>(ctx.GetPlace());
-    filter->mutable_data<T>(ctx.GetPlace());
+  void Compute(const framework::ExecutionContext& context) const override {
+    GemmConvGrad2DCompute<Place, T>(context);
   }
 };
 
