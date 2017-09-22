@@ -319,17 +319,30 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("instance",
                   [] { return &GetProgramDesc(); },
                   py::return_value_policy::reference)
+      .def_static("__create_program_desc__",
+                  [] {
+                    // Only used for unit-test
+                    auto *prog_desc = new ProgramDesc;
+                    auto *block = prog_desc->mutable_blocks()->Add();
+                    block->set_idx(0);
+                    block->set_parent_idx(-1);
+                    return prog_desc;
+                  })
       .def("append_block",
            [](ProgramDesc &self, BlockDesc &parent) {
-             auto desc = self.mutable_blocks()->Add();
+             auto desc = self.add_blocks();
              desc->set_idx(self.mutable_blocks()->size() - 1);
              desc->set_parent_idx(parent.idx());
              return desc;
-           })
+           },
+           py::return_value_policy::reference)
       .def("root_block",
-           [](ProgramDesc &self) { return self.mutable_blocks()[0]; });
+           [](ProgramDesc &self) { return self.mutable_blocks()->Mutable(0); },
+           py::return_value_policy::reference)
+      .def("__str__", [](ProgramDesc &self) { return self.DebugString(); });
+
   py::class_<BlockDesc>(m, "BlockDesc", "")
-      .def("idx", [](BlockDesc &self) { return self.idx(); })
+      .def("id", [](BlockDesc &self) { return self.idx(); })
       .def("parent", [](BlockDesc &self) { return self.parent_idx(); })
       .def("append_op",
            [](BlockDesc &self) { return self.mutable_ops()->Add(); });
