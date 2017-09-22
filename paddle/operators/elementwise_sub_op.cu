@@ -13,11 +13,13 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/sigmoid_op.h"
+#include "paddle/operators/elementwise_sub_op.h"
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(sigmoid,
-                       ops::SigmoidKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    sigmoid_grad, ops::SigmoidGradKernel<paddle::platform::GPUPlace, float>);
+    elementwise_sub,
+    ops::ElementwiseSubKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    elementwise_sub_grad,
+    ops::ElementwiseSubGradKernel<paddle::platform::GPUPlace, float>);
