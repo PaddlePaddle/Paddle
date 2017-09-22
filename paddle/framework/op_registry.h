@@ -37,7 +37,7 @@ class OpRegistry {
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
                          const std::string& grad_op_type,
-                         const ShapeInferenceFn fn) {
+                         const ShapeInferenceFn& fn) {
     PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;

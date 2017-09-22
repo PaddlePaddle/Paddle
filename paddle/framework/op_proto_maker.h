@@ -72,16 +72,18 @@ class OpProtoAndCheckerMaker {
 
   void AddComment(const std::string& comment) { proto_->set_comment(comment); }
 
-  void SetShapeInferenceFn(ShapeInferenceFn fn) { shape_infer_fn_ = fn; }
+  void SetShapeInferenceFn(const ShapeInferenceFn& fn) { shape_infer_fn_ = fn; }
 
-  void SetGradShapeInferenceFn(ShapeInferenceFn fn) {
+  void SetGradShapeInferenceFn(const ShapeInferenceFn& fn) {
     grad_shape_infer_fn_ = fn;
   }
 
  public:
-  const ShapeInferenceFn GetShapeInferenceFn() const { return shape_infer_fn_; }
+  const ShapeInferenceFn& GetShapeInferenceFn() const {
+    return shape_infer_fn_;
+  }
 
-  const ShapeInferenceFn GetGradShapeInferenceFn() const {
+  const ShapeInferenceFn& GetGrradShapeInferenceFn() const {
     return grad_shape_infer_fn_;
   }
 
