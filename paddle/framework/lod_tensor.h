@@ -89,15 +89,15 @@ class LoDTensor : public Tensor {
   }
 
   /*
-   * Slice of levels[level_begin:level_end]
+   * Shrink levels[level_begin:level_end]
    */
-  void SliceLevels(size_t level_begin, size_t level_end);
+  void ShrinkLevels(size_t level_begin, size_t level_end);
 
   /*
-   * Slice of elements of a level, [elem_begin: elem_end]
+   * Shrink elements of a level, [elem_begin: elem_end]
    * @note: low performance in slice lod_.
    */
-  void SliceInLevel(size_t level, size_t elem_begin, size_t elem_end);
+  void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
  private:
   LoD lod_;
