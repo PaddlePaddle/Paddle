@@ -166,12 +166,6 @@ class Tensor {
   DDim dims_;
 
   /**
-   * A cache of the number of elements in a tensor.
-   * Would be 0 for an uninitialized tensor.
-   */
-  int64_t numel_;
-
-  /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
    *
    * @note    Some of them may be slices of the others. So the offset_
