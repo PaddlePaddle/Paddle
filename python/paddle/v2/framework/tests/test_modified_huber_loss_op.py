@@ -31,8 +31,8 @@ class TestModifiedHuberLossOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.005)
+    def test_check_grad_strict(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.0001, strict=True)
 
 
 if __name__ == '__main__':

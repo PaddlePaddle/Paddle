@@ -1,8 +1,7 @@
 import unittest
 import numpy as np
 import paddle.v2.framework.core as core
-from op_test import get_numeric_gradient
-from op_test import create_op
+from op_test import TestUtils
 
 
 class GetNumericGradientTest(unittest.TestCase):
@@ -11,10 +10,31 @@ class GetNumericGradientTest(unittest.TestCase):
         y = np.random.random((10, 1)).astype("float32")
         z = x + y
         scope = core.Scope()
-        add_op = create_op(scope, "add", {'X': x, 'Y': y}, {'Out': z}, dict())
-        arr = get_numeric_gradient(scope, add_op, {'X': x,
-                                                   'Y': y}, 'X', ['Out'])
+        add_op = TestUtils.create_op(scope, "add", {'X': x,
+                                                    'Y': y}, {'Out': z}, dict())
+        arr = TestUtils.get_numeric_gradient(scope, add_op, {'X': x,
+                                                             'Y': y}, 'X',
+                                             ['Out'])
         self.assertAlmostEqual(arr.mean(), 1.0, delta=1e-4)
+
+    def test_add_op_strict(self):
+        x = np.random.random((10, 1)).astype("float32")
+        y = np.random.random((10, 1)).astype("float32")
+        z = x + y
+        scope = core.Scope()
+        add_op = TestUtils.create_op(scope, "add", {'X': x,
+                                                    'Y': y}, {'Out': z}, dict())
+        arr = TestUtils.get_numeric_gradient(
+            scope,
+            add_op, {'X': x,
+                     'Y': y},
+            'X', ['Out'],
+            delta=0.0001,
+            in_place=False,
+            strict=True)
+        self.assertAlmostEqual(
+            arr.all(), np.identity(
+                10, dtype=np.float64).all(), delta=1e-4)
 
     def test_softmax_op(self):
         def stable_softmax(x):
@@ -36,9 +56,11 @@ class GetNumericGradientTest(unittest.TestCase):
         dX = label_softmax_grad(Y, dY)
 
         scope = core.Scope()
-        softmax_op = create_op(scope, "softmax", {"X": X}, {"Y": Y}, dict())
+        softmax_op = TestUtils.create_op(scope, "softmax", {"X": X}, {"Y": Y},
+                                         dict())
 
-        arr = get_numeric_gradient(scope, softmax_op, {"X": X}, "X", "Y")
+        arr = TestUtils.get_numeric_gradient(scope, softmax_op, {"X": X}, "X",
+                                             "Y")
         np.testing.assert_almost_equal(arr, dX, decimal=1e-2)
 
 
