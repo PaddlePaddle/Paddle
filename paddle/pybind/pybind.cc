@@ -53,6 +53,25 @@ bool IsCompileGPU() {
 #endif
 }
 
+template <typename T>
+inline std::vector<T> RepeatedToVector(
+    const google::protobuf::RepeatedField<T> &repeated_field) {
+  std::vector<T> ret;
+  ret.reserve(repeated_field.size());
+  std::copy(
+      repeated_field.begin(), repeated_field.end(), std::back_inserter(ret));
+  return ret;
+}
+
+template <typename T, typename RepeatedField>
+inline void VectorToRepeated(const std::vector<T> &vec,
+                             RepeatedField *repeated_field) {
+  repeated_field->Reserve(vec.size());
+  for (auto &elem : vec) {
+    *repeated_field->Add() = elem;
+  }
+}
+
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -377,11 +396,7 @@ All parameter, weight, gradient are variables in Paddle.
                             const std::string &parameter,
                             const std::vector<std::string> &arguments) {
     var->set_parameter(parameter);
-    auto args = var->mutable_arguments();
-    args->Reserve(static_cast<int>(arguments.size()));
-    for (auto &arg : arguments) {
-      *args->Add() = arg;
-    }
+    VectorToRepeated(arguments, var->mutable_arguments());
   };
 
   auto op_desc_set_attr = [](OpDesc &desc, const std::string &name) {
