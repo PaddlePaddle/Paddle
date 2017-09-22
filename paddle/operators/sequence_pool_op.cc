@@ -47,9 +47,11 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
   SequencePoolOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "A LoDTensor, the variable-length input of SequencePoolOp");
-    AddOutput("Out",
-              "A LoDTensor, the variable-length output of SequencePoolOp.");
+    AddInput("X",
+             "A float LoDTensor, the variable-length input of SequencePoolOp");
+    AddOutput(
+        "Out",
+        "A float LoDTensor, the variable-length output of SequencePoolOp.");
     AddAttr<int>(
         "strategy",
         "(int, default AVERAGE) the pooling strategy of SequencePoolOp.")
@@ -58,23 +60,22 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     SequencePoolOp pools features of all time-steps of each instance.
 
-    For a mini-batch of 3 variable lengths sentences, containing 2, 3, and 2 words:
+    For a mini-batch of 3 variable lengths sentences, containing 2, 3, and 2 time-steps:
+    
+    Assume X is a [7,M,N] float LoDTensor, and X->lod()[0] = [0, 2, 5, 7].
+    Besides, for the sake of simplicity, we assume M=1 and N=1, 
+    and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-    X = [[1, 3], [2, 4, 6], [5, 1]], 
+    Thus, Out is a [3,1,1] float LoDTensor, but Out->lod() is nullptr.
+    And for different strategy, the value of Out is as follows: 
 
-    and X->lod()[0] = [0, 2, 5, 7]
-
-    then, for different strategy, we get: 
-
-    - AVERAGE: Out = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-    - SUM: Out = [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
-    - SQRT: Out = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2), 6.93=(2+4+6)/sqrt(3), 
-                                            4.24=(5+1)/sqrt(2)
-    - MAX: Out = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-    - LAST: Out = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-    - FIRST: Out = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
-
-    and X->lod() is nullptr.
+    - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+    - SUM: [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
+    - SQRT: [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2), 
+           6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
+    - MAX: [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+    - LAST: [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+    - FIRST: [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
     )DOC");
   }
 };

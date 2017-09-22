@@ -67,7 +67,7 @@ class SequencePoolKernel : public framework::OpKernel {
           out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
           break;
         default:
-          LOG(FATAL) << "unsupported pooling strategy";
+          PADDLE_THROW("unsupported pooling strategy");
       }
     }
   }
@@ -105,7 +105,7 @@ class SequencePoolGradKernel : public framework::OpKernel {
           in_g_e.device(place) = (out_g_e).broadcast(bcast);
           break;
         default:
-          LOG(FATAL) << "unsupported pooling strategy";
+          PADDLE_THROW("unsupported pooling strategy");
       }
     }
   }
