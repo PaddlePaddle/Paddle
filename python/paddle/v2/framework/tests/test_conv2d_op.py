@@ -6,7 +6,7 @@ from op_test import OpTest
 class TestConv2dOp(OpTest):
     def setUp(self):
         self.init_groups()
-        self.op_type = "conv2d"
+        self.init_optype()
         batch_size = 2
         input_channels = 3
         input_height = 5
@@ -93,10 +93,18 @@ class TestConv2dOp(OpTest):
     def init_groups(self):
         self.groups = 1
 
+    def init_optype(self):
+        self.op_type = "conv2d"
+
 
 class TestWithGroup(TestConv2dOp):
     def init_groups(self):
         self.groups = 3
+
+
+class TestCudnn2d(TestConv2dOp):
+    def init_optype(self):
+        self.op_type = "cudnn_conv"
 
 
 if __name__ == '__main__':
