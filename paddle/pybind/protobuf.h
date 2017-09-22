@@ -25,7 +25,7 @@ limitations under the License. */
 namespace py = pybind11;
 
 namespace paddle {
-namespace framework {
+namespace pybind {
 
 template <typename T>
 inline std::vector<T> RepeatedToVector(
@@ -50,5 +50,5 @@ void BindProgramDesc(py::module& m);
 void BindBlockDesc(py::module& m);
 void BindVarDsec(py::module& m);
 void BindOpDesc(py::module& m);
-}  // namespace framework
+}  // namespace pybind
 }  // namespace paddle

@@ -15,9 +15,10 @@ limitations under the License. */
 #include "paddle/pybind/protobuf.h"
 
 namespace paddle {
-namespace framework {
+namespace pybind {
 
 void BindProgramDesc(py::module &m) {
+  using namespace paddle::framework;  // NOLINT
   py::class_<ProgramDesc>(m, "ProgramDesc", "")
       .def_static("instance",
                   [] { return &GetProgramDesc(); },
@@ -42,10 +43,14 @@ void BindProgramDesc(py::module &m) {
       .def("root_block",
            [](ProgramDesc &self) { return self.mutable_blocks()->Mutable(0); },
            py::return_value_policy::reference)
+      .def("block",
+           [](ProgramDesc &self, int id) { return self.blocks(id); },
+           py::return_value_policy::reference)
       .def("__str__", [](ProgramDesc &self) { return self.DebugString(); });
 }
 
 void BindBlockDesc(py::module &m) {
+  using namespace paddle::framework;  // NOLINT
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def("id", [](BlockDesc &self) { return self.idx(); })
       .def("parent", [](BlockDesc &self) { return self.parent_idx(); })
@@ -58,6 +63,7 @@ void BindBlockDesc(py::module &m) {
 }
 
 void BindVarDsec(py::module &m) {
+  using namespace paddle::framework;  // NOLINT
   py::class_<VarDesc>(m, "VarDesc", "")
       .def(py::init<>())
       .def("set_name",
@@ -86,6 +92,7 @@ void BindVarDsec(py::module &m) {
 }
 
 void BindOpDesc(py::module &m) {
+  using namespace paddle::framework;  // NOLINT
   auto op_desc_set_var = [](OpDesc::Var *var,
                             const std::string &parameter,
                             const std::vector<std::string> &arguments) {
@@ -132,5 +139,5 @@ void BindOpDesc(py::module &m) {
              op_desc_set_attr(self, name)->set_i(i);
            });
 }
-}  // namespace framework
+}  // namespace pybind
 }  // namespace paddle

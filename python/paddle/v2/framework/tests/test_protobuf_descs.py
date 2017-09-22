@@ -23,6 +23,7 @@ class TestProgramDesc(unittest.TestCase):
         self.assertEqual(block_root.id(), block1.parent())
         block3 = prog_desc.append_block(block_root)
         self.assertEqual(block3.parent(), block_root.id())
+        self.assertEqual(prog_desc.block(1).id(), 1)
 
 
 class TestVarDesc(unittest.TestCase):
