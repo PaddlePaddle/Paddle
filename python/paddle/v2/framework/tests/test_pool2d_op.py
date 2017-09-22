@@ -3,9 +3,11 @@ import numpy as np
 from op_test import OpTest
 
 
-def max_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0]):
+def max_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
 
     N, C, H, W = x.shape
+    if global_pool == 1:
+        ksize = [H, W]
     H_out = (H - ksize[0] + 2 * paddings[0]) / strides[0] + 1
     W_out = (W - ksize[1] + 2 * paddings[1]) / strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
@@ -21,9 +23,11 @@ def max_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0]):
     return out
 
 
-def ave_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0]):
+def ave_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
 
     N, C, H, W = x.shape
+    if global_pool == 1:
+        ksize = [H, W]
     H_out = (H - ksize[0] + 2 * paddings[0]) / strides[0] + 1
     W_out = (W - ksize[1] + 2 * paddings[1]) / strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
@@ -46,7 +50,7 @@ class TestPool2d_Op(OpTest):
         self.op_type = "pool2d"
         input = np.random.random(self.shape).astype("float32")
         output = self.pool2D_forward_naive(input, self.ksize, self.strides,
-                                           self.paddings)
+                                           self.paddings, self.global_pool)
         self.inputs = {'X': input}
 
         self.attrs = {
@@ -54,6 +58,7 @@ class TestPool2d_Op(OpTest):
             'paddings': self.paddings,
             'ksize': self.ksize,
             'poolingType': self.pool_type,
+            'globalPooling': self.global_pool,
         }
 
         self.outputs = {'Out': output}
@@ -66,6 +71,7 @@ class TestPool2d_Op(OpTest):
             self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
     def initTestCase(self):
+        self.global_pool = 0
         self.pool_type = "ave"
         self.pool2D_forward_naive = ave_pool2D_forward_naive
         self.shape = [2, 3, 5, 5]
@@ -74,8 +80,9 @@ class TestPool2d_Op(OpTest):
         self.paddings = [0, 0]
 
 
-class TestCase2(TestPool2d_Op):
+class TestCase1(TestPool2d_Op):
     def initTestCase(self):
+        self.global_pool = 0
         self.op_type = "pool2d"
         self.pool_type = "ave"
         self.pool2D_forward_naive = ave_pool2D_forward_naive
@@ -85,8 +92,33 @@ class TestCase2(TestPool2d_Op):
         self.paddings = [1, 1]
 
 
-class TestCase1(TestPool2d_Op):
+class TestCase2(TestPool2d_Op):
     def initTestCase(self):
+        self.global_pool = 1
+        self.op_type = "pool2d"
+        self.pool_type = "ave"
+        self.pool2D_forward_naive = ave_pool2D_forward_naive
+        self.shape = [2, 3, 5, 5]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1]
+
+
+class TestCase3(TestPool2d_Op):
+    def initTestCase(self):
+        self.global_pool = 0
+        self.op_type = "pool2d"
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+        self.shape = [2, 3, 5, 5]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1]
+
+
+class TestCase4(TestPool2d_Op):
+    def initTestCase(self):
+        self.global_pool = 1
         self.op_type = "pool2d"
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive

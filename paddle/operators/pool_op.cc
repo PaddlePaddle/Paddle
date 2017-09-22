@@ -46,20 +46,19 @@ class PoolOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "ave",
                    "pooling_type should be 'max' or 'ave'");
-    PADDLE_ENFORCE(ksize.size() == 2 || ksize.size() == 3,
-                   "Pooling ksize should be 2-D or 3-D");
+    PADDLE_ENFORCE(in_X->dims().size() == 4 || in_X->dims().size() == 5,
+                   "Pooling intput should be 4-D or 5-D");
 
     if (global_pooling == 1) {
-      for (size_t i = 0; i < ksize.size(); ++i) ksize[i] = in_X->dims()[i + 2];
+      ksize.resize(static_cast<size_t>(in_X->dims().size()) - 2);
+      for (size_t i = 0; i < ksize.size(); ++i)
+        ksize[i] = static_cast<int>(in_X->dims()[i + 2]);
     }
+
     if (ksize.size() == 2) {
-      PADDLE_ENFORCE_EQ(in_X->dims().size(), 4,
-                        "Pool2DOp intput should be 4-D.");
       PADDLE_ENFORCE_EQ(strides.size(), 2, "Pool2DOp strides should be 2-D.");
       PADDLE_ENFORCE_EQ(paddings.size(), 2, "Pool2DOp paddings should be 2-D.");
     } else {
-      PADDLE_ENFORCE_EQ(in_X->dims().size(), 5,
-                        "Pool3DOp intput should be 5-D.");
       PADDLE_ENFORCE_EQ(strides.size(), 3, "Pool3DOp strides should be 3-D.");
       PADDLE_ENFORCE_EQ(paddings.size(), 3, "Pool3DOp paddings should be 3-D.");
     }
