@@ -16,17 +16,13 @@ limitations under the License. */
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
+#include "paddle/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 //////////////////////
-#ifdef __NVCC__
-#define HL_DEVICE __device__
-#else
-#define HL_DEVICE
-#endif
 #define FLT_MAX __FLT_MAX__
 /////////////////////
 
@@ -34,11 +30,11 @@ namespace pool {
 template <class T>
 class maxPool {
  public:
-  HL_DEVICE inline T initial() { return -(T)(FLT_MAX); }
-  HL_DEVICE inline void process(T& y, const T& x) { y = y > x ? y : x; }
-  HL_DEVICE inline void finalize(T& y, const T& poo_size) {}
-  HL_DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
-                                    T scale) {
+  DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
+  DEVICE inline void process(T& y, const T& x) { y = y > x ? y : x; }
+  DEVICE inline void finalize(T& y, const T& poo_size) {}
+  DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
+                                 T scale) {
     dx += dy * (x == y);
   }
 };
@@ -46,11 +42,11 @@ class maxPool {
 template <class T>
 class avePool {
  public:
-  HL_DEVICE inline T initial() { return 0; }
-  HL_DEVICE inline void process(T& y, const T& x) { y += x; }
-  HL_DEVICE inline void finalize(T& y, const T& poo_size) { y /= poo_size; }
-  HL_DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
-                                    T scale) {
+  DEVICE inline T initial() { return static_cast<T>(0); }
+  DEVICE inline void process(T& y, const T& x) { y += x; }
+  DEVICE inline void finalize(T& y, const T& poo_size) { y /= poo_size; }
+  DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
+                                 T scale) {
     dx += (scale * dy);
   }
 };

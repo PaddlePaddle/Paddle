@@ -37,7 +37,7 @@ class PoolOp : public framework::OperatorWithKernel {
     //    PADDLE_ENFORCE_NOT_NULL(Attr<std::vector<int>>("ksize"), "ksize should
     //    not be null.");
     auto in_X = ctx.Input<Tensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<Tensor>("Out");
     int global_pooling = Attr<int>("globalPooling");
     std::string pooling_type = Attr<std::string>("poolingType");
     std::vector<int> ksize = Attr<std::vector<int>>("ksize");
@@ -78,7 +78,7 @@ class PoolOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto in = ctx.Input<Tensor>("X");
-    auto d_in = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto d_in = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (d_in) d_in->Resize(in->dims());
   }
 };

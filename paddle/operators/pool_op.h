@@ -90,8 +90,7 @@ class PoolGradKernel : public framework::OpKernel {
     const Tensor* out = context.Input<Tensor>("Out");
     const Tensor* out_grad =
         context.Input<Tensor>(framework::GradVarName("Out"));
-    Tensor* in_X_grad =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    Tensor* in_X_grad = context.Output<Tensor>(framework::GradVarName("X"));
 
     int global_pooling = context.Attr<int>("globalPooling");
     std::string pooling_type = context.Attr<std::string>("poolingType");
