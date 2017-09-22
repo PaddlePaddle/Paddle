@@ -29,6 +29,10 @@ ProgramDesc& GetProgramDesc() {
 }
 
 template <>
+AttrType AttrTypeID<bool>() {
+  return BOOLEAN;
+}
+template <>
 AttrType AttrTypeID<int>() {
   return INT;
 }
@@ -39,6 +43,10 @@ AttrType AttrTypeID<float>() {
 template <>
 AttrType AttrTypeID<std::string>() {
   return STRING;
+}
+template <>
+AttrType AttrTypeID<std::vector<bool>>() {
+  return BOOLEANS;
 }
 template <>
 AttrType AttrTypeID<std::vector<int>>() {
@@ -63,6 +71,9 @@ AttrType AttrTypeID<BlockDesc>() {
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
+    case framework::AttrType::BOOLEAN: {
+      return attr_desc.b();
+    }
     case framework::AttrType::INT: {
       return attr_desc.i();
     }
@@ -71,6 +82,13 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
     }
     case framework::AttrType::STRING: {
       return attr_desc.s();
+    }
+    case framework::AttrType::BOOLEANS: {
+      std::vector<bool> val(attr_desc.bools_size());
+      for (int i = 0; i < attr_desc.bools_size(); ++i) {
+        val[i] = attr_desc.bools(i);
+      }
+      return val;
     }
     case framework::AttrType::INTS: {
       std::vector<int> val(attr_desc.ints_size());
