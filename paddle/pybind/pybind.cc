@@ -238,7 +238,13 @@ All parameter, weight, gradient are variables in Paddle.
              return Backward(forwardOp, no_grad_vars).release();
            })
       .def("infer_shape", &OperatorBase::InferShape)
-      .def("run", &OperatorBase::Run)
+      .def("run",
+           [](OperatorBase &self,
+              const Scope &scope,
+              const platform::DeviceContext &dev_ctx) {
+             self.Run(scope, dev_ctx);
+             dev_ctx.Wait();
+           })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
