@@ -13,13 +13,13 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/elementwise_mul_op.h"
+#include "paddle/operators/elementwise_sub_op.h"
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulKernel<paddle::platform::GPUPlace, float>);
+    elementwise_sub,
+    ops::ElementwiseSubKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    elementwise_mul_grad,
-    ops::ElementwiseMulGradKernel<paddle::platform::GPUPlace, float>);
+    elementwise_sub_grad,
+    ops::ElementwiseSubGradKernel<paddle::platform::GPUPlace, float>);
