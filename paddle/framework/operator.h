@@ -167,71 +167,6 @@ class NOP : public OperatorBase {
   }
 };
 
-// this class not only make proto but also init attribute checkers.
-class OpProtoAndCheckerMaker {
- public:
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : proto_(proto), op_checker_(op_checker) {}
-
-  ~OpProtoAndCheckerMaker() {
-    PADDLE_ENFORCE(validated_, "should call Validate after build");
-  }
-
-  void Validate();
-
- protected:
-  struct VariableBuilder {
-    OpProto::Var* var_;
-
-    VariableBuilder& AsDuplicable() {
-      var_->set_duplicable(true);
-      return *this;
-    }
-
-    VariableBuilder& AsIntermediate() {
-      var_->set_intermediate(true);
-      return *this;
-    }
-
-    VariableBuilder& NotInGradient() {
-      var_->set_not_in_gradient(true);
-      return *this;
-    }
-  };
-
-  VariableBuilder AddInput(const std::string& name, const std::string& comment);
-
-  VariableBuilder AddOutput(const std::string& name,
-                            const std::string& comment);
-
-  template <typename T>
-  TypedAttrChecker<T>& AddAttr(const std::string& name,
-                               const std::string& comment,
-                               bool generated = false) {
-    auto* attr = proto_->add_attrs();
-    attr->set_name(name);
-    attr->set_comment(comment);
-    attr->set_generated(generated);
-    attr->set_type(AttrTypeID<T>());
-    return op_checker_->AddAttrChecker<T>(name);
-  }
-
-  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
-
- private:
-  void CheckNoDuplicatedInOutAttrs();
-
-  OpProto* proto_;
-  OpAttrChecker* op_checker_;
-  bool validated_{false};
-};
-
-class NOPMaker : public OpProtoAndCheckerMaker {
- public:
-  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
-};
-
 class InferShapeContext {
  public:
   InferShapeContext(const OperatorBase& op, const Scope& scope)
@@ -366,7 +301,7 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext* device_context)
+                   const platform::DeviceContext& device_context)
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
@@ -374,9 +309,9 @@ class ExecutionContext : public InferShapeContext {
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
-  platform::Place GetPlace() const { return device_context_->GetPlace(); }
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
-  const platform::DeviceContext* device_context() const {
+  const platform::DeviceContext& device_context() const {
     return device_context_;
   }
 
@@ -401,7 +336,8 @@ class ExecutionContext : public InferShapeContext {
     return res;
   }
 
-  const platform::DeviceContext* device_context_;
+ private:
+  const platform::DeviceContext& device_context_;
 };
 
 template <>
@@ -461,7 +397,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
+    opKernel->Compute(ExecutionContext(*this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
