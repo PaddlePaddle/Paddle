@@ -27,6 +27,25 @@ static ClassRegistrar<ActivationFunction> gMKLDNNActivationRegistrar;
 #define MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE) mkldnn_##ACT_TYPE##Activation
 
 /**
+ * @def DEFINE_MKLDNN_ACTIVATION
+ */
+#define DEFINE_MKLDNN_ACTIVATION(ACT_TYPE, BASE_CLASS)               \
+  class MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE) : public BASE_CLASS { \
+  private:                                                           \
+    static const std::string name;                                   \
+                                                                     \
+  public:                                                            \
+    const std::string& getName() const { return name; }              \
+  };                                                                 \
+  const std::string MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)::name =   \
+      "mkldnn_" #ACT_TYPE;                                           \
+  static InitFunction __reg_activation__mkldnn_##ACT_TYPE([] {       \
+    gMKLDNNActivationRegistrar                                       \
+        .registerClass<MKLDNN_ACTIVATION_CLASS_NAME(ACT_TYPE)>(      \
+            "mkldnn_" #ACT_TYPE);                                    \
+  });
+
+/**
  * @def DEFINE_MKLDNN_ELTWISE_ACTIVATION
  */
 #define DEFINE_MKLDNN_ELTWISE_ACTIVATION(ACT_TYPE, ALPHA, BWD_ALPHA)        \
@@ -72,6 +91,11 @@ DEFINE_MKLDNN_ELTWISE_ACTIVATION(tanh, 0.f, 0.f)
  *  f(x) = negative_slope * (exp(x) - 1)  (x <  0)
  */
 DEFINE_MKLDNN_ELTWISE_ACTIVATION(elu, 0.f, 0.f)
+
+/**
+ * @brief MKLDNN Softmax Activation
+ */
+DEFINE_MKLDNN_ACTIVATION(softmax, MKLDNNSoftmaxActivation)
 
 ActivationFunction* MKLDNNActivation::create(const std::string& type) {
   return gMKLDNNActivationRegistrar.createByType(type);
