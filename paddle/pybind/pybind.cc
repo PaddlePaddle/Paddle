@@ -315,6 +315,23 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("is_compile_gpu", IsCompileGPU);
 
+  py::class_<ProgramDesc>(m, "ProgramDesc", "")
+      .def_static("instance", [] { return &GetProgramDesc(); })
+      .def("append_block", [](ProgramDesc &self) {
+        auto desc = self.mutable_blocks()->Add();
+        desc->set_idx(self.mutable_blocks()->size() - 1);
+        return desc;
+      });
+  py::class_<BlockDesc>(m, "BlockDesc", "")
+      .def("idx", [](BlockDesc &self) { return self.idx(); })
+      .def("set_parent",
+           [](BlockDesc &self, int32_t idx) { self.set_parent_idx(idx); })
+      .def("parent", [](BlockDesc &self) { return self.parent_idx(); });
+
+  py::class_<VarDesc>(m, "VarDesc", "");
+
+  py::class_<OpDesc>(m, "OpDesc", "");
+
   return m.ptr();
 }
 }  // namespace framework
