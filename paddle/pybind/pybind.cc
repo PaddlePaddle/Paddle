@@ -334,7 +334,31 @@ All parameter, weight, gradient are variables in Paddle.
       .def("append_op",
            [](BlockDesc &self) { return self.mutable_ops()->Add(); });
 
-  py::class_<VarDesc>(m, "VarDesc", "");
+  py::class_<VarDesc>(m, "VarDesc", "")
+      .def(py::init<>())
+      .def("set_name",
+           [](VarDesc &self, const std::string &name) { self.set_name(name); })
+      .def("set_shape",
+           [](VarDesc &self, const std::vector<int64_t> &dims) {
+             LoDTensorDesc *lod_tensor_desc = self.mutable_lod_tensor();
+             for (const int64_t &i : dims) {
+               lod_tensor_desc->add_dims(i);
+             }
+           })
+      .def("set_data_type",
+           [](VarDesc &self, int type_id) {
+             LoDTensorDesc *lod_tensor_desc = self.mutable_lod_tensor();
+             lod_tensor_desc->set_data_type(static_cast<DataType>(type_id));
+           })
+      .def("shape", [](VarDesc &self) {
+        const LoDTensorDesc &lod_tensor_desc = self.lod_tensor();
+        int rank = lod_tensor_desc.dims_size();
+        std::vector<int64_t> res(rank);
+        for (int i = 0; i < rank; ++i) {
+          res[i] = lod_tensor_desc.dims(i);
+        }
+        return res;
+      });
 
   auto op_desc_set_var = [](OpDesc::Var *var,
                             const std::string &parameter,
