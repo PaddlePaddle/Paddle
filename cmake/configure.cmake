@@ -71,6 +71,10 @@ else()
     include_directories(${CUDA_TOOLKIT_INCLUDE})
 endif(NOT WITH_GPU)
 
+if(WITH_FPGA)
+    add_definitions(-DPADDLE_WITH_FPGA)
+endif(WITH_FPGA)
+
 if(WITH_MKLDNN)
     add_definitions(-DPADDLE_USE_MKLDNN)
     if (WITH_MKLML AND MKLDNN_IOMP_DIR)

@@ -38,6 +38,7 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ${AVX_FOUND})
 option(WITH_MKLML       "Compile PaddlePaddle with mklml package."      ${AVX_FOUND})
+option(WITH_FPGA        "Compile PaddlePaddle with baidu-FPGA support." OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -86,6 +87,8 @@ if(ANDROID OR IOS)
         "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLML OFF CACHE STRING
         "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
+    set(WITH_FPGA OFF CACHE STRING
+        "Disable baidu-FPGA package when cross-compiling for Android and iOS" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -108,6 +111,7 @@ include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
+include(external/polaris)   # download, build, install polaris. polaris is the library of baidu-FPGA
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
@@ -151,6 +155,10 @@ endif(WITH_GPU)
 
 if(WITH_MKLDNN)
     list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB} ${MKLDNN_IOMP_LIB})
+endif()
+
+if(WITH_FPGA)
+    list(APPEND EXTERNAL_LIBS ${POLARIS_LIB})
 endif()
 
 if(USE_NNPACK)
