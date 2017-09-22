@@ -22,26 +22,26 @@ namespace framework {
 class InferShapeContextBase;
 
 using ShapeInferenceFn =
-    std::function<void(const framework::InferShapeContextBase& ctx)>;
+    std::function<void(const framework::InferShapeContextBase &ctx)>;
 
 class InferShapeContextBase {
  public:
   virtual ~InferShapeContextBase() {}
-  virtual framework::DDim get_input_dim(const std::string& name) const = 0;
-  virtual void set_input_dim(const std::string& name,
-                             const framework::DDim& dim) const = 0;
-  virtual framework::DDim get_output_dim(const std::string& name) const = 0;
-  virtual void set_output_dim(const std::string& name,
-                              const DDim& dim) const = 0;
-  virtual AttrReader attrs() const = 0;
+  virtual bool Has(const std::string &name) const = 0;
+  virtual framework::DDim GetInputDim(const std::string &name) const = 0;
+  virtual void SetInputDim(const std::string &name,
+                           const framework::DDim &dim) const = 0;
+  virtual framework::DDim GetOutputDim(const std::string &name) const = 0;
+  virtual void SetOutputDim(const std::string &name, const DDim &dim) const = 0;
+  virtual AttrReader GetAttrs() const = 0;
 
  protected:
-  virtual framework::DDim get_dim(const std::string& name) const = 0;
-  virtual void set_dim(const std::string& name,
-                       const framework::DDim& dim) const = 0;
+  virtual framework::DDim get_dim(const std::string &name) const = 0;
+  virtual void set_dim(const std::string &name,
+                       const framework::DDim &dim) const = 0;
 };
 
-inline void NonFn(const framework::InferShapeContextBase& ctx){};
+inline void NonFn(const framework::InferShapeContextBase &ctx){};
 
 }  // namespace framework
 }  // namespace paddle
