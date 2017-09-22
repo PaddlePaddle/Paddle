@@ -35,7 +35,6 @@ struct OpInfo {
   std::string grad_op_type_;
   OpProto* proto_;
   OpAttrChecker* checker_;
-  ShapeInferenceFn shapeInferFn_;
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;

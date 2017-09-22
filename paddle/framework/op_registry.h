@@ -36,12 +36,10 @@ class OpRegistry {
  public:
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
-                         const std::string& grad_op_type,
-                         const ShapeInferenceFn& fn) {
+                         const std::string& grad_op_type) {
     PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     OpInfo op_info;
-    ShapeInferenceFn grad_op_inferer = nullptr;
     op_info.creator_ = [](
         const std::string& type, const VariableNameMap& inputs,
         const VariableNameMap& outputs, const AttributeMap& attrs) {
@@ -55,8 +53,6 @@ class OpRegistry {
       auto maker = ProtoMakerType(op_info.proto_, op_info.checker_);
       maker.Validate();
       op_info.proto_->set_type(op_type);
-      op_info.shapeInferFn_ = maker.GetShapeInferenceFn();
-      grad_op_inferer = maker.GetGradShapeInferenceFn();
       PADDLE_ENFORCE(
           op_info.proto_->IsInitialized(),
           "Fail to initialize %s's OpProto, because %s is not initialized",
@@ -64,12 +60,11 @@ class OpRegistry {
     } else {
       op_info.proto_ = nullptr;
       op_info.checker_ = nullptr;
-      op_info.shapeInferFn_ = fn;
     }
     OpInfoMap::Instance().Insert(op_type, op_info);
     // register gradient op
     if (!grad_op_type.empty()) {
-      RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "", grad_op_inferer);
+      RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "");
     }
   }
 
@@ -85,15 +80,8 @@ class OpRegistry {
   // compile time InferShape
   static void InferShape(const OpDesc& op_desc,
                          std::map<std::string, VarDesc*>& var_descs) {
-    auto& info = OpInfoMap::Instance().Get(op_desc.type());
-    auto op = OpRegistry::CreateOp(op_desc);
-    info.shapeInferFn_(CompileTimeInferShapeContext(op, BlockDesc(var_descs)));
-  }
-
-  // runtime InferShape
-  static void InferShape(const OperatorBase& op, const Scope& scope) {
-    auto& info = OpInfoMap::Instance().Get(op.Type());
-    info.shapeInferFn_(RunTimeInferShapeContext(op, scope));
+    //    auto& info = OpInfoMap::Instance().Get(op_desc.type());
+    //    auto op = OpRegistry::CreateOp(op_desc);
   }
 };
 
@@ -115,8 +103,8 @@ class OpRegistrar : public Registrar {
  public:
   explicit OpRegistrar(const char* op_type) { OpRegistrar(op_type, ""); }
   OpRegistrar(const char* op_type, const char* grad_op_type) {
-    OpRegistry::RegisterOp<OpType, ProtoMakerType, GradOpType>(
-        op_type, grad_op_type, nullptr);
+    OpRegistry::RegisterOp<OpType, ProtoMakerType, GradOpType>(op_type,
+                                                               grad_op_type);
   }
 };
 

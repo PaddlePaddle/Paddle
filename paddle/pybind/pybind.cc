@@ -272,10 +272,6 @@ All parameter, weight, gradient are variables in Paddle.
                      std::map<std::string, VarDesc *> &var_descs) {
                     OpRegistry::InferShape(op_desc, var_descs);
                   })
-      .def_static("infer_shape_run",
-                  [](const OperatorBase &op, const Scope &scope) {
-                    OpRegistry::InferShape(op, scope);
-                  })
       .def("backward",
            [](const OperatorBase &forwardOp,
               const std::unordered_set<std::string> &no_grad_vars) {

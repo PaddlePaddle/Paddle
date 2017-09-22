@@ -87,18 +87,6 @@ Two Element Mul Operator.
 
 The equation is: Out = X * Y
 )DOC");
-    SetShapeInferenceFn([](const framework::InferShapeContextBase &ctx) {
-      auto dim0 = ctx.get_input_dim("X");
-      auto dim1 = ctx.get_input_dim("Y");
-      PADDLE_ENFORCE_EQ(dim0.size(), 2,
-                        "input X should be a tensor with 2 dims, a matrix");
-      PADDLE_ENFORCE_EQ(dim1.size(), 2,
-                        "input Y should be a tensor with 2 dims, a matrix");
-      PADDLE_ENFORCE_EQ(dim0[1], dim1[0],
-                        "First matrix's width must be equal "
-                        "with second matrix's height.");
-      ctx.set_output_dim("Out", {dim0[0], dim1[1]});
-    });
   }
 };
 

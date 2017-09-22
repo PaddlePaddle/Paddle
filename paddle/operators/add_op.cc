@@ -50,14 +50,6 @@ Two Element Add Operator.
 
 The equation is: Out = X + Y
 )DOC");
-
-    SetShapeInferenceFn([](const framework::InferShapeContextBase &ctx) {
-      PADDLE_ENFORCE_EQ(ctx.get_input_dim("X"), ctx.get_input_dim("Y"),
-                        "Two input of Add Op's dimension must be same.");
-      ctx.set_output_dim("Out", ctx.get_input_dim("X"));
-    });
-
-    SetGradShapeInferenceFn(framework::NonFn);
   }
 };
 

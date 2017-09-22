@@ -72,28 +72,11 @@ class OpProtoAndCheckerMaker {
 
   void AddComment(const std::string& comment) { proto_->set_comment(comment); }
 
-  void SetShapeInferenceFn(const ShapeInferenceFn& fn) { shape_infer_fn_ = fn; }
-
-  void SetGradShapeInferenceFn(const ShapeInferenceFn& fn) {
-    grad_shape_infer_fn_ = fn;
-  }
-
- public:
-  const ShapeInferenceFn& GetShapeInferenceFn() const {
-    return shape_infer_fn_;
-  }
-
-  const ShapeInferenceFn& GetGrradShapeInferenceFn() const {
-    return grad_shape_infer_fn_;
-  }
-
  private:
   void CheckNoDuplicatedInOutAttrs();
 
   OpProto* proto_;
   OpAttrChecker* op_checker_;
-  ShapeInferenceFn shape_infer_fn_{nullptr};
-  ShapeInferenceFn grad_shape_infer_fn_{nullptr};
   bool validated_{false};
 };
 
