@@ -22,10 +22,7 @@ using LoDTensor = framework::LoDTensor;
 
 class MultiplexOp : public framework::OperatorWithKernel {
  public:
-  MultiplexOp(const std::string &type, const framework::VariableNameMap &inputs,
-              const framework::VariableNameMap &outputs,
-              const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
@@ -64,12 +61,12 @@ class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
 Multiplex multiple tensors according to the index provided by the first
 input tensor.
 
-ins[0]: the index of the tensor to output of size batchSize.
-ins[1:N]: the candidate output tensor.
+ins[0]: the index tensor.
+ins[1:N]: the candidate output tensors.
 For each index i from 0 to batchSize - 1, the output is the i-th row of the
 the (index[i] + 1)-th tensor.
 
-For each i-th row of output:
+For i-th row of the output tensor:
 
 y[i][j] = x_{k}[i][j], j = 0,1, ... , (x_{1}.width - 1)
 
@@ -82,11 +79,7 @@ and `k = x{0}[i] + 1`.
 
 class MultiplexGradOp : public framework::OperatorWithKernel {
  public:
-  MultiplexGradOp(const std::string &type,
-                  const framework::VariableNameMap &inputs,
-                  const framework::VariableNameMap &outputs,
-                  const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
@@ -98,7 +91,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
                             "Input(Out@GRAD) shouldn't be null.");
     auto d_ins = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
     auto ins = ctx.MultiInput<Tensor>("X");
-    // don;t compute gradient for index
+    // don't compute gradient for index (ins[0])
     for (size_t i = 1; i < ins.size(); i++) {
       if (d_ins[i]) {
         d_ins[i]->Resize(ins[i]->dims());
@@ -113,5 +106,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker, multiplex_grad,
             ops::MultiplexGradOp);
-REGISTER_OP_CPU_KERNEL(multiplex, ops::MultiplexCPUKernel<float>);
-REGISTER_OP_CPU_KERNEL(multiplex_grad, ops::MultiplexGradCPUKernel<float>);
+REGISTER_OP_CPU_KERNEL(multiplex,
+                       ops::MultiplexKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    multiplex_grad,
+    ops::MultiplexGradKernel<paddle::platform::CPUPlace, float>);
