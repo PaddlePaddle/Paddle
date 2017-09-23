@@ -42,10 +42,9 @@ __device__ __forceinline__ T sum_single_warp(T val) {
   return val;
 }
 
-// This kernel is called when the class number is less than or equal to 512.
 template <typename T>
-__global__ void SoftCrossEntropyKernel1(T* Y, const T* X, const T* label,
-                                        const int class_num) {
+__global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
+                                       const int class_num) {
   int tid = threadIdx.x;
   extern __shared__ T d_sum[];
   d_sum[tid] = 0;
@@ -60,33 +59,6 @@ __global__ void SoftCrossEntropyKernel1(T* Y, const T* X, const T* label,
   __syncthreads();
 
   for (unsigned int stride = blockDim.x >> 1; stride >= 32; stride >>= 1) {
-    if (tid < stride) d_sum[tid] += d_sum[tid + stride];
-    __syncthreads();
-  }
-
-  T val = d_sum[tid];
-  val = sum_single_warp<T>(val);
-  if (tid == 0) Y[blockIdx.x] = -val;
-}
-
-// This kernel is called when the class number is larger than 512.
-template <typename T, int BlockSize>
-__global__ void SoftCrossEntropyKernel2(T* Y, const T* X, const T* label,
-                                        const int class_num) {
-  int tid = threadIdx.x;
-  __shared__ T d_sum[BlockSize];
-  int next_idx = blockIdx.x * class_num + tid;
-
-  d_sum[tid] = 0;
-  int cur_idx = tid;
-  while (cur_idx < class_num) {
-    d_sum[tid] += TolerableValue<T>()(std::log(X[next_idx])) * label[next_idx];
-    next_idx += BlockSize;
-    cur_idx += BlockSize;
-  }
-  __syncthreads();
-
-  for (unsigned int stride = BlockSize >> 1; stride >= 32; stride >>= 1) {
     if (tid < stride) d_sum[tid] += d_sum[tid + stride];
     __syncthreads();
   }
@@ -146,26 +118,19 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
 
     int batch_size = x->dims()[0];
     int class_num = x->dims()[1];
-    int block = 512;
 
     if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
-      if (class_num > 512) {
-        SoftCrossEntropyKernel2<
-            T, 512><<<batch_size, block, 0,
-                      reinterpret_cast<const platform::CUDADeviceContext&>(
-                          ctx.device_context())
-                          .stream()>>>(y_data, x_data, label_data, class_num);
-      } else {
-        int block_size = pow(2, int(std::log2(class_num)));
-        SoftCrossEntropyKernel1<
-            T><<<batch_size, block_size, block_size * sizeof(T),
-                 reinterpret_cast<const platform::CUDADeviceContext&>(
-                     ctx.device_context())
-                     .stream()>>>(y_data, x_data, label_data, class_num);
-      }
+      int block = class_num > 512 ? 512 : pow(2, int(std::log2(class_num)));
+
+      SoftCrossEntropyKernel<
+          T><<<batch_size, block, block * sizeof(T),
+               reinterpret_cast<const platform::CUDADeviceContext&>(
+                   ctx.device_context())
+                   .stream()>>>(y_data, x_data, label_data, class_num);
     } else {
       auto* label_data = ctx.Input<Tensor>("Label")->data<int>();
+      int block = 512;
       int grid = (batch_size + block - 1) / block;
       CrossEntropyKernel<T><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
