@@ -2,6 +2,25 @@ import unittest
 import paddle.v2.framework.core as core
 
 
+class TestOpDesc(unittest.TestCase):
+    def test_op_desc(self):
+        prog = core.ProgramDesc.__create_program_desc__()
+        self.assertIsNotNone(prog)
+        block = prog.block(0)
+        self.assertIsNotNone(block)
+        op = block.append_op()
+        self.assertIsNotNone(op)
+        op.set_type("test")
+        self.assertEqual("test", op.type())
+        op.set_input("X", ["a", "b", "c"])
+        self.assertEqual(["a", "b", "c"], op.input("X"))
+        self.assertEqual(["X"], op.input_names())
+
+        op.set_output("Out", ["z"])
+        self.assertEqual(['z'], op.output("Out"))
+        self.assertEqual(["Out"], op.output_names())
+
+
 class TestProgramDesc(unittest.TestCase):
     def test_instance(self):
         program_desc = core.ProgramDesc.instance()
