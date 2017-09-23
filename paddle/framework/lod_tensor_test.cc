@@ -56,6 +56,12 @@ TEST_F(LoDTensorTester, NumElements) {
   ASSERT_EQ(lod_tensor_.NumElements(2), 8UL);
 }
 
+TEST_F(LoDTensorTester, NumElements2) {
+  ASSERT_EQ(lod_tensor_.NumElements(0, 0), 2UL);
+  ASSERT_EQ(lod_tensor_.NumElements(0, 1), 2UL);
+  ASSERT_EQ(lod_tensor_.NumElements(1, 1), 2UL);
+}
+
 TEST_F(LoDTensorTester, SliceLevels) {
   // slice 1 level
   for (size_t level = 0; level < 3UL; ++level) {

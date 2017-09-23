@@ -77,9 +77,15 @@ size_t LoDTensor::NumElements(size_t level, size_t idx) const {
   PADDLE_ENFORCE_LT(idx, NumElements(level));
   // the last level of LoD, just return number of records in Tensor
   if (level == NumLevels() - 1) {
+    return lod_[level][idx + 1] - lod_[level][idx];
   }
   // high level of LoD, and there is another lower level, return number of
   // lower-level elements
+  auto tmp = SliceInLevel(lod_, level, idx, idx + 1);
+  PADDLE_ENFORCE_GE(tmp.size(), 2);
+  // there is a 0 as a placeholder stored in LoD, so the number of elements
+  // equals lod.size() - 1
+  return tmp[1].size() - 1;
 }
 
 void LoDTensor::SliceLevels(size_t level_begin, size_t level_end) {

@@ -38,6 +38,18 @@ using Vector = thrust::host_vector<
     T, thrust::system::cuda::experimental::pinned_allocator<T>>;
 #endif
 
+/*
+ * 3-level LoD stores
+ *
+ * 0 10 20
+ * 0 5 10 15 20
+ * 0 2 5 7 10 12 15 20
+ *
+ * - in a level, each element indicates offset in the underlying Tensor
+ * - the first element should be 0 and that indicates that this sequence start
+ * from 0
+ * - each sequence's begin and end(no-inclusive) is level[id, id+1]
+ */
 using LoD = std::vector<Vector<size_t>>;
 
 LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
