@@ -140,8 +140,6 @@ class Pool2dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
                               output_width, ksize_height, ksize_width,
                               stride_height, stride_width, padding_height,
                               padding_width, pool_process);
-
-    // CHECK_SYNC("Pool2dForwardKernel failed");
   }
 };
 
@@ -186,8 +184,6 @@ class Pool2dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
         input_channels, input_height, input_width, output_height, output_width,
         ksize_height, ksize_width, stride_height, stride_width, padding_height,
         padding_width, pool_process);
-
-    // CHECK_SYNC("KernelPool2dBackward failed");
   }
 };
 
@@ -247,7 +243,6 @@ __global__ void KernelPool3DForward(
     }
     int pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
     pool_process.finalize(ele, static_cast<T>(pool_size));
-
     output_data[index] = ele;
   }
 }
@@ -361,8 +356,6 @@ class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
         ksize_depth, ksize_height, ksize_width, stride_depth, stride_height,
         stride_width, padding_depth, padding_height, padding_width,
         pool_process);
-
-    // CHECK_SYNC("Pool2dForwardKernel failed");
   }
 };
 
@@ -415,8 +408,6 @@ class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
         output_height, output_width, ksize_depth, ksize_height, ksize_width,
         stride_depth, stride_height, stride_width, padding_depth,
         padding_height, padding_width, pool_process);
-
-    // CHECK_SYNC("KernelPool2dBackward failed");
   }
 };
 
