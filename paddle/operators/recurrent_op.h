@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
-// TODO(Yan Chunwei):
+// TODO(Superjom)
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
 // 3. Internal Memory.
@@ -177,6 +177,9 @@ class RecurrentGradientOp : public framework::OperatorBase {
 
   static const rnn::ArgumentName kArgName;
 
+  /*
+   * set a stepnet that is created according to a RecurrentOp's stepnet.
+   */
   void set_stepnet(std::unique_ptr<OperatorBase> net) {
     stepnet_ = std::move(net);
   }
