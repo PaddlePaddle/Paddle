@@ -30,8 +30,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
                    "The input of softmax op must be a matrix.");
-    ctx.Output<framework::LoDTensor>("Y")->Resize(
-        ctx.Input<Tensor>("X")->dims());
+    ctx.Output<framework::Tensor>("Y")->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };
 
@@ -77,7 +76,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                       ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
                       "Input(Y) and its gradients should have a same shape.");
 
-    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
+    ctx.Output<framework::Tensor>(framework::GradVarName("X"))
         ->Resize(ctx.Input<Tensor>("X")->dims());
   }
 };

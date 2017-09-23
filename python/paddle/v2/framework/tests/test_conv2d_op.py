@@ -32,6 +32,7 @@ class TestConv2dOp(OpTest):
         self.attrs = {
             'strides': [1, 1],
             'paddings': [0, 0],
+            'dilations': [1, 1],
             'groups': self.groups
         }
 

@@ -33,14 +33,24 @@ class CudnnConvOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
-    auto out = ctx.Output<framework::LoDTensor>("Output");
+    auto out = ctx.Output<framework::Tensor>("Output");
     std::vector<int> strides = Attr<std::vector<int>>("strides");
     std::vector<int> paddings = Attr<std::vector<int>>("paddings");
+    int groups = Attr<int>("groups");
+    int input_channels = in->dims()[1];
+    int output_channels = filter->dims()[0];
 
     PADDLE_ENFORCE_EQ(in->dims().size(), 4,
                       "CudnnConvOp intput should be 4-D tensor.");
     PADDLE_ENFORCE_EQ(filter->dims().size(), 4,
                       "CudnnConvOp filter should be 4-D tensor.");
+
+    PADDLE_ENFORCE_EQ(input_channels, filter->dims()[1] * groups,
+                      "The number of input channels should be equal to filter "
+                      "channels * groups.");
+    PADDLE_ENFORCE_EQ(
+        output_channels % groups, 0,
+        "The number of output channels should be divided by groups.");
 
     auto output_height =
         OutputSize(in->dims()[2], filter->dims()[2], paddings[0], strides[0]);
@@ -60,11 +70,12 @@ class CudnnConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Filter", "The conv kernel");
     AddOutput("Output", "");
 
-    AddAttr<std::vector<int>>("dilation", "").SetDefault(std::vector<int>{});
+    AddAttr<std::vector<int>>("dilations", "").SetDefault(std::vector<int>{});
     AddAttr<std::vector<int>>("strides", "").SetDefault(std::vector<int>{});
     AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.")
         .SetDefault(std::vector<int>{});
     // FIXME(typhoonzero): cudnn doesn't support "group" Attributes.
+    AddAttr<int>("groups", "").SetDefault(1);
 
     AddComment(R"DOC()DOC");
   }
@@ -78,12 +89,11 @@ class CudnnConvGradOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
-    auto d_in =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
+    auto d_in = ctx.Output<framework::Tensor>(framework::GradVarName("Input"));
     auto d_filter =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Filter"));
-    d_in->Resize(in->dims());
-    d_filter->Resize(filter->dims());
+        ctx.Output<framework::Tensor>(framework::GradVarName("Filter"));
+    if (d_in) d_in->Resize(in->dims());
+    if (d_filter) d_filter->Resize(filter->dims());
   }
 };
 
