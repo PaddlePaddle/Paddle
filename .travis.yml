@@ -36,10 +36,6 @@ before_install:
   # protobuf version.
   - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
   - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit LinkChecker
-  - curl https://glide.sh/get | bash
-  - eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
-  - go get -u github.com/alecthomas/gometalinter
-  - gometalinter --install
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:

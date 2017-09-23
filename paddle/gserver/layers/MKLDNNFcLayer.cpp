@@ -172,12 +172,10 @@ void MKLDNNFcLayer::resetWgtBiasValue(MKLDNNMatrixPtr& wgt,
 
 void MKLDNNFcLayer::resetOutValue(MKLDNNMatrixPtr& out) {
   out = MKLDNNMatrix::create(output_.value, {bs_, oc_}, format::nc, engine_);
-  // change original output value to mkldnn output value
-  output_.value = std::dynamic_pointer_cast<Matrix>(out);
   if (!outputIsOnlyMKLDNN()) {
     // fc cpu output value do not need create convert
     // just share point
-    getOutput(CPU_DEVICE).value->setData(output_.value->getData());
+    getOutput(CPU_DEVICE).value->setData(out->getData());
   }
 }
 
@@ -234,6 +232,7 @@ void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
 void MKLDNNFcLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
   // TODO(TJ): merge outgrad
   int device = outputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
+  output_.grad->setData(getOutput(device).grad->getData());
   // for MKLDNN device:
   // can not directly cast outputgrad to mkldnnmatrix,
   // since each layer can not write the inputgrad to mkldnn inputgrad.
