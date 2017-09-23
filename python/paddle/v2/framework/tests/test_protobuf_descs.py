@@ -33,7 +33,7 @@ class TestVarDesc(unittest.TestCase):
     def test_shape(self):
         program_desc = core.ProgramDesc.instance()
         block = program_desc.root_block()
-        var = block.new_var()
+        var = block.new_var('my_var')
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
         res_shape = var.shape()
