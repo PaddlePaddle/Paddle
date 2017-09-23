@@ -147,13 +147,12 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
 
 inline Tensor& Tensor::Resize(const DDim& dims) {
   dims_ = dims;
-  numel_ = product(dims_);
   return *this;
 }
 
 inline const DDim& Tensor::dims() const { return dims_; }
 
-inline int64_t Tensor::numel() const { return numel_; }
+inline int64_t Tensor::numel() const { return product(dims_); }
 
 template <typename T>
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
