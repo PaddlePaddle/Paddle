@@ -440,7 +440,6 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 
 * :code:`paddle.layer.lstmemory`、:code:`paddle.layer.grumemory`、:code:`paddle.layer.recurrent` 不是通过一般的方式来实现对输出的激活，所以不能采用第一种方式在这几个layer里设置 :code:`drop_rate` 来使用dropout。若要对这几个layer使用dropout，可采用第二种方式，即使用 :code:`paddle.layer.dropout`。
 
-
 22. 如何设置learning_rate_schedule
 ---------------------------------
 
@@ -454,7 +453,7 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
         learning_rate_decay_b=0.75,
         learning_rate_schedule="poly",)
 
-PaddlePaddle目前支持5种learning_rate_schedule，这5种learning_rate_schedule及其对应学习率计算方式如下：
+PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedule及其对应学习率计算方式如下：
 
 * "constant"
 
@@ -463,6 +462,12 @@ PaddlePaddle目前支持5种learning_rate_schedule，这5种learning_rate_schedu
 * "poly"
 
   lr = learning_rate * pow(1 + learning_rate_decay_a * num_samples_processed, -learning_rate_decay_b)
+
+  其中，num_samples_processed为已训练样本数，下同。
+
+* "caffe_poly"
+
+  lr = learning_rate * pow(1.0 - num_samples_processed / learning_rate_decay_a, learning_rate_decay_b)
 
 * "exp"
 
@@ -476,4 +481,28 @@ PaddlePaddle目前支持5种learning_rate_schedule，这5种learning_rate_schedu
 
   lr = max(learning_rate - learning_rate_decay_a * num_samples_processed, learning_rate_decay_b)
 
-其中，num_samples_processed为当前已处理的样本总数。
+* "manual"
+
+  这是一种按已训练样本数分段取值的learning_rate_schedule。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
+
+  ..  code-block:: python
+
+      optimizer = paddle.optimizer.Adam(
+          learning_rate=1e-3,
+          learning_rate_schedule="manual",
+          learning_rate_args="1000:1.0,2000:0.9,3000:0.8",)
+
+  在该示例中，当已训练样本数小于等于1000时，学习率为 :code:`1e-3 * 1.0`；当已训练样本数大于1000小于等于2000时，学习率为 :code:`1e-3 * 0.9`；当已训练样本数大于2000时，学习率为 :code:`1e-3 * 0.8`。
+
+* "pass_manual"
+
+  这是一种按已训练pass数分段取值的learning_rate_schedule。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
+
+  ..  code-block:: python
+
+      optimizer = paddle.optimizer.Adam(
+          learning_rate=1e-3,
+          learning_rate_schedule="manual",
+          learning_rate_args="1:1.0,2:0.9,3:0.8",) 
+
+  在该示例中，当已训练pass数小于等于1时，学习率为 :code:`1e-3 * 1.0`；当已训练pass数大于1小于等于2时，学习率为 :code:`1e-3 * 0.9`；当已训练pass数大于2时，学习率为 :code:`1e-3 * 0.8`。
