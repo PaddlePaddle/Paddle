@@ -114,6 +114,14 @@ public:
 
   std::string DebugString() { return this->Proto()->DebugString(); }
 
+  struct SetAttrDescVisitor : public boost::static_visitor<void> {
+    explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
+    OpDesc::Attr *attr_;
+    void operator()(int v) { attr_->set_i(v); }
+    void operator()(float v) { attr_->set_f(v); }
+    void operator()(const std::string &v) { attr_->set_s(v); }
+  };
+
   void Sync() {
     if (need_update_) {
       this->op_desc_.mutable_inputs()->Clear();
@@ -128,6 +136,13 @@ public:
         auto *output = op_desc_.add_outputs();
         output->set_parameter(opt.first);
         VectorToRepeated(opt.second, output->mutable_arguments());
+      }
+
+      this->op_desc_.mutable_attrs()->Clear();
+      for (auto &attr : attrs_) {
+        auto *attr_desc = op_desc_.add_attrs();
+        attr_desc->set_name(attr.first);
+        attr_desc->set_type(static_cast<AttrType>(attr.second.which() - 1));
       }
 
       need_update_ = false;
