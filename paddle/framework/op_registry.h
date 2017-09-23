@@ -75,13 +75,6 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
   static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
-
-  // compile time InferShape
-  static void InferShape(const OpDesc& op_desc,
-                         std::map<std::string, VarDesc*>& var_descs) {
-    //    auto& info = OpInfoMap::Instance().Get(op_desc.type());
-    //    auto op = OpRegistry::CreateOp(op_desc);
-  }
 };
 
 class Registrar {

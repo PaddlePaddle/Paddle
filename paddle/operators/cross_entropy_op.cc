@@ -24,34 +24,32 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input(Label) must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"), "Output(Y) must not be null.");
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) must not be null.");
+    PADDLE_ENFORCE(ctx.HasOutput("Y"), "Output(Y) must not be null.");
 
-    auto x = ctx.Input<Tensor>("X");
-    auto label = ctx.Input<Tensor>("Label");
-    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "Input(X)'s rank must be 2.");
-    PADDLE_ENFORCE_EQ(label->dims().size(), 2,
-                      "Input(Label)'s rank must be 2.");
+    auto x_dim = ctx.GetInputDim("X");
+    auto label_dim = ctx.GetInputDim("Label");
+    PADDLE_ENFORCE_EQ(x_dim.size(), 2, "Input(X)'s rank must be 2.");
+    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Input(Label)'s rank must be 2.");
     // TODO(xinghai-sun): remove this check after swtiching to bool
-    PADDLE_ENFORCE(ctx.Attr<int>("soft_label") == 0 ||
-                   ctx.Attr<int>("soft_label") == 1);
-    PADDLE_ENFORCE_EQ(x->dims()[0], label->dims()[0],
+    PADDLE_ENFORCE(ctx.Attrs().Get<int>("soft_label") == 0 ||
+                   ctx.Attrs().Get<int>("soft_label") == 1);
+    PADDLE_ENFORCE_EQ(x_dim[0], label_dim[0],
                       "The 1st dimension of Input(X) and Input(Label) must "
                       "be equal.");
-    if (ctx.Attr<int>("soft_label") == 1) {
-      PADDLE_ENFORCE_EQ(x->dims()[1], label->dims()[1],
+    if (ctx.Attrs().Get<int>("soft_label") == 1) {
+      PADDLE_ENFORCE_EQ(x_dim[1], label_dim[1],
                         "If Attr(soft_label) == 1, The 2nd dimension of "
                         "Input(X) and Input(Label) must be equal.");
     } else {
-      PADDLE_ENFORCE_EQ(label->dims()[1], 1,
+      PADDLE_ENFORCE_EQ(label_dim[1], 1,
                         "If Attr(soft_label) == 0, The 2nd dimension of "
                         "Input(Label) must be 1.");
     }
 
-    ctx.Output<LoDTensor>("Y")->Resize({x->dims()[0], 1});
+    ctx.SetOutputDim("Y", {x_dim[0], 1});
   }
 };
 
@@ -60,43 +58,41 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input(Label) must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
-                            "Input(Y@GRAD) must not be null.");
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) must not be null.");
+    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Y")),
+                   "Input(Y@GRAD) must not be null.");
 
-    auto x = ctx.Input<Tensor>("X");
-    auto label = ctx.Input<Tensor>("Label");
-    auto dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "Input(X)'s rank must be 2.");
-    PADDLE_ENFORCE_EQ(dy->dims().size(), 2, "Input(Y@Grad)'s rank must be 2.");
-    PADDLE_ENFORCE_EQ(label->dims().size(), 2,
-                      "Input(Label)'s rank must be 2.");
+    auto x_dim = ctx.GetInputDim("X");
+    auto label_dim = ctx.GetInputDim("Label");
+    auto dy_dim = ctx.GetInputDim(framework::GradVarName("Y"));
+
+    PADDLE_ENFORCE_EQ(x_dim.size(), 2, "Input(X)'s rank must be 2.");
+    PADDLE_ENFORCE_EQ(dy_dim.size(), 2, "Input(Y@Grad)'s rank must be 2.");
+    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Input(Label)'s rank must be 2.");
     // TODO(xinghai-sun): remove this check after swtiching to bool
-    PADDLE_ENFORCE(ctx.Attr<int>("soft_label") == 0 ||
-                   ctx.Attr<int>("soft_label") == 1);
-    PADDLE_ENFORCE_EQ(x->dims()[0], label->dims()[0],
+    PADDLE_ENFORCE(ctx.Attrs().Get<int>("soft_label") == 0 ||
+                   ctx.Attrs().Get<int>("soft_label") == 1);
+    PADDLE_ENFORCE_EQ(x_dim[0], label_dim[0],
                       "The 1st dimension of Input(X) and Input(Label) must "
                       "be equal.");
-    PADDLE_ENFORCE_EQ(x->dims()[0], dy->dims()[0],
+    PADDLE_ENFORCE_EQ(x_dim[0], dy_dim[0],
                       "The 1st dimension of Input(X) and Input(Y@Grad) must "
                       "be equal.");
-    PADDLE_ENFORCE_EQ(dy->dims()[1], 1,
+    PADDLE_ENFORCE_EQ(dy_dim[1], 1,
                       "The 2nd dimension of Input(Y@Grad) must be 1.");
-    if (ctx.Attr<int>("soft_label") == 1) {
-      PADDLE_ENFORCE_EQ(x->dims()[1], label->dims()[1],
+    if (ctx.Attrs().Get<int>("soft_label") == 1) {
+      PADDLE_ENFORCE_EQ(x_dim[1], label_dim[1],
                         "If Attr(soft_label) == 1, The 2nd dimension of "
                         "Input(X) and Input(Label) must be equal.");
     } else {
-      PADDLE_ENFORCE_EQ(label->dims()[1], 1,
+      PADDLE_ENFORCE_EQ(label_dim[1], 1,
                         "If Attr(soft_label) == 0, The 2nd dimension of "
                         "Input(Label) must be 1.");
     }
 
-    auto dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    dx->Resize(x->dims());
+    ctx.SetOutputDim(framework::GradVarName("X"), x_dim);
   }
 };
 

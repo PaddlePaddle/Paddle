@@ -195,6 +195,21 @@ std::vector<int64_t> vectorize(const DDim& ddim) {
   return result;
 }
 
+std::string debug_str(const DDim& ddim) {
+  auto ret = vectorize(ddim);
+  std::stringstream ss;
+  ss << "[";
+  auto size = ddim.size();
+  for (size_t i = 0; i < size; ++i) {
+    ss << ret[i];
+    if (i < size - 1) {
+      ss << ", ";
+    }
+  }
+  ss << "]";
+  return ss.str();
+}
+
 struct ProductVisitor : public boost::static_visitor<int64_t> {
   template <int D>
   int64_t operator()(const Dim<D>& dim) {

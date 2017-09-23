@@ -24,12 +24,11 @@ class TransposeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx.HasOutput("Out"), "Output(Out) should not be null");
+    auto x_dims = ctx.GetInputDim("X");
+    std::vector<int> axis = ctx.Attrs().Get<std::vector<int>>("axis");
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
@@ -51,7 +50,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = x_dims[axis[i]];
     }
-    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
+    ctx.SetOutputDim("Out", out_dims);
   }
 };
 
@@ -79,7 +78,7 @@ For example:
         [3, 4, 5]])
  >> axis = [1, 0]
  >> output = input.transpose(axis)
- >> output 
+ >> output
  array([[0, 3],
         [1, 4],
 		[2, 5]])
@@ -94,15 +93,15 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-
-    if (x_grad) x_grad->Resize(x_dims);
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx.GetInputDim("X");
+    ctx.SetOutputDim(framework::GradVarName("X"), x_dims);
+    if (ctx.HasOutput(framework::GradVarName("X"))) {
+      ctx.SetOutputDim(framework::GradVarName("X"), x_dims);
+    }
   }
 };
 

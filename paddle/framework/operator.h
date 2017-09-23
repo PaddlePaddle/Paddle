@@ -373,28 +373,34 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
                                const BlockDesc& block_desc)
       : op_(op), block_desc_(block_desc) {}
 
-  bool Has(const std::string& name) const { return block_desc_.HasVar(name); }
+  bool HasInput(const std::string& name) const {
+    return block_desc_.HasVar(name);
+  }
+
+  bool HasOutput(const std::string& name) const {
+    return block_desc_.HasVar(name);
+  }
 
   DDim GetInputDim(const std::string& name) const {
-    return get_dim(op_.Input(name));
+    return GetDim(op_.Input(name));
   }
 
   void SetInputDim(const std::string& name, const DDim& dim) const {
-    set_dim(op_.Input(name), dim);
+    SetDim(op_.Input(name), dim);
   }
 
   DDim GetOutputDim(const std::string& name) const {
-    return get_dim(op_.Output(name));
+    return GetDim(op_.Output(name));
   }
 
   void SetOutputDim(const std::string& name, const DDim& dim) const {
-    set_dim(op_.Output(name), dim);
+    SetDim(op_.Output(name), dim);
   }
 
-  AttrReader GetAttrs() const { return AttrReader(op_.Attrs()); }
+  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
 
  private:
-  DDim get_dim(const std::string& name) const {
+  DDim GetDim(const std::string& name) const {
     VarDesc* desc = block_desc_.GetVar(name);
     std::vector<int64_t> dim;
     int length = desc->lod_tensor().dims().size();
@@ -404,7 +410,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
     return make_ddim(dim);
   }
 
-  void set_dim(const std::string& name, const DDim& dim) const {
+  void SetDim(const std::string& name, const DDim& dim) const {
     VarDesc* desc = block_desc_.GetVar(name);
     auto tensor = desc->mutable_lod_tensor();
     tensor->clear_dims();
@@ -422,38 +428,43 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   RunTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
-  bool Has(const std::string& name) const {
+  bool HasInput(const std::string& name) const {
     auto ipt = op_.Input(name);
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
   }
 
+  bool HasOutput(const std::string& name) const {
+    auto ipt = op_.Output(name);
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
   DDim GetInputDim(const std::string& name) const {
-    return get_dim(op_.Input(name));
+    return GetDim(op_.Input(name));
   }
 
   void SetInputDim(const std::string& name, const DDim& dim) const {
-    set_dim(op_.Input(name), dim);
+    SetDim(op_.Input(name), dim);
   }
 
   DDim GetOutputDim(const std::string& name) const {
-    return get_dim(op_.Output(name));
+    return GetDim(op_.Output(name));
   }
 
   void SetOutputDim(const std::string& name, const DDim& dim) const {
-    set_dim(op_.Output(name), dim);
+    SetDim(op_.Output(name), dim);
   }
 
-  AttrReader GetAttrs() const { return AttrReader(op_.Attrs()); }
+  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
 
  private:
-  DDim get_dim(const std::string& name) const {
-    Tensor* t = scope_.FindVar(op_.Input(name))->GetMutable<Tensor>();
-    return t->dims();
+  DDim GetDim(const std::string& name) const {
+    return scope_.FindVar(name)->Get<LoDTensor>().dims();
   }
 
-  void set_dim(const std::string& name, const DDim& dim) const {
-    Tensor* t = scope_.FindVar(name)->GetMutable<Tensor>();
+  void SetDim(const std::string& name, const DDim& dim) const {
+    Tensor* t = scope_.FindVar(name)->GetMutable<LoDTensor>();
     t->Resize(dim);
   }
 
@@ -533,8 +544,8 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual void InferShape(const InferShapeContext& ctx) const = 0;
-  void InferShape(const InferShapeContextBase& ctx) const {}
+  virtual void InferShape(const InferShapeContext& ctx) const {}
+  virtual void InferShape(const InferShapeContextBase& ctx) const {}
 };
 
 }  // namespace framework

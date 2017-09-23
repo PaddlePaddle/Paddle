@@ -94,6 +94,8 @@ void set(DDim& dim, int idx, int val);
 
 std::vector<int64_t> vectorize(const DDim& ddim);
 
+std::string debug_str(const DDim& ddim);
+
 int64_t product(const DDim& ddim);
 
 /**
