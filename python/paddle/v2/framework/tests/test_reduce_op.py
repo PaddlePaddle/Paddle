@@ -60,7 +60,7 @@ class TestKeepDimReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-        self.attrs = {'dim': -2, 'keep_dim': 1}
+        self.attrs = {'dim': -2, 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=self.attrs['dim'], keepdims=True)
         }
