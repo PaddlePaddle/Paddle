@@ -57,6 +57,8 @@ class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
 
+extern const Tensor* GetTensorFromVar(const Variable* var);
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -263,15 +265,6 @@ class InferShapeContext {
     return res;
   }
 
-  const Tensor* GetTensorFromVar(const Variable* var) const {
-    if (var->IsType<LoDTensor>()) {
-      return &var->Get<LoDTensor>();
-    }
-    PADDLE_ENFORCE(var->IsType<Tensor>(),
-                   "The Input(%s) must be LoDTensor or Tensor.");
-    return &var->Get<Tensor>();
-  }
-
  private:
   const OperatorBase& op_;
   const Scope& scope_;
@@ -399,6 +392,14 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
 
   AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
 
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
  private:
   DDim GetDim(const std::string& name) const {
     VarDesc* desc = block_desc_.GetVar(name);
@@ -458,13 +459,21 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
 
   AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
 
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
  private:
   DDim GetDim(const std::string& name) const {
-    return scope_.FindVar(name)->Get<LoDTensor>().dims();
+    return GetTensorFromVar(scope_.FindVar(name))->dims();
   }
 
   void SetDim(const std::string& name, const DDim& dim) const {
-    Tensor* t = scope_.FindVar(name)->GetMutable<LoDTensor>();
+    Tensor* t = const_cast<Tensor*>(GetTensorFromVar(scope_.FindVar(name)));
     t->Resize(dim);
   }
 

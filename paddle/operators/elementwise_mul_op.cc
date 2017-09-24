@@ -24,20 +24,19 @@ class ElementWiseMulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of ElementWiseMulOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
-                            "Input(Y) of ElementWiseMulOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("Out"),
-        "Output(Out) of ElementWiseMulOp should not be null.");
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"),
+                   "Input(X) of ElementWiseMulOp should not be null.");
+    PADDLE_ENFORCE(ctx.HasInput("Y"),
+                   "Input(Y) of ElementWiseMulOp should not be null.");
+    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+                   "Output(Out) of ElementWiseMulOp should not be null.");
 
-    auto x_dim = ctx.Input<Tensor>("X")->dims();
-    auto y_dim = ctx.Input<Tensor>("Y")->dims();
-    PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
+    auto x_dims = ctx.GetInputDim("X");
+    auto y_dims = ctx.GetInputDim("Y");
+    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
-    ctx.Output<framework::LoDTensor>("Out")->Resize(x_dim);
+    ctx.SetOutputDim("Out", x_dims);
   }
 };
 
@@ -77,29 +76,22 @@ class ElementWiseMulOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
 
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto y_dims = ctx.Input<Tensor>("Y")->dims();
-    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto *x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *y_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
-
+    auto x_dims = ctx.GetInputDim("X");
+    auto y_dims = ctx.GetInputDim("Y");
+    auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
-
-    if (x_grad) {
-      x_grad->Resize(x_dims);
+    if (ctx.HasOutput(framework::GradVarName("X"))) {
+      ctx.SetOutputDim(framework::GradVarName("X"), x_dims);
     }
-
-    if (y_grad) {
-      y_grad->Resize(y_dims);
+    if (ctx.HasOutput(framework::GradVarName("Y"))) {
+      ctx.SetOutputDim(framework::GradVarName("Y"), y_dims);
     }
   }
 };

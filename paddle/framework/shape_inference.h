@@ -30,16 +30,55 @@ class InferShapeContextBase {
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
   virtual framework::DDim GetInputDim(const std::string &name) const = 0;
+  std::vector<framework::DDim> GetInputsDim(const std::string &name) const {
+    const std::vector<std::string> &names = Inputs(name);
+    return GetDims(names);
+  }
   virtual void SetInputDim(const std::string &name,
                            const framework::DDim &dim) const = 0;
+  void SetInputsDim(const std::string &name,
+                    const std::vector<framework::DDim> &dims) const {
+    auto &names = Inputs(name);
+    SetDims(names, dims);
+  }
   virtual framework::DDim GetOutputDim(const std::string &name) const = 0;
+  std::vector<framework::DDim> GetOutputsDim(const std::string &name) const {
+    const std::vector<std::string> &names = Outputs(name);
+    return GetDims(names);
+  }
   virtual void SetOutputDim(const std::string &name, const DDim &dim) const = 0;
+  void SetOutputsDim(const std::string &name,
+                     const std::vector<framework::DDim> &dims) const {
+    auto &names = Outputs(name);
+    SetDims(names, dims);
+  }
   virtual AttrReader Attrs() const = 0;
+  virtual const std::vector<std::string> &Inputs(
+      const std::string &name) const = 0;
+  virtual const std::vector<std::string> &Outputs(
+      const std::string &name) const = 0;
 
  protected:
   virtual framework::DDim GetDim(const std::string &name) const = 0;
   virtual void SetDim(const std::string &name,
                       const framework::DDim &dim) const = 0;
+  std::vector<framework::DDim> GetDims(
+      const std::vector<std::string> &names) const {
+    std::vector<framework::DDim> ret;
+    ret.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(ret),
+        [this](const std::string &name) { return this->GetDim(name); });
+    return ret;
+  }
+  void SetDims(const std::vector<std::string> &names,
+               const std::vector<framework::DDim> &dims) const {
+    size_t length = names.size();
+    PADDLE_ENFORCE_EQ(length, dims.size());
+    for (size_t i = 0; i < length; ++i) {
+      SetDim(names[i], dims[i]);
+    }
+  }
 };
 
 }  // namespace framework

@@ -23,29 +23,30 @@ class ScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Ref"),
-                            "Input(Ref) of ScatterOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Index"),
-                            "Input(Index) of ScatterOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Updates"),
-                            "Input(Updates) of ScatterOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of ScatterOp should not be null.");
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("Ref"),
+                   "Input(Ref) of ScatterOp should not be null.");
+    PADDLE_ENFORCE(ctx.HasInput("Index"),
+                   "Input(Index) of ScatterOp should not be null.");
+    PADDLE_ENFORCE(ctx.HasInput("Updates"),
+                   "Input(Updates) of ScatterOp should not be null.");
+    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+                   "Output(Out) of ScatterOp should not be null.");
 
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Index")->dims().size(), 1,
+    auto updates_dims = ctx.GetInputDim("Updates");
+    auto ref_dims = ctx.GetInputDim("Ref");
+    PADDLE_ENFORCE_EQ(ctx.GetInputDim("Index").size(), 1,
                       "Update Index should be 1-D.");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Ref")->dims().size(),
-                      ctx.Input<Tensor>("Updates")->dims().size(),
+    PADDLE_ENFORCE_EQ(ref_dims.size(), updates_dims.size(),
                       "Reference and Updates should have the same shape size");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Updates")->dims()[0],
-                      ctx.Input<Tensor>("Index")->dims()[0],
+    PADDLE_ENFORCE_EQ(ctx.GetInputDim("Updates")[0],
+                      ctx.GetInputDim("Index")[0],
                       "Updates and Index should have same batch-size.");
-    framework::DDim data_dim(ctx.Input<Tensor>("Updates")->dims());
-    for (int i = 1; i < data_dim.size(); ++i)
-      PADDLE_ENFORCE_EQ(data_dim[i], ctx.Input<Tensor>("Updates")->dims()[i]);
-    ctx.Output<framework::LoDTensor>("Out")->Resize(
-        ctx.Input<Tensor>("Ref")->dims());
+    framework::DDim data_dim(updates_dims);
+    for (int i = 1; i < data_dim.size(); ++i) {
+      PADDLE_ENFORCE_EQ(data_dim[i], updates_dims[i]);
+    }
+    ctx.SetOutputDim("Out", ref_dims);
   }
 };
 
@@ -54,16 +55,10 @@ class ScatterGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto *dUpdates =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Updates"));
-    auto *Updates = ctx.Input<Tensor>("Updates");
-    auto *dRef =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Ref"));
-    auto *Ref = ctx.Input<Tensor>("Ref");
-
-    dRef->Resize(Ref->dims());
-    dUpdates->Resize(Updates->dims());
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    ctx.SetOutputDim(framework::GradVarName("Updates"),
+                     ctx.GetInputDim("Updates"));
+    ctx.SetOutputDim(framework::GradVarName("Ref"), ctx.GetInputDim("Ref"));
   }
 };
 
@@ -85,6 +80,7 @@ Out[Index] = Ref[Index] + Updates
 )DOC");
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 

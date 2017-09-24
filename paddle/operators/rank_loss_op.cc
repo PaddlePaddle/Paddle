@@ -25,22 +25,21 @@ class RankLossOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
     // input check
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input(Label) shouldn't be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Left"),
-                            "Input(Left) shouldn't be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Right"),
-                            "Input(Right) shouldn't be null");
-    auto label_dims = ctx.Input<framework::Tensor>("Label")->dims();
-    auto left_dims = ctx.Input<framework::Tensor>("Left")->dims();
-    auto right_dims = ctx.Input<framework::Tensor>("Right")->dims();
+    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) shouldn't be null");
+    PADDLE_ENFORCE(ctx.HasInput("Left"), "Input(Left) shouldn't be null");
+    PADDLE_ENFORCE(ctx.HasInput("Right"), "Input(Right) shouldn't be null");
+
+    auto label_dims = ctx.GetInputDim("Label");
+    auto left_dims = ctx.GetInputDim("Left");
+    auto right_dims = ctx.GetInputDim("Right");
+
     PADDLE_ENFORCE((label_dims == left_dims) && (left_dims == right_dims),
                    "All inputs must have the same size");
     PADDLE_ENFORCE((label_dims.size() == 2) && (label_dims[1] == 1),
                    "All inputs must be row vector with size batch_size x 1.");
-    ctx.Output<framework::LoDTensor>("Out")->Resize(label_dims);
+    ctx.SetOutputDim("Out", label_dims);
   }
 };
 
@@ -91,25 +90,22 @@ class RankLossGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input(Label) shouldn't be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Left"),
-                            "Input(Left) shouldn't be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Right"),
-                            "Input(Right) shouldn't be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) shouldn't be null.");
-    auto dims = ctx.Input<framework::Tensor>("Left")->dims();
-    auto *left_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Left"));
-    auto *right_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Right"));
-    if (left_grad) {
-      left_grad->Resize(dims);
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) shouldn't be null.");
+    PADDLE_ENFORCE(ctx.HasInput("Left"), "Input(Left) shouldn't be null.");
+    PADDLE_ENFORCE(ctx.HasInput("Right"), "Input(Right) shouldn't be null.");
+    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) shouldn't be null.");
+    auto dims = ctx.GetInputDim("Left");
+    auto left_grad_name = framework::GradVarName("Left");
+    auto right_grad_name = framework::GradVarName("Right");
+
+    if (ctx.HasOutput(left_grad_name)) {
+      ctx.SetOutputDim(left_grad_name, dims);
     }
-    if (right_grad) {
-      right_grad->Resize(dims);
+
+    if (ctx.HasOutput(right_grad_name)) {
+      ctx.SetOutputDim(right_grad_name, dims);
     }
   }
 };

@@ -31,6 +31,15 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 }
 #endif
 
+const Tensor* GetTensorFromVar(const Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return &var->Get<LoDTensor>();
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input must be LoDTensor or Tensor.");
+  return &var->Get<Tensor>();
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,

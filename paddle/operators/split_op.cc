@@ -24,40 +24,40 @@ class SplitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    // infershape
-    auto *in = ctx.Input<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
-    size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
-    size_t num = static_cast<size_t>(ctx.Attr<int>("num"));
-    std::vector<int> sections =
-        static_cast<std::vector<int>>(ctx.Attr<std::vector<int>>("sections"));
-    const size_t n = outs.size();
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    auto in_dims = ctx.GetInputDim("X");
+    auto outs_dims = ctx.GetOutputsDim("Out");
+    size_t axis = static_cast<size_t>(ctx.Attrs().Get<int>("axis"));
+    size_t num = static_cast<size_t>(ctx.Attrs().Get<int>("num"));
+    std::vector<int> sections = static_cast<std::vector<int>>(
+        ctx.Attrs().Get<std::vector<int>>("sections"));
+    const size_t n = outs_dims.size();
 
     if (num > 0) {
-      int64_t in_axis_dim = in->dims()[axis];
+      int64_t in_axis_dim = in_dims[axis];
       PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
                         "tensor split does not result"
                         " in an equal division");
       size_t out_axis_dim = in_axis_dim / num;
       for (size_t i = 0; i < n; ++i) {
-        auto dim = in->dims();
+        auto dim = in_dims;
         dim[axis] = out_axis_dim;
-        outs[i]->Resize(dim);
+        outs_dims[i] = dim;
       }
     } else if (sections.size() > 0) {
       PADDLE_ENFORCE_EQ(sections.size(), n,
                         "tensor split sections size"
                         "should be equal to output size.");
       for (size_t i = 0; i < n; ++i) {
-        auto dim = in->dims();
+        auto dim = in_dims;
         dim[axis] = sections[i];
-        outs[i]->Resize(dim);
+        outs_dims[i] = dim;
       }
     } else {
       PADDLE_ENFORCE_NOT_NULL(nullptr, "split operator should",
                               " specify indices or sections.");
     }
+    ctx.SetOutputsDim("Out", outs_dims);
   }
 };
 
