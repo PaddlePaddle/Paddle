@@ -473,7 +473,13 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   }
 
   void SetDim(const std::string& name, const DDim& dim) const {
-    Tensor* t = const_cast<Tensor*>(GetTensorFromVar(scope_.FindVar(name)));
+    Tensor* t;
+    auto* var = scope_.FindVar(name);
+    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
+      t = var->GetMutable<LoDTensor>();
+    } else {
+      t = const_cast<Tensor*>(GetTensorFromVar(scope_.FindVar(name)));
+    }
     t->Resize(dim);
   }
 
