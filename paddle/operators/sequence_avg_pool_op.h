@@ -39,6 +39,15 @@ class SequenceAvgPoolKernel : public framework::OpKernel {
     auto lod = in->lod();
     int64_t w = in->numel() / dims[0];
 
+    // InferShape by lod
+    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
+    PADDLE_ENFORCE_GE(
+        dims[0],
+        /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
+        "The first dimension of Input(X) must be large than batch size.");
+    dims[0] = lod[0].size() - 1;
+    out->Resize({dims});
+
     out->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod[0].size()) - 1; ++i) {
