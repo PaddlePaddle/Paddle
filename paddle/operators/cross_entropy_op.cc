@@ -37,13 +37,13 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x->dims()[0], label->dims()[0],
                       "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
-    if (ctx.Attr<bool>("soft_label")) {
+    if (ctx.Attr<bool>("softLabel")) {
       PADDLE_ENFORCE_EQ(x->dims()[1], label->dims()[1],
-                        "If Attr(soft_label) == true, the 2nd dimension of "
+                        "If Attr(softLabel) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(label->dims()[1], 1,
-                        "If Attr(soft_label) == false, the 2nd dimension of "
+                        "If Attr(softLabel) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
@@ -63,6 +63,8 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                             "Input(Label) should be not null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
                             "Input(Y@GRAD) shoudl be not null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(framework::GradVarName("X")),
+                            "Output(X@GRAD) should be not null.");
 
     auto x = ctx.Input<Tensor>("X");
     auto label = ctx.Input<Tensor>("Label");
@@ -80,13 +82,13 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                       "be equal.");
     PADDLE_ENFORCE_EQ(dy->dims()[1], 1,
                       "The 2nd dimension of Input(Y@Grad) should be 1.");
-    if (ctx.Attr<bool>("soft_label")) {
+    if (ctx.Attr<bool>("softLabel")) {
       PADDLE_ENFORCE_EQ(x->dims()[1], label->dims()[1],
-                        "When Attr(soft_label) == true, the 2nd dimension of "
+                        "When Attr(softLabel) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(label->dims()[1], 1,
-                        "When Attr(soft_label) == false, the 2nd dimension of "
+                        "When Attr(softLabel) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
@@ -105,18 +107,19 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
              "where N is the batch size and D is the number of classes. "
              "This input is a probability computed by the previous operator, "
              "which is almost always the result of a softmax operator.");
-    AddInput("Label",
-             "(Tensor, default Tensor<int>), the ground truth which is "
-             "a 1-D or 2-D tensor. "
-             "When soft_label is set to 0, `Label` is a Tensor<int> with shape "
-             "[N x 1]. "
-             "When soft_label is set to 1, `Label` is a Tensor<float/double> "
-             "with shape [N x K].");
+    AddInput(
+        "Label",
+        "(Tensor, default Tensor<int>), the ground truth which is "
+        "a 2-D tensor. "
+        "When softLabel is set to false, `Label` is a Tensor<int> with shape "
+        "[N x 1]. "
+        "When softLabel is set to true, `Label` is a Tensor<float/double> "
+        "with shape [N x K].");
     AddOutput("Y",
-              "(Tensor, default Tensor<float>), a 1-D tensor "
+              "(Tensor, default Tensor<float>), a 2-D tensor "
               "with shape [N x 1]. The cross entropy loss.");
     AddAttr<bool>(
-        "soft_label",
+        "softLabel",
         "(bool, default false), a flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
@@ -126,12 +129,12 @@ CrossEntropy Operator.
 It supports both standard cross-entropy and soft-label cross-entropy loss
 computation.
 1) One-hot cross-entropy:
-    soft_label = False, Label[i, 0] indicates the class index for sample i:
+    softLabel = false, Label[i, 0] indicates the class index for sample i:
 
                 Y[i] = -log(X[i, Label[i]])
 
 2) Soft-label cross-entropy:
-    soft_label = True, Label[i, j] indicates the soft label of class j
+    softLabel = true, Label[i, j] indicates the soft label of class j
     for sample i:
 
                 Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}

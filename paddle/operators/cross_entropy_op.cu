@@ -70,7 +70,7 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
 
 // TODO(qingqing): make zero setting a common function.
 template <typename T>
-__global__ void zero(T* X, const int N) {
+__global__ void Zero(T* X, const int N) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     X[i] = 0.0;
@@ -108,18 +108,17 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
 
-    auto x = ctx.Input<Tensor>("X");
-    auto y = ctx.Output<Tensor>("Y");
-    auto label = ctx.Input<Tensor>("Label");
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* label = ctx.Input<Tensor>("Label");
+    Tensor* y = ctx.Output<Tensor>("Y");
 
-    auto* x_data = x->data<T>();
-    y->mutable_data<T>(ctx.GetPlace());
-    auto* y_data = y->data<T>();
+    const T* x_data = x->data<T>();
+    T* y_data = y->mutable_data<T>(ctx.GetPlace());
 
     int batch_size = x->dims()[0];
     int class_num = x->dims()[1];
 
-    if (ctx.Attr<bool>("soft_label")) {
+    if (ctx.Attr<bool>("softLabel")) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
       int block = class_num > 512 ? 512 : pow(2, int(std::log2(class_num)));
 
@@ -148,38 +147,41 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
 
-    auto x = ctx.Input<Tensor>("X");
-    auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto label = ctx.Input<Tensor>("Label");
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* label = ctx.Input<Tensor>("Label");
+    Tensor* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
-    auto* dy_data = dy->data<T>();
-    auto* x_data = x->data<T>();
+    const T* dy_data =
+        ctx.Input<Tensor>(framework::GradVarName("Y"))->data<T>();
+    T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    const T* x_data = x->data<T>();
 
-    int n = x->dims()[0];
-    int d = x->dims()[1];
+    int batch_size = x->dims()[0];
+    int class_num = x->dims()[1];
 
     int block = 512;
-    int grid = (n * d + block - 1) / block;
-    zero<T><<<grid, block, 0,
-              reinterpret_cast<const platform::CUDADeviceContext&>(
-                  ctx.device_context())
-                  .stream()>>>(dx_data, n * d);
-    if (ctx.Attr<bool>("soft_label")) {
+    int grid = (batch_size * class_num + block - 1) / block;
+
+    if (ctx.Attr<bool>("softLabel")) {
       auto* label_data = label->data<T>();
       SoftCrossEntropyGradientKernel<T><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(dx_data, dy_data, x_data, label_data,
-                                           n, d);
+                                           batch_size, class_num);
     } else {
+      Zero<T><<<grid, block, 0,
+                reinterpret_cast<const platform::CUDADeviceContext&>(
+                    ctx.device_context())
+                    .stream()>>>(dx_data, batch_size * class_num);
+
       auto* label_data = label->data<int>();
+      grid = (batch_size + block - 1) / block;
       CrossEntropyGradientKernel<T><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(dx_data, dy_data, x_data, label_data,
-                                           n, d);
+                                           batch_size, class_num);
     }
   }
 };
