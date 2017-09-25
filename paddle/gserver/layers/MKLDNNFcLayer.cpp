@@ -49,7 +49,7 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
 
   // create biases
   if (biasParameter_.get() != NULL) {
-    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_));
+    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_, 0));
   }
   return true;
 }
@@ -161,9 +161,16 @@ void MKLDNNFcLayer::resetInValue(MKLDNNMatrixPtr& in) {
 
 void MKLDNNFcLayer::resetWgtBiasValue(MKLDNNMatrixPtr& wgt,
                                       MKLDNNMatrixPtr& bias) {
+  format wgtFmt = format::oihw;
+  if (inVal_->getFormat() == format::nChw8c) {
+    wgtFmt = format::oIhw8i;
+  } else if (inVal_->getFormat() == format::nChw16c) {
+    wgtFmt = format::oIhw16i;
+  }
   wgt = MKLDNNMatrix::create(
-      weight_->getW(), {oc_, ic_, ih_, iw_}, format::oihw, engine_);
+      weight_->getW(), {oc_, ic_, ih_, iw_}, wgtFmt, engine_);
   wgt->downSpatial();
+  VLOG(MKLDNN_FMTS) << "Weight value format: " << wgt->getFormat();
 
   bias = (biases_ && biases_->getW())
              ? MKLDNNMatrix::create(biases_->getW(), {oc_}, format::x, engine_)
@@ -232,6 +239,7 @@ void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
 void MKLDNNFcLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
   // TODO(TJ): merge outgrad
   int device = outputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
+  output_.grad->setData(getOutput(device).grad->getData());
   // for MKLDNN device:
   // can not directly cast outputgrad to mkldnnmatrix,
   // since each layer can not write the inputgrad to mkldnn inputgrad.

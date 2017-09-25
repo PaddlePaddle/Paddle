@@ -102,7 +102,7 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
     int grid = (n + block - 1) / block;
     // TODO(qingqing) launch kernel on specified stream
     // base on ExecutionContext.
-    if (ctx.Attr<int>("soft_label") == 1) {
+    if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
       SoftCrossEntropyKernel<T><<<grid, block>>>(y_data, x_data, label_data, n,
                                                  d);
@@ -137,7 +137,7 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
     grid = (n + block - 1) / block;
     // TODO(qingqing): launch kernel on specified stream
     // base on ExecutionContext.
-    if (ctx.Attr<int>("soft_label") == 1) {
+    if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
       SoftCrossEntropyGradientKernel<T><<<grid, block>>>(
           dx_data, dy_data, x_data, label_data, n, d);

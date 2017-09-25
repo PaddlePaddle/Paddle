@@ -14,12 +14,11 @@
 
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/sequence_avg_pool_op.h"
+#include "paddle/operators/smooth_l1_loss_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool,
-    ops::SequenceAvgPoolKernel<paddle::platform::GPUPlace, float>);
+    smooth_l1_loss, ops::SmoothL1LossKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool_grad,
-    ops::SequenceAvgPoolGradKernel<paddle::platform::GPUPlace, float>);
+    smooth_l1_loss_grad,
+    ops::SmoothL1LossGradKernel<paddle::platform::GPUPlace, float>);

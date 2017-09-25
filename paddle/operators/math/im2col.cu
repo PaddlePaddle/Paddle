@@ -64,9 +64,10 @@ template <class T>
 class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                     platform::GPUPlace, T> {
  public:
-  void operator()(const framework::Tensor& im, framework::Tensor& col,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width, platform::DeviceContext* context) {
+                  int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
 
@@ -84,9 +85,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int block_y = (blocks + 512 - 1) / 512;
     dim3 threads(1024, 1);
     dim3 grid(block_x, block_y);
-    im2col<T><<<
-        grid, threads, 0,
-        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
+    im2col<T><<<grid, threads, 0,
+                reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                    .stream()>>>(
         im.data<T>(), num_outputs, input_height, input_width, filter_height,
         filter_width, stride_height, stride_width, padding_height,
         padding_width, output_height, output_width, col.data<T>());
@@ -149,9 +150,9 @@ template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                     platform::GPUPlace, T> {
  public:
-  void operator()(framework::Tensor& im, const framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_height,
-                  int padding_width, platform::DeviceContext* context) {
+  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
+                  const framework::Tensor& col, int stride_height,
+                  int stride_width, int padding_height, int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
 
@@ -174,9 +175,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
 
     // To avoid involving atomic operations, we will launch one kernel per
     // bottom dimension, and then in the kernel add up the top dimensions.
-    col2im<T><<<
-        grid, threads, 0,
-        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
+    col2im<T><<<grid, threads, 0,
+                reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                    .stream()>>>(
         num_kernels, col.data<T>(), input_height + 2 * padding_height,
         input_width + 2 * padding_width, input_channels, filter_height,
         filter_width, stride_height, stride_width, padding_height,
@@ -235,9 +236,10 @@ template <class T>
 class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                     platform::GPUPlace, T> {
  public:
-  void operator()(const framework::Tensor& im, framework::Tensor& col,
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_height,
-                  int padding_width, platform::DeviceContext* context) {
+                  int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -268,9 +270,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     dim3 threads(block_dim_x, block_dim_y,
                  std::min(block_dim_z, input_channels));
     dim3 grid(output_width, output_height);
-    im2colOCF<T><<<
-        grid, threads, 0,
-        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
+    im2colOCF<T><<<grid, threads, 0,
+                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                       .stream()>>>(
         im.data<T>(), col.data<T>(), input_channels, input_height, input_width,
         filter_height, filter_width, stride_height, stride_width,
         padding_height, padding_width, output_height, output_width);
@@ -318,9 +320,9 @@ template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                     platform::GPUPlace, T> {
  public:
-  void operator()(framework::Tensor& im, const framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_height,
-                  int padding_width, platform::DeviceContext* context) {
+  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
+                  const framework::Tensor& col, int stride_height,
+                  int stride_width, int padding_height, int padding_width) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -351,9 +353,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
     dim3 threads(block_dim_x, block_dim_y,
                  std::min(block_dim_z, input_channels));
     dim3 grid(output_width, output_height);
-    col2imOCF<T><<<
-        grid, threads, 0,
-        reinterpret_cast<platform::CUDADeviceContext*>(context)->stream()>>>(
+    col2imOCF<T><<<grid, threads, 0,
+                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                       .stream()>>>(
         im.data<T>(), col.data<T>(), input_channels, input_height, input_width,
         filter_height, filter_width, stride_height, stride_width,
         padding_height, padding_width, output_height, output_width);

@@ -39,7 +39,8 @@ class AccuracyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(inference->dims()[0], label->dims()[0],
                       "inference size must be the same as label size");
 
-    ctx.Output<framework::LoDTensor>("Accuracy")->Resize({1});
+    ctx.Output<framework::Tensor>("Accuracy")->Resize({1});
+    ctx.ShareLoD("Inference", /*->*/ "Accuracy");
   }
 };
 
@@ -54,11 +55,15 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
 
-    AddComment(
-        R"DOC(Accuracy. It will print accuracy rate for classification.
+    AddComment(R"DOC(
+Accuracy. It will print accuracy rate for classification.
 The accuracy is:
 ..  math::
-accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})DOC");
+accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})
+
+Both the input `Inference` and `Label` can carry the LoD (Level of Details)
+information, or not. But the output only shares the LoD with input `Inference`.
+)DOC");
   }
 };
 

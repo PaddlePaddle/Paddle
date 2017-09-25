@@ -166,9 +166,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
 
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
-        net->AppendOp(OpRegistry::CreateOp("fill_zeros_like",
-                                           {{"Src", {prefix}}},
-                                           {{"Dst", {grad_input}}}, {}));
+        net->AppendOp(OpRegistry::CreateOp("fill_zeros_like", {{"X", {prefix}}},
+                                           {{"Y", {grad_input}}}, {}));
       }
       return false;
     });

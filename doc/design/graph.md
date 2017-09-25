@@ -56,7 +56,7 @@ For each parameter, like W and b created by `layer.fc`, marked as double circles
 
 ## Block and Graph
 
-The word block and graph are interchangable in the desgin of PaddlePaddle.  A [Block[(https://github.com/PaddlePaddle/Paddle/pull/3708) is a metaphore of the code and local variables in a pair of curly braces in programming languages, where operators are like statements or instructions.  A graph of operators and variables is a representation of the block.
+The word block and graph are interchangable in the desgin of PaddlePaddle.  A [Block](https://github.com/PaddlePaddle/Paddle/pull/3708) is a metaphore of the code and local variables in a pair of curly braces in programming languages, where operators are like statements or instructions.  A graph of operators and variables is a representation of the block.
 
 A Block keeps operators in an array `BlockDesc::ops`
 
@@ -67,4 +67,4 @@ message BlockDesc {
 }
 ```
 
-in the order that there appear in user programs, like the Python program at the beginning of this article.  We can imagine that in `ops`,  we have some forward operators, followed by some gradient operators, and then some optimization operators.
+in the order that they appear in user programs, like the Python program at the beginning of this article.  We can imagine that in `ops`,  we have some forward operators, followed by some gradient operators, and then some optimization operators.
