@@ -108,5 +108,13 @@ class TestCudnn2d(TestConv2dOp):
         self.op_type = "cudnn_conv"
 
 
+class TestCudnn2dWithGroup(TestConv2dOp):
+    def init_optype(self):
+        self.op_type = "cudnn_conv"
+
+    def init_groups(self):
+        self.groups = 3
+
+
 if __name__ == '__main__':
     unittest.main()

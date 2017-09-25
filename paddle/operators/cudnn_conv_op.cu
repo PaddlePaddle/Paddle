@@ -50,6 +50,7 @@ class CudnnConvOpKernel : public framework::OpKernel {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    int groups = ctx.Attr<int>("groups");
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -63,13 +64,25 @@ class CudnnConvOpKernel : public framework::OpKernel {
     DataLayout layout = DataLayout::kNCHW;
 
     cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, dims2vector(input->dims()));
+        input_desc.descriptor<T>(layout, dims2vector(input->dims()), groups);
     cudnnTensorDescriptor_t cudnn_output_desc =
-        output_desc.descriptor<T>(layout, dims2vector(output->dims()));
+        output_desc.descriptor<T>(layout, dims2vector(output->dims()), groups);
     cudnnFilterDescriptor_t cudnn_filter_desc =
-        filter_desc.descriptor<T>(layout, dims2vector(filter->dims()));
+        filter_desc.descriptor<T>(layout, dims2vector(filter->dims()), groups);
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
+
+    int input_channels = input->dims()[1];
+    int input_height = input->dims()[2];
+    int input_width = input->dims()[3];
+    int output_channels = output->dims()[1];
+    int output_height = output->dims()[2];
+    int output_width = output->dims()[3];
+
+    int group_offset_X = input_channels / groups * input_height * input_width;
+    int group_offset_Y =
+        output_channels / groups * output_height * output_width;
+    int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
     auto h = ctx.cuda_device_context().cudnn_handle();
@@ -89,10 +102,13 @@ class CudnnConvOpKernel : public framework::OpKernel {
     // ------------------- cudnn conv forward ---------------------
     // FIXME(typhoonzero): template type T may not be the same as cudnn call.
     float alpha = 1.0f, beta = 0.0f;
-    PADDLE_ENFORCE(platform::dynload::cudnnConvolutionForward(
-        h, &alpha, cudnn_input_desc, input_data, cudnn_filter_desc, filter_data,
-        cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes, &beta,
-        cudnn_output_desc, output_data));
+    for (int i = 0; i < groups; i++) {
+      PADDLE_ENFORCE(platform::dynload::cudnnConvolutionForward(
+          h, &alpha, cudnn_input_desc, input_data + i * group_offset_X,
+          cudnn_filter_desc, filter_data + i * group_offset_filter,
+          cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes,
+          &beta, cudnn_output_desc, output_data + i * group_offset_Y));
+    }
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);
   }
@@ -122,6 +138,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    int groups = ctx.Attr<int>("groups");
 
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
@@ -134,28 +151,39 @@ class CudnnConvGradOpKernel : public framework::OpKernel {
     DataLayout layout = DataLayout::kNCHW;
 
     cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, dims2vector(input->dims()));
+        input_desc.descriptor<T>(layout, dims2vector(input->dims()), groups);
     cudnnTensorDescriptor_t cudnn_output_grad_desc =
-        output_grad_desc.descriptor<T>(layout,
-                                       dims2vector(output_grad->dims()));
+        output_grad_desc.descriptor<T>(layout, dims2vector(output_grad->dims()),
+                                       groups);
     cudnnFilterDescriptor_t cudnn_filter_desc =
-        filter_desc.descriptor<T>(layout, dims2vector(filter->dims()));
+        filter_desc.descriptor<T>(layout, dims2vector(filter->dims()), groups);
     cudnnTensorDescriptor_t cudnn_input_grad_desc = nullptr;
     cudnnFilterDescriptor_t cudnn_filter_grad_desc = nullptr;
 
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
+
+    // int n_dims = input->dims().size();
+    int input_channels = input->dims()[1];
+    int input_height = input->dims()[2];
+    int input_width = input->dims()[3];
+    // int output_grad_dims = output_grad->dims().size();
+    int output_grad_channels = filter->dims()[0];
+    int output_grad_height = output_grad->dims()[2];
+    int output_grad_width = output_grad->dims()[3];
+
+    int group_offset_X = input_channels / groups * input_height * input_width;
+    int group_offset_Y =
+        output_grad_channels / groups * output_grad_height * output_grad_width;
+    int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
     cudnnConvolutionBwdDataAlgo_t data_algo;
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
-    // auto device_ctx =
-    //      const_cast<platform::DeviceContext>(ctx.device_context());
-    // auto cuda_ctx = reinterpret_cast<CUDADeviceContext>(device_ctx);
     auto h = ctx.cuda_device_context().cudnn_handle();
     if (input_grad) {
       cudnn_input_grad_desc = input_grad_desc.descriptor<T>(
-          layout, dims2vector(input_grad->dims()));
+          layout, dims2vector(input_grad->dims()), groups);
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
               h, cudnn_filter_desc,
@@ -175,7 +203,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel {
 
     if (filter_grad) {
       cudnn_filter_grad_desc = filter_grad_desc.descriptor<T>(
-          layout, dims2vector(filter_grad->dims()));
+          layout, dims2vector(filter_grad->dims()), groups);
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
               h, cudnn_input_desc, cudnn_output_grad_desc, cudnn_conv_desc,
@@ -197,21 +225,27 @@ class CudnnConvGradOpKernel : public framework::OpKernel {
     // FIXME(typhoonzero): template type T may not be the same as cudnn call.
     float alpha = 1.0f, beta = 0.0f;
     if (input_grad) {
-      T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
-          h, &alpha, cudnn_filter_desc, filter_data, cudnn_output_grad_desc,
-          output_grad_data, cudnn_conv_desc, data_algo, cudnn_workspace,
-          workspace_size_in_bytes, &beta, cudnn_input_grad_desc,
-          input_grad_data));
+      for (int i = 0; i < groups; i++) {
+        T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+        PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
+            h, &alpha, cudnn_filter_desc, filter_data + i * group_offset_filter,
+            cudnn_output_grad_desc, output_grad_data + i * group_offset_Y,
+            cudnn_conv_desc, data_algo, cudnn_workspace,
+            workspace_size_in_bytes, &beta, cudnn_input_grad_desc,
+            input_grad_data + i * group_offset_X));
+      }
     }
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
-      T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
-      PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
-          h, &alpha, cudnn_input_desc, input_data, cudnn_output_grad_desc,
-          output_grad_data, cudnn_conv_desc, filter_algo, cudnn_workspace,
-          workspace_size_in_bytes, &beta, cudnn_filter_grad_desc,
-          filter_grad_data));
+      for (int i = 0; i < groups; i++) {
+        T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
+        PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
+            h, &alpha, cudnn_input_desc, input_data + i * group_offset_X,
+            cudnn_output_grad_desc, output_grad_data + i * group_offset_Y,
+            cudnn_conv_desc, filter_algo, cudnn_workspace,
+            workspace_size_in_bytes, &beta, cudnn_filter_grad_desc,
+            filter_grad_data + i * group_offset_filter));
+      }
     }
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);

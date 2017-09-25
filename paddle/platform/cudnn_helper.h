@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <iostream>
 #include <vector>
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/enforce.h"
@@ -71,23 +72,32 @@ class ScopedTensorDescriptor {
 
   inline cudnnTensorDescriptor_t descriptor(const cudnnTensorFormat_t format,
                                             const cudnnDataType_t type,
-                                            const std::vector<int>& dims) {
-    // the format is not used now, but it maybe useful feature
+                                            const std::vector<int>& dims,
+                                            const int groups = 1) {
+    // the format is not used now, will add later
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
+    // Update tensor descriptor dims setting if groups > 1
+    // FIXME(typhoonzero): Assume using NCHW order
+    std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
+    if (groups > 1) {
+      dims_with_group[1] = dims_with_group[1] / groups;
+    }
     PADDLE_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
-        desc_, type, dims.size(), dims.data(), strides.data()));
+        desc_, type, dims_with_group.size(), dims_with_group.data(),
+        strides.data()));
     return desc_;
   }
 
   template <typename T>
   inline cudnnTensorDescriptor_t descriptor(const DataLayout& order,
-                                            const std::vector<int>& dims) {
-    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type,
-                      dims);
+                                            const std::vector<int>& dims,
+                                            const int groups = 1) {
+    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims,
+                      groups);
   }
 
  private:
@@ -106,18 +116,29 @@ class ScopedFilterDescriptor {
 
   inline cudnnFilterDescriptor_t descriptor(const cudnnTensorFormat_t format,
                                             const cudnnDataType_t type,
-                                            const std::vector<int>& kernel) {
-    // filter layout: output input spatial_dim_y spatial_dim_x
+                                            const std::vector<int>& kernel,
+                                            const int groups = 1) {
+    // filter layout: MCHW, where M is the number of
+    // output image channels, C is the number of input image channels,
+    // H and W is height and width of filter.
+    std::vector<int> kernel_with_group(kernel.begin(), kernel.end());
+    if (groups > 1) {
+      // M /= groups
+      kernel_with_group[0] /= groups;
+      // NOTE: input filter(C) of the filter is already asserted to be C/groups.
+    }
     PADDLE_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
-        desc_, type, format, kernel.size(), kernel.data()));
+        desc_, type, format, kernel_with_group.size(),
+        kernel_with_group.data()));
     return desc_;
   }
 
   template <typename T>
   inline cudnnFilterDescriptor_t descriptor(const DataLayout& order,
-                                            const std::vector<int>& kernel) {
+                                            const std::vector<int>& kernel,
+                                            const int groups = 1) {
     return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type,
-                      kernel);
+                      kernel, groups);
   }
 
  private:
