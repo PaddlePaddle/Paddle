@@ -28,13 +28,10 @@ class DropoutOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE_GE(ctx.Attrs().Get<float>("dropout_prob"), 0);
     PADDLE_ENFORCE_LE(ctx.Attrs().Get<float>("dropout_prob"), 1);
-    // TODO(xinghai-sun): remove this check after swtiching to bool
-    PADDLE_ENFORCE(ctx.Attrs().Get<int>("is_training") == 0 ||
-                   ctx.Attrs().Get<int>("is_training") == 1);
 
     auto x_dims = ctx.GetInputDim("X");
     ctx.SetOutputDim("Out", x_dims);
-    if (ctx.Attrs().Get<int>("is_training") == 1) {
+    if (ctx.Attrs().Get<bool>("is_training") == 1) {
       ctx.SetOutputDim("Mask", x_dims);
     }
     ctx.ShareLoD("X", /*->*/ "Out");
@@ -74,7 +71,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Attrs().Get<int>("is_training"), 1,
+    PADDLE_ENFORCE_EQ(ctx.Attrs().Get<bool>("is_training"), 1,
                       "GradOp is only callable when is_training is true");
 
     PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");

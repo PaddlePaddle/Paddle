@@ -31,13 +31,10 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     auto label_dim = ctx.GetInputDim("Label");
     PADDLE_ENFORCE_EQ(x_dim.size(), 2, "Input(X)'s rank must be 2.");
     PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Input(Label)'s rank must be 2.");
-    // TODO(xinghai-sun): remove this check after swtiching to bool
-    PADDLE_ENFORCE(ctx.Attrs().Get<int>("soft_label") == 0 ||
-                   ctx.Attrs().Get<int>("soft_label") == 1);
     PADDLE_ENFORCE_EQ(x_dim[0], label_dim[0],
                       "The 1st dimension of Input(X) and Input(Label) must "
                       "be equal.");
-    if (ctx.Attrs().Get<int>("soft_label") == 1) {
+    if (ctx.Attrs().Get<bool>("soft_label") == 1) {
       PADDLE_ENFORCE_EQ(x_dim[1], label_dim[1],
                         "If Attr(soft_label) == 1, The 2nd dimension of "
                         "Input(X) and Input(Label) must be equal.");
@@ -70,9 +67,6 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dim.size(), 2, "Input(X)'s rank must be 2.");
     PADDLE_ENFORCE_EQ(dy_dim.size(), 2, "Input(Y@Grad)'s rank must be 2.");
     PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Input(Label)'s rank must be 2.");
-    // TODO(xinghai-sun): remove this check after swtiching to bool
-    PADDLE_ENFORCE(ctx.Attrs().Get<int>("soft_label") == 0 ||
-                   ctx.Attrs().Get<int>("soft_label") == 1);
     PADDLE_ENFORCE_EQ(x_dim[0], label_dim[0],
                       "The 1st dimension of Input(X) and Input(Label) must "
                       "be equal.");
@@ -81,7 +75,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                       "be equal.");
     PADDLE_ENFORCE_EQ(dy_dim[1], 1,
                       "The 2nd dimension of Input(Y@Grad) must be 1.");
-    if (ctx.Attrs().Get<int>("soft_label") == 1) {
+    if (ctx.Attrs().Get<bool>("soft_label") == 1) {
       PADDLE_ENFORCE_EQ(x_dim[1], label_dim[1],
                         "If Attr(soft_label) == 1, The 2nd dimension of "
                         "Input(X) and Input(Label) must be equal.");

@@ -23,11 +23,11 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("Src"),
-                   "Input(Src) of FillZerosLikeOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Dst"),
-                   "Output(Dst) of FillZerosLikeOp should not be null.");
-    ctx.SetOutputDim("Dst", ctx.GetInputDim("Src"));
+    PADDLE_ENFORCE(ctx.HasInput("X"),
+                   "Input(X) of FillZerosLikeOp should not be null.");
+    PADDLE_ENFORCE(ctx.HasOutput("Y"),
+                   "Output(Y) of FillZerosLikeOp should not be null.");
+    ctx.SetOutputDim("Y", ctx.GetInputDim("X"));
     ctx.ShareLoD("X", /*->*/ "Y");
   }
 };

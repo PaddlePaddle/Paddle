@@ -86,10 +86,10 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
     auto ins = ctx.GetInputsDim("X");
     size_t in_size = ins.size();
     std::vector<framework::DDim> d_ins;
-    d_ins.reserve(in_size);
+    d_ins.reserve(in_size - 1);
     // don't compute gradient for index(ins[0])
-    for (size_t i = 1; i < in_size; i++) {
-      d_ins[i] = ins[i];
+    for (size_t i = 0; i < in_size; i++) {
+      d_ins.push_back(ins[i]);
     }
     ctx.SetOutputsDim(framework::GradVarName("X"), d_ins);
   }
