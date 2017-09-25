@@ -26,16 +26,13 @@ class CropOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of CropOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of CropOp should not be null.");
-    auto x_dim = ctx.Input<LoDTensor>("X")->dims();
-    auto *y = ctx.Input<LoDTensor>("Y");
-    auto *out = ctx.Output<LoDTensor>("Out");
-    if (y == nullptr) {
-      auto shape = Attr<std::vector<int>>("shape");
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of CropOp should not be null.");
+    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+                   "Output(Out) of CropOp should not be null.");
+    auto x_dim = ctx.GetInputDim("X");
+    if (!ctx.HasInput("Y")) {
+      auto shape = ctx.Attrs().Get<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
           "Shape size should be equal to dimention size of input tensor.");
@@ -43,12 +40,13 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
-      out->Resize(framework::make_ddim(tensor_shape));
+      ctx.SetOutputDim("Out", framework::make_ddim(tensor_shape));
     } else {
-      PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y->dims()),
+      auto y_dim = ctx.GetInputDim("Y");
+      PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y_dim),
                         "Tensor rank of both CropOp's "
                         "inputs must be same.");
-      out->Resize(y->dims());
+      ctx.SetOutputDim("Out", y_dim);
     }
   }
 };
@@ -117,14 +115,14 @@ class CropOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    if (x_grad != nullptr) {
-      x_grad->Resize(x_dims);
+  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx.GetInputDim("X");
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx.HasOutput(x_grad_name)) {
+      ctx.SetOutputDim(x_grad_name, x_dims);
     }
   }
 };
