@@ -44,6 +44,7 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of lrn op");
     AddOutput("Out", "The output of lrn op");
+    AddComment("lrn");
   }
 };
 

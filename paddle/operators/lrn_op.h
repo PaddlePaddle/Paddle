@@ -56,6 +56,34 @@ class LRNKernel : public framework::OpKernel {
     // x represents inputs
     // f(x) represents outputs
     // mid save the intermediate result for backward
+    auto x_v = framework::EigenVector<T>::Flatten(*x);
+    Eigen::Tensor<float, 1> mid(x_v.size());
+    mid.setConstant(k);
+    const T* data = x_v.data();
+
+    const int start = -(n - 1) / 2;
+    const int end = start + n;
+    for (int m = 0; m < N; m++) {
+      const T* sample = data + m * one_sample_size;
+      for (int i = 0; i < C; i++) {
+        auto mid_data = mid.data() + m * one_sample_size + i * one_img_size;
+        auto s = framework::EigenTensor<float, 1>::From(
+            mid_data, framework::make_ddim({one_img_size}));
+        for (int c = start; c <= end; c++) {
+          int cur_channel = i + c;
+          if (cur_channel >= 0 && cur_channel < N) {
+            auto input = framework::EigenTensor<T, 1>::From(
+                (sample + cur_channel * one_img_size),
+                framework::make_ddim({one_img_size}));
+            s += input.square() * alpha;
+          }
+        }
+      }
+    }
+
+    auto out_e = framework::EigenVector<T>::Flatten(*out);
+    out_e.device(ctx.GetEigenDevice<Place>()) = x_v * mid.pow(-beta);
+    /*
     Eigen::Tensor<float, 4> mid(N, C, H, W);
     mid.setConstant(k);
 
@@ -70,7 +98,7 @@ class LRNKernel : public framework::OpKernel {
         Eigen::array<int, 4> extents{{0, 0, H, W}};
         Eigen::Tensor<float, 1> s = mid.slice(offsets, extents);
         std::cout << &mid << &offsets << &extents << &s << std::endl;
-        // std::cout << s << std::endl;
+        //std::cout << s << std::endl;
         for (int c = start; c <= end; c++) {
           int cur_channel = i + c;
           if (cur_channel >= 0 && cur_channel < N) {
@@ -85,41 +113,17 @@ class LRNKernel : public framework::OpKernel {
 
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(ctx.GetEigenDevice<Place>()) =
-        x_e.reshape(Eigen::DSizes<int, 1>(x_e.size())) *
-        mid.reshape(Eigen::DSizes<int, 1>(mid.size())).pow(-beta);
+        x_e.reshape(Eigen::DSizes<T, 1>(x_e.size())) *
+        mid.reshape(Eigen::DSizes<float, 1>(mid.size())).pow(-beta);
 
-    /*
-    auto x_v = framework::EigenVector<T>::Flatten(*x);
-    Eigen::Tensor<float, 1> mid(x_v.size()) ;
-    mid.setConstant(k);
-    auto* data = x_e->data();
-
-    const int start = -(n - 1) / 2;
-    const int end = start + n;
-    for(int m = 0; m < N; m++){
-        auto* sample = data + m * one_sample_size;
-        for(int i = 0; i < C; i++){
-            auto mid_data = mid.data() +  m * one_sample_size +
-                i * one_img_size;
-            Eigen::Tensor<T,1> s(mid_data, one_img_size);
-            for(int c = start; c <= end; c++){
-                int cur_channel = i + c;
-                if (cur_channel >= 0 && cur_channel < N) {
-                    Eigen::Tensor<T,1> input(sample + cur_channel *
-    one_img_size,
-                            one_img_size);
-                    s += input.square() * alpha;
-                }
-            }
-
-        }
-    }
-
-
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(ctx.GetEigenDevice<Place>())
-           = x_e * mid.pow(-beta);
-           */
+    Eigen::Tensor<int, 2> a(4, 3);
+    a.setValues({{0, 100, 200}, {300, 400, 500},
+            {600, 700, 800}, {900, 1000, 1100}});
+    Eigen::array<int, 2> offsets{{1, 0}};
+    Eigen::array<int, 2> extents{{2, 2}};
+    Eigen::Tensor<int, 1> slice = a.slice(offsets, extents);
+    std::cout << "a" << std::endl << a << std::endl;
+    */
   }
 };
 

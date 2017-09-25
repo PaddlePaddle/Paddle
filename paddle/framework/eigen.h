@@ -50,10 +50,18 @@ struct EigenTensor {
     return Type(tensor.data<T>(), EigenDim<D>::From(dims));
   }
 
+  static Type From(T* data, DDim dims) {
+    return Type(data, EigenDim<D>::From(dims));
+  }
+
   static Type From(Tensor& tensor) { return From(tensor, tensor.dims_); }
 
   static ConstType From(const Tensor& tensor, DDim dims) {
     return ConstType(tensor.data<T>(), EigenDim<D>::From(dims));
+  }
+
+  static ConstType From(const T* data, DDim dims) {
+    return ConstType(data, EigenDim<D>::From(dims));
   }
 
   static ConstType From(const Tensor& tensor) {
