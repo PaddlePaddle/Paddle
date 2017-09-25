@@ -55,7 +55,6 @@ class SequenceAvgPoolGradOp : public framework::OperatorWithKernel {
                    "Gradient of Out should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("X"), "The input X should not be null.");
     auto og_dims = ctx.GetInputDim(framework::GradVarName("Out"));
-    ;
     auto x_dims = ctx.GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
                       "The rank of output grad must equal to Input(X).");
