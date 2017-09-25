@@ -37,7 +37,7 @@ class MultiplexCPUKernel : public framework::OpKernel {
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       int k = (int)index[i] + 1;
-      PADDLE_ENFORCE_LT(k, ins.size(),
+      PADDLE_ENFORCE_LT(static_cast<size_t>(k), ins.size(),
                         "index exceeds the number of candidate tensors.");
       memory::Copy(place, out->data<T>() + i * cols, place,
                    ins[k]->data<T>() + i * cols, cols * sizeof(T));
@@ -74,5 +74,5 @@ class MultiplexGradCPUKernel : public framework::OpKernel {
     }
   }
 };
-}
-}
+}  // namespace operators
+}  // namespace paddle
