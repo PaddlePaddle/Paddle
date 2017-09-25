@@ -190,19 +190,23 @@ class Pool2dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
 template class Pool2dForwardFunctor<
     platform::GPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
 template class Pool2dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<float>, float>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPool<float>, float>;
 template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
+    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<float>,
+    float>;
 template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<float>, float>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<float>,
+    float>;
 template class Pool2dForwardFunctor<
     platform::GPUPlace, paddle::operators::math::pool::maxPool<double>, double>;
 template class Pool2dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<double>, double>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPool<double>, double>;
 template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<double>, double>;
+    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<double>,
+    double>;
 template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<double>, double>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<double>,
+    double>;
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3DForward(
@@ -414,19 +418,23 @@ class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
 template class Pool3dForwardFunctor<
     platform::GPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
 template class Pool3dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<float>, float>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPool<float>, float>;
 template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
+    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<float>,
+    float>;
 template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<float>, float>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<float>,
+    float>;
 template class Pool3dForwardFunctor<
     platform::GPUPlace, paddle::operators::math::pool::maxPool<double>, double>;
 template class Pool3dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<double>, double>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPool<double>, double>;
 template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<double>, double>;
+    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<double>,
+    double>;
 template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avePool<double>, double>;
+    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<double>,
+    double>;
 
 }  // namespace math
 }  // namespace operators

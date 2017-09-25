@@ -27,7 +27,7 @@ def max_pool3D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
     return out
 
 
-def ave_pool3D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
+def avg_pool3D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
 
     N, C, D, H, W = x.shape
     if global_pool == 1:
@@ -80,8 +80,8 @@ class TestPool3d_Op(OpTest):
 
     def initTestCase(self):
         self.global_pool = 0
-        self.pool_type = "ave"
-        self.pool3D_forward_naive = ave_pool3D_forward_naive
+        self.pool_type = "avg"
+        self.pool3D_forward_naive = avg_pool3D_forward_naive
         self.shape = [2, 3, 5, 5, 5]
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
@@ -92,8 +92,8 @@ class TestCase1(TestPool3d_Op):
     def initTestCase(self):
         self.global_pool = 0
         self.op_type = "pool3d"
-        self.pool_type = "ave"
-        self.pool3D_forward_naive = ave_pool3D_forward_naive
+        self.pool_type = "avg"
+        self.pool3D_forward_naive = avg_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
@@ -104,8 +104,8 @@ class TestCase2(TestPool3d_Op):
     def initTestCase(self):
         self.global_pool = 1
         self.op_type = "pool3d"
-        self.pool_type = "ave"
-        self.pool3D_forward_naive = ave_pool3D_forward_naive
+        self.pool_type = "avg"
+        self.pool3D_forward_naive = avg_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]

@@ -41,8 +41,8 @@ class PoolOp : public framework::OperatorWithKernel {
     std::vector<int> strides = Attr<std::vector<int>>("strides");
     std::vector<int> paddings = Attr<std::vector<int>>("paddings");
 
-    PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "ave",
-                   "pooling_type should be 'max' or 'ave'");
+    PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "avg",
+                   "pooling_type should be 'max' or 'avg'");
     PADDLE_ENFORCE(in_X->dims().size() == 4 || in_X->dims().size() == 5,
                    "Pooling intput should be 4-D or 5-D");
 
@@ -99,7 +99,7 @@ class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::string>("poolingType",
                          "poolingType of pooling operator."
-                         "str constant equal to 'max' or 'ave'");
+                         "str constant equal to 'max' or 'avg'");
     AddAttr<std::vector<int>>(
         "ksize", "pooling size(height, width) of pooling operator.");
     AddAttr<int>(
@@ -140,7 +140,7 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::string>("poolingType",
                          "poolingType of pooling operator."
-                         "str constant equal to 'max' or 'ave'");
+                         "str constant equal to 'max' or 'avg'");
     AddAttr<std::vector<int>>(
         "ksize", "pooling size(depth, height, width) of pooling operator.");
     AddAttr<int>(

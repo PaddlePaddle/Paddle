@@ -33,6 +33,18 @@ class maxPool {
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   DEVICE inline void process(T& y, const T& x) { y = y > x ? y : x; }
   DEVICE inline void finalize(T& y, const T& poo_size) {}
+};
+
+template <class T>
+class avgPool {
+ public:
+  DEVICE inline T initial() { return static_cast<T>(0); }
+  DEVICE inline void process(T& y, const T& x) { y += x; }
+  DEVICE inline void finalize(T& y, const T& poo_size) { y /= poo_size; }
+};
+template <class T>
+class maxPoolGrad {
+ public:
   DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
                                  T scale) {
     dx += dy * (x == y);
@@ -40,11 +52,8 @@ class maxPool {
 };
 
 template <class T>
-class avePool {
+class avgPoolGrad {
  public:
-  DEVICE inline T initial() { return static_cast<T>(0); }
-  DEVICE inline void process(T& y, const T& x) { y += x; }
-  DEVICE inline void finalize(T& y, const T& poo_size) { y /= poo_size; }
   DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
                                  T scale) {
     dx += (scale * dy);
