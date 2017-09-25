@@ -6229,6 +6229,7 @@ def ProcessFile(filename, vlevel, extra_check_functions=[]):
                            arguments: filename, clean_lines, line, error
   """
 
+    sys.stderr.write("ProcessFile '%s'\n" % filename)
     _SetVerboseLevel(vlevel)
     _BackupFilters()
 
@@ -6402,6 +6403,8 @@ def ParseArguments(args):
 
 def main():
     filenames = ParseArguments(sys.argv[1:])
+    sys.stderr.write("argv1 '%s'\n" % sys.argv[1:])
+    sys.stderr.write("filenames '%s'\n" % filenames)
 
     # Change stderr to write with replacement characters so we don't die
     # if we try to print something containing non-ASCII characters.
@@ -6410,6 +6413,7 @@ def main():
                                            codecs.getwriter('utf8'), 'replace')
 
     _cpplint_state.ResetErrorCounts()
+
     for filename in filenames:
         ProcessFile(filename, _cpplint_state.verbose_level)
     _cpplint_state.PrintErrorCounts()
