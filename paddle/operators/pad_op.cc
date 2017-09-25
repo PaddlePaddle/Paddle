@@ -100,7 +100,7 @@ class PadOpGrad : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) should not be null");
     auto x_dims = ctx.GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
-    if (ctx.HasInput(x_grad_name)) {
+    if (ctx.HasOutput(x_grad_name)) {
       ctx.SetOutputDim(x_grad_name, x_dims);
     }
   }
