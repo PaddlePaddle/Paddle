@@ -54,7 +54,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
 };
 
 }  // namespace operators
-}  // namespace paddle
+}
 
 namespace ops = paddle::operators;
 REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
