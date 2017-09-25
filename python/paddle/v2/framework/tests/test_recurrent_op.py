@@ -3,6 +3,7 @@ import paddle.v2.framework.core as core
 import unittest
 import numpy as np
 from paddle.v2.framework.op import Operator, RecurrentOp
+from op_test import get_numeric_gradient
 
 
 def py_sigmoid(x):
@@ -47,7 +48,7 @@ class PySimpleRNN(object):
         else:
             pre_mem = self.h_boot
         xW = np.matmul(x, self.W)
-        hU = np.matmul(mem, self.U)
+        hU = np.matmul(pre_mem, self.U)
 
         sum = xW + hU
         self.mems[step_id] = py_sigmoid(sum)
@@ -68,7 +69,7 @@ def create_tensor(scope, name, shape, np_data):
     return tensor
 
 
-class TestRecurrentOp(unittest.TestCase):
+class RecurrentOpTest(unittest.TestCase):
     '''
     Test RNNOp
 
@@ -158,6 +159,42 @@ class TestRecurrentOp(unittest.TestCase):
         print
         print 'py_output', py_output
         self.assertEqual(pd_output.shape, py_output.shape)
+        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+
+
+class RecurrentGradientOpTest(unittest.TestCase):
+    def create_forward_op(self):
+        self.forward_op = RecurrentOp(
+            # inputs
+            inlinks=["x"],
+            boot_memories=["h_boot"],
+            step_net="stepnet",
+            # outputs
+            outlinks=["h"],
+            step_scopes="step_scopes",
+            # attributes
+            pre_memories=["h@pre"],
+            memories=["h@alias"])
+
+        # create a stepnet for RNN
+        stepnet = core.Net.create()
+        x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
+        h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
+        sum_op = Operator("add", X="Wx", Y="Uh", Out="sum")
+        sig_op = Operator("sigmoid", X="sum", Y="h@alias")
+
+        for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
+            stepnet.append_op(op)
+        stepnet.complete_add_op(True)
+        self.forward_op.set_stepnet(stepnet)
+
+    def create_gradient_op(self):
+        a = set()
+        backward_op = core.RecurrentOp.backward(self.forward_op, a)
+
+    def test_grad(self):
+        self.create_forward_op()
+        self.create_gradient_op()
 
 
 if __name__ == '__main__':

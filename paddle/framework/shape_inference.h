@@ -57,6 +57,9 @@ class InferShapeContextBase {
       const std::string &name) const = 0;
   virtual const std::vector<std::string> &Outputs(
       const std::string &name) const = 0;
+  // TODO(qiao) implement this function
+  void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
+                size_t j = 0) const {}
 
  protected:
   virtual framework::DDim GetDim(const std::string &name) const = 0;

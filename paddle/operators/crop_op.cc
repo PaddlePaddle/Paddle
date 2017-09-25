@@ -19,7 +19,6 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::LoDTensor;
 
 class CropOp : public framework::OperatorWithKernel {
  public:
@@ -77,12 +76,12 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
 Crop Operator.
 Crop input into output, as specified by offsets and shape.
 
-There are two ways to set shape: 
+There are two ways to set shape:
 1. referenc input: crop input X as shape as reference input.
-                    The dimension of reference input should 
+                    The dimension of reference input should
                     be as same as input X.
 2. shape list: crop input X by shape described by a list<int>.
-               The size of shape list should be as same as 
+               The size of shape list should be as same as
                dimension size of  input X.
 
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
@@ -93,15 +92,15 @@ Given:
          [0, 3, 4, 0, 0]
          [0, 0, 0, 0, 0]]
 
-and 
+and
 
     offsets = [0, 1]
 
 and
- 
+
     shape = [2, 2]
 
-then we get 
+then we get
 
     Out = [[1, 2],
            [3, 4]]

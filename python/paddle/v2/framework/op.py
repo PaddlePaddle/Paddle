@@ -89,12 +89,16 @@ class OpDescCreationMethod(object):
                     new_attr.f = user_defined_attr
                 elif attr.type == framework_pb2.STRING:
                     new_attr.s = user_defined_attr
+                elif attr.type == framework_pb2.BOOLEAN:
+                    new_attr.b = user_defined_attr
                 elif attr.type == framework_pb2.INTS:
                     new_attr.ints.extend(user_defined_attr)
                 elif attr.type == framework_pb2.FLOATS:
                     new_attr.floats.extend(user_defined_attr)
                 elif attr.type == framework_pb2.STRINGS:
                     new_attr.strings.extend(user_defined_attr)
+                elif attr.type == framework_pb2.BOOLEANS:
+                    new_attr.bools.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
                         pair = new_attr.int_pairs.add()

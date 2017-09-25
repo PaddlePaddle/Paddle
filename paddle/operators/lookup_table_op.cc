@@ -34,6 +34,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto ids_dims = ctx.GetInputDim("Ids");
 
     ctx.SetOutputDim("Out", {ids_dims[0], table_dims[1]});
+    ctx.ShareLoD("Ids", /*->*/ "Out");
   }
 };
 
@@ -49,9 +50,13 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "An input with type int32 or int64"
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type with W.");
-    AddComment(
-        "This operator is used to perform lookups on the parameter W,"
-        "then concatenated into a dense tensor.");
+    AddComment(R"DOC(
+This operator is used to perform lookups on the parameter W,
+then concatenated into a dense tensor.
+
+The input `Ids` can carry the LoD (Level of Details) information,
+or not. And the output only shares the LoD with input `Ids`.
+)DOC");
   }
 };
 

@@ -33,6 +33,7 @@ class PReluOp : public framework::OperatorWithKernel {
                    "Size of weight Alpha must be one.");
     PADDLE_ENFORCE(ctx.HasOutput("Out"), "Output(Out) should not be null");
     ctx.SetOutputDim("Out", ctx.GetInputDim("X"));
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -50,6 +51,8 @@ The equation is:
   f(x) = alpha * x , for x < 0
   f(x) = x         , for x >= 0
 
+The input `X` can carry the LoD (Level of Details) information,
+or not. And the output shares the LoD with input `X`.
 )DOC");
   }
 };

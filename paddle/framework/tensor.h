@@ -29,16 +29,19 @@ limitations under the License. */
 
 namespace paddle {
 
-namespace framework {
+namespace pybind {
 namespace details {
 template <bool less, size_t i, typename... args>
 struct CastToPyBufferImpl;
 }
+}  // namespace pybind
+
+namespace framework {
 
 class Tensor {
  public:
   template <bool less, size_t i, typename... args>
-  friend struct details::CastToPyBufferImpl;
+  friend struct pybind::details::CastToPyBufferImpl;
 
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
@@ -164,12 +167,6 @@ class Tensor {
 
   /*! points to dimensions of memory block. */
   DDim dims_;
-
-  /**
-   * A cache of the number of elements in a tensor.
-   * Would be 0 for an uninitialized tensor.
-   */
-  int64_t numel_;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.

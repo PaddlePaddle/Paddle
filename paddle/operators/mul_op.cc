@@ -18,7 +18,6 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::LoDTensor;
 
 class MulOp : public framework::OperatorWithKernel {
  public:
@@ -50,6 +49,7 @@ class MulOp : public framework::OperatorWithKernel {
         x_mat_dims[1], y_mat_dims[0],
         "First matrix's width must be equal with second matrix's height.");
     ctx.SetOutputDim("Out", {x_mat_dims[0], y_mat_dims[1]});
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -62,9 +62,9 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of mul op");
     AddAttr<int>(
         "x_num_col_dims",
-        R"DOC(mul_op can take tensors with more than two dimensions as input `X`, 
-            in that case, tensors will be reshaped to a matrix. The matrix's first 
-            dimension(column length) will be the product of tensor's last 
+        R"DOC(mul_op can take tensors with more than two dimensions as input `X`,
+            in that case, tensors will be reshaped to a matrix. The matrix's first
+            dimension(column length) will be the product of tensor's last
             `num_col_dims` dimensions, and the matrix's second dimension(row length)
             will be the product of tensor's first `rank - num_col_dims` dimensions.
         )DOC")
@@ -78,9 +78,14 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1)
         .EqualGreaterThan(1);
     AddComment(R"DOC(
-Two Element Mul Operator.
+Mul operator is used to perform matrix multiplication for input X and Y.
 
-The equation is: Out = X * Y
+The equation is:
+
+    Out = X * Y
+
+Both the input `X` and `Y` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };

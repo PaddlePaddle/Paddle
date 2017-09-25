@@ -51,6 +51,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
     ctx.SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx.SetOutputDim("Out", {x_dims[0], 1});
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -73,6 +74,9 @@ class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
     input or to 1. If the first dimension of target is 1, SquaredL2DistanceOp
     will broadcast target's first dimension to input's first dimension.
     You can decide whether calculate the gradient of input and target.
+
+    Both the input X and Y can carry the LoD (Level of Details) information,
+    or not. But the output only shares the LoD with input X.
     )DOC");
   }
 };

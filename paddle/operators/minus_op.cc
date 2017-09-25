@@ -41,6 +41,7 @@ class MinusOp : public framework::OperatorWithKernel {
         x_dims, y_dims,
         "Minus operator must take two tensor with same num of elements");
     ctx.SetOutputDim("Out", x_dims);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -54,7 +55,12 @@ class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(Minus Operator
 
-Equation: Out = X - Y
+Equation:
+
+    Out = X - Y
+
+Both the input `X` and `Y` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };

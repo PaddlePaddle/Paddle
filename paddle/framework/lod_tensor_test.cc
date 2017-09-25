@@ -56,11 +56,11 @@ TEST_F(LoDTensorTester, NumElements) {
   ASSERT_EQ(lod_tensor_.NumElements(2), 8UL);
 }
 
-TEST_F(LoDTensorTester, SliceLevels) {
+TEST_F(LoDTensorTester, ShrinkLevels) {
   // slice 1 level
   for (size_t level = 0; level < 3UL; ++level) {
     LoDTensor new_lod_tensor = lod_tensor_;
-    new_lod_tensor.SliceLevels(level, level + 1);
+    new_lod_tensor.ShrinkLevels(level, level + 1);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor_.NumElements(level));
     ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
@@ -68,7 +68,7 @@ TEST_F(LoDTensorTester, SliceLevels) {
   // slice 2 level
   for (size_t level = 0; level < 2UL; ++level) {
     LoDTensor new_lod_tensor = lod_tensor_;
-    new_lod_tensor.SliceLevels(level, level + 2);
+    new_lod_tensor.ShrinkLevels(level, level + 2);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
     ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor_.NumElements(level));
     ASSERT_EQ(new_lod_tensor.NumElements(1),
@@ -77,10 +77,10 @@ TEST_F(LoDTensorTester, SliceLevels) {
   }
 }
 
-TEST_F(LoDTensorTester, SliceInLevel) {
+TEST_F(LoDTensorTester, ShrinkInLevel) {
   size_t level = 0;
   LoDTensor new_lod_tensor = lod_tensor_;
-  new_lod_tensor.SliceInLevel(level, 0, 2);
+  new_lod_tensor.ShrinkInLevel(level, 0, 2);
   EXPECT_EQ(new_lod_tensor.NumLevels(), 3UL);
   EXPECT_EQ(new_lod_tensor.NumElements(0), 2UL);
   EXPECT_EQ(new_lod_tensor.NumElements(1), 4UL);
@@ -89,7 +89,7 @@ TEST_F(LoDTensorTester, SliceInLevel) {
 
   level = 1;
   new_lod_tensor = lod_tensor_;
-  new_lod_tensor.SliceInLevel(level, 0, 2);
+  new_lod_tensor.ShrinkInLevel(level, 0, 2);
   ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);

@@ -39,6 +39,11 @@ class PadOp : public framework::OperatorWithKernel {
       out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
     }
     ctx.SetOutputDim("Out", framework::make_ddim(out_dims));
+    if (out_dims[0] == x_dim[0]) {
+      // Only pass LoD when the first dimension is equal between
+      // output and input.
+      ctx.ShareLoD("X", /*->*/ "Out");
+    }
   }
 };
 
@@ -61,15 +66,15 @@ Given:
 X = [[1, 2],
    [3, 4]]
 
-and 
+and
 
 paddings = [0, 1, 1, 2]
 
 and
- 
-pad_value = 0 
 
-then we get 
+pad_value = 0
+
+then we get
 
 Out = [[0, 1, 2, 0, 0]
        [0, 3, 4, 0, 0]

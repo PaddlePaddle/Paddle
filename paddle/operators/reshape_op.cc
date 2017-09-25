@@ -51,6 +51,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
                    [](int a) { return static_cast<int64_t>(a); });
     auto out_dims = framework::make_ddim(shape_int64);
     ctx.SetOutputDim("Out", out_dims);
+    if (shape[0] == in->dims()[0]) {
+      // Only pass LoD when the first dimension is equal between
+      // output and input.
+      ctx.ShareLoD("X", /*->*/ "Out");
+    }
   }
 };
 
@@ -71,7 +76,7 @@ Given a 2-D tensor X with 2 rows and 2 columns
 
     [[1, 2], [3, 4]]
 
-with target shape = [1, 4], the reshape operator will transform 
+with target shape = [1, 4], the reshape operator will transform
 the tensor X into a 1-D tensor:
 
     [1, 2, 3, 4]

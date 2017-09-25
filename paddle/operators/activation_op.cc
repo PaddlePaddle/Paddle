@@ -24,6 +24,7 @@ class ActivationOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContextBase &ctx) const override {
     ctx.SetOutputDim("Y", ctx.GetInputDim("X"));
+    ctx.ShareLoD("X", /*->*/ "Y");
   }
 };
 

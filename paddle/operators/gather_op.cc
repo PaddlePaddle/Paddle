@@ -57,7 +57,7 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Index", "The index input of gather op");
     AddOutput("Out", "The output of add op");
     AddComment(R"DOC(
-Gather Operator by selecting from the first axis, 
+Gather Operator by selecting from the first axis,
 
 Out = X[Index]
 )DOC");

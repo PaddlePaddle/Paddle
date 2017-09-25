@@ -42,6 +42,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
     }
 
     ctx.SetOutputDim("Diff", x_dims);
+    // loss is a two-rank tensor
     ctx.SetOutputDim("Out", {x_dims[0], 1});
   }
 };

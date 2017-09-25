@@ -46,6 +46,7 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx.Outputs("Out").size(), 1,
                       "The output size must be 1");
     ctx.SetOutputDim("Out", x_dims);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 

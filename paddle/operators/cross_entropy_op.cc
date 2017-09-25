@@ -17,8 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
-
 class CrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -50,6 +48,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     }
 
     ctx.SetOutputDim("Y", {x_dim[0], 1});
+    ctx.ShareLoD("X", /*->*/ "Y");
   }
 };
 
@@ -104,7 +103,8 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The first input of CrossEntropyOp");
     AddInput("Label", "The second input of CrossEntropyOp");
     AddOutput("Y", "The output of CrossEntropyOp");
-    AddAttr<int>("soft_label", "Is soft label. Default zero.").SetDefault(0);
+    AddAttr<bool>("soft_label", "Is soft label. Default zero.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 CrossEntropy Operator.
@@ -112,12 +112,12 @@ CrossEntropy Operator.
 It supports both standard cross-entropy and soft-label cross-entropy loss
 computation.
 1) One-hot cross-entropy:
-    soft_label = 0, Label[i, 0] indicates the class index for sample i:
+    soft_label = False, Label[i, 0] indicates the class index for sample i:
 
                 Y[i] = -log(X[i, Label[i]])
 
 2) Soft-label cross-entropy:
-    soft_label = 1, Label[i, j] indicates the soft label of class j
+    soft_label = True, Label[i, j] indicates the soft label of class j
     for sample i:
 
                 Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
@@ -129,6 +129,9 @@ computation.
      As a special case of 2), when each row of Input(Label) has only one
      non-zero element (equals 1), soft-label cross-entropy degenerates to a
      one-hot cross-entropy with one-hot label representation.
+
+Both the input `X` and `Label` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };

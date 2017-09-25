@@ -28,6 +28,7 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx.HasOutput("Dst"),
                    "Output(Dst) of FillZerosLikeOp should not be null.");
     ctx.SetOutputDim("Dst", ctx.GetInputDim("Src"));
+    ctx.ShareLoD("X", /*->*/ "Y");
   }
 };
 
@@ -36,8 +37,8 @@ class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
   FillZerosLikeOpMaker(framework::OpProto *proto,
                        framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Src", "The input of fill-zeros-like op.");
-    AddOutput("Dst", "The varibale will be filled up with zeros.");
+    AddInput("X", "The input of fill-zeros-like op.");
+    AddOutput("Y", "The varibale will be filled up with zeros.");
     AddComment(R"DOC(
 Fill up a vriable with zeros.
 
