@@ -128,10 +128,24 @@ public:
 
   struct SetAttrDescVisitor : public boost::static_visitor<void> {
     explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
-    OpDesc::Attr *attr_;
-    void operator()(int v) { attr_->set_i(v); }
-    void operator()(float v) { attr_->set_f(v); }
-    void operator()(const std::string &v) { attr_->set_s(v); }
+    mutable OpDesc::Attr *attr_;
+    void operator()(int v) const { attr_->set_i(v); }
+    void operator()(float v) const { attr_->set_f(v); }
+    void operator()(const std::string &v) const { attr_->set_s(v); }
+    void operator()(bool b) const { attr_->set_b(b); }
+
+    void operator()(const std::vector<int> &v) const {
+      VectorToRepeated(v, attr_->mutable_ints());
+    }
+    void operator()(const std::vector<float> &v) const {
+      VectorToRepeated(v, attr_->mutable_floats());
+    }
+    void operator()(const std::vector<std::string> &v) const {
+      VectorToRepeated(v, attr_->mutable_strings());
+    }
+    void operator()(const std::vector<bool> &v) const {
+      VectorToRepeated(v, attr_->mutable_bools());
+    }
   };
 
   void Sync() {
