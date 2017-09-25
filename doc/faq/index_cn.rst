@@ -410,7 +410,7 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 这里设置 :code:`flatten_result=False`，得到的输出结果是元素个数等于输出字段数的 :code:`list`，该 :code:`list` 的每个元素是由所有输出层相应字段结果组成的 :code:`list`，每个字段结果的类型是 :code:`numpy.array`。:code:`flatten_result` 的默认值为 :code:`True`，该情况下，PaddlePaddle会分别对每个字段将所有输出层的结果按行进行拼接，如果各输出层该字段 :code:`numpy.array` 结果的相应维数不匹配，程序将不能正常运行。
 
 20. :code:`paddle.layer.memory` 的参数 :code:`name` 如何使用
---------------------------------------------
+-------------------------------------------------------------
 
 * :code:`paddle.layer.memory` 用于获取特定layer上一时间步的输出，该layer是通过参数 :code:`name` 指定，即，:code:`paddle.layer.memory` 会关联参数 :code:`name` 取值相同的layer，并将该layer上一时间步的输出作为自身当前时间步的输出。
 
@@ -440,8 +440,8 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 
 * :code:`paddle.layer.lstmemory`、:code:`paddle.layer.grumemory`、:code:`paddle.layer.recurrent` 不是通过一般的方式来实现对输出的激活，所以不能采用第一种方式在这几个layer里设置 :code:`drop_rate` 来使用dropout。若要对这几个layer使用dropout，可采用第二种方式，即使用 :code:`paddle.layer.dropout`。
 
-22. 如何设置learning_rate_schedule
----------------------------------
+22. 如何设置学习率退火（learning rate annealing）
+------------------------------------------------
 
 在相应的优化算法里设置learning_rate_schedule及相关参数，以使用Adam算法为例，代码如下：
 
@@ -483,7 +483,7 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
 
 * "manual"
 
-  这是一种按已训练样本数分段取值的learning_rate_schedule。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
+  这是一种按已训练样本数分段取值的学习率退火方法。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
 
   ..  code-block:: python
 
@@ -496,7 +496,7 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
 
 * "pass_manual"
 
-  这是一种按已训练pass数分段取值的learning_rate_schedule。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
+  这是一种按已训练pass数分段取值的学习率退火方法。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
 
   ..  code-block:: python
 
