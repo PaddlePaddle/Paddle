@@ -57,7 +57,7 @@ class TestOpDesc(unittest.TestCase):
 
 class TestProgramDesc(unittest.TestCase):
     def test_instance(self):
-        program_desc = core.ProgramDesc.instance()
+        program_desc = core.ProgramDesc.__create_program_desc__()
         self.assertIsNotNone(program_desc)
         del program_desc
         program_desc = core.ProgramDesc.instance()
@@ -84,13 +84,46 @@ class TestProgramDesc(unittest.TestCase):
 
 class TestVarDesc(unittest.TestCase):
     def test_shape(self):
-        program_desc = core.ProgramDesc.instance()
+        program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
         var = block.new_var('my_var')
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
         res_shape = var.shape()
         self.assertEqual(src_shape, res_shape)
+
+    def test_data_type(self):
+        program_desc = core.ProgramDesc.__create_program_desc__()
+        block = program_desc.block(0)
+        var = block.new_var('my_var')
+        var.set_data_type(2)
+        self.assertEqual(2, var.data_type)
+
+
+class TestBlockDesc(unittest.TestCase):
+    def test_add_var(self):
+        prog = core.ProgramDesc.__create_program_desc__()
+        self.assertIsNotNone(prog)
+        block = prog.block(0)
+        self.assertIsNotNone(block)
+        var1 = block.new_var("var1")
+        var2 = block.new_var("var2")
+        var3 = block.new_var("var3")
+        all_vars = block.all_vars()
+        self.assertEqual(set(all_vars), set([var1, var2, var3]))
+        var2_re = block.var("var2")
+        self.assertEqual(var2_re, var2)
+
+    def test_add_op(self):
+        prog = core.ProgramDesc.__create_program_desc__()
+        self.assertIsNotNone(prog)
+        block = prog.block(0)
+        self.assertIsNotNone(block)
+        op1 = block.append_op()
+        op2 = block.append_op()
+        op0 = block.prepend_op()
+        all_ops = block.all_ops()
+        self.assertEqual(all_ops, [op0, op1, op2])
 
 
 if __name__ == '__main__':
