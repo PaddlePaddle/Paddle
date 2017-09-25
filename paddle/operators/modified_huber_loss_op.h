@@ -52,8 +52,8 @@ class ModifiedHuberLossKernel : public framework::OpKernel {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
     auto* in1 = context.Input<Tensor>("Y");
-    auto* out0 = context.Output<framework::LoDTensor>("IntermediateVal");
-    auto* out1 = context.Output<framework::LoDTensor>("Out");
+    auto* out0 = context.Output<framework::Tensor>("IntermediateVal");
+    auto* out1 = context.Output<framework::Tensor>("Out");
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
@@ -77,11 +77,9 @@ class ModifiedHuberLossGradCPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("Y");
-    auto* in1 = context.Input<framework::LoDTensor>("IntermediateVal");
-    auto* in2 =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* out0 =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* in1 = context.Input<framework::Tensor>("IntermediateVal");
+    auto* in2 = context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* out0 = context.Output<framework::Tensor>(framework::GradVarName("X"));
 
     if (out0) {
       const T* y_ptr = in0->data<T>();

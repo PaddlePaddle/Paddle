@@ -37,7 +37,7 @@ class Conv2DOp : public framework::OperatorWithKernel {
 
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
-    auto out = ctx.Output<framework::LoDTensor>("Output");
+    auto out = ctx.Output<framework::Tensor>("Output");
     std::vector<int> strides = Attr<std::vector<int>>("strides");
     std::vector<int> paddings = Attr<std::vector<int>>("paddings");
     int groups = Attr<int>("groups");
@@ -111,10 +111,9 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto in = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
-    auto d_in =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
+    auto d_in = ctx.Output<framework::Tensor>(framework::GradVarName("Input"));
     auto d_filter =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Filter"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Filter"));
     if (d_in) d_in->Resize(in->dims());
     if (d_filter) d_filter->Resize(filter->dims());
   }

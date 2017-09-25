@@ -51,7 +51,7 @@ class CrossEntropyOpKernel : public framework::OpKernel {
     int batch_size = x->dims()[0];
     int class_num = x->dims()[1];
 
-    if (ctx.Attr<int>("soft_label") == 1) {
+    if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
       int index = 0;
       for (int i = 0; i < batch_size; ++i) {
@@ -92,7 +92,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel {
     int class_num = x->dims()[1];
 
     // TODO(qingqing): make zero setting an common function.
-    if (ctx.Attr<int>("soft_label") == 1) {
+    if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = ctx.Input<Tensor>("Label")->data<T>();
       int index = 0;
       for (int i = 0; i < batch_size; ++i) {
