@@ -33,8 +33,8 @@ DECLARE_string(nics);
 
 DEFINE_string(config_file_a, "", "config of one network to compare");
 DEFINE_string(config_file_b, "", "config of another network to compare");
-DEFINE_bool(use_mkldnn_a, false, "whether to use mkldnn to run network");
-DEFINE_bool(use_mkldnn_b, false, "whether to use mkldnn to run network");
+DEFINE_bool(use_mkldnn_a, false, "whether to use mkldnn to run config_file_a");
+DEFINE_bool(use_mkldnn_b, false, "whether to use mkldnn to run config_file_b");
 DEFINE_bool(need_high_accuracy,
             false,
             "whether need to run in double accuracy");

@@ -7,16 +7,17 @@ export KMP_AFFINITY="granularity=fine,compact,0,0"
 function train() {
   topology=$1
   bs=$2
-  thread=1
-  if [ $3 ]; then
-    thread=$3
-  fi
-  if [ $thread -eq 1 ]; then
-    use_mkldnn=1
+  use_mkldnn=$3
+  if [ $3 == "True" ]; then
+    use_mkldnn=$3
+    thread=1
     log="logs/${topology}-mkldnn-${bs}.log"
-  else
-    use_mkldnn=0
+  elif [ $3 == "False" ]; then
+    use_mkldnn=$3
+    thread=`nproc`
     log="logs/${topology}-${thread}mklml-${bs}.log"
+  else
+    echo "Wrong input $3, use True or False."
   fi
   args="batch_size=${bs}"
   config="${topology}.py"
@@ -40,11 +41,11 @@ fi
 
 #========= mkldnn =========#
 # vgg
-train vgg 64 
-train vgg 128
-train vgg 256
+train vgg 64 True
+train vgg 128 True
+train vgg 256 True
 
 #========== mklml ===========#
-train vgg 64 16
-train vgg 128 16
-train vgg 256 16
+train vgg 64 False
+train vgg 128 False
+train vgg 256 False
