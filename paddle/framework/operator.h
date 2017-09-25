@@ -468,11 +468,7 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   }
 
  private:
-  DDim GetDim(const std::string& name) const {
-    return GetTensorFromVar(scope_.FindVar(name))->dims();
-  }
-
-  void SetDim(const std::string& name, const DDim& dim) const {
+  Tensor* GetTensor(const std::string& name) const {
     Tensor* t;
     auto* var = scope_.FindVar(name);
     if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
@@ -480,7 +476,13 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
     } else {
       t = const_cast<Tensor*>(GetTensorFromVar(scope_.FindVar(name)));
     }
-    t->Resize(dim);
+    return t;
+  }
+
+  DDim GetDim(const std::string& name) const { return GetTensor(name)->dims(); }
+
+  void SetDim(const std::string& name, const DDim& dim) const {
+    GetTensor(name)->Resize(dim);
   }
 
   const OperatorBase& op_;
