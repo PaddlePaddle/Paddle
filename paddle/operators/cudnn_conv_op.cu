@@ -78,13 +78,14 @@ class CudnnConvOpKernel : public framework::OpKernel {
         h, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, &algo));
     // ------------------- cudnn conv workspace ---------------------
-    void* cudnn_workspace = NULL;
+    void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes = 0;
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
         h, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
-    cudaMalloc(&cudnn_workspace, workspace_size_in_bytes);
-    // cudnn_workspace = memory::Alloc<platform::GPUPlace>(ctx.GetPlace());
+    // Already on GPU
+    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv forward ---------------------
     // FIXME(typhoonzero): template type T may not be the same as cudnn call.
     float alpha = 1.0f, beta = 0.0f;
@@ -92,6 +93,8 @@ class CudnnConvOpKernel : public framework::OpKernel {
         h, &alpha, cudnn_input_desc, input_data, cudnn_filter_desc, filter_data,
         cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes, &beta,
         cudnn_output_desc, output_data));
+    // Release the cudnn workspace
+    paddle::memory::Free(gpu, cudnn_workspace);
   }
 };
 
@@ -186,8 +189,10 @@ class CudnnConvGradOpKernel : public framework::OpKernel {
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
     }
     // ------------------- cudnn conv workspace ---------------------
+    // Already on GPU
     void* cudnn_workspace = nullptr;
-    cudaMalloc(&cudnn_workspace, workspace_size_in_bytes);
+    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
     // FIXME(typhoonzero): template type T may not be the same as cudnn call.
     float alpha = 1.0f, beta = 0.0f;
@@ -208,6 +213,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel {
           workspace_size_in_bytes, &beta, cudnn_filter_grad_desc,
           filter_grad_data));
     }
+    // Release the cudnn workspace
+    paddle::memory::Free(gpu, cudnn_workspace);
   }
 };
 
