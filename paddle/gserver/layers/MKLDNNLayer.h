@@ -115,6 +115,7 @@ public:
       copySeqInfoToOutputs();
       size_t elemenCnt = inputLayers_[0]->getOutput().value->getElementCnt();
       if (inputElemenCnt_ != elemenCnt) {
+        VLOG(MKLDNN_BASE) << getName() << " reset mkldnn forward";
         // reset when input total sizes changed, not only the batchsize
         inputElemenCnt_ = elemenCnt;
         reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
@@ -142,6 +143,7 @@ public:
 
   void backward(const UpdateCallback& callback) override {
     if (needResetBwd_) {
+      VLOG(MKLDNN_BASE) << getName() << " reset mkldnn backward";
       resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
       needResetBwd_ = false;
     }
