@@ -42,8 +42,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     int64_t capacity =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
     auto *in = ctx.Input<framework::Tensor>("X");
-    int64_t in_size = framework::product(in->dims());
-    PADDLE_ENFORCE_EQ(capacity, in_size,
+    PADDLE_ENFORCE_EQ(capacity, in->numel(),
                       "The size of Input(X) mismatches with Attr(shape).");
     // resize output
     std::vector<int64_t> shape_int64(shape.size(), 0);

@@ -30,18 +30,20 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
         "Output(Out) of SequenceSoftmaxOp should not be null.");
 
     auto *x = ctx.Input<framework::LoDTensor>("X");
-    auto dims = x->dims();
     auto lod = x->lod();
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
+    auto dims = x->dims();
     PADDLE_ENFORCE_GE(
         dims[0],
         /* batch_size */ static_cast<int64_t>(lod[0].size() - 1),
         "The first dimension of Input(X) should be larger than batch size.");
-    PADDLE_ENFORCE_EQ(x->numel(), static_cast<int64_t>(lod[0].size() - 1),
+
+    const size_t level = lod.size() - 1;
+    PADDLE_ENFORCE_EQ(x->numel(), static_cast<int64_t>(lod[level].back()),
                       "The width of each timestep in Input(X) of "
                       "SequenceSoftmaxOp should be 1.");
 
-    dims[0] = lod[0].size() - 1;
+    std::cout << DebugString() << std::endl;
+
     ctx.Output<framework::LoDTensor>("Out")->Resize({dims});
   }
 };

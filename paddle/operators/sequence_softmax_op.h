@@ -38,7 +38,7 @@ class SequenceSoftmaxKernel : public framework::OpKernel {
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto lod = x->lod();
-    const size_t level = lod.size();
+    const size_t level = lod.size() - 1;
 
     out->mutable_data<T>(ctx.GetPlace());
     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
@@ -47,6 +47,10 @@ class SequenceSoftmaxKernel : public framework::OpKernel {
       Tensor x_i = x->Slice<T>(start_pos, end_pos);
       Tensor out_i = out->Slice<T>(start_pos, end_pos);
 
+      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
+      framework::DDim dims = framework::make_ddim({1UL, end_pos - start_pos});
+      x_i.Resize(dims);
+      out_i.Resize(dims);
       math::SoftmaxFunctor<Place, T>()(&x_i, &out_i, ctx);
     }
   }
