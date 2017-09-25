@@ -29,8 +29,7 @@ namespace framework {
 
 // The order should be as same as framework.proto
 typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                       std::vector<float>, std::vector<std::string>,
-                       std::vector<std::pair<int, int>>, bool,
+                       std::vector<float>, std::vector<std::string>, bool,
                        std::vector<bool>, BlockDesc*>
     Attribute;
 
