@@ -506,3 +506,9 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
           learning_rate_args="1:1.0,2:0.9,3:0.8",) 
 
   在该示例中，当已训练pass数小于等于1时，学习率为 :code:`1e-3 * 1.0`；当已训练pass数大于1小于等于2时，学习率为 :code:`1e-3 * 0.9`；当已训练pass数大于2时，学习率为 :code:`1e-3 * 0.8`。
+
+23. 出现 :code:`Duplicated layer name` 错误怎么办
+--------------------------------------------------
+
+出现该错误的原因一般是用户对不同layer的参数 :code:`name` 设置了相同的取值。遇到该错误时，先找出参数 :code:`name` 取值相同的layer，然后将这些layer的参数 :code:`name` 设置为不同的值。
+
