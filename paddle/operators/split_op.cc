@@ -27,7 +27,7 @@ class SplitOp : public framework::OperatorWithKernel {
   void InferShape(const framework::InferShapeContext &ctx) const override {
     // infershape
     auto *in = ctx.Input<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
     size_t num = static_cast<size_t>(ctx.Attr<int>("num"));
     std::vector<int> sections =

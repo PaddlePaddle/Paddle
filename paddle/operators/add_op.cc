@@ -33,7 +33,7 @@ class AddOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->dims(),
                       ctx.Input<Tensor>("Y")->dims(),
                       "Two input of Add Op's dimension must be same.");
-    ctx.Output<framework::LoDTensor>("Out")->Resize(
+    ctx.Output<framework::Tensor>("Out")->Resize(
         ctx.Input<Tensor>("X")->dims());
   }
 };
