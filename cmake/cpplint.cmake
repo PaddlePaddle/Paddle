@@ -42,6 +42,7 @@ set(IGNORE_PATTERN
 # NOTE: If WITH_STYLE_CHECK is OFF, then this macro just do nothing.
 macro(add_style_check_target TARGET_NAME)
     if(WITH_STYLE_CHECK)
+        MESSAGE("ARGN: " ${ARGN})
         set(SOURCES_LIST ${ARGN})
         list(REMOVE_DUPLICATES SOURCES_LIST)
         foreach(filename ${SOURCES_LIST})
