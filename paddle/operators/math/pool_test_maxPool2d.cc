@@ -23,16 +23,17 @@
 
 #ifndef PADDLE_ONLY_CPU
 
-template <typename PooType>
-void testPool2d(paddle::platform::DeviceContext& context, PooType pool_process,
-                paddle::framework::Tensor& input,
+template <typename PoolType, typename PoolGradType>
+void testPool2d(paddle::platform::DeviceContext& context, PoolType pool_process,
+                PoolGradType poolGrad_process, paddle::framework::Tensor& input,
                 paddle::framework::Tensor& input_grad,
                 paddle::framework::Tensor& output,
                 paddle::framework::Tensor& output_grad, std::vector<int>& ksize,
                 std::vector<int>& strides, std::vector<int>& paddings) {
   paddle::operators::math::Pool2dForwardFunctor<paddle::platform::GPUPlace,
-                                                PooType, float>
+                                                PoolType, float>
       pool2d_forward;
+
   pool2d_forward(context, input, output, ksize, strides, paddings,
                  pool_process);
 
@@ -44,10 +45,11 @@ void testPool2d(paddle::platform::DeviceContext& context, PooType pool_process,
   start = clock();
   for (int i = 0; i < times; ++i) {
     paddle::operators::math::Pool2dBackwardFunctor<paddle::platform::GPUPlace,
-                                                   PooType, float>
+                                                   PoolGradType, float>
         pool2d_backward;
     pool2d_backward(context, input, input_grad, output, output_grad, ksize,
-                    strides, paddings, pool_process);
+                    strides, paddings, poolGrad_process);
+
     PADDLE_ENFORCE(cudaStreamSynchronize(0),
                    "cudaStreamSynchronize failed in pool2d_backward CopyFrom");
   }
@@ -136,10 +138,12 @@ void test2dPool() {
   paddle::platform::DeviceContext* context =
       new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
   paddle::operators::math::pool::maxPool<float> pool_process;
+  paddle::operators::math::pool::maxPoolGrad<float> poolGrad_process;
 
-  testPool2d<paddle::operators::math::pool::maxPool<float>>(
-      *context, pool_process, input, input_grad, output, output_grad, ksize,
-      strides, paddings);
+  testPool2d<paddle::operators::math::pool::maxPool<float>,
+             paddle::operators::math::pool::maxPoolGrad<float>>(
+      *context, pool_process, poolGrad_process, input, input_grad, output,
+      output_grad, ksize, strides, paddings);
 }
 
 int main() {

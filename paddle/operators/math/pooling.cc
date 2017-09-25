@@ -196,7 +196,7 @@ class MaxPool2dBackwardFunctor<platform::CPUPlace, T> {
 };
 
 template class MaxPool2dBackwardFunctor<platform::CPUPlace, float>;
-template class MaxPool2dBackwardFunctor<platform::CPUPlace, double>;
+// template class MaxPool2dBackwardFunctor<platform::CPUPlace, double>;
 
 template class Pool2dForwardFunctor<
     platform::CPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
@@ -443,7 +443,7 @@ class MaxPool3dBackwardFunctor<platform::CPUPlace, T> {
 };
 
 template class MaxPool3dBackwardFunctor<platform::CPUPlace, float>;
-template class MaxPool3dBackwardFunctor<platform::CPUPlace, double>;
+// template class MaxPool3dBackwardFunctor<platform::CPUPlace, double>;
 
 template class Pool3dForwardFunctor<
     platform::CPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
