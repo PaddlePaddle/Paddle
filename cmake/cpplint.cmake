@@ -21,6 +21,8 @@ set(STYLE_FILTER "${STYLE_FILTER}-build/c++11,")
 set(STYLE_FILTER "${STYLE_FILTER}-readability/casting")
 
 
+MESSAGE("STYLE_FILTER:" ${STYLE_FILTER})
+
 # IGNORE SOME FILES
 set(IGNORE_PATTERN
     .*ImportanceSampler.*
