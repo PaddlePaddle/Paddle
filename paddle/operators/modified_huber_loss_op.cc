@@ -76,7 +76,7 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContextBase& ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"), "X must be initialized.");
-    PADDLE_ENFORCE(ctx.HasOutput("Y"), "Y must be initialized.");
+    PADDLE_ENFORCE(ctx.HasInput("Y"), "Y must be initialized.");
     PADDLE_ENFORCE(ctx.HasInput("IntermediateVal"),
                    "Intermediate value must not be null.");
     PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
