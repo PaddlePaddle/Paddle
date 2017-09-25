@@ -92,6 +92,28 @@ public:
   const T* getData() const { return this->data_; }
   T* getData() { return this->data_; }
 
+#ifdef PADDLE_USE_MKLDNN
+  /**
+   * sgd update with openmp to speedup
+   */
+  void sgdUpdateWithOMP(VectorT& gradVec,
+                        VectorT& momVec,
+                        T learningRate,
+                        T momentum,
+                        T decayRate) {
+    size_t size = this->getSize();
+    T* val = this->getData();
+    T* grd = gradVec.getData();
+    T* mom = momVec.getData();
+    decayRate *= learningRate;
+#pragma omp parallel for
+    for (size_t i = 0; i < size; ++i) {
+      mom[i] = momentum * mom[i] - learningRate * grd[i] - decayRate * val[i];
+      val[i] += mom[i];
+    }
+  }
+#endif
+
   virtual void zeroMem() = 0;
   // set all elements to value
   virtual void reset(const T& value) = 0;
