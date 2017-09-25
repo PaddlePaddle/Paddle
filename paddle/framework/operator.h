@@ -561,8 +561,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual void InferShape(const InferShapeContext& ctx) const {}
-  virtual void InferShape(const InferShapeContextBase& ctx) const {}
+  virtual void InferShape(const InferShapeContextBase& ctx) const = 0;
 };
 
 }  // namespace framework

@@ -115,7 +115,7 @@ class OpWithKernelTest : public OperatorWithKernel {
   using OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {}
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {}
 };
 
 template <typename T1, typename T2>
