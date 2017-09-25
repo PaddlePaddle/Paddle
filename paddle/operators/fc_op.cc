@@ -194,7 +194,7 @@ or not. But the output only shares the LoD with first input (`X[0]`).
 };
 
 }  // namespace operators
-}  //
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(fc, ops::FCOp, ops::FCOpMaker);
