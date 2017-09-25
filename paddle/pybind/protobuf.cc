@@ -14,7 +14,71 @@ limitations under the License. */
 
 #include "paddle/pybind/protobuf.h"
 #include <deque>
+#include <iostream>
 #include "paddle/framework/attribute.h"
+
+// Cast boost::variant for PyBind.
+// Copy from
+// https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
+namespace pybind11 {
+namespace detail {
+
+// Can be replaced by a generic lambda in C++14
+struct variant_caster_visitor : public boost::static_visitor<handle> {
+  return_value_policy policy;
+  handle parent;
+
+  variant_caster_visitor(return_value_policy policy, handle parent)
+      : policy(policy), parent(parent) {}
+
+  template <class T>
+  handle operator()(T const &src) const {
+    return make_caster<T>::cast(src, policy, parent);
+  }
+};
+
+template <class Variant>
+struct variant_caster;
+
+template <template <class...> class V, class... Ts>
+struct variant_caster<V<Ts...>> {
+  using Type = V<Ts...>;
+
+  template <class T>
+  bool try_load(handle src, bool convert) {
+    auto caster = make_caster<T>();
+    if (!load_success_ && caster.load(src, convert)) {
+      load_success_ = true;
+      value = cast_op<T>(caster);
+      return true;
+    }
+    return false;
+  }
+
+  bool load(handle src, bool convert) {
+    auto unused = {false, try_load<Ts>(src, convert)...};
+    (void)(unused);
+    return load_success_;
+  }
+
+  static handle cast(Type const &src,
+                     return_value_policy policy,
+                     handle parent) {
+    variant_caster_visitor visitor(policy, parent);
+    return boost::apply_visitor(visitor, src);
+  }
+
+  PYBIND11_TYPE_CASTER(Type, _("Variant"));
+  bool load_success_{false};
+};
+
+// Add specialization for concrete variant type
+template <class... Args>
+struct type_caster<boost::variant<Args...>>
+    : variant_caster<boost::variant<Args...>> {};
+
+}  // namespace detail
+}  // namespace pybind11
 
 namespace paddle {
 namespace pybind {
@@ -36,6 +100,15 @@ inline void VectorToRepeated(const std::vector<T> &vec,
                              RepeatedField *repeated_field) {
   repeated_field->Reserve(vec.size());
   for (auto &elem : vec) {
+    *repeated_field->Add() = elem;
+  }
+}
+
+template <typename RepeatedField>
+inline void VectorToRepeated(const std::vector<bool> &vec,
+                             RepeatedField *repeated_field) {
+  repeated_field->Reserve(vec.size());
+  for (auto elem : vec) {
     *repeated_field->Add() = elem;
   }
 }
@@ -146,6 +219,10 @@ public:
     void operator()(const std::vector<bool> &v) const {
       VectorToRepeated(v, attr_->mutable_bools());
     }
+    void operator()(BlockDesc *desc) const {
+      attr_->set_block_idx(desc->idx());
+    }
+    void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
   };
 
   void Sync() {
@@ -168,11 +245,50 @@ public:
       for (auto &attr : attrs_) {
         auto *attr_desc = op_desc_.add_attrs();
         attr_desc->set_name(attr.first);
-        attr_desc->set_type(static_cast<AttrType>(attr.second.which() - 1));
+        attr_desc->set_type(
+            static_cast<framework::AttrType>(attr.second.which() - 1));
+        boost::apply_visitor(SetAttrDescVisitor(attr_desc), attr.second);
       }
 
       need_update_ = false;
     }
+  }
+
+  bool HasAttr(const std::string &name) const {
+    return attrs_.find(name) != attrs_.end();
+  }
+
+  framework::AttrType GetAttrType(const std::string &name) const {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+    return static_cast<framework::AttrType>(it->second.which() - 1);
+  }
+
+  std::vector<std::string> AttrNames() const {
+    std::vector<std::string> retv;
+    retv.reserve(attrs_.size());
+    for (auto &attr : attrs_) {
+      retv.push_back(attr.first);
+    }
+    return retv;
+  }
+
+  void SetAttr(const std::string &name, const Attribute &v) {
+    this->attrs_[name] = v;
+  }
+
+  void SetBlockAttr(const std::string &name, BlockDescBind &block);
+
+  int GetBlockAttr(const std::string &name) const {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+    return boost::get<BlockDesc *>(it->second)->idx();
+  }
+
+  Attribute GetAttr(const std::string &name) const {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+    return it->second;
   }
 
 private:
@@ -231,6 +347,8 @@ public:
       need_update_ = false;
     }
   }
+
+  BlockDesc *RawPtr() { return desc_; }
 
 private:
   ProgramDescBind *prog_;  // not_own
@@ -303,6 +421,11 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
   return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
+void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
+  BlockDesc *desc = block.RawPtr();
+  this->attrs_[name] = desc;
+}
+
 void BindProgramDesc(py::module &m) {
   py::class_<ProgramDescBind>(m, "ProgramDesc", "")
       .def_static("instance",
@@ -351,8 +474,19 @@ void BindVarDsec(py::module &m) {
 }
 
 void BindOpDesc(py::module &m) {
-  py::class_<OpDescBind>(m, "OpDesc", "")
-      .def("type", &OpDescBind::Type)
+  py::enum_<framework::AttrType>(m, "AttrType", "")
+      .value("INT", AttrType::INT)
+      .value("INTS", AttrType::INTS)
+      .value("FLOAT", AttrType::FLOAT)
+      .value("FLOATS", AttrType::FLOATS)
+      .value("STRING", AttrType::STRING)
+      .value("STRINGS", AttrType::STRINGS)
+      .value("BOOL", AttrType::BOOLEAN)
+      .value("BOOLS", AttrType::BOOLEANS)
+      .value("BLOCK", AttrType::BLOCK);
+
+  py::class_<OpDescBind> op_desc(m, "OpDesc", "");
+  op_desc.def("type", &OpDescBind::Type)
       .def("set_type", &OpDescBind::SetType)
       .def("input", &OpDescBind::Input)
       .def("input_names", &OpDescBind::InputNames)
@@ -361,7 +495,15 @@ void BindOpDesc(py::module &m) {
       .def("output_names", &OpDescBind::OutputNames)
       .def("set_output", &OpDescBind::SetOutput)
       .def("__str__", &OpDescBind::DebugString)
-      .def("__repr__", &OpDescBind::DebugString);
+      .def("__repr__", &OpDescBind::DebugString)
+      .def("has_attr", &OpDescBind::HasAttr)
+      .def("attr_type", &OpDescBind::GetAttrType)
+      .def("attr_names", &OpDescBind::AttrNames)
+      .def("set_attr", &OpDescBind::SetAttr)
+      .def("attr", &OpDescBind::GetAttr)
+      .def("set_block_attr", &OpDescBind::SetBlockAttr)
+      .def("get_block_attr", &OpDescBind::GetBlockAttr);
 }
+
 }  // namespace pybind
 }  // namespace paddle

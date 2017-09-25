@@ -20,6 +20,40 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(['z'], op.output("Out"))
         self.assertEqual(["Out"], op.output_names())
 
+        op.set_attr("int_attr", 1)
+        self.assertEqual(1, op.attr("int_attr"))
+        self.assertTrue(op.has_attr("int_attr"))
+
+        op.set_attr("float_attr", -1.32)
+        self.assertAlmostEqual(-1.32, op.attr("float_attr"), delta=1e-4)
+        self.assertTrue(op.has_attr("float_attr"))
+
+        op.set_attr("bool_attr", False)
+        self.assertFalse(op.attr("bool_attr"))
+
+        op.set_attr("string_attr", "abc")
+        self.assertEqual("abc", op.attr("string_attr"))
+        self.assertTrue(op.has_attr("string_attr"))
+
+        op.set_attr("ints_attr", [1, 2, 3])
+        self.assertEqual([1, 2, 3], op.attr("ints_attr"))
+
+        expected = [1.2, 2.3, 3.4]
+        op.set_attr("floats_attr", expected)
+        for e, a in zip(expected, op.attr("floats_attr")):
+            self.assertAlmostEqual(e, a, delta=1e-4)
+
+        op.set_attr("strings_attr", ["a", "b", "c"])
+        self.assertEqual(["a", "b", "c"], op.attr("strings_attr"))
+
+        op.set_attr("bools_attr", [True, False, True])
+        self.assertEqual([True, False, True], op.attr("bools_attr"))
+
+        self.assertEqual(8, len(op.attr_names()))
+
+        op.set_block_attr("block_attr", prog.block(0))
+        self.assertEqual(0, op.get_block_attr("block_attr"))
+
 
 class TestProgramDesc(unittest.TestCase):
     def test_instance(self):
@@ -51,7 +85,7 @@ class TestProgramDesc(unittest.TestCase):
 class TestVarDesc(unittest.TestCase):
     def test_shape(self):
         program_desc = core.ProgramDesc.instance()
-        block = program_desc.root_block()
+        block = program_desc.block(0)
         var = block.new_var('my_var')
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
