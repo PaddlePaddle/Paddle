@@ -73,14 +73,6 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
       }
       return val;
     }
-    case framework::AttrType::INT_PAIRS: {
-      std::vector<std::pair<int, int>> val(attr_desc.int_pairs_size());
-      for (int i = 0; i < attr_desc.int_pairs_size(); ++i) {
-        val[i].first = attr_desc.int_pairs(i).first();
-        val[i].second = attr_desc.int_pairs(i).second();
-      }
-      return val;
-    }
     case framework::AttrType::BLOCK: {
       return GetProgramDesc().mutable_blocks(attr_desc.block_idx());
     }

@@ -22,16 +22,10 @@ enum AttrType {
   INTS = 3;
   FLOATS = 4;
   STRINGS = 5;
-  INT_PAIRS = 6;
-  BOOLEAN = 7;
-  BOOLEANS = 8;
-  BLOCK = 9;
+  BOOLEAN = 6;
+  BOOLEANS = 7;
+  BLOCK = 8;
 }
-
-message IntPair {
-  required int32 first = 1;
-  required int32 second = 2;
-};
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
@@ -46,7 +40,6 @@ message OpDesc {
     repeated int32 ints = 6;
     repeated float floats = 7;
     repeated string strings = 8;
-    repeated IntPair int_pairs = 9;
     optional bool b = 10;
     repeated bool bools = 11;
     optional int32 block_idx = 12;
