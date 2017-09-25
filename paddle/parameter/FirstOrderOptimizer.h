@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "ParameterOptimizer.h"
+#include "ParameterUpdateFunctions.h"
 #include "Regularizer.h"
 
 namespace paddle {
@@ -38,13 +39,13 @@ public:
                                   ? 1.0 - paraConfig.momentum()
                                   : 1.0;
 #ifdef PADDLE_USE_MKLDNN
-    vecs[PARAMETER_VALUE]->sgdUpdateWithOMP(
-        *vecs[PARAMETER_GRADIENT],
-        *vecs[PARAMETER_MOMENTUM],
-        learningRate_ * paraConfig.learning_rate() *
-            (firstTime_ ? 1.0 : torch_learningRate),
-        paraConfig.momentum(),
-        applyDecay_ ? paraConfig.decay_rate() : 0);
+    sgdUpdate(learningRate_ * paraConfig.learning_rate() *
+                  (firstTime_ ? 1.0 : torch_learningRate),
+              paraConfig.momentum(),
+              applyDecay_ ? paraConfig.decay_rate() : 0,
+              vecs[PARAMETER_VALUE].get(),
+              vecs[PARAMETER_GRADIENT].get(),
+              vecs[PARAMETER_MOMENTUM].get());
 #else
     vecs[PARAMETER_VALUE]->sgdUpdate(
         *vecs[PARAMETER_GRADIENT],
