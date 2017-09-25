@@ -247,7 +247,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
     CMake Warning at cmake/version.cmake:20 (message):
       Cannot add paddle version from git tag
-          
+
 那么用户需要拉取所有的远程分支到本机，命令为 :code:`git fetch upstream`，然后重新cmake即可。
 
 12. A protocol message was rejected because it was too big
@@ -316,7 +316,13 @@ Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异�
 * 模型一直不收敛，发散到了一个数值特别大的地方。
 * 训练数据有问题，导致参数收敛到了一些奇异的情况。或者输入数据尺度过大，有些特征的取值达到数百万，这时进行矩阵乘法运算就可能导致浮点数溢出。
 
-主要的解决办法是减小学习率或者对数据进行归一化处理。
+这里有两种有效的解决方法：
+
+* 对梯度的值进行限制，可以通过设置 :code:`optimizer` 中的 :code:`gradient_clipping_threshold` 来预防梯度爆炸，具体可以参考  `nmt_without_attention  <https://github.com/PaddlePaddle/models/tree/develop/nmt_without_attention>`_ 示例。
+
+* 由于最终的损失函数关于每一层输出对应的梯度都会遵循链式法则进行反向传播，因此，可以通过对每一层要传输的梯度大小进行限制来预防浮点数溢出。具体可以对特定的网络层的属性进行设置：:code:`layer_attr=paddle.attr.ExtraAttr(error_clipping_threshold=10.0)` 。完整代码可以参考示例 `machine translation <https://github.com/PaddlePaddle/book/tree/develop/08.machine_translation>`_ 。
+
+除此之外，还可以通过减小学习律或者对数据进行归一化处理来解决这类问题。
 
 15. 编译安装后执行 import paddle.v2 as paddle 报ImportError: No module named v2
 ------------------------------------------------------------------------
@@ -503,7 +509,7 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
       optimizer = paddle.optimizer.Adam(
           learning_rate=1e-3,
           learning_rate_schedule="manual",
-          learning_rate_args="1:1.0,2:0.9,3:0.8",) 
+          learning_rate_args="1:1.0,2:0.9,3:0.8",)
 
   在该示例中，当已训练pass数小于等于1时，学习率为 :code:`1e-3 * 1.0`；当已训练pass数大于1小于等于2时，学习率为 :code:`1e-3 * 0.9`；当已训练pass数大于2时，学习率为 :code:`1e-3 * 0.8`。
 
@@ -512,3 +518,69 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
 
 出现该错误的原因一般是用户对不同layer的参数 :code:`name` 设置了相同的取值。遇到该错误时，先找出参数 :code:`name` 取值相同的layer，然后将这些layer的参数 :code:`name` 设置为不同的值。
 
+24. PaddlePaddle V2 API中，调用infer接口时输出多个层的计算结果
+--------------------------------------------------
+
+用户在使用多个中间网络层进行预测时，需要先将指定的网络层进行拼接，并作为 :code:`paddle.inference.Inference` 接口中 :code:`output_layer` 属性的输入, 然后调用infer接口来获取多个层对应的计算结果。 示例代码如下：
+
+..      code-block:: bash
+
+    inferer = paddle.inference.Inference(output_layer=[layer1, layer2],
+                                        parameters=parameters)
+    probs = inferer.infer(input=test_batch, field=["value"])
+
+这里需要注意的是：
+
+* 如果指定了2个layer作为输出层，实际上需要的输出结果是两个矩阵；
+* 假设第一个layer的输出A是一个 N1 * M1 的矩阵，第二个 Layer 的输出B是一个 N2 * M2 的矩阵；
+* paddle.v2 默认会将A和B 横向拼接，当N1 和 N2 大小不一样时，会报如下的错误：
+
+..      code-block:: python
+
+    ValueError: all the input array dimensions except for the concatenation axis must match exactly
+
+多个层的输出矩阵的高度不一致，这种情况常常发生在：
+
+* 同时输出序列层和非序列层；
+* 多个输出层处理多个不同长度的序列;
+
+此时可以在调用infer接口时通过设置 :code:`flatten_result=False` , 跳过“拼接”步骤，来解决上面的问题。这时，infer接口的返回值是一个python list:
+
+* list元素的个数等于网络中输出层的个数；
+* list 中每个元素是一个layer的输出结果矩阵，类型是numpy的ndarray；
+* 每一个layer输出矩阵的高度，在非序列输入时：等于样本数；序列输入时等于：输入序列中元素的总数；宽度等于配置中layer的size；
+
+25. PaddlePaddle 中不同的 recurrent layer 之间的差异
+--------------------------------------------------
+以LSTM为例，在PaddlePaddle中包含以下 recurrent layer：
+
+* :code:`paddle.layer.lstmemory`
+* :code:`paddle.networks.simple_lstm`
+* :code:`paddle.networks.lstmemory_group`
+* :code:`paddle.networks.bidirectional_lstm`
+
+上述不同的recurrent layer可以归纳为2类：
+
+* 由recurrent_group实现的recurrent layer：
+
+  * 用户在使用这一类recurrent layer时，可以访问由recurrent unit在一个time step里计算得到的中间值（例如：hidden states, input-to-hidden mapping, memory cells等）；
+  * 上述的 :code:`paddle.networks.lstmemory_group` 是这一类的recurrent layer；
+
+* 将recurrent layer作为一个整体来实现：
+
+  * 用户在使用这一类recurrent layer，只能访问它们的输出值；
+  * 上述的 :code:`paddle.networks.lstmemory_group` ， :code:`paddle.networks.simple_lstm` 和 :code:`paddle.networks.bidirectional_lstm` 是这一类的recurrent layer；
+
+在第一类recurrent layer的实现中，recurrent_group中包含许多基础layer的计算（例如：add, element-wise multiplication和matrix multiplication等），计算较为繁琐，而第二类的实现将recurrent layer作为一个整体，针对CPU和GPU计算做了更多优化。 所以，在实际应用中，第二类recurrent layer计算效率更高。 如果用户不需要访问LSTM的中间变量（例如：hidden states, input-to-hidden mapping, memory cells等），而只需要recurrent layer计算的输出，我们建议使用第二类recurrent layer。
+
+除此之外，关于LSTM, PaddlePaddle中还包含 :code:`paddle.networks.lstmemory_unit` 这一计算单元：
+
+  * 不同于上述介绍的recurrent layer , :code:`paddle.networks.lstmemory_unit` 定义了LSTM单元在一个time step里的计算过程，它并不是一个完整的recurrent layer，也不能接收序列数据作为输入；
+  * :code:`paddle.networks.lstmemory_unit` 只能在recurrent_group中作为step function使用；
+
+在LSTM和GRU中，隐状态的计算需要将输入数据进行线性映射（input-to-hidden mapping）。 在PaddlePaddle中，并不是所有的recurrent layer都将 input-to-hidden mapping 操作放在recurrent layer外面来执行来提升LSTM和GRU单元的计算速度。以 :code:`paddle.layer.lstmemory` 和 :code:`paddle.networks.simple_lstm` 为例：
+
+  * :code:`paddle.layer.lstmemory` 内部不包含 input-to-hidden mapping 操作， 所以它并不是 `原有文献 <https://arxiv.org/abs/1308.0850>`_ 定义的LSTM完整形式；
+  * 而 :code:`paddle.networks.simple_lstm` 中包含input-to-hidden mapping 操作，并结合 :code:`paddle.layer.lstmemory` 定义了完整的LSTM形式；
+
+需要注意的是， :code:`paddle.networks.simple_lstm` 和 :code:`paddle.layer.lstmemory` 中定义的LSTM形式都包含了peephole connections，这也使得它们比不包含peephole connections的LSTM实现拥有更多的参数。
