@@ -80,6 +80,8 @@ struct MaxOrMinGradFunctor {
     auto equals = x == y.broadcast(dim);
     auto ones = dx.constant(1);
     auto zeros = dx.constant(0);
+    // If there are multiple minimum or maximum elements, the subgradient of
+    // each is the set [0, 1], and we pass gradient to all of them here.
     dx.device(place) = dy.broadcast(dim) * equals.select(ones, zeros);
   }
 };
@@ -145,102 +147,52 @@ class ReduceGradKernel : public framework::OpKernel {
     int rank = context.Input<Tensor>("X")->dims().size();
     switch (rank) {
       case 1:
-        ReduceCompute<1>(context);
+        ReduceGradCompute<1>(context);
         break;
       case 2:
-        ReduceCompute<2>(context);
+        ReduceGradCompute<2>(context);
         break;
       case 3:
-        ReduceCompute<3>(context);
+        ReduceGradCompute<3>(context);
         break;
       case 4:
-        ReduceCompute<4>(context);
+        ReduceGradCompute<4>(context);
         break;
       case 5:
-        ReduceCompute<5>(context);
+        ReduceGradCompute<5>(context);
         break;
       case 6:
-        ReduceCompute<6>(context);
+        ReduceGradCompute<6>(context);
         break;
     }
   }
 
  private:
   template <size_t D>
-  void ReduceCompute(const framework::ExecutionContext& context) const {
+  void ReduceGradCompute(const framework::ExecutionContext& context) const {
     auto* input0 = context.Input<Tensor>("X");
     auto* input1 = context.Input<Tensor>("Out");
     auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
 
-    if (output != nullptr) {
-      output->mutable_data<T>(context.GetPlace());
-      auto x = EigenTensor<T, D>::From(*input0);
-      auto x_grad = EigenTensor<T, D>::From(*output);
-      auto x_rank = static_cast<int>(x.dimensions().size());
-      int dim = static_cast<int>(context.Attr<int>("dim"));
-      if (dim < 0) dim = x_rank + dim;
-      DDim dims = input0->dims();
-      dims[dim] = 1;
-      auto x_reduce = EigenTensor<T, D>::From(*input1, dims);
-      auto x_reduce_grad = EigenTensor<T, D>::From(*input2, dims);
+    output->mutable_data<T>(context.GetPlace());
+    auto x = EigenTensor<T, D>::From(*input0);
+    auto x_grad = EigenTensor<T, D>::From(*output);
+    auto x_rank = static_cast<int>(x.dimensions().size());
+    int dim = static_cast<int>(context.Attr<int>("dim"));
+    if (dim < 0) dim = x_rank + dim;
+    DDim dims = input0->dims();
+    dims[dim] = 1;
+    auto x_reduce = EigenTensor<T, D>::From(*input1, dims);
+    auto x_reduce_grad = EigenTensor<T, D>::From(*input2, dims);
 
-      Eigen::array<int, D> braodcast_dim;
-      for (size_t i = 0; i < D; ++i) braodcast_dim[i] = 1;
-      braodcast_dim[dim] = input0->dims()[dim];
-      auto& place = context.GetEigenDevice<Place>();
-      Functor functor;
-      functor(place, x, x_reduce, x_grad, x_reduce_grad, braodcast_dim,
-              braodcast_dim[dim]);
-    }
-  }
-};
-
-// For EigenTensor unsupported reduce
-template <typename T, typename Functor>
-class ReduceGradEigenFreeKernel : public framework::OpKernel {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Input<Tensor>("Out");
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    if (x_grad != nullptr) {
-      DDim dims = x->dims();
-      int rank = dims.size();
-      int dim = static_cast<int>(context.Attr<int>("dim"));
-      if (dim < 0) dim = rank + dim;
-
-      auto* x_data = x->data<T>();
-      auto* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
-      auto* out_data = out->data<T>();
-      auto* out_grad_data = out_grad->data<T>();
-
-      int outer_count = 1;
-      int inner_count = 1;
-      int mid_count = dims[dim];
-      for (int i = 0; i < dim; ++i) {
-        outer_count *= dims[i];
-      }
-      for (int i = dim + 1; i < rank; ++i) {
-        inner_count *= dims[i];
-      }
-
-      int x_offset = 0;    // offset on raw data
-      int out_offset = 0;  // offset on reduced data
-      Functor functor;
-      for (int i = 0; i < outer_count; ++i) {
-        for (int j = 0; j < inner_count; ++j) {
-          out_offset = inner_count * i + j;
-          for (int k = 0; k < mid_count; ++k) {
-            x_offset = (inner_count * mid_count) * i + inner_count * k + j;
-            functor(x_data + x_offset, out_data + out_offset,
-                    x_grad_data + x_offset, out_grad_data + out_offset,
-                    mid_count);
-          }
-        }
-      }
-    }
+    Eigen::array<int, D> braodcast_dim;
+    for (size_t i = 0; i < D; ++i) braodcast_dim[i] = 1;
+    braodcast_dim[dim] = input0->dims()[dim];
+    auto& place = context.GetEigenDevice<Place>();
+    Functor functor;
+    functor(place, x, x_reduce, x_grad, x_reduce_grad, braodcast_dim,
+            braodcast_dim[dim]);
   }
 };
 

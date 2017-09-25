@@ -18,7 +18,6 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::LoDTensor;
 
 class ReduceOp : public framework::OperatorWithKernel {
  public:
@@ -46,7 +45,11 @@ class ReduceOp : public framework::OperatorWithKernel {
       dims_vector.erase(dims_vector.begin() + dim);
     }
     auto out_dims = framework::make_ddim(dims_vector);
-    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
+    ctx.Output<framework::Tensor>("Out")->Resize(out_dims);
+    if (dim != 0) {
+      // Only pass LoD when not reducing on the first dim
+      ctx.ShareLoD("X", /*->*/ "Out");
+    }
   }
 };
 
@@ -81,9 +84,12 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
     AddOutput("Out", "(Tensor) The result tensor.");
-    AddAttr<int>("dim",
-                 "(int, default 0) The dimension to reduce. "
-                 "Must be in the range [-rank(input), rank(input))")
+    AddAttr<int>(
+        "dim",
+        "(int, default 1) The dimension to reduce. "
+        "Must be in the range [-rank(input), rank(input)). "
+        "If `dim < 0`, the dim to reduce is `rank + dim`. "
+        "Noting that reducing on the first dim will make the LoD info lost.")
         .SetDefault(0);
     AddAttr<bool>("keep_dim",
                   "(bool, default false) "
