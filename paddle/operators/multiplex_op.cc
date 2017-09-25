@@ -18,7 +18,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 class MultiplexOp : public framework::OperatorWithKernel {
  public:
@@ -27,11 +26,11 @@ class MultiplexOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
-                   "Input(X) should not be null");
+                   "Input(X) should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) shouldn't be null.");
     auto ins = ctx.MultiInput<Tensor>("X");
-    auto *out = ctx.Output<LoDTensor>("Out");
+    auto *out = ctx.Output<Tensor>("Out");
     auto num_ins = ins.size();
     PADDLE_ENFORCE(num_ins > 2,
                    "multiplex operator should have more than 2 inputs.");
@@ -41,9 +40,9 @@ class MultiplexOp : public framework::OperatorWithKernel {
 
     for (size_t i = 2; i < num_ins; i++) {
       auto dim = ins[i]->dims();
-      PADDLE_ENFORCE(
-          in_dim == dim,
-          "All the input tensors except the first one must have the same size");
+      PADDLE_ENFORCE(in_dim == dim,
+                     "All the input tensors except the first one must have the "
+                     "same size.");
     }
     out->Resize(in_dim);
   }
@@ -84,12 +83,12 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
-                   "Input(X) should not be null");
+                   "Input(X) should not be null.");
     PADDLE_ENFORCE(!ctx.MultiOutputVar(framework::GradVarName("X")).empty(),
-                   "Output(X@Grad) should not be null");
+                   "Output(X@Grad) should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) shouldn't be null.");
-    auto d_ins = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
+    auto d_ins = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
     auto ins = ctx.MultiInput<Tensor>("X");
     // don't compute gradient for index (ins[0])
     for (size_t i = 1; i < ins.size(); i++) {

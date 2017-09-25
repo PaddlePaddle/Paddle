@@ -27,7 +27,7 @@ class MultiplexCPUKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -36,7 +36,7 @@ class MultiplexCPUKernel : public framework::OpKernel {
     auto* index = ins[0]->data<T>();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      int k = (int)index[i] + 1;
+      size_t k = (size_t)index[i] + 1;
       PADDLE_ENFORCE_LT(k, ins.size(),
                         "index exceeds the number of candidate tensors.");
       memory::Copy(place, out->data<T>() + i * cols, place,
@@ -66,7 +66,7 @@ class MultiplexGradCPUKernel : public framework::OpKernel {
     auto* index = ins[0]->data<T>();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      int k = (int)index[i] + 1;
+      size_t k = (size_t)index[i] + 1;
       if (d_ins[k]) {
         memory::Copy(place, d_ins[k]->data<T>() + i * cols, place,
                      d_out->data<T>() + i * cols, cols * sizeof(T));
