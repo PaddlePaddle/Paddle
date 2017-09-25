@@ -227,7 +227,7 @@ def test(cost_name):
         sum(error) / float(len(error))))
 
 
-PASS_NUM = 1
+PASS_NUM = 10
 
 init_net.run(scope, dev_ctx)
 for pass_id in range(PASS_NUM):
