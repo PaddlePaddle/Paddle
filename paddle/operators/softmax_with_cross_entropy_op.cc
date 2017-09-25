@@ -23,31 +23,31 @@ class SoftmaxWithCrossEntropyOpMaker
   SoftmaxWithCrossEntropyOpMaker(framework::OpProto* proto,
                                  framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    //(TODO caoying) replace int with boolean
-    AddAttr<int>("soft_label",
-                 "(int, default 0), A flag to indicate whether to interpretate "
-                 "the given labels as soft labels.")
-        .SetDefault(0);
+    AddAttr<bool>(
+        "softLabel",
+        "(bool, default: false), A flag to indicate whether to interpretate "
+        "the given labels as soft labels.")
+        .SetDefault(false);
     AddInput("Logits",
-             "(Tensor, default Tensor<float>), The unscaled log probabilities "
+             "(Tensor, default: Tensor<float>), The unscaled log probabilities "
              "which is a 2-D tensor with shape [N x K]. N is the batch_size, "
              "and K is the class number.")
         .NotInGradient();
     AddInput(
         "Label",
-        "(Tensor, default Tensor<int>), The ground truth which is "
-        "a 1-D or 2-D tensor. "
-        "If soft_label is set to 0, Label is a Tensor<int> with shape [N x 1]. "
-        "If soft_label is set to 1, Label is a Tensor<float/double> "
+        "(Tensor, default: Tensor<int>), The ground truth which is a 2-D "
+        "tensor. "
+        "If softLable is set to 0, Label is a Tensor<int> with shape [N x 1]. "
+        "If softLable is set to 1, Label is a Tensor<float/double> "
         "with shape [N x K].");
     AddOutput(
         "Softmax",
-        "(Tensor, default Tensor<float>), A 2-D tensor with shape [N x K]. "
+        "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N x K]. "
         "The outputs value of softmax activation by given the input batch, "
         "which will be used in backward calculation.")
         .AsIntermediate();
     AddOutput("Loss",
-              "(Tensor, default Tensor<float>), A 1-D tensor. The cross "
+              "(Tensor, default: Tensor<float>), A 2-D tensor. The cross "
               "entropy loss with shape [N x 1].");
     AddComment(R"DOC(
 Cross entropy loss with softmax are used as the output layer extensively. This
@@ -83,15 +83,39 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Logits"),
+                            "Input(Logits) should be not null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
+                            "Input(Label) should be not null.");
+
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Softmax"),
+                            "Output(Softmax) should be not null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Loss"),
+                            "Output(Loss) should be not null.");
+
     const Tensor* logits = ctx.Input<Tensor>("Logits");
+    const Tensor* labels = ctx.Input<Tensor>("Label");
     PADDLE_ENFORCE(
         logits->dims().size() == 2UL,
-        "The input of softmax_with_cross_entropy should be a 2-d tensor.");
-    PADDLE_ENFORCE(ctx.Input<Tensor>("Label")->dims().size() == 1UL,
-                   "The label should be a 1-d tensor.");
+        "The input of softmax_with_cross_entropy should be a 2-D tensor.");
+    PADDLE_ENFORCE(ctx.Input<Tensor>("Label")->dims().size() == 2UL,
+                   "The labels should be a 2-D tensor.");
 
-    ctx.Output<framework::LoDTensor>("Softmax")->Resize(logits->dims());
-    ctx.Output<framework::LoDTensor>("Loss")->Resize({logits->dims()[0], 1});
+    if (ctx.Attr<bool>("softLabel")) {
+      PADDLE_ENFORCE_EQ(logits->dims()[1], labels->dims()[1],
+                        "If Attr(softLabel) == true, the 2nd dimension of "
+                        "Input(X) and Input(Label) should be equal.");
+    } else {
+      PADDLE_ENFORCE_EQ(labels->dims()[1], 1,
+                        "If Attr(softLabel) == false, the 2nd dimension of "
+                        "Input(Label) should be 1.");
+    }
+
+    ctx.Output<framework::Tensor>("Softmax")->Resize(logits->dims());
+    ctx.Output<framework::Tensor>("Loss")->Resize({logits->dims()[0], 1});
+
+    ctx.ShareLoD("Logits", /*->*/ "Softmax");
+    ctx.ShareLoD("Logits", /*->*/ "Loss");
   }
 };
 
@@ -102,11 +126,28 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Loss")),
-                            "Input(Loss@Grad) should not be null");
+                            "Input(Loss@Grad) should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Softmax"),
                             "Input(Softmax) should be not null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
                             "Input(Lable) should be not null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(framework::GradVarName("Logits")),
+                            "Output(Logits@Grad) should be not null.");
+
+    const Tensor* softmax = ctx.Input<Tensor>("Softmax");
+    const Tensor* labels = ctx.Input<Tensor>("Label");
+    PADDLE_ENFORCE(ctx.Input<Tensor>("Label")->dims().size() == 2UL,
+                   "The labels should be a 2-D tensor.");
+
+    if (ctx.Attr<bool>("softLabel")) {
+      PADDLE_ENFORCE_EQ(softmax->dims()[1], labels->dims()[1],
+                        "When Attr(softLabel) == true, the 2nd dimension of "
+                        "Input(X) and Input(Label) should be equal.");
+    } else {
+      PADDLE_ENFORCE_EQ(labels->dims()[1], 1,
+                        "When Attr(softLabel) == false, the 2nd dimension of "
+                        "Input(Label) should be 1.");
+    }
 
     ctx.Output<framework::LoDTensor>(framework::GradVarName("Logits"))
         ->Resize(ctx.Input<Tensor>("Softmax")->dims());

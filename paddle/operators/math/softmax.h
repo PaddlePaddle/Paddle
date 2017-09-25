@@ -28,8 +28,8 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class SoftmaxFunctor {
  public:
-  void operator()(const framework::Tensor* X, framework::Tensor* Y,
-                  const framework::ExecutionContext& context) {
+  void operator()(const framework::ExecutionContext& context,
+                  const framework::Tensor* X, framework::Tensor* Y) {
     auto logits = EigenMatrix<T>::From(*X);
     auto softmax = EigenMatrix<T>::From(*Y);
 

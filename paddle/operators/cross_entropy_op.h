@@ -22,17 +22,16 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-HOSTDEVICE T tolerable_value(const T x) {
-  PADDLE_ASSERT(std::is_floating_point<T>::value);
-  const T kApproInf = 1e20;
-  if (x == INFINITY) {
-    return kApproInf;
+struct TolerableValue {
+  HOSTDEVICE T operator()(const T& x) const {
+    PADDLE_ASSERT(std::is_floating_point<T>::value);
+    const T kApproInf = 1e20;
+
+    if (x == INFINITY) return kApproInf;
+    if (x == -INFINITY) return -kApproInf;
+    return x;
   }
-  if (x == -INFINITY) {
-    return -kApproInf;
-  }
-  return x;
-}
+};
 
 template <typename T>
 class CrossEntropyOpKernel : public framework::OpKernel {
@@ -57,7 +56,8 @@ class CrossEntropyOpKernel : public framework::OpKernel {
       for (int i = 0; i < batch_size; ++i) {
         T sum = static_cast<T>(0);
         for (int j = 0; j < class_num; ++j) {
-          sum += label_data[index] * tolerable_value(std::log(x_data[index]));
+          sum +=
+              label_data[index] * TolerableValue<T>()(std::log(x_data[index]));
           y_data[i] = -sum;
           index++;
         }
@@ -66,7 +66,7 @@ class CrossEntropyOpKernel : public framework::OpKernel {
       auto* label_data = ctx.Input<Tensor>("Label")->data<int>();
       for (int i = 0; i < batch_size; ++i) {
         int index = i * class_num + label_data[i];
-        y_data[i] = -tolerable_value(std::log(x_data[index]));
+        y_data[i] = -TolerableValue<T>()(std::log(x_data[index]));
       }
     }
   }

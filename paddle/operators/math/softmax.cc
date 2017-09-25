@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template class SoftmaxFunctor<platform::CPUPlace, float>;
+template class SoftmaxFunctor<platform::GPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators

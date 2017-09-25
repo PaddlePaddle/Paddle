@@ -35,7 +35,7 @@ class SoftmaxKernel : public framework::OpKernel {
     // allocate memory on device.
     Y->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<Place, T>()(X, Y, context);
+    math::SoftmaxFunctor<Place, T>()(context, X, Y);
   }
 };
 

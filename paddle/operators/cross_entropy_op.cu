@@ -28,7 +28,7 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
-    Y[i] = -tolerable_value(log(X[i * D + label[i]]));
+    Y[i] = -TolerableValue<T>()(log(X[i * D + label[i]]));
   }
 }
 
@@ -39,7 +39,7 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
        i += blockDim.x * gridDim.x) {
     T sum = static_cast<T>(0);
     for (int j = 0; j < D; j++) {
-      sum += label[i * D + j] * tolerable_value(log(X[i * D + j]));
+      sum += label[i * D + j] * TolerableValue<T>()(log(X[i * D + j]));
     }
     Y[i] = -sum;
   }
