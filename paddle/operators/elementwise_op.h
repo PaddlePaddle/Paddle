@@ -202,20 +202,19 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
  protected:
   using Tensor = framework::Tensor;
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of elementwise op should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
-                            "Input(Y) of elementwise op should not be null");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("Out"),
-        "Output(Out) of elementwise op should not be null.");
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"),
+                   "Input(X) of elementwise op should not be null");
+    PADDLE_ENFORCE(ctx.HasInput("Y"),
+                   "Input(Y) of elementwise op should not be null");
+    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+                   "Output(Out) of elementwise op should not be null.");
 
-    auto x_dim = ctx.Input<Tensor>("X")->dims();
-    auto y_dim = ctx.Input<Tensor>("Y")->dims();
+    auto x_dim = ctx.GetInputDim("X");
+    auto y_dim = ctx.GetInputDim("Y");
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
                       "Rank of first input must >= rank of second input.")
-    ctx.Output<framework::Tensor>("Out")->Resize(x_dim);
+    ctx.SetOutputDim("Out", x_dim);
     ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -234,7 +233,7 @@ must be small or equal to X's dimensions.
 )DOC");
     AddAttr<int>("axis",
                  R"DOC(
-When the shape(Y) does not equal the shape(X),Y will be broadcasted 
+When the shape(Y) does not equal the shape(X),Y will be broadcasted
 to match the shape of X and axis should be dimension index Y in X
         )DOC")
         .SetDefault(-1)
@@ -244,7 +243,7 @@ to match the shape of X and axis should be dimension index Y in X
     comment_ = R"DOC(
 Limited elementwise {name} operator.The equation is: Out = {equation}.
 1. The shape of Y should be same with X or
-2. Y's shape is a subset of X. 
+2. Y's shape is a subset of X.
    Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
 
    example:
@@ -284,27 +283,26 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
+  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
 
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto y_dims = ctx.Input<Tensor>("Y")->dims();
-    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto x_dims = ctx.GetInputDim("X");
+    auto y_dims = ctx.GetInputDim("Y");
+    auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
 
-    if (x_grad) {
-      x_grad->Resize(x_dims);
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx.HasOutput(x_grad_name)) {
+      ctx.SetOutputDim(x_grad_name, x_dims);
     }
-
-    if (y_grad) {
-      y_grad->Resize(y_dims);
+    if (ctx.HasOutput(y_grad_name)) {
+      ctx.SetOutputDim(y_grad_name, y_dims);
     }
   }
 };

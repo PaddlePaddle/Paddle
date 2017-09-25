@@ -334,18 +334,11 @@ class ExecutionContext : public InferShapeContext {
   const platform::DeviceContext& device_context_;
 };
 
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
-
-template <>
-std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
-    const std::string& name) const;
-
-class BlockDesc {
+class BlockDescImpl {
  public:
-  explicit BlockDesc(const std::map<std::string, VarDesc*>& var_descs)
+  explicit BlockDescImpl(const std::map<std::string, VarDesc*>& var_descs)
       : var_descs_(var_descs) {}
-  ~BlockDesc() {}
+  ~BlockDescImpl() {}
 
   VarDesc* GetVar(const std::string& name) const {
     PADDLE_ENFORCE(var_descs_.count(name) == 1, "%s must be in Block", name);
@@ -363,7 +356,7 @@ class BlockDesc {
 class CompileTimeInferShapeContext : public InferShapeContextBase {
  public:
   CompileTimeInferShapeContext(const OperatorBase& op,
-                               const BlockDesc& block_desc)
+                               const BlockDescImpl& block_desc)
       : op_(op), block_desc_(block_desc) {}
 
   bool HasInput(const std::string& name) const {
@@ -421,7 +414,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
   }
 
   const OperatorBase& op_;
-  const BlockDesc& block_desc_;
+  const BlockDescImpl& block_desc_;
 };
 
 class RunTimeInferShapeContext : public InferShapeContextBase {
@@ -538,7 +531,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   // compile time infershape
-  void InferShape(const BlockDesc& block_desc) const {
+  void InferShape(const BlockDescImpl& block_desc) const {
     InferShape(CompileTimeInferShapeContext(*this, block_desc));
   }
 

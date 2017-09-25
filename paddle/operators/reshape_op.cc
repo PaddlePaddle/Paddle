@@ -51,7 +51,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                    [](int a) { return static_cast<int64_t>(a); });
     auto out_dims = framework::make_ddim(shape_int64);
     ctx.SetOutputDim("Out", out_dims);
-    if (shape[0] == in->dims()[0]) {
+    if (shape[0] == x_dims[0]) {
       // Only pass LoD when the first dimension is equal between
       // output and input.
       ctx.ShareLoD("X", /*->*/ "Out");
