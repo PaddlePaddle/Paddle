@@ -53,6 +53,7 @@ class TestOpDesc(unittest.TestCase):
 
         op.set_block_attr("block_attr", prog.block(0))
         self.assertEqual(0, op.get_block_attr("block_attr"))
+        self.assertEqual(core.AttrType.INT, op.attr_type("int_attr"))
 
 
 class TestProgramDesc(unittest.TestCase):
