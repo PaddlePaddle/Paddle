@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <iostream>
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/assert.h"
@@ -51,9 +50,6 @@ class CudnnConvOpKernel : public framework::OpKernel {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
-    std::cout << "strides" << strides[0] << ", " << strides[1] << "paddings"
-              << paddings[0] << ", " << paddings[1] << "dilations"
-              << dilations[0] << ", " << dilations[1] << std::endl;
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -76,20 +72,11 @@ class CudnnConvOpKernel : public framework::OpKernel {
         conv_desc.descriptor<T>(paddings, strides, dilations);
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
-    // FIXME(typhoonzero): refine these casts.
-    // auto device_ctx =
-    //      const_cast<platform::DeviceContext>(ctx.device_context());
     auto h = ctx.cuda_device_context().cudnn_handle();
-    // Find maximum memory limit
-    size_t free, total;
-    PADDLE_ENFORCE(cudaMemGetInfo(&free, &total));
 
-    // CUDNN_CONVOLUTION_FWD_NO_WORKSPACE
-    // CUDNN_CONVOLUTION_FWD_PREFER_FASTEST
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
         h, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, total,
-        &algo));
+        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, &algo));
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = NULL;
     size_t workspace_size_in_bytes = 0;
@@ -119,7 +106,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel {
     // filter is the filter used in forward.
     auto filter = ctx.Input<Tensor>("Filter");
     // output_grad is gradient output of the operator connected after it.
-    auto output_grad = ctx.Input<Tensor>("Output");
+    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     // input_grad is the gradient output of conv op.
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     // filter_grad is the gradient output of filter(kernel).
