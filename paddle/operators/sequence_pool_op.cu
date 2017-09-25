@@ -14,12 +14,11 @@
 
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/sequence_avg_pool_op.h"
+#include "paddle/operators/sequence_pool_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool,
-    ops::SequenceAvgPoolKernel<paddle::platform::GPUPlace, float>);
+    sequence_pool, ops::SequencePoolKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool_grad,
-    ops::SequenceAvgPoolGradKernel<paddle::platform::GPUPlace, float>);
+    sequence_pool_grad,
+    ops::SequencePoolGradKernel<paddle::platform::GPUPlace, float>);
