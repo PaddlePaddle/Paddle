@@ -104,6 +104,12 @@ public:
     return ops_.back().get();
   }
 
+  OpDescBind *PrependOp() {
+    need_update_ = true;
+    ops_.emplace_front(new OpDescBind());
+    return ops_.front().get();
+  }
+
   void Sync() {
     if (need_update_) {
       auto &op_field = *this->desc_->mutable_ops();
@@ -223,6 +229,9 @@ void BindBlockDesc(py::module &m) {
       .def_property_readonly("parent", &BlockDescBind::Parent)
       .def("append_op",
            &BlockDescBind::AppendOp,
+           py::return_value_policy::reference)
+      .def("prepend_op",
+           &BlockDescBind::PrependOp,
            py::return_value_policy::reference)
       .def("new_var",
            &BlockDescBind::NewVar,
