@@ -33,7 +33,7 @@ class SGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("param")->dims(),
                       ctx.Input<Tensor>("grad")->dims(),
                       "Two input of SGD Op's dimension must be same.");
-    ctx.Output<framework::LoDTensor>("param_out")
+    ctx.Output<framework::Tensor>("param_out")
         ->Resize(ctx.Input<Tensor>("param")->dims());
   }
 };
