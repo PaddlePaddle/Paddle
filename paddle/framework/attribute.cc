@@ -28,47 +28,6 @@ ProgramDesc& GetProgramDesc() {
   return *g_program_desc;
 }
 
-template <>
-AttrType AttrTypeID<bool>() {
-  return BOOLEAN;
-}
-template <>
-AttrType AttrTypeID<int>() {
-  return INT;
-}
-template <>
-AttrType AttrTypeID<float>() {
-  return FLOAT;
-}
-template <>
-AttrType AttrTypeID<std::string>() {
-  return STRING;
-}
-template <>
-AttrType AttrTypeID<std::vector<bool>>() {
-  return BOOLEANS;
-}
-template <>
-AttrType AttrTypeID<std::vector<int>>() {
-  return INTS;
-}
-template <>
-AttrType AttrTypeID<std::vector<float>>() {
-  return FLOATS;
-}
-template <>
-AttrType AttrTypeID<std::vector<std::string>>() {
-  return STRINGS;
-}
-template <>
-AttrType AttrTypeID<std::vector<std::pair<int, int>>>() {
-  return INT_PAIRS;
-}
-template <>
-AttrType AttrTypeID<BlockDesc>() {
-  return BLOCK;
-}
-
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
     case framework::AttrType::BOOLEAN: {
