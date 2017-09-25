@@ -113,7 +113,7 @@ cost = paddle.layer.classification_cost(input=prediction, label=label)
 optimizer = paddle.optimizer.SGD(cost, learning_rate=0.01)
 session = paddle.session.NewRemote(num_trainer=3, num_ps=2, GPU_per_trainer=1)
 for i in range(1000):
-	_, cost_val = session.eval(target=[cost, optimizer])
+	_, cost_val = session.eval(targets=[cost, optimizer])
 	print cost_val
 ```
 
@@ -131,7 +131,8 @@ is the `optimizer` variable, the neural network will be optimized
 once. When the target is the `cost` variable, `session.eval` returns
 the cost value.
 
-For more information about `Session`, please
+The Python `session` is a wrapper of the C++ `Session` class. For more
+information about `Session`, please
 see [Design Doc: Session](./session.md).
 
 ### PaddlePaddle Converter
