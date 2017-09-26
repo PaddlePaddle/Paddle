@@ -30,7 +30,7 @@ class MultiplexGPUKernel : public framework::OpKernel {
     out->mutable_data<T>(ctx.GetPlace());
 
     auto rows = ins[0]->dims()[0];
-    auto cols = ins[0]->dims()[1];
+    auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
     index_t_cpu.CopyFrom<int32_t>(*ids, platform::CPUPlace());
@@ -67,7 +67,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel {
     }
 
     auto rows = ins[0]->dims()[0];
-    auto cols = ins[0]->dims()[1];
+    auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
     index_t_cpu.CopyFrom<int32_t>(*ids, platform::CPUPlace());

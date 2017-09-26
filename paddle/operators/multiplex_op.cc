@@ -44,7 +44,8 @@ class MultiplexOp : public framework::OperatorWithKernel {
                    "one candidate input tensors.");
 
     auto in_dim = ins[0]->dims();
-    PADDLE_ENFORCE(in_dim.size() == 2, "Candidate tensors must be matrix.");
+    PADDLE_ENFORCE(in_dim.size() >= 2,
+                   "The rank of candidate tensors must be not less than 2.");
     for (size_t i = 1; i < num_ins; i++) {
       auto dim = ins[i]->dims();
       PADDLE_ENFORCE(in_dim == dim,
@@ -65,8 +66,7 @@ class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of multiplex operator.");
     AddComment(R"DOC(Multiplex operator
 
-Multiplex multiple tensors according to the index provided by the first
-input tensor.
+Multiplex multiple tensors according to the index provided by the index tensor.
 
 Ids: the index tensor.
 X[0 : N - 1]: the candidate tensors for output (N >= 2).
@@ -75,7 +75,7 @@ the (Ids[i])-th tensor.
 
 For i-th row of the output tensor:
 
-y[i][j] = x_{k}[i][j], j = 0,1, ... , (x_{0}.width - 1)
+y[i] = x_{k}[i]
 
 where y is the output tensor. `x_{k}` is the k-th input tensor
 and `k = Ids[i]`.

@@ -33,7 +33,7 @@ class MultiplexCPUKernel : public framework::OpKernel {
     out->mutable_data<T>(ctx.GetPlace());
 
     auto rows = ins[0]->dims()[0];
-    auto cols = ins[0]->dims()[1];
+    auto cols = ins[0]->numel() / rows;
     auto index = ids->data<int32_t>();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
@@ -65,7 +65,7 @@ class MultiplexGradCPUKernel : public framework::OpKernel {
     }
 
     auto rows = ins[0]->dims()[0];
-    auto cols = ins[0]->dims()[1];
+    auto cols = ins[0]->numel() / rows;
     auto* index = ids->data<int32_t>();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
