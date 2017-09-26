@@ -23,6 +23,7 @@ class TestLRNOp(OpTest):
         print "python: end", end
 
         mid = np.empty((self.N, self.C, self.H, self.W), dtype=float)
+        mid.fill(self.k)
         for m in range(0, self.N):
             for i in range(0, self.C):
                 for c in range(start, end + 1):
@@ -36,11 +37,11 @@ class TestLRNOp(OpTest):
                     #print "python s:", s
                     r = self.x[m][ch][:][:]
                     #print "python r:", r
-                    s += np.square(r) * self.alpha + self.k
+                    s += np.square(r) * self.alpha
                     #print "python s2:", s
 
         mid = np.power(mid, -self.beta)
-        return self.x * mid
+        return np.multiply(self.x, mid)
 
     def get_attrs(self):
         attrs = {
@@ -49,6 +50,7 @@ class TestLRNOp(OpTest):
             'alpha': self.alpha,
             'beta': self.beta
         }
+        return attrs
 
     def setUp(self):
         self.op_type = "lrn"
@@ -65,17 +67,17 @@ class TestLRNOp(OpTest):
         self.x = self.get_input()
         print 'python: x', self.x
         self.out = self.get_out()
+        print type(self.out), self.out.shape
         print 'python: out', self.out
 
         self.inputs = {'X': self.x}
-
-        self.outputs = {'out': self.out}
-
+        self.outputs = {'Out': self.out}
         self.attrs = self.get_attrs()
 
         #print 'python: out', self.out
 
     def test_check_output(self):
+        print "check out"
         self.check_output()
 
     '''

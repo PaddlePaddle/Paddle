@@ -30,11 +30,10 @@ class LRNOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) of LRNOp should not be null.");
 
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto x_dim = ctx.Input<Tensor>("X")->dims();
 
-    // ctx.Output<framework::Tensor>("Out")->Resize(
-    //    {x_mat_dims[0], y_mat_dims[1]});
-    // ctx.ShareLoD("X", /*->*/ "Out");
+    ctx.Output<framework::Tensor>("Out")->Resize(x_dim);
+    ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -44,7 +43,61 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of lrn op");
     AddOutput("Out", "The output of lrn op");
-    AddComment("lrn");
+
+    AddAttr<int>("n", R"DOC(
+n is “adjacent” kernel maps at the same spatial position.
+        )DOC")
+        .SetDefault(5)
+        .GreaterThan(0);
+
+    AddAttr<float>("k", R"DOC(
+k is the bias.
+        )DOC")
+        .SetDefault(2.0)
+        .GreaterThan(0.0);
+
+    AddAttr<float>("alpha", R"DOC(
+alpha is the scale number.
+        )DOC")
+        .SetDefault(0.0001)
+        .GreaterThan(0.0);
+
+    AddAttr<float>("beta", R"DOC(
+beta is the power number.
+        )DOC")
+        .SetDefault(0.75)
+        .GreaterThan(0.0);
+
+    AddComment(R"DOC(
+ Local Response Normalization.
+
+ This Function comes from the paper
+ "ImageNet Classification with Deep Convolutional Neural Networks".
+
+ The original formula is:
+
+                                Input(i, x, y)
+ Output(i, x, y) = ----------------------------------------------
+                                 -- upper
+                    (k + alpha * >  (Input(j, x, y))^2) ^ (beta)
+                                 -- j = lower
+
+ upper is `min(C, c + n/2)`
+ lower if `max(0, c - n/2)`
+
+ Function implementation:
+
+ inputs and outpus is NCHW format, while input.shape.ndims() is equal 4.
+ And the meaning of each dimension(0-3) is respectively batch size,
+ feature maps, rows and columns.
+
+ Input and Output in the above formula is for each map(i) of one image, and
+ Input(i, x, y), Output(i, x, y) represents an element in an image.
+
+ C is the number of feature maps of one image, and n is a hyper-parameters
+ is configured when Function is initialized. The sum in the denominator
+ is the sum of the same position in the neighboring maps.
+    )DOC");
   }
 };
 
