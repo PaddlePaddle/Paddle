@@ -54,7 +54,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE(Attr<float>("min") < Attr<float>("max"),
                    "uniform_random's min must less then max");
-    auto* tensor = ctx.Output<framework::LoDTensor>("Out");
+    auto* tensor = ctx.Output<framework::Tensor>("Out");
     auto dims = Attr<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());
