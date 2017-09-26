@@ -55,15 +55,14 @@ class AdamOpKernel : public framework::OpKernel {
     float beta2 = ctx.Attr<float>("beta2");
     float epsilon = ctx.Attr<float>("epsilon");
 
+    auto place = ctx.GetEigenDevice<Place>();
+    m1_o.device(place) = beta1 * m1 + (1 - beta1) * g;
+    m2_o.device(place) = beta2 * m2 + (1 - beta2) * g * g;
+
     float beta1_to_t = std::pow(beta1, t);
     float beta2_to_t = std::pow(beta2, t);
-
-    m1_o = beta1 * m1 + (1 - beta1) * g;
-    m2_o = beta2 * m2 + (1 - beta2) * g;
     auto m1_hat = m1_o / (1 - beta1_to_t);
     auto m2_hat = m2_o / (1 - beta2_to_t);
-
-    auto place = ctx.GetEigenDevice<Place>();
     p_o.device(place) = p - lr * m1_hat / (m2_hat.sqrt() + epsilon);
   }
 };
