@@ -97,8 +97,8 @@ class TestVarDesc(unittest.TestCase):
         program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
         var = block.new_var('my_var')
-        var.set_data_type(2)
-        self.assertEqual(2, var.data_type)
+        var.set_data_type(core.DataType.INT32)
+        self.assertEqual(core.DataType.INT32, var.data_type())
 
 
 class TestBlockDesc(unittest.TestCase):
