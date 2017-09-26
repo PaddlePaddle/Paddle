@@ -189,27 +189,19 @@ Error __must_check MKLDNNSoftmaxActivation::forward(Argument& act) {
 Error __must_check MKLDNNSoftmaxActivation::backward(Argument& act) {
   MatrixPtr outputV = act.value;
   MatrixPtr outputG = act.grad;
-
-  if (outputG->useGpu()) {
-    outputG->softmaxBackward(*outputV);
-  } else {
-    SetDevice device(act.deviceId);
-    Matrix::resizeOrCreate(sftMaxDot_,
-                           outputG->getHeight(),
-                           outputG->getWidth(),
-                           /* trans */ false,
-                           useGpu(act.deviceId));
-    Matrix::resizeOrCreate(sftMaxSum_,
-                           outputG->getHeight(),
-                           1,
-                           /* trans */ false,
-                           useGpu(act.deviceId));
-
-    sftMaxDot_->dotMul(*outputG, *outputV);
-    sftMaxSum_->colMerge(*sftMaxDot_);
-
-    act.grad->softmaxDerivative(*act.value, *sftMaxSum_);
-  }
+  Matrix::resizeOrCreate(sftMaxDot_,
+                         outputG->getHeight(),
+                         outputG->getWidth(),
+                         /* trans */ false,
+                         /* useGpu */ false);
+  Matrix::resizeOrCreate(sftMaxSum_,
+                         outputG->getHeight(),
+                         1,
+                         /* trans */ false,
+                         /* useGpu */ false);
+  sftMaxDot_->dotMul(*outputG, *outputV);
+  sftMaxSum_->colMerge(*sftMaxDot_);
+  act.grad->softmaxDerivative(*act.value, *sftMaxSum_);
   return Error();
 }
 
