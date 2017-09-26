@@ -86,7 +86,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     auto grad_x =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+        ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     size_t n = grad_x.size();
     for (size_t i = 0; i < n; ++i) {
