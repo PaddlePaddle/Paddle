@@ -559,28 +559,21 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
 * :code:`paddle.networks.lstmemory_group`
 * :code:`paddle.networks.bidirectional_lstm`
 
-上述不同的recurrent layer可以归纳为2类：
+按照具体实现方式可以归纳为2类：
 
-* 由recurrent_group实现的recurrent layer：
+1. 由 recurrent_group 实现的 recurrent layer：
 
-  * 用户在使用这一类recurrent layer时，可以访问由recurrent unit在一个time step里计算得到的中间值（例如：hidden states, input-to-hidden mapping, memory cells等）；
-  * 上述的 :code:`paddle.networks.lstmemory_group` 是这一类的recurrent layer；
+  * 用户在使用这一类recurrent layer时，可以访问由recurrent unit在一个时间步内计算得到的中间值（例如：hidden states, memory cells等）；
+  * 上述的 :code:`paddle.networks.lstmemory_group` 是这一类的 recurrent layer ；
 
-* 将recurrent layer作为一个整体来实现：
+2. 将recurrent layer作为一个整体来实现：
 
   * 用户在使用这一类recurrent layer，只能访问它们的输出值；
-  * 上述的 :code:`paddle.networks.lstmemory_group` ， :code:`paddle.networks.simple_lstm` 和 :code:`paddle.networks.bidirectional_lstm` 是这一类的recurrent layer；
+  * 上述的 :code:`paddle.networks.lstmemory_group` 、 :code:`paddle.networks.simple_lstm` 和 :code:`paddle.networks.bidirectional_lstm` 属于这一类的实现；
 
-在第一类recurrent layer的实现中，recurrent_group中包含许多基础layer的计算（例如：add, element-wise multiplication和matrix multiplication等），计算较为繁琐，而第二类的实现将recurrent layer作为一个整体，针对CPU和GPU计算做了更多优化。 所以，在实际应用中，第二类recurrent layer计算效率更高。 如果用户不需要访问LSTM的中间变量（例如：hidden states, input-to-hidden mapping, memory cells等），而只需要recurrent layer计算的输出，我们建议使用第二类recurrent layer。
+将recurrent layer作为一个整体来实现， 能够针对CPU和GPU的计算做更多优化， 所以相比于recurrent group的实现方式， 第二类 recurrent layer 计算效率更高。 在实际应用中，如果用户不需要访问LSTM的中间变量，而只需要获得recurrent layer计算的输出，我们建议使用第二类实现。
 
-除此之外，关于LSTM, PaddlePaddle中还包含 :code:`paddle.networks.lstmemory_unit` 这一计算单元：
+此外，关于LSTM, PaddlePaddle中还包含 :code:`paddle.networks.lstmemory_unit` 这一计算单元：
 
-  * 不同于上述介绍的recurrent layer , :code:`paddle.networks.lstmemory_unit` 定义了LSTM单元在一个time step里的计算过程，它并不是一个完整的recurrent layer，也不能接收序列数据作为输入；
+  * 不同于上述介绍的recurrent layer , :code:`paddle.networks.lstmemory_unit` 定义了LSTM单元在一个时间步内的计算过程，它并不是一个完整的recurrent layer，也不能接收序列数据作为输入；
   * :code:`paddle.networks.lstmemory_unit` 只能在recurrent_group中作为step function使用；
-
-在LSTM和GRU中，隐状态的计算需要将输入数据进行线性映射（input-to-hidden mapping）。 在PaddlePaddle中，并不是所有的recurrent layer都将 input-to-hidden mapping 操作放在recurrent layer外面来执行来提升LSTM和GRU单元的计算速度。以 :code:`paddle.layer.lstmemory` 和 :code:`paddle.networks.simple_lstm` 为例：
-
-  * :code:`paddle.layer.lstmemory` 内部不包含 input-to-hidden mapping 操作， 所以它并不是 `原有文献 <https://arxiv.org/abs/1308.0850>`_ 定义的LSTM完整形式；
-  * 而 :code:`paddle.networks.simple_lstm` 中包含input-to-hidden mapping 操作，并结合 :code:`paddle.layer.lstmemory` 定义了完整的LSTM形式；
-
-需要注意的是， :code:`paddle.networks.simple_lstm` 和 :code:`paddle.layer.lstmemory` 中定义的LSTM形式都包含了peephole connections，这也使得它们比不包含peephole connections的LSTM实现拥有更多的参数。
