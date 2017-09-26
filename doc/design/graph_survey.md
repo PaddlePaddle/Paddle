@@ -117,8 +117,8 @@ Expression的主要成员为ComputationGraph，可以在用户配置网络的过
 
 实际上Mxnet/TensorFlow/Dynet中的Symbol/Tensor/Expression是同一个层级的概念，我们暂时统一这个概念的名称为Expression，这层概念有如下几个特点：
 
-- 在用户配置网络时，所有的返回值都是Expression，包括最初的输入数据，及参数等
-- Expression已经包含了所有的依赖关系，可以被当做执行的target
+- 用户使用Symbolic的语法来书写网络配置，所有的返回值都是Expression，包括最初的输入数据，及参数等
+- 每个Expression都对应着同一个Graph，已经包含了所有的依赖关系，可以被当做执行的target
 
 下面我们来看几个实例：
 
