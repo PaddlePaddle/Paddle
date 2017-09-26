@@ -1044,6 +1044,8 @@ def fc_layer(input,
         if isinstance(param_attr, collections.Sequence):
             assert len(input) == len(param_attr)
         else:
+            if "parameter_name" in param_attr.attr and len(input) > 1:
+                logger.fatal("You should set the parameter name for each of the input item.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
@@ -4863,6 +4865,8 @@ def selective_fc_layer(input,
         if isinstance(param_attr, collections.Sequence):
             assert len(input) == len(param_attr)
         else:
+            if "parameter_name" in param_attr.attr and len(input) > 1:
+                logger.fatal("You should set the parameter name for each of the input item.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
@@ -6473,7 +6477,7 @@ def switch_order_layer(input,
                        act=None,
                        layer_attr=None):
     """
-    This layer switch dimension order of image input. 
+    This layer switch dimension order of image input.
     From order "batchSize, channels, height, width"
     to order "batchSize, height, width, channels".
 
