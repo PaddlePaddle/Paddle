@@ -29,7 +29,7 @@ class ConcatOp : public framework::OperatorWithKernel {
                             "Output(Out) of ConcatOp should not be null.");
 
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *out = ctx.Output<framework::Tensor>("Out");
     size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
     size_t n = ins.size();
 

@@ -23,7 +23,7 @@ namespace py = pybind11;
 
 namespace paddle {
 
-namespace framework {
+namespace pybind {
 
 namespace details {
 

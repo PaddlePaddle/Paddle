@@ -127,8 +127,8 @@ class FillZeroOpMaker : public OpProtoAndCheckerMaker {
  public:
   FillZeroOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Src", "x");
-    AddOutput("Dst", "out");
+    AddInput("X", "x");
+    AddOutput("Y", "out");
     AddComment("");
   }
 };
@@ -325,10 +325,10 @@ TEST(Backward, op_part_of_output_are_not_need) {
 
   auto &fill_zero = *net->ops_[0];
   ASSERT_EQ("fill_zeros_like", fill_zero.Type());
-  ASSERT_EQ(1UL, fill_zero.Inputs("Src").size());
-  ASSERT_EQ("Z", fill_zero.Input("Src"));
-  ASSERT_EQ(1UL, fill_zero.Outputs("Dst").size());
-  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.Output("Dst"));
+  ASSERT_EQ(1UL, fill_zero.Inputs("X").size());
+  ASSERT_EQ("Z", fill_zero.Input("X"));
+  ASSERT_EQ(1UL, fill_zero.Outputs("Y").size());
+  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.Output("Y"));
 
   auto &d_many_out = *net->ops_[1];
   ASSERT_EQ("many_output_op_grad", d_many_out.Type());
