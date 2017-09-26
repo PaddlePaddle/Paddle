@@ -318,7 +318,7 @@ Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异�
 
 这里有两种有效的解决方法：
 
-1. 对梯度值进行硬截断：设置截断阈值 a，当梯度落在 [-a, a] 区间内，取值不变，否则按照区间端点值进行截断。 可以通过在 :code:`optimizer` 中设置 :code:`gradient_clipping_threshold` 参数来实现，下面的代码片段将梯度截断的阈值设置为 10.0 ：
+1. 设置 :code:`gradient_clipping_threshold` 参数，示例代码如下：
 
 ..  code-block:: python
 
@@ -329,7 +329,7 @@ optimizer = paddle.optimizer.RMSProp(
 
 具体可以参考  `nmt_without_attention  <https://github.com/PaddlePaddle/models/blob/develop/nmt_without_attention/train.py#L35>`_ 示例。
 
-2. 对反向传播中每一层要传输的梯度大小进行硬截断。 可以在 :code:`paddle.attr.ExtraAttr` 中对参数 :code:`error_clipping_threshold` 进行设置来实现，下面的代码片段将传输梯度截断的阈值设置为 100.0 ：
+2. 设置 :code:`error_clipping_threshold` 参数，示例代码如下：
 
 ..  code-block:: python
 
@@ -342,6 +342,11 @@ decoder_inputs = paddle.layer.fc(
         error_clipping_threshold=100.0))
 
 完整代码可以参考示例 `machine translation <https://github.com/PaddlePaddle/book/blob/develop/08.machine_translation/train.py#L66>`_ 。
+
+两种方法的区别：
+
+1. 两者都是对梯度的截断，但截断时机不同，前者在 :code:`optimzier` 更新网络参数时应用；后者在激活函数反向计算时被调用；
+2. 截断对象不同：前者截断可学习参数的梯度，后者截断回传给前层的梯度;
 
 除此之外，还可以通过减小学习律或者对数据进行归一化处理来解决这类问题。
 
@@ -558,39 +563,7 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
 
 出现该错误的原因一般是用户对不同layer的参数 :code:`name` 设置了相同的取值。遇到该错误时，先找出参数 :code:`name` 取值相同的layer，然后将这些layer的参数 :code:`name` 设置为不同的值。
 
-24. PaddlePaddle V2 API中，调用infer接口时输出多个层的计算结果
-------------------------------------------------------------
-
-用户在使用多个中间网络层进行预测时，应先将需要输出的层作为接口 :code:`paddle.inference.Inference()` 中参数 :code:`output_layer` 的输入, 然后调用infer接口来获取多个层对应的计算结果。 示例代码如下：
-
-..      code-block:: python
-
-    inferer = paddle.inference.Inference(output_layer=[layer1, layer2],
-                                        parameters=parameters)
-    probs = inferer.infer(input=test_batch, field=["value"])
-
-需要注意的是：
-
-* 如果指定了2个layer作为输出层，实际上需要的输出结果是两个矩阵；
-* 假设第一个layer的输出A是一个 N1 * M1 的矩阵，第二个 Layer 的输出B是一个 N2 * M2 的矩阵；
-* paddle.v2 默认会将A和B 横向拼接，当N1 和 N2 大小不一样时，会报如下的错误：
-
-..      code-block:: python
-
-    ValueError: all the input array dimensions except for the concatenation axis must match exactly
-
-多个层的输出矩阵的高度不一致导致拼接失败，这种情况常常发生在：
-
-* 同时输出序列层和非序列层；
-* 多个输出层处理多个不同长度的序列;
-
-此时可以在调用infer接口时通过设置 :code:`flatten_result=False` , 跳过“拼接”步骤，来解决上面的问题。这时，infer接口的返回值是一个python list:
-
-* list 中元素的个数等于网络中输出层的个数；
-* list 中每个元素是一个layer的输出结果矩阵，类型是numpy的ndarray；
-* 每一个layer输出矩阵的高度，在非序列输入时：等于样本数；序列输入时等于：输入序列中元素的总数；宽度等于配置中layer的size；
-
-25. PaddlePaddle 中不同的 recurrent layer 的区别
+24. PaddlePaddle 中不同的 recurrent layer 的区别
 --------------------------------------------------
 以LSTM为例，在PaddlePaddle中包含以下 recurrent layer：
 
