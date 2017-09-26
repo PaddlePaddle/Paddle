@@ -22,27 +22,26 @@ class LookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("W"),
-                            "Input(W) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Ids"),
-                            "Input(Ids) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of LookupTableOp should not be null.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("W"),
+                   "Input(W) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Ids"),
+                   "Input(Ids) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of LookupTableOp should not be null.");
 
-    auto table_t = ctx.Input<Tensor>("W");
-    auto ids_t = ctx.Input<Tensor>("Ids");
-    auto output_t = ctx.Output<framework::Tensor>("Out");
+    auto table_dims = ctx->GetInputDim("W");
+    auto ids_dims = ctx->GetInputDim("Ids");
 
-    output_t->Resize({ids_t->dims()[0], table_t->dims()[1]});
-    ctx.ShareLoD("Ids", /*->*/ "Out");
+    ctx->SetOutputDim("Out", {ids_dims[0], table_dims[1]});
+    ctx->ShareLoD("Ids", /*->*/ "Out");
   }
 };
 
 class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupTableOpMaker(framework::OpProto *proto,
-                     framework::OpAttrChecker *op_checker)
+  LookupTableOpMaker(framework::OpProto* proto,
+                     framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("W",
              "An input represents embedding tensors,"
@@ -66,11 +65,9 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &context) const override {
-    auto table = context.Input<Tensor>("W");
-    auto d_table =
-        context.Output<framework::Tensor>(framework::GradVarName("W"));
-    d_table->Resize(table->dims());
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    auto table_dims = ctx->GetInputDim("W");
+    ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
   }
 };
 

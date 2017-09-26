@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include <algorithm>
-#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -32,6 +31,24 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
   return *device_context_.get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
+
+const Tensor* GetTensorFromVar(const Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return &var->Get<LoDTensor>();
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input must be LoDTensor or Tensor.");
+  return &var->Get<Tensor>();
+}
+
+Tensor* GetTensorFromVar(Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->GetMutable<LoDTensor>();
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input must be LoDTensor or Tensor.");
+  return var->GetMutable<Tensor>();
+}
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
