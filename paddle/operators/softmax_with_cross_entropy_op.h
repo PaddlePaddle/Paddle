@@ -44,7 +44,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
 
     const int batch_size = logits->dims()[0];
     if (context.Attr<bool>("softLabel")) {
-      //(TODO caoying) the forward implementation can be further optimized.
+      // (TODO caoying) the forward implementation can be further optimized.
       // Current implementation is exactly cross entropy after softmax.
       auto prob = EigenMatrix<T>::From(*softmax);
       auto lbl_mat = EigenMatrix<T>::From(*labels);

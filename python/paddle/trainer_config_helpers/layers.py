@@ -921,7 +921,7 @@ def data_layer(name, size, depth=None, height=None, width=None,
 
         data = data_layer(name="input", size=1000)
 
-    :param name: The name of this layer. It is optional.
+    :param name: The name of this layer.
     :type name: basestring
     :param size: Size of this data layer.
     :type size: int
@@ -3668,6 +3668,7 @@ def gru_step_naive_layer(input,
     :param param_attr:
     :param layer_attr:
     :return:
+    :rtype: LayerOutput
     """
     if input.size % 3 != 0:
         raise ValueError("GruStep input size must be divided by 3")

@@ -22,5 +22,5 @@ def initHook(settings, height, width, color, num_class, **kwargs):
 def process(settings, file_list):
     for i in xrange(1024):
         img = np.random.rand(1, settings.data_size).reshape(-1, 1).flatten()
-        lab = random.randint(0, settings.num_class)
+        lab = random.randint(0, settings.num_class - 1)
         yield img.astype('float32'), int(lab)
