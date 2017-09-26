@@ -77,13 +77,12 @@ class TestLRNOp(OpTest):
         #print 'python: out', self.out
 
     def test_check_output(self):
-        #print "check out"
         self.check_output()
 
-    '''
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
+        self.check_grad(['X'], ['Out', 'mid_out'], max_relative_error=0.005)
 
+    '''
     def test_check_grad_ingore_x(self):
         self.check_grad(
             ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))

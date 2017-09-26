@@ -112,13 +112,14 @@ class LRNOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("mid_out")),
+                            "Input(mid_out@GRAD) should not be null");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
                             "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
-    if (x_grad) x_grad->Resize(x_dims);
+    auto x_dims = ctx.Input<Tensor>("X")->dims();
+    auto *x_g = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    if (x_g) x_g->Resize(x_dims);
   }
 };
 

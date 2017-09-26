@@ -98,14 +98,103 @@ class LRNKernel : public framework::OpKernel {
   }
 };
 
+/**
+ * \brief Backward calculation for normalization with across maps.
+ *
+ * Function implementation:
+ *
+ * The implementation of this Function is derived from the
+ * CrossMapNormalFunc implementation.
+ *
+ * InputGrad = OutputGrad * denoms ^ (-beta)
+ *    -- upper
+ *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / mid_out) * InputValue
+ *    -- lower
+ *
+ * The data of inputs/outputs format is the same as the forward interface
+ * and is NCHW.
+ *
+ * The upper and lower is the same as forward. The logic of the sum
+ * is also the same as forward.
+ */
 template <typename Place, typename T>
 class LRNGradKernel : public framework::OpKernel {
  public:
   using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // const Tensor* x = ctx.Input<Tensor>("X");
-    // const Tensor* out = ctx.Input<Tensor>("Out");
-    // const Tensor* mid_out = ctx.Input<Tensor>("Out");
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* out = ctx.Input<Tensor>("Out");
+    const Tensor* out_g = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const Tensor* mid = ctx.Input<Tensor>("mid_out");
+
+    auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
+    x_g->mutable_data<T>(ctx.GetPlace());
+    auto x_g_e = framework::EigenVector<float>::Flatten(*x_g);
+
+    auto x_dims = x->dims();
+    int N = x_dims[0];
+    int C = x_dims[1];
+    int H = x_dims[2];
+    int W = x_dims[3];
+    printf("N:%d C:%d H:%d W:%d\n", N, C, H, W);
+
+    int n = ctx.Attr<int>("n");
+    float alpha = ctx.Attr<float>("alpha");
+    float beta = ctx.Attr<float>("beta");
+    float k = ctx.Attr<float>("k");
+    printf("n:%d alpha:%f beta:%f k:%f\n", n, alpha, beta, k);
+
+    auto x_e = framework::EigenVector<float>::Flatten(*x);
+    auto out_e = framework::EigenVector<float>::Flatten(*out);
+    auto out_g_e = framework::EigenVector<float>::Flatten(*out_g);
+    auto mid_e = framework::EigenVector<float>::Flatten(*mid);
+    auto mid_pow = mid_e.pow(-beta);
+
+    int one_img_size = H * W;
+    int one_sample_size = C * one_img_size;
+
+    float ratio = -2 * alpha * beta;
+
+    const int start = -(n - 1) / 2;
+    const int end = start + n;
+    for (int m = 0; m < N; m++) {
+      int m_pos = m * one_sample_size;
+      for (int i = 0; i < C; i++) {
+        int i_pos = m_pos + i * one_img_size;
+
+        framework::EigenTensor<float, 1>::ConstType i_x =
+            framework::EigenTensor<float, 1>::From(
+                x_e.data() + i_pos, framework::make_ddim({one_img_size}));
+
+        framework::EigenTensor<float, 1>::Type i_x_g =
+            framework::EigenTensor<float, 1>::From(
+                x_g_e.data() + i_pos, framework::make_ddim({one_img_size}));
+
+        framework::EigenTensor<float, 1>::ConstType i_out_g =
+            framework::EigenTensor<float, 1>::From(
+                out_g_e.data() + i_pos, framework::make_ddim({one_img_size}));
+
+        i_x_g = mid_pow * i_out_g;
+        for (int c = start; c <= end; c++) {
+          int ch = i + c;
+          if (ch < 0 || ch >= C) {
+            continue;
+          }
+
+          int c_pos = m_pos + ch * one_img_size;
+          auto c_out = framework::EigenTensor<float, 1>::From(
+              out_e.data() + c_pos, framework::make_ddim({one_img_size}));
+
+          auto c_mid = framework::EigenTensor<float, 1>::From(
+              mid_e.data() + c_pos, framework::make_ddim({one_img_size}));
+
+          auto c_out_g = framework::EigenTensor<float, 1>::From(
+              out_g_e.data() + c_pos, framework::make_ddim({one_img_size}));
+
+          i_x_g += ratio * c_out_g * c_out * i_x / c_mid;
+        }
+      }
+    }
   }
 };
 
