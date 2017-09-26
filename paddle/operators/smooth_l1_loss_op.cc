@@ -22,28 +22,28 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "X must be initialized.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Y must be initialized.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(x_dims, y_dims, "The shape of X and Y must be the same.");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       "The tensor rank of X must be at least 2.");
-    if (ctx.HasInput("InsideWeight")) {
-      PADDLE_ENFORCE(ctx.HasInput("OutsideWeight"),
+    if (ctx->HasInput("InsideWeight")) {
+      PADDLE_ENFORCE(ctx->HasInput("OutsideWeight"),
                      "If weights are provided, must specify both "
                      "inside and outside weights.");
-      PADDLE_ENFORCE_EQ(ctx.GetInputDim("InsideWeight"), x_dims,
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("InsideWeight"), x_dims,
                         "The shape of InsideWeight must be same as X.");
-      PADDLE_ENFORCE_EQ(ctx.GetInputDim("OutsideWeight"), x_dims,
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("OutsideWeight"), x_dims,
                         "The shape of OutsideWeight must be same as X.");
     }
 
-    ctx.SetOutputDim("Diff", x_dims);
+    ctx->SetOutputDim("Diff", x_dims);
     // loss is a two-rank tensor
-    ctx.SetOutputDim("Out", {x_dims[0], 1});
+    ctx->SetOutputDim("Out", {x_dims[0], 1});
   }
 };
 
@@ -94,9 +94,9 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    auto in_dims = ctx.GetInputDim("X");
-    auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    auto in_dims = ctx->GetInputDim("X");
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
                       "The tensor rank of Input(Out@Grad) should be 2.");
@@ -108,11 +108,11 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
-    if (ctx.HasOutput(x_grad_name)) {
-      ctx.SetOutputDim(x_grad_name, in_dims);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, in_dims);
     }
-    if (ctx.HasOutput(y_grad_name)) {
-      ctx.SetOutputDim(y_grad_name, in_dims);
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, in_dims);
     }
   }
 };

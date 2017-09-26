@@ -24,11 +24,11 @@ class TransposeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"), "Output(Out) should not be null");
-    auto x_dims = ctx.GetInputDim("X");
-    std::vector<int> axis = ctx.Attrs().Get<std::vector<int>>("axis");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    auto x_dims = ctx->GetInputDim("X");
+    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
@@ -50,14 +50,14 @@ class TransposeOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = x_dims[axis[i]];
     }
-    ctx.SetOutputDim("Out", out_dims);
+    ctx->SetOutputDim("Out", out_dims);
   }
 };
 
 class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TransposeOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  TransposeOpMaker(framework::OpProto* proto,
+                   framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
@@ -93,14 +93,14 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.GetInputDim("X");
-    ctx.SetOutputDim(framework::GradVarName("X"), x_dims);
-    if (ctx.HasOutput(framework::GradVarName("X"))) {
-      ctx.SetOutputDim(framework::GradVarName("X"), x_dims);
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     }
   }
 };

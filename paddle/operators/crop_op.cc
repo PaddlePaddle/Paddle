@@ -25,13 +25,14 @@ class CropOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of CropOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of CropOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of CropOp should not be null.");
-    auto x_dim = ctx.GetInputDim("X");
-    if (!ctx.HasInput("Y")) {
-      auto shape = ctx.Attrs().Get<std::vector<int>>("shape");
+    auto x_dim = ctx->GetInputDim("X");
+    if (!ctx->HasInput("Y")) {
+      auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
           "Shape size should be equal to dimention size of input tensor.");
@@ -39,20 +40,20 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
-      ctx.SetOutputDim("Out", framework::make_ddim(tensor_shape));
+      ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
     } else {
-      auto y_dim = ctx.GetInputDim("Y");
+      auto y_dim = ctx->GetInputDim("Y");
       PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y_dim),
                         "Tensor rank of both CropOp's "
                         "inputs must be same.");
-      ctx.SetOutputDim("Out", y_dim);
+      ctx->SetOutputDim("Out", y_dim);
     }
   }
 };
 
 class CropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CropOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  CropOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "
@@ -114,14 +115,14 @@ class CropOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.GetInputDim("X");
+    auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
-    if (ctx.HasOutput(x_grad_name)) {
-      ctx.SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
 };

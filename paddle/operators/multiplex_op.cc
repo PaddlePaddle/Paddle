@@ -25,10 +25,10 @@ class MultiplexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(!ctx.Inputs("X").empty(), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"), "Output(Out) shouldn't be null.");
-    auto ins = ctx.GetInputsDim("X");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
+    auto ins = ctx->GetInputsDim("X");
     auto num_ins = ins.size();
     PADDLE_ENFORCE(num_ins > 2,
                    "multiplex operator should have more than 2 inputs.");
@@ -40,14 +40,14 @@ class MultiplexOp : public framework::OperatorWithKernel {
           in_dim == ins[i],
           "All the input tensors except the first one must have the same size");
     }
-    ctx.SetOutputDim("Out", in_dim);
+    ctx->SetOutputDim("Out", in_dim);
   }
 };
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiplexOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  MultiplexOpMaker(framework::OpProto* proto,
+                   framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensors of multiplex operator.").AsDuplicable();
     AddOutput("Out", "The output tensor of multiplex operator.");
@@ -77,13 +77,13 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(!ctx.Inputs("X").empty(), "Input(X) should not be null");
-    PADDLE_ENFORCE(!ctx.Outputs(framework::GradVarName("X")).empty(),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null");
+    PADDLE_ENFORCE(!ctx->Outputs(framework::GradVarName("X")).empty(),
                    "Output(X@Grad) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
-    auto ins = ctx.GetInputsDim("X");
+    auto ins = ctx->GetInputsDim("X");
     size_t in_size = ins.size();
     std::vector<framework::DDim> d_ins;
     d_ins.reserve(in_size - 1);
@@ -91,7 +91,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < in_size; i++) {
       d_ins.push_back(ins[i]);
     }
-    ctx.SetOutputsDim(framework::GradVarName("X"), d_ins);
+    ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
   }
 };
 

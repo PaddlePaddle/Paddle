@@ -24,16 +24,16 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of RowwiseAddOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("b"),
+    PADDLE_ENFORCE(ctx->HasInput("b"),
                    "Input(b) of RowwiseAddOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of RowwiseAddOp should not be null.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto b_dims = ctx.GetInputDim("b");
+    auto x_dims = ctx->GetInputDim("X");
+    auto b_dims = ctx->GetInputDim("b");
     PADDLE_ENFORCE_GT(
         x_dims.size(), b_dims.size(),
         "The rank of input `X` must be larger than the one of input `b`.");
@@ -43,17 +43,17 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
         "The width of two operands must be same");
-    PADDLE_ENFORCE_EQ(ctx.Outputs("Out").size(), 1,
+    PADDLE_ENFORCE_EQ(ctx->Outputs("Out").size(), 1,
                       "The output size must be 1");
-    ctx.SetOutputDim("Out", x_dims);
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class RowwiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RowwiseAddOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
+  RowwiseAddOpMaker(framework::OpProto* proto,
+                    framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
     AddInput("b", "The right input of row-wise add op, must be vector");
@@ -70,13 +70,13 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "X should not be null");
-    PADDLE_ENFORCE(ctx.HasInput("b"), "b should not be null");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("b"), "b should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.GetInputDim("X");
-    auto b_dims = ctx.GetInputDim("b");
+    auto x_dims = ctx->GetInputDim("X");
+    auto b_dims = ctx->GetInputDim("b");
     PADDLE_ENFORCE_GT(
         x_dims.size(), b_dims.size(),
         "The rank of input `X` must be larger than the one of input `b`.");
@@ -87,11 +87,11 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
         "The width of two operands must be same");
     auto x_grad_name = framework::GradVarName("X");
     auto b_grad_name = framework::GradVarName("b");
-    if (ctx.HasOutput(x_grad_name)) {
-      ctx.SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
     }
-    if (ctx.HasOutput(b_grad_name)) {
-      ctx.SetOutputDim(b_grad_name, b_dims);
+    if (ctx->HasOutput(b_grad_name)) {
+      ctx->SetOutputDim(b_grad_name, b_dims);
     }
   }
 };

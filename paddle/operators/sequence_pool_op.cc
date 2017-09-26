@@ -22,12 +22,12 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequenceAvgPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceAvgPoolOp should not be null.");
-    ctx.SetOutputDim("Out", ctx.GetInputDim("X"));
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 };
 
@@ -74,18 +74,18 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("X"), "The input X should not be null.");
-    auto og_dims = ctx.GetInputDim(framework::GradVarName("Out"));
-    auto x_dims = ctx.GetInputDim("X");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
                       "The rank of output grad must equal to Input(X).");
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
-    ctx.SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
 };
 

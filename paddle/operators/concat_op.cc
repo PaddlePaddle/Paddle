@@ -24,12 +24,12 @@ class ConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
 
-    auto ins = ctx.GetInputsDim("X");
-    size_t axis = static_cast<size_t>(ctx.Attrs().Get<int>("axis"));
+    auto ins = ctx->GetInputsDim("X");
+    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
     size_t n = ins.size();
 
     PADDLE_ENFORCE_GT(n, 1, "Input tensors count should > 1.");
@@ -47,7 +47,7 @@ class ConcatOp : public framework::OperatorWithKernel {
                           "elements except the specify axis.")
       }
     }
-    ctx.SetOutputDim("Out", out_dims);
+    ctx->SetOutputDim("Out", out_dims);
   }
 };
 

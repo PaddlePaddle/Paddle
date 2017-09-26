@@ -22,19 +22,19 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SquaredL2DistanceOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"),
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(Y) of SquaredL2DistanceOp should not be null.");
     PADDLE_ENFORCE(
-        ctx.HasOutput("sub_result"),
+        ctx->HasOutput("sub_result"),
         "Output(sub_result) of SquaredL2DistanceOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SquaredL2DistanceOp should not be null.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(framework::arity(x_dims), framework::arity(y_dims),
                       "Tensor rank of both SquaredL2DistanceOp's "
@@ -49,9 +49,9 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
                    "First dimension of target must be equal to input "
                    "or to 1.");
 
-    ctx.SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
-    ctx.SetOutputDim("Out", {x_dims[0], 1});
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
+    ctx->SetOutputDim("Out", {x_dims[0], 1});
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -86,12 +86,12 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null");
-    auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
                       "First dimension of output gradient and "
                       "input value must be equal.");
@@ -100,8 +100,8 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
                       "must be 1.");
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
-    if (ctx.HasOutput(x_grad_name)) ctx.SetOutputDim(x_grad_name, x_dims);
-    if (ctx.HasOutput(y_grad_name)) ctx.SetOutputDim(y_grad_name, y_dims);
+    if (ctx->HasOutput(x_grad_name)) ctx->SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(y_grad_name)) ctx->SetOutputDim(y_grad_name, y_dims);
   }
 };
 

@@ -26,13 +26,13 @@ class ScaleOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ScaleOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ScaleOp should not be null.");
-    ctx.SetOutputDim("Out", ctx.GetInputDim("X"));
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

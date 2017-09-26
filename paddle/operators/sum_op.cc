@@ -21,10 +21,10 @@ class SumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    auto x_dims = ctx.GetInputsDim("X");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    auto x_dims = ctx->GetInputsDim("X");
     PADDLE_ENFORCE(!x_dims.empty(), "Input(X) of SumOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SumOp should not be null.");
 
     auto in_dim = x_dims[0];
@@ -34,14 +34,14 @@ class SumOp : public framework::OperatorWithKernel {
       auto dim = x_dims[i];
       PADDLE_ENFORCE(in_dim == dim, "Input tensors must have same shape");
     }
-    ctx.SetOutputDim("Out", in_dim);
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", in_dim);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input tensors of sum operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of sum operator.");
@@ -59,16 +59,16 @@ class SumGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    auto out_grad_dims = ctx.GetInputDim(framework::GradVarName("Out"));
-    auto x_grad_names = ctx.Outputs(framework::GradVarName("X"));
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_grad_names = ctx->Outputs(framework::GradVarName("X"));
     size_t x_length = x_grad_names.size();
     std::vector<framework::DDim> x_grad_dims;
     x_grad_dims.reserve(x_length);
     for (size_t i = 0; i < x_length; ++i) {
       x_grad_dims.push_back(out_grad_dims);
     }
-    ctx.SetOutputsDim(framework::GradVarName("X"), x_grad_dims);
+    ctx->SetOutputsDim(framework::GradVarName("X"), x_grad_dims);
   }
 };
 

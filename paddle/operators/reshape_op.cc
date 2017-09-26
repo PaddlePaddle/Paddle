@@ -26,14 +26,14 @@ class ReshapeOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
     // input check
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ReshapeOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ReshapeOp should not be null.");
 
-    auto shape = ctx.Attrs().Get<std::vector<int>>("shape");
+    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
     for (auto dim : shape) {
       PADDLE_ENFORCE(dim > 0, "Each dimension of shape must be positive.");
@@ -41,7 +41,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     // capacity check
     int64_t capacity =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    auto x_dims = ctx.GetInputDim("X");
+    auto x_dims = ctx->GetInputDim("X");
     int64_t in_size = framework::product(x_dims);
     PADDLE_ENFORCE_EQ(capacity, in_size,
                       "The size of Input(X) mismatches with Attr(shape).");
@@ -50,11 +50,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
                    [](int a) { return static_cast<int64_t>(a); });
     auto out_dims = framework::make_ddim(shape_int64);
-    ctx.SetOutputDim("Out", out_dims);
+    ctx->SetOutputDim("Out", out_dims);
     if (shape[0] == x_dims[0]) {
       // Only pass LoD when the first dimension is equal between
       // output and input.
-      ctx.ShareLoD("X", /*->*/ "Out");
+      ctx->ShareLoD("X", /*->*/ "Out");
     }
   }
 };
@@ -94,11 +94,11 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) shouldn't be null.");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
-    ctx.SetOutputDim(framework::GradVarName("X"), ctx.GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 

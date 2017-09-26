@@ -23,19 +23,19 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Index"),
+    PADDLE_ENFORCE(ctx->HasInput("Index"),
                    "Input(Index) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GatherOp should not be null.");
 
-    int batch_size = ctx.GetInputDim("Index")[0];
+    int batch_size = ctx->GetInputDim("Index")[0];
     PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
-    framework::DDim output_dims(ctx.GetInputDim("X"));
+    framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
-    ctx.SetOutputDim("Out", output_dims);
+    ctx->SetOutputDim("Out", output_dims);
   }
 };
 
@@ -44,14 +44,14 @@ class GatherGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    ctx.SetOutputDim(framework::GradVarName("X"), ctx.GetInputDim("X"));
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GatherOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  GatherOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");

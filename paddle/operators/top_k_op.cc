@@ -22,15 +22,16 @@ class TopkOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of TopkOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of TopkOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of TopkOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Indices"),
+    PADDLE_ENFORCE(ctx->HasOutput("Indices"),
                    "Output(Indices) of TopkOp should not be null.");
 
-    auto input_dims = ctx.GetInputDim("X");
-    const int k = static_cast<int>(ctx.Attrs().Get<int>("k"));
+    auto input_dims = ctx->GetInputDim("X");
+    const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
 
     PADDLE_ENFORCE_GE(k, 1, "k must >= 1");
     PADDLE_ENFORCE_GE(input_dims.size(), 1, "input must have >= 1d shape");
@@ -39,8 +40,8 @@ class TopkOp : public framework::OperatorWithKernel {
 
     framework::DDim dims = input_dims;
     dims[dims.size() - 1] = k;
-    ctx.SetOutputDim("Out", dims);
-    ctx.SetOutputDim("Indices", dims);
+    ctx->SetOutputDim("Out", dims);
+    ctx->SetOutputDim("Indices", dims);
   }
 };
 

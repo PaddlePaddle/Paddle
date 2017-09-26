@@ -22,19 +22,19 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) must not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Y"), "Output(Y) must not be null.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) must not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must not be null.");
 
-    auto x_dim = ctx.GetInputDim("X");
-    auto label_dim = ctx.GetInputDim("Label");
+    auto x_dim = ctx->GetInputDim("X");
+    auto label_dim = ctx->GetInputDim("Label");
     PADDLE_ENFORCE_EQ(x_dim.size(), 2, "Input(X)'s rank must be 2.");
     PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Input(Label)'s rank must be 2.");
     PADDLE_ENFORCE_EQ(x_dim[0], label_dim[0],
                       "The 1st dimension of Input(X) and Input(Label) must "
                       "be equal.");
-    if (ctx.Attrs().Get<bool>("soft_label") == 1) {
+    if (ctx->Attrs().Get<bool>("soft_label") == 1) {
       PADDLE_ENFORCE_EQ(x_dim[1], label_dim[1],
                         "If Attr(soft_label) == 1, The 2nd dimension of "
                         "Input(X) and Input(Label) must be equal.");
@@ -44,8 +44,8 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
                         "Input(Label) must be 1.");
     }
 
-    ctx.SetOutputDim("Y", {x_dim[0], 1});
-    ctx.ShareLoD("X", /*->*/ "Y");
+    ctx->SetOutputDim("Y", {x_dim[0], 1});
+    ctx->ShareLoD("X", /*->*/ "Y");
   }
 };
 
@@ -54,15 +54,15 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Y")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
                    "Input(Y@GRAD) must not be null.");
 
-    auto x_dim = ctx.GetInputDim("X");
-    auto label_dim = ctx.GetInputDim("Label");
-    auto dy_dim = ctx.GetInputDim(framework::GradVarName("Y"));
+    auto x_dim = ctx->GetInputDim("X");
+    auto label_dim = ctx->GetInputDim("Label");
+    auto dy_dim = ctx->GetInputDim(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_EQ(x_dim.size(), 2, "Input(X)'s rank must be 2.");
     PADDLE_ENFORCE_EQ(dy_dim.size(), 2, "Input(Y@Grad)'s rank must be 2.");
@@ -75,7 +75,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                       "be equal.");
     PADDLE_ENFORCE_EQ(dy_dim[1], 1,
                       "The 2nd dimension of Input(Y@Grad) must be 1.");
-    if (ctx.Attrs().Get<bool>("soft_label") == 1) {
+    if (ctx->Attrs().Get<bool>("soft_label") == 1) {
       PADDLE_ENFORCE_EQ(x_dim[1], label_dim[1],
                         "If Attr(soft_label) == 1, The 2nd dimension of "
                         "Input(X) and Input(Label) must be equal.");
@@ -85,14 +85,14 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                         "Input(Label) must be 1.");
     }
 
-    ctx.SetOutputDim(framework::GradVarName("X"), x_dim);
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dim);
   }
 };
 
 class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CrossEntropyOpMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  CrossEntropyOpMaker(framework::OpProto* proto,
+                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of CrossEntropyOp");
     AddInput("Label", "The second input of CrossEntropyOp");

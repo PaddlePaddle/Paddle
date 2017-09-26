@@ -202,20 +202,20 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
  protected:
   using Tensor = framework::Tensor;
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of elementwise op should not be null");
-    PADDLE_ENFORCE(ctx.HasInput("Y"),
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(Y) of elementwise op should not be null");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of elementwise op should not be null.");
 
-    auto x_dim = ctx.GetInputDim("X");
-    auto y_dim = ctx.GetInputDim("Y");
+    auto x_dim = ctx->GetInputDim("X");
+    auto y_dim = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
                       "Rank of first input must >= rank of second input.")
-    ctx.SetOutputDim("Out", x_dim);
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", x_dim);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -283,26 +283,26 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
-    auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.")
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
-    if (ctx.HasOutput(x_grad_name)) {
-      ctx.SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
     }
-    if (ctx.HasOutput(y_grad_name)) {
-      ctx.SetOutputDim(y_grad_name, y_dims);
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, y_dims);
     }
   }
 };

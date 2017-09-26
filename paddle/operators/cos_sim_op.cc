@@ -24,22 +24,22 @@ class CosSimOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
     // notnull check
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"),
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(Y) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("XNorm"),
+    PADDLE_ENFORCE(ctx->HasOutput("XNorm"),
                    "Output(XNorm) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("YNorm"),
+    PADDLE_ENFORCE(ctx->HasOutput("YNorm"),
                    "Output(YNorm) of CosSimOp should not be null.");
 
     // shape check
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
                       "Ranks of Input(X) and Input(Y) must be equal.");
@@ -54,16 +54,16 @@ class CosSimOp : public framework::OperatorWithKernel {
                    " just 1 (which will be broadcasted to match Input(X)).");
 
     // resize tensor
-    ctx.SetOutputDim("Out", {x_dims[0], 1});
-    ctx.SetOutputDim("XNorm", {x_dims[0], 1});
-    ctx.SetOutputDim("YNorm", {y_dims[0], 1});
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", {x_dims[0], 1});
+    ctx->SetOutputDim("XNorm", {x_dims[0], 1});
+    ctx->SetOutputDim("YNorm", {y_dims[0], 1});
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CosSimOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  CosSimOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The 1st input of cos_sim op.");
     AddInput("Y", "The 2nd input of cos_sim op.");
@@ -98,23 +98,23 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
     // notnull check
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("XNorm"), "Input(XNorm) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("YNorm"), "Input(YNorm) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Out"), "Input(Out) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("XNorm"), "Input(XNorm) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("YNorm"), "Input(YNorm) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) must not be null.");
 
     // shape check
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
-    auto xnorm_dims = ctx.GetInputDim("XNorm");
-    auto ynorm_dims = ctx.GetInputDim("YNorm");
-    auto out_dims = ctx.GetInputDim("Out");
-    auto out_grad_dims = ctx.GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    auto xnorm_dims = ctx->GetInputDim("XNorm");
+    auto ynorm_dims = ctx->GetInputDim("YNorm");
+    auto out_dims = ctx->GetInputDim("Out");
+    auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Ranks of Input(X) and Input(Y) must be equal.");
@@ -141,11 +141,11 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
     // resize tensor
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
-    if (ctx.HasOutput(x_grad_name)) {
-      ctx.SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
     }
-    if (ctx.HasOutput(y_grad_name)) {
-      ctx.SetOutputDim(y_grad_name, y_dims);
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, y_dims);
     }
   }
 };

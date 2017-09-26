@@ -25,21 +25,21 @@ class RankLossOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
     // input check
-    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) shouldn't be null");
-    PADDLE_ENFORCE(ctx.HasInput("Left"), "Input(Left) shouldn't be null");
-    PADDLE_ENFORCE(ctx.HasInput("Right"), "Input(Right) shouldn't be null");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null");
+    PADDLE_ENFORCE(ctx->HasInput("Left"), "Input(Left) shouldn't be null");
+    PADDLE_ENFORCE(ctx->HasInput("Right"), "Input(Right) shouldn't be null");
 
-    auto label_dims = ctx.GetInputDim("Label");
-    auto left_dims = ctx.GetInputDim("Left");
-    auto right_dims = ctx.GetInputDim("Right");
+    auto label_dims = ctx->GetInputDim("Label");
+    auto left_dims = ctx->GetInputDim("Left");
+    auto right_dims = ctx->GetInputDim("Right");
 
     PADDLE_ENFORCE((label_dims == left_dims) && (left_dims == right_dims),
                    "All inputs must have the same size");
     PADDLE_ENFORCE((label_dims.size() == 2) && (label_dims[1] == 1),
                    "All inputs must be row vector with size batch_size x 1.");
-    ctx.SetOutputDim("Out", label_dims);
+    ctx->SetOutputDim("Out", label_dims);
   }
 };
 
@@ -90,22 +90,22 @@ class RankLossGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("Label"), "Input(Label) shouldn't be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Left"), "Input(Left) shouldn't be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Right"), "Input(Right) shouldn't be null.");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Left"), "Input(Left) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Right"), "Input(Right) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
-    auto dims = ctx.GetInputDim("Left");
+    auto dims = ctx->GetInputDim("Left");
     auto left_grad_name = framework::GradVarName("Left");
     auto right_grad_name = framework::GradVarName("Right");
 
-    if (ctx.HasOutput(left_grad_name)) {
-      ctx.SetOutputDim(left_grad_name, dims);
+    if (ctx->HasOutput(left_grad_name)) {
+      ctx->SetOutputDim(left_grad_name, dims);
     }
 
-    if (ctx.HasOutput(right_grad_name)) {
-      ctx.SetOutputDim(right_grad_name, dims);
+    if (ctx->HasOutput(right_grad_name)) {
+      ctx->SetOutputDim(right_grad_name, dims);
     }
   }
 };

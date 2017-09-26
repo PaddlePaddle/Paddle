@@ -24,13 +24,13 @@ class SplitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    auto in_dims = ctx.GetInputDim("X");
-    auto outs_names = ctx.Outputs("Out");
-    size_t axis = static_cast<size_t>(ctx.Attrs().Get<int>("axis"));
-    size_t num = static_cast<size_t>(ctx.Attrs().Get<int>("num"));
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    auto in_dims = ctx->GetInputDim("X");
+    auto outs_names = ctx->Outputs("Out");
+    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
+    size_t num = static_cast<size_t>(ctx->Attrs().Get<int>("num"));
     std::vector<int> sections = static_cast<std::vector<int>>(
-        ctx.Attrs().Get<std::vector<int>>("sections"));
+        ctx->Attrs().Get<std::vector<int>>("sections"));
     const size_t outs_number = outs_names.size();
     std::vector<framework::DDim> outs_dims;
     outs_dims.reserve(outs_number);
@@ -59,7 +59,7 @@ class SplitOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_NOT_NULL(nullptr, "split operator should",
                               " specify indices or sections.");
     }
-    ctx.SetOutputsDim("Out", outs_dims);
+    ctx->SetOutputsDim("Out", outs_dims);
   }
 };
 

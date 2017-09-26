@@ -452,7 +452,7 @@ class OperatorWithKernel : public OperatorBase {
   // runtime infershape
   void InferShape(const Scope& scope) const override {
     auto c = RunTimeInferShapeContext(*this, scope);
-    InferShape(c);
+    InferShape(&c);
   }
 
   void Run(const Scope& scope,
@@ -474,7 +474,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual void InferShape(InferShapeContextBase& ctx) const = 0;
+  virtual void InferShape(InferShapeContextBase* ctx) const = 0;
 };
 
 }  // namespace framework

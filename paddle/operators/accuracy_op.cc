@@ -22,23 +22,23 @@ class AccuracyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("Inference"),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Inference"),
                    "Input(Inference) of AccuracyOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Label"),
+    PADDLE_ENFORCE(ctx->HasInput("Label"),
                    "Input(Label) of AccuracyOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Accuracy"),
+    PADDLE_ENFORCE(ctx->HasOutput("Accuracy"),
                    "Output(Accuracy) of AccuracyOp should not be null.");
 
-    auto inference_dim = ctx.GetInputDim("Inference");
-    auto label_dim = ctx.GetInputDim("Label");
+    auto inference_dim = ctx->GetInputDim("Inference");
+    auto label_dim = ctx->GetInputDim("Label");
 
     PADDLE_ENFORCE_EQ(label_dim.size(), 1, "label must be a vector");
     PADDLE_ENFORCE_EQ(inference_dim[0], label_dim[0],
                       "inference size must be the same as label size");
 
-    ctx.SetOutputDim("Accuracy", {1});
-    ctx.ShareLoD("Inference", /*->*/ "Accuracy");
+    ctx->SetOutputDim("Accuracy", {1});
+    ctx->ShareLoD("Inference", /*->*/ "Accuracy");
   }
 };
 

@@ -24,16 +24,16 @@ class MulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of MulOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) of MulOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MulOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of MulOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of MulOp should not be null.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
-    int x_num_col_dims = ctx.Attrs().Get<int>("x_num_col_dims");
-    int y_num_col_dims = ctx.Attrs().Get<int>("y_num_col_dims");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    int x_num_col_dims = ctx->Attrs().Get<int>("x_num_col_dims");
+    int y_num_col_dims = ctx->Attrs().Get<int>("y_num_col_dims");
 
     PADDLE_ENFORCE(x_dims.size() > x_num_col_dims,
                    "The rank of input tensor X should be larger than "
@@ -48,14 +48,14 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
         "First matrix's width must be equal with second matrix's height.");
-    ctx.SetOutputDim("Out", {x_mat_dims[0], y_mat_dims[1]});
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", {x_mat_dims[0], y_mat_dims[1]});
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  MulOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");
@@ -95,14 +95,14 @@ class MulOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
-    auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     auto x_mat_dims =
         framework::flatten_to_2d(x_dims, Attr<int>("x_num_col_dims"));
@@ -121,11 +121,11 @@ class MulOpGrad : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
 
-    if (ctx.HasOutput(x_grad_name)) {
-      ctx.SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
     }
-    if (ctx.HasOutput(y_grad_name)) {
-      ctx.SetOutputDim(y_grad_name, y_dims);
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, y_dims);
     }
   }
 };

@@ -22,23 +22,23 @@ class AddOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of AddOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) of AddOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of AddOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of AddOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of AddOp should not be null.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(x_dims, y_dims,
                       "Two input of Add Op's dimension must be same.");
-    ctx.SetOutputDim("Out", x_dims);
+    ctx->SetOutputDim("Out", x_dims);
   }
 };
 
 class AddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AddOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  AddOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of add op");
     AddInput("Y", "The second input of add op");
@@ -56,7 +56,7 @@ class AddOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {}
+  void InferShape(framework::InferShapeContextBase* ctx) const override {}
 };
 
 }  // namespace operators

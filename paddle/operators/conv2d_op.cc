@@ -27,19 +27,19 @@ class Conv2DOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("Input"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of Conv2DOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Filter"),
+    PADDLE_ENFORCE(ctx->HasInput("Filter"),
                    "Input(Filter) of Conv2DOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Output"),
+    PADDLE_ENFORCE(ctx->HasOutput("Output"),
                    "Output(Output) of Conv2DOp should not be null.");
 
-    auto in_dims = ctx.GetInputDim("Input");
-    auto filter_dims = ctx.GetInputDim("Filter");
-    std::vector<int> strides = ctx.Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx.Attrs().Get<std::vector<int>>("paddings");
-    int groups = ctx.Attrs().Get<int>("groups");
+    auto in_dims = ctx->GetInputDim("Input");
+    auto filter_dims = ctx->GetInputDim("Filter");
+    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    int groups = ctx->Attrs().Get<int>("groups");
     int input_channels = in_dims[1];
     int output_channels = filter_dims[0];
 
@@ -56,14 +56,14 @@ class Conv2DOp : public framework::OperatorWithKernel {
         outputSize(in_dims[2], filter_dims[2], paddings[0], strides[0]);
     auto output_width =
         outputSize(in_dims[3], filter_dims[3], paddings[1], strides[1]);
-    ctx.SetOutputDim("Output",
-                     {in_dims[0], filter_dims[0], output_height, output_width});
+    ctx->SetOutputDim(
+        "Output", {in_dims[0], filter_dims[0], output_height, output_width});
   }
 };
 
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  Conv2DOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "Input",
@@ -106,14 +106,14 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    auto in_dims = ctx.GetInputDim("Input");
-    auto filter_dims = ctx.GetInputDim("Filter");
-    if (ctx.HasOutput(framework::GradVarName("Input"))) {
-      ctx.SetOutputDim(framework::GradVarName("Input"), in_dims);
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    auto in_dims = ctx->GetInputDim("Input");
+    auto filter_dims = ctx->GetInputDim("Filter");
+    if (ctx->HasOutput(framework::GradVarName("Input"))) {
+      ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
     }
-    if (ctx.HasOutput(framework::GradVarName("Filter"))) {
-      ctx.SetOutputDim(framework::GradVarName("Filter"), filter_dims);
+    if (ctx->HasOutput(framework::GradVarName("Filter"))) {
+      ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
     }
   }
 };

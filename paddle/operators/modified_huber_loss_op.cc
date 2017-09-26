@@ -22,19 +22,19 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "X must be initialized.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Y must be initialized.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dims, y_dims, "The shape of X and Y must be the same.");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The tensor rank of X must be 2.");
     PADDLE_ENFORCE_EQ(x_dims[1], 1, "The 2nd dimension of X must be 1.");
 
-    ctx.SetOutputDim("IntermediateVal", x_dims);
-    ctx.SetOutputDim("Out", {x_dims[0], 1});
+    ctx->SetOutputDim("IntermediateVal", x_dims);
+    ctx->SetOutputDim("Out", {x_dims[0], 1});
   }
 };
 
@@ -74,18 +74,18 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase& ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "X must be initialized.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"), "Y must be initialized.");
-    PADDLE_ENFORCE(ctx.HasInput("IntermediateVal"),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("IntermediateVal"),
                    "Intermediate value must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@Grad) must not be null.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
-    auto intermediate_dims = ctx.GetInputDim("IntermediateVal");
-    auto out_grad_dims = ctx.GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    auto intermediate_dims = ctx->GetInputDim("IntermediateVal");
+    auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
         intermediate_dims, x_dims,
@@ -93,8 +93,8 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(out_grad_dims, x_dims,
                       "The shape of Input(Out@Grad) and X must be the same.");
 
-    if (ctx.HasOutput(framework::GradVarName("X"))) {
-      ctx.SetOutputDim(framework::GradVarName("X"), x_dims);
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     }
   }
 };

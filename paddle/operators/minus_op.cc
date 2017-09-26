@@ -26,22 +26,22 @@ class MinusOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of MinusOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasInput("Y"),
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(Y) of MinusOp should not be null.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"),
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of MinusOp should not be null.");
 
-    auto x_dims = ctx.GetInputDim("X");
-    auto y_dims = ctx.GetInputDim("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(
         x_dims, y_dims,
         "Minus operator must take two tensor with same num of elements");
-    ctx.SetOutputDim("Out", x_dims);
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

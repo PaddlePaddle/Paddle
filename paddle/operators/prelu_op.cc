@@ -26,14 +26,14 @@ class PReluOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx.HasInput("Alpha"), "Input(Alpha) should not be null");
-    PADDLE_ENFORCE(product(ctx.GetInputDim("Alpha")) == 1,
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Alpha"), "Input(Alpha) should not be null");
+    PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
                    "Size of weight Alpha must be one.");
-    PADDLE_ENFORCE(ctx.HasOutput("Out"), "Output(Out) should not be null");
-    ctx.SetOutputDim("Out", ctx.GetInputDim("X"));
-    ctx.ShareLoD("X", /*->*/ "Out");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -63,12 +63,13 @@ class PReluGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase &ctx) const override {
-    PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
-    ctx.SetOutputDim(framework::GradVarName("X"), ctx.GetInputDim("X"));
-    ctx.SetOutputDim(framework::GradVarName("Alpha"), ctx.GetInputDim("Alpha"));
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("Alpha"),
+                      ctx->GetInputDim("Alpha"));
   }
 };
 
