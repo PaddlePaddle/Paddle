@@ -50,8 +50,37 @@ template <typename T>
 class GreaterThanChecker {
  public:
   explicit GreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
-  void operator()(T& value) const {
+
+  void operator()(int& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(int));
     PADDLE_ENFORCE(value > lower_bound_, "larger_than check fails.");
+  }
+
+  void operator()(float& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(float));
+    PADDLE_ENFORCE(value > lower_bound_, "larger_than check fails.");
+  }
+
+  void operator()(std::vector<int>& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(std::vector<int>));
+    std::vector<int> lower_bound_vec =
+        reinterpret_cast<const std::vector<int>&>(lower_bound_);
+    PADDLE_ENFORCE(lower_bound_vec.size() == value.size(),
+                   "equal check fails.");
+    for (int i = 0; i < value.size(); ++i) {
+      PADDLE_ENFORCE(value[i] > lower_bound_[i], "larger_than check fails.");
+    }
+  }
+
+  void operator()(std::vector<float>& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(std::vector<float>));
+    std::vector<float> lower_bound_vec =
+        reinterpret_cast<const std::vector<float>&>(lower_bound_);
+    PADDLE_ENFORCE(lower_bound_vec.size() == value.size(),
+                   "equal check fails.");
+    for (int i = 0; i < value.size(); ++i) {
+      PADDLE_ENFORCE(value[i] > lower_bound_[i], "larger_than check fails.");
+    }
   }
 
  private:
@@ -62,8 +91,39 @@ template <typename T>
 class EqualGreaterThanChecker {
  public:
   explicit EqualGreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
-  void operator()(T& value) const {
+
+  void operator()(int& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(int));
     PADDLE_ENFORCE_GE(value, lower_bound_, "equal_larger_than check fails.");
+  }
+
+  void operator()(float& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(float));
+    PADDLE_ENFORCE_GE(value, lower_bound_, "equal_larger_than check fails.");
+  }
+
+  void operator()(std::vector<int>& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(std::vector<int>));
+    std::vector<int> lower_bound_vec =
+        reinterpret_cast<const std::vector<int>&>(lower_bound_);
+    PADDLE_ENFORCE(lower_bound_vec.size() == value.size(),
+                   "equal check fails.");
+    for (int i = 0; i < value.size(); ++i) {
+      PADDLE_ENFORCE_GE(value[i], lower_bound_vec[i],
+                        "equal_larger_than check fails.");
+    }
+  }
+
+  void operator()(std::vector<float>& value) const {
+    PADDLE_ENFORCE(typeid(T) == typeid(std::vector<float>));
+    std::vector<float> lower_bound_vec =
+        reinterpret_cast<const std::vector<float>&>(lower_bound_);
+    PADDLE_ENFORCE(lower_bound_vec.size() == value.size(),
+                   "equal check fails.");
+    for (int i = 0; i < value.size(); ++i) {
+      PADDLE_ENFORCE_GE(value[i], lower_bound_vec[i],
+                        "equal_larger_than check fails.");
+    }
   }
 
  private:
