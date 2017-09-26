@@ -19,8 +19,8 @@ class TestLRNOp(OpTest):
     def get_out(self):
         start = -(self.n - 1) / 2
         end = start + self.n
-        print "python: start", start
-        print "python: end", end
+        #print "python: start", start
+        #print "python: end", end
 
         mid = np.empty((self.N, self.C, self.H, self.W), dtype=float)
         mid.fill(self.k)
@@ -31,7 +31,7 @@ class TestLRNOp(OpTest):
                     if ch < 0 or ch >= self.C:
                         continue
 
-                    print 'python: m:{m} i:{i} ch:{ch}'.format(m=m, i=i, ch=ch)
+                    #print 'python: m:{m} i:{i} ch:{ch}'.format(m=m, i=i, ch=ch)
 
                     s = mid[m][i][:][:]
                     #print "python s:", s
@@ -40,8 +40,8 @@ class TestLRNOp(OpTest):
                     s += np.square(r) * self.alpha
                     #print "python s2:", s
 
-        mid = np.power(mid, -self.beta)
-        return np.multiply(self.x, mid)
+        mid2 = np.power(mid, -self.beta)
+        return np.multiply(self.x, mid2), mid
 
     def get_attrs(self):
         attrs = {
@@ -63,21 +63,21 @@ class TestLRNOp(OpTest):
         self.k = 2.0
         self.alpha = 0.0001
         self.beta = 0.75
-        print "python:", self.n, self.k, self.alpha, self.beta
+        #print "python:", self.n, self.k, self.alpha, self.beta
         self.x = self.get_input()
-        print 'python: x', self.x
-        self.out = self.get_out()
-        print type(self.out), self.out.shape
-        print 'python: out', self.out
+        #print 'python: x', self.x
+        self.out, self.mid_out = self.get_out()
+        #print type(self.out), self.out.shape
+        #print 'python: out', self.out
 
         self.inputs = {'X': self.x}
-        self.outputs = {'Out': self.out}
+        self.outputs = {'Out': self.out, 'mid_out': self.mid_out}
         self.attrs = self.get_attrs()
 
         #print 'python: out', self.out
 
     def test_check_output(self):
-        print "check out"
+        #print "check out"
         self.check_output()
 
     '''

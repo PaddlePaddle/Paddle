@@ -29,10 +29,13 @@ class LRNOp : public framework::OperatorWithKernel {
                             "Input(X) of LRNOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Output(Out) of LRNOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("mid_out"),
+                            "mid_out(Out) of LRNOp should not be null.");
 
     auto x_dim = ctx.Input<Tensor>("X")->dims();
 
-    ctx.Output<framework::Tensor>("Out")->Resize(x_dim);
+    ctx.Output<Tensor>("Out")->Resize(x_dim);
+    ctx.Output<Tensor>("mid_out")->Resize(x_dim);
     ctx.ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -43,6 +46,7 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of lrn op");
     AddOutput("Out", "The output of lrn op");
+    AddOutput("mid_out", "Middle result of lrn op");
 
     AddAttr<int>("n", R"DOC(
 n is “adjacent” kernel maps at the same spatial position.
