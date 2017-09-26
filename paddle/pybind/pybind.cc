@@ -169,8 +169,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
       .def(py::init<>())
-      .def("new_scope",
-           [](Scope &self) -> Scope * { return &self.NewScope(); },
+      .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids);
 
@@ -238,8 +237,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("infer_shape", &OperatorBase::InferShape)
       .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
+           [](OperatorBase &self, const Scope &scope,
               const platform::DeviceContext &dev_ctx) {
              self.Run(scope, dev_ctx);
              dev_ctx.Wait();
@@ -267,10 +265,8 @@ All parameter, weight, gradient are variables in Paddle.
                     retv->SetType("plain_net");
                     return retv;
                   })
-      .def("append_op",
-           [](operators::NetOp &self, const OperatorBase &op) {
-             self.AppendOp(op);
-           })
+      .def("append_op", [](operators::NetOp &self,
+                           const OperatorBase &op) { self.AppendOp(op); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
@@ -290,9 +286,10 @@ All parameter, weight, gradient are variables in Paddle.
             auto rnn_op = OpRegistry::CreateOp(desc);
             return static_cast<operators::RecurrentOp *>(rnn_op.release());
           })
-      .def("set_stepnet",
-           [](operators::RecurrentOp &self, const operators::NetOp &net)
-               -> void { self.set_stepnet(net.Clone()); });
+      .def("set_stepnet", [](operators::RecurrentOp &self,
+                             const operators::NetOp &net) -> void {
+        self.set_stepnet(net.Clone());
+      });
 
   // cond_op
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
