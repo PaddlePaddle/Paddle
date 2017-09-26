@@ -26,24 +26,24 @@ performance, we can port these features to improve the reader.
 
 A low-level reader contains below components:
 
-- Data parser:
+1. Data parser:
     A data parser will use `dlopen` to open user-defined parser plugin, and call
     `parse` to convert a line of string to internal `Matrix` or `Tensor` object.
-- User parser plugin:
+1. User parser plugin:
     User must write a C++ plugin to parse data to `Matrix` or `Tensor` object. The
     plugin should implement one interface:
     ```c++
     // return Matrix* for v2 API call
     Tensor* parse(const std::string& line);
     ```
-- Buffer:
+1. Buffer:
     A `DoubleBuffer` which is able to async load data when caculations are running.
     We can select to use a general "memory buffer" or "mmap" buffer.
-- Thread pool:
+1. Thread pool:
     A pool of threads to do async data loading, each thread will call data parser to
     parse and buffer the data, thread will wait if buffer is full. When doing multi-GPU
     training, there should be as much thread as GPU cards.
-- Reader settings:
+1. Reader settings(python binding):
     Low-level reader can be created by calling python API, the settings are passed by
     parameters when constructing the reader:
     ```python
