@@ -62,4 +62,4 @@ class MeanGradKernel : public framework::OpKernel {
 };
 
 }  // namespace operators
-}  // namespace paddle
+}  //
