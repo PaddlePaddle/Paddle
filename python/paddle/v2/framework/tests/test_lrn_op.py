@@ -4,39 +4,79 @@ from op_test import OpTest
 
 
 class TestLRNOp(OpTest):
-    def setUp(self):
-        self.op_type = "lrn"
-        N = 2
-        C = 3
-        H = 4
-        W = 5
+    def get_input(self):
+        x = np.ndarray(
+            shape=(self.N, self.C, self.H, self.W), dtype=float, order='C')
+        for m in range(0, self.N):
+            for i in range(0, self.C):
+                for h in range(0, self.H):
+                    for w in range(0, self.W):
+                        x[m][i][h][w] = m * self.C * self.H * self.W +  \
+                                        i * self.H * self.W +  \
+                                        h * self.W + w
+        return x
 
-        n = 5
-        k = 2
-        alpha = 0.0001
-        beta = 0.75
-        self.inputs = {
-            'X': np.random.uniform(0.1, 1, [N, C, H, W]).astype("float32"),
-        }
-        self.outputs = {
-            'out': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32")
-        }
+    def get_out(self):
+        start = -(self.n - 1) / 2
+        end = start + self.n
+        print "python: start", start
+        print "python: end", end
 
-        start = -(n - 1) / 2
-        end = start + n
-        print "start", start
-        print "end", end
-        for m in range(0, N):
-            for i in range(0, C):
+        mid = np.empty((self.N, self.C, self.H, self.W), dtype=float)
+        for m in range(0, self.N):
+            for i in range(0, self.C):
                 for c in range(start, end + 1):
-                    cur_channel = i + c
-                    if cur_channel >= 0 and cur_channel < N:
+                    ch = i + c
+                    if ch < 0 or ch >= self.C:
                         continue
 
+                    print 'python: m:{m} i:{i} ch:{ch}'.format(m=m, i=i, ch=ch)
+
+                    s = mid[m][i][:][:]
+                    #print "python s:", s
+                    r = self.x[m][ch][:][:]
+                    #print "python r:", r
+                    s += np.square(r) * self.alpha + self.k
+                    #print "python s2:", s
+
+        mid = np.power(mid, -self.beta)
+        return self.x * mid
+
+    def get_attrs(self):
+        attrs = {
+            'n': self.n,
+            'k': self.k,
+            'alpha': self.alpha,
+            'beta': self.beta
+        }
+
+    def setUp(self):
+        self.op_type = "lrn"
+        self.N = 2
+        self.C = 3
+        self.H = 4
+        self.W = 5
+
+        self.n = 5
+        self.k = 2.0
+        self.alpha = 0.0001
+        self.beta = 0.75
+        print "python:", self.n, self.k, self.alpha, self.beta
+        self.x = self.get_input()
+        print 'python: x', self.x
+        self.out = self.get_out()
+        print 'python: out', self.out
+
+        self.inputs = {'X': self.x}
+
+        self.outputs = {'out': self.out}
+
+        self.attrs = self.get_attrs()
+
+        #print 'python: out', self.out
+
     def test_check_output(self):
-        print "inputs:", self.inputs['X']
-        print "slice:", self.inputs['X'][0, 0, :, :]
-        #self.check_output()
+        self.check_output()
 
     '''
     def test_check_grad_normal(self):
