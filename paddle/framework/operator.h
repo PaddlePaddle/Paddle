@@ -335,9 +335,9 @@ class ExecutionContext : public InferShapeContext {
   const platform::DeviceContext& device_context_;
 };
 
-class RunTimeInferShapeContext : public InferShapeContextBase {
+class RuntimeInferShapeContext : public InferShapeContextBase {
  public:
-  RunTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
+  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const {
@@ -379,14 +379,15 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   }
 
  private:
-  Tensor* GetTensor(const std::string& name, bool allocate) const {
+  template <bool Allocate>
+  Tensor* GetTensor(const std::string& name) const {
     Tensor* t = nullptr;
     auto* var = scope_.FindVar(name);
     if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
-      if (allocate) {
+      if (Allocate) {
         t = var->GetMutable<LoDTensor>();
       } else {
-        PADDLE_ENFORCE(false, "Variable(%s) should be tensor", name);
+        PADDLE_THROW("Variable(%s) should be tensor", name);
       }
     } else {
       t = GetTensorFromVar(scope_.FindVar(name));
@@ -395,11 +396,11 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   }
 
   DDim GetDim(const std::string& name) const {
-    return GetTensor(name, false)->dims();
+    return GetTensor<false>(name)->dims();
   }
 
   void SetDim(const std::string& name, const DDim& dim) {
-    GetTensor(name, true)->Resize(dim);
+    GetTensor<true>(name)->Resize(dim);
   }
 
   const OperatorBase& op_;
@@ -451,7 +452,7 @@ class OperatorWithKernel : public OperatorBase {
 
   // runtime infershape
   void InferShape(const Scope& scope) const override {
-    auto c = RunTimeInferShapeContext(*this, scope);
+    auto c = RuntimeInferShapeContext(*this, scope);
     InferShape(&c);
   }
 
