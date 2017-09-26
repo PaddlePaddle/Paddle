@@ -1,9 +1,9 @@
-# Design of Dynamic RNN with Beamsearch
-With a `while-loop` and an array of states, one can implement a RNN model in Python easily,
-while how to build a RNN using Paddle operators in the similar intuitive way is a question.
+# Design of Dynamic RNN with Beam search
+With a `while-loop` and an array of states, one can implement an RNN model in Python easily,
+while how to build an RNN using Paddle operators in the similar intuitive way is a question.
 
 One of the mature DL platforms, TensorFlow, offers a mass of operators for mathematical and conditional operations,
-in that way, TF users can simulate the Python-way and uses some dynamic RNN, encoder or decoder to build a RNN model represented as a graph and the model supports large-scale computation.
+in that way, TF users can simulate the Python-way and uses some dynamic RNN, encoder or decoder to build an RNN model represented as a graph and the model supports large-scale computation.
 
 That is a good way to follow, by turning a complex algorithm into the combination of several highly-reusable operators, make our framework more flexible.
 
@@ -12,7 +12,7 @@ In this documentation, we will first give a glimpse of the dynamic encoder and d
 ## Dynamic RNN in TensorFlow
 
 ### static RNN
-The most basic of a RNN is `RNNCell`, it has a `__call__` method that supports `output, next_state = call(input, state)`.
+The most basic of an RNN is `RNNCell`, it has a `__call__` method that supports `output, next_state = call(input, state).`
 the basic way to define a static RNN like follows
 
 ```python
@@ -23,8 +23,8 @@ for step_input in dataset:
     output, state = lstm(step_input, state)
 ```
 
-the code above will build a RNN with `step_input` and last `state` as inputs, the operators in `BasicLSTMCell` will be copied each step, 
-and finally a very wide and big static graph will be generated.
+the code above will build an RNN with `step_input` and last `state` as inputs, the operators in `BasicLSTMCell` will be copied each step, 
+and a very wide and big static graph will be generated.
 
 <p align="center">
 <img src="./images/dynamic_rnn1.png"/>
@@ -43,7 +43,7 @@ _, output_final_ta, final_state = while_loop(
     parallel_iteratioons=parallel_iterations)
 ```
 
-the `cond` is a conditioinal method that determine whether to continue loop,
+the `cond` is a conditional method that determines whether to continue the loop,
 the `body` 
 
 For more details, reference https://www.tensorflow.org/api_docs/python/tf/nn/dynamic_rnn
@@ -52,7 +52,7 @@ For more details, reference https://www.tensorflow.org/api_docs/python/tf/nn/dyn
 
 ## Design of Dynamic RNN
 
-Due to the totally different underlying architecture, it is hard to copy the design of dynamic operators from TensorFlow, but the ideas behind design are worth learning, that is
+Due to the different underlying architecture, it is hard to copy the design of dynamic operators from TensorFlow, but the ideas behind design are worth learning, that is
 
 1. introducing some general conditional operators to simulate a programming language,
 2. a `TensorArray` to store inputs and outputs in RNN's time steps.
@@ -96,19 +96,19 @@ with whl.loop(exec_immediately=True):
 allstates = states.concat(axis=1)
 ```
 
-some important concepts lists below
+some important concepts list below
 
 ### while_loop operator
-The `while_loop` operator takes two arguments, one is a executable graph, another is `loop_var`s. 
+The `while_loop` operator takes two arguments; one is an executable graph, another is `loop_var`s. 
 The executable graph will be executed in each step, and `break_if` might stop the loop.
 
-The `loop_var` stores the variables that need to retrieved from the previous time step, for example, the `time_` is incremented in the last step, latest value will be retrieved in current step.
+The `loop_var` stores the variables that need to retrieved from the previous time step, for example, the `time_` is incremented in the last step, the latest value will be retrieved in current step.
 
 Similar to current `RecurrentOp`'s design, an array of Scopes (named step-scopes) will be created to store temporary output variables created during different time steps.
-During backpropogration, `while_loop` just exeucute the backward graph in the correspoinding step-scope from the last time step to the first.
+During backpropagation, `while_loop` just execute the backward graph in the corresponding step-scope from the last time step to the first.
 
 ### VarArray data type
-`VarArray` is a very important concepts introduced to help the implementation of both the RNN and `while_loop`.
+`VarArray` is an important concept introduced to help the implementation of both the RNN and `while_loop`.
 It is an array of variables, with several operators such as `get`, `update`, `size`, all these operators are wrapped as helper functions in python wrapper.
 
 ### some comparation operators
