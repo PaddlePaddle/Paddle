@@ -69,8 +69,12 @@ class AccuracyOpCUDAKernel : public framework::OpKernel {
       return;
     }
 
-    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<1, PADDLE_CUDA_NUM_THREADS>>>(
-        num_samples, infer_width, inference_data, label_data, accuracy_data);
+    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<
+        1, PADDLE_CUDA_NUM_THREADS, 0,
+        reinterpret_cast<const platform::CUDADeviceContext&>(
+            ctx.device_context())
+            .stream()>>>(num_samples, infer_width, inference_data, label_data,
+                         accuracy_data);
   }
 };
 

@@ -6,20 +6,22 @@ from op_test import OpTest
 class TestMultiplexOp(OpTest):
     def setUp(self):
         self.op_type = "multiplex"
-        rows = 3
-        index = np.array([3, 1, 0])
+        rows = 4
+        index = np.arange(0, rows).astype('int32')
+        np.random.shuffle(index)
+        index = np.reshape(index, (rows, 1))
         ins1 = np.random.random((rows, 10)).astype("float32")
         ins2 = np.random.random((rows, 10)).astype("float32")
         ins3 = np.random.random((rows, 10)).astype("float32")
         ins4 = np.random.random((rows, 10)).astype("float32")
         self.inputs = {
-            'X': [('index', index), ('x1', ins1), ('x2', ins2), ('x3', ins3),
-                  ('x4', ins4)]
+            'Ids': index,
+            'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)]
         }
         # multiplex output
         output = np.zeros_like(ins1)
         for i in range(0, rows):
-            k = index[i] + 1
+            k = index[i][0]
             output[i] = self.inputs['X'][k][1][i]
         self.outputs = {'Out': output}
 

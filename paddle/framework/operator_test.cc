@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -114,7 +115,7 @@ class OpWithKernelTest : public OperatorWithKernel {
   using OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {}
+  void InferShape(framework::InferShapeContextBase* ctx) const override {}
 };
 
 template <typename T1, typename T2>
