@@ -121,11 +121,11 @@ class TestUtils(object):
         x_neg_jacobian = np.zeros((tensor_size, 0), dtype=np.float64)
 
         def concat_flatten_output(row, jacobian_matrix):
+            op.run(scope, ctx)
             if jacobian_matrix.shape[1] == 0:
                 # first time, concate output dynamically
                 output_vals = []
                 for output_name in output_names:
-                    op.run(scope, ctx)
                     output_val = np.array(
                         cls.get_tensor_by_name(scope, output_name)).flatten()
                     output_vals = np.append(output_vals, output_val)
@@ -136,7 +136,6 @@ class TestUtils(object):
             else:
                 start_idx = 0
                 for output_name in output_names:
-                    op.run(scope, ctx)
                     output_val = np.array(
                         cls.get_tensor_by_name(scope, output_name)).flatten()
                     jacobian_matrix[row, start_idx:start_idx+len(output_val)] \
@@ -261,7 +260,7 @@ class TestUtils(object):
 
         def fill_tensor(tensor_name, tensor, place):
             tensor_shape = tensor.shape()
-            if tensor_name.encode('utf-8') in var_shape_idx:
+            if tensor_name in var_shape_idx:
                 idx = var_shape_idx[tensor_name]
                 start = accum_size[idx - 1] if idx > 0 else 0
                 data = out_grad_values[start:accum_size[idx]].reshape(
