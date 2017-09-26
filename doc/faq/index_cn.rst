@@ -351,7 +351,7 @@ decoder_inputs = paddle.layer.fc(
 除此之外，还可以通过减小学习律或者对数据进行归一化处理来解决这类问题。
 
 15. 编译安装后执行 import paddle.v2 as paddle 报ImportError: No module named v2
-------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
 先查看一下是否曾经安装过paddle v1版本，有的话需要先卸载：
 
 pip uninstall py_paddle paddle
@@ -361,7 +361,7 @@ pip uninstall py_paddle paddle
 pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
 
 16. PaddlePaddle存储的参数格式是什么，如何和明文进行相互转化
----------------------------------------------------------
+---------------------------------------------------------------------
 
 PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数两部分组成。头信息中，1~4字节表示PaddlePaddle版本信息，请直接填充0；5~8字节表示每个参数占用的字节数，当保存的网络参数为float类型时为4，double类型时为8；9~16字节表示保存的参数总个数。
 
@@ -413,7 +413,7 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
     parameters.set('emb', load_parameter(emb_param_file, 30000, 256))
 
 18. 集群多节点训练，日志中保存均为网络通信类错误
--------------------------------------------
+-----------------------------------------------------------
 
 集群多节点训练，日志报错为网络通信类错误，比如 :code:`Connection reset by peer` 等。
 此类报错通常是由于某一个节点的错误导致这个节点的训练进程退出，从而引发其他节点无法连接导致，可以参考下面的步骤排查：
@@ -468,7 +468,7 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 * PaddlePaddle的所有layer都有唯一的name，用户通过参数 :code:`name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。而 :code:`paddle.layer.memory` 不是真正的layer，其name由参数 :code:`memory_name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。:code:`paddle.layer.memory` 的参数 :code:`name` 用于指定其要关联的layer，需要用户显式设定。
 
 21. 两种使用 drop_out 的方法有何区别？
-----------------------------------
+-----------------------------------------------------
 
 * 在PaddlePaddle中使用dropout有两种方式
 
