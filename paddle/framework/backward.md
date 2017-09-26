@@ -2,7 +2,7 @@
 
 ## Motivation
 
-In Neural Network, most models are solved by the the backpropagation algorithm(known as **BP**) at present. Technically, BP calculates the gradient of the loss function, then propagates it back through the networks following the chain rule. Hence we need a module that chains the gradient operators/expressions together to construct the backward pass. Every forward network needs a backward network to construct the full computation graph. The operator/expression's backward pass will be generated with respect to the forward pass. 
+In Neural Network, most models are solved by the backpropagation algorithm(known as **BP**) at present. Technically, BP calculates the gradient of the loss function, then propagates it back through the networks following the chain rule. Hence we need a module that chains the gradient operators/expressions together to construct the backward pass. Every forward network needs a backward network to construct the full computation graph. The operator/expression's backward pass will be generated with respect to the forward pass. 
 
 ## Implementation
 
@@ -92,9 +92,9 @@ A backward network is a series of backward operators. The main idea of building 
 
 ​	Because the framework finds variables according to their names, we need to rename the output links. We add an integer suffix to represent its position in the clockwise direction. 
 
-5. Part of Gradient is Zero.
+5. Part of the Gradient is Zero.
 
-   In the whole graph, there is some case of that one operator's gradient is not needed, but its input's gradient is a dependency link of other operator,  we need to fill a same shape gradient matrix in the position. In our implement, we insert a special `fillZeroLike` operator.
+   In the whole graph, there is some case of that one operator's gradient is not needed, but its input's gradient is a dependency link of other operator,  we need to fill a same shape gradient matrix in the position. In our implementation, we insert a special `fillZeroLike` operator.
 
 
 Follow these rules above, then collect the sub graph `OutputGradients`/`InputGradients` as the NetOp's and return it.
