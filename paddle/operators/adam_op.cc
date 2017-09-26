@@ -24,19 +24,21 @@ class AdamOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("param"),
-            "Input(param) of AdamOp should not be null.");
+                            "Input(param) of AdamOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("grad"),
-        "Input(grad) of AdamOp should not be null.");
+                            "Input(grad) of AdamOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("moment1"),
-        "Input(moment1) of AdamOp should not be null.");
+                            "Input(moment1) of AdamOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("moment2"),
-        "Input(moment2) of AdamOp should not be null.");
+                            "Input(moment2) of AdamOp should not be null.");
 
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("param_out"),
-        "Output(param_out) of AdamOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("moment1_out"),
+                            "Output(param_out) of AdamOp should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("moment1_out"),
         "Output(moment1_out) of AdamOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("moment2_out"),
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx.OutputVar("moment2_out"),
         "Output(moment2_out) of AdamOp should not be null.");
 
     PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("param")->dims(),
