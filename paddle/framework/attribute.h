@@ -27,9 +27,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+// The order should be as same as framework.proto
 typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                       std::vector<float>, std::vector<std::string>,
-                       std::vector<std::pair<int, int>>, BlockDesc*>
+                       std::vector<float>, std::vector<std::string>, bool,
+                       std::vector<bool>, BlockDesc*>
     Attribute;
 
 typedef std::unordered_map<std::string, Attribute> AttributeMap;
@@ -37,7 +38,10 @@ typedef std::unordered_map<std::string, Attribute> AttributeMap;
 ProgramDesc& GetProgramDesc();
 
 template <typename T>
-AttrType AttrTypeID();
+inline AttrType AttrTypeID() {
+  Attribute tmp = T();
+  return static_cast<AttrType>(tmp.which() - 1);
+}
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
 

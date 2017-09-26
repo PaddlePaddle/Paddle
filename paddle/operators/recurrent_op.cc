@@ -80,7 +80,6 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
   PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
@@ -129,8 +128,8 @@ const rnn::ArgumentName RecurrentOp::kArgName{
     "memories", "pre_memories", "boot_memories"};
 
 const rnn::ArgumentName RecurrentGradientOp::kArgName{
-    "step_net", "step_scopes",  "outlink@grad",      "inlink@grad",
-    "memories", "pre_memories", "boot_memories@grad"};
+    "step_net", "step_scopes@GRAD", "outlinks@GRAD",     "inlinks@GRAD",
+    "memories", "pre_memories",     "boot_memories@GRAD"};
 
 RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::VariableNameMap& inputs,
@@ -226,13 +225,13 @@ RecurrentGradientOp::RecurrentGradientOp(
     const framework::VariableNameMap& outputs,
     const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
-  rnn::InitArgument(kArgName, &arg_, *this);
+  rnn::InitArgument(kArgName, &arg_, *this, true /*is grad*/);
   alg_.Init(&arg_, &stepnet_);
 }
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(
-    recurrent, paddle::operators::RecurrentOp,
-    paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);
+REGISTER_OP(recurrent, paddle::operators::RecurrentOp,
+            paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
+            recurrent_grad, paddle::operators::RecurrentGradientOp);

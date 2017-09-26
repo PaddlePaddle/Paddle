@@ -222,8 +222,8 @@ static void getAddtoConfig(TestConfig& cfg, const testActDesc& pm) {
 }
 
 void testActivation(std::string& actType, const testActDesc& pm) {
-  // TODO(TJ): mkldnn_softmax not implemented, paddle do not have elu activation
-  if (actType == "mkldnn_softmax" || actType == "mkldnn_elu") {
+  // TODO(TJ): remove me when paddle support elu activation
+  if (actType == "mkldnn_elu") {
     return;
   }
   const std::string compareTypes[] = {actType, actType.erase(0, 7)};
