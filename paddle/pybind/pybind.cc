@@ -17,7 +17,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/backward.h"
-#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/cond_op.h"

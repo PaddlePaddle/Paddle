@@ -19,7 +19,6 @@
 #include <unordered_map>
 
 #include "paddle/framework/attribute.h"
-#include "paddle/framework/shape_inference.h"
 
 namespace paddle {
 namespace framework {

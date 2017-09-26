@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/operator.h"
+#include <algorithm>
 
 namespace paddle {
 namespace framework {
