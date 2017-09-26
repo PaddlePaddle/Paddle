@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/cross_entropy_op.h"
+#include "paddle/operators/math/cross_entropy.h"
 #include "paddle/operators/math/softmax.h"
 
 namespace paddle {
@@ -37,31 +37,12 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
     Tensor* softmax = context.Output<Tensor>("Softmax");
     Tensor* loss = context.Output<Tensor>("Loss");
 
-    T* softmax_data = softmax->mutable_data<T>(context.GetPlace());
-    T* loss_data = loss->mutable_data<T>(context.GetPlace());
+    softmax->mutable_data<T>(context.GetPlace());
+    loss->mutable_data<T>(context.GetPlace());
 
     math::SoftmaxFunctor<platform::CPUPlace, T>()(context, logits, softmax);
-
-    const int batch_size = logits->dims()[0];
-    if (context.Attr<bool>("softLabel")) {
-      // (TODO caoying) the forward implementation can be further optimized.
-      // Current implementation is exactly cross entropy after softmax.
-      auto prob = EigenMatrix<T>::From(*softmax);
-      auto lbl_mat = EigenMatrix<T>::From(*labels);
-      auto loss_mat = EigenMatrix<T>::From(*loss);
-
-      loss_mat.device(context.GetEigenDevice<platform::CPUPlace>()) =
-          -((lbl_mat * prob.log().unaryExpr(TolerableValue<T>()))
-                .sum(Eigen::DSizes<int, 1>(1))
-                .reshape(Eigen::DSizes<int, 2>(batch_size, 1)));
-    } else {
-      const int* label_data = labels->data<int>();
-      const int class_num = logits->dims()[1];
-
-      for (int i = 0; i < batch_size; ++i)
-        loss_data[i] = -TolerableValue<T>()(
-            std::log(softmax_data[i * class_num + label_data[i]]));
-    }
+    math::CrossEntropyFunctor<platform::CPUPlace, T>()(
+        context, loss, softmax, labels, context.Attr<bool>("softLabel"));
   }
 };
 
