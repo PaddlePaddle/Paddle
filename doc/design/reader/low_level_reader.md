@@ -9,9 +9,10 @@ This design can be used for both V2 API and new operator design.
 ## Background
 
 We have sevaral issues talking about training with v2 API get bad training performance,
-like https://github.com/PaddlePaddle/Paddle/issues/3675 and
-https://github.com/PaddlePaddle/Paddle/issues/4156 and
-https://github.com/PaddlePaddle/Paddle/issues/3600.
+like:
+- https://github.com/PaddlePaddle/Paddle/issues/3675 and
+- https://github.com/PaddlePaddle/Paddle/issues/4156 and
+- https://github.com/PaddlePaddle/Paddle/issues/3600.
 
 The current implementations for data reader can greatly simplify user defining how
 to parse and feed the data to neural network, but we need to copy data from python
