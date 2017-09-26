@@ -251,7 +251,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 那么用户需要拉取所有的远程分支到本机，命令为 :code:`git fetch upstream`，然后重新cmake即可。
 
 12. A protocol message was rejected because it was too big
-----------------------------------------------------------
+------------------------------------------------------------
 
 如果在训练NLP相关模型时，出现以下错误：
 
@@ -351,7 +351,7 @@ decoder_inputs = paddle.layer.fc(
 除此之外，还可以通过减小学习律或者对数据进行归一化处理来解决这类问题。
 
 15. 编译安装后执行 import paddle.v2 as paddle 报ImportError: No module named v2
-------------------------------------------------------------------------
+------------------------------------------------------------------------------
 先查看一下是否曾经安装过paddle v1版本，有的话需要先卸载：
 
 pip uninstall py_paddle paddle
@@ -413,7 +413,7 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
     parameters.set('emb', load_parameter(emb_param_file, 30000, 256))
 
 18. 集群多节点训练，日志中保存均为网络通信类错误
-------------------------------
+-------------------------------------------
 
 集群多节点训练，日志报错为网络通信类错误，比如 :code:`Connection reset by peer` 等。
 此类报错通常是由于某一个节点的错误导致这个节点的训练进程退出，从而引发其他节点无法连接导致，可以参考下面的步骤排查：
@@ -424,8 +424,8 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 
 * 如果当前MPI集群并不支持任务独占模式，可以联系OP是否可以更换集群或升级当前集群。
 
-19. PaddlePaddle如何输出多个层
-------------------------------
+19.  如何调用 infer 接口输出多个layer的预测结果
+-----------------------------------------------------------
 
 * 将需要输出的层作为 :code:`paddle.inference.Inference()` 接口的 :code:`output_layer` 参数输入，代码如下：
 
@@ -467,8 +467,8 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 
 * PaddlePaddle的所有layer都有唯一的name，用户通过参数 :code:`name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。而 :code:`paddle.layer.memory` 不是真正的layer，其name由参数 :code:`memory_name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。:code:`paddle.layer.memory` 的参数 :code:`name` 用于指定其要关联的layer，需要用户显式设定。
 
-21. dropout 使用
------------------
+21. 两种使用 drop_out 的方法有何区别？
+----------------------------------
 
 * 在PaddlePaddle中使用dropout有两种方式
 
