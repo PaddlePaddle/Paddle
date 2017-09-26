@@ -22,7 +22,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+  void InferShape(framework::InferShapeContextBase& ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"),
                    "Input(X) of SquaredL2DistanceOp should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("Y"),
@@ -86,7 +86,7 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+  void InferShape(framework::InferShapeContextBase& ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null");
     auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));

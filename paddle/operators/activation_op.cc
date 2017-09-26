@@ -22,7 +22,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     ctx.SetOutputDim("Y", ctx.GetInputDim("X"));
     ctx.ShareLoD("X", /*->*/ "Y");
   }
@@ -33,7 +33,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     ctx.SetOutputDim(framework::GradVarName("X"), ctx.GetInputDim("Y"));
   }
 };

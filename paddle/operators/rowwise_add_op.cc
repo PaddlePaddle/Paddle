@@ -24,7 +24,7 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"),
                    "Input(X) of RowwiseAddOp should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("b"),
@@ -70,7 +70,7 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"), "X should not be null");
     PADDLE_ENFORCE(ctx.HasInput("b"), "b should not be null");
     PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),

@@ -21,7 +21,7 @@ class SumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     auto x_dims = ctx.GetInputsDim("X");
     PADDLE_ENFORCE(!x_dims.empty(), "Input(X) of SumOp should not be null.");
     PADDLE_ENFORCE(ctx.HasOutput("Out"),
@@ -59,7 +59,7 @@ class SumGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     auto out_grad_dims = ctx.GetInputDim(framework::GradVarName("Out"));
     auto x_grad_names = ctx.Outputs(framework::GradVarName("X"));
     size_t x_length = x_grad_names.size();

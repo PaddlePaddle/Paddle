@@ -22,7 +22,7 @@ class MeanOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of MeanOp should not be null.");
     PADDLE_ENFORCE(ctx.HasOutput("Out"),
                    "Output(Out) of MeanOp should not be null.");
@@ -46,7 +46,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     ctx.SetOutputDim(framework::GradVarName("X"), ctx.GetInputDim("X"));
   }
 };

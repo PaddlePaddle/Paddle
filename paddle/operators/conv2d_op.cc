@@ -27,7 +27,7 @@ class Conv2DOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("Input"),
                    "Input(Input) of Conv2DOp should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("Filter"),
@@ -106,7 +106,7 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     auto in_dims = ctx.GetInputDim("Input");
     auto filter_dims = ctx.GetInputDim("Filter");
     if (ctx.HasOutput(framework::GradVarName("Input"))) {

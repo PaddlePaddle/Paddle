@@ -22,7 +22,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+  void InferShape(framework::InferShapeContextBase& ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"), "X must be initialized.");
     PADDLE_ENFORCE(ctx.HasInput("Y"), "Y must be initialized.");
 
@@ -94,7 +94,7 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+  void InferShape(framework::InferShapeContextBase& ctx) const override {
     auto in_dims = ctx.GetInputDim("X");
     auto out_dims = ctx.GetInputDim(framework::GradVarName("Out"));
 

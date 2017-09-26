@@ -22,7 +22,7 @@ class SGDOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("param"),
                    "Input(param) of SGDOp should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("grad"),

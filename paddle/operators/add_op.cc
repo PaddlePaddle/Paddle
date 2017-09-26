@@ -22,7 +22,7 @@ class AddOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of AddOp should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("Y"), "Input(Y) of AddOp should not be null.");
     PADDLE_ENFORCE(ctx.HasOutput("Out"),
@@ -56,7 +56,7 @@ class AddOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {}
+  void InferShape(framework::InferShapeContextBase &ctx) const override {}
 };
 
 }  // namespace operators

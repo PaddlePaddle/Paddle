@@ -19,11 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class InferShapeContextBase;
-
-using ShapeInferenceFn =
-    std::function<void(const framework::InferShapeContextBase &ctx)>;
-
 class InferShapeContextBase {
  public:
   virtual ~InferShapeContextBase() {}
@@ -35,9 +30,9 @@ class InferShapeContextBase {
     return GetDims(names);
   }
   virtual void SetInputDim(const std::string &name,
-                           const framework::DDim &dim) const = 0;
+                           const framework::DDim &dim) = 0;
   void SetInputsDim(const std::string &name,
-                    const std::vector<framework::DDim> &dims) const {
+                    const std::vector<framework::DDim> &dims) {
     auto &names = Inputs(name);
     SetDims(names, dims);
   }
@@ -46,9 +41,9 @@ class InferShapeContextBase {
     const std::vector<std::string> &names = Outputs(name);
     return GetDims(names);
   }
-  virtual void SetOutputDim(const std::string &name, const DDim &dim) const = 0;
+  virtual void SetOutputDim(const std::string &name, const DDim &dim) = 0;
   void SetOutputsDim(const std::string &name,
-                     const std::vector<framework::DDim> &dims) const {
+                     const std::vector<framework::DDim> &dims) {
     auto &names = Outputs(name);
     SetDims(names, dims);
   }
@@ -63,8 +58,7 @@ class InferShapeContextBase {
 
  protected:
   virtual framework::DDim GetDim(const std::string &name) const = 0;
-  virtual void SetDim(const std::string &name,
-                      const framework::DDim &dim) const = 0;
+  virtual void SetDim(const std::string &name, const framework::DDim &dim) = 0;
   std::vector<framework::DDim> GetDims(
       const std::vector<std::string> &names) const {
     std::vector<framework::DDim> ret;
@@ -75,7 +69,7 @@ class InferShapeContextBase {
     return ret;
   }
   void SetDims(const std::vector<std::string> &names,
-               const std::vector<framework::DDim> &dims) const {
+               const std::vector<framework::DDim> &dims) {
     size_t length = names.size();
     PADDLE_ENFORCE_EQ(length, dims.size());
     for (size_t i = 0; i < length; ++i) {

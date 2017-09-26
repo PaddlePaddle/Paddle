@@ -43,7 +43,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase& ctx) const override {
+  void InferShape(framework::InferShapeContextBase& ctx) const override {
     PADDLE_ENFORCE(ctx.HasOutput("Out"),
                    "Output(Out) of GaussianRandomOp should not be null.");
     auto dims = ctx.Attrs().Get<std::vector<int>>("dims");

@@ -25,7 +25,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(!ctx.Inputs("X").empty(), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx.HasOutput("Out"), "Output(Out) shouldn't be null.");
     auto ins = ctx.GetInputsDim("X");
@@ -77,7 +77,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(!ctx.Inputs("X").empty(), "Input(X) should not be null");
     PADDLE_ENFORCE(!ctx.Outputs(framework::GradVarName("X")).empty(),
                    "Output(X@Grad) should not be null");

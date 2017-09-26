@@ -41,6 +41,15 @@ const Tensor* GetTensorFromVar(const Variable* var) {
   return &var->Get<Tensor>();
 }
 
+Tensor* GetTensorFromVar(Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->GetMutable<LoDTensor>();
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input must be LoDTensor or Tensor.");
+  return var->GetMutable<Tensor>();
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,

@@ -58,6 +58,7 @@ class InferShapeContext;
 class ExecutionContext;
 
 extern const Tensor* GetTensorFromVar(const Variable* var);
+extern Tensor* GetTensorFromVar(Variable* var);
 
 /**
  * OperatorBase has the basic element that Net will call to do computation.
@@ -355,7 +356,7 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
     return GetDim(op_.Input(name));
   }
 
-  void SetInputDim(const std::string& name, const DDim& dim) const {
+  void SetInputDim(const std::string& name, const DDim& dim) {
     SetDim(op_.Input(name), dim);
   }
 
@@ -363,7 +364,7 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
     return GetDim(op_.Output(name));
   }
 
-  void SetOutputDim(const std::string& name, const DDim& dim) const {
+  void SetOutputDim(const std::string& name, const DDim& dim) {
     SetDim(op_.Output(name), dim);
   }
 
@@ -378,21 +379,27 @@ class RunTimeInferShapeContext : public InferShapeContextBase {
   }
 
  private:
-  Tensor* GetTensor(const std::string& name) const {
-    Tensor* t;
+  Tensor* GetTensor(const std::string& name, bool allocate) const {
+    Tensor* t = nullptr;
     auto* var = scope_.FindVar(name);
     if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
-      t = var->GetMutable<LoDTensor>();
+      if (allocate) {
+        t = var->GetMutable<LoDTensor>();
+      } else {
+        PADDLE_ENFORCE(false, "Variable(%s) should be tensor", name);
+      }
     } else {
-      t = const_cast<Tensor*>(GetTensorFromVar(scope_.FindVar(name)));
+      t = GetTensorFromVar(scope_.FindVar(name));
     }
     return t;
   }
 
-  DDim GetDim(const std::string& name) const { return GetTensor(name)->dims(); }
+  DDim GetDim(const std::string& name) const {
+    return GetTensor(name, false)->dims();
+  }
 
-  void SetDim(const std::string& name, const DDim& dim) const {
-    GetTensor(name)->Resize(dim);
+  void SetDim(const std::string& name, const DDim& dim) {
+    GetTensor(name, true)->Resize(dim);
   }
 
   const OperatorBase& op_;
@@ -444,7 +451,8 @@ class OperatorWithKernel : public OperatorBase {
 
   // runtime infershape
   void InferShape(const Scope& scope) const override {
-    InferShape(RunTimeInferShapeContext(*this, scope));
+    auto c = RunTimeInferShapeContext(*this, scope);
+    InferShape(c);
   }
 
   void Run(const Scope& scope,
@@ -466,7 +474,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual void InferShape(const InferShapeContextBase& ctx) const = 0;
+  virtual void InferShape(InferShapeContextBase& ctx) const = 0;
 };
 
 }  // namespace framework

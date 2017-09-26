@@ -23,7 +23,7 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"),
                    "Input(X) of GatherOp should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("Index"),
@@ -44,7 +44,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     ctx.SetOutputDim(framework::GradVarName("X"), ctx.GetInputDim("X"));
   }
 };

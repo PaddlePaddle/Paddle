@@ -25,7 +25,7 @@ class CropOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) of CropOp should not be null.");
     PADDLE_ENFORCE(ctx.HasOutput("Out"),
                    "Output(Out) of CropOp should not be null.");
@@ -114,7 +114,7 @@ class CropOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx.HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");

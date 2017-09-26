@@ -22,7 +22,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     PADDLE_ENFORCE(ctx.HasInput("Inference"),
                    "Input(Inference) of AccuracyOp should not be null.");
     PADDLE_ENFORCE(ctx.HasInput("Label"),

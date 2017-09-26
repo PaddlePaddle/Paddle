@@ -24,14 +24,16 @@ class SplitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContextBase &ctx) const override {
+  void InferShape(framework::InferShapeContextBase &ctx) const override {
     auto in_dims = ctx.GetInputDim("X");
-    auto outs_dims = ctx.GetOutputsDim("Out");
+    auto outs_names = ctx.Outputs("Out");
     size_t axis = static_cast<size_t>(ctx.Attrs().Get<int>("axis"));
     size_t num = static_cast<size_t>(ctx.Attrs().Get<int>("num"));
     std::vector<int> sections = static_cast<std::vector<int>>(
         ctx.Attrs().Get<std::vector<int>>("sections"));
-    const size_t n = outs_dims.size();
+    const size_t outs_number = outs_names.size();
+    std::vector<framework::DDim> outs_dims;
+    outs_dims.reserve(outs_number);
 
     if (num > 0) {
       int64_t in_axis_dim = in_dims[axis];
@@ -39,19 +41,19 @@ class SplitOp : public framework::OperatorWithKernel {
                         "tensor split does not result"
                         " in an equal division");
       size_t out_axis_dim = in_axis_dim / num;
-      for (size_t i = 0; i < n; ++i) {
+      for (size_t i = 0; i < outs_number; ++i) {
         auto dim = in_dims;
         dim[axis] = out_axis_dim;
-        outs_dims[i] = dim;
+        outs_dims.push_back(dim);
       }
     } else if (sections.size() > 0) {
-      PADDLE_ENFORCE_EQ(sections.size(), n,
+      PADDLE_ENFORCE_EQ(sections.size(), outs_number,
                         "tensor split sections size"
                         "should be equal to output size.");
-      for (size_t i = 0; i < n; ++i) {
+      for (size_t i = 0; i < outs_number; ++i) {
         auto dim = in_dims;
         dim[axis] = sections[i];
-        outs_dims[i] = dim;
+        outs_dims.push_back(dim);
       }
     } else {
       PADDLE_ENFORCE_NOT_NULL(nullptr, "split operator should",
