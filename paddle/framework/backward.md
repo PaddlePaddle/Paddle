@@ -72,21 +72,21 @@ A backward network is a series of backward operators. The main idea of building 
 
 4. Sharing Variables
 
-   As illustrated in the images, two operators share the same variable name **W@GRAD**, which will overwrite their shared input variable. 
+   As illustrated in the figure 1 and figure 2, two operators share the same variable name **W@GRAD**, which will overwrite their shared input variable. 
 
 <p align="center">
 <img src="./images/duplicate_op.png" width="50%" ><br/>
 
-​	Image 1. Sharing variables in operators. 
+​	Figure 1. Sharing variables in operators. 
 
 </p>
 
-​	Sharing variable between operators or same input variable used in multiple operators can lead to duplicate gradient variables. As illustrated in image 2, we need to rename the gradient names recursively and add a generic add operator to prevent overwriting. 
+​	Sharing variable between operators or same input variable used in multiple operators can lead to duplicate gradient variables. As illustrated in figure 2, we need to rename the gradient names recursively and add a generic add operator to prevent overwriting. 
 
 <p align="center">
 <img src="images/duplicate_op2.png" width="40%" ><br/>
 
-​	Image 2. Replace sharing variable's gradient with `Add` operator.
+​	Figure 2. Replace sharing variable's gradient with `Add` operator.
 
 </p>
 
