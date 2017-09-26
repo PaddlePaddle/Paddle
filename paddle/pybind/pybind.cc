@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/exception.h"
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
@@ -54,6 +55,8 @@ PYBIND11_PLUGIN(core) {
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
   using namespace paddle::framework;  // NOLINT
+
+  BindException(m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
