@@ -124,9 +124,8 @@ class OpDescCreationMethod(object):
 
 
 class OpInfo(object):
-    def __init__(self, name, desc, method, inputs, outputs, attrs):
+    def __init__(self, name, method, inputs, outputs, attrs):
         self.name = name
-        self.desc = desc
         self.method = method
         self.inputs = inputs
         self.outputs = outputs
@@ -143,13 +142,8 @@ def create_op_creation_method(op_proto):
         opdesc = method(*args, **kwargs)
         return core.Operator.create(opdesc.SerializeToString())
 
-    def __desc_creation__(*args, **kwargs):
-        opdesc = method(*args, **kwargs)
-        return core.OpDesc.create(opdesc.SerializeToString())
-
     return OpInfo(
         method=__impl__,
-        desc=__desc_creation__,
         name=op_proto.type,
         inputs=[(var.name, var.duplicable) for var in op_proto.inputs],
         outputs=[(var.name, var.duplicable) for var in op_proto.outputs],
@@ -179,20 +173,6 @@ class OperatorFactory(object):
             t = args[0]
 
         return self.get_op_info(t).method(**kwargs)
-
-    def desc(self, *args, **kwargs):
-        if 'type' in kwargs:
-            if len(args) != 0:
-                raise ValueError("All Paddle argument should be key-word "
-                                 "argument except type")
-            t = kwargs.pop('type')
-        else:
-            if len(args) != 1:
-                raise ValueError("All Paddle argument should be key-word "
-                                 "argument except type")
-            t = args[0]
-
-        return self.get_op_info(t).desc(**kwargs)
 
     def types(self):
         return self.op_methods.keys()

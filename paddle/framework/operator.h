@@ -334,89 +334,6 @@ class ExecutionContext : public InferShapeContext {
   const platform::DeviceContext& device_context_;
 };
 
-class BlockDescImpl {
- public:
-  explicit BlockDescImpl(const std::map<std::string, VarDesc*>& var_descs)
-      : var_descs_(var_descs) {}
-  ~BlockDescImpl() {}
-
-  VarDesc* GetVar(const std::string& name) const {
-    PADDLE_ENFORCE(var_descs_.count(name) == 1, "%s must be in Block", name);
-    return var_descs_.at(name);
-  }
-
-  bool HasVar(const std::string& name) const {
-    return var_descs_.count(name) > 0;
-  }
-
- private:
-  const std::map<std::string, VarDesc*>& var_descs_;
-};
-
-class CompileTimeInferShapeContext : public InferShapeContextBase {
- public:
-  CompileTimeInferShapeContext(const OperatorBase& op,
-                               const BlockDescImpl& block_desc)
-      : op_(op), block_desc_(block_desc) {}
-
-  bool HasInput(const std::string& name) const {
-    return block_desc_.HasVar(name);
-  }
-
-  bool HasOutput(const std::string& name) const {
-    return block_desc_.HasVar(name);
-  }
-
-  DDim GetInputDim(const std::string& name) const {
-    return GetDim(op_.Input(name));
-  }
-
-  void SetInputDim(const std::string& name, const DDim& dim) const {
-    SetDim(op_.Input(name), dim);
-  }
-
-  DDim GetOutputDim(const std::string& name) const {
-    return GetDim(op_.Output(name));
-  }
-
-  void SetOutputDim(const std::string& name, const DDim& dim) const {
-    SetDim(op_.Output(name), dim);
-  }
-
-  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
-
-  const std::vector<std::string>& Inputs(const std::string& name) const {
-    return op_.Inputs(name);
-  }
-
-  const std::vector<std::string>& Outputs(const std::string& name) const {
-    return op_.Outputs(name);
-  }
-
- private:
-  DDim GetDim(const std::string& name) const {
-    VarDesc* desc = block_desc_.GetVar(name);
-    std::vector<int64_t> dim;
-    int length = desc->lod_tensor().dims().size();
-    dim.reserve(length);
-    std::copy(desc->lod_tensor().dims().begin(),
-              desc->lod_tensor().dims().end(), std::back_inserter(dim));
-    return make_ddim(dim);
-  }
-
-  void SetDim(const std::string& name, const DDim& dim) const {
-    VarDesc* desc = block_desc_.GetVar(name);
-    auto tensor = desc->mutable_lod_tensor();
-    tensor->clear_dims();
-    for (int i = 0; i < dim.size(); ++i) {
-      tensor->add_dims(static_cast<int>(dim[i]));
-    }
-  }
-
-  const OperatorBase& op_;
-  const BlockDescImpl& block_desc_;
-};
-
 class RunTimeInferShapeContext : public InferShapeContextBase {
  public:
   RunTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
@@ -528,11 +445,6 @@ class OperatorWithKernel : public OperatorBase {
   // runtime infershape
   void InferShape(const Scope& scope) const override {
     InferShape(RunTimeInferShapeContext(*this, scope));
-  }
-
-  // compile time infershape
-  void InferShape(const BlockDescImpl& block_desc) const {
-    InferShape(CompileTimeInferShapeContext(*this, block_desc));
   }
 
   void Run(const Scope& scope,

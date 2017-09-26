@@ -221,40 +221,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<OpDesc>(m, "OpDesc")
-      .def_static("create",
-                  [](py::bytes protobin) {
-                    OpDesc *op_desc = new OpDesc();
-                    PADDLE_ENFORCE(op_desc->ParsePartialFromString(protobin),
-                                   "Cannot parse user input to OpDesc");
-                    PADDLE_ENFORCE(op_desc->IsInitialized(),
-                                   "User OpDesc is not initialized, reason %s",
-                                   op_desc->InitializationErrorString());
-                    return op_desc;
-                  })
-      .def("__str__", [](OpDesc &self) { return self.DebugString(); });
-
-  py::class_<VarDesc>(m, "VarDesc")
-      .def_static("create",
-                  [](py::bytes protobin) {
-                    VarDesc *desc = new VarDesc();
-                    PADDLE_ENFORCE(desc->ParsePartialFromString(protobin),
-                                   "Cannot parse user input to OpDesc");
-                    PADDLE_ENFORCE(desc->IsInitialized(),
-                                   "User OpDesc is not initialized, reason %s",
-                                   desc->InitializationErrorString());
-                    return desc;
-                  })
-      .def("__str__", [](const VarDesc &self) { return self.DebugString(); })
-      .def("get_dims", [](const VarDesc &self) {
-        std::vector<int> result;
-        auto &dims = self.lod_tensor().dims();
-        int size = dims.size();
-        result.reserve(size);
-        std::copy(dims.begin(), dims.end(), std::back_inserter(result));
-        return result;
-      });
-
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
                   [](py::bytes protobin) {
