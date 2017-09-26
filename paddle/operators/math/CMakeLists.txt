@@ -7,5 +7,3 @@ endif()
 
 nv_test(math_function_test SRCS math_function_test.cc DEPS math_function tensor)
 cc_test(im2col_test SRCS im2col_test.cc DEPS math_function tensor)
-cc_test(pool_test_maxPool2d_test SRCS pool_test_maxPool2d.cc DEPS math_function tensor)
-cc_test(pool_test_maxPool3d_test SRCS pool_test_maxPool3d.cc DEPS math_function tensor)

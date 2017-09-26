@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-int outputSize_pool(int input_size, int filter_size, int padding, int stride) {
+int OutputSizePool(int input_size, int filter_size, int padding, int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
 }
@@ -33,7 +33,7 @@ class PoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
                             "Out(Output) of Pooling should not be null.");
 
-    auto in_X = ctx.Input<Tensor>("X");
+    auto in_x = ctx.Input<Tensor>("X");
     auto out = ctx.Output<Tensor>("Out");
     int global_pooling = Attr<int>("globalPooling");
     std::string pooling_type = Attr<std::string>("poolingType");
@@ -43,30 +43,25 @@ class PoolOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "avg",
                    "pooling_type should be 'max' or 'avg'");
-    PADDLE_ENFORCE(in_X->dims().size() == 4 || in_X->dims().size() == 5,
+    PADDLE_ENFORCE(in_x->dims().size() == 4 || in_x->dims().size() == 5,
                    "Pooling intput should be 4-D or 5-D");
+    PADDLE_ENFORCE(ksize.size() == 2 || ksize.size() == 3,
+                   "Pooling size should be 2 elements. or 3 elements.");
+    PADDLE_ENFORCE_EQ(ksize.size(), strides.size(),
+                      "strides size and pooling size should be the same.");
+    PADDLE_ENFORCE_EQ(ksize.size(), paddings.size(),
+                      "paddings size and pooling size should be the same.");
 
     if (global_pooling == 1) {
-      ksize.resize(static_cast<size_t>(in_X->dims().size()) - 2);
+      ksize.resize(static_cast<size_t>(in_x->dims().size()) - 2);
       for (size_t i = 0; i < ksize.size(); ++i)
-        ksize[i] = static_cast<int>(in_X->dims()[i + 2]);
+        ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
     }
 
-    if (ksize.size() == 2) {
-      PADDLE_ENFORCE_EQ(strides.size(), 2,
-                        "Pool2DOp strides size should be 2 elements.");
-      PADDLE_ENFORCE_EQ(paddings.size(), 2,
-                        "Pool2DOp paddings size should be 2 elements");
-    } else {
-      PADDLE_ENFORCE_EQ(strides.size(), 3,
-                        "Pool3DOp strides should be 3 elements.");
-      PADDLE_ENFORCE_EQ(paddings.size(), 3,
-                        "Pool3DOp paddings should be 3 elements.");
-    }
-    std::vector<int64_t> output_shape({in_X->dims()[0], in_X->dims()[1]});
+    std::vector<int64_t> output_shape({in_x->dims()[0], in_x->dims()[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(outputSize_pool(in_X->dims()[i + 2], ksize[i],
-                                             paddings[i], strides[i]));
+      output_shape.push_back(OutputSizePool(in_x->dims()[i + 2], ksize[i],
+                                            paddings[i], strides[i]));
     }
     out->Resize(framework::make_ddim(output_shape));
   }
@@ -78,9 +73,16 @@ class PoolOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
+                            "X(Input) of Pooling should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Out"),
+                            "Out(Output) of Pooling should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx.Output<Tensor>(framework::GradVarName("X")),
+                            "Input@Grad of Pooling should not be null.");
+
     auto in = ctx.Input<Tensor>("X");
     auto d_in = ctx.Output<Tensor>(framework::GradVarName("X"));
-    if (d_in) d_in->Resize(in->dims());
+    d_in->Resize(in->dims());
   }
 };
 
@@ -92,7 +94,7 @@ class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "The input tensor of pooling operator. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
-        "number of channels, H and W is the height and width of image.");
+        "number of channels, H and W is the height and width of feature.");
     AddOutput("Out",
               "The output tensor of pooling operator."
               "The format of output tensor is also NCHW.");
@@ -166,7 +168,7 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
              "The format of input tensor is NCDHW. Where N is batch size, C is "
              "the "
              "number of channels, D, H and W is the depth, height and width of "
-             "image.");
+             "feature.");
     AddOutput("Out",
               "The output tensor of pooling operator."
               "The format of output tensor is also NCDHW.");

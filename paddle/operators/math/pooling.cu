@@ -25,7 +25,7 @@ __global__ void KernelPool2dForward(
     const int input_height, const int input_width, const int output_height,
     const int output_width, const int ksize_height, const int ksize_width,
     const int stride_height, const int stride_width, const int padding_height,
-    const int padding_width, PoolProcess pool_process) {
+    const int padding_width, PoolProcess pool_compute) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int pw = index % output_width;
@@ -42,14 +42,14 @@ __global__ void KernelPool2dForward(
     wstart = max(wstart, 0);
 
     input_data += (batch_idx * channels + c) * input_height * input_width;
-    T ele = pool_process.initial();
+    T ele = pool_compute.initial();
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        pool_process.process(ele, input_data[h * input_width + w]);
+        pool_compute.compute(ele, input_data[h * input_width + w]);
       }
     }
     int pool_size = (hend - hstart) * (wend - wstart);
-    pool_process.finalize(ele, (static_cast<T>(pool_size)));
+    pool_compute.finalize(ele, (static_cast<T>(pool_size)));
     output_data[index] = ele;
   }
 }
@@ -61,7 +61,7 @@ __global__ void KernelPool2dBackward(
     const int input_height, const int input_width, const int output_height,
     const int output_width, const int ksize_height, const int ksize_width,
     const int stride_height, const int stride_width, const int padding_height,
-    const int padding_width, PoolProcess pool_process) {
+    const int padding_width, PoolProcess pool_compute) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int offsetW = index % input_width + padding_width;
@@ -93,9 +93,9 @@ __global__ void KernelPool2dBackward(
         wstart = max(wstart, 0);
         int pool_size = (hend - hstart) * (wend - wstart);
         int output_sub_idx = ph * output_width + pw;
-        pool_process.gradProcess(input, output_data[output_sub_idx],
-                                 output_grad[output_sub_idx], gradient,
-                                 static_cast<T>(1.0 / pool_size));
+        pool_compute.compute(input, output_data[output_sub_idx],
+                             output_grad[output_sub_idx], gradient,
+                             static_cast<T>(1.0 / pool_size));
       }
     }
     input_grad[index] = gradient;
@@ -148,12 +148,12 @@ __global__ void KernelMaxPool2dBackward(
 }
 
 template <typename PoolProcess, typename T>
-class Pool2dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process) {
+                  std::vector<int>& paddings, PoolProcess pool_compute) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -184,19 +184,19 @@ class Pool2dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
                               input_height, input_width, output_height,
                               output_width, ksize_height, ksize_width,
                               stride_height, stride_width, padding_height,
-                              padding_width, pool_process);
+                              padding_width, pool_compute);
   }
 };
 
 template <typename PoolProcess, typename T>
-class Pool2dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process) {
+                  PoolProcess pool_compute) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -228,12 +228,12 @@ class Pool2dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
         nthreads, input_data, output_data, output_grad_data, input_grad_data,
         input_channels, input_height, input_width, output_height, output_width,
         ksize_height, ksize_width, stride_height, stride_width, padding_height,
-        padding_width, pool_process);
+        padding_width, pool_compute);
   }
 };
 
 template <typename T>
-class MaxPool2dBackwardFunctor<platform::GPUPlace, T> {
+class MaxPool2dGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
@@ -275,29 +275,25 @@ class MaxPool2dBackwardFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class MaxPool2dBackwardFunctor<platform::GPUPlace, float>;
-// template class MaxPool2dBackwardFunctor<platform::GPUPlace, double>;
+template class MaxPool2dGradFunctor<platform::GPUPlace, float>;
+// template class MaxPool2dGradFunctor<platform::GPUPlace, double>;
 
-template class Pool2dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
-template class Pool2dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPool<float>, float>;
-template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<float>,
-    float>;
-template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<float>,
-    float>;
-template class Pool2dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<double>, double>;
-template class Pool2dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPool<double>, double>;
-template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<double>,
-    double>;
-template class Pool2dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<double>,
-    double>;
+template class Pool2dFunctor<platform::GPUPlace,
+                             paddle::operators::math::maxPool<float>, float>;
+template class Pool2dFunctor<platform::GPUPlace,
+                             paddle::operators::math::avgPool<float>, float>;
+template class Pool2dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::maxPoolGrad<float>, float>;
+template class Pool2dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::avgPoolGrad<float>, float>;
+template class Pool2dFunctor<platform::GPUPlace,
+                             paddle::operators::math::maxPool<double>, double>;
+template class Pool2dFunctor<platform::GPUPlace,
+                             paddle::operators::math::avgPool<double>, double>;
+template class Pool2dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::maxPoolGrad<double>, double>;
+template class Pool2dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::avgPoolGrad<double>, double>;
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3DForward(
@@ -307,7 +303,7 @@ __global__ void KernelPool3DForward(
     const int ksize_depth, const int ksize_height, const int ksize_width,
     const int stride_depth, const int stride_height, const int stride_width,
     const int padding_depth, const int padding_height, const int padding_width,
-    PoolProcess pool_process) {
+    PoolProcess pool_compute) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -325,19 +321,19 @@ __global__ void KernelPool3DForward(
     dstart = max(dstart, 0);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
-    T ele = pool_process.initial();
+    T ele = pool_compute.initial();
     input_data +=
         (batch_idx * channels + c) * input_depth * input_height * input_width;
     for (int d = dstart; d < dend; ++d) {
       for (int h = hstart; h < hend; ++h) {
         for (int w = wstart; w < wend; ++w) {
-          pool_process.process(
+          pool_compute.compute(
               ele, input_data[(d * input_height + h) * input_width + w]);
         }
       }
     }
     int pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
-    pool_process.finalize(ele, static_cast<T>(pool_size));
+    pool_compute.finalize(ele, static_cast<T>(pool_size));
     output_data[index] = ele;
   }
 }
@@ -351,7 +347,7 @@ __global__ void KernelPool3DBackward(
     const int ksize_depth, const int ksize_height, const int ksize_width,
     const int stride_depth, const int stride_height, const int stride_width,
     const int padding_depth, const int padding_height, const int padding_width,
-    PoolProcess pool_process) {
+    PoolProcess pool_compute) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
        index += blockDim.x * gridDim.x) {
     int offsetW = index % input_width + padding_width;
@@ -396,9 +392,9 @@ __global__ void KernelPool3DBackward(
           wstart = max(wstart, 0);
           int pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
           int output_sub_idx = (pd * output_height + ph) * output_width + pw;
-          pool_process.gradProcess(input, output_data[output_sub_idx],
-                                   output_grad[output_sub_idx], gradient,
-                                   static_cast<T>(1.0 / pool_size));
+          pool_compute.compute(input, output_data[output_sub_idx],
+                               output_grad[output_sub_idx], gradient,
+                               static_cast<T>(1.0 / pool_size));
         }
       }
     }
@@ -459,12 +455,12 @@ __global__ void KernelMaxPool3DBackward(
 }
 
 template <typename PoolProcess, class T>
-class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process) {
+                  std::vector<int>& paddings, PoolProcess pool_compute) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -502,19 +498,19 @@ class Pool3dForwardFunctor<platform::GPUPlace, PoolProcess, T> {
         input_height, input_width, output_depth, output_height, output_width,
         ksize_depth, ksize_height, ksize_width, stride_depth, stride_height,
         stride_width, padding_depth, padding_height, padding_width,
-        pool_process);
+        pool_compute);
   }
 };
 
 template <typename PoolProcess, class T>
-class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process) {
+                  PoolProcess pool_compute) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -554,12 +550,12 @@ class Pool3dBackwardFunctor<platform::GPUPlace, PoolProcess, T> {
         input_channels, input_depth, input_height, input_width, output_depth,
         output_height, output_width, ksize_depth, ksize_height, ksize_width,
         stride_depth, stride_height, stride_width, padding_depth,
-        padding_height, padding_width, pool_process);
+        padding_height, padding_width, pool_compute);
   }
 };
 
 template <class T>
-class MaxPool3dBackwardFunctor<platform::GPUPlace, T> {
+class MaxPool3dGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
@@ -608,29 +604,25 @@ class MaxPool3dBackwardFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class MaxPool3dBackwardFunctor<platform::GPUPlace, float>;
-// template class MaxPool3dBackwardFunctor<platform::GPUPlace, double>;
+template class MaxPool3dGradFunctor<platform::GPUPlace, float>;
+// template class MaxPool3dGradFunctor<platform::GPUPlace, double>;
 
-template class Pool3dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<float>, float>;
-template class Pool3dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPool<float>, float>;
-template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<float>,
-    float>;
-template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<float>,
-    float>;
-template class Pool3dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPool<double>, double>;
-template class Pool3dForwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPool<double>, double>;
-template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::maxPoolGrad<double>,
-    double>;
-template class Pool3dBackwardFunctor<
-    platform::GPUPlace, paddle::operators::math::pool::avgPoolGrad<double>,
-    double>;
+template class Pool3dFunctor<platform::GPUPlace,
+                             paddle::operators::math::maxPool<float>, float>;
+template class Pool3dFunctor<platform::GPUPlace,
+                             paddle::operators::math::avgPool<float>, float>;
+template class Pool3dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::maxPoolGrad<float>, float>;
+template class Pool3dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::avgPoolGrad<float>, float>;
+template class Pool3dFunctor<platform::GPUPlace,
+                             paddle::operators::math::maxPool<double>, double>;
+template class Pool3dFunctor<platform::GPUPlace,
+                             paddle::operators::math::avgPool<double>, double>;
+template class Pool3dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::maxPoolGrad<double>, double>;
+template class Pool3dGradFunctor<
+    platform::GPUPlace, paddle::operators::math::avgPoolGrad<double>, double>;
 
 }  // namespace math
 }  // namespace operators

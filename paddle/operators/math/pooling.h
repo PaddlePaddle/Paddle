@@ -21,17 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
-
 //////////////////////
 #define FLT_MAX __FLT_MAX__
 /////////////////////
 
-namespace pool {
 template <class T>
 class maxPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
-  DEVICE inline void process(T& y, const T& x) { y = y > x ? y : x; }
+  DEVICE inline void compute(T& y, const T& x) { y = y > x ? y : x; }
   DEVICE inline void finalize(T& y, const T& poo_size) {}
 };
 
@@ -39,14 +37,14 @@ template <class T>
 class avgPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(0); }
-  DEVICE inline void process(T& y, const T& x) { y += x; }
+  DEVICE inline void compute(T& y, const T& x) { y += x; }
   DEVICE inline void finalize(T& y, const T& poo_size) { y /= poo_size; }
 };
 template <class T>
 class maxPoolGrad {
  public:
-  DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
-                                 T scale) {
+  DEVICE inline void compute(const T& x, const T& y, const T& dy, T& dx,
+                             T scale) {
     dx += dy * (x == y);
   }
 };
@@ -54,35 +52,34 @@ class maxPoolGrad {
 template <class T>
 class avgPoolGrad {
  public:
-  DEVICE inline void gradProcess(const T& x, const T& y, const T& dy, T& dx,
-                                 T scale) {
+  DEVICE inline void compute(const T& x, const T& y, const T& dy, T& dx,
+                             T scale) {
     dx += (scale * dy);
   }
 };
-}  // namespace pool
 
 template <typename Place, typename PoolProcess, typename T>
-class Pool2dForwardFunctor {
+class Pool2dFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process);
+                  std::vector<int>& paddings, PoolProcess pool_compute);
 };
 
 template <typename Place, typename PoolProcess, typename T>
-class Pool2dBackwardFunctor {
+class Pool2dGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process);
+                  PoolProcess pool_compute);
 };
 
 template <typename Place, class T>
-class MaxPool2dBackwardFunctor {
+class MaxPool2dGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
@@ -92,27 +89,27 @@ class MaxPool2dBackwardFunctor {
 };
 
 template <typename Place, typename PoolProcess, typename T>
-class Pool3dForwardFunctor {
+class Pool3dFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& output,
                   std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process);
+                  std::vector<int>& paddings, PoolProcess pool_compute);
 };
 
 template <typename Place, typename PoolProcess, typename T>
-class Pool3dBackwardFunctor {
+class Pool3dGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process);
+                  PoolProcess pool_compute);
 };
 
 template <typename Place, class T>
-class MaxPool3dBackwardFunctor {
+class MaxPool3dGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor& input_grad,
