@@ -18,7 +18,8 @@ class TestAdamOp(OpTest):
         beta1 = 0.9
         beta2 = 0.999
 
-        self.inputs = {'param': param, 'grad': grad,
+        self.inputs = {
+            'param': param, 'grad': grad,
             'moment1': moment1, 'moment2': moment2}
         self.attrs = {'time_step': t,'learning_rate': learning_rate,
             'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}

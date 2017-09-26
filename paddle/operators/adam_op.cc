@@ -24,7 +24,7 @@ class AdamOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("param"),
-        "Input(param) of AdamOp should not be null.");
+            "Input(param) of AdamOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("grad"),
         "Input(grad) of AdamOp should not be null.");
     PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("moment1"),
