@@ -148,7 +148,6 @@ class LRNGradKernel : public framework::OpKernel {
     auto out_e = framework::EigenVector<float>::Flatten(*out);
     auto out_g_e = framework::EigenVector<float>::Flatten(*out_g);
     auto mid_e = framework::EigenVector<float>::Flatten(*mid);
-    auto mid_pow = mid_e.pow(-beta);
 
     int one_img_size = H * W;
     int one_sample_size = C * one_img_size;
@@ -174,7 +173,11 @@ class LRNGradKernel : public framework::OpKernel {
             framework::EigenTensor<float, 1>::From(
                 out_g_e.data() + i_pos, framework::make_ddim({one_img_size}));
 
-        i_x_g = mid_pow * i_out_g;
+        framework::EigenTensor<float, 1>::ConstType i_mid =
+            framework::EigenTensor<float, 1>::From(
+                mid_e.data() + i_pos, framework::make_ddim({one_img_size}));
+
+        i_x_g = i_mid.pow(-beta) * i_out_g;
         for (int c = start; c <= end; c++) {
           int ch = i + c;
           if (ch < 0 || ch >= C) {
