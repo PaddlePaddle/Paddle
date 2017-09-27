@@ -247,11 +247,11 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
     CMake Warning at cmake/version.cmake:20 (message):
       Cannot add paddle version from git tag
-          
+
 那么用户需要拉取所有的远程分支到本机，命令为 :code:`git fetch upstream`，然后重新cmake即可。
 
 12. A protocol message was rejected because it was too big
-----------------------------------------------------------
+------------------------------------------------------------
 
 如果在训练NLP相关模型时，出现以下错误：
 
@@ -316,10 +316,42 @@ Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异�
 * 模型一直不收敛，发散到了一个数值特别大的地方。
 * 训练数据有问题，导致参数收敛到了一些奇异的情况。或者输入数据尺度过大，有些特征的取值达到数百万，这时进行矩阵乘法运算就可能导致浮点数溢出。
 
-主要的解决办法是减小学习率或者对数据进行归一化处理。
+这里有两种有效的解决方法：
+
+1. 设置 :code:`gradient_clipping_threshold` 参数，示例代码如下：
+
+..  code-block:: python
+
+optimizer = paddle.optimizer.RMSProp(
+    learning_rate=1e-3,
+    gradient_clipping_threshold=10.0,
+    regularization=paddle.optimizer.L2Regularization(rate=8e-4))
+
+具体可以参考  `nmt_without_attention  <https://github.com/PaddlePaddle/models/blob/develop/nmt_without_attention/train.py#L35>`_ 示例。
+
+2. 设置 :code:`error_clipping_threshold` 参数，示例代码如下：
+
+..  code-block:: python
+
+decoder_inputs = paddle.layer.fc(
+    act=paddle.activation.Linear(),
+    size=decoder_size * 3,
+    bias_attr=False,
+    input=[context, current_word],
+    layer_attr=paddle.attr.ExtraLayerAttribute(
+        error_clipping_threshold=100.0))
+
+完整代码可以参考示例 `machine translation <https://github.com/PaddlePaddle/book/blob/develop/08.machine_translation/train.py#L66>`_ 。
+
+两种方法的区别：
+
+1. 两者都是对梯度的截断，但截断时机不同，前者在 :code:`optimzier` 更新网络参数时应用；后者在激活函数反向计算时被调用；
+2. 截断对象不同：前者截断可学习参数的梯度，后者截断回传给前层的梯度;
+
+除此之外，还可以通过减小学习律或者对数据进行归一化处理来解决这类问题。
 
 15. 编译安装后执行 import paddle.v2 as paddle 报ImportError: No module named v2
-------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
 先查看一下是否曾经安装过paddle v1版本，有的话需要先卸载：
 
 pip uninstall py_paddle paddle
@@ -329,7 +361,7 @@ pip uninstall py_paddle paddle
 pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
 
 16. PaddlePaddle存储的参数格式是什么，如何和明文进行相互转化
----------------------------------------------------------
+---------------------------------------------------------------------
 
 PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数两部分组成。头信息中，1~4字节表示PaddlePaddle版本信息，请直接填充0；5~8字节表示每个参数占用的字节数，当保存的网络参数为float类型时为4，double类型时为8；9~16字节表示保存的参数总个数。
 
@@ -381,7 +413,7 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
     parameters.set('emb', load_parameter(emb_param_file, 30000, 256))
 
 18. 集群多节点训练，日志中保存均为网络通信类错误
-------------------------------
+-----------------------------------------------------------
 
 集群多节点训练，日志报错为网络通信类错误，比如 :code:`Connection reset by peer` 等。
 此类报错通常是由于某一个节点的错误导致这个节点的训练进程退出，从而引发其他节点无法连接导致，可以参考下面的步骤排查：
@@ -391,3 +423,170 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
 * 如果发现最早的报错就是网络通信的问题，很有可能是非独占方式执行导致的端口冲突，可以联系OP，看当前MPI集群是否支持resource=full参数提交，如果支持增加此参数提交，并更换job 端口。
 
 * 如果当前MPI集群并不支持任务独占模式，可以联系OP是否可以更换集群或升级当前集群。
+
+19.  如何调用 infer 接口输出多个layer的预测结果
+-----------------------------------------------------------
+
+* 将需要输出的层作为 :code:`paddle.inference.Inference()` 接口的 :code:`output_layer` 参数输入，代码如下：
+
+..  code-block:: python
+
+    inferer = paddle.inference.Inference(output_layer=[layer1, layer2], parameters=parameters)
+
+* 指定要输出的字段进行输出。以输出 :code:`value` 字段为例，代码如下：
+
+..  code-block:: python
+
+    out = inferer.infer(input=data_batch, field=["value"])
+
+需要注意的是：
+
+* 如果指定了2个layer作为输出层，实际上需要的输出结果是两个矩阵；
+* 假设第一个layer的输出A是一个 N1 * M1 的矩阵，第二个 Layer 的输出B是一个 N2 * M2 的矩阵；
+* paddle.v2 默认会将A和B 横向拼接，当N1 和 N2 大小不一样时，会报如下的错误：
+
+..      code-block:: python
+
+    ValueError: all the input array dimensions except for the concatenation axis must match exactly
+
+多个层的输出矩阵的高度不一致导致拼接失败，这种情况常常发生在：
+
+* 同时输出序列层和非序列层；
+* 多个输出层处理多个不同长度的序列;
+
+此时可以在调用infer接口时通过设置 :code:`flatten_result=False` , 跳过“拼接”步骤，来解决上面的问题。这时，infer接口的返回值是一个python list:
+
+* list 中元素的个数等于网络中输出层的个数；
+* list 中每个元素是一个layer的输出结果矩阵，类型是numpy的ndarray；
+* 每一个layer输出矩阵的高度，在非序列输入时：等于样本数；序列输入时等于：输入序列中元素的总数；宽度等于配置中layer的size；
+
+20. :code:`paddle.layer.memory` 的参数 :code:`name` 如何使用
+-------------------------------------------------------------
+
+* :code:`paddle.layer.memory` 用于获取特定layer上一时间步的输出，该layer是通过参数 :code:`name` 指定，即，:code:`paddle.layer.memory` 会关联参数 :code:`name` 取值相同的layer，并将该layer上一时间步的输出作为自身当前时间步的输出。
+
+* PaddlePaddle的所有layer都有唯一的name，用户通过参数 :code:`name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。而 :code:`paddle.layer.memory` 不是真正的layer，其name由参数 :code:`memory_name` 设定，当用户没有显式设定时，PaddlePaddle会自动设定。:code:`paddle.layer.memory` 的参数 :code:`name` 用于指定其要关联的layer，需要用户显式设定。
+
+21. 两种使用 drop_out 的方法有何区别？
+-----------------------------------------------------
+
+* 在PaddlePaddle中使用dropout有两种方式
+
+  * 在相应layer的 :code:`layer_atter` 设置 :code:`drop_rate`，以 :code:`paddle.layer.fc` 为例，代码如下：
+
+  ..  code-block:: python
+
+      fc = paddle.layer.fc(input=input, layer_attr=paddle.attr.ExtraLayerAttribute(drop_rate=0.5))
+
+  * 使用 :code:`paddle.layer.dropout`，以 :code:`paddle.layer.fc` 为例，代码如下：
+
+  ..  code-block:: python
+
+      fc = paddle.layer.fc(input=input)
+      drop_fc = paddle.layer.dropout(input=fc, dropout_rate=0.5)
+
+* :code:`paddle.layer.dropout` 实际上使用了 :code:`paddle.layer.add_to`，并在该layer里采用第一种方式设置 :code:`drop_rate` 来使用dropout的。这种方式对内存消耗较大。
+
+* PaddlePaddle在激活函数里实现dropout，而不是在layer里实现。
+
+* :code:`paddle.layer.lstmemory`、:code:`paddle.layer.grumemory`、:code:`paddle.layer.recurrent` 不是通过一般的方式来实现对输出的激活，所以不能采用第一种方式在这几个layer里设置 :code:`drop_rate` 来使用dropout。若要对这几个layer使用dropout，可采用第二种方式，即使用 :code:`paddle.layer.dropout`。
+
+22. 如何设置学习率退火（learning rate annealing）
+------------------------------------------------
+
+在相应的优化算法里设置learning_rate_schedule及相关参数，以使用Adam算法为例，代码如下：
+
+..  code-block:: python
+
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=1e-3,
+        learning_rate_decay_a=0.5,
+        learning_rate_decay_b=0.75,
+        learning_rate_schedule="poly",)
+
+PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedule及其对应学习率计算方式如下：
+
+* "constant"
+
+  lr = learning_rate
+
+* "poly"
+
+  lr = learning_rate * pow(1 + learning_rate_decay_a * num_samples_processed, -learning_rate_decay_b)
+
+  其中，num_samples_processed为已训练样本数，下同。
+
+* "caffe_poly"
+
+  lr = learning_rate * pow(1.0 - num_samples_processed / learning_rate_decay_a, learning_rate_decay_b)
+
+* "exp"
+
+  lr = learning_rate * pow(learning_rate_decay_a, num_samples_processed / learning_rate_decay_b)
+
+* "discexp"
+
+  lr = learning_rate * pow(learning_rate_decay_a, floor(num_samples_processed / learning_rate_decay_b))
+
+* "linear"
+
+  lr = max(learning_rate - learning_rate_decay_a * num_samples_processed, learning_rate_decay_b)
+
+* "manual"
+
+  这是一种按已训练样本数分段取值的学习率退火方法。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
+
+  ..  code-block:: python
+
+      optimizer = paddle.optimizer.Adam(
+          learning_rate=1e-3,
+          learning_rate_schedule="manual",
+          learning_rate_args="1000:1.0,2000:0.9,3000:0.8",)
+
+  在该示例中，当已训练样本数小于等于1000时，学习率为 :code:`1e-3 * 1.0`；当已训练样本数大于1000小于等于2000时，学习率为 :code:`1e-3 * 0.9`；当已训练样本数大于2000时，学习率为 :code:`1e-3 * 0.8`。
+
+* "pass_manual"
+
+  这是一种按已训练pass数分段取值的学习率退火方法。使用该learning_rate_schedule时，用户通过参数 :code:`learning_rate_args` 设置学习率衰减因子分段函数，当前的学习率为所设置 :code:`learning_rate` 与当前的衰减因子的乘积。以使用Adam算法为例，代码如下：
+
+  ..  code-block:: python
+
+      optimizer = paddle.optimizer.Adam(
+          learning_rate=1e-3,
+          learning_rate_schedule="manual",
+          learning_rate_args="1:1.0,2:0.9,3:0.8",)
+
+  在该示例中，当已训练pass数小于等于1时，学习率为 :code:`1e-3 * 1.0`；当已训练pass数大于1小于等于2时，学习率为 :code:`1e-3 * 0.9`；当已训练pass数大于2时，学习率为 :code:`1e-3 * 0.8`。
+
+23. 出现 :code:`Duplicated layer name` 错误怎么办
+--------------------------------------------------
+
+出现该错误的原因一般是用户对不同layer的参数 :code:`name` 设置了相同的取值。遇到该错误时，先找出参数 :code:`name` 取值相同的layer，然后将这些layer的参数 :code:`name` 设置为不同的值。
+
+24. PaddlePaddle 中不同的 recurrent layer 的区别
+--------------------------------------------------
+以LSTM为例，在PaddlePaddle中包含以下 recurrent layer：
+
+* :code:`paddle.layer.lstmemory`
+* :code:`paddle.networks.simple_lstm`
+* :code:`paddle.networks.lstmemory_group`
+* :code:`paddle.networks.bidirectional_lstm`
+
+按照具体实现方式可以归纳为2类：
+
+1. 由 recurrent_group 实现的 recurrent layer：
+
+  * 用户在使用这一类recurrent layer时，可以访问由recurrent unit在一个时间步内计算得到的中间值（例如：hidden states, memory cells等）；
+  * 上述的 :code:`paddle.networks.lstmemory_group` 是这一类的 recurrent layer ；
+
+2. 将recurrent layer作为一个整体来实现：
+
+  * 用户在使用这一类recurrent layer，只能访问它们的输出值；
+  * 上述的 :code:`paddle.networks.lstmemory_group` 、 :code:`paddle.networks.simple_lstm` 和 :code:`paddle.networks.bidirectional_lstm` 属于这一类的实现；
+
+将recurrent layer作为一个整体来实现， 能够针对CPU和GPU的计算做更多优化， 所以相比于recurrent group的实现方式， 第二类 recurrent layer 计算效率更高。 在实际应用中，如果用户不需要访问LSTM的中间变量，而只需要获得recurrent layer计算的输出，我们建议使用第二类实现。
+
+此外，关于LSTM, PaddlePaddle中还包含 :code:`paddle.networks.lstmemory_unit` 这一计算单元：
+
+  * 不同于上述介绍的recurrent layer , :code:`paddle.networks.lstmemory_unit` 定义了LSTM单元在一个时间步内的计算过程，它并不是一个完整的recurrent layer，也不能接收序列数据作为输入；
+  * :code:`paddle.networks.lstmemory_unit` 只能在recurrent_group中作为step function使用；

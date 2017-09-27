@@ -24,33 +24,32 @@ class ConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ConcatOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of ConcatOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of ConcatOp should not be null.");
 
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
-    size_t n = ins.size();
+    auto ins = ctx->GetInputsDim("X");
+    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
+    const size_t n = ins.size();
 
     PADDLE_ENFORCE_GT(n, 1, "Input tensors count should > 1.");
 
-    auto out_dims = ins[0]->dims();
+    auto out_dims = ins[0];
     size_t in_zero_dims_size = out_dims.size();
     for (size_t i = 1; i < n; i++) {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
-          out_dims[axis] += ins[i]->dims()[j];
+          out_dims[axis] += ins[i][j];
           continue;
         }
-        PADDLE_ENFORCE_EQ(out_dims[j], ins[i]->dims()[j],
+        PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
                           "Input tensors should have the same "
                           "elements except the specify axis.")
       }
     }
-    out->Resize(out_dims);
+    ctx->SetOutputDim("Out", out_dims);
   }
 };
 
