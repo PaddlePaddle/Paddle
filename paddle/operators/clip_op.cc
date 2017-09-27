@@ -17,8 +17,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
-
 class ClipOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -45,7 +43,7 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor)The input of clip op."
-             "The dimension size of input tensor must be between [1, 9].");
+             "The number of dimensions must be between [1, 9].");
     AddOutput("Out", "(Tensor)The output of clip op with shape as input(X)");
     AddAttr<AttrType>(
         "min", "(float)Minimum value, under which element is replaced by min.");
