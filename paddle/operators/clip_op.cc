@@ -17,6 +17,8 @@
 namespace paddle {
 namespace operators {
 
+using framework::LoDTensor;
+
 class ClipOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -28,11 +30,10 @@ class ClipOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ClipOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
-    auto max = ctx->Attrs().Get<float>("max");
-    auto min = ctx->Attrs().Get<float>("min");
+    auto max = Attr<float>("max");
+    auto min = Attr<float>("min");
     PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
     ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -43,7 +44,7 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor)The input of clip op."
-             "The input should be a k-D tensor(k > 0 and k < 7)");
+             "The dimension size of input tensor must be between [1, 9].");
     AddOutput("Out", "(Tensor)The output of clip op with shape as input(X)");
     AddAttr<AttrType>(
         "min", "(float)Minimum value, under which element is replaced by min.");
