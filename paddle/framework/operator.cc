@@ -60,8 +60,8 @@ std::string OperatorBase::Output(const std::string& name) const {
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output %s", type_,
-                 name);
+  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output called %s",
+                 type_, name);
   return it->second;
 }
 
@@ -207,23 +207,22 @@ const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
 }
 
 template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
-  auto* var = OutputVar(name);
-  return var == nullptr ? nullptr : const_cast<Tensor*>(GetTensorFromVar(var));
+Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const {
+  auto var = OutputVar(name);
+  return var == nullptr ? nullptr : var->GetMutable<LoDTensor>();
 }
 
 template <>
-std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
     const std::string& name) const {
   auto names = op().Outputs(name);
   std::vector<Tensor*> res;
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
                  [&](const std::string& sub_name) {
-                   auto var = scope().FindVar(sub_name);
-                   return var == nullptr
-                              ? nullptr
-                              : const_cast<Tensor*>(GetTensorFromVar(var));
+                   auto var = scope_.FindVar(sub_name);
+                   return var == nullptr ? nullptr
+                                         : var->GetMutable<LoDTensor>();
                  });
   return res;
 }

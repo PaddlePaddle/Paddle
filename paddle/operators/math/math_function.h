@@ -70,6 +70,13 @@ void gemm(const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
           const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
           const T alpha, const T* A, const T* B, const T beta, T* C);
 
+// gemm wrapper with stride args for matrix uncontinuous in memory
+template <typename Place, typename T>
+void gemm(const platform::DeviceContext& context, const bool transA,
+          const bool transB, const int M, const int N, const int K,
+          const T alpha, const T* A, const int lda, const T* B, const int ldb,
+          const T beta, T* C, const int ldc);
+
 // matrix multiply with continuous memory
 template <typename Place, typename T>
 void matmul(const platform::DeviceContext& context,
