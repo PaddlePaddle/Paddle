@@ -107,7 +107,7 @@ struct EnforceNotMet : public std::exception {
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    int stat, const Args&... args) {
+    bool stat, const Args&... args) {
   if (UNLIKELY(!(stat))) {
     throw std::runtime_error(string::Sprintf(args...));
   }

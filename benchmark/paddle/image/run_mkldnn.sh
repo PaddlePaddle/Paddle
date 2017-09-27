@@ -9,11 +9,9 @@ function train() {
   bs=$2
   use_mkldnn=$3
   if [ $3 == "True" ]; then
-    use_mkldnn=$3
     thread=1
     log="logs/${topology}-mkldnn-${bs}.log"
   elif [ $3 == "False" ]; then
-    use_mkldnn=$3
     thread=`nproc`
     log="logs/${topology}-${thread}mklml-${bs}.log"
   else
@@ -39,8 +37,7 @@ if [ ! -d "logs" ]; then
   mkdir logs
 fi
 
-#========= mkldnn =========#
-# vgg
+#========== mkldnn ==========#
 train vgg 64 True
 train vgg 128 True
 train vgg 256 True
