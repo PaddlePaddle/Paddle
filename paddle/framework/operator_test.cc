@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -114,7 +115,7 @@ class OpWithKernelTest : public OperatorWithKernel {
   using OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {}
+  void InferShape(framework::InferShapeContextBase* ctx) const override {}
 };
 
 template <typename T1, typename T2>
@@ -263,38 +264,4 @@ TEST(Operator, Clone) {
   OperatorClone a("ABC", {}, {}, {});
   auto b = a.Clone();
   ASSERT_EQ(a.Type(), b->Type());
-}
-
-class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
- public:
-  TestAttrProtoMaker(paddle::framework::OpProto* proto,
-                     paddle::framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("scale", "scale of test op");
-    AddAttr<float>("scale", "scale of test op");
-  }
-};
-
-TEST(ProtoMaker, DuplicatedAttr) {
-  paddle::framework::OpProto op_proto;
-  paddle::framework::OpAttrChecker op_checker;
-  auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
-}
-
-class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
- public:
-  TestInOutProtoMaker(paddle::framework::OpProto* proto,
-                      paddle::framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of test op");
-    AddInput("input", "input of test op");
-  }
-};
-
-TEST(ProtoMaker, DuplicatedInOut) {
-  paddle::framework::OpProto op_proto;
-  paddle::framework::OpAttrChecker op_checker;
-  auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
 }

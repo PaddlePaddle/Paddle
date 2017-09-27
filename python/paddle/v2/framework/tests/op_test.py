@@ -28,10 +28,10 @@ def create_op(scope, op_type, inputs, outputs, attrs):
         if out_name in outputs:
             kwargs[out_name] = []
             if out_dup:
-                sub_in = outputs[out_name]
-                for sub_in_name, _ in sub_in:
-                    var = scope.new_var(sub_in_name)
-                    kwargs[out_name].append(sub_in_name)
+                sub_out = outputs[out_name]
+                for sub_out_name, _ in sub_out:
+                    var = scope.new_var(sub_out_name)
+                    kwargs[out_name].append(sub_out_name)
             else:
                 var = scope.new_var(out_name)
                 kwargs[out_name].append(out_name)
@@ -39,6 +39,7 @@ def create_op(scope, op_type, inputs, outputs, attrs):
     for attr_name in Operator.get_op_attr_names(op_type):
         if attr_name in attrs:
             kwargs[attr_name] = attrs[attr_name]
+
     return Operator(op_type, **kwargs)
 
 
@@ -176,11 +177,12 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
 
 class OpTest(unittest.TestCase):
-    def check_output_with_place(self, place):
+    def check_output_with_place(self, place, atol):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
+        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, self.outputs,
+        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
                             op_attrs)
         if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
             return
@@ -190,30 +192,37 @@ class OpTest(unittest.TestCase):
         self.op.run(self.scope, ctx)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
+            if out_name not in self.outputs:
+                continue
+
             if out_dup:
                 sub_out = self.outputs[out_name]
-                for sub_out_name in sub_out:
+                if not isinstance(sub_out, list):
+                    raise AssertionError("sub_out type %s is not list",
+                                         type(sub_out))
+
+                for sub_out_name, expect in sub_out:
                     actual = np.array(
                         self.scope.find_var(sub_out_name).get_tensor())
-                    expect = sub_out[sub_out_name]
                     self.assertTrue(
                         np.allclose(
-                            actual, expect, atol=1e-05),
-                        "output name: " + out_name + "has diff")
+                            actual, expect, atol=atol),
+                        "output name: " + out_name + " has diff.")
             else:
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
                 expect = self.outputs[out_name]
+
                 self.assertTrue(
                     np.allclose(
-                        actual, expect, atol=1e-05),
-                    "output name: " + out_name + "has diff")
+                        actual, expect, atol=atol),
+                    "output name: " + out_name + " has diff.")
 
-    def check_output(self):
+    def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
             places.append(core.GPUPlace(0))
         for place in places:
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, atol)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):
@@ -227,9 +236,10 @@ class OpTest(unittest.TestCase):
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return "%s Variable %s max gradient diff %f over limit %f, the first " \
-                  "error element is %d" % (
-                   msg_prefix, name, max_diff, max_relative_error, offset)
+                return ("%s Variable %s max gradient diff %f over limit %f, "
+                        "the first error element is %d") % (
+                            msg_prefix, name, max_diff, max_relative_error,
+                            offset)
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
@@ -241,8 +251,9 @@ class OpTest(unittest.TestCase):
                    max_relative_error=0.005):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
+        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, self.outputs,
+        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
                             op_attrs)
         if no_grad_set is None:
             no_grad_set = set()

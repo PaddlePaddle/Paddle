@@ -24,14 +24,13 @@ class PadOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of PadOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of PadOp should not be null.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of PadOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of PadOp should not be null.");
 
-    auto x_dim = ctx.Input<Tensor>("X")->dims();
-    auto paddings = Attr<std::vector<int>>("paddings");
+    auto x_dim = ctx->GetInputDim("X");
+    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
                       "Size of paddings should be equal to 2 * dimension size "
                       "of input tensor.");
@@ -39,14 +38,18 @@ class PadOp : public framework::OperatorWithKernel {
     for (int i = 0; i < x_dim.size(); ++i) {
       out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
     }
-    ctx.Output<framework::LoDTensor>("Out")->Resize(
-        framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    if (out_dims[0] == x_dim[0]) {
+      // Only pass LoD when the first dimension is equal between
+      // output and input.
+      ctx->ShareLoD("X", /*->*/ "Out");
+    }
   }
 };
 
 class PadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PadOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  PadOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "
@@ -63,15 +66,15 @@ Given:
 X = [[1, 2],
    [3, 4]]
 
-and 
+and
 
 paddings = [0, 1, 1, 2]
 
 and
- 
-pad_value = 0 
 
-then we get 
+pad_value = 0
+
+then we get
 
 Out = [[0, 1, 2, 0, 0]
        [0, 3, 4, 0, 0]
@@ -96,14 +99,14 @@ class PadOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_g = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    if (x_g != nullptr) {
-      x_g->Resize(x_dims);
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
 };

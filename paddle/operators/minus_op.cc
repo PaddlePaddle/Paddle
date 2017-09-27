@@ -26,21 +26,22 @@ class MinusOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of MinusOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"),
-                            "Input(Y) of MinusOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of MinusOp should not be null.");
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of MinusOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
+                   "Input(Y) of MinusOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of MinusOp should not be null.");
 
-    auto *left_tensor = ctx.Input<framework::Tensor>("X");
-    auto *right_tensor = ctx.Input<framework::Tensor>("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(
-        left_tensor->numel(), right_tensor->numel(),
+        x_dims, y_dims,
         "Minus operator must take two tensor with same num of elements");
-    ctx.Output<framework::LoDTensor>("Out")->Resize(left_tensor->dims());
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -54,7 +55,12 @@ class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(Minus Operator
 
-Equation: Out = X - Y
+Equation:
+
+    Out = X - Y
+
+Both the input `X` and `Y` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };
@@ -71,7 +77,7 @@ class MinusGradOp : public NetOp {
 
     // x_grad = out_grad
     AppendOp(framework::OpRegistry::CreateOp("identity", {{"X", {out_grad}}},
-                                             {{"Out", {x_grad}}}, {}));
+                                             {{"Y", {x_grad}}}, {}));
 
     framework::AttributeMap scale_attr;
     scale_attr["scale"] = static_cast<AttrType>(-1);

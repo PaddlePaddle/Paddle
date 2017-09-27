@@ -115,10 +115,15 @@ public:
       copySeqInfoToOutputs();
       size_t elemenCnt = inputLayers_[0]->getOutput().value->getElementCnt();
       if (inputElemenCnt_ != elemenCnt) {
+        VLOG(MKLDNN_BASE) << getName() << " reset mkldnn forward";
         // reset when input total sizes changed, not only the batchsize
         inputElemenCnt_ = elemenCnt;
         reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
         resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
+        if (outVal_) {
+          // change original output value to mkldnn output value
+          output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
+        }
         convertWeightsFromPaddle();
         needResetBwd_ = true;
       }
@@ -137,18 +142,17 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {
-    /* Do derivation */ {
+    if (needResetBwd_) {
+      VLOG(MKLDNN_BASE) << getName() << " reset mkldnn backward";
+      resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
+      needResetBwd_ = false;
+    }
+    {
       REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
       backwardActivation();
     }
-
     {
       REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
-      if (needResetBwd_) {
-        resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
-        needResetBwd_ = false;
-      }
-
       stream_->submit(pipelineBwd_);
     }
 

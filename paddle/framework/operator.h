@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
@@ -55,6 +56,9 @@ inline std::string GradVarName(const std::string& var_name) {
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
+
+extern const Tensor* GetTensorFromVar(const Variable* var);
+extern Tensor* GetTensorFromVar(Variable* var);
 
 /**
  * OperatorBase has the basic element that Net will call to do computation.
@@ -167,71 +171,6 @@ class NOP : public OperatorBase {
   }
 };
 
-// this class not only make proto but also init attribute checkers.
-class OpProtoAndCheckerMaker {
- public:
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : proto_(proto), op_checker_(op_checker) {}
-
-  ~OpProtoAndCheckerMaker() {
-    PADDLE_ENFORCE(validated_, "should call Validate after build");
-  }
-
-  void Validate();
-
- protected:
-  struct VariableBuilder {
-    OpProto::Var* var_;
-
-    VariableBuilder& AsDuplicable() {
-      var_->set_duplicable(true);
-      return *this;
-    }
-
-    VariableBuilder& AsIntermediate() {
-      var_->set_intermediate(true);
-      return *this;
-    }
-
-    VariableBuilder& NotInGradient() {
-      var_->set_not_in_gradient(true);
-      return *this;
-    }
-  };
-
-  VariableBuilder AddInput(const std::string& name, const std::string& comment);
-
-  VariableBuilder AddOutput(const std::string& name,
-                            const std::string& comment);
-
-  template <typename T>
-  TypedAttrChecker<T>& AddAttr(const std::string& name,
-                               const std::string& comment,
-                               bool generated = false) {
-    auto* attr = proto_->add_attrs();
-    attr->set_name(name);
-    attr->set_comment(comment);
-    attr->set_generated(generated);
-    attr->set_type(AttrTypeID<T>());
-    return op_checker_->AddAttrChecker<T>(name);
-  }
-
-  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
-
- private:
-  void CheckNoDuplicatedInOutAttrs();
-
-  OpProto* proto_;
-  OpAttrChecker* op_checker_;
-  bool validated_{false};
-};
-
-class NOPMaker : public OpProtoAndCheckerMaker {
- public:
-  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
-};
-
 class InferShapeContext {
  public:
   InferShapeContext(const OperatorBase& op, const Scope& scope)
@@ -277,9 +216,9 @@ class InferShapeContext {
     return res;
   }
 
-  std::vector<const Variable*> MultiOutputVar(const std::string& name) const {
+  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
     auto names = op_.Outputs(name);
-    std::vector<const Variable*> res;
+    std::vector<Variable*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
@@ -327,13 +266,18 @@ class InferShapeContext {
     return res;
   }
 
-  const Tensor* GetTensorFromVar(const Variable* var) const {
-    if (var->IsType<LoDTensor>()) {
-      return &var->Get<LoDTensor>();
-    }
-    PADDLE_ENFORCE(var->IsType<Tensor>(),
-                   "The Input(%s) must be LoDTensor or Tensor.");
-    return &var->Get<Tensor>();
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const {
+    PADDLE_ENFORCE_LT(i, InputSize(in));
+    PADDLE_ENFORCE_LT(j, OutputSize(out));
+    auto* in_var = MultiInputVar(in)[i];
+    auto* out_var = MultiOutputVar(out)[j];
+    if (!in_var->IsType<LoDTensor>()) return;
+    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+    auto in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_lod(in_tensor.lod());
   }
 
  private:
@@ -346,6 +290,13 @@ const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const;
 
 template <>
 const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
+Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
     const std::string& name) const;
 
 template <typename T>
@@ -366,7 +317,7 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext* device_context)
+                   const platform::DeviceContext& device_context)
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
@@ -374,42 +325,87 @@ class ExecutionContext : public InferShapeContext {
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
-  platform::Place GetPlace() const { return device_context_->GetPlace(); }
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
-  const platform::DeviceContext* device_context() const {
+  const platform::DeviceContext& device_context() const {
     return device_context_;
   }
 
-  // redefine Output function,
-  // use Variable::Get instead of Variable::GetMutable
-  template <typename T>
-  T* Output(const std::string& name) const {
-    auto var = OutputVar(name);
-    return var == nullptr ? nullptr : const_cast<T*>(&var->Get<T>());
-  }
-
-  // redefine MultiOutput function.
-  // use Variable::Get instead of Variable::GetMutable
-  template <typename T>
-  std::vector<T*> MultiOutput(const std::string& name) const {
-    auto names = op().Outputs(name);
-    std::vector<T*> res;
-    res.reserve(names.size());
-    std::transform(
-        names.begin(), names.end(), std::back_inserter(res),
-        [&](const std::string& sub_name) { return Output<T>(sub_name); });
-    return res;
-  }
-
-  const platform::DeviceContext* device_context_;
+ private:
+  const platform::DeviceContext& device_context_;
 };
 
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+class RuntimeInferShapeContext : public InferShapeContextBase {
+ public:
+  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
 
-template <>
-std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
-    const std::string& name) const;
+  bool HasInput(const std::string& name) const {
+    auto ipt = op_.Input(name);
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  bool HasOutput(const std::string& name) const {
+    auto ipt = op_.Output(name);
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  DDim GetInputDim(const std::string& name) const {
+    return GetDim(op_.Input(name));
+  }
+
+  void SetInputDim(const std::string& name, const DDim& dim) {
+    SetDim(op_.Input(name), dim);
+  }
+
+  DDim GetOutputDim(const std::string& name) const {
+    return GetDim(op_.Output(name));
+  }
+
+  void SetOutputDim(const std::string& name, const DDim& dim) {
+    SetDim(op_.Output(name), dim);
+  }
+
+  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
+
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
+ private:
+  template <bool Allocate>
+  Tensor* GetTensor(const std::string& name) const {
+    Tensor* t = nullptr;
+    auto* var = scope_.FindVar(name);
+    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
+      if (Allocate) {
+        t = var->GetMutable<LoDTensor>();
+      } else {
+        PADDLE_THROW("Variable(%s) should be tensor", name);
+      }
+    } else {
+      t = GetTensorFromVar(scope_.FindVar(name));
+    }
+    return t;
+  }
+
+  DDim GetDim(const std::string& name) const {
+    return GetTensor<false>(name)->dims();
+  }
+
+  void SetDim(const std::string& name, const DDim& dim) {
+    GetTensor<true>(name)->Resize(dim);
+  }
+
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
 
 class OpKernel {
  public:
@@ -454,14 +450,16 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
+  // runtime infershape
   void InferShape(const Scope& scope) const override {
-    InferShape(InferShapeContext(*this, scope));
+    auto c = RuntimeInferShapeContext(*this, scope);
+    InferShape(&c);
   }
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
+    opKernel->Compute(ExecutionContext(*this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -477,7 +475,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual void InferShape(const InferShapeContext& ctx) const = 0;
+  virtual void InferShape(InferShapeContextBase* ctx) const = 0;
 };
 
 }  // namespace framework

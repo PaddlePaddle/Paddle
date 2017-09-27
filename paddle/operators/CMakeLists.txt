@@ -55,6 +55,13 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
+    # activation_op contains several operators
+    if ("${TARGET}" STREQUAL "activation_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
+    endif()
+
     # pybind USE_NO_KERNEL_OP
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "OperatorWithKernel" regex_result "${TARGET_CONTENT}")
@@ -81,10 +88,14 @@ add_subdirectory(math)
 
 set(DEPS_OPS
     recurrent_op
-    cond_op)
+    cond_op
+    cross_entropy_op
+    softmax_with_cross_entropy_op)
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
   DEPS framework_proto tensor net_op)
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
+op_library(cross_entropy_op DEPS cross_entropy_function)
+op_library(softmax_with_cross_entropy_op DEPS cross_entropy_function softmax_function)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
@@ -96,3 +107,4 @@ set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
+cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)

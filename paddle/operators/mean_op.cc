@@ -22,22 +22,23 @@ class MeanOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of MeanOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of MeanOp should not be null.");
-    ctx.Output<framework::LoDTensor>("Out")->Resize({1});
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of MeanOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of MeanOp should not be null.");
+    ctx->SetOutputDim("Out", {1});
   }
 };
 
 class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MeanOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  MeanOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
     AddOutput("Out", "The output of mean op").NotInGradient();
-    AddComment("Mean Operator");
+    AddComment(R"DOC( Mean Operator
+)DOC");
   }
 };
 
@@ -46,9 +47,8 @@ class MeanGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<Tensor>("X")->dims());
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 

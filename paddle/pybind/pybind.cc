@@ -12,13 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <Python.h>
-#include <fstream>
-#include <vector>
+#include "paddle/pybind/protobuf.h"
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_registry.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -27,19 +24,9 @@ limitations under the License. */
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
 
 namespace paddle {
-namespace framework {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using LoD = framework::LoD;
-
+namespace pybind {
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
   return generator.fetch_add(1);
@@ -55,6 +42,10 @@ bool IsCompileGPU() {
 
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
+
+  // using framework in this function. Since it is inside a function, it will
+  // not cause namespace pollution.
+  using namespace paddle::framework;  // NOLINT
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -107,7 +98,7 @@ PYBIND11_PLUGIN(core) {
 #ifdef PADDLE_ONLY_CPU
             new (&instance) LoDTensor(lod);
 #else
-             paddle::framework::LoD new_lod;
+             LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              new (&instance) LoDTensor(new_lod);
@@ -118,7 +109,7 @@ PYBIND11_PLUGIN(core) {
 #ifdef PADDLE_ONLY_CPU
              self.set_lod(lod);
 #else
-             paddle::framework::LoD new_lod;
+             LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              self.set_lod(new_lod);
@@ -132,7 +123,7 @@ PYBIND11_PLUGIN(core) {
            std::vector<std::vector<size_t>> new_lod;
            new_lod.reserve(lod.size());
            std::transform(lod.begin(), lod.end(), std::back_inserter(new_lod),
-               [](paddle::framework::Vector<size_t> item) ->
+               [](Vector<size_t> item) ->
                    std::vector<size_t> {
                  std::vector<size_t> v;
                  v.reserve(item.size());
@@ -238,7 +229,13 @@ All parameter, weight, gradient are variables in Paddle.
              return Backward(forwardOp, no_grad_vars).release();
            })
       .def("infer_shape", &OperatorBase::InferShape)
-      .def("run", &OperatorBase::Run)
+      .def("run",
+           [](OperatorBase &self,
+              const Scope &scope,
+              const platform::DeviceContext &dev_ctx) {
+             self.Run(scope, dev_ctx);
+             dev_ctx.Wait();
+           })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -315,7 +312,12 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("is_compile_gpu", IsCompileGPU);
 
+  BindProgramDesc(m);
+  BindBlockDesc(m);
+  BindVarDsec(m);
+  BindOpDesc(m);
+
   return m.ptr();
 }
-}  // namespace framework
+}  // namespace pybind
 }  // namespace paddle
