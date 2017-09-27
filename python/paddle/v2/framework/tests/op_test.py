@@ -256,6 +256,9 @@ class TestUtils(object):
         out_grad_values = np.zeros(accum_size[-1], dtype=np.float64)
         x_grad_jacobian = None
 
+        if no_grad_set is None:
+            no_grad_set = set()
+
         backward_op = cls.get_backward_op(scope, op, no_grad_set)
 
         def fill_tensor(tensor_name, tensor, place):
@@ -295,9 +298,6 @@ class TestUtils(object):
                             scope, cls.grad_var_name(out_var_name))
                         out_grad_tensor.set_dims(out_var_tensor.shape())
                         fill_tensor(out_var_name, out_grad_tensor, place)
-
-            if no_grad_set is None:
-                no_grad_set = set()
 
             backward_op.infer_shape(scope)
             backward_op.run(scope, ctx)
