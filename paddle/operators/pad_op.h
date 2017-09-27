@@ -16,7 +16,7 @@
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-
+#include "paddle/operators/strided_memcpy.h"
 namespace paddle {
 namespace operators {
 
@@ -77,53 +77,24 @@ class PadKernel : public framework::OpKernel {
   }
 };
 
-template <typename Place, typename T, size_t D>
-void PadGradFunction(const framework::ExecutionContext& context) {
-  auto pads = context.Attr<std::vector<int>>("paddings");
-  Eigen::array<std::pair<int, int>, D> paddings;
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings[i].first = -pads[i * 2];
-    paddings[i].second = -pads[i * 2 + 1];
-  }
-  auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-  auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-  if (d_x != nullptr) {
-    d_x->mutable_data<T>(context.GetPlace());
-    auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
-    auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-    auto place = context.GetEigenDevice<Place>();
-    d_x_tensor.device(place) = d_out_tensor.pad(paddings, 0);
-  }
-}
-
-template <typename Place, typename T>
+template <typename T>
 class PadGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    size_t rank =
-        context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
-    switch (rank) {
-      case 1:
-        PadGradFunction<Place, T, 1>(context);
-        break;
-      case 2:
-        PadGradFunction<Place, T, 2>(context);
-        break;
-      case 3:
-        PadGradFunction<Place, T, 3>(context);
-        break;
-      case 4:
-        PadGradFunction<Place, T, 4>(context);
-        break;
-      case 5:
-        PadGradFunction<Place, T, 5>(context);
-        break;
-      case 6:
-        PadGradFunction<Place, T, 6>(context);
-        break;
-      default:
-        PADDLE_THROW(
-            "PadOp only support tensors with no more than 6 dimensions.");
+    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+    if (d_x != nullptr) {
+      auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+      T* d_x_data = d_x->mutable_data<T>(context.GetPlace());
+      const T* d_out_data = d_out->data<T>();
+      auto d_x_stride = framework::stride(d_x->dims());
+      auto d_out_stride = framework::stride(d_out->dims());
+      auto paddings = context.Attr<std::vector<int>>("paddings");
+      int64_t offset = 0;
+      for (size_t i = 0; i < d_out_stride.size(); ++i) {
+        offset += (d_out_stride[i] * paddings[i * 2]);
+      }
+      StridedMemcpy<T>(context.device_context(), d_out_data + offset,
+                       d_out_stride, d_x->dims(), d_x_stride, d_x_data);
     }
   }
 };
