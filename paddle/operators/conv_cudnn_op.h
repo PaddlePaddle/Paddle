@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/gemm_conv2d_op.h"
+#include "paddle/operators/conv2d_op.h"
 
 namespace paddle {
 namespace operators {
