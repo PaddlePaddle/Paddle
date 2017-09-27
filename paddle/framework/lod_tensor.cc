@@ -88,20 +88,16 @@ size_t LoDTensor::NumElements(size_t level, size_t idx) const {
   return tmp[1].size() - 1;
 }
 
-void LoDTensor::SliceLevels(size_t level_begin, size_t level_end) {
+void LoDTensor::ShrinkLevels(size_t level_begin, size_t level_end) {
   auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
   lod_ = new_lod;
 }
 
-void LoDTensor::SliceInLevel(size_t level, size_t elem_begin, size_t elem_end) {
-  PADDLE_ENFORCE_LT(level, NumLevels(), "level [%d] out of range [%d]", level,
-                    NumLevels());
-  PADDLE_ENFORCE_LT(elem_begin, NumElements(level),
-                    "element begin [%d] out of range [%d]", elem_begin,
-                    NumElements(level));
-  PADDLE_ENFORCE_LT(elem_end, NumElements(level) + 1,
-                    "element end [%d] out of range [%d]", elem_end,
-                    NumElements(level));
+void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
+                              size_t elem_end) {
+  PADDLE_ENFORCE_LT(level, NumLevels());
+  PADDLE_ENFORCE_LT(elem_begin, NumElements(level));
+  PADDLE_ENFORCE_LT(elem_end, NumElements(level) + 1);
 
   auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
   lod_ = new_lod;
