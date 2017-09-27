@@ -4,8 +4,13 @@ import unittest
 
 class TestException(unittest.TestCase):
     def test_exception(self):
-        self.assertRaises(core.EnforceNotMet,
-                          lambda: core.__unittest_throw_exception__())
+        ex = None
+        try:
+            core.__unittest_throw_exception__()
+        except core.EnforceNotMet as ex:
+            self.assertIn("test exception", ex.message)
+
+        self.assertIsNotNone(ex)
 
 
 if __name__ == "__main__":
