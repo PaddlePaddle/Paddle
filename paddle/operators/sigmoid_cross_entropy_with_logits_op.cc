@@ -116,18 +116,18 @@ can be about politics, technology or sports at the same time or none of these.
 
 The logistic loss is given as follows:
 
-loss = -Labels * log(sigmoid(X)) - (1 - Labels) * log(1 - sigmoid(X))
+       loss = -Labels * log(sigmoid(X)) - (1 - Labels) * log(1 - sigmoid(X))
 
 We know that sigmoid(X) = (1 / (1 + exp(-X))). By substituting this we get
 
-loss = X - X * Labels + log(1 + exp(-X))
+       loss = X - X * Labels + log(1 + exp(-X))
 
 For stability and to prevent overflow of exp(-X) when X < 0,
 we can reformulate the loss as follows:
 
-loss = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
+       loss = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 
-Both the input `X` and `Label` can carry the LoD (Level of Details) information.
+Both the input `X` and `Labels` can carry the LoD (Level of Details) information.
 However the output only shares the LoD with input `X`.
 )DOC");
   }
