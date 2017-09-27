@@ -12,13 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <Python.h>
-#include <fstream>
-#include <vector>
+#include "paddle/pybind/protobuf.h"
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_registry.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -28,11 +25,6 @@ limitations under the License. */
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
@@ -172,8 +164,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
       .def(py::init<>())
-      .def("new_scope",
-           [](Scope &self) -> Scope * { return &self.NewScope(); },
+      .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids);
 
@@ -241,8 +232,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("infer_shape", &OperatorBase::InferShape)
       .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
+           [](OperatorBase &self, const Scope &scope,
               const platform::DeviceContext &dev_ctx) {
              self.Run(scope, dev_ctx);
              dev_ctx.Wait();
@@ -270,10 +260,8 @@ All parameter, weight, gradient are variables in Paddle.
                     retv->SetType("plain_net");
                     return retv;
                   })
-      .def("append_op",
-           [](operators::NetOp &self, const OperatorBase &op) {
-             self.AppendOp(op);
-           })
+      .def("append_op", [](operators::NetOp &self,
+                           const OperatorBase &op) { self.AppendOp(op); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
@@ -293,9 +281,10 @@ All parameter, weight, gradient are variables in Paddle.
             auto rnn_op = OpRegistry::CreateOp(desc);
             return static_cast<operators::RecurrentOp *>(rnn_op.release());
           })
-      .def("set_stepnet",
-           [](operators::RecurrentOp &self, const operators::NetOp &net)
-               -> void { self.set_stepnet(net.Clone()); });
+      .def("set_stepnet", [](operators::RecurrentOp &self,
+                             const operators::NetOp &net) -> void {
+        self.set_stepnet(net.Clone());
+      });
 
   // cond_op
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
@@ -322,6 +311,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);
+
+  BindProgramDesc(m);
+  BindBlockDesc(m);
+  BindVarDsec(m);
+  BindOpDesc(m);
 
   return m.ptr();
 }
