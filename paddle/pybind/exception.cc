@@ -12,28 +12,23 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/string/to_string.h"
-#include <gtest/gtest.h>
+#include "paddle/pybind/exception.h"
 
-constexpr char kOutputString[] = "User Defined Output";
-class UserDefinedClass {
- public:
-};
+namespace paddle {
+namespace pybind {
 
-std::ostream& operator<<(std::ostream& s, const UserDefinedClass& ins) {
-  s << kOutputString;
-  return s;
+void BindException(pybind11::module& m) {
+  static pybind11::exception<platform::EnforceNotMet> exc(m, "EnforceNotMet");
+  pybind11::register_exception_translator([](std::exception_ptr p) {
+    try {
+      if (p) std::rethrow_exception(p);
+    } catch (const platform::EnforceNotMet& e) {
+      exc(e.what());
+    }
+  });
+
+  m.def("__unittest_throw_exception__", [] { PADDLE_THROW("test exception"); });
 }
 
-TEST(to_string, normal) {
-  using namespace paddle::string;
-  ASSERT_EQ("10", to_string(10));
-  ASSERT_EQ("abc", to_string("abc"));
-  ASSERT_EQ("1.2", to_string(1.2));
-}
-
-TEST(to_string, user_defined) {
-  using namespace paddle::string;
-  UserDefinedClass instance;
-  ASSERT_EQ(kOutputString, to_string(instance));
-}
+}  // namespace pybind
+}  // namespace paddle
