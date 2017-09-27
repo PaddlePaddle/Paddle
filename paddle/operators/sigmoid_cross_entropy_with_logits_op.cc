@@ -93,9 +93,43 @@ class SigmoidCrossEntropyWithLogitsOpMaker
   SigmoidCrossEntropyWithLogitsOpMaker(framework::OpProto* proto,
                                        framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "");
-    AddInput("Labels", "");
-    AddOutput("Y", "");
+    AddInput("X",
+             "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "
+             "where N is the batch size and D is the number of classes. "
+             "This input is a tensor of logits computed by the previous "
+             " operator. Logits are unscaled log probabilities given as "
+             "log(p/(1-p)).");
+    AddInput("Labels",
+             "(Tensor, default Tensor<float>), a 2-D tensor of the same type "
+             "and shape as X. This input is a tensor of probabalistic labels "
+             "for each logit");
+    AddOutput("Y",
+              "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D "
+              " of elementwise logistic losses.");
+    AddComment(R"DOC(
+SigmoidCrossEntropyWithLogits Operator.
+
+This measures the elementwise probability error in discrete classification tasks
+in which each class is independent. This can be thought of as predicting labels
+for a data-point that are not mutually exclusive. For example, a news article
+can be about politics, technology or sports at the same time or none of these.
+
+The logistic loss is given as follows:
+
+loss = -Labels * log(sigmoid(X)) - (1 - Labels) * log(1 - sigmoid(X))
+
+We know that sigmoid(X) = (1 / (1 + exp(-X))). By substituting this we get
+
+loss = X - X * Labels + log(1 + exp(-X))
+
+For stability and to prevent overflow of exp(-X) when X < 0,
+we can reformulate the loss as follows:
+
+loss = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
+
+Both the input `X` and `Label` can carry the LoD (Level of Details) information.
+However the output only shares the LoD with input `X`.
+)DOC");
   }
 };
 
