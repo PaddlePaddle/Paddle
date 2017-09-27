@@ -37,10 +37,10 @@ class ClipOp : public framework::OperatorWithKernel {
 };
 
 template <typename AttrType>
-class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
+class ClipOpMaker : public framework::OpInfoMaker {
  public:
   ClipOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor)The input of clip op."
              "The number of dimensions must be between [1, 9].");

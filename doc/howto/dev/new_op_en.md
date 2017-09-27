@@ -41,17 +41,17 @@ Let's take matrix multiplication operator, [MulOp](https://github.com/PaddlePadd
 ## Implementing C++ Types
 
 
-### 1. Defining Class ProtoMaker
+### 1. Defining Class OpInfoMaker
 
 Matrix Multiplication can be written as $Out = X * Y$, meaning that the operation consists of two inputs and pne output.
 
-First, define `ProtoMaker` to describe the Operator's input, output, and additional comments:
+First, define `OpInfoMaker` to describe the Operator's input, output, and additional comments:
 
 ```cpp
-class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+class MulOpMaker : public framework::OpInfoMaker {
  public:
   MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "(Tensor), 2D tensor of size (M x K)");
     AddInput("Y", "(Tensor), 2D tensor of size (K x N)");
     AddOutput("Out", "(Tensor), 2D tensor of size (M x N)");
@@ -63,7 +63,7 @@ The equation is: Out = X * Y
 };
 ```
 
-[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)is inherited from`framework::OpProtoAndCheckerMaker`, consisting of 2 variables in the constructor：
+[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)is inherited from`framework:: OpInfoMaker`, consisting of 2 variables in the constructor：
 
    - `framework::OpProto` stores Operator input and variable attribute, used for generating Python API interfaces.
    - `framework::OpAttrChecker` is used to validate variable attributes.
@@ -77,10 +77,10 @@ An additional example [`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/de
 
 ```cpp
 template <typename AttrType>
-class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
+class ScaleOpMaker : public framework::OpInfoMaker {
  public:
   ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The input tensor of scale operator.").NotInGradient();
     AddOutput("Out", "The output tensor of scale operator.").NotInGradient();
     AddComment(R"DOC(Scale operator

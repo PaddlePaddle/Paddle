@@ -55,11 +55,11 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   }
 };
 
-class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
+class SquaredL2DistanceOpMaker : public framework::OpInfoMaker {
  public:
   SquaredL2DistanceOpMaker(framework::OpProto* proto,
                            framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of SquaredL2DistanceOp.");
     AddInput("Y", "Target of SquaredL2DistanceOp.");
     AddOutput("sub_result",

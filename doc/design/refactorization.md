@@ -168,8 +168,8 @@ Maintain a map, whose key is the type name and value is corresponding Op constru
 ---
 # Related Concepts
 
-### Op_Maker
-It's constructor takes `proto` and `checker`. They are compeleted during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
+### OpInfoMaker
+It's constructor takes `proto` and `checker`. They are compeleted during OpInforMaker's construction, and then fill to `OpInfo`. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
 
 ### Register Macros
 ```cpp

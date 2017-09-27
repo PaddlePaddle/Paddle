@@ -8,10 +8,10 @@ USE_OP(add);
 namespace paddle {
 namespace framework {
 
-class MutiInOutOpMaker : public OpProtoAndCheckerMaker {
+class MutiInOutOpMaker : public OpInfoMaker {
  public:
   MutiInOutOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("In1", "a single input");
     AddInput("In2_mult", "a multiple input").AsDuplicable();
     AddInput("In3", "another single input");
@@ -21,10 +21,10 @@ class MutiInOutOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class IOIgnoredOpMaker : public OpProtoAndCheckerMaker {
+class IOIgnoredOpMaker : public OpInfoMaker {
  public:
   IOIgnoredOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("In1", "a single input");
     AddInput("In2_mult", "a multiple input").AsDuplicable().NotInGradient();
     AddInput("In3_mult", "another multiple input").AsDuplicable();

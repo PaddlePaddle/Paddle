@@ -95,14 +95,15 @@ message OpDesc {
 
 ## OpProto Register
 
-Every Op has its own `OpProto`. For using convenience, we need to register them and record all their messages. For each `Op` class, we define a corresponding `OpMaker` class, in whose constructor we implement the `OpProto`'s building process. `OpMaker`'s constructor will be invoked by another function `OpRegistry::RegisterOp()`.
+Every Op has its own `OpProto`. For using convenience, we need to register them and record all their messages. For each `Op` class, we define a corresponding `OpInfoMaker` class, in whose constructor we implement the `OpProto`'s building process. `OpInfoMaker`'s constructor will be invoked by another function `OpRegistry::RegisterOp()`.
 
 ```cpp
-class OpProtoMaker {
+class OpInfoMaker {
 public:
-	OpProtoMaker(OpProto* proto): proto_(proto) {}
+	OpProtoMaker(OpProto* proto, OpAttrChecker* op_checker): proto_(proto), op_checker_(op_checker) {}
 protected:
 	OpProto* proto_;
+	OpAttrChecker* op_checker_;
 	void AddInput(const std::string& name, const std::string& desc) {...}
 	void AddAttr(const std::string& name, const std::string& desc, TypeId type) {...}
 	void AddComment(const std::string& comment) { ... }

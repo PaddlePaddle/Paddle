@@ -45,10 +45,10 @@ class TopkOp : public framework::OperatorWithKernel {
   }
 };
 
-class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
+class TopkOpMaker : public framework::OpInfoMaker {
  public:
   TopkOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The input of Topk op");
     AddOutput("Out", "The output tensor of Topk op");
     AddOutput("Indices", "The indices of Topk elements of input");

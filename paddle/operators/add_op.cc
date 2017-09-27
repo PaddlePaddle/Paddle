@@ -36,10 +36,10 @@ class AddOp : public framework::OperatorWithKernel {
   }
 };
 
-class AddOpMaker : public framework::OpProtoAndCheckerMaker {
+class AddOpMaker : public framework::OpInfoMaker {
  public:
   AddOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The first input of add op");
     AddInput("Y", "The second input of add op");
     AddOutput("Out", "The output of add op");

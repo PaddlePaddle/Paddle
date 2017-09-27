@@ -43,11 +43,11 @@ class RankLossOp : public framework::OperatorWithKernel {
   }
 };
 
-class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
+class RankLossOpMaker : public framework::OpInfoMaker {
  public:
   RankLossOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("Label",
              "The label indicating A ranked higher than B or not, row vector.");
     AddInput("Left", "The output of RankNet for doc A, vector.");

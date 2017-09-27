@@ -21,11 +21,11 @@ namespace operators {
 // The identity operator is an alias of the scale operator. This is also an
 // example for creating an alias for an existing operator.
 template <typename AttrType>
-class IdentityOpMaker : public framework::OpProtoAndCheckerMaker {
+class IdentityOpMaker : public framework::OpInfoMaker {
  public:
   IdentityOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The input tensor of identity operator.");
     AddOutput("Y", "The output tensor of identity operator.");
     AddComment(R"DOC(

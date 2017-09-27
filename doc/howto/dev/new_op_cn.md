@@ -43,17 +43,17 @@ Kernel实现       | CPU、GPU共享Kernel实现在`.h`文件中，否则，CPU 
 ## 实现C++类
 
 
-### 1. 定义ProtoMaker类
+### 1. 定义OpInfoMaker类
 
 矩阵乘法的公式：$Out = X * Y$, 可见该计算由两个输入，一个输出组成。
 
 首先定义`ProtoMaker`来描述该Op的输入、输出，并添加注释：
 
 ```cpp
-class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+class MulOpMaker : public framework::OpInfoMaker {
  public:
   MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "(Tensor), 2D tensor of size (M x K)");
     AddInput("Y", "(Tensor), 2D tensor of size (K x N)");
     AddOutput("Out", "(Tensor), 2D tensor of size (M x N)");
@@ -65,7 +65,7 @@ The equation is: Out = X * Y
 };
 ```
 
-[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)继承自`framework::OpProtoAndCheckerMaker`，构造函数含有2个参数：
+[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)继承自`framework::OpInfoMaker`，构造函数含有2个参数：
 
    - `framework::OpProto` ： 前者存储Op的输入输出和参数属性，将用于Python API接口的生成。
    - `framework::OpAttrChecker` ：后者用于检查参数属性的合法性。
@@ -79,10 +79,10 @@ The equation is: Out = X * Y
 
 ```cpp
 template <typename AttrType>
-class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
+class ScaleOpMaker : public framework:: OpInfoMaker {
  public:
   ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The input tensor of scale operator.").NotInGradient();
     AddOutput("Out", "The output tensor of scale operator.").NotInGradient();
     AddComment(R"DOC(Scale operator

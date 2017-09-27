@@ -31,10 +31,10 @@ class MeanOp : public framework::OperatorWithKernel {
   }
 };
 
-class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
+class MeanOpMaker : public framework::OpInfoMaker {
  public:
   MeanOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
     AddOutput("Out", "The output of mean op").NotInGradient();
     AddComment(R"DOC( Mean Operator

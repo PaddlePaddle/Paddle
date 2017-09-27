@@ -45,10 +45,10 @@ class MinusOp : public framework::OperatorWithKernel {
   }
 };
 
-class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
+class MinusOpMaker : public framework::OpInfoMaker {
  public:
   MinusOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The left tensor of minus operator.").NotInGradient();
     AddInput("Y", "The right tensor of minus operator.").NotInGradient();
     AddOutput("Out", "The output tensor of minus operator.").NotInGradient();

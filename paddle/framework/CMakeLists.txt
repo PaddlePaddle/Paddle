@@ -19,14 +19,14 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
-cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
-cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
+cc_library(op_info_maker SRCS op_info_maker.cc DEPS op_info)
+cc_test(op_info_maker_test SRCS op_info_maker_test.cc DEPS op_info_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
 cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS operator)
-cc_library(op_registry SRCS op_registry.cc DEPS grad_op_builder op_proto_maker op_info)
+cc_library(op_registry SRCS op_registry.cc DEPS grad_op_builder op_info_maker op_info)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 cc_test(grad_op_builder_test SRCS grad_op_builder_test.cc DEPS grad_op_builder op_registry add_op)
 

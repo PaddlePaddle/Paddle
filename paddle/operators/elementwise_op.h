@@ -42,11 +42,11 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   }
 };
 
-class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
+class ElementwiseOpMaker : public framework::OpInfoMaker {
  public:
   ElementwiseOpMaker(framework::OpProto* proto,
                      framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : framework::OpInfoMaker(proto, op_checker) {
     AddInput("X", R"DOC(
 The first input of elementwise op, it's a tensor of any dimensions.
 )DOC");

@@ -62,11 +62,11 @@ class ScatterGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
+class ScatterOpMaker : public framework::OpInfoMaker {
  public:
   ScatterOpMaker(framework::OpProto* proto,
                  framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("Ref", "The source input of scatter op");
     AddInput("Index",
              "The index input of scatter op where Ref will be updated");

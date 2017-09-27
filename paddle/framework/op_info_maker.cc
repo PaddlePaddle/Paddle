@@ -11,33 +11,33 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/op_proto_maker.h"
+#include "paddle/framework/op_info_maker.h"
 
 namespace paddle {
 namespace framework {
 
-void OpProtoAndCheckerMaker::Validate() {
+void OpInfoMaker::Validate() {
   validated_ = true;
   CheckNoDuplicatedInOutAttrs();
 }
 
-OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(
-    const std::string& name, const std::string& comment) {
+OpInfoMaker::VariableBuilder OpInfoMaker::AddInput(const std::string& name,
+                                                   const std::string& comment) {
   auto* input = proto_->add_inputs();
   input->set_name(name);
   input->set_comment(comment);
-  return OpProtoAndCheckerMaker::VariableBuilder{input};
+  return OpInfoMaker::VariableBuilder{input};
 }
 
-OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
+OpInfoMaker::VariableBuilder OpInfoMaker::AddOutput(
     const std::string& name, const std::string& comment) {
   auto* output = proto_->add_outputs();
   output->set_name(name);
   output->set_comment(comment);
-  return OpProtoAndCheckerMaker::VariableBuilder{output};
+  return OpInfoMaker::VariableBuilder{output};
 }
 
-void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
+void OpInfoMaker::CheckNoDuplicatedInOutAttrs() {
   std::unordered_set<std::string> names;
   auto checker = [&](const std::string& name) {
     PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);

@@ -53,10 +53,10 @@ class MulOp : public framework::OperatorWithKernel {
   }
 };
 
-class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+class MulOpMaker : public framework::OpInfoMaker {
  public:
   MulOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");
     AddOutput("Out", "The output of mul op");

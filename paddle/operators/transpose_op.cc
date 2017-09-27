@@ -54,11 +54,11 @@ class TransposeOp : public framework::OperatorWithKernel {
   }
 };
 
-class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
+class TransposeOpMaker : public framework::OpInfoMaker {
  public:
   TransposeOpMaker(framework::OpProto* proto,
                    framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput(
         "X",
         "(Tensor)The input tensor, tensors with rank at most 6 are supported");

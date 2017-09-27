@@ -17,12 +17,11 @@
 namespace paddle {
 namespace operators {
 
-class SoftmaxWithCrossEntropyOpMaker
-    : public framework::OpProtoAndCheckerMaker {
+class SoftmaxWithCrossEntropyOpMaker : public framework::OpInfoMaker {
  public:
   SoftmaxWithCrossEntropyOpMaker(framework::OpProto* proto,
                                  framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "
              "which is a 2-D tensor with shape [N x K]. N is the batch_size, "

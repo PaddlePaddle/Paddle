@@ -37,10 +37,10 @@ class SGDOp : public framework::OperatorWithKernel {
   }
 };
 
-class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
+class SGDOpMaker : public framework::OpInfoMaker {
  public:
   SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
     AddOutput("param_out", "output parameter");

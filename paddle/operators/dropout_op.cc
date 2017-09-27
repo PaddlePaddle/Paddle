@@ -39,11 +39,11 @@ class DropoutOp : public framework::OperatorWithKernel {
 };
 
 template <typename AttrType>
-class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
+class DropoutOpMaker : public framework::OpInfoMaker {
  public:
   DropoutOpMaker(framework::OpProto* proto,
                  framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddAttr<AttrType>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f);
     AddAttr<bool>("is_training", "Whether in training phase.").SetDefault(true);

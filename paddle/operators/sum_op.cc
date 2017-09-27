@@ -39,10 +39,10 @@ class SumOp : public framework::OperatorWithKernel {
   }
 };
 
-class SumOpMaker : public framework::OpProtoAndCheckerMaker {
+class SumOpMaker : public framework::OpInfoMaker {
  public:
   SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "the input tensors of sum operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of sum operator.");
     AddComment(R"DOC(

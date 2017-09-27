@@ -47,10 +47,10 @@ class PadOp : public framework::OperatorWithKernel {
   }
 };
 
-class PadOpMaker : public framework::OpProtoAndCheckerMaker {
+class PadOpMaker : public framework::OpInfoMaker {
  public:
   PadOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "
              "The input should be a k-D tensor(k > 0 and k < 7)");

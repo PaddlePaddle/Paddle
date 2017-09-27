@@ -51,10 +51,10 @@ class ConcatOp : public framework::OperatorWithKernel {
   }
 };
 
-class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
+class ConcatOpMaker : public framework::OpInfoMaker {
  public:
   ConcatOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "the input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of concat operator.");
     AddComment(R"DOC(

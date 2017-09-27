@@ -59,11 +59,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReshapeOpMaker : public framework::OpInfoMaker {
  public:
   ReshapeOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
     AddOutput("Out", "The output tensor of reshape operator.");
     AddAttr<std::vector<int>>("shape", "Target shape of reshape operator.");

@@ -48,11 +48,11 @@ class LstmUnitOp : public framework::OperatorWithKernel {
 };
 
 template <typename AttrType>
-class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
+class LstmUnitOpMaker : public framework::OpInfoMaker {
  public:
   LstmUnitOpMaker(framework::OpProto* proto,
                   framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "FC input before the non-linear activation.");
     AddInput(
         "C_prev",

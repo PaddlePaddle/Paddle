@@ -64,11 +64,11 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   }
 };
 
-class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
+class UniformRandomOpMaker : public framework::OpInfoMaker {
  public:
   UniformRandomOpMaker(framework::OpProto* proto,
                        framework::OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+      : framework::OpInfoMaker(proto, op_checker) {
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(Uniform random operator.
 Used to initialize tensor with uniform random generator.

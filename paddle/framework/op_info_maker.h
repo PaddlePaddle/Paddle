@@ -19,13 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// this class not only make proto but also init attribute checkers.
-class OpProtoAndCheckerMaker {
+// This class provides some helper function to fill `OpInfo`(see op_info.h).
+// Users can invoke `AddInput`, `AddOutput`, `AddComment`, `AddAttr` in
+// constructor to fill `OpInfo` struct.
+class OpInfoMaker {
  public:
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+  OpInfoMaker(OpProto* proto, OpAttrChecker* op_checker)
       : proto_(proto), op_checker_(op_checker) {}
 
-  virtual ~OpProtoAndCheckerMaker() {
+  virtual ~OpInfoMaker() {
     PADDLE_ENFORCE(validated_, "should call Validate after build");
   }
 
@@ -78,10 +80,10 @@ class OpProtoAndCheckerMaker {
   bool validated_{false};
 };
 
-class NOPMaker : public OpProtoAndCheckerMaker {
+class NOPMaker : public OpInfoMaker {
  public:
   NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
+      : OpInfoMaker(proto, op_checker) {}
 };
 
 }  // namespace framework

@@ -115,10 +115,10 @@ class FCOp : public NetOp {
   }
 };
 
-class FCOpMaker : public framework::OpProtoAndCheckerMaker {
+class FCOpMaker : public framework::OpInfoMaker {
  public:
   FCOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X",
              "(A vector of Tensors) each input Tensor can be of arbitrary "
              "dimension, and will be reshaped to a 2-D matrix of size "

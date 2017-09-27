@@ -140,12 +140,11 @@ RecurrentOp::RecurrentOp(const std::string& type,
   alg_.Init(&arg_, &stepnet_);
 }
 
-class RecurrentAlgorithmProtoAndCheckerMaker
-    : public framework::OpProtoAndCheckerMaker {
+class RecurrentAlgorithmProtoAndCheckerMaker : public framework::OpInfoMaker {
  public:
   RecurrentAlgorithmProtoAndCheckerMaker(framework::OpProto* proto,
                                          framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     const auto& name = RecurrentOp::kArgName;
     // inputs and outputs stored in proto
     AddInput(name.inlinks,

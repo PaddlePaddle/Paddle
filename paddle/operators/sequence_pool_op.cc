@@ -31,11 +31,11 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   }
 };
 
-class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
+class SequencePoolOpMaker : public framework::OpInfoMaker {
  public:
   SequencePoolOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X",
              "A float LoDTensor, the variable-length input of SequencePoolOp");
     AddOutput(

@@ -22,16 +22,16 @@ namespace paddle {
 namespace framework {
 
 using OperatorBase = framework::OperatorBase;
-using OpProtoAndCheckerMaker = framework::OpProtoAndCheckerMaker;
+using OpProtoAndCheckerMaker = framework::OpInfoMaker;
 using OpProto = framework::OpProto;
 using OpAttrChecker = framework::OpAttrChecker;
 using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
 
-class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
+class RowWiseAddOpMaker : public OpInfoMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input X of Add").NotInGradient();
     AddInput("b", "Bias of Add").NotInGradient();
     AddOutput("Out", "Out of Add").NotInGradient();
@@ -39,10 +39,10 @@ class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class MulOpMaker : public OpProtoAndCheckerMaker {
+class MulOpMaker : public OpInfoMaker {
  public:
   MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "A");
     AddInput("Y", "B");
     AddOutput("Out", "Out");
@@ -50,20 +50,20 @@ class MulOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class SigmoidOpMaker : public OpProtoAndCheckerMaker {
+class SigmoidOpMaker : public OpInfoMaker {
  public:
   SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "X");
     AddOutput("Out", "Y");
     AddComment("Sigmoid");
   }
 };
 
-class NoGradOpMaker : public OpProtoAndCheckerMaker {
+class NoGradOpMaker : public OpInfoMaker {
  public:
   NoGradOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "X input");
     AddOutput("Out", "Y output");
     AddComment("NoGradOp, same input output. no Grad");
@@ -98,10 +98,10 @@ class FcOp : public operators::NetOp {
   }
 };
 
-class FcOpMaker : public OpProtoAndCheckerMaker {
+class FcOpMaker : public OpInfoMaker {
  public:
   FcOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "x");
     AddInput("W", "w");
     AddInput("b", "b");
@@ -112,10 +112,10 @@ class FcOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class ManyOutputOpMaker : public OpProtoAndCheckerMaker {
+class ManyOutputOpMaker : public OpInfoMaker {
  public:
   ManyOutputOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("x", "x");
     AddOutput("y", "y");
     AddOutput("z", "z");
@@ -123,20 +123,20 @@ class ManyOutputOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class FillZeroOpMaker : public OpProtoAndCheckerMaker {
+class FillZeroOpMaker : public OpInfoMaker {
  public:
   FillZeroOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "x");
     AddOutput("Y", "out");
     AddComment("");
   }
 };
 
-class AddOpMaker : public OpProtoAndCheckerMaker {
+class AddOpMaker : public OpInfoMaker {
  public:
   AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "x").AsDuplicable();
     AddOutput("Out", "out");
     AddComment("");

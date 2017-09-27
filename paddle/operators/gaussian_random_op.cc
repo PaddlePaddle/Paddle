@@ -58,11 +58,11 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   }
 };
 
-class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
+class GaussianRandomOpMaker : public framework::OpInfoMaker {
  public:
   GaussianRandomOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+      : framework::OpInfoMaker(proto, op_checker) {
     AddOutput("Out", "output matrix of random op");
     AddComment(R"DOC(
 GaussianRandom operator.

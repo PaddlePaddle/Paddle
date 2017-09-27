@@ -42,11 +42,11 @@ class AccuracyOp : public framework::OperatorWithKernel {
   }
 };
 
-class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
+class AccuracyOpMaker : public framework::OpInfoMaker {
  public:
   AccuracyOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     // TODO(typhoonzero): support both inference value and indices.
     AddInput("Inference", "topk(indices) the network output");
     AddInput("Label", "Label of the training data");

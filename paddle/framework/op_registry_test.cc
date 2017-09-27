@@ -13,10 +13,10 @@ class CosineOp : public OperatorBase {
   void InferShape(const Scope& scope) const override {}
 };
 
-class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+class CosineOpProtoAndCheckerMaker : public OpInfoMaker {
  public:
   CosineOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("input", "input of cosine op");
     AddOutput("output", "output of cosine op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -34,10 +34,10 @@ class MyTestOp : public OperatorBase {
            const platform::DeviceContext& dev_ctx) const override {}
 };
 
-class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+class MyTestOpProtoAndCheckerMaker : public OpInfoMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("input", "input of cosine op").AsDuplicable();
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {

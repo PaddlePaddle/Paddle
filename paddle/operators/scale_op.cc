@@ -37,10 +37,10 @@ class ScaleOp : public framework::OperatorWithKernel {
 };
 
 template <typename AttrType>
-class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
+class ScaleOpMaker : public framework::OpInfoMaker {
  public:
   ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The input tensor of scale operator.").NotInGradient();
     AddOutput("Out", "The output tensor of scale operator.").NotInGradient();
     AddComment(R"DOC(Scale operator

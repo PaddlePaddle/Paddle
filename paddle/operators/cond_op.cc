@@ -200,11 +200,11 @@ void CondOp::Run(const Scope& scope,
   }
 }
 
-class CondOpProtoAndCheckerMaker : public framework::OpProtoAndCheckerMaker {
+class CondOpProtoAndCheckerMaker : public framework::OpInfoMaker {
  public:
   CondOpProtoAndCheckerMaker(framework::OpProto* proto,
                              framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("Cond", "The condition, which is a bool vector");
     AddInput("Xs", "Inputs of Subnets").AsDuplicable();
     AddOutput("Outs", "Outputs of Cond_Op after merge").AsDuplicable();

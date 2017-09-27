@@ -61,10 +61,10 @@ class Conv2DOp : public framework::OperatorWithKernel {
   }
 };
 
-class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
+class Conv2DOpMaker : public framework::OpInfoMaker {
  public:
   Conv2DOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput(
         "Input",
         "The input tensor of convolution operator. "

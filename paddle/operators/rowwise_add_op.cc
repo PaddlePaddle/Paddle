@@ -50,11 +50,11 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
   }
 };
 
-class RowwiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
+class RowwiseAddOpMaker : public framework::OpInfoMaker {
  public:
   RowwiseAddOpMaker(framework::OpProto* proto,
                     framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
     AddInput("b", "The right input of row-wise add op, must be vector");
     AddOutput("Out", "The output of row-wise add op");

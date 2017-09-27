@@ -52,11 +52,11 @@ class MultiplexOp : public framework::OperatorWithKernel {
   }
 };
 
-class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
+class MultiplexOpMaker : public framework::OpInfoMaker {
  public:
   MultiplexOpMaker(framework::OpProto* proto,
                    framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("Ids", "The index tensor of multiplex operator.");
     AddInput("X", "The candidate tensors of multiplex operator.")
         .AsDuplicable();

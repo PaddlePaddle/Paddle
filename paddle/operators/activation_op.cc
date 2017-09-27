@@ -38,41 +38,41 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+class SigmoidOpMaker : public framework::OpInfoMaker {
  public:
   SigmoidOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Sigmoid operator");
     AddOutput("Y", "Output of Sigmoid operator");
     AddComment("Sigmoid activation operator, sigmoid = 1 / (1 + exp(-x))");
   }
 };
 
-class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
+class ExpOpMaker : public framework::OpInfoMaker {
  public:
   ExpOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Exp operator");
     AddOutput("Y", "Output of Exp operator");
     AddComment("Exp activation operator, exp(x) = e^x");
   }
 };
 
-class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReluOpMaker : public framework::OpInfoMaker {
  public:
   ReluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Relu operator");
     AddOutput("Y", "Output of Relu operator");
     AddComment("Relu activation operator, relu(x) = max(x, 0)");
   }
 };
 
-class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
+class TanhOpMaker : public framework::OpInfoMaker {
  public:
   TanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Tanh operator");
     AddOutput("Y", "Output of Tanh operator");
     AddComment(
@@ -81,51 +81,51 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
+class SqrtOpMaker : public framework::OpInfoMaker {
  public:
   SqrtOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Sqrt operator");
     AddOutput("Y", "Output of Sqrt operator");
     AddComment("Sqrt activation operator, sqrt(x) = x^(1/2)");
   }
 };
 
-class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
+class AbsOpMaker : public framework::OpInfoMaker {
  public:
   AbsOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Abs operator");
     AddOutput("Y", "Output of Abs operator");
     AddComment("Abs activation operator, abs(x) = |x|");
   }
 };
 
-class ReciprocalOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReciprocalOpMaker : public framework::OpInfoMaker {
  public:
   ReciprocalOpMaker(framework::OpProto *proto,
                     framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Reciprocal operator");
     AddOutput("Y", "Output of Reciprocal operator");
     AddComment("Reciprocal activation operator, reciprocal(x) = 1 / x");
   }
 };
 
-class LogOpMaker : public framework::OpProtoAndCheckerMaker {
+class LogOpMaker : public framework::OpInfoMaker {
  public:
   LogOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Log operator");
     AddOutput("Y", "Output of Log operator");
     AddComment("Log activation operator, log(x) = natural logarithm of x");
   }
 };
 
-class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
+class SquareOpMaker : public framework::OpInfoMaker {
  public:
   SquareOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Square operator");
     AddOutput("Y", "Output of Square operator");
     AddComment("Square activation operator, square(x) = x^2");
@@ -133,10 +133,10 @@ class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
-class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
+class BReluOpMaker : public framework::OpInfoMaker {
  public:
   BReluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of BRelu operator");
     AddOutput("Y", "Output of BRelu operator");
     AddComment("BRelu activation operator, brelu = max(min(x, t_min), t_max)");
@@ -148,11 +148,11 @@ class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
-class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
+class SoftReluOpMaker : public framework::OpInfoMaker {
  public:
   SoftReluOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of SoftRelu operator");
     AddOutput("Y", "Output of SoftRelu operator");
     AddComment(
@@ -164,10 +164,10 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
-class PowOpMaker : public framework::OpProtoAndCheckerMaker {
+class PowOpMaker : public framework::OpInfoMaker {
  public:
   PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of Pow operator");
     AddOutput("Y", "Output of Pow operator");
     AddComment("Pow activation operator, pow(x, factor) = x^factor");
@@ -177,10 +177,10 @@ class PowOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
-class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
+class STanhOpMaker : public framework::OpInfoMaker {
  public:
   STanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X", "Input of STanh operator");
     AddOutput("Y", "Output of STanh operator");
     AddComment("STanh activation operator, stanh = b * tanh(a * x)");

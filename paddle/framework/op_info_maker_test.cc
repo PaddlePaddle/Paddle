@@ -12,15 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/op_proto_maker.h"
+#include "paddle/framework/op_info_maker.h"
 
 #include "gtest/gtest.h"
 
-class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
+class TestAttrProtoMaker : public paddle::framework::OpInfoMaker {
  public:
   TestAttrProtoMaker(paddle::framework::OpProto* proto,
                      paddle::framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddAttr<float>("scale", "scale of test op");
     AddAttr<float>("scale", "scale of test op");
   }
@@ -33,11 +33,11 @@ TEST(ProtoMaker, DuplicatedAttr) {
   ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
 }
 
-class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
+class TestInOutProtoMaker : public paddle::framework::OpInfoMaker {
  public:
   TestInOutProtoMaker(paddle::framework::OpProto* proto,
                       paddle::framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("input", "input of test op");
     AddInput("input", "input of test op");
   }

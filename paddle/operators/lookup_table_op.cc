@@ -38,11 +38,11 @@ class LookupTableOp : public framework::OperatorWithKernel {
   }
 };
 
-class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
+class LookupTableOpMaker : public framework::OpInfoMaker {
  public:
   LookupTableOpMaker(framework::OpProto* proto,
                      framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("W",
              "An input represents embedding tensors,"
              " which is a learnable parameter.");

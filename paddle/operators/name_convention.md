@@ -4,7 +4,7 @@ To make the operator document itself more clear, we recommend operator names obe
 
 ### OpProtoMaker names
 
-When defining an operator in Paddle, a corresponding [OpProtoMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L170) (TODO: OpProtoMaker Doc)need to be defined. All the Input/Output and Attributes will write into the [OpProto](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L61) , and will be used in client language to create operator. 
+When defining an operator in Paddle, a corresponding [OpInfoMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L170) (TODO: OpProtoMaker Doc)need to be defined. All the Input/Output and Attributes will write into the [OpProto](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L61) , and will be used in client language to create operator. 
 
 - Input/Output.
   - Input/Output names follow the **CamelCase**. e.g. `X`, `Y`, `Matrix`, `LastAxisInMatrix`. Input/Output much more like Variables, we prefer to meaningful English words. 
@@ -33,11 +33,11 @@ Here we give some examples to show how these rules will be used.
   We give a full example of Accumulator Operator.
 
 ```c++
-class AccumulateOpMaker : public framework::OpProtoAndCheckerMaker {
+class AccumulateOpMaker : public framework::OpInfoMaker {
 public:
   AccumulateOpMaker(framework::OpProto *proto,
                             framework::OpAttrChecker *op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+    : OpInfoMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor that has to be accumulated to the output tensor. 
     If the output size is not the same as input size, 
     the output tensor is first reshaped and initialized to zero, and only then, accumulation is done.");

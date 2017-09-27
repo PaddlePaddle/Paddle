@@ -48,11 +48,11 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
 };
 
 template <typename AttrType>
-class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
+class SmoothL1LossOpMaker : public framework::OpInfoMaker {
  public:
   SmoothL1LossOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+      : OpInfoMaker(proto, op_checker) {
     AddInput("X",
              "The input tensor of smooth l1 loss op."
              "The rank should be greater or equal to 2 with shape "
