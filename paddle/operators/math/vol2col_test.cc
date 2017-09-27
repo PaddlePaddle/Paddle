@@ -1,0 +1,156 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include "paddle/operators/math/vol2col.h"
+#include <gtest/gtest.h>
+#include <iostream>
+
+template <typename Place>
+void testVol2col() {
+  paddle::framework::Tensor input_tmp;
+  paddle::framework::Tensor input;
+  paddle::framework::Tensor output_cfo;
+  paddle::framework::Tensor output_ocf;
+  paddle::framework::Tensor output_tmp;
+
+  auto* place = new Place();
+  paddle::platform::DeviceContext* context;
+  if (paddle::platform::is_cpu_place(*place)) {
+    context =
+        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
+  } else {
+#ifndef PADDLE_ONLY_CPU
+    context =
+        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
+#else
+    PADDLE_THROW("no GPU support");
+#endif  // PADDLE_ONLY_CPU
+  }
+
+  /**
+   * input = [[0, 1, 2,
+   *          3, 4, 5]
+   *          [6, 7, 8,
+   *          9, 10, 11]]
+   *
+   * output_cfo = [0, 1
+   *               1, 2
+   *               3, 4
+   *               4, 5
+   *               6, 7
+   *               7, 8
+   *               9, 10
+   *               10, 11]
+   *
+   * col2vol = [[0, 2, 2,
+   *             3, 8, 5]
+   *            [6, 14, 8,
+   *             9, 20, 11]]
+   *
+   */
+  int input_depth = 2;
+  int input_height = 2;
+  int input_width = 3;
+  int filter_size = 2;
+  int stride = 1;
+  int padding = 0;
+  int output_depth = (input_depth - filter_size + 2 * padding) / stride + 1;
+  int output_height = (input_height - filter_size + 2 * padding) / stride + 1;
+  int output_width = (input_width - filter_size + 2 * padding) / stride + 1;
+
+  // Vol2Col test
+  float* input_ptr =
+      input_tmp.mutable_data<float>({1, input_depth, input_height, input_width},
+                                    paddle::platform::CPUPlace());
+  float arr[12] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+  memcpy(input_ptr, arr, 12 * sizeof(float));
+
+  if (paddle::platform::is_cpu_place(*place)) {
+    input = input_tmp;
+  } else {
+    input.CopyFrom<float>(input_tmp, *place);
+  }
+  output_cfo.mutable_data<float>({1, filter_size, filter_size, filter_size,
+                                  output_depth, output_height, output_width},
+                                 *place);
+
+  paddle::operators::math::Vol2ColFunctor<Place, float> vol2col;
+  vol2col(*context, input, output_cfo, stride, stride, stride, padding, padding,
+          padding);
+
+  float* out_cfo_ptr;
+  if (paddle::platform::is_cpu_place(*place)) {
+    out_cfo_ptr = output_cfo.data<float>();
+  } else {
+    output_tmp.CopyFrom<float>(output_cfo, paddle::platform::CPUPlace());
+    out_cfo_ptr = output_tmp.data<float>();
+  }
+
+  EXPECT_EQ(out_cfo_ptr[0], 0);
+  EXPECT_EQ(out_cfo_ptr[1], 1);
+  EXPECT_EQ(out_cfo_ptr[2], 1);
+  EXPECT_EQ(out_cfo_ptr[3], 2);
+  EXPECT_EQ(out_cfo_ptr[4], 3);
+  EXPECT_EQ(out_cfo_ptr[5], 4);
+  EXPECT_EQ(out_cfo_ptr[6], 4);
+  EXPECT_EQ(out_cfo_ptr[7], 5);
+  EXPECT_EQ(out_cfo_ptr[8], 6);
+  EXPECT_EQ(out_cfo_ptr[9], 7);
+  EXPECT_EQ(out_cfo_ptr[10], 7);
+  EXPECT_EQ(out_cfo_ptr[11], 8);
+  EXPECT_EQ(out_cfo_ptr[12], 9);
+  EXPECT_EQ(out_cfo_ptr[13], 10);
+  EXPECT_EQ(out_cfo_ptr[14], 10);
+  EXPECT_EQ(out_cfo_ptr[15], 11);
+
+  // Col2Vol test
+  memset(input_ptr, 0, 12 * sizeof(float));
+  if (paddle::platform::is_cpu_place(*place)) {
+    input = input_tmp;
+  } else {
+    input.CopyFrom<float>(input_tmp, *place);
+  }
+
+  paddle::operators::math::Col2VolFunctor<Place, float> col2vol;
+  col2vol(*context, input, output_cfo, stride, stride, stride, padding, padding,
+          padding);
+
+  float* in_cfo_ptr;
+  if (paddle::platform::is_cpu_place(*place)) {
+    in_cfo_ptr = input.data<float>();
+  } else {
+    input_tmp.CopyFrom<float>(input, paddle::platform::CPUPlace());
+    in_cfo_ptr = input_tmp.data<float>();
+  }
+
+  EXPECT_EQ(in_cfo_ptr[0], 0);
+  EXPECT_EQ(in_cfo_ptr[1], 2);
+  EXPECT_EQ(in_cfo_ptr[2], 2);
+  EXPECT_EQ(in_cfo_ptr[3], 3);
+  EXPECT_EQ(in_cfo_ptr[4], 8);
+  EXPECT_EQ(in_cfo_ptr[5], 5);
+  EXPECT_EQ(in_cfo_ptr[6], 6);
+  EXPECT_EQ(in_cfo_ptr[7], 14);
+  EXPECT_EQ(in_cfo_ptr[8], 8);
+  EXPECT_EQ(in_cfo_ptr[9], 9);
+  EXPECT_EQ(in_cfo_ptr[10], 20);
+  EXPECT_EQ(in_cfo_ptr[11], 11);
+}
+
+TEST(math, vol2col) {
+  testVol2col<paddle::platform::CPUPlace>();
+#ifndef PADDLE_ONLY_CPU
+  testVol2col<paddle::platform::GPUPlace>();
+#endif
+}
