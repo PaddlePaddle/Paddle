@@ -268,8 +268,6 @@ class OpTest(unittest.TestCase):
                 output_names,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
-        print inputs_to_check
-        print numeric_grads
         grad_names = [
             grad_var_name(input_to_check) for input_to_check in inputs_to_check
         ]
@@ -280,8 +278,6 @@ class OpTest(unittest.TestCase):
                          grad_name, cpu_place, no_grad_set)
             for grad_name in grad_names
         ]
-        print grad_names
-        print cpu_analytic_grads
 
         self.__assert_is_close(numeric_grads, cpu_analytic_grads, grad_names,
                                max_relative_error,
