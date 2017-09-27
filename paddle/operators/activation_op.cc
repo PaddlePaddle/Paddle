@@ -22,10 +22,9 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<framework::Tensor>("Y")->Resize(
-        ctx.Input<framework::Tensor>("X")->dims());
-    ctx.ShareLoD("X", /*->*/ "Y");
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Y");
   }
 };
 
@@ -34,9 +33,8 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    ctx.Output<framework::Tensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<framework::Tensor>("Y")->dims());
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Y"));
   }
 };
 

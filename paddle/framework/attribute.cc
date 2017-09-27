@@ -28,47 +28,6 @@ ProgramDesc& GetProgramDesc() {
   return *g_program_desc;
 }
 
-template <>
-AttrType AttrTypeID<bool>() {
-  return BOOLEAN;
-}
-template <>
-AttrType AttrTypeID<int>() {
-  return INT;
-}
-template <>
-AttrType AttrTypeID<float>() {
-  return FLOAT;
-}
-template <>
-AttrType AttrTypeID<std::string>() {
-  return STRING;
-}
-template <>
-AttrType AttrTypeID<std::vector<bool>>() {
-  return BOOLEANS;
-}
-template <>
-AttrType AttrTypeID<std::vector<int>>() {
-  return INTS;
-}
-template <>
-AttrType AttrTypeID<std::vector<float>>() {
-  return FLOATS;
-}
-template <>
-AttrType AttrTypeID<std::vector<std::string>>() {
-  return STRINGS;
-}
-template <>
-AttrType AttrTypeID<std::vector<std::pair<int, int>>>() {
-  return INT_PAIRS;
-}
-template <>
-AttrType AttrTypeID<BlockDesc>() {
-  return BLOCK;
-}
-
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
     case framework::AttrType::BOOLEAN: {
@@ -108,14 +67,6 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
       std::vector<std::string> val(attr_desc.strings_size());
       for (int i = 0; i < attr_desc.strings_size(); ++i) {
         val[i] = attr_desc.strings(i);
-      }
-      return val;
-    }
-    case framework::AttrType::INT_PAIRS: {
-      std::vector<std::pair<int, int>> val(attr_desc.int_pairs_size());
-      for (int i = 0; i < attr_desc.int_pairs_size(); ++i) {
-        val[i].first = attr_desc.int_pairs(i).first();
-        val[i].second = attr_desc.int_pairs(i).second();
       }
       return val;
     }

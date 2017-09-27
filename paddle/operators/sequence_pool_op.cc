@@ -22,23 +22,12 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("Out"),
-        "Output(Out) of SequencePoolOp should not be null.");
-
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto dims = x->dims();
-    auto lod = x->lod();
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_GE(
-        dims[0],
-        /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-        "The first dimension of Input(X) must be larger than batch size.");
-    dims[0] = lod[0].size() - 1;
-    ctx.Output<framework::LoDTensor>("Out")->Resize({dims});
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of SequencePoolOp should not be null.");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 };
 
@@ -61,17 +50,17 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     SequencePoolOp pools features of all time-steps of each instance.
 
     For a mini-batch of 3 variable lengths sentences, containing 2, 3, and 2 time-steps:
-    
+
     Assume X is a [7,M,N] float LoDTensor, and X->lod()[0] = [0, 2, 5, 7].
-    Besides, for the sake of simplicity, we assume M=1 and N=1, 
+    Besides, for the sake of simplicity, we assume M=1 and N=1,
     and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
     Thus, Out is a [3,1,1] float LoDTensor, but Out->lod() is nullptr.
-    And for different strategy, the value of Out is as follows: 
+    And for different strategy, the value of Out is as follows:
 
     - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
     - SUM: [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
-    - SQRT: [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2), 
+    - SQRT: [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
            6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
     - MAX: [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
     - LAST: [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
@@ -85,22 +74,18 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Gradient of Out should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "The input X should not be null.");
-    auto og_dims =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->dims();
-    auto x_dims = ctx.Input<framework::LoDTensor>("X")->dims();
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Gradient of Out should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
                       "The rank of output grad must equal to Input(X).");
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    x_grad->Resize(x_dims);
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
 };
 

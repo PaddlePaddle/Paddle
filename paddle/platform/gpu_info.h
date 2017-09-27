@@ -36,7 +36,7 @@ int GetCurrentDeviceId();
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
-//！Get the memory usage of current GPU device.
+//! Get the memory usage of current GPU device.
 void GpuMemoryUsage(size_t &available, size_t &total);
 
 //! Get the maximum allocation size of current GPU device.
