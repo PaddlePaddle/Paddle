@@ -90,6 +90,9 @@ func (e *EtcdClient) Register(port int) (int, error) {
 		sess, err := concurrency.NewSession(cli, concurrency.WithTTL(e.ttlSec))
 		if err != nil {
 			log.Errorf("create etcd session error: %v", err)
+			if cerr := e.client.Close(); cerr != nil {
+				log.Errorf("close etcd client error: %v", cerr)
+			}
 			time.Sleep(retryTimeout)
 			continue
 		}
