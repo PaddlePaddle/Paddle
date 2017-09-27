@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
@@ -55,6 +56,9 @@ inline std::string GradVarName(const std::string& var_name) {
 class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
+
+extern const Tensor* GetTensorFromVar(const Variable* var);
+extern Tensor* GetTensorFromVar(Variable* var);
 
 /**
  * OperatorBase has the basic element that Net will call to do computation.
@@ -262,15 +266,6 @@ class InferShapeContext {
     return res;
   }
 
-  const Tensor* GetTensorFromVar(const Variable* var) const {
-    if (var->IsType<LoDTensor>()) {
-      return &var->Get<LoDTensor>();
-    }
-    PADDLE_ENFORCE(var->IsType<Tensor>(),
-                   "The Input(%s) must be LoDTensor or Tensor.");
-    return &var->Get<Tensor>();
-  }
-
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const {
     PADDLE_ENFORCE_LT(i, InputSize(in));
@@ -340,6 +335,78 @@ class ExecutionContext : public InferShapeContext {
   const platform::DeviceContext& device_context_;
 };
 
+class RuntimeInferShapeContext : public InferShapeContextBase {
+ public:
+  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
+
+  bool HasInput(const std::string& name) const {
+    auto ipt = op_.Input(name);
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  bool HasOutput(const std::string& name) const {
+    auto ipt = op_.Output(name);
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  DDim GetInputDim(const std::string& name) const {
+    return GetDim(op_.Input(name));
+  }
+
+  void SetInputDim(const std::string& name, const DDim& dim) {
+    SetDim(op_.Input(name), dim);
+  }
+
+  DDim GetOutputDim(const std::string& name) const {
+    return GetDim(op_.Output(name));
+  }
+
+  void SetOutputDim(const std::string& name, const DDim& dim) {
+    SetDim(op_.Output(name), dim);
+  }
+
+  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
+
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
+ private:
+  template <bool Allocate>
+  Tensor* GetTensor(const std::string& name) const {
+    Tensor* t = nullptr;
+    auto* var = scope_.FindVar(name);
+    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
+      if (Allocate) {
+        t = var->GetMutable<LoDTensor>();
+      } else {
+        PADDLE_THROW("Variable(%s) should be tensor", name);
+      }
+    } else {
+      t = GetTensorFromVar(scope_.FindVar(name));
+    }
+    return t;
+  }
+
+  DDim GetDim(const std::string& name) const {
+    return GetTensor<false>(name)->dims();
+  }
+
+  void SetDim(const std::string& name, const DDim& dim) {
+    GetTensor<true>(name)->Resize(dim);
+  }
+
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
+
 class OpKernel {
  public:
   /**
@@ -383,8 +450,10 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
+  // runtime infershape
   void InferShape(const Scope& scope) const override {
-    InferShape(InferShapeContext(*this, scope));
+    auto c = RuntimeInferShapeContext(*this, scope);
+    InferShape(&c);
   }
 
   void Run(const Scope& scope,
@@ -406,7 +475,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual void InferShape(const InferShapeContext& ctx) const = 0;
+  virtual void InferShape(InferShapeContextBase* ctx) const = 0;
 };
 
 }  // namespace framework

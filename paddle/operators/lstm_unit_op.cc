@@ -22,37 +22,36 @@ class LstmUnitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of LSTM should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("C_prev"),
-                            "Input(C_prev) of LSTM should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("C"),
-                            "Output(C) of LSTM should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("H"),
-                            "Output(H) of LSTM should not be null.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("C_prev"),
+                   "Input(C_prev) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("C"),
+                   "Output(C) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("H"),
+                   "Output(H) of LSTM should not be null.");
 
-    auto *x = ctx.Input<framework::Tensor>("X");
-    auto *c_prev = ctx.Input<framework::Tensor>("C_prev");
+    auto x_dims = ctx->GetInputDim("X");
+    auto c_prev_dims = ctx->GetInputDim("C_prev");
 
-    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "Input(X)'s rank must be 2.");
-    PADDLE_ENFORCE(x->dims()[0] == c_prev->dims()[0],
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
+    PADDLE_ENFORCE(x_dims[0] == c_prev_dims[0],
                    "Batch size of inputs and states must be equal");
-    PADDLE_ENFORCE(x->dims()[1] == c_prev->dims()[1] * 4,
+    PADDLE_ENFORCE(x_dims[1] == c_prev_dims[1] * 4,
                    "Dimension of FC should equal to prev state * 4");
 
-    int b_size = c_prev->dims()[0];  // batch size
-    int s_dim = c_prev->dims()[1];   // state dim
-    ctx.Output<framework::LoDTensor>("C")->Resize({b_size, s_dim});
-    ctx.Output<framework::LoDTensor>("H")->Resize({b_size, s_dim});
+    int b_size = c_prev_dims[0];  // batch size
+    int s_dim = c_prev_dims[1];   // state dim
+    ctx->SetOutputDim("C", {b_size, s_dim});
+    ctx->SetOutputDim("H", {b_size, s_dim});
   }
 };
 
 template <typename AttrType>
 class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LstmUnitOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  LstmUnitOpMaker(framework::OpProto* proto,
+                  framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "FC input before the non-linear activation.");
     AddInput(
@@ -63,11 +62,11 @@ class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(Lstm-Unit Operator
 
-Equation: 
+Equation:
   i, f, o, j = split(X)
   C = C_prev * sigm(f + forget_bias) + sigm(i) * tanh(j)
   H = C * sigm(o)
-   
+
 )DOC");
     AddAttr<AttrType>("forget_bias", "The forget bias of Lstm Unit.")
         .SetDefault(0.0);
@@ -79,15 +78,14 @@ class LstmUnitGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("C")),
-                            "Input(C@GRAD) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("H")),
-                            "Input(H@GRAD) should not be null");
-    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<Tensor>("X")->dims());
-    ctx.Output<framework::LoDTensor>(framework::GradVarName("C_prev"))
-        ->Resize(ctx.Input<Tensor>("C_prev")->dims());
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("C")),
+                   "Input(C@GRAD) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("H")),
+                   "Input(H@GRAD) should not be null");
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("C_prev"),
+                      ctx->GetInputDim("C_prev"));
   }
 };
 

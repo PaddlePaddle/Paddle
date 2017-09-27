@@ -45,6 +45,21 @@ inline AttrType AttrTypeID() {
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
 
+class AttrReader {
+ public:
+  explicit AttrReader(const AttributeMap& attrs) : attrs_(attrs) {}
+
+  template <typename T>
+  inline const T& Get(const std::string& name) const {
+    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
+                   name);
+    return boost::get<T>(attrs_.at(name));
+  }
+
+ private:
+  const AttributeMap& attrs_;
+};
+
 // check whether a value(attribute) fit a certain limit
 template <typename T>
 class GreaterThanChecker {

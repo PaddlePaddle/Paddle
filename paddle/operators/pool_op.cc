@@ -27,32 +27,31 @@ class PoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "X(Input) of Pooling should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Out(Output) of Pooling should not be null.");
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "X(Input) of Pooling should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Out(Output) of Pooling should not be null.");
 
-    auto in_x = ctx.Input<Tensor>("X");
-    auto out = ctx.Output<Tensor>("Out");
-    bool global_pooling = Attr<bool>("globalPooling");
-    std::string pooling_type = Attr<std::string>("poolingType");
-    std::vector<int> ksize = Attr<std::vector<int>>("ksize");
-    std::vector<int> strides = Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = Attr<std::vector<int>>("paddings");
+    auto in_x_dims = ctx->GetInputDim("X");
+
+    std::string pooling_type = ctx->Attrs().Get<std::string>("poolingType");
+    std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
+    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
     PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "avg",
                    "pooling_type should be 'max' or 'avg'");
-    PADDLE_ENFORCE(in_x->dims().size() == 4 || in_x->dims().size() == 5,
+    PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                    "Pooling intput should be 4-D or 5-D");
 
-    if (global_pooling) {
-      ksize.resize(static_cast<size_t>(in_x->dims().size()) - 2);
+    if (ctx->Attrs().Get<bool>("globalPooling")) {
+      ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
       for (size_t i = 0; i < ksize.size(); ++i)
-        ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
+        ksize[i] = static_cast<int>(in_x_dims[i + 2]);
     }
 
-    PADDLE_ENFORCE(in_x->dims().size() == static_cast<size_t>(ksize.size() + 2),
+    PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2,
                    "Input size and Pooling size should be consistent.");
     PADDLE_ENFORCE(ksize.size() == 2 || ksize.size() == 3,
                    "Pooling size should be 2 elements. or 3 elements.");
@@ -61,12 +60,12 @@ class PoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ksize.size(), paddings.size(),
                       "paddings size and pooling size should be the same.");
 
-    std::vector<int64_t> output_shape({in_x->dims()[0], in_x->dims()[1]});
+    std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(OutputSizePool(in_x->dims()[i + 2], ksize[i],
-                                            paddings[i], strides[i]));
+      output_shape.push_back(
+          OutputSizePool(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
     }
-    out->Resize(framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
 };
 
@@ -75,17 +74,13 @@ class PoolOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "X(Input) of Pooling should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Out"),
-                            "Out(Output) of Pooling should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.Output<Tensor>(framework::GradVarName("X")),
-                            "Input@Grad of Pooling should not be null.");
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "X(Input) of Pooling should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Input@Grad of Pooling should not be null.");
 
-    auto in = ctx.Input<Tensor>("X");
-    auto d_in = ctx.Output<Tensor>(framework::GradVarName("X"));
-    d_in->Resize(in->dims());
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 
