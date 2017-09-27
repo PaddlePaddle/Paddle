@@ -83,13 +83,13 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext *ctx) const override {
     auto grad_x =
-        ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    size_t n = grad_x.size();
+        ctx->MultiOutput<framework::Tensor>(framework::GradVarName("X"));
+    const size_t n = grad_x.size();
+    auto ins = ctx->GetInputsDim("X");
     for (size_t i = 0; i < n; ++i) {
-      grad_x[i]->Resize(ins[i]->dims());
+      grad_x[i]->Resize(ins[i];
     }
   }
 };
