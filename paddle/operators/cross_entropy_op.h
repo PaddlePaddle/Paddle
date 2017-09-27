@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/platform/hostdevice.h"
+#include "paddle/operators/math/cross_entropy.h"
 
 namespace paddle {
 namespace operators {
@@ -26,18 +26,6 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
-struct TolerableValue {
-  HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ASSERT(std::is_floating_point<T>::value);
-    const T kApproInf = 1e20;
-
-    if (x == INFINITY) return kApproInf;
-    if (x == -INFINITY) return -kApproInf;
-    return x;
-  }
-};
-
-template <typename T>
 class CrossEntropyOpKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -46,28 +34,10 @@ class CrossEntropyOpKernel : public framework::OpKernel {
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* labels = ctx.Input<Tensor>("Label");
     Tensor* y = ctx.Output<Tensor>("Y");
-    T* y_data = y->mutable_data<T>(ctx.GetPlace());
+    y->mutable_data<T>(ctx.GetPlace());
 
-    const int batch_size = x->dims()[0];
-    if (ctx.Attr<bool>("softLabel")) {
-      auto prob = EigenMatrix<T>::From(*x);
-      auto lbl_mat = EigenMatrix<T>::From(*labels);
-      auto loss = EigenMatrix<T>::From(*y);
-
-      loss.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
-          -((lbl_mat * prob.log().unaryExpr(TolerableValue<T>()))
-                .sum(Eigen::DSizes<int, 1>(1))
-                .reshape(Eigen::DSizes<int, 2>(batch_size, 1)));
-    } else {
-      const int class_num = x->dims()[1];
-      const T* x_data = x->data<T>();
-
-      const int* label_data = labels->data<int>();
-      for (int i = 0; i < batch_size; ++i) {
-        int index = i * class_num + label_data[i];
-        y_data[i] = -TolerableValue<T>()(std::log(x_data[index]));
-      }
-    }
+    math::CrossEntropyFunctor<platform::CPUPlace, T>()(
+        ctx, y, x, labels, ctx.Attr<bool>("softLabel"));
   }
 };
 

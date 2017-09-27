@@ -28,7 +28,7 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
     return false;
   }
 
-  CHECK_EQ(inputLayers_.size(), 1) << "Only support one input layer yet";
+  CHECK_EQ(inputLayers_.size(), 1UL) << "Only support one input layer yet";
   CHECK_EQ(inputLayers_.size(), parameters_.size());
   CHECK(!parameters_[0]->isSparse()) << "Do not support sparse yet";
 
