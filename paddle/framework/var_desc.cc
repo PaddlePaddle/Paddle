@@ -12,23 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <Python.h>
-#include <fstream>
-#include <vector>
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
+#include "paddle/framework/var_desc.h"
 
 namespace paddle {
-namespace pybind {
+namespace framework {
 
-void BindProgramDesc(py::module& m);
-void BindBlockDesc(py::module& m);
-void BindVarDsec(py::module& m);
-void BindOpDesc(py::module& m);
-}  // namespace pybind
-}  // namespace paddle
+void VarDescBind::SetShape(const std::vector<int64_t> &dims) {
+  VectorToRepeated(dims, desc_.mutable_lod_tensor()->mutable_dims());
+}
+
+void VarDescBind::SetDataType(enum DataType data_type) {
+  desc_.mutable_lod_tensor()->set_data_type(data_type);
+}
+
+std::vector<int64_t> VarDescBind::Shape() const {
+  return RepeatedToVector(desc_.lod_tensor().dims());
+}
+
+DataType VarDescBind::DataType() const {
+  return desc_.lod_tensor().data_type();
+}
+}
+}

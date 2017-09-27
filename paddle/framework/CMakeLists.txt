@@ -18,6 +18,8 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 proto_library(framework_proto SRCS framework.proto)
 
+cc_library(var_desc SRCS var_desc.cc DEPS framework_proto)
+
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
