@@ -23,6 +23,7 @@ class TestOpDesc(unittest.TestCase):
         op.set_attr("int_attr", 1)
         self.assertEqual(1, op.attr("int_attr"))
         self.assertTrue(op.has_attr("int_attr"))
+        self.assertEqual(core.AttrType.INT, op.attr_type("int_attr"))
 
         op.set_attr("float_attr", -1.32)
         self.assertAlmostEqual(-1.32, op.attr("float_attr"), delta=1e-4)
@@ -53,7 +54,6 @@ class TestOpDesc(unittest.TestCase):
 
         op.set_block_attr("block_attr", prog.block(0))
         self.assertEqual(0, op.get_block_attr("block_attr"))
-        self.assertEqual(core.AttrType.INT, op.attr_type("int_attr"))
 
 
 class TestProgramDesc(unittest.TestCase):
