@@ -19,10 +19,11 @@ class TestUtils(object):
     @classmethod
     def create_variable(cls, scope, var_name, value=None, place=None):
         var = scope.new_var(var_name)
+        # help to allocate memory
+        tensor = var.get_tensor()
         if value is not None:
             assert place is not None, \
                 'Place must be specified if value provided'
-            tensor = var.get_tensor()
             tensor.set_dims(value.shape)
             tensor.set(value, place)
 
@@ -314,7 +315,7 @@ class TestUtils(object):
 
 
 class OpTest(unittest.TestCase):
-    def check_output_with_place(self, place):
+    def check_output_with_place(self, place, atol):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -346,7 +347,7 @@ class OpTest(unittest.TestCase):
 
                     self.assertTrue(
                         np.allclose(
-                            actual_val, expect_val, atol=1e-05),
+                            actual_val, expect_val, atol=atol),
                         "output name: " + out_var_name + " has diff")
             else:
                 actual_val = np.array(
@@ -354,15 +355,15 @@ class OpTest(unittest.TestCase):
                 expect_val = self.outputs[out_var_name]
                 self.assertTrue(
                     np.allclose(
-                        actual_val, expect_val, atol=1e-05),
+                        actual_val, expect_val, atol=atol),
                     "output name: " + out_var_name + " has diff")
 
-    def check_output(self):
+    def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
             places.append(core.GPUPlace(0))
         for place in places:
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, atol)
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
@@ -374,9 +375,10 @@ class OpTest(unittest.TestCase):
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return "%s Variable %s max gradient diff %f over limit %f, "\
-                        "the first error element is %d" % (
-                   msg_prefix, name, max_diff, max_relative_error, offset)
+                return ("%s Variable %s max gradient diff %f over limit %f, "
+                        "the first error element is %d") % (
+                            msg_prefix, name, max_diff, max_relative_error,
+                            offset)
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 

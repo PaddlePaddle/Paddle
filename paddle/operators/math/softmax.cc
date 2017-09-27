@@ -12,14 +12,14 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
+#include "paddle/operators/math/softmax.h"
 
-#include "paddle/operators/sequence_avg_pool_op.h"
+namespace paddle {
+namespace operators {
+namespace math {
 
-namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool,
-    ops::SequenceAvgPoolKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool_grad,
-    ops::SequenceAvgPoolGradKernel<paddle::platform::GPUPlace, float>);
+template class SoftmaxFunctor<platform::GPUPlace, float>;
+
+}  // namespace math
+}  // namespace operators
+}  // namespace paddle
