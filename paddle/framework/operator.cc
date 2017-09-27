@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include <algorithm>
+#include <atomic>
 
 namespace paddle {
 namespace framework {
