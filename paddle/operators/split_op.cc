@@ -27,8 +27,8 @@ class SplitOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContextBase *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SplitOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SplitOp should not be null.");
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+                      "Outputs(Out) of SplitOp should not be empty.");
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
     size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
