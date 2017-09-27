@@ -40,19 +40,21 @@ With these two methods, a variant-sentence-RNN can be implemented like
 LodTensor sentence_input(xxx);
 TensorArray ta;
 Tensor indice_map;
+Tensor boot_state = xxx; // to initialize rnn's first state
 TensorArray::unpack(input, 1/*level*/, true/*sort_by_length*/, &ta, &indice_map);
 TessorArray step_outputs;
+TensorArray states;
 
 for (int step = 0; step = ta.size(); step++) {
-  // step_output is a tensor
+  auto state = states.read(step);
   // rnnstep is a function which acts like a step of RNN
-  auto step_output = rnnstep(ta.read(step))
+  auto step_input = ta.read(step);
+  auto step_output = rnnstep(step_input, state);
   step_outputs.write(step_output, true/*data_shared*/);
 }
 
 // rnn_output is the final output of an rnn
-LoDTensor rnn_output;
-pack(ta, indice_map, &rnn_output);
+LoDTensor rnn_output = ta.pack(ta, indice_map);
 ```
 the code above shows that by embedding the LoDTensor-related preprocess operations into `TensorArray`,
 the implementation of a RNN that supports varient-length sentences is far more concise than `RecurrentGradientMachine` because the latter mixes all the codes together, hard to read and extend.
