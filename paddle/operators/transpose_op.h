@@ -38,7 +38,7 @@ void EigenTranspose(const framework::ExecutionContext& context,
 }
 
 template <typename Place, typename T>
-class TransposeKernel : public framework::OpKernel {
+class TransposeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<framework::Tensor>("X");
@@ -73,7 +73,7 @@ class TransposeKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class TransposeGradKernel : public framework::OpKernel {
+class TransposeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out_grad =

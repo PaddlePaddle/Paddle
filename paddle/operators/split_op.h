@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class SplitKernel : public framework::OpKernel {
+class SplitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");

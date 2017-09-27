@@ -104,8 +104,9 @@ template <typename PlaceType, typename KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
   explicit OpKernelRegistrar(const char* op_type) {
-    OperatorWithKernel::OpKernelKey key;
-    key.place_ = PlaceType();
+    using T = typename KernelType::ELEMENT_TYPE;
+    OperatorWithKernel::OpKernelKey key(ToDataType(std::type_index(typeid(T))),
+                                        PlaceType());
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KernelType);
   }
 };

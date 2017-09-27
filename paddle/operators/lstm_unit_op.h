@@ -33,7 +33,7 @@ inline T tanh(T x) {
 }
 
 template <typename Place, typename T, typename AttrType = T>
-class LstmUnitKernel : public framework::OpKernel {
+class LstmUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -76,7 +76,7 @@ class LstmUnitKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class LstmUnitGradKernel : public framework::OpKernel {
+class LstmUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),

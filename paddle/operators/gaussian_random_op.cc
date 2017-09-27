@@ -16,7 +16,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class CPUGaussianRandomKernel : public framework::OpKernel {
+class CPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");

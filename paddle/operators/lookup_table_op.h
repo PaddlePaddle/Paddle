@@ -23,7 +23,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-class LookupTableKernel : public framework::OpKernel {
+class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto table_t = context.Input<Tensor>("W");      // float tensor
@@ -44,7 +44,7 @@ class LookupTableKernel : public framework::OpKernel {
 };
 
 template <typename T>
-class LookupTableGradKernel : public framework::OpKernel {
+class LookupTableGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto ids_t = context.Input<Tensor>("Ids");

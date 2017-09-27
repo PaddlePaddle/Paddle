@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ConcatKernel : public framework::OpKernel {
+class ConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");

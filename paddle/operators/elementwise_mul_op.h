@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ElementwiseMulKernel : public framework::OpKernel {
+class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseCompute<EigenMulFunctor, Place, T>(ctx);
@@ -102,7 +102,7 @@ struct ElementwiseMulBroadCast2GradFunctor {
 };
 
 template <typename Place, typename T>
-class ElementwiseMulGradKernel : public framework::OpKernel {
+class ElementwiseMulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<Place, T, ElementwiseMulGradFunctor<T>,

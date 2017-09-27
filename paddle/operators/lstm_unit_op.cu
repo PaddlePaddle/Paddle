@@ -90,7 +90,7 @@ __global__ void LSTMUnitGradientKernel(const int nthreads, const int dim,
 }
 
 template <typename T, typename AttrType = T>
-class LstmUnitOpCUDAKernel : public framework::OpKernel {
+class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -121,7 +121,7 @@ class LstmUnitOpCUDAKernel : public framework::OpKernel {
 };
 
 template <typename T, typename AttrType = T>
-class LstmUnitGradOpCUDAKernel : public framework::OpKernel {
+class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),

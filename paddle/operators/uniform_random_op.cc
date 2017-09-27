@@ -21,7 +21,7 @@ namespace operators {
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
 template <typename T>
-class CPUUniformRandomKernel : public framework::OpKernel {
+class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* tensor = ctx.Output<framework::Tensor>("Out");
