@@ -26,19 +26,14 @@ class PReluOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    auto *in = ctx.Input<framework::Tensor>("X");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Alpha"),
-                            "Input(Alpha) should not be null");
-    auto *alpha = ctx.Input<framework::Tensor>("Alpha");
-    PADDLE_ENFORCE(alpha->numel() == 1, "Size of weight Alpha must be one.");
-
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) should not be null");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    out->Resize(in->dims());
-    ctx.ShareLoD("X", /*->*/ "Out");
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Alpha"), "Input(Alpha) should not be null");
+    PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
+                   "Size of weight Alpha must be one.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -68,19 +63,13 @@ class PReluGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto *x = ctx.Input<framework::Tensor>("X");
-
-    auto *dalpha =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Alpha"));
-    auto *alpha = ctx.Input<framework::Tensor>("Alpha");
-
-    dx->Resize(x->dims());
-    dalpha->Resize(alpha->dims());
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("Alpha"),
+                      ctx->GetInputDim("Alpha"));
   }
 };
 

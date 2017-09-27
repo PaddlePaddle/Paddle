@@ -12,13 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <Python.h>
-#include <fstream>
-#include <vector>
+#include "paddle/pybind/protobuf.h"
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_registry.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -27,11 +24,6 @@ limitations under the License. */
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
@@ -319,6 +311,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);
+
+  BindProgramDesc(m);
+  BindBlockDesc(m);
+  BindVarDsec(m);
+  BindOpDesc(m);
 
   return m.ptr();
 }
