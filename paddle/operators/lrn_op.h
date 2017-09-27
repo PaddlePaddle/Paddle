@@ -21,6 +21,15 @@
 namespace paddle {
 namespace operators {
 
+template <typename T>
+inline void detail(std::string name, T t) {
+  // printf("in_c:%s %f %f %f %f %f\n", name.c_str(), t[0], t[1], t[2], t[3],
+  //       t[4]);
+
+  printf("in_c:%s %f %f %f %f %f\n", name.c_str(), t(0), t(1), t(2), t(3),
+         t(4));
+}
+
 template <typename Place, typename T>
 class LRNKernel : public framework::OpKernel {
  public:
@@ -41,6 +50,7 @@ class LRNKernel : public framework::OpKernel {
     int W = x_dims[3];
     int one_img_size = H * W;
     int one_sample_size = C * one_img_size;
+    printf("N:%d one_img_size:%d\n", N, one_sample_size);
 
     Tensor* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
@@ -59,14 +69,21 @@ class LRNKernel : public framework::OpKernel {
     PADDLE_ENFORCE(beta >= 0.0, "beta should >= 0.0");
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
+    printf("3\n");
     auto mid_out_v = framework::EigenVector<T>::Flatten(*mid_out);
+    printf("4\n");
     mid_out_v.setConstant(k);
 
+    printf("5\n");
     auto x_v = framework::EigenVector<T>::Flatten(*x);
+    printf("6\n");
     const T* data = x_v.data();
+    std::cout << data << std::endl;
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
+
+    /*
     for (int m = 0; m < N; m++) {
       const T* sample = data + m * one_sample_size;
 
@@ -88,9 +105,38 @@ class LRNKernel : public framework::OpKernel {
         }
       }
     }
+    */
 
+    auto e_mid = framework::EigenTensor<T, 4>::From(*mid_out);
+    printf("e_mid 1\n");
+    e_mid.setConstant(k);
+    printf("e_mid 2\n");
+
+    auto e_x = framework::EigenTensor<T, 4>::From(*x);
+    for (int m = 0; m < N; m++) {
+      for (int i = 0; i < C; i++) {
+        for (int c = start; c <= end; c++) {
+          int ch = i + c;
+          if (ch >= 0 && ch < C) {
+            printf("m:%d i:%d ch:%d\n", m, i, ch);
+            auto s = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+            auto r = e_x.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                               Eigen::array<int, 4>({{1, 1, H, W}}));
+
+            s += alpha * r.square();
+          }
+        }
+      }
+    }
+
+    printf("out_e 3\n");
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(ctx.GetEigenDevice<Place>()) = x_v * mid_out_v.pow(-beta);
+    out_e.device(ctx.GetEigenDevice<Place>()) =
+        x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
+
+    e_mid.device(ctx.GetEigenDevice<Place>()) = e_mid;
   }
 };
 
@@ -117,89 +163,7 @@ template <typename Place, typename T>
 class LRNGradKernel : public framework::OpKernel {
  public:
   using Tensor = framework::Tensor;
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* out = ctx.Input<Tensor>("Out");
-    const Tensor* out_g = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    const Tensor* mid = ctx.Input<Tensor>("mid_out");
-
-    auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
-    x_g->mutable_data<T>(ctx.GetPlace());
-    auto x_g_e = framework::EigenVector<float>::Flatten(*x_g);
-    x_g_e.setConstant(0.0);
-
-    auto x_dims = x->dims();
-    int N = x_dims[0];
-    int C = x_dims[1];
-    int H = x_dims[2];
-    int W = x_dims[3];
-
-    int n = ctx.Attr<int>("n");
-    float alpha = ctx.Attr<float>("alpha");
-    float beta = ctx.Attr<float>("beta");
-
-    auto x_e = framework::EigenVector<float>::Flatten(*x);
-    auto out_e = framework::EigenVector<float>::Flatten(*out);
-    auto out_g_e = framework::EigenVector<float>::Flatten(*out_g);
-    auto mid_e = framework::EigenVector<float>::Flatten(*mid);
-
-    /*
-    detail("x_e", x_e);
-    detail("out_e", out_e);
-    detail("out_g_e", out_g_e);
-    detail("mid_e", mid_e);
-    */
-
-    int one_img_size = H * W;
-    int one_sample_size = C * one_img_size;
-
-    float ratio = -2 * alpha * beta;
-
-    const int start = -(n - 1) / 2;
-    const int end = start + n;
-    for (int m = 0; m < N; m++) {
-      int m_pos = m * one_sample_size;
-      for (int i = 0; i < C; i++) {
-        int i_pos = m_pos + i * one_img_size;
-
-        framework::EigenTensor<float, 1>::ConstType i_x =
-            framework::EigenTensor<float, 1>::From(
-                x_e.data() + i_pos, framework::make_ddim({one_img_size}));
-
-        framework::EigenTensor<float, 1>::Type i_x_g =
-            framework::EigenTensor<float, 1>::From(
-                x_g_e.data() + i_pos, framework::make_ddim({one_img_size}));
-
-        framework::EigenTensor<float, 1>::ConstType i_out_g =
-            framework::EigenTensor<float, 1>::From(
-                out_g_e.data() + i_pos, framework::make_ddim({one_img_size}));
-
-        framework::EigenTensor<float, 1>::ConstType i_mid =
-            framework::EigenTensor<float, 1>::From(
-                mid_e.data() + i_pos, framework::make_ddim({one_img_size}));
-
-        i_x_g = i_mid.pow(-beta) * i_out_g;
-        for (int c = start; c <= end; c++) {
-          int ch = i + c;
-          if (ch < 0 || ch >= C) {
-            continue;
-          }
-
-          int c_pos = m_pos + ch * one_img_size;
-          auto c_out = framework::EigenTensor<float, 1>::From(
-              out_e.data() + c_pos, framework::make_ddim({one_img_size}));
-
-          auto c_mid = framework::EigenTensor<float, 1>::From(
-              mid_e.data() + c_pos, framework::make_ddim({one_img_size}));
-
-          auto c_out_g = framework::EigenTensor<float, 1>::From(
-              out_g_e.data() + c_pos, framework::make_ddim({one_img_size}));
-
-          i_x_g += ratio * c_out_g * c_out * i_x / c_mid;
-        }
-      }
-    }
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace operators
