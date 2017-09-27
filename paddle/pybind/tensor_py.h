@@ -63,11 +63,8 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       }
       return py::buffer_info(
           dst_tensor.mutable_data<CUR_TYPE>(dst_tensor.holder_->place()),
-          sizeof(CUR_TYPE),
-          py::format_descriptor<CUR_TYPE>::format(),
-          (size_t)framework::arity(dst_tensor.dims()),
-          dims_outside,
-          strides);
+          sizeof(CUR_TYPE), py::format_descriptor<CUR_TYPE>::format(),
+          (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
       return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
@@ -110,8 +107,8 @@ void PyCUDATensorSetFromArray(
 
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
-  paddle::platform::GpuMemcpySync(
-      dst, array.data(), sizeof(T) * array.size(), cudaMemcpyHostToDevice);
+  paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
+                                  cudaMemcpyHostToDevice);
 }
 #endif
 
