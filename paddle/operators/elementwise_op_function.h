@@ -14,7 +14,9 @@
 
 #pragma once
 #include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
+
 #include "paddle/operators/math/math_function.h"
 
 namespace paddle {
