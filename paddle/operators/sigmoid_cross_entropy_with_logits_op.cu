@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/mul_op.h"
+#include "paddle/operators/sigmoid_cross_entropy_with_logits_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits,
