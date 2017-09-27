@@ -31,83 +31,113 @@ Here are the features we want to support:
 
   
   
-## Analysis 
+## Analysis
 
+The execution of a neural network topology in PaddlePaddle is divided into two parts, complie-time and run-time.
 
-Since a block is actually a graph, the data member of a graph should be Nodes and Edges. Every Node must have a device id for descirbing the place information. Please refer to the design of [TensorFlow](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/node_def.proto#L48). In our block design now, the data members are VarDesc and OpDesc. So, VarDesc and OpDesc must have a field to descirbe concrete device information. 
+At complie-time, a ProgramDesc will be generated. At run-time, the ProgramDesc will be executed on specific hardwares.
 
-Let's consider about this question, What configuration should Paddle get from uses to execute a block in various hardward environment.
+We can refer to the design of [computation-graphs](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/refactorization.md#computation-graphs).
 
+### Compile-time analysis
+
+In order to realize features mentioned in overview, we have to do several transform pass to ProgramDesc:
+
+- forward pass: generate OpDesc and VarDesc for forward operators
+
+- backward pass: generate OpDesc and VarDesc for backward operators
+
+- placement pass: generate OpDesc and VarDesc for send/recv/copy operators. Data Parallelism and Model Parallelism will be considered at this stage. We have a placement policy to set concrete device id for every operator. And send/recv/copy operators will be inserted at correct position. 
+
+- optimize pass: generate OpDesc and VarDesc for optimize operators
+
+Each pass will modify the global ProgramDesc.
+
+### Run-time analysis
+
+At run-time, the ProgramDesc generated at compile-time is actually executed on a specific hardware environment. `Executor` is introduced to execute a ProgramDesc. And `Executor` will have a `Run` interface.
+
+In PaddlePaddle, we use DeviceContext to manage hardware resources. There are CPUDeviceContext and CUDADeviceContext for CPU and GPU respectively.A CUDADeviceContext actually is associated with a specific CUDA stream. And Operator will run on a specfic DeviceContext. 
+
+However, users' configuration of hardware is simple, maybe only some GPU card ids will be given. In placement pass of compile-time, only source device id and destination device id will bet set.
+
+So, `Executor` need to have a `DeviceContextManager` to initialize some DeviceContext at the very beginning. `DeviceContextManager` maneges all DeviceContexts in all devices.
+
+The `Executor` is defined as follows:
+
+```
+class Executor {
+public:
+  Executor(ProgramDesc*);
+  void Run();
   
-- Data Parallelism
-  - stand-alone machine: Users have to set several device ids, and each device will execute the same block.
-  - cluster: Users have to set node ids and device ids, and each device will execute the same block.
-  
-- Model Parallelism
-  - Users have to set a concrete device id for each operator in a topology. Paddle will first execute the operator strictly following users' configuration, and will do some another parallel optimization automatically.
-
- 
+private:
+  DeviceContextManager_;
+};
+```
 
 
 ## Solution
+
+### Compile-time solution
   
-Actually, we can have both data parallelism and model parallelism. In order to support the mixing paralelism, we have to propose these two strategies:
+#### Remove NetOp
 
-
-- A simple device id setting rules
-  - Firsly, users have to set one or several default device id for a topology. These devices are the same and usually finish the most computation of a topology. We mainly consider data parallelism in this step.
-  - Secondly, users need to set device id for each operators in a topology. If users set nothing, the operator will just use default device id. When devices have to be switched, users have to add a copy operator manually.
-  - We travel the topology and set concrete device id for each operator.
-
-
-Here is a pre-sudo code about the device setting rules.
-
+At current code base, we have a NetOp defined as follows:
 
 ```
-import paddle as pd
-
-def fpga_infer(fpga_id):
-    with pd.device(fpga_id):
-        x = pd.v2.variable(data_type='float32', dims=[32, 784], device='cpu')
-        w = pd.v2.variable(data_type='float32', dims=[784, 100], device='cpu')
-        x_fpga = pd.v2.copy_op(x)
-        w_fpga = pd.v2.copy_op(w)
-        h = pd.v2.mul_op(x_fpga, w_fgpa)
-        h_gpu = pd.v2.copy(h, device='gpu:0')
-        out = pd.v2.relu_op(h_gpu, device='gpu:0')
-        out_cpu = pd.v2.copy_op(out, device='cpu')
-    return out_cpu
-
-pd.run(fpga_infer, devices=['fpga:0', 'fpga:1'])    
-    
+class NetOp : OperatorBase {
+public:
+  void Run(const Scope&, const platform::DeviceContext&);
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+};
 ```
 
-- A data dependency analysis engine
-  - We need to analysis data dependency of each operator in the topology. When the dependent variables of a operator is ready, the operator can be executed in corresponding device.
+We can compose some basic operators into a big operator, such [FCOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/fc_op.cc). And the backward operators generated by [Backward](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/backward.h) is often a NetOp.
 
-  
+There are mainly two breaking point of NetOp unpon the overall design:
 
-The concept `Block` contains full information for executing a neural network topology. And we will have another concept `Executor` which have a runtime data depenency analysis engine to execute operators in `Block` in certain hardware with high performance.
-  
-  
-## Conclusion
+- Backward pass should be do at compile-time, not run-time.
+- A NetOp will corresponds only one OpDesc in BlockDesc. We will have a big backward NetOp and run sequentially. It's hard to do potential memory-resuse/kernel-fusion optimization.
 
-We will split our implementation of `Block` into following steps:
+We should generate a group of OpDesc at compile-time instead of a NetOp at run-time.
 
-1. Baseline feature
+#### Unified Pass Interface
 
-2. Divide `Block` into two concepts, `Block` and `Executor`
+An abstract class `Converter` is defined to provide a Unified Pass Interface.
 
-3. Implement a simple device id setting rules
+```
+class Converter {
+public:
+  virtual void ApplyPass(ProgramDesc*) = 0;
+};
+```
 
-4. Data parallelism feature(run sequentially in each device)
+#### Placement Policy
 
-5. Implement a data dependency analysis engine
-
-6. Model parallelism feature
-  
-
+Placement Policy is designed to set device for every operator. Currently, we only need a simple priority rule to implement the simplest version.
 
 
-  
-  
+
+### Run-time solution
+We will have several class derived from `Executor` to provide different execution strategy. And ProgramDesc will be transformed accordingly.
+
+There are mainly two kinds of `Executor`:
+
+- SimpleExecutor
+
+SimpleExecutor will do little things to ProgramDesc, and just construct operators and variables in order. The operators will be executed sequentially.
+
+
+- DAGExecutor
+
+```
+class DAGExecutor : public Executor {
+public:
+  void Transform();
+private:
+  GraphView* view_;
+};
+```
+
+DAGExecutor will have a `GraphView` of ProgramDesc, which transforms linear list of Operators into graph data structure. We can do further optimization based on graph data structure more conveniently. And the graph will be executed in parallel in DAGExecutor.
