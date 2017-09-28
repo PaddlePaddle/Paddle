@@ -103,18 +103,19 @@ class OpRegistrar : public Registrar {
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor;
 
-template <typename PlaceType, size_t I, typename... KernelType>
-struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelType...> {
-  using KT = typename std::tuple_element<I, std::tuple<KernelType...>>::type;
+template <typename PlaceType, size_t I, typename... KernelTypes>
+struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
+  using KERNEL_TYPE =
+      typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
   void operator()(const char* op_type) const {
-    using T = typename KT::ELEMENT_TYPE;
+    using T = typename KERNEL_TYPE::ELEMENT_TYPE;
     OperatorWithKernel::OpKernelKey key(ToDataType(std::type_index(typeid(T))),
                                         PlaceType());
-    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KT);
+    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
-    constexpr auto size = std::tuple_size<std::tuple<KernelType...>>::value;
-    OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelType...>
+    constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
+    OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
         func;
     func(op_type);
   }
