@@ -62,6 +62,11 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return static_cast<framework::DataType>(Attr<int>("data_type"));
+  }
 };
 
 class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -80,6 +85,8 @@ Used to initialize tensor with uniform random generator.
                  "Random seed of uniform random. "
                  "0 means generate a seed by system")
         .SetDefault(0);
+    AddAttr<int>("data_type", "output tensor data type")
+        .SetDefault(framework::DataType::FP32);
   }
 };
 }  // namespace operators

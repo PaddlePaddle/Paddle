@@ -116,10 +116,13 @@ class OpWithKernelTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase* ctx) const override {}
+  DataType IndicateDataType(const ExecutionContext& ctx) const override {
+    return DataType::FP32;
+  }
 };
 
 template <typename T1, typename T2>
-class CPUKernelTest : public OpKernel {
+class CPUKernelTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
@@ -146,7 +149,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
   }
 };
 
-class CPUKernalMultiInputsTest : public OpKernel {
+class CPUKernalMultiInputsTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
     auto xs = ctx.op().Inputs("xs");
