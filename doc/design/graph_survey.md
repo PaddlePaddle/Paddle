@@ -1,16 +1,17 @@
 ## Survey on Graph
 
-神经网络框架通常提供Symbolic的接口给用户，来方便的书写网络配置。这里主要调研一下不同神经网络中框架中，用户书写的配置（等号左边）与最终解析得到的Graph之间的关系。
+Neural network framework often provides Symbolic api for users to write network topology conveniently. This doc manily focus on Symbolic api in most popular neural network frameworks, and try to find out how to parse Symbolic configuration to a portable file, such as protobuf or json.
 
 ### Mxnet
 
-用户配置网络的核心概念是`Symbol`，Mxnet在C++端实现了`Symbol`，并通过CAPI暴露到Python端。在这里可以参考Mxnet中对`Symbol`的注释：
+The core concept of Symbolic api is `Symbol`. Mxnet implements `Symbol` class in C++, and export to Python using CAPI. Please refer to the comments in Mxnet:
+
 
 `Symbol` is help class used to represent the operator node in Graph.
 `Symbol` acts as an interface for building graphs from different components like Variable, Functor and Group. `Symbol` is also exported to python front-end (while Graph is not) to enable quick test and deployment. Conceptually, symbol is the final operation of a graph and thus including all the information required (the graph) to evaluate its output value.
 
 
-一个简单的网络定义如下：
+A simple network topology wrote by Symbol is as follows:
 
 ```python
 def get_symbol(num_classes=10, **kwargs):
@@ -26,104 +27,14 @@ def get_symbol(num_classes=10, **kwargs):
 ```
 
 
-需要注意的是，这里的Variable实际上也是一个Symbol。每个基本Symbol最终会对应到一个Node，每个Node都有对应的属性attr，attr中有一个字段为op。当这个Symbol表示Varaible时（通常是输入数据），attr中的op字段为空。
 
-Symbol包含的成员变量为std::vector<NodeEntry> outputs，NodeEntry中包含一个指向Node的指针。
+Varible here is actually a Symbol. Every basic Symbol will correspond to one Node, and every Node has its own NodeAttr. There is a op field in NodeAttr class, when a Symbol represents Variable(often input data), the op field is null.
 
+Symbol contains a data member, std::vector<NodeEntry> outputs, and NodeEntry cantains a poniter to Node. We can follow the Node pointer to get all the Graph.
 
-Mxnet的Symbol可以绑定到一个Executor上，在解析为Graph之后，得以执行。
+And Symbol can be saved to a Json file.
 
-
-
-### TensorFlow
-
-用户配置网络的核心概念是`Tensor`，在Python端定义了`Tensor`，在这里可以直接参考TensorFlow对Tensor的注释：
-
-
-A `Tensor` is a symbolic handle to one of the outputs of an `Operation`. It does not hold the values of that operation's output, but instead provides a means of computing those values in a TensorFlow @{tf.Session}.
-
-一个简单的使用样例如下：
-
-```python
-  # Build a dataflow graph.
-  c = tf.constant([[1.0, 2.0], [3.0, 4.0]])
-  d = tf.constant([[1.0, 1.0], [0.0, 1.0]])
-  e = tf.matmul(c, d)
-
-  # Construct a `Session` to execute the graph.
-  sess = tf.Session()
-
-  # Execute the graph and store the value that `e` represents in `result`.
-  result = sess.run(e)
-```
-
-  
-Tensor的一些主要成员变量和接口可以参考如下：
-
-```python
-@property
-def op(self):
-  """The `Operation` that produces this tensor as an output."""
-  return self._op
-
-@property
-def dtype(self):
-   """The `DType` of elements in this tensor."""
-  return self._dtype
-
-@property
-def graph(self):
-  """The `Graph` that contains this tensor."""
-  return self._op.graph
-
-@property
-def name(self):
-  """The string name of this tensor."""
-  if not self._op.name:
-    raise ValueError("Operation was not named: %s" % self._op)
-  return "%s:%d" % (self._op.name, self._value_index)
-
-@property
-def device(self):
-  """The name of the device on which this tensor will be produced, or None."""
-  return self._op.device
-```
-
-TensorFlow的Tensor可以作为target被session来run，实际上是Tensor已经包含了所有的Graph信息，可以track data dependency。
-
-
-### Dynet
-
-用户配置网络的核心概念是`Expression`，在C++端定义了`Expression`。用户通过书写Expression来完成Graph的构建。
-
-一个简单的使用样例如下：
-
-```cpp
-ComputationGraph cg;
-Expression W = parameter(cg, pW);
-
-Expression in = input(cg, xs[i]);
-Expression label = input(cg, ys[i]);
-Expression pred = W * in;
-Expression loss = square(pred - label);
-```
-
-需要注意的是，输入数据以及参数也同样使用Expression来书写。每个Expression对应一个Node，输入数据也对应一个Node。
-
-Expression的主要成员为ComputationGraph，可以在用户配置网络的过程中修改Graph。Expression同样可以被作为目标来执行，因为Expression中已经包含了所有的依赖关系。
-
-
-### 总结
-
-实际上Mxnet/TensorFlow/Dynet中的Symbol/Tensor/Expression是同一个层级的概念，我们暂时统一这个概念的名称为Expression，这层概念有如下几个特点：
-
-- 用户使用Symbolic的语法来书写网络配置，所有的返回值都是Expression，包括最初的输入数据，及参数等
-- 每个Expression都对应着同一个Graph，已经包含了所有的依赖关系，可以被当做执行的target
-
-下面我们来看几个实例：
-
-- Mxnet
-
+Here is a detailed example:
 
 ```
 >>> import mxnet as mx
@@ -163,7 +74,68 @@ Attrs:
 
 ```
 
-- TensorFlow
+
+### TensorFlow
+
+
+The core concept of Symbolic api is `Tensor`. Tensorflow defines `Tensor` in Python. Please refer to the comments in TensorFlow:
+
+A `Tensor` is a symbolic handle to one of the outputs of an `Operation`. It does not hold the values of that operation's output, but instead provides a means of computing those values in a TensorFlow @{tf.Session}.
+
+A simple example is as follows:
+
+```python
+  # Build a dataflow graph.
+  c = tf.constant([[1.0, 2.0], [3.0, 4.0]])
+  d = tf.constant([[1.0, 1.0], [0.0, 1.0]])
+  e = tf.matmul(c, d)
+
+  # Construct a `Session` to execute the graph.
+  sess = tf.Session()
+
+  # Execute the graph and store the value that `e` represents in `result`.
+  result = sess.run(e)
+```
+
+  
+The main method of `Tensor` is as follows: 
+ 
+ 
+```python
+@property
+def op(self):
+  """The `Operation` that produces this tensor as an output."""
+  return self._op
+
+@property
+def dtype(self):
+   """The `DType` of elements in this tensor."""
+  return self._dtype
+
+@property
+def graph(self):
+  """The `Graph` that contains this tensor."""
+  return self._op.graph
+
+@property
+def name(self):
+  """The string name of this tensor."""
+  if not self._op.name:
+    raise ValueError("Operation was not named: %s" % self._op)
+  return "%s:%d" % (self._op.name, self._value_index)
+
+@property
+def device(self):
+  """The name of the device on which this tensor will be produced, or None."""
+  return self._op.device
+```
+
+
+Tensor can be taken as target to run by session. Tensor contains all the information of Graph, and tracks data dependency.
+
+
+Here is a detailed example:
+
 
 ```
 >>> import tensorflow as tf
@@ -178,12 +150,32 @@ Attrs:
 <tensorflow.python.framework.ops.Graph object at 0x10f256d50>
 ```
 
-没有找到Graph的debug string接口，但是可以明确知道配置过程中只存在一个Graph。
+### Dynet
 
 
-- dynet
+The core concept of Symbolic api is `Expression`, and Dynet defines `Expression` class in C++.
 
-dynet可以在C++中书写配置
+
+A simple example is as follows:
+
+```cpp
+ComputationGraph cg;
+Expression W = parameter(cg, pW);
+
+Expression in = input(cg, xs[i]);
+Expression label = input(cg, ys[i]);
+Expression pred = W * in;
+Expression loss = square(pred - label);
+```
+
+The input data and parameter are also represented by Expression. Every basci Expression corresponds to a Node. And input data is also a Node. 
+
+Expression has a data member ComputationGraph, and ComputationGraph will be modified in users' configuring process. Expression can be a running target, beacuse Expression contains all dependency.
+
+
+Here is a detailed example:
+
+write topology in C++
 
 ```
 ComputationGraph cg;
@@ -197,7 +189,7 @@ Expression loss = square(pred - ys[i]);
 cg.print_graphviz();
 ```
 
-编译运行后，得到打印结果：
+compile and print
 
 ```
 # first print
@@ -229,3 +221,12 @@ digraph G {
   N3 -> N4;
 }
 ```
+
+### Conclusion
+
+
+Actually, Symbol/Tensor/Expression in Mxnet/TensorFlow/Dynet are the same level concepts. We use a unified name Expression here, this level concept has following features:
+
+- Users wirte topoloy with Symbolic api, and all return value is Expression, including input data and parameter.
+- Expression corresponds with a global Graph, and Expression can also be composed.
+- Expression tracks all dependency and can be taken as a run target
