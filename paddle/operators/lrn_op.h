@@ -48,9 +48,6 @@ class LRNKernel : public framework::OpKernel {
     int C = x_dims[1];
     int H = x_dims[2];
     int W = x_dims[3];
-    int one_img_size = H * W;
-    int one_sample_size = C * one_img_size;
-    printf("N:%d one_img_size:%d\n", N, one_sample_size);
 
     Tensor* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
@@ -69,48 +66,14 @@ class LRNKernel : public framework::OpKernel {
     PADDLE_ENFORCE(beta >= 0.0, "beta should >= 0.0");
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
-    printf("3\n");
-    auto mid_out_v = framework::EigenVector<T>::Flatten(*mid_out);
-    printf("4\n");
-    mid_out_v.setConstant(k);
-
-    printf("5\n");
     auto x_v = framework::EigenVector<T>::Flatten(*x);
-    printf("6\n");
     const T* data = x_v.data();
-    std::cout << data << std::endl;
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
 
-    /*
-    for (int m = 0; m < N; m++) {
-      const T* sample = data + m * one_sample_size;
-
-      for (int i = 0; i < C; i++) {
-        auto mid_data =
-            mid_out_v.data() + m * one_sample_size + i * one_img_size;
-        framework::EigenTensor<float, 1>::Type s =
-            framework::EigenTensor<float, 1>::From(
-                mid_data, framework::make_ddim({one_img_size}));
-
-        for (int c = start; c <= end; c++) {
-          int ch = i + c;
-          if (ch >= 0 && ch < C) {
-            auto input = framework::EigenTensor<T, 1>::From(
-                (sample + ch * one_img_size),
-                framework::make_ddim({one_img_size}));
-            s += (input.square() * alpha);
-          }
-        }
-      }
-    }
-    */
-
     auto e_mid = framework::EigenTensor<T, 4>::From(*mid_out);
-    printf("e_mid 1\n");
-    e_mid.setConstant(k);
-    printf("e_mid 2\n");
+    e_mid.device(ctx.GetEigenDevice<Place>()) = e_mid.constant(k);
 
     auto e_x = framework::EigenTensor<T, 4>::From(*x);
     for (int m = 0; m < N; m++) {
@@ -118,20 +81,18 @@ class LRNKernel : public framework::OpKernel {
         for (int c = start; c <= end; c++) {
           int ch = i + c;
           if (ch >= 0 && ch < C) {
-            printf("m:%d i:%d ch:%d\n", m, i, ch);
             auto s = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
                                  Eigen::array<int, 4>({{1, 1, H, W}}));
 
             auto r = e_x.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
                                Eigen::array<int, 4>({{1, 1, H, W}}));
 
-            s += alpha * r.square();
+            s.device(ctx.GetEigenDevice<Place>()) += alpha * r.square();
           }
         }
       }
     }
 
-    printf("out_e 3\n");
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(ctx.GetEigenDevice<Place>()) =
         x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
