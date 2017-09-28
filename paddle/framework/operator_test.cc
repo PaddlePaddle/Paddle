@@ -27,7 +27,6 @@ class OpWithoutKernelTest : public OperatorBase {
   OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
                       const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     ++op_run_num;
@@ -87,7 +86,6 @@ TEST(OperatorBase, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope.NewVar("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
-  op->InferShape(scope);
   op->Run(scope, device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
@@ -255,7 +253,6 @@ class OperatorClone : public paddle::framework::OperatorBase {
                 const paddle::framework::VariableNameMap& outputs,
                 const paddle::framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void InferShape(const paddle::framework::Scope& scope) const override {}
   void Run(const paddle::framework::Scope& scope,
            const paddle::platform::DeviceContext& dev_ctx) const override {}
 };

@@ -10,7 +10,6 @@ class CosineOp : public OperatorBase {
   using OperatorBase::OperatorBase;
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-  void InferShape(const Scope& scope) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -29,7 +28,6 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 class MyTestOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 };
