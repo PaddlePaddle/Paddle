@@ -57,8 +57,10 @@ class CondOp : public framework::OperatorBase {
 
   /*
    * InferShape must be called before Run.
+   * FIXME(yuyang18): Since InferShape has been removed, this implementation
+   * could be wrong.
    */
-  void InferShape(const framework::Scope& scope) const override;
+  void InferShape(const framework::Scope& scope) const;
 
   /*
    * Set True Block

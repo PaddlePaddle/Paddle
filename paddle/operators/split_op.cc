@@ -25,6 +25,10 @@ class SplitOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of SplitOp should not be null.");
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+                      "Outputs(Out) of SplitOp should not be empty.");
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
     size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
@@ -55,9 +59,6 @@ class SplitOp : public framework::OperatorWithKernel {
         dim[axis] = sections[i];
         outs_dims.push_back(dim);
       }
-    } else {
-      PADDLE_ENFORCE_NOT_NULL(nullptr, "split operator should",
-                              " specify indices or sections.");
     }
     ctx->SetOutputsDim("Out", outs_dims);
   }
@@ -117,4 +118,4 @@ USE_CPU_ONLY_OP(concat);
 REGISTER_OP(split, ops::SplitOp, ops::SplitOpMaker, split_grad,
             ops::SplitOpGrad);
 REGISTER_OP_CPU_KERNEL(split,
-                       ops::SplitKernel<paddle::platform::CPUPlace, float>);
+                       ops::SplitOpKernel<paddle::platform::CPUPlace, float>);

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -82,10 +83,6 @@ class OperatorBase {
   }
 
   virtual std::string DebugString() const;
-
-  /// InferShape infer the size of Variables used by this Operator with
-  /// information inside scope
-  virtual void InferShape(const Scope& scope) const = 0;
 
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope,
@@ -164,7 +161,6 @@ class OperatorBase {
 class NOP : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
   std::unique_ptr<OperatorBase> Clone() const override {
@@ -465,14 +461,11 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  // runtime infershape
-  void InferShape(const Scope& scope) const override {
-    auto c = RuntimeInferShapeContext(*this, scope);
-    InferShape(&c);
-  }
-
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
+    RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+    this->InferShape(&infer_shape_ctx);
+
     ExecutionContext ctx(*this, scope, dev_ctx);
     auto& opKernel = AllOpKernels().at(type_).at(
         OpKernelKey(IndicateDataType(ctx), dev_ctx));

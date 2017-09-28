@@ -230,7 +230,6 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &no_grad_vars) {
              return Backward(forwardOp, no_grad_vars).release();
            })
-      .def("infer_shape", &OperatorBase::InferShape)
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::DeviceContext &dev_ctx) {
