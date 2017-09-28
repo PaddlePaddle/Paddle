@@ -82,7 +82,7 @@ void CondOp::InferShape(const Scope& scope) const {
     }
 
     // each net calls InferShape
-    sub_net_op_[i]->InferShape(*sub_scopes[i]);
+    //    sub_net_op_[i]->InferShape(*sub_scopes[i]);
   }
 
   for (auto& output : Outputs("Outs")) {
