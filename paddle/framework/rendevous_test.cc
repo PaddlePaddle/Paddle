@@ -13,5 +13,9 @@ TEST(PairKey, Hash) {
   EXPECT_EQ(Hash64(ka), Hash64(kb));
 }
 
+TEST(Rendevous, SingleThreadSendRecv) {}
+
+TEST(Rendevous, MultiThreadSendRecv) {}
+
 }  // namespace framework
 }  // namespace paddle

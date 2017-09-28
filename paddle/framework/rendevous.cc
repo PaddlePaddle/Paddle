@@ -20,8 +20,6 @@
 namespace paddle {
 namespace framework {
 
-using Rendevous::Msg;
-
 void Rendevous::Send(const PairKey& key,
                      const platform::DeviceContext& src_device,
                      const Variable& t) {
@@ -29,7 +27,8 @@ void Rendevous::Send(const PairKey& key,
   std::lock_guard<std::mutex> lk(mu_);
   BlockingChannel* channel = &table_[keyhash];
   if (channel->empty() || !channel->front()->RecvReady()) {
-    channel->emplace_back(new Msg{t, &src_device, nullptr, nullptr});
+    channel->emplace_back(
+        new Rendevous::Msg{Variable(), &src_device, nullptr, nullptr});
     return;
   }
   auto& msg = *channel->front();
@@ -37,13 +36,14 @@ void Rendevous::Send(const PairKey& key,
   channel->pop_front();
 }
 void Rendevous::RecvAsync(const PairKey& key,
-                          platform::DeviceContext& dst_device,
+                          const platform::DeviceContext& dst_device,
                           const DoneCallback& cb) {
   size_t keyhash = Hash64(key);
   std::lock_guard<std::mutex> lk(mu_);
   BlockingChannel* channel = &table_[keyhash];
   if (channel->empty() || channel->front()->RecvReady()) {
-    channel->emplace_back(new Msg{t, nullptr, &dst_device, std::move(cb)});
+    channel->emplace_back(
+        new Rendevous::Msg{Variable(), nullptr, &dst_device, std::move(cb)});
     return;
   }
   auto& msg = *channel->front();
@@ -52,11 +52,24 @@ void Rendevous::RecvAsync(const PairKey& key,
 }
 // a wrapper on RecvAsync
 void Rendevous::Recv(const PairKey& key, platform::DeviceContext& dst_device,
-                     Variable* t, int timeout_ms) {
-  size_t keyhash = Hash64(key);
+                     Variable* t) {
   std::condition_variable cv;
   std::mutex cv_mtx;
-  if () }
+  bool is_done = false;
+  RecvAsync(key, dst_device,
+            [&cv, &cv_mtx, &t, &is_done](
+                const platform::DeviceContext& src_device,
+                const platform::DeviceContext& dst_device, const Variable& v) {
+              {
+                std::unique_lock<std::mutex> lck(cv_mtx);
+                *t = v;
+                is_done = true;
+              }
+              cv.notify_all();
+            });
+
+  cv.wait(lck, [&is_done, &cv, &cv_mtx]() { return is_done == true; });
+}
 
 }  // namespace framework
 }  // namespace paddle

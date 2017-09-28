@@ -63,8 +63,8 @@ class Variable {
     const std::type_info& type_;
   };
 
-  std::unique_ptr<Placeholder>
-      holder_;  // pointers to a PlaceholderImpl object indeed.
+  std::unique_ptr<Placeholder> holder_;
+  // pointers to a PlaceholderImpl object indeed.
 
   // name_ is only meaningful with a Scope and accessible by it.
   //

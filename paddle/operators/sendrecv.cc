@@ -22,9 +22,35 @@ class SendOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 };
 
+class SendOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SendOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Send Tensor");
+    AddAttr<std::string>("src_device", "src device name, can be rpc endpoint");
+    AddAttr<std::string>("dst_device", "dst device name, can be rpc endpoint");
+    AddComment(R"DOC(
+Send Operator.
+)DOC");
+  }
+};
+
 class RecvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+class SendOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SendOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddOutput("X", "Recv Tensor");
+    AddAttr<std::string>("src_device", "src device name, can be rpc endpoint");
+    AddAttr<std::string>("dst_device", "dst device name, can be rpc endpoint");
+    AddComment(R"DOC(
+Recv Operator.
+)DOC");
+  }
 };
 
 }  // namespace operators

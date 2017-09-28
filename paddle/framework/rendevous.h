@@ -14,8 +14,8 @@
 
 #pragma once
 #include "paddle/framework/eigen.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/variable.h"
 #include "paddle/platform/device_context.h"
 
 #include <functional>
@@ -91,9 +91,13 @@ class Rendevous {
                              const Variable& t)>
       DoneCallback;
   struct Msg {
-    Variable var;
-    platform::DeviceContext* src_device;
-    platform::DeviceContext* dst_device;
+    // Msg() {}
+    // Msg(const Variable& v) : var(v) {}
+    // Msg(const Variable, const DoneCallback& cb) : var(v), done_cb(cb) {}
+    // TODO(dzhwinter): should be any type, namely. Variable
+    Tensor var;
+    platform::DeviceContext* src_device = nullptr;
+    platform::DeviceContext* dst_device = nullptr;
     DoneCallback done_cb = nullptr;
     bool RecvReady() { return done_cb != nullptr && dst_device != nullptr; }
   };
@@ -107,7 +111,7 @@ class Rendevous {
             Variable* t, int timeout_ms);
 
  private:
-  using BlockingChannel = std::deque<unique_ptr<Msg>>;
+  using BlockingChannel = std::deque<std::unique_ptr<Msg>>;
   using Table = std::unordered_map<size_t, BlockingChannel>;
   Table table_;
   std::mutex mu_;
