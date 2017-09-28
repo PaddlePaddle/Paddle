@@ -1,5 +1,1 @@
----
-Language:        Cpp
-BasedOnStyle:  Google
-Standard:  Cpp11
-...
+../framework/.clang-format
