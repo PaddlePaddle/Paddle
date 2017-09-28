@@ -13,9 +13,13 @@ function train() {
     log="logs/${topology}-mkldnn-${bs}.log"
   elif [ $3 == "False" ]; then
     thread=`nproc`
+    # each trainer_count use only 1 core to avoid conflict
+    export OMP_NUM_THREADS=1
+    export MKL_NUM_THREADS=1
     log="logs/${topology}-${thread}mklml-${bs}.log"
   else
     echo "Wrong input $3, use True or False."
+    exit 0
   fi
   args="batch_size=${bs}"
   config="${topology}.py"
