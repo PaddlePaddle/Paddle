@@ -51,7 +51,7 @@ class ScatterOp : public framework::OperatorWithKernel {
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
   }
 };
 
@@ -68,7 +68,7 @@ class ScatterGradOp : public framework::OperatorWithKernel {
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
   }
 };
 

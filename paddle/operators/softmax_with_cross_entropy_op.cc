@@ -158,7 +158,8 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Logits")->type());
+    return framework::ToDataType(
+        ctx.Input<Tensor>(framework::GradVarName("Loss"))->type());
   }
 };
 
