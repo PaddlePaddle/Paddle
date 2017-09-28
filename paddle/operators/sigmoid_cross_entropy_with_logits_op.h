@@ -19,21 +19,20 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-// Y = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
+// Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 template <typename Place, typename T>
 class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Labels");
-    Tensor *Y = context.Output<Tensor>("Y");
-    Y->mutable_data<T>(context.GetPlace());
+    const framework::Tensor *X = context.Input<framework::Tensor>("X");
+    const framework::Tensor *Labels =
+        context.Input<framework::Tensor>("Labels");
+    framework::Tensor *Out = context.Output<framework::Tensor>("Out");
+    Out->mutable_data<T>(context.GetPlace());
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto labels = framework::EigenVector<T>::Flatten(*Labels);
-    auto y = framework::EigenVector<T>::Flatten(*Y);
+    auto out = framework::EigenVector<T>::Flatten(*Out);
     auto place = context.GetEigenDevice<Place>();
 
     // term1 = max(x, 0)
@@ -43,7 +42,7 @@ class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel {
     // term3 = log(1 + exp(-abs(x)))
     auto term3 = (static_cast<T>(1) + (-(x.abs())).exp()).log();
 
-    y.device(place) = term1 - term2 + term3;
+    out.device(place) = term1 - term2 + term3;
   }
 };
 
@@ -52,20 +51,23 @@ template <typename Place, typename T>
 class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Labels");
-    const Tensor *dY = context.Input<Tensor>(framework::GradVarName("Y"));
-    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
+    const framework::Tensor *X = context.Input<framework::Tensor>("X");
+    const framework::Tensor *Labels =
+        context.Input<framework::Tensor>("Labels");
+    const framework::Tensor *dOut =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    framework::Tensor *dX =
+        context.Output<framework::Tensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto labels = framework::EigenVector<T>::Flatten(*Labels);
-    auto dy = framework::EigenVector<T>::Flatten(*dY);
+    auto dout = framework::EigenVector<T>::Flatten(*dOut);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
     auto place = context.GetEigenDevice<Place>();
 
     auto sigmoid_x = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
-    dx.device(place) = dy * (sigmoid_x - labels);
+    dx.device(place) = dout * (sigmoid_x - labels);
   }
 };
 

@@ -26,13 +26,13 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         sigmoid_X = expit(self.inputs['X'])
         term1 = self.inputs['Labels'] * np.log(sigmoid_X)
         term2 = (1 - self.inputs['Labels']) * np.log(1 - sigmoid_X)
-        self.outputs = {'Y': -term1 - term2}
+        self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
@@ -57,10 +57,10 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         sigmoid_X = expit(self.inputs['X'])
         term1 = self.inputs['Labels'] * np.log(sigmoid_X)
         term2 = (1 - self.inputs['Labels']) * np.log(1 - sigmoid_X)
-        self.outputs = {'Y': -term1 - term2}
+        self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Out')
