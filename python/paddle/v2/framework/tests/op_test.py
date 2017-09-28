@@ -98,7 +98,6 @@ def get_numeric_gradient(scope,
                          in_place=False):
 
     set_input(scope, op, inputs, core.CPUPlace())
-    op.infer_shape(scope)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
 
@@ -160,7 +159,6 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
     set_input(scope, op, inputs, place)
 
-    op.infer_shape(scope)
     op.run(scope, ctx)
 
     if no_grad_set is None:
@@ -169,7 +167,6 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
     backward_op = get_backward_op(scope, op, no_grad_set)
     set_output_grad(scope, op, outputs, place)
 
-    backward_op.infer_shape(scope)
     backward_op.run(scope, ctx)
 
     out = np.array(scope.find_var(grad_name).get_tensor())
@@ -187,7 +184,6 @@ class OpTest(unittest.TestCase):
         if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
             return
         set_input(self.scope, self.op, self.inputs, place)
-        self.op.infer_shape(self.scope)
         ctx = core.DeviceContext.create(place)
         self.op.run(self.scope, ctx)
 
