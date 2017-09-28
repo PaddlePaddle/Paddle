@@ -62,6 +62,12 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
 
+    if ("${TARGET}" STREQUAL "pool_with_index_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(maxPool2dWithIndex);\n")
+    endif()
+
     # pybind USE_NO_KERNEL_OP
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "OperatorWithKernel" regex_result "${TARGET_CONTENT}")
