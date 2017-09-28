@@ -78,7 +78,7 @@ void LinkMemories(const std::vector<Scope*>& step_scopes,
                   const int offset, bool infer_shape_mode);
 
 void InitArgument(const ArgumentName& name, Argument* arg,
-                  const framework::OperatorBase& op);
+                  const framework::OperatorBase& op, bool is_grad = false);
 
 }  // namespace rnn
 }  // namespace operators

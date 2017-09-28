@@ -28,7 +28,7 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
     return false;
   }
 
-  CHECK_EQ(inputLayers_.size(), 1) << "Only support one input layer yet";
+  CHECK_EQ(inputLayers_.size(), 1UL) << "Only support one input layer yet";
   CHECK_EQ(inputLayers_.size(), parameters_.size());
   CHECK(!parameters_[0]->isSparse()) << "Do not support sparse yet";
 
@@ -49,7 +49,7 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
 
   // create biases
   if (biasParameter_.get() != NULL) {
-    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_));
+    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_, 0));
   }
   return true;
 }
@@ -161,9 +161,16 @@ void MKLDNNFcLayer::resetInValue(MKLDNNMatrixPtr& in) {
 
 void MKLDNNFcLayer::resetWgtBiasValue(MKLDNNMatrixPtr& wgt,
                                       MKLDNNMatrixPtr& bias) {
+  format wgtFmt = format::oihw;
+  if (inVal_->getFormat() == format::nChw8c) {
+    wgtFmt = format::oIhw8i;
+  } else if (inVal_->getFormat() == format::nChw16c) {
+    wgtFmt = format::oIhw16i;
+  }
   wgt = MKLDNNMatrix::create(
-      weight_->getW(), {oc_, ic_, ih_, iw_}, format::oihw, engine_);
+      weight_->getW(), {oc_, ic_, ih_, iw_}, wgtFmt, engine_);
   wgt->downSpatial();
+  VLOG(MKLDNN_FMTS) << "Weight value format: " << wgt->getFormat();
 
   bias = (biases_ && biases_->getW())
              ? MKLDNNMatrix::create(biases_->getW(), {oc_}, format::x, engine_)

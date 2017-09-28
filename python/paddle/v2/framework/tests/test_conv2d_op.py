@@ -105,12 +105,12 @@ class TestWithGroup(TestConv2dOp):
 
 class TestCudnn2d(TestConv2dOp):
     def init_optype(self):
-        self.op_type = "cudnn_conv"
+        self.op_type = "conv_cudnn"
 
 
 class TestCudnn2dWithGroup(TestConv2dOp):
     def init_optype(self):
-        self.op_type = "cudnn_conv"
+        self.op_type = "conv_cudnn"
 
     def init_groups(self):
         self.groups = 3
