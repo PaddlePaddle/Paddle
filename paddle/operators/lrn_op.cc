@@ -119,7 +119,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
     auto x_dims = ctx.Input<Tensor>("X")->dims();
     auto *x_g = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    if (x_g) x_g->Resize(x_dims);
+    x_g->Resize(x_dims);
   }
 };
 

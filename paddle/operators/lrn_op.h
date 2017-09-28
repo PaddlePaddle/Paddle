@@ -21,15 +21,6 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
-inline void detail(std::string name, T t) {
-  // printf("in_c:%s %f %f %f %f %f\n", name.c_str(), t[0], t[1], t[2], t[3],
-  //       t[4]);
-
-  printf("in_c:%s %f %f %f %f %f\n", name.c_str(), t(0), t(1), t(2), t(3),
-         t(4));
-}
-
 template <typename Place, typename T>
 class LRNKernel : public framework::OpKernel {
  public:
@@ -67,7 +58,6 @@ class LRNKernel : public framework::OpKernel {
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
     auto x_v = framework::EigenVector<T>::Flatten(*x);
-    // const T* data = x_v.data();
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
