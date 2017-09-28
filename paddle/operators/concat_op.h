@@ -44,7 +44,7 @@ class ConcatKernel : public framework::OpKernel<T> {
 };
 
 template <typename Place, typename T>
-class ConcatGradKernel : public framework::OpKernel {
+class ConcatGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* in = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
