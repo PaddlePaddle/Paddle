@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/block_desc.h"
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/var_desc.h"
+#include "paddle/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -86,5 +85,5 @@ void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
   BlockDesc *desc = block.RawPtr();
   this->attrs_[name] = desc;
 }
-}
-}
+}  // namespace framework
+}  // namespace paddle

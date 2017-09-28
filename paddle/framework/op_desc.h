@@ -102,5 +102,5 @@ class OpDescBind {
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
 };
-}
-}
+}  // namespace framework
+}  // namespace paddle

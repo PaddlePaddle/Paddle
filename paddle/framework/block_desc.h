@@ -14,16 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include <deque>
 #include <unordered_map>
 #include <vector>
-#include "paddle/framework/framework.pb.h"
+#include "paddle/framework/op_desc.h"
+#include "paddle/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {
 
 class ProgramDescBind;
-class OpDescBind;
-class VarDescBind;
 
 // Each Protobuf Message, we provide a XXXBind class. In that class, we optimize
 // read/write speed. Only when we want the protobuf message, the local changes
@@ -67,5 +67,5 @@ class BlockDescBind {
   std::deque<std::unique_ptr<OpDescBind>> ops_;
   std::unordered_map<std::string, std::unique_ptr<VarDescBind>> vars_;
 };
-}
-}
+}  // namespace framework
+}  // namespace paddle

@@ -94,61 +94,61 @@ struct type_caster<boost::variant<Args...>>
 namespace paddle {
 namespace pybind {
 
+using namespace paddle::framework;  // NOLINT
+
 // Bind Methods
 void BindProgramDesc(py::module &m) {
-  py::class_<framework::ProgramDescBind>(m, "ProgramDesc", "")
-      .def_static(
-          "instance",
-          []() -> framework::ProgramDescBind * {
-            return &framework::ProgramDescBind::Instance(&GetProgramDesc());
-          },
-          py::return_value_policy::reference)
+  py::class_<ProgramDescBind>(m, "ProgramDesc", "")
+      .def_static("instance",
+                  []() -> ProgramDescBind * {
+                    return &ProgramDescBind::Instance(&GetProgramDesc());
+                  },
+                  py::return_value_policy::reference)
       .def_static("__create_program_desc__",
-                  []() -> framework::ProgramDescBind * {
+                  []() -> ProgramDescBind * {
                     // Only used for unit-test
                     auto *prog_desc = new ProgramDesc;
                     auto *block = prog_desc->mutable_blocks()->Add();
                     block->set_idx(0);
                     block->set_parent_idx(-1);
-                    return &framework::ProgramDescBind::Instance(prog_desc);
+                    return &ProgramDescBind::Instance(prog_desc);
                   },
                   py::return_value_policy::reference)
-      .def("append_block", &framework::ProgramDescBind::AppendBlock,
+      .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
-      .def("block", &framework::ProgramDescBind::Block,
-           py::return_value_policy::reference)
-      .def("__str__", &framework::ProgramDescBind::DebugString)
-      .def("num_blocks", &framework::ProgramDescBind::Size);
+      .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
+      .def("__str__", &ProgramDescBind::DebugString)
+      .def("num_blocks", &ProgramDescBind::Size);
 }
 
 void BindBlockDesc(py::module &m) {
-  py::class_<framework::BlockDescBind>(m, "BlockDesc", "")
-      .def_property_readonly("id", &framework::BlockDescBind::ID)
-      .def_property_readonly("parent", &framework::BlockDescBind::Parent)
-      .def("append_op", &framework::BlockDescBind::AppendOp,
+  py::class_<BlockDescBind>(m, "BlockDesc", "")
+      .def_property_readonly("id", &BlockDescBind::ID)
+      .def_property_readonly("parent", &BlockDescBind::Parent)
+      .def("append_op", &BlockDescBind::AppendOp,
            py::return_value_policy::reference)
-      .def("prepend_op", &framework::BlockDescBind::PrependOp,
+      .def("prepend_op", &BlockDescBind::PrependOp,
            py::return_value_policy::reference)
       .def("new_var",
-           [](framework::BlockDescBind &self, py::bytes byte_name) {
+           [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.NewVar(name);
            },
            py::return_value_policy::reference)
       .def("var",
-           [](framework::BlockDescBind &self, py::bytes byte_name) {
+           [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.Var(name);
            },
            py::return_value_policy::reference)
-      .def("all_vars", &framework::BlockDescBind::AllVars,
+      .def("all_vars", &BlockDescBind::AllVars,
            py::return_value_policy::reference)
-      .def("all_ops", &framework::BlockDescBind::AllOps,
+      .def("all_ops", &BlockDescBind::AllOps,
            py::return_value_policy::reference);
 }
 
 void BindVarDsec(py::module &m) {
-  py::enum_<framework::DataType>(m, "DataType", "")
+  py::enum_<DataType>(m, "DataType", "")
       .value("BOOL", DataType::BOOL)
       .value("INT16", DataType::INT16)
       .value("INT32", DataType::INT32)
@@ -157,22 +157,21 @@ void BindVarDsec(py::module &m) {
       .value("FP32", DataType::FP32)
       .value("FP64", DataType::FP64);
 
-  py::class_<framework::VarDescBind>(m, "VarDesc", "")
+  py::class_<VarDescBind>(m, "VarDesc", "")
       .def("name",
-           [](const framework::framework::VarDescBind &self) {
+           [](const VarDescBind &self) {
              py::bytes name = self.Name();
              return name;
            },
            py::return_value_policy::reference)
-      .def("set_shape", &framework::VarDescBind::SetShape)
-      .def("set_data_type", &framework::VarDescBind::SetDataType)
-      .def("shape", &framework::VarDescBind::Shape,
-           py::return_value_policy::reference)
-      .def("data_type", &framework::VarDescBind::DataType);
+      .def("set_shape", &VarDescBind::SetShape)
+      .def("set_data_type", &VarDescBind::SetDataType)
+      .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
+      .def("data_type", &VarDescBind::DataType);
 }
 
 void BindOpDesc(py::module &m) {
-  py::enum_<framework::AttrType>(m, "AttrType", "")
+  py::enum_<AttrType>(m, "AttrType", "")
       .value("INT", AttrType::INT)
       .value("INTS", AttrType::INTS)
       .value("FLOAT", AttrType::FLOAT)
@@ -183,24 +182,24 @@ void BindOpDesc(py::module &m) {
       .value("BOOLS", AttrType::BOOLEANS)
       .value("BLOCK", AttrType::BLOCK);
 
-  py::class_<framework::OpDescBind> op_desc(m, "OpDesc", "");
-  op_desc.def("type", &framework::OpDescBind::Type)
-      .def("set_type", &framework::OpDescBind::SetType)
-      .def("input", &framework::OpDescBind::Input)
-      .def("input_names", &framework::OpDescBind::InputNames)
-      .def("set_input", &framework::OpDescBind::SetInput)
-      .def("output", &framework::OpDescBind::Output)
-      .def("output_names", &framework::OpDescBind::OutputNames)
-      .def("set_output", &framework::OpDescBind::SetOutput)
-      .def("__str__", &framework::OpDescBind::DebugString)
-      .def("__repr__", &framework::OpDescBind::DebugString)
-      .def("has_attr", &framework::OpDescBind::HasAttr)
-      .def("attr_type", &framework::OpDescBind::GetAttrType)
-      .def("attr_names", &framework::OpDescBind::AttrNames)
-      .def("set_attr", &framework::OpDescBind::SetAttr)
-      .def("attr", &framework::OpDescBind::GetAttr)
-      .def("set_block_attr", &framework::OpDescBind::SetBlockAttr)
-      .def("get_block_attr", &framework::OpDescBind::GetBlockAttr);
+  py::class_<OpDescBind> op_desc(m, "OpDesc", "");
+  op_desc.def("type", &OpDescBind::Type)
+      .def("set_type", &OpDescBind::SetType)
+      .def("input", &OpDescBind::Input)
+      .def("input_names", &OpDescBind::InputNames)
+      .def("set_input", &OpDescBind::SetInput)
+      .def("output", &OpDescBind::Output)
+      .def("output_names", &OpDescBind::OutputNames)
+      .def("set_output", &OpDescBind::SetOutput)
+      .def("__str__", &OpDescBind::DebugString)
+      .def("__repr__", &OpDescBind::DebugString)
+      .def("has_attr", &OpDescBind::HasAttr)
+      .def("attr_type", &OpDescBind::GetAttrType)
+      .def("attr_names", &OpDescBind::AttrNames)
+      .def("set_attr", &OpDescBind::SetAttr)
+      .def("attr", &OpDescBind::GetAttr)
+      .def("set_block_attr", &OpDescBind::SetBlockAttr)
+      .def("get_block_attr", &OpDescBind::GetBlockAttr);
 }
 
 }  // namespace pybind

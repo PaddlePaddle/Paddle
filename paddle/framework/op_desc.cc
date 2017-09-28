@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/op_desc.h"
-#include "paddle/frameword/block_desc.h"
+#include "paddle/framework/block_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -129,5 +129,5 @@ void OpDescBind::Sync() {
     need_update_ = false;
   }
 }
-}
-}
+}  // namespace framework
+}  // namespace paddle

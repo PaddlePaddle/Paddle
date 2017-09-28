@@ -47,5 +47,5 @@ class ProgramDescBind {
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
 };
-}
-}
+}  // namespace framework
+}  // namespace paddle

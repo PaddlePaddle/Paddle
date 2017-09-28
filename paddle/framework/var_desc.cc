@@ -32,5 +32,5 @@ std::vector<int64_t> VarDescBind::Shape() const {
 DataType VarDescBind::DataType() const {
   return desc_.lod_tensor().data_type();
 }
-}
-}
+}  // namespace framework
+}  // namespace paddle

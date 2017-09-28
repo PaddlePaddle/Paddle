@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/farmework/block_desc.h"
-#include "paddle/framework/programe_desc.h"
+#include "paddle/framework/program_desc.h"
+#include "paddle/framework/block_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -56,5 +56,5 @@ ProgramDescBind::ProgramDescBind(ProgramDesc *prog) {
     blocks_.emplace_back(new BlockDescBind(this, &block));
   }
 }
-}
-}
+}  // namespace framework
+}  // namespace paddle

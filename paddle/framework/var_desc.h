@@ -69,5 +69,5 @@ class VarDescBind {
  private:
   VarDesc desc_;
 };
-}
-}
+}  // namespace framework
+}  // namespace paddle
