@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
