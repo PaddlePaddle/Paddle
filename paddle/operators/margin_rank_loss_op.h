@@ -23,26 +23,18 @@ namespace operators {
 template <typename T>
 struct ReLU {
   HOSTDEVICE T operator()(const T& val) const {
-    if (val < 0) {
-      return static_cast<T>(0);
-    } else {
-      return val;
-    }
+    return val > 0 ? val : static_cast<T>(0);
   }
 };
 
 template <typename T>
 struct Heaviside {
   HOSTDEVICE T operator()(const T& val) const {
-    if (val > 0) {
-      return static_cast<T>(1);
-    } else {
-      return static_cast<T>(0);
-    }
+    return static_cast<T>(val > 0 ? 1 : 0);
   }
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename Place, typename T>
 class MarginRankLossKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -56,7 +48,7 @@ class MarginRankLossKernel : public framework::OpKernel {
     out_t->mutable_data<T>(ctx.GetPlace());
     act_t->mutable_data<T>(ctx.GetPlace());
 
-    auto margin = static_cast<T>(ctx.Attr<AttrType>("margin"));
+    auto margin = static_cast<T>(ctx.Attr<T>("margin"));
     auto out = framework::EigenVector<T>::Flatten(*out_t);
     auto act = framework::EigenVector<T>::Flatten(*act_t);
 
