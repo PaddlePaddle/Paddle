@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include <algorithm>
-#include "paddle/framework/op_registry.h"
+#include <atomic>
 
 namespace paddle {
 namespace framework {
@@ -32,6 +32,24 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
   return *device_context_.get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
+
+const Tensor* GetTensorFromVar(const Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return &var->Get<LoDTensor>();
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input must be LoDTensor or Tensor.");
+  return &var->Get<Tensor>();
+}
+
+Tensor* GetTensorFromVar(Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->GetMutable<LoDTensor>();
+  }
+  PADDLE_ENFORCE(var->IsType<Tensor>(),
+                 "The Input must be LoDTensor or Tensor.");
+  return var->GetMutable<Tensor>();
+}
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
@@ -60,8 +78,8 @@ std::string OperatorBase::Output(const std::string& name) const {
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output %s", type_,
-                 name);
+  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output called %s",
+                 type_, name);
   return it->second;
 }
 
@@ -207,23 +225,22 @@ const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
 }
 
 template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
-  auto* var = OutputVar(name);
-  return var == nullptr ? nullptr : const_cast<Tensor*>(GetTensorFromVar(var));
+Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const {
+  auto var = OutputVar(name);
+  return var == nullptr ? nullptr : var->GetMutable<LoDTensor>();
 }
 
 template <>
-std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
     const std::string& name) const {
   auto names = op().Outputs(name);
   std::vector<Tensor*> res;
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
                  [&](const std::string& sub_name) {
-                   auto var = scope().FindVar(sub_name);
-                   return var == nullptr
-                              ? nullptr
-                              : const_cast<Tensor*>(GetTensorFromVar(var));
+                   auto var = scope_.FindVar(sub_name);
+                   return var == nullptr ? nullptr
+                                         : var->GetMutable<LoDTensor>();
                  });
   return res;
 }

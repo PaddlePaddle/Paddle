@@ -53,9 +53,9 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of mul op");
-    AddInput("Y", "The second input of mul op");
-    AddOutput("Out", "The output of mul op");
+    AddInput("X", "(Tensor), 2D tensor of size (M x K)");
+    AddInput("Y", "(Tensor), 2D tensor of size (K x N)");
+    AddOutput("Out", "(Tensor), 2D tensor of size (M x N)");
     AddComment(R"DOC(
 Two Element Mul Operator.
 The equation is: Out = X * Y
@@ -71,7 +71,7 @@ The equation is: Out = X * Y
 
 构造函数里通过`AddInput`添加输入参数，通过`AddOutput`添加输出参数，通过`AddComment`添加Op的注释。这些函数会将对应内容添加到`OpProto`中。
 
-上面的代码在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守命名规范。
+上面的代码在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守[命名规范](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/name_convention.md)。
 
 
 再以[`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37)为例：

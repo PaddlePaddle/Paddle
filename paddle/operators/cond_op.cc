@@ -82,7 +82,7 @@ void CondOp::InferShape(const Scope& scope) const {
     }
 
     // each net calls InferShape
-    sub_net_op_[i]->InferShape(*sub_scopes[i]);
+    //    sub_net_op_[i]->InferShape(*sub_scopes[i]);
   }
 
   for (auto& output : Outputs("Outs")) {
@@ -215,7 +215,7 @@ class CondOpProtoAndCheckerMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Sample dependent Cond Operator:
 Given Cond[i] as a 1/0 vector to indicate true/false
-The equation is: 
+The equation is:
 Out[i] = subnet_t[i], if Cond[i] == true
 Out[i] = subnet_t[i], if Cond[i] == false
 )DOC");

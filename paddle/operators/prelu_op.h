@@ -40,7 +40,7 @@ class PReluFunctor {
 };
 
 template <typename Place, typename T>
-class PReluKernel : public framework::OpKernel {
+class PReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
@@ -77,7 +77,7 @@ class PReluGradFunctor {
 };
 
 template <typename Place, typename T>
-class PReluGradKernel : public framework::OpKernel {
+class PReluGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));

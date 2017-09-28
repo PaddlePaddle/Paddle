@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {
@@ -25,50 +26,23 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class SoftmaxKernel : public framework::OpKernel {
+class SoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto X = context.Input<Tensor>("X");
     auto Y = context.Output<Tensor>("Y");
+
+    // allocate memory on device.
     Y->mutable_data<T>(context.GetPlace());
 
-    auto logits = EigenMatrix<T>::From(*X);
-    auto softmax = EigenMatrix<T>::From(*Y);
-
-    const int kBatchDim = 0;
-    const int kClassDim = 1;
-
-    const int batch_size = logits.dimension(kBatchDim);
-    const int num_classes = logits.dimension(kClassDim);
-
-    Eigen::DSizes<int, 1> along_class(kClassDim);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-
-    auto shifted_logits = (logits -
-                           logits.maximum(along_class)
-                               .eval()
-                               .reshape(batch_by_one)
-                               .broadcast(one_by_class));
-
-    softmax.device(context.GetEigenDevice<Place>()) = shifted_logits.exp();
-
-    softmax.device(context.GetEigenDevice<Place>()) =
-        (softmax *
-         softmax.sum(along_class)
-             .inverse()
-             .eval()
-             .reshape(batch_by_one)
-             .broadcast(one_by_class));
+    math::SoftmaxFunctor<Place, T>()(context, X, Y);
   }
 };
 
 template <typename Place, typename T>
-class SoftmaxGradKernel : public framework::OpKernel {
+class SoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
-
     auto Y = context.Input<Tensor>("Y");
     auto dY = context.Input<Tensor>(framework::GradVarName("Y"));
     auto dX = context.Output<Tensor>(framework::GradVarName("X"));

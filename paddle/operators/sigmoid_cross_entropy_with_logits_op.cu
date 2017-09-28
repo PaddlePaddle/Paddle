@@ -13,13 +13,12 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-
-#include "paddle/operators/sequence_avg_pool_op.h"
+#include "paddle/operators/sigmoid_cross_entropy_with_logits_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool,
-    ops::SequenceAvgPoolKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    sequence_avg_pool_grad,
-    ops::SequenceAvgPoolGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits,
+                       ops::SigmoidCrossEntropyWithLogitsKernel<
+                           paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
+                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
+                           paddle::platform::GPUPlace, float>);

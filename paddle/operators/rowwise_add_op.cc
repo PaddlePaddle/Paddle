@@ -24,16 +24,16 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of RowwiseAddOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("b"),
-                            "Input(b) of RowwiseAddOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of RowwiseAddOp should not be null.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of RowwiseAddOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("b"),
+                   "Input(b) of RowwiseAddOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of RowwiseAddOp should not be null.");
 
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto b_dims = ctx.Input<Tensor>("b")->dims();
+    auto x_dims = ctx->GetInputDim("X");
+    auto b_dims = ctx->GetInputDim("b");
     PADDLE_ENFORCE_GT(
         x_dims.size(), b_dims.size(),
         "The rank of input `X` must be larger than the one of input `b`.");
@@ -43,15 +43,17 @@ class RowwiseAddOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
         "The width of two operands must be same");
-    PADDLE_ENFORCE_EQ(ctx.OutputSize("Out"), 1, "The output size must be 1");
-    ctx.Output<framework::LoDTensor>("Out")->Resize(x_dims);
+    PADDLE_ENFORCE_EQ(ctx->Outputs("Out").size(), 1,
+                      "The output size must be 1");
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class RowwiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RowwiseAddOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
+  RowwiseAddOpMaker(framework::OpProto* proto,
+                    framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
     AddInput("b", "The right input of row-wise add op, must be vector");
@@ -68,25 +70,29 @@ class RowwiseAddGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "X should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("b"), "b should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto b_dims = ctx.Input<Tensor>("b")->dims();
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("b"), "b should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx->GetInputDim("X");
+    auto b_dims = ctx->GetInputDim("b");
     PADDLE_ENFORCE_GT(
         x_dims.size(), b_dims.size(),
         "The rank of input `X` must be larger than the one of input `b`.");
 
-    int num_col_dims = x_dims.size() - b_dims.size();
+    int64_t num_col_dims = x_dims.size() - b_dims.size();
     PADDLE_ENFORCE_EQ(
         framework::slice_ddim(x_dims, num_col_dims, x_dims.size()), b_dims,
         "The width of two operands must be same");
-    auto *dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *db = ctx.Output<framework::LoDTensor>(framework::GradVarName("b"));
-    if (dx) dx->Resize(x_dims);
-    if (db) db->Resize(b_dims);
+    auto x_grad_name = framework::GradVarName("X");
+    auto b_grad_name = framework::GradVarName("b");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+    if (ctx->HasOutput(b_grad_name)) {
+      ctx->SetOutputDim(b_grad_name, b_dims);
+    }
   }
 };
 

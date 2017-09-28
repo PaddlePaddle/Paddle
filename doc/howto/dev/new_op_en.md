@@ -1,52 +1,51 @@
-# How to Write New Operators
+# How to write a new operator
 
- - [概念简介](#概念简介)
- - [实现C++类](#实现C++类)
-   - [定义ProtoMaker类](#定义ProtoMaker类)
-   - [定义Operator类](#定义Operator类)
-   - [定义OpKernel类](#定义OpKernel类)
-   - [注册Operator](#注册Operator)
-   - [编译](#编译)
- - [绑定Python](#绑定Python)
- - [实现单元测试](#实现单元测试)
-   - [前向Operator单测](#前向Operator单测)
-   - [反向Operator单测](#反向Operator单测)
-   - [编译和执行](#编译和执行)
+ - [Background](#background)
+ - [Implementing C++ Types](#implementing-c++-types)
+   - [Defining ProtoMaker](#defining-protoMaker)
+   - [Defining Operator](#defining-operator)
+   - [Registering Operator](#registering-operator)
+   - [Compilation](#compilation)
+ - [Python Binding](#python-binding)
+ - [Unit Tests](#unit-tests)
+   - [Testing Forward Operators](#testing-forward-operators)
+   - [Testing Backward Operators](#testing-backward-operators)
+   - [Compiling and Running](#compiling-and-running)
+ - [Remarks](#remarks)
+## Background
 
+Here are the base types needed. For details, please refer to the design docs.
 
-## Ingredients
+- `framework::OperatorBase`: Operator (Op)base class.
+- `framework::OpKernel`: Base class for Op computation.
+- `framework::OperatorWithKernel`: Inherited from OperatorBase, describing an operator with computation.
+- `class OpProtoAndCheckerMaker`: Describes an Operator's input, output, attributes and description, mainly used to interface with Python API by filling the protobuf message `OpProto`.
 
-Here is a brief introduction to some base classes.  For details please refer to related design docs.
-
-- `framework::OperatorBase`: The base class of operators (or, ops)
-- `framework::OpKernel`: The base class of *kernels*, classes that implement the computation of operators.
-- `framework::OperatorWithKernel`: derived from OperatorBase.  Those operators that do computation would have kernels, where each kernel does computation on a certain device, e.g., CUDA, ARM, and FPGA.
-- `class OpProtoAndCheckerMaker`: for each operator class, there must be a proto maker class that have methods to fill information about this operator into a protobuf message `OpProto`.
-
-As you can see, there are operators which has or hasn't kernels.  The former should have base class `OperatorBase` and the latter have `OperatorWithKernel`.  This tutorial is about writing operators with kernels.
+An operator can be differentiated by whether in has kernel methods. An operator with kernel inherits from `OperatorWithKernel` while the ones without inherit from `OperatorBase`. This tutorial focuses on implementing operators with kernels. In short, an operator includes the following information:
 
 
- What we need   | Where the code goes
+ What           | Where
 --------------  | :----------------------
-the definition of a proto maker class  | the `.cc` file. Backward Op doesn't need proto maker
-the definition of an operator class    | the `.cc` file
-the definition and implementation of kernels  | the part shared by CPU and GPU code in `.h` files; CPUs-specific code in `.cc` files and GPU-specific code in `.cu` files.
-operator registration         | the registration of operators in the `.cc` file, those of CPU kernels in `.cc` files, those of GPU kernels in `.cu` files
+OpProtoMake definition  | `.cc`files, Backward Op does not need an OpProtoMake interface.
+Op definition           | `.cc` files
+Kernel implementation       | The kernel methods shared between CPU and GPU are defined in `.h` files. CPU-specific kernels live in `.cc` files, while GPU-specific kernels are implemented in `.cu`files.
+Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation while `.cu` files contain the GPU implementation.
 
 
-All above files go in the source directory [`paddle/operators`](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators) as files named `*_op.h`, `*_op.cc`, `*_op.cu`.  **The building system would generate Python bindings according to the filename.**
+All Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions. **
 
 
-## Implement the C++ class
+Let's take matrix multiplication operator, [MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc), as an example to introduce the writing of an Operator with Kernel.
 
 
-### 1. Define the Op Proto Maker Class
+## Implementing C++ Types
 
-Let us take the tensor multiplication operator [`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc) as the example.
 
-Let us consider the multiplication of two tensors: $Out = X * Y$.  There are two inputs and an output.
+### 1. Defining Class ProtoMaker
 
-The op proto maker class fills information about the inputs, outputs, and attributes, into the `OpProto` protobuf message:
+Matrix Multiplication can be written as $Out = X * Y$, meaning that the operation consists of two inputs and pne output.
+
+First, define a `ProtoMaker` to describe the Operator's input, output, and additional comments:
 
 ```cpp
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -64,17 +63,17 @@ The equation is: Out = X * Y
 };
 ```
 
-We derive [`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43) from `framework::OpProtoAndCheckerMaker`.  There are two parameters of its constructor:
+[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43) inherits from`framework::OpProtoAndCheckerMaker`, consisting of 2 variables in the constructor：
 
-   - `framework::OpProto` ： the protobuf message to be filled by the constructor and will be used to create the Python binding automatically.
-   - `framework::OpAttrChecker`: the one that validates attribute values.
+   - `framework::OpProto` stores Operator input and variable attribute, used to generate the Python binding.
+   - `framework::OpAttrChecker` validates variable attributes.
 
-We should call `AddInput` to describe operator inputs, `AddOutput` for outputs, `AddComment` for operator comments.  These functions fills the `OpProto` message.
+The constructor utilizes `AddInput`, `AddOutput`, and `AddComment`. They fill the `OpProto` message.
 
-Above example adds two inputs, `X` and `Y`, an output `Out`, and a comment.  Please follow the [naming convention](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/name_convention.md).
+The code above adds two inputs, `X` and `Y`, and an output `Out` to `MulOp`, and a comment, in accordance to Paddle's [naming convention](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/name_convention.md).
 
 
-Let us have an additional example [`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37):
+An additional example [`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37) is implemented as follows:
 
 ```cpp
 template <typename AttrType>
@@ -92,16 +91,16 @@ The equation is: Out = scale*X
 };
 ```
 
-This op proto maker differs from the above one:
+There are two changes in this example:
 
-- `AddInput("X","...").NotInGradient()` : 表示`X`这个输入不参与`ScaleOp`对应的梯度Op计算之中，如果Op的某个输入不参与反向梯度的计算，请显示地调用`.NotInGradient()`进行设置。
+- `AddInput("X","...").NotInGradient()` expresses that input `X` is not involved in `ScaleOp`'s corresponding computation. If an input to an operator is not participating in back-propagation, please explicitly set `.NotInGradient()`.
 
-- `AddAttr<AttrType>("scale", "...").SetDefault(1.0);` : 增加`scale`系数，作为参数属性，并且设置默认值为1.0。
+- `AddAttr<AttrType>("scale", "...").SetDefault(1.0);`  adds `scale`constant as an attribute, and sets the default value to 1.0.
 
 
-### 2. 定义Operator类
+### 2. Defining Operator
 
-下面的点实现了MulOp的定义：
+The following code defines the interface for MulOp:
 
 ```cpp
 class MulOp : public framework::OperatorWithKernel {
@@ -126,13 +125,13 @@ class MulOp : public framework::OperatorWithKernel {
 };
 ```
 
-[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L22)继承自`OperatorWithKernel`。`public`成员：
+[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L22) inherits from `OperatorWithKernel`. Its `public` member
 
 ```cpp
 using framework::OperatorWithKernel::OperatorWithKernel;
 ```
 
-这句表示使用基类`OperatorWithKernel`的构造函数，也可写成：
+expresses an operator constructor using base class `OperatorWithKernel`, alternatively written as
 
 ```cpp
 MulOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -141,27 +140,27 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
   : OperatorWithKernel(type, inputs, outputs, attrs) {}
 ```
 
-还需要重写`InferShape`接口。`InferShape`为const函数，不能修改Op的成员变量，参数为`const framework::InferShapeContext &ctx`，通过该参数可获取到输入输出以及属性。它的功能是：
+`InferShape` interface needs to be re-written.`InferShape` is a constant method and cannot modify Op's member variables, its constant member `const framework::InferShapeContext &ctx` can be used to extract input, output, and attributes. It functions to
 
-  - 1). 做检查， 尽早报错：检查输入数据维度、类型等是否合法。
-  - 2). 设置输出Tensor的形状。
+  - 1). validate and error out early: it checks input data dimensions and types.
+  - 2). configures the tensor shape in the output.
 
-通常`OpProtoMaker`和`Op`类的定义写在`.cc`文件中，和下面将要介绍的注册函数一起放在`.cc`中
+Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, which also include the registration methods introduced later.
 
-### 3. 定义OpKernel类
+### 3. Defining OpKernel
 
-`MulKernel`继承自`framework::OpKernel`，带有下面两个模板参数:
+`MulKernel` inherits `framework::OpKernel`, which includes the following templates:
 
-- `typename  Place`: 表示设备类型，不同设备(CPU、GPU)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+- `typename  Place` denotes device type. When different devices, namely the CPU and the GPU, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
 
-- `typename T` : 表示数据类型，如`float`, `double`等。
+- `typename T` denotes data type, such as `float` or `double`.
 
-需要为`MulKernel`类重写`Compute`接口。
-- `Compute`接受一个输入参数：`const framework::ExecutionContext& context`。
-- 与`InferShapeContext`相比，`ExecutionContext`增加了设备类型，同样可获取到输入输出和属性参数。
-- `Compute`函数里实现`OpKernel`的具体计算逻辑。
+`MulKernel` types need to rewrite the interface for `Compute`.
+- `Compute` takes one input variable `const framework::ExecutionContext& context`.
+- Compared with `InferShapeContext`, `ExecutionContext` includes device types, and can similarly extract input, output, and attribute variables.
+- `Compute` implements the computation logics of an `OpKernel`.
 
-下面是 `MulKernel` `Compute`的实现：
+`MulKernel`'s implementation of `Compute` is as follows:
 
   ```cpp
   template <typename Place, typename T>
@@ -179,19 +178,20 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
   };
   ```
 
-需要注意：**不同设备(CPU、GPU)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
+Note that **different devices (CPU, GPU)share an Op definition; whether or not they share the same `OpKernel` depends on whether `Compute` calls functions that support both devices.**
 
-`MulOp`的CPU、GPU实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+`MulOp`'s CPU and GPU share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
 
-为了使`OpKernel`的计算过程书写更加简单，并且CPU、GPU的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)。
+To ease the writing of `OpKernel` compute, and for reusing code cross-device, [`Eigen-unsupported Tensor`](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md?fileviewer=file-view-default) module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md).
 
 
-到此，前向Op实现完成。接下来，需要在`.cc`文件中注册该op和kernel。
-反向Op类的定义，反向OpKernel的定义与前向Op类似，这里不再赘述。**但需注意反向Op没有`ProtoMaker`**。
+This concludes the forward implementation of an operator. Next its operation and kernel need to be registered in a `.cc` file.
 
-### 4. 注册Operator
+The definition of its corresponding backward operator, if applicable, is similar to that of an forward operator. **Note that a backward operator does not include a `ProtoMaker`**.
 
-- 在`.cc`文件中注册前向、反向Op类，注册CPU Kernel。
+### 4. Registering Operator
+
+- In `.cc` files, register forward and backward operator classes and the CPU kernel.
 
     ```cpp
     namespace ops = paddle::operators;
@@ -201,15 +201,15 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
                   ops::MulGradKernel<paddle::platform::CPUPlace, float>);
     ```
 
-   在上面的代码中：
+   In that code block,
 
-    - `REGISTER_OP` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`。
-    - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
-    - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulKernel`类。
+    - `REGISTER_OP` registers the `ops::MulOp` class, type named `mul`, its type `ProtoMaker` is `ops::MulOpMaker`, registering `ops::MulOpGrad` as `mul_grad`.
+    - `REGISTER_OP_WITHOUT_GRADIENT` registers an operator without gradient.
+    - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulKernel`.
 
 
-- 在 `.cu`文件中注册GPU Kernel。
-    - 请注意，如果GPU Kernel的实现基于Eigen unsupported模块，那么在 `.cu`的开始请加上宏定义 `#define EIGEN_USE_GPU`，代码示例如下：
+- Registering GPU Kernel in `.cu` files
+    - Note that if GPU Kernel is implemented using the `Eigen unsupported` module, then on top of `.cu`, a macro definition `#define EIGEN_USE_GPU` is needed, such as
 
     ```cpp
     // if use Eigen unsupported module before include head files
@@ -221,30 +221,39 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
                            ops::MulGradKernel<paddle::platform::GPUPlace, float>);
     ```
 
-### 5. 编译
+### 5. Compilation
 
-运行下面命令可以进行编译：
+Run the following commands to compile.
 
 ```
 make mul_op
 ```
 
-## 绑定Python
+## Python Binding
 
-系统会对新增的op自动绑定Python，并链接到生成的lib库中。
+The system will automatically bind to Python and link it to a generated library.
 
-## 实现单元测试
+## Unit Tests
 
-单测包括对比前向Op不同设备(CPU、GPU)的实现、对比反向OP不同设备(CPU、GPU)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
+Unit tests for an operator include
 
-### 前向Operator单元测试
+1. comparing a forward operator's implementations on different devices,
 
-前向Op单元测试继承自`unittest.TestCase`，并定义元类`__metaclass__ = OpTestMeta`。各项更加具体的单元测试在`OpTestMeta`里完成。测试前向Operator，需要：
+2. comparing a backward operator's implementation on different devices, and
 
-1. 在`setUp`函数定义输入、输出，以及相关的属性参数。
-2. 生成随机的输入数据。
-3. 在Python脚本中实现与前向operator相同的计算逻辑，得到输出值，与operator前向计算的输出进行对比。
+3. a scaling test for the backward operator.
 
+Here, we introduce the [unit tests for `MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py).
+
+### Testing Forward Operators
+
+A forward operator unit test inherits `unittest.TestCase` and defines metaclass `__metaclass__ = OpTestMeta`. More concrete tests are performed in `OpTestMeta`. Testing a forward operator requires the following:
+
+1. Defining input, output and relevant attributes in `setUp` method.
+
+2. Generating random input data.
+
+3. Implementing the same computation logic in a Python script:
 
   ```python
   import unittest
@@ -264,16 +273,17 @@ make mul_op
           self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
   ```
 
-上面的代码首先导入依赖的包，下面是对`setUp`函数中操作的重要变量的详细解释：
+Get its output, and compare it with the forward operator's own output.
 
-- `self.type = "mul" ` : 定义类型，与operator注册时注册的类型一致。
-- `self.inputs` : 定义输入，类型为`numpy.array`，并初始化。
-- `self.outputs` : 定义输出，并在Python脚本中完成与operator同样的计算逻辑，返回Python端的计算结果。
+The code above first loads required packages. In addition, we have
 
+- `self.type = "mul" ` defines the type that is identical to what the operator's registered type.
+- `self.inputs` defines input, with type `numpy.array` and initializes it.
+- `self.outputs` defines output and completes the same operator computation in the Python script, and returns its result from the Python script.
 
-### 反向Operator单元测试
+### Testing Backward Operators
 
-反向Op单元测试继承自`GradientChecker`，而`GradientChecker`继承自`unittest.TestCase`，因此，**反向单元测试函数需要以`test_`开头**。
+A backward operator unit test inherits `GradientChecker`, which inherits `unittest.TestCase`. As a result, **a backward operator unit test needs to be have the prefix `test_`**.
 
 ```python
 class TestMulGradOp(GradientChecker):
@@ -309,37 +319,39 @@ class TestMulGradOp(GradientChecker):
             no_grad_set={"Y"})
 ```
 
-下面解释代码中一些关键的地方:
+Some key points in the code above include:
 
-- 调用`create_op("mul")`创建反向Op对应的前向Op。
-- 调用`compare_grad`函数对比CPU、GPU计算结果。
-- `test_normal`中调用`check_grad`使用数值法检测梯度正确性和稳定性。
-  - 第一个参数`self.op` : 前向Op。
-  - 第二个参数`self.inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
-  - 第三个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
-  - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
-- `test_ignore_x`和`test_ignore_y`分支用来测试只需要计算一个输入梯度的情况。
+- `create_op("mul")` creates the backward operator's corresponding forward operator.
+- `compare_grad` compares results between utilizing the CPU and the GPU.
+- `test_normal` calls `check_grad` to validate scaling tests' correctness and stability through numeric methods.
+  - The first variable `self.op` denotes the forward operator.
+  - The second variable `self.inputs` denotes the input dictionary, which has its key value identical to its `ProtoMaker` definitions.
+  - The third variable `["X", "Y"]` appoints `X` and `Y` to be scale tested.
+  - The fourth variable `"Out"` points to the network's final output target `Out`.
+- `test_ignore_x` and `test_ignore_y`branches test the cases where there is only one scaling input.
+
+### Compiling and Running
 
 
-### 编译和执行单元测试
+Any new unit testing file of the format `test_*.py`  added to the director `python/paddle/v2/framework/tests` is automatically added to the project to compile.
 
-`python/paddle/v2/framework/tests` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
+Note that **unlike the compile test for Ops, running unit tests requires compiling the entire project** and requires compiling with flag `WITH_TESTING` on i.e. `cmake paddle_dir -DWITH_TESTING=ON`.
 
-请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单元测试：
+After successfully compiling the project, run the following command to run unit tests:
 
 ```bash
 make test ARGS="-R test_mul_op -V"
 ```
 
-或者:
+Or,
 
 ```bash
 ctest -R test_mul_op
 ```
 
-## 注意事项
+## Remarks
 
-- 为每个Op创建单独的`*_op.h`（如有）、`*_op.cc`和`*_op.cu`（如有）。不允许一个文件中包含多个Op，这将会导致编译出错。
-- 注册Op时的类型名，需要和该Op的名字一样。即不允许在`A_op.cc`里面，注册`REGISTER_OP(B, ...)`等，这将会导致单元测试出错。
-- 如果Op没有实现GPU Kernel，请不要创建空的`*_op.cu`，这将会导致单元测试出错。
-- 如果多个Op依赖一些共用的函数，可以创建非`*_op.*`格式的文件来存放，如`gather.h`文件。
+- Every `*_op.h` (if applicable), `*_op.cc`, and `*_op.cu` (if applicable) must be created for a unique Op. Compiling will fail if multiple operators are included per file.
+- The type with which an operator is registered needs to be identical to the Op's name. Registering `REGISTER_OP(B, ...)` in `A_op.cc` will cause unit testing failures.
+- If the operator does not implement a GPU kernel, please refrain from creating an empty `*_op.cu` file, or else unit tests will fail.
+- If multiple operators rely on some shared methods, a file NOT named `*_op.*` can be created to store them, such as `gather.h`.
