@@ -41,7 +41,7 @@ TEST(Gather, GatherData) {
 
   int* p_output = output->mutable_data<int>(make_ddim({2, 4}), CPUPlace());
 
-  Gather<int>(CPUPlace(), src, index, output);
+  CPUTGather<int>(CPUPlace(), src, index, output);
 
   for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);
   for (int i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], i - 4);

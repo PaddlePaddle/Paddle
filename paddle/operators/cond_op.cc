@@ -169,8 +169,8 @@ void CondOp::Run(const Scope& scope,
       tensor_child->Resize(dim);
       tensor_child->mutable_data<float>(dim, platform::CPUPlace());
 
-      Gather<float>(dev_ctx.GetPlace(), tensor_parent, &index_tensors[i],
-                    tensor_child);
+      CPUTGather<float>(dev_ctx.GetPlace(), tensor_parent, &index_tensors[i],
+                        tensor_child);
     }
   }
 
@@ -194,7 +194,7 @@ void CondOp::Run(const Scope& scope,
       PADDLE_ENFORCE_NOT_NULL(v);
       LoDTensor* tensor_child = v->GetMutable<LoDTensor>();
 
-      ScatterUpdate<float>(dev_ctx.GetPlace(), tensor_child, &index_tensors[i],
+      ScatterAssign<float>(dev_ctx.GetPlace(), tensor_child, &index_tensors[i],
                            tensor_parent);
     }
   }

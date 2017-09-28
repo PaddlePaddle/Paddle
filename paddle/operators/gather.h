@@ -26,31 +26,31 @@ namespace operators {
 
 // Implementation of CPU copy
 template <typename T>
-void CPUGather(const T* src, const int* indices, const int slice_size,
-               const int index_size, T* output) {
-  const size_t slice_bytes = slice_size * sizeof(T);
+struct CPUGather {
+  void operator()(const T* src, const int* indices, const int slice_size,
+                  const int index_size, T* output) {
+    const size_t slice_bytes = slice_size * sizeof(T);
 
-  for (int i = 0; i < index_size; ++i) {
-    int index_ = indices[i];
-    memcpy(output + i * slice_size, src + index_ * slice_size, slice_bytes);
+    for (int i = 0; i < index_size; ++i) {
+      int index_ = indices[i];
+      memcpy(output + i * slice_size, src + index_ * slice_size, slice_bytes);
+    }
   }
-}
-
-// Implementation of GPU copy:
-template <typename T>
-void GPUGather(const T* src, const int* index, const int slice_size,
-               const int index_size, T* output);
+};
 
 /**
+ * A thin wrapper on cpu tensor
  * Return a new tensor from source tensor, gathered according to index
  * input[src]: type-T source Tensor
  * input[index]: type-int index Tensor (1-D)
  * return: output tensor
  */
 template <typename T>
-void Gather(const platform::Place& place, const paddle::framework::Tensor* src,
-            const paddle::framework::Tensor* index,
-            paddle::framework::Tensor* output) {
+void CPUTGather(const platform::Place& place,
+                const paddle::framework::Tensor* src,
+                const paddle::framework::Tensor* index,
+                paddle::framework::Tensor* output) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place));
   // check index of shape 1-D
   PADDLE_ENFORCE(index->dims().size() == 1);
   int index_size = index->dims()[0];
@@ -64,10 +64,9 @@ void Gather(const platform::Place& place, const paddle::framework::Tensor* src,
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   // Gathering
-  if (platform::is_cpu_place(place)) {
-    CPUGather<T>(src->data<T>(), index->data<int>(), slice_size, index_size,
+  CPUGather<T> gather_functor;
+  gather_functor(src->data<T>(), index->data<int>(), slice_size, index_size,
                  output->data<T>());
-  }
 }
 
 }  // namespace operators

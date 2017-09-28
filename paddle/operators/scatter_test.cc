@@ -40,7 +40,7 @@ TEST(scatter, ScatterUpdate) {
 
   float* p_output = output->mutable_data<float>(make_ddim({4, 4}), CPUPlace());
 
-  ScatterUpdate<float>(CPUPlace(), src, index, output);
+  ScatterAssign<float>(CPUPlace(), src, index, output);
 
   for (size_t i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], float(0));
   for (size_t i = 0; i < 4; ++i) EXPECT_EQ(output->data<float>()[i], float(0));
