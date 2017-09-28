@@ -67,7 +67,7 @@ class LRNKernel : public framework::OpKernel {
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
     auto x_v = framework::EigenVector<T>::Flatten(*x);
-    const T* data = x_v.data();
+    // const T* data = x_v.data();
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
@@ -124,7 +124,73 @@ template <typename Place, typename T>
 class LRNGradKernel : public framework::OpKernel {
  public:
   using Tensor = framework::Tensor;
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* out = ctx.Input<Tensor>("Out");
+    const Tensor* out_g = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const Tensor* mid = ctx.Input<Tensor>("mid_out");
+
+    auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
+    x_g->mutable_data<T>(ctx.GetPlace());
+
+    auto x_g_e = framework::EigenVector<float>::Flatten(*x_g);
+    x_g_e.device(ctx.GetEigenDevice<Place>()) = x_g_e.constant(0.0);
+
+    auto x_dims = x->dims();
+    int N = x_dims[0];
+    int C = x_dims[1];
+    int H = x_dims[2];
+    int W = x_dims[3];
+
+    int n = ctx.Attr<int>("n");
+    float alpha = ctx.Attr<float>("alpha");
+    float beta = ctx.Attr<float>("beta");
+    float ratio = -2 * alpha * beta;
+
+    auto e_x = framework::EigenTensor<T, 4>::From(*x);
+    auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);
+    auto e_out = framework::EigenTensor<T, 4>::From(*out);
+    auto e_out_g = framework::EigenTensor<T, 4>::From(*out_g);
+    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
+
+    const int start = -(n - 1) / 2;
+    const int end = start + n;
+    for (int m = 0; m < N; m++) {
+      for (int i = 0; i < C; i++) {
+        auto i_x = e_x.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                             Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_x_g = e_x_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                     Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_mid = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        i_x_g.device(ctx.GetEigenDevice<Place>()) = i_mid.pow(-beta) * i_out_g;
+        for (int c = start; c <= end; c++) {
+          int ch = i + c;
+          if (ch < 0 || ch >= C) {
+            continue;
+          }
+
+          auto c_out = e_out.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                   Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          auto c_mid = e_mid.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                   Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          auto c_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                       Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          i_x_g.device(ctx.GetEigenDevice<Place>()) +=
+              ratio * c_out_g * c_out * i_x / c_mid;
+        }
+      }
+    }
+  }
 };
 
 }  // namespace operators
