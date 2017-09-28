@@ -136,15 +136,15 @@ Compile Time -> IR -> Runtime
 * `Eigen::Tensor` contains basic math and element-wise functions.
     * Note that `Eigen::Tensor` has broadcast implementation.
     * Limit number of `tensor.device(dev) = ` in your code.
-* `thrust::tranform` and `std::transform`.
-    * `thrust` has the same API as C++ standard library. Using `transform` can quickly implement a customized elementwise kernel.
-    * `thrust` has more complex API, like `scan`, `reduce`, `reduce_by_key`.
+* `thrust::transform` and `std::transform`.
+    * `thrust` has the same API as C++ standard library. Using `transform` can quickly implement a customized element wise kernel.
+    * `thrust` has more complex APIs, like `scan`, `reduce`, `reduce_by_key`.
 * Hand-writing `GPUKernel` and `CPU` code
     * Do not write `.h`. CPU Kernel should be in `.cc`. GPU kernel should be in `.cu`. (`GCC` cannot compile GPU code.)
 ---
 # Operator Register
 
-## Why register is necessary?
+## Why is register necessary?
 We need a method to build mappings between Op type names and Op classes.
 
 ## How to do the register?
@@ -169,7 +169,7 @@ Maintain a map, whose key is the type name and value is corresponding Op constru
 # Related Concepts
 
 ### Op_Maker
-It's constructor takes `proto` and `checker`. They are compeleted during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
+It's constructor takes `proto` and `checker`. They are completed during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
 
 ### Register Macros
 ```cpp
@@ -193,13 +193,13 @@ make sure the registration process is executed and linked.
 ---
 # Backward Module (1/2)
 ### Create Backward Operator
-- Mapping from forwarding Op to backward Op
+- Mapping from forward Op to backward Op
 ![backward](https://gist.githubusercontent.com/dzhwinter/a6fbd4623ee76c459f7f94591fd1abf0/raw/61026ab6e518e66bde66a889bc42557a1fccff33/backward.png)
 
 ---
 # Backward Module (2/2)
 ### Build Backward Network
-- **Input** graph of forwarding operators
+- **Input** graph of forward operators
 - **Output** graph of backward operators
 - **corner case in construction**
 	- shared variable => insert `Add` operator
@@ -213,7 +213,7 @@ make sure the registration process is executed and linked.
 
 * `Tensor` is an n-dimension array with type.
 	* Only dims and data pointers are stored in `Tensor`.
-	* All operators on `Tensor` is written in `Operator` or global functions.
+	* All operators on `Tensor` are written in `Operator` or global functions.
 	* variable length Tensor design [LoDTensor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md)
 * `Variable` is the inputs and outputs of an operator. Not just `Tensor`.
 	* step_scopes in RNN is a variable and not a tensor.
@@ -223,7 +223,7 @@ make sure the registration process is executed and linked.
 
 ---
 # Block (in design)
-## the difference with original RNNOp
+## The difference between original RNNOp and Block
 - as an operator is more intuitive than `RNNOp`,
 - offers new interface `Eval(targets)` to deduce the minimal block to `Run`,
 - fits the compile-time/ runtime separation design.
@@ -238,8 +238,8 @@ make sure the registration process is executed and linked.
     - the MNIST demo needs a Python interface,
     - the RNN models require the framework to support `LoDTensor`.
   - determine some timelines,
-  - heavily-relied Ops need to be migrated first,
-  - different models can be migrated parallelly.
+  - heavily relied on Ops need to be migrated first,
+  - different models can be migrated in parallel.
 - improve the framework at the same time
 - accept imperfection, concentrated on solving the specific problem at the right price.
 
