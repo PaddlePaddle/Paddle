@@ -451,8 +451,8 @@ class OperatorWithKernel : public OperatorBase {
     size_t operator()(const OpKernelKey& key) const {
       int place = key.place_.which();
       int data_type = static_cast<int>(key.data_type_);
-      // NOTE: Number of places limit to 16.
-      int pre_hash = data_type << 4 | (place & 0x0F);
+      int pre_hash = data_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
+                     (place & ((1 << NUM_PLACE_TYPE_LIMIT_IN_BIT) - 1));
       return hash_(pre_hash);
     }
   };
