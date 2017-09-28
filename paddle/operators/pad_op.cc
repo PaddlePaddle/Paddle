@@ -56,8 +56,7 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input should be a k-D tensor(k > 0 and k < 7)");
     AddOutput("Out",
               "The output of pad op."
-              "A tensor with the same shape as X.")
-        .NotInGradient();
+              "A tensor with the same shape as X.");
     AddComment(R"DOC(
 Pad input into output, as specified by paddings and pad_value. The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
@@ -117,5 +116,4 @@ class PadOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(pad, ops::PadOp, ops::PadOpMaker, pad_grad, ops::PadOpGrad);
 REGISTER_OP_CPU_KERNEL(pad, ops::PadKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(pad_grad,
-                       ops::PadGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(pad_grad, ops::PadGradKernel<float>);
