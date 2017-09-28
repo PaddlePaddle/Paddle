@@ -98,7 +98,6 @@ def get_numeric_gradient(scope,
                          in_place=False):
 
     set_input(scope, op, inputs, core.CPUPlace())
-    op.infer_shape(scope)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
 
@@ -160,7 +159,6 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
     set_input(scope, op, inputs, place)
 
-    op.infer_shape(scope)
     op.run(scope, ctx)
 
     if no_grad_set is None:
@@ -169,7 +167,6 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
     backward_op = get_backward_op(scope, op, no_grad_set)
     set_output_grad(scope, op, outputs, place)
 
-    backward_op.infer_shape(scope)
     backward_op.run(scope, ctx)
 
     out = np.array(scope.find_var(grad_name).get_tensor())
@@ -177,7 +174,7 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
 
 class OpTest(unittest.TestCase):
-    def check_output_with_place(self, place):
+    def check_output_with_place(self, place, atol):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -187,7 +184,6 @@ class OpTest(unittest.TestCase):
         if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
             return
         set_input(self.scope, self.op, self.inputs, place)
-        self.op.infer_shape(self.scope)
         ctx = core.DeviceContext.create(place)
         self.op.run(self.scope, ctx)
 
@@ -206,22 +202,23 @@ class OpTest(unittest.TestCase):
                         self.scope.find_var(sub_out_name).get_tensor())
                     self.assertTrue(
                         np.allclose(
-                            actual, expect, atol=1e-05),
-                        "output name: " + out_name + " has diff")
+                            actual, expect, atol=atol),
+                        "output name: " + out_name + " has diff.")
             else:
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
                 expect = self.outputs[out_name]
+
                 self.assertTrue(
                     np.allclose(
-                        actual, expect, atol=1e-05),
-                    "output name: " + out_name + " has diff")
+                        actual, expect, atol=atol),
+                    "output name: " + out_name + " has diff.")
 
-    def check_output(self):
+    def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
             places.append(core.GPUPlace(0))
         for place in places:
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, atol)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):
@@ -235,9 +232,10 @@ class OpTest(unittest.TestCase):
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return "%s Variable %s max gradient diff %f over limit %f, the first " \
-                  "error element is %d" % (
-                   msg_prefix, name, max_diff, max_relative_error, offset)
+                return ("%s Variable %s max gradient diff %f over limit %f, "
+                        "the first error element is %d") % (
+                            msg_prefix, name, max_diff, max_relative_error,
+                            offset)
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 

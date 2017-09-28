@@ -24,41 +24,38 @@ class MultiplexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Ids"),
-                            "Input(Ids) shouldn't be null.");
-    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) shouldn't be null.");
+    PADDLE_ENFORCE(!ctx->Inputs("X").empty(),
                    "MultiInput(X) shouldn't be empty.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) shouldn't be null.");
-    auto ids_dim = ctx.Input<Tensor>("Ids")->dims();
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
+    auto ids_dim = ctx->GetInputDim("Ids");
     PADDLE_ENFORCE(
         ids_dim.size() == 2 && ids_dim[1] == 1,
         "The index tensor must be a vector with size batchSize x 1.");
 
-    auto ins = ctx.MultiInput<Tensor>("X");
-    auto *out = ctx.Output<Tensor>("Out");
-    auto num_ins = ins.size();
+    auto ins_dims = ctx->GetInputsDim("X");
+    auto num_ins = ins_dims.size();
     PADDLE_ENFORCE(num_ins > 1,
                    "multiplex operator should have more than "
                    "one candidate input tensors.");
 
-    auto in_dim = ins[0]->dims();
+    auto in_dim = ins_dims[0];
     PADDLE_ENFORCE(in_dim.size() >= 2,
                    "The rank of candidate tensors must be not less than 2.");
     for (size_t i = 1; i < num_ins; i++) {
-      auto dim = ins[i]->dims();
+      auto dim = ins_dims[i];
       PADDLE_ENFORCE(in_dim == dim,
                      "All the candidate tensors must have the same size.");
     }
-    out->Resize(in_dim);
+    ctx->SetOutputDim("Out", in_dim);
   }
 };
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiplexOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  MultiplexOpMaker(framework::OpProto* proto,
+                   framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids", "The index tensor of multiplex operator.");
     AddInput("X", "The candidate tensors of multiplex operator.")
@@ -88,21 +85,19 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
-                   "Input(X) should not be null.");
-    PADDLE_ENFORCE(!ctx.MultiOutputVar(framework::GradVarName("X")).empty(),
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null.");
+    PADDLE_ENFORCE(!ctx->Outputs(framework::GradVarName("X")).empty(),
                    "Output(X@Grad) should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null.");
-    auto d_ins = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
-    auto ins = ctx.MultiInput<Tensor>("X");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null.");
+    std::vector<framework::DDim> d_ins;
+    auto ins = ctx->GetInputsDim("X");
     // No need to compute gradient for Input(Ids)
     for (size_t i = 0; i < ins.size(); i++) {
-      if (d_ins[i]) {
-        d_ins[i]->Resize(ins[i]->dims());
-      }
+      d_ins.push_back(ins[i]);
     }
+    ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
   }
 };
 

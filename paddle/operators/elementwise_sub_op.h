@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #pragma once
-#include "paddle/operators/elementwise_op.h"
+#include "paddle/operators/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {

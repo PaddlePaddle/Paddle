@@ -22,33 +22,30 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input(Label) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
-                            "Output(Y) should be not null.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
 
-    auto x = ctx.Input<Tensor>("X");
-    auto label = ctx.Input<Tensor>("Label");
-    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(label->dims().size(), 2,
-                      "Input(Label)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(x->dims()[0], label->dims()[0],
+    auto x_dims = ctx->GetInputDim("X");
+    auto label_dims = ctx->GetInputDim("Label");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2, "Input(Label)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
                       "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
-    if (ctx.Attr<bool>("softLabel")) {
-      PADDLE_ENFORCE_EQ(x->dims()[1], label->dims()[1],
+    if (ctx->Attrs().Get<bool>("softLabel")) {
+      PADDLE_ENFORCE_EQ(x_dims[1], label_dims[1],
                         "If Attr(softLabel) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
-      PADDLE_ENFORCE_EQ(label->dims()[1], 1,
+      PADDLE_ENFORCE_EQ(label_dims[1], 1,
                         "If Attr(softLabel) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
-    ctx.Output<Tensor>("Y")->Resize({x->dims()[0], 1});
-    ctx.ShareLoD("X", /*->*/ "Y");
+    ctx->SetOutputDim("Y", {x_dims[0], 1});
+    ctx->ShareLoD("X", /*->*/ "Y");
   }
 };
 
@@ -57,50 +54,45 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input(Label) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
-                            "Input(Y@GRAD) shoudl be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar(framework::GradVarName("X")),
-                            "Output(X@GRAD) should be not null.");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input(Y@GRAD) shoudl be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output(X@GRAD) should be not null.");
 
-    auto x = ctx.Input<Tensor>("X");
-    auto label = ctx.Input<Tensor>("Label");
-    auto dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(dy->dims().size(), 2,
-                      "Input(Y@Grad)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(label->dims().size(), 2,
-                      "Input(Label)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(x->dims()[0], label->dims()[0],
+    auto x_dims = ctx->GetInputDim("X");
+    auto label_dims = ctx->GetInputDim("Label");
+    auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(dy_dims.size(), 2, "Input(Y@Grad)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2, "Input(Label)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
                       "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
-    PADDLE_ENFORCE_EQ(x->dims()[0], dy->dims()[0],
+    PADDLE_ENFORCE_EQ(x_dims[0], dy_dims[0],
                       "The 1st dimension of Input(X) and Input(Y@Grad) should "
                       "be equal.");
-    PADDLE_ENFORCE_EQ(dy->dims()[1], 1,
+    PADDLE_ENFORCE_EQ(dy_dims[1], 1,
                       "The 2nd dimension of Input(Y@Grad) should be 1.");
-    if (ctx.Attr<bool>("softLabel")) {
-      PADDLE_ENFORCE_EQ(x->dims()[1], label->dims()[1],
+    if (ctx->Attrs().Get<bool>("softLabel")) {
+      PADDLE_ENFORCE_EQ(x_dims[1], label_dims[1],
                         "When Attr(softLabel) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
-      PADDLE_ENFORCE_EQ(label->dims()[1], 1,
+      PADDLE_ENFORCE_EQ(label_dims[1], 1,
                         "When Attr(softLabel) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
-
-    auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    dx->Resize(x->dims());
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
 };
 
 class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CrossEntropyOpMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  CrossEntropyOpMaker(framework::OpProto* proto,
+                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "
