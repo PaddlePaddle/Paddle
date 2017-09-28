@@ -40,7 +40,7 @@ struct UniformGenerator {
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
 template <typename T>
-class GPUUniformRandomKernel : public framework::OpKernel {
+class GPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");

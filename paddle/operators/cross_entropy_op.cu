@@ -53,7 +53,7 @@ __global__ void SoftCrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
 }  // namespace
 
 template <typename T>
-class CrossEntropyOpCUDAKernel : public framework::OpKernel {
+class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -69,7 +69,7 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
 };
 
 template <typename T>
-class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
+class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),

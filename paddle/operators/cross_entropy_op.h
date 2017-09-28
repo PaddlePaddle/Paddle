@@ -26,7 +26,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
-class CrossEntropyOpKernel : public framework::OpKernel {
+class CrossEntropyOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -42,7 +42,7 @@ class CrossEntropyOpKernel : public framework::OpKernel {
 };
 
 template <typename T>
-class CrossEntropyGradientOpKernel : public framework::OpKernel {
+class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),

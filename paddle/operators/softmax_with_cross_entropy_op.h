@@ -27,7 +27,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
-class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
+class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(context.GetPlace()),
@@ -47,7 +47,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel {
 };
 
 template <typename T>
-class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel {
+class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* out_grad =
