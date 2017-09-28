@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class ScatterOpCUDAKernel : public framework::OpKernel {
+class ScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -37,7 +37,7 @@ class ScatterOpCUDAKernel : public framework::OpKernel {
 };
 
 template <typename T>
-class ScatterGradOpCUDAKernel : public framework::OpKernel {
+class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
