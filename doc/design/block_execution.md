@@ -102,6 +102,10 @@ There are mainly two breaking point of NetOp unpon the overall design:
 
 We should generate a group of OpDesc at compile-time instead of a NetOp at run-time.
 
+#### Symbolic API
+
+Please refer to the survey [doc](https://github.com/QiJune/Paddle/blob/e90ec7783a1abe7f7627f97559cc46488e41cc7e/doc/design/graph_survey.md) on Computation Graph. Users will write a neural network topology with Symbolic API. And the composition of operators should be done at compile-time in this level too.
+
 #### Unified Pass Interface
 
 An abstract class `Converter` is defined to provide a Unified Pass Interface.
