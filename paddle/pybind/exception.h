@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #pragma once
+#include <Python.h>
 #include "paddle/platform/enforce.h"
 #include "pybind11/pybind11.h"
 namespace paddle {
