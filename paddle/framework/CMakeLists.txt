@@ -26,7 +26,7 @@ cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
-cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS operator)
+cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS operator proto_desc)
 cc_library(op_registry SRCS op_registry.cc DEPS grad_op_builder op_proto_maker op_info)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 cc_test(grad_op_builder_test SRCS grad_op_builder_test.cc DEPS grad_op_builder op_registry add_op)
