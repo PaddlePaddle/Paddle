@@ -22,41 +22,42 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.InputVar("X"), "Input(X) of SequenceSoftmaxOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("Out"),
-        "Output(Out) of SequenceSoftmaxOp should not be null.");
-
-    auto *x = ctx.Input<framework::LoDTensor>("X");
-    auto lod = x->lod();
-    auto dims = x->dims();
-    PADDLE_ENFORCE_GE(
-        dims[0],
-        /* batch_size */ static_cast<int64_t>(lod[0].size() - 1),
-        "The first dimension of Input(X) should be larger than batch size.");
-
-    const size_t level = lod.size() - 1;
-    PADDLE_ENFORCE_EQ(x->numel(), static_cast<int64_t>(lod[level].back()),
-                      "The width of each timestep in Input(X) of "
-                      "SequenceSoftmaxOp should be 1.");
-
-    std::cout << DebugString() << std::endl;
-
-    ctx.Output<framework::LoDTensor>("Out")->Resize({dims});
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of SequenceSoftmaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of SequenceSoftmaxOp should not be null.");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSoftmaxOpMaker(framework::OpProto *proto,
-                         framework::OpAttrChecker *op_checker)
+  SequenceSoftmaxOpMaker(framework::OpProto* proto,
+                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(LoDTensor)");
-    AddOutput("Out", "(LoDTensor)");
+    AddInput("X",
+             "(LoDTensor) 1-D or 2-D input LoDTensor with the 2-nd dimension "
+             "of length 1.");
+    AddOutput("Out",
+              "(LoDTensor) 1-D or 2-D output LoDTensor with the 2-nd dimension "
+              "of length 1.");
     AddComment(R"DOC(
-Softmax of Sequence.
+SequenceSoftmaxOp computes softmax activation among all time-steps for each
+sequences. The dimension of each time-step should be 1. Thus, the shape of
+input Tensor can be either [N, 1] or [N], where N is the sum of all sequences'
+length.
+
+Equation:
+    for i-th sequence in mini-batch:
+        Out(X[lod[i]:lod[i+1]], :) =
+            exp(X[lod[i]:lod[i+1], :]) / sum(exp(X[lod[i]:lod[i+1], :]))
+
+For example, for a mini-batch of 3 sequences with variable-length,
+each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
+then softmax will be computed among X[0:2, :], X[2:5, :], X[2:7, :]
+and N turns out to be 7.
 )DOC");
   }
 };
@@ -66,7 +67,25 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {}
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Out"),
+                   "Input(Out) of SequenceSoftmaxGradOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput(framework::GradVarName("Out")),
+        "Input(Out@GRAD) of SequenceSoftmaxGradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of SequenceSoftmaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output(X@GRAD) of SequenceSoftmaxOp should not be null.");
+
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputDim("Out"),
+        ctx->GetInputDim(framework::GradVarName("Out")),
+        "Input(Out) and Input(Out@GRAD) of SequenceSoftmaxGradOp should be of "
+        "the same shape.");
+
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
 };
 
 }  // namespace operators
@@ -81,4 +100,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::SequenceSoftmaxKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::GPUPlace, float>);
+    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUPlace, float>);

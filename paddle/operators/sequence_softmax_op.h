@@ -16,19 +16,13 @@ limitations under the License. */
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/softmax_function.h"
+#include "paddle/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel {
@@ -38,7 +32,17 @@ class SequenceSoftmaxKernel : public framework::OpKernel {
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto lod = x->lod();
+    auto dims = x->dims();
+
+    PADDLE_ENFORCE_GE(
+        dims[0],
+        /* batch_size */ static_cast<int64_t>(lod[0].size() - 1),
+        "The first dimension of Input(X) should be larger than batch size.");
+
     const size_t level = lod.size() - 1;
+    PADDLE_ENFORCE_EQ(x->numel(), static_cast<int64_t>(lod[level].back()),
+                      "The width of each timestep in Input(X) of "
+                      "SequenceSoftmaxOp should be 1.");
 
     out->mutable_data<T>(ctx.GetPlace());
     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
@@ -48,10 +52,10 @@ class SequenceSoftmaxKernel : public framework::OpKernel {
       Tensor out_i = out->Slice<T>(start_pos, end_pos);
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims = framework::make_ddim({1UL, end_pos - start_pos});
-      x_i.Resize(dims);
-      out_i.Resize(dims);
-      math::SoftmaxFunctor<Place, T>()(&x_i, &out_i, ctx);
+      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
+      x_i.Resize(dims_i);
+      out_i.Resize(dims_i);
+      math::SoftmaxFunctor<Place, T>()(ctx, &x_i, &out_i);
     }
   }
 };
@@ -59,7 +63,32 @@ class SequenceSoftmaxKernel : public framework::OpKernel {
 template <typename Place, typename T>
 class SequenceSoftmaxGradKernel : public framework::OpKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<LoDTensor>("Out");
+    auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<LoDTensor>("X");
+    auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+
+    auto lod = x->lod();
+    const size_t level = lod.size() - 1;
+
+    x_grad->mutable_data<T>(ctx.GetPlace());
+    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+      int start_pos = static_cast<int>(lod[level][i]);
+      int end_pos = static_cast<int>(lod[level][i + 1]);
+
+      Tensor out_i = out->Slice<T>(start_pos, end_pos);
+      Tensor out_grad_i = out_grad->Slice<T>(start_pos, end_pos);
+      Tensor x_grad_i = x_grad->Slice<T>(start_pos, end_pos);
+
+      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
+      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
+      out_i.Resize(dims_i);
+      out_grad_i.Resize(dims_i);
+      x_grad_i.Resize(dims_i);
+      math::SoftmaxGradFunctor<Place, T>()(ctx, &out_i, &out_grad_i, &x_grad_i);
+    }
+  }
 };
 
 }  // namespace operators
