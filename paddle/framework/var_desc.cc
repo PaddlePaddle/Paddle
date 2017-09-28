@@ -21,7 +21,7 @@ void VarDescBind::SetShape(const std::vector<int64_t> &dims) {
   VectorToRepeated(dims, desc_.mutable_lod_tensor()->mutable_dims());
 }
 
-void VarDescBind::SetDataType(enum DataType data_type) {
+void VarDescBind::SetDataType(DataType data_type) {
   desc_.mutable_lod_tensor()->set_data_type(data_type);
 }
 
@@ -29,7 +29,7 @@ std::vector<int64_t> VarDescBind::Shape() const {
   return RepeatedToVector(desc_.lod_tensor().dims());
 }
 
-DataType VarDescBind::DataType() const {
+DataType VarDescBind::GetDataType() const {
   return desc_.lod_tensor().data_type();
 }
 }  // namespace framework

@@ -64,7 +64,7 @@ class VarDescBind {
 
   std::vector<int64_t> Shape() const;
 
-  DataType DataType() const;
+  DataType GetDataType() const;
 
  private:
   VarDesc desc_;

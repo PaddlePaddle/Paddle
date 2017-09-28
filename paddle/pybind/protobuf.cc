@@ -167,7 +167,7 @@ void BindVarDsec(py::module &m) {
       .def("set_shape", &VarDescBind::SetShape)
       .def("set_data_type", &VarDescBind::SetDataType)
       .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
-      .def("data_type", &VarDescBind::DataType);
+      .def("data_type", &VarDescBind::GetDataType);
 }
 
 void BindOpDesc(py::module &m) {
