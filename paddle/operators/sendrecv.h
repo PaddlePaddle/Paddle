@@ -21,7 +21,10 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class SendOpKernel : public framework::OpKernel {}
+class SendOpKernel : public framework::OpKernel {};
+
+template <typename T>
+class RecvOpKernel : public framework::OpKernel {};
 
 }  // namespace operators
 }  // namespace paddle

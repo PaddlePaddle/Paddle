@@ -31,6 +31,9 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("dst_device", "dst device name, can be rpc endpoint");
     AddComment(R"DOC(
 Send Operator.
+Send local tensor to another node/device.
+if two endpoint is rpc endpoint, then it will send tensor to remote node.
+otherwise, it will copy tensor from src_device to dst_device.
 )DOC");
   }
 };
@@ -44,11 +47,14 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SendOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddOutput("X", "Recv Tensor");
+    AddOutput("Out", "Recv Tensor");
     AddAttr<std::string>("src_device", "src device name, can be rpc endpoint");
     AddAttr<std::string>("dst_device", "dst device name, can be rpc endpoint");
     AddComment(R"DOC(
 Recv Operator.
+Recv tensor from another node/device.
+if two endpoint is rpc endpoint, then it will receive tensor from remote node.
+otherwise, it will copy tensor from src_device to dst_device.
 )DOC");
   }
 };
@@ -57,6 +63,3 @@ Recv Operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(add, ops::AddOp, ops::AddOpMaker, add_grad, ops::AddOpGrad);
-
-REGISTER_OP_CPU_KERNEL(add, ops::AddKernel<paddle::platform::CPUPlace, float>);
