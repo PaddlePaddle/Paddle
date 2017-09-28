@@ -69,24 +69,27 @@ def set_input(scope, op, inputs, place):
 
 
 def set_output_grad(scope, op, outputs, place):
+    def __set_tensor__(name):
+        out_tensor = scope.find_var(name).get_tensor()
+        grad_tensor = scope.new_var(grad_var_name(name)).get_tensor()
+        out_dtype = out_tensor.dtype()
+        if out_dtype == core.DataType.FP64:
+            data = np.ones(out_tensor.shape(), dtype=np.float64)
+        elif out_dtype == core.DataType.FP32:
+            data = np.ones(out_tensor.shape(), dtype=np.float32)
+        else:
+            raise ValueError("Not supported data type " + str(out_dtype))
+
+        grad_tensor.set(data, place)
+
     for out_name, out_dup in Operator.get_op_outputs(op.type()):
         if out_name in outputs:
             if out_dup:
                 sub_out = outputs[out_name]
                 for sub_out_name, _ in sub_out:
-                    out_tensor = scope.find_var(sub_out_name).get_tensor()
-                    grad_tensor = scope.new_var(grad_var_name(
-                        sub_out_name)).get_tensor()
-                    grad_tensor.set_dims(out_tensor.shape())
-                    data = np.ones(out_tensor.shape(), dtype=np.float32)
-                    grad_tensor.set(data, place)
+                    __set_tensor__(sub_out_name)
             else:
-                out_tensor = scope.find_var(out_name).get_tensor()
-                grad_tensor = scope.new_var(grad_var_name(out_name)).get_tensor(
-                )
-                grad_tensor.set_dims(out_tensor.shape())
-                data = np.ones(out_tensor.shape(), dtype=np.float32)
-                grad_tensor.set(data, place)
+                __set_tensor__(out_name)
 
 
 def get_numeric_gradient(scope,
@@ -96,7 +99,6 @@ def get_numeric_gradient(scope,
                          output_names,
                          delta=0.005,
                          in_place=False):
-
     set_input(scope, op, inputs, core.CPUPlace())
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
@@ -115,7 +117,29 @@ def get_numeric_gradient(scope,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
-    gradient_flat = np.zeros(shape=(tensor_size, ), dtype='float32')
+    tensor_to_check_dtype = tensor_to_check.dtype()
+    if tensor_to_check_dtype == core.DataType.FP32:
+        tensor_to_check_dtype = np.float32
+    elif tensor_to_check_dtype == core.DataType.FP64:
+        tensor_to_check_dtype = np.float64
+    else:
+        raise ValueError("Not supported data type " + str(
+            tensor_to_check_dtype))
+
+    gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
+
+    def __get_elem__(tensor, i):
+        if tensor_to_check_dtype == np.float32:
+            return tensor.get_float_element(i)
+        else:
+            return tensor.get_double_element(i)
+
+    def __set_elem__(tensor, i, e):
+        if tensor_to_check_dtype == np.float32:
+            tensor.set_float_element(i, e)
+        else:
+            tensor.set_double_element(i, e)
+
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
@@ -123,20 +147,20 @@ def get_numeric_gradient(scope,
             set_input(scope, op, inputs, core.CPUPlace())
 
         # get one input element throw it's index i.
-        origin = tensor_to_check.get_float_element(i)
+        origin = __get_elem__(tensor_to_check, i)
         # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
-        tensor_to_check.set_float_element(i, x_pos)
+        __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
 
         if in_place:
             set_input(scope, op, inputs, core.CPUPlace())
 
         x_neg = origin - delta
-        tensor_to_check.set_float_element(i, x_neg)
+        __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
 
-        tensor_to_check.set_float_element(i, origin)
+        __set_elem__(tensor_to_check, i, origin)
         gradient_flat[i] = (y_pos - y_neg) / delta / 2
 
     return gradient_flat.reshape(tensor_to_check.get_dims())

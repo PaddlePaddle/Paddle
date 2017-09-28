@@ -73,8 +73,21 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 };
 }  // namespace details
 inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
-  auto buffer_info = details::CastToPyBufferImpl<true, 0, float, int>()(tensor);
+  auto buffer_info =
+      details::CastToPyBufferImpl<true, 0, float, int, double>()(tensor);
   return buffer_info;
+}
+
+template <typename T>
+T TensorGetElement(framework::Tensor &self, size_t offset) {
+  PADDLE_ENFORCE(platform::is_cpu_place(self.place()));
+  return self.data<T>()[offset];
+}
+
+template <typename T>
+void TensorSetElement(framework::Tensor &self, size_t offset, T elem) {
+  PADDLE_ENFORCE(platform::is_cpu_place(self.place()));
+  self.data<T>()[offset] = elem;
 }
 
 template <typename T>
