@@ -53,7 +53,7 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
 }  // namespace
 
 template <typename T>
-class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel {
+class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
@@ -66,14 +66,16 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel {
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<platform::GPUPlace, T>()(context, logits, softmax);
+    math::SoftmaxFunctor<platform::GPUPlace, T>()(context.device_context(),
+                                                  logits, softmax);
     math::CrossEntropyFunctor<platform::GPUPlace, T>()(
-        context, loss, softmax, labels, context.Attr<bool>("softLabel"));
+        context.device_context(), loss, softmax, labels,
+        context.Attr<bool>("softLabel"));
   }
 };
 
 template <typename T>
-class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel {
+class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),

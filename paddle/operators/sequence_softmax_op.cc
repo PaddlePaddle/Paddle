@@ -45,18 +45,18 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
               "of length 1.");
     AddComment(R"DOC(
 SequenceSoftmaxOp computes softmax activation among all time-steps for each
-sequences. The dimension of each time-step should be 1. Thus, the shape of
+sequence. The dimension of each time-step should be 1. Thus, the shape of
 input Tensor can be either [N, 1] or [N], where N is the sum of all sequences'
-length.
+lengths.
 
 Equation:
-    for i-th sequence in mini-batch:
+    for i-th sequence in a mini-batch:
         Out(X[lod[i]:lod[i+1]], :) =
             exp(X[lod[i]:lod[i+1], :]) / sum(exp(X[lod[i]:lod[i+1], :]))
 
 For example, for a mini-batch of 3 sequences with variable-length,
 each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
-then softmax will be computed among X[0:2, :], X[2:5, :], X[2:7, :]
+then softmax will be computed among X[0:2, :], X[2:5, :], X[5:7, :]
 and N turns out to be 7.
 )DOC");
   }

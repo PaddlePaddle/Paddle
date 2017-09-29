@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include <algorithm>
+#include <atomic>
 
 namespace paddle {
 namespace framework {
@@ -21,14 +22,14 @@ namespace framework {
 template <>
 Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_.get_eigen_device<Eigen::DefaultDevice>();
+  return *device_context_.GetEigenDevice<platform::CPUPlace>();
 }
 
 #ifndef PADDLE_ONLY_CPU
 template <>
 Eigen::GpuDevice&
 ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_.get_eigen_device<Eigen::GpuDevice>();
+  return *device_context_.GetEigenDevice<platform::GPUPlace>();
 }
 #endif
 

@@ -48,6 +48,11 @@ class ScatterOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", ref_dims);
   }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
+  }
 };
 
 class ScatterGradOp : public framework::OperatorWithKernel {
@@ -59,6 +64,11 @@ class ScatterGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("Updates"),
                       ctx->GetInputDim("Updates"));
     ctx->SetOutputDim(framework::GradVarName("Ref"), ctx->GetInputDim("Ref"));
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
   }
 };
 

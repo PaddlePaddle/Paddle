@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/exception.h"
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
@@ -46,6 +47,8 @@ PYBIND11_PLUGIN(core) {
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
   using namespace paddle::framework;  // NOLINT
+
+  BindException(m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -74,20 +77,18 @@ PYBIND11_PLUGIN(core) {
            })
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
+      .def("set", PyCPUTensorSetFromArray<double>)
 #ifndef PADDLE_ONLY_CPU
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
+      .def("set", PyCUDATensorSetFromArray<double>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
-      .def("set_float_element",
-           [](Tensor &self, size_t offset, float f) {
-             // TODO(yuyang18): Only support GPU now.
-             self.data<float>()[offset] = f;
-           })
-      .def("get_float_element", [](Tensor &self, size_t offset) -> float {
-        // TODO(yuyang18): Only support GPU now.
-        return self.data<float>()[offset];
-      });
+      .def("set_float_element", TensorSetElement<float>)
+      .def("get_float_element", TensorGetElement<float>)
+      .def("set_double_element", TensorSetElement<double>)
+      .def("get_double_element", TensorGetElement<double>)
+      .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
       .def_buffer(
@@ -161,8 +162,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
       .def(py::init<>())
-      .def("new_scope",
-           [](Scope &self) -> Scope * { return &self.NewScope(); },
+      .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids);
 
@@ -228,10 +228,8 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &no_grad_vars) {
              return Backward(forwardOp, no_grad_vars).release();
            })
-      .def("infer_shape", &OperatorBase::InferShape)
       .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
+           [](OperatorBase &self, const Scope &scope,
               const platform::DeviceContext &dev_ctx) {
              self.Run(scope, dev_ctx);
              dev_ctx.Wait();
@@ -259,10 +257,8 @@ All parameter, weight, gradient are variables in Paddle.
                     retv->SetType("plain_net");
                     return retv;
                   })
-      .def("append_op",
-           [](operators::NetOp &self, const OperatorBase &op) {
-             self.AppendOp(op);
-           })
+      .def("append_op", [](operators::NetOp &self,
+                           const OperatorBase &op) { self.AppendOp(op); })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
@@ -282,9 +278,10 @@ All parameter, weight, gradient are variables in Paddle.
             auto rnn_op = OpRegistry::CreateOp(desc);
             return static_cast<operators::RecurrentOp *>(rnn_op.release());
           })
-      .def("set_stepnet",
-           [](operators::RecurrentOp &self, const operators::NetOp &net)
-               -> void { self.set_stepnet(net.Clone()); });
+      .def("set_stepnet", [](operators::RecurrentOp &self,
+                             const operators::NetOp &net) -> void {
+        self.set_stepnet(net.Clone());
+      });
 
   // cond_op
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")

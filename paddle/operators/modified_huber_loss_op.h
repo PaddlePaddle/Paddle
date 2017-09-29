@@ -47,7 +47,7 @@ struct ModifiedHuberLossForward {
 };
 
 template <typename Place, typename T>
-class ModifiedHuberLossKernel : public framework::OpKernel {
+class ModifiedHuberLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
@@ -73,7 +73,7 @@ class ModifiedHuberLossKernel : public framework::OpKernel {
 
 // CPU backward kernel
 template <typename T>
-class ModifiedHuberLossGradCPUKernel : public framework::OpKernel {
+class ModifiedHuberLossGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("Y");

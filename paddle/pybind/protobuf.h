@@ -17,7 +17,6 @@ limitations under the License. */
 #include <Python.h>
 #include <fstream>
 #include <vector>
-#include "paddle/framework/op_registry.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"

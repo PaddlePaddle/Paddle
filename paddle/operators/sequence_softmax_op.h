@@ -25,7 +25,7 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename Place, typename T>
-class SequenceSoftmaxKernel : public framework::OpKernel {
+class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<LoDTensor>("X");
@@ -34,13 +34,11 @@ class SequenceSoftmaxKernel : public framework::OpKernel {
     auto lod = x->lod();
     auto dims = x->dims();
 
-    PADDLE_ENFORCE_GE(
-        dims[0],
-        /* batch_size */ static_cast<int64_t>(lod[0].size() - 1),
-        "The first dimension of Input(X) should be larger than batch size.");
-
     const size_t level = lod.size() - 1;
-    PADDLE_ENFORCE_EQ(x->numel(), static_cast<int64_t>(lod[level].back()),
+    PADDLE_ENFORCE_EQ(dims[0], static_cast<int64_t>(lod[level].back()),
+                      "The first dimension of Input(X) should be equal to the "
+                      "sum of all sequences' lengths.");
+    PADDLE_ENFORCE_EQ(dims[0], x->numel(),
                       "The width of each timestep in Input(X) of "
                       "SequenceSoftmaxOp should be 1.");
 
@@ -55,13 +53,13 @@ class SequenceSoftmaxKernel : public framework::OpKernel {
       framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
-      math::SoftmaxFunctor<Place, T>()(ctx, &x_i, &out_i);
+      math::SoftmaxFunctor<Place, T>()(ctx.device_context(), &x_i, &out_i);
     }
   }
 };
 
 template <typename Place, typename T>
-class SequenceSoftmaxGradKernel : public framework::OpKernel {
+class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out = ctx.Input<LoDTensor>("Out");
@@ -86,7 +84,8 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
-      math::SoftmaxGradFunctor<Place, T>()(ctx, &out_i, &out_grad_i, &x_grad_i);
+      math::SoftmaxGradFunctor<Place, T>()(ctx.device_context(), &out_i,
+                                           &out_grad_i, &x_grad_i);
     }
   }
 };

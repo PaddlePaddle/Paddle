@@ -26,7 +26,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class SoftmaxKernel : public framework::OpKernel {
+class SoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<Tensor>("X");
@@ -35,12 +35,12 @@ class SoftmaxKernel : public framework::OpKernel {
     // allocate memory on device.
     Y->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<Place, T>()(context, X, Y);
+    math::SoftmaxFunctor<Place, T>()(context.device_context(), X, Y);
   }
 };
 
 template <typename Place, typename T>
-class SoftmaxGradKernel : public framework::OpKernel {
+class SoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* Y = context.Input<Tensor>("Y");
@@ -50,7 +50,7 @@ class SoftmaxGradKernel : public framework::OpKernel {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxGradFunctor<Place, T>()(context, Y, dY, dX);
+    math::SoftmaxGradFunctor<Place, T>()(context.device_context(), Y, dY, dX);
   }
 };
 

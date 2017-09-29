@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T, typename Functor>
-class ActivationKernel : public framework::OpKernel {
+class ActivationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -36,7 +36,7 @@ class ActivationKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename Functor>
-class ActivationGradKernel : public framework::OpKernel {
+class ActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -201,8 +201,28 @@ struct SquareGradFunctor {
   }
 };
 
+// softsign(x) = x / (1 + |x|)
+template <typename T>
+struct SoftsignFunctor {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = x / (static_cast<T>(1) + x.abs());
+  }
+};
+
+// d(softsign(x))/dx = 1 / (1 + |x|)^2
+// Taken from https://en.wikipedia.org/wiki/Activation_function
+template <typename T>
+struct SoftsignGradFunctor {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    dx.device(d) =
+        dy * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
+  }
+};
+
 template <typename Place, typename T, typename AttrType = T>
-class BReluKernel : public framework::OpKernel {
+class BReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -219,7 +239,7 @@ class BReluKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class BReluGradKernel : public framework::OpKernel {
+class BReluGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -239,7 +259,7 @@ class BReluGradKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class SoftReluKernel : public framework::OpKernel {
+class SoftReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -256,7 +276,7 @@ class SoftReluKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class SoftReluGradKernel : public framework::OpKernel {
+class SoftReluGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -277,7 +297,7 @@ class SoftReluGradKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class PowKernel : public framework::OpKernel {
+class PowKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -293,7 +313,7 @@ class PowKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class PowGradKernel : public framework::OpKernel {
+class PowGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -312,7 +332,7 @@ class PowGradKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class STanhKernel : public framework::OpKernel {
+class STanhKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -329,7 +349,7 @@ class STanhKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class STanhGradKernel : public framework::OpKernel {
+class STanhGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");

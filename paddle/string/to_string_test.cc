@@ -17,7 +17,7 @@
 
 constexpr char kOutputString[] = "User Defined Output";
 class UserDefinedClass {
-public:
+ public:
 };
 
 std::ostream& operator<<(std::ostream& s, const UserDefinedClass& ins) {
