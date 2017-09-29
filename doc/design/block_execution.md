@@ -65,7 +65,7 @@ So, `Executor` need to have a `DeviceContextManager` to initialize some DeviceCo
 
 The `Executor` is defined as follows:
 
-```
+```cpp
 class Executor {
 public:
   Executor(ProgramDesc*, DeviceContextManager*);
@@ -86,7 +86,7 @@ private:
 
 At current code base, we have a NetOp defined as follows:
 
-```
+```cpp
 class NetOp : OperatorBase {
 public:
   void Run(const Scope&, const platform::DeviceContext&);
@@ -105,13 +105,31 @@ We should generate a group of OpDesc at compile-time instead of a NetOp at run-t
 
 #### Symbolic API
 
-Please refer to the survey [doc](https://github.com/QiJune/Paddle/blob/924735ca3a3d93027a07a244863bceb561b37432/doc/design/graph_survey.md) on Computation Graph. Users will write a neural network topology with Symbolic API. And the composition of operators should be done at compile-time in this level too.
+Please refer to the survey [doc](https://github.com/QiJune/Paddle/blob/924735ca3a3d93027a07a244863bceb561b37432/doc/design/graph_survey.md) on Computation Graph. Users will write a neural network topology with symbolic API. And the composition of operators should be done at compile-time in this level too.
+
+The core concept of symbolic API is `Expression`.
+
+```cpp
+class Expression {
+public:
+  Expression(ProgramDesc*);
+  ProgramDesc* program_desc();
+  static Expression CreateVaribale(ProgramDesc&);
+  static Expression CreateParameter(ProgramDesc&);
+  static Expression CreateOperator(ProgramDesc&, OpDesc*, std::vector<VarDesc*>);
+  static Expression Compose(ProgramDesc&, std::vector<Expression>&);
+
+private:
+  // not owned
+  ProgramDesc* progam_desc_;
+};
+```
 
 #### Converter
 
 In compile-time, we will do several transform pass on ProgramDesc. An abstract class `Converter` is defined to provide a Unified Pass Interface.
 
-```
+```cpp
 class Converter {
 public:
   virtual void ApplyPass(ProgramDesc*) = 0;
@@ -137,7 +155,7 @@ SimpleExecutor will do little things to ProgramDesc, and just construct operator
 
 - DAGExecutor
 
-```
+```cpp
 class DAGExecutor : public Executor {
 public:
   void Transform();
