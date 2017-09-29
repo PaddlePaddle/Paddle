@@ -35,7 +35,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class AccuracyKernel : public framework::OpKernel {
+class AccuracyKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* inference = ctx.Input<Tensor>("Inference");

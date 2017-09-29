@@ -24,7 +24,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename Place, typename T>
-class ScatterOpKernel : public framework::OpKernel {
+class ScatterOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *Ref = ctx.Input<Tensor>("Ref");
@@ -40,7 +40,7 @@ class ScatterOpKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class ScatterGradientOpKernel : public framework::OpKernel {
+class ScatterGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));

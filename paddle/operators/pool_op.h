@@ -25,7 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename Place, typename T>
-class PoolKernel : public framework::OpKernel {
+class PoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");
@@ -82,7 +82,7 @@ class PoolKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class PoolGradKernel : public framework::OpKernel {
+class PoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");

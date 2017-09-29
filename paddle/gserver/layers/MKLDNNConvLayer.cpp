@@ -28,7 +28,7 @@ bool MKLDNNConvLayer::init(const LayerMap& layerMap,
   if (!MKLDNNLayer::init(layerMap, parameterMap)) {
     return false;
   }
-  CHECK_EQ(inputLayers_.size(), 1) << "Only support one input layer yet";
+  CHECK_EQ(inputLayers_.size(), 1UL) << "Only support one input layer yet";
   CHECK_EQ(inputLayers_.size(), parameters_.size());
   CHECK(config_.shared_biases()) << "Only support shared biases yet";
 

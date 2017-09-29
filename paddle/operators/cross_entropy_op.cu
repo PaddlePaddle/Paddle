@@ -18,14 +18,6 @@ namespace paddle {
 namespace operators {
 
 namespace {
-// TODO(qingqing): make zero setting a common function.
-template <typename T>
-__global__ void Zero(T* X, const int N) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    X[i] = 0.0;
-  }
-}
 
 template <typename T>
 __global__ void CrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
@@ -53,7 +45,7 @@ __global__ void SoftCrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
 }  // namespace
 
 template <typename T>
-class CrossEntropyOpCUDAKernel : public framework::OpKernel {
+class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -64,12 +56,12 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel {
     y->mutable_data<T>(ctx.GetPlace());
 
     math::CrossEntropyFunctor<platform::GPUPlace, T>()(
-        ctx, y, x, label, ctx.Attr<bool>("softLabel"));
+        ctx.device_context(), y, x, label, ctx.Attr<bool>("softLabel"));
   }
 };
 
 template <typename T>
-class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
+class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -99,11 +91,7 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
                               .stream()>>>(dx_data, dy_data, x_data, label_data,
                                            batch_size, class_num);
     } else {
-      Zero<T><<<grid, block, 0,
-                reinterpret_cast<const platform::CUDADeviceContext&>(
-                    ctx.device_context())
-                    .stream()>>>(dx_data, batch_size * class_num);
-
+      math::SetConstant<platform::GPUPlace, T>(ctx.device_context(), dx, 0);
       auto* label_data = label->data<int>();
       grid = (batch_size + block - 1) / block;
       CrossEntropyGradientKernel<T><<<

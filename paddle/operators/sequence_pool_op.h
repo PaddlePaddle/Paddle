@@ -38,7 +38,7 @@ enum SeqPoolType {
 };
 
 template <typename Place, typename T>
-class SequencePoolKernel : public framework::OpKernel {
+class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
@@ -85,7 +85,7 @@ class SequencePoolKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class SequencePoolGradKernel : public framework::OpKernel {
+class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");

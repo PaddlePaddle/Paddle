@@ -37,6 +37,11 @@ class GatherOp : public framework::OperatorWithKernel {
     output_dims[0] = batch_size;
     ctx->SetOutputDim("Out", output_dims);
   }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  }
 };
 
 class GatherGradOp : public framework::OperatorWithKernel {
@@ -46,6 +51,11 @@ class GatherGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContextBase* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
   }
 };
 
