@@ -36,7 +36,7 @@ struct ValueClip {
 template <typename Place, typename T>
 class SoftmaxFunctor {
  public:
-  void operator()(const framework::ExecutionContext& context,
+  void operator()(const platform::DeviceContext& context,
                   const framework::Tensor* X, framework::Tensor* Y) {
     auto logits = EigenMatrix<T>::From(*X);
     auto softmax = EigenMatrix<T>::From(*Y);
@@ -58,8 +58,8 @@ class SoftmaxFunctor {
                                .broadcast(one_by_class))
                               .unaryExpr(ValueClip<T>());
 
-    softmax.device(context.GetEigenDevice<Place>()) = shifted_logits.exp();
-    softmax.device(context.GetEigenDevice<Place>()) =
+    softmax.device(*context.GetEigenDevice<Place>()) = shifted_logits.exp();
+    softmax.device(*context.GetEigenDevice<Place>()) =
         (softmax *
          softmax.sum(along_class)
              .inverse()
