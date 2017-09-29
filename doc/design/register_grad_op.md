@@ -51,13 +51,19 @@ struct OpInfo {
 
 The `grad_op_maker_ ` is `nullptr` if the operator does not have associated gradient operators.
 
-We should chagne register macros at the same time. In the current solution, there is no difference between forwarding operators and backward operators. So `REGISTER_OP` just register one operator. If the `REGISTER_OP` contains `OpProtoAndCheckerMaker` and `GradOpDescMaker ƒ`, we just list them in the same macro. It can be done by a macro contains `__VA_ARGS__`.
+We should chagne register macros at the same time. In the current solution, there is no difference between forwarding operators and backward operators. So `REGISTER_OP` just register one operator. If the `REGISTER_OPERATOR ` contains `OpProtoAndCheckerMaker` and `GradOpDescMaker`, we just list them in the same macro. It can be done by a macro contains `__VA_ARGS__`.
 
 The user interface should be
 
 ```cpp
 vector<OpDesc> SumOpGradMakerƒ(OpDesc) {...}
-REGISTER_OP(sum, SumOp, SumOpProtoAndCheckerMaker, SumOpGradMaker);
+REGISTER_OPERATOR(sum, SumOp, SumOpProtoAndCheckerMaker, SumOpGradMaker);
 // Developers can still manually implement gradient operator.
-REGISTER_OP(sum_grad, SumGradOp);
+REGISTER_OPERATOR(sum_grad, SumGradOp);
+```
+
+The interface of current `REGISTER_OP` macro could not be changed. In `REGISTER_OP`, it will invoke `REGISTER_OPERATOR` two times and generate GradOpDescMaker inside.
+
+```cpp
+REGISTER_OP(sum, SumOp, SumOpProtoAndCheckerMaker, sum_grad, SumGradOp);
 ```
