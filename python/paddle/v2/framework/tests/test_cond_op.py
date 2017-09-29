@@ -112,7 +112,4 @@ class TestCondOp(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    exit(
-        0
-    )  # FIXME(yuyang18): Since infer_shape has been removed, cond op may error
     unittest.main()

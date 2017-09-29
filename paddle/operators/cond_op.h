@@ -51,16 +51,31 @@ class CondOp : public framework::OperatorBase {
     PADDLE_THROW("Not implemented");
   }
 
-  void CreateScope(const framework::Scope& scope) const;
+  framework::Scope& AddSubScope(const framework::Scope& scope) const;
 
-  void CreateIndexTensor(const framework::Scope& scope) const;
+  void AddIndexTensor(const framework::Scope& scope) const;
 
-  /*
-   * InferShape must be called before Run.
-   * FIXME(yuyang18): Since InferShape has been removed, this implementation
-   * could be wrong.
-   */
-  void InferShape(const framework::Scope& scope) const;
+  void DoBeforeRun(const framework::Scope& scope,
+                   const platform::DeviceContext& dev_ctx) const;
+  void DoAfterRun(const framework::Scope& scope,
+                  const platform::DeviceContext& dev_ctx) const;
+
+  inline std::vector<framework::Scope*>& GetSubScopes(
+      const framework::Scope& scope) const {
+    auto sub_scopes_var = scope.FindVar("SubScopes");
+    PADDLE_ENFORCE_NOT_NULL(sub_scopes_var,
+                            "Output(SubScopes) of CondOp should not be null.");
+    return *sub_scopes_var->GetMutable<std::vector<framework::Scope*>>();
+  }
+
+  inline std::vector<framework::LoDTensor>& GetIndexTensors(
+      const framework::Scope& scope) const {
+    auto* index_tensors_var = scope.FindVar("IndexTensors");
+    PADDLE_ENFORCE_NOT_NULL(
+        index_tensors_var,
+        "Output(IndexTensors) of CondOp should not be null.");
+    return *index_tensors_var->GetMutable<std::vector<framework::LoDTensor>>();
+  }
 
   /*
    * Set True Block
