@@ -1,10 +1,10 @@
 ## Survey on Graph
 
-Neural network framework often provides Symbolic api for users to write network topology conveniently. This doc manily focus on Symbolic api in most popular neural network frameworks, and try to find out how to parse Symbolic configuration to a portable file, such as protobuf or json.
+Neural network framework often provides symbolic API for users to write network topology conveniently. This doc manily focus on symbolic API in most popular neural network frameworks, and try to find out how to parse symbolic configuration to a portable file, such as protobuf or json.
 
 ### Mxnet
 
-The core concept of Symbolic api is `Symbol`. Mxnet implements `Symbol` class in C++, and export to Python using CAPI. Please refer to the comments in Mxnet:
+The core concept of symbolic API is `Symbol`. Mxnet implements `Symbol` class in C++, and export to Python using C-API. Please refer to the comments in Mxnet:
 
 
 `Symbol` is help class used to represent the operator node in Graph.
@@ -78,9 +78,9 @@ Attrs:
 ### TensorFlow
 
 
-The core concept of Symbolic api is `Tensor`. Tensorflow defines `Tensor` in Python. Please refer to the comments in TensorFlow:
+The core concept of symbolic API is `Tensor`. Tensorflow defines `Tensor` in Python. Please refer to the comments in TensorFlow:
 
-A `Tensor` is a symbolic handle to one of the outputs of an `Operation`. It does not hold the values of that operation's output, but instead provides a means of computing those values in a TensorFlow @{tf.Session}.
+A `Tensor` is a symbolic handle to one of the outputs of an `Operation`. It does not hold the values of that operation's output, but instead provides a means of computing those values in a TensorFlow [Session](https://www.tensorflow.org/api_docs/python/tf/Session).
 
 A simple example is as follows:
 
@@ -153,7 +153,7 @@ Here is a detailed example:
 ### Dynet
 
 
-The core concept of Symbolic api is `Expression`, and Dynet defines `Expression` class in C++.
+The core concept of symbolic API is `Expression`, and Dynet defines `Expression` class in C++.
 
 
 A simple example is as follows:
@@ -227,6 +227,6 @@ digraph G {
 
 Actually, Symbol/Tensor/Expression in Mxnet/TensorFlow/Dynet are the same level concepts. We use a unified name Expression here, this level concept has following features:
 
-- Users wirte topoloy with Symbolic api, and all return value is Expression, including input data and parameter.
+- Users wirte topoloy with symbolic API, and all return value is Expression, including input data and parameter.
 - Expression corresponds with a global Graph, and Expression can also be composed.
 - Expression tracks all dependency and can be taken as a run target
