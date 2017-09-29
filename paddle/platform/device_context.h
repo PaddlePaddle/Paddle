@@ -27,13 +27,23 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
   virtual Place GetPlace() const = 0;
 
-  template <typename DeviceType>
-  DeviceType* get_eigen_device() const;
+  template <typename PlaceType,
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+  DeviceType* GetEigenDevice() const;
 
   virtual void Wait() const {}
 };
@@ -52,6 +62,11 @@ class CPUDeviceContext : public DeviceContext {
 };
 
 #ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+
 class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {

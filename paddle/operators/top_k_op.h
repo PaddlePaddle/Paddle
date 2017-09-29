@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class TopkKernel : public framework::OpKernel {
+class TopkKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor

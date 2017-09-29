@@ -12,12 +12,25 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/rowwise_add_op.h"
+#pragma once
+#include <typeindex>
+#include "paddle/framework/framework.pb.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    rowwise_add, ops::RowwiseAddKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    rowwise_add_grad,
-    ops::RowwiseAddGradKernel<paddle::platform::GPUPlace, float>);
+namespace paddle {
+namespace framework {
+
+inline DataType ToDataType(std::type_index type) {
+  if (typeid(float).hash_code() == type.hash_code()) {
+    return DataType::FP32;
+  } else if (typeid(double).hash_code() == type.hash_code()) {
+    return DataType::FP64;
+  } else if (typeid(int).hash_code() == type.hash_code()) {
+    return DataType::INT32;
+  } else {
+    PADDLE_THROW("Not supported");
+    return static_cast<DataType>(-1);
+  }
+}
+
+}  // namespace framework
+}  // namespace paddle

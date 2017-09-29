@@ -29,4 +29,6 @@
 #endif
 #endif
 
+#include <boost/mpl/comparison.hpp>
+#include <boost/mpl/less_equal.hpp>
 #include <boost/variant.hpp>
