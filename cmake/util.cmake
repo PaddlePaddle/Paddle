@@ -83,6 +83,7 @@ function(link_paddle_exe TARGET_NAME)
             paddle_utils
             paddle_parameter
             paddle_proto
+            paddle_cuda
             ${EXTERNAL_LIBS}
             ${CMAKE_THREAD_LIBS_INIT}
             ${CMAKE_DL_LIBS}
