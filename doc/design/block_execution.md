@@ -51,7 +51,7 @@ In order to realize features mentioned in overview, we have to do several transf
 
 - optimize pass: generate OpDesc and VarDesc for optimize operators
 
-Each pass will modify the global ProgramDesc.
+Each pass will modify the global ProgramDesc. We will define a `Converter` to apply pass to ProgramDesc. ProgramDesc is the both input and output of `Converter`.
 
 ### Run-time analysis
 
@@ -68,11 +68,12 @@ The `Executor` is defined as follows:
 ```
 class Executor {
 public:
-  Executor(ProgramDesc*);
+  Executor(ProgramDesc*, DeviceContextManager*);
   void Run();
   
 private:
-  DeviceContextManager_;
+  DeviceContextManager* mgr_;
+  ProgamDesc* progam_desc_
 };
 ```
 
@@ -106,9 +107,9 @@ We should generate a group of OpDesc at compile-time instead of a NetOp at run-t
 
 Please refer to the survey [doc](https://github.com/QiJune/Paddle/blob/e90ec7783a1abe7f7627f97559cc46488e41cc7e/doc/design/graph_survey.md) on Computation Graph. Users will write a neural network topology with Symbolic API. And the composition of operators should be done at compile-time in this level too.
 
-#### Unified Pass Interface
+#### Converter
 
-An abstract class `Converter` is defined to provide a Unified Pass Interface.
+In compile-time, we will do several transform pass on ProgramDesc. An abstract class `Converter` is defined to provide a Unified Pass Interface.
 
 ```
 class Converter {
@@ -117,13 +118,14 @@ public:
 };
 ```
 
-#### Placement Policy
 
+##### Backward Pass
+Both forward and backward pass will modify the same ProgramDesc.
+
+##### Placement Policy
 Placement Policy is designed to set device for every operator. Currently, we only need a simple priority rule to implement the simplest version.
 
-
-
-### Run-time solution
+#### Run-time solution
 We will have several class derived from `Executor` to provide different execution strategy. And ProgramDesc will be transformed accordingly.
 
 There are mainly two kinds of `Executor`:
