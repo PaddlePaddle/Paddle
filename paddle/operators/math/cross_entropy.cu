@@ -74,7 +74,7 @@ using Tensor = framework::Tensor;
 template <typename T>
 class CrossEntropyFunctor<platform::GPUPlace, T> {
  public:
-  void operator()(const framework::DeviceContext& ctx, framework::Tensor* out,
+  void operator()(const platform::DeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
                   const framework::Tensor* labels, bool softLabel) {
     const T* prob_data = prob->data<T>();

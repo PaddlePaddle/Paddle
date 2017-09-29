@@ -56,7 +56,7 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     math::CrossEntropyFunctor<platform::GPUPlace, T>()(
-        ctx, y, x, label, ctx.Attr<bool>("softLabel"));
+        ctx.device_context(), y, x, label, ctx.Attr<bool>("softLabel"));
   }
 };
 
