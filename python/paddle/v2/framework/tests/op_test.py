@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import random
 import itertools
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
@@ -192,6 +193,21 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
 
 class OpTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        '''Fix random seeds to remove randomness from tests'''
+        cls._np_rand_state = np.random.get_state()
+        cls._py_rand_state = random.getstate()
+
+        np.random.seed(123)
+        random.seed(124)
+
+    @classmethod
+    def tearDownClass(cls):
+        '''Restore random seeds'''
+        np.random.set_state(cls._np_rand_state)
+        random.setstate(cls._py_rand_state)
+
     def check_output_with_place(self, place, atol):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
