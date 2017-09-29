@@ -132,6 +132,17 @@ class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftsignOpMaker(framework::OpProto *proto,
+                  framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softsign operator");
+    AddOutput("Y", "Output of Softsign operator");
+    AddComment("Softsign activation operator, softsign(x) = x / (1 + |x|)");
+  }
+};
+
 template <typename AttrType>
 class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -221,6 +232,9 @@ REGISTER_OP(log, ops::ActivationOp, ops::LogOpMaker, log_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(square, ops::ActivationOp, ops::SquareOpMaker, square_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(brelu, ops::ActivationOp, ops::BReluOpMaker<float>, brelu_grad,

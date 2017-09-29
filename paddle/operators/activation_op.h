@@ -262,6 +262,26 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// softsign(x) = x / (1 + |x|)
+template <typename T>
+struct SoftsignFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    y.device(d) = x / (static_cast<T>(1) + x.abs());
+  }
+};
+
+// d(softsign(x))/dx = 1 / (1 + |x|)^2
+// Taken from https://en.wikipedia.org/wiki/Activation_function
+template <typename T>
+struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    dx.device(d) =
+        dy * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
+  }
+};
+
 template <typename T>
 struct SoftReluFunctor : public BaseActivationFunctor<T> {
   float threshold;
@@ -358,4 +378,5 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
   __macro(brelu, BReluFunctor, BReluGradFunctor);                \
   __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);      \
   __macro(pow, PowFunctor, PowGradFunctor);                      \
-  __macro(stanh, STanhFunctor, STanhGradFunctor)
+  __macro(stanh, STanhFunctor, STanhGradFunctor);                \
+  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor)
