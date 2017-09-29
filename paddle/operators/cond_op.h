@@ -58,10 +58,10 @@ class CondOp : public framework::OperatorBase {
   std::vector<framework::LoDTensor>& GetIndexTensors(
       const framework::Scope& scope) const;
 
-  void DoBeforeRun(const framework::Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const;
-  void DoAfterRun(const framework::Scope& scope,
-                  const platform::DeviceContext& dev_ctx) const;
+  void PrepareDataForSubnet(const framework::Scope& scope,
+                            const platform::DeviceContext& dev_ctx) const;
+  void MergeDataFromSubnet(const framework::Scope& scope,
+                           const platform::DeviceContext& dev_ctx) const;
 
   /*
    * Set True Block

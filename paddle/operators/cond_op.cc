@@ -62,8 +62,9 @@ std::vector<framework::LoDTensor>& CondOp::GetIndexTensors(
   return *index_tensors_var->GetMutable<std::vector<framework::LoDTensor>>();
 }
 
-void CondOp::DoBeforeRun(const framework::Scope& scope,
-                         const platform::DeviceContext& dev_ctx) const {
+void CondOp::PrepareDataForSubnet(
+    const framework::Scope& scope,
+    const platform::DeviceContext& dev_ctx) const {
   PADDLE_ENFORCE(!Inputs("Xs").empty(), "Inputs(Xs) of CondOp can't be empty.");
 
   for (int i = 0; i < BRANCH_NUM; ++i) {
@@ -140,8 +141,8 @@ void CondOp::DoBeforeRun(const framework::Scope& scope,
   }
 }
 
-void CondOp::DoAfterRun(const framework::Scope& scope,
-                        const platform::DeviceContext& dev_ctx) const {
+void CondOp::MergeDataFromSubnet(const framework::Scope& scope,
+                                 const platform::DeviceContext& dev_ctx) const {
   std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
   const std::vector<framework::LoDTensor>& index_tensors =
       GetIndexTensors(scope);
@@ -195,12 +196,12 @@ void CondOp::DoAfterRun(const framework::Scope& scope,
 
 void CondOp::Run(const Scope& scope,
                  const platform::DeviceContext& dev_ctx) const {
-  DoBeforeRun(scope, dev_ctx);
+  PrepareDataForSubnet(scope, dev_ctx);
   std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
   for (int i = 0; i < BRANCH_NUM; ++i) {
     sub_net_op_[i]->Run(*sub_scopes[i], dev_ctx);
   }
-  DoAfterRun(scope, dev_ctx);
+  MergeDataFromSubnet(scope, dev_ctx);
 }
 
 class CondOpProtoAndCheckerMaker : public framework::OpProtoAndCheckerMaker {
