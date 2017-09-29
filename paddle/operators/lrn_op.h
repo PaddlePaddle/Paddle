@@ -45,7 +45,7 @@ class LRNKernel : public framework::OpKernel {
 
     // mid_out save the intermediate result for backward
     Tensor* mid_out = ctx.Output<Tensor>("mid_out");
-    mid_out->mutable_data<float>(ctx.GetPlace());
+    mid_out->mutable_data<T>(ctx.GetPlace());
 
     int n = ctx.Attr<int>("n");
     float alpha = ctx.Attr<float>("alpha");
@@ -86,8 +86,6 @@ class LRNKernel : public framework::OpKernel {
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(ctx.GetEigenDevice<Place>()) =
         x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
-
-    e_mid.device(ctx.GetEigenDevice<Place>()) = e_mid;
   }
 };
 
@@ -123,7 +121,7 @@ class LRNGradKernel : public framework::OpKernel {
     auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());
 
-    auto x_g_e = framework::EigenVector<float>::Flatten(*x_g);
+    auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
     x_g_e.device(ctx.GetEigenDevice<Place>()) = x_g_e.constant(0.0);
 
     auto x_dims = x->dims();

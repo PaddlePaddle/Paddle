@@ -33,6 +33,7 @@ class LRNOp : public framework::OperatorWithKernel {
                             "mid_out(Out) of LRNOp should not be null.");
 
     auto x_dim = ctx.Input<Tensor>("X")->dims();
+    PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
 
     ctx.Output<Tensor>("Out")->Resize(x_dim);
     ctx.Output<Tensor>("mid_out")->Resize(x_dim);
@@ -44,9 +45,15 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   LRNOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of lrn op");
+    AddInput("X", R"DOC(
+ Input of lrn op.It must be a 4 rank tenor with NCHW format.
+ )DOC");
+
     AddOutput("Out", "The output of lrn op");
-    AddOutput("mid_out", "Middle result of lrn op");
+    AddOutput("mid_out", R"Doc(
+Middle result of lrn op.It's computed in forward process 
+and also used in backward process.
+    )Doc");
 
     AddAttr<int>("n", R"DOC(
 n is “adjacent” kernel maps at the same spatial position.
