@@ -36,20 +36,6 @@ __global__ void ScatterCUDAKernel(const T* params, const int* indices,
   }
 }
 
-// Implementation of GPU copy:
-template <typename T>
-struct GPUScatterAssign {
-  void operator()(const T* src, const int* index, const int slice_size,
-                  const int index_size, T* output) {
-    int block = 512;
-    int n = slice_size * index_size;
-    int grid = (n + block - 1) / block;
-    // printf("grid, block: %d %d\n", grid, block);
-    ScatterCUDAKernel<T><<<grid, block>>>(src, index, output, index_size,
-                                          slice_size);
-  }
-};
-
 /**
  * A thin wrapper on gpu tensor
  * Return a new updated tensor from source tensor, scatter-assigned according to
@@ -59,10 +45,10 @@ struct GPUScatterAssign {
  * return: output tensor
  */
 template <typename T>
-void GPUTScatter(const platform::Place& place,
-                 const paddle::framework::Tensor* src,
-                 const paddle::framework::Tensor* index,
-                 paddle::framework::Tensor* output) {
+void GPUScatterAssign(const platform::Place& place,
+                      const paddle::framework::Tensor* src,
+                      const paddle::framework::Tensor* index,
+                      paddle::framework::Tensor* output) {
   PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
   PADDLE_ENFORCE(index->dims().size() == 1);
@@ -76,10 +62,16 @@ void GPUTScatter(const platform::Place& place,
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
-  // Scatter Assign
-  GPUScatterAssign<T> scatter_functor;
-  scatter_functor(src->data<T>(), index->data<int>(), slice_size, index_size,
-                  output->data<T>());
+  const T* p_src = src->data<T>();
+  const int* p_index = index->data<int>();
+  T* p_output = output->data<T>();
+
+  int block = 512;
+  int n = slice_size * index_size;
+  int grid = (n + block - 1) / block;
+
+  ScatterCUDAKernel<T><<<grid, block>>>(p_src, p_index, p_output, index_size,
+                                        slice_size);
 }
 
 }  // namespace operators

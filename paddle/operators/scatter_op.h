@@ -56,7 +56,7 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
     dRef->ShareDataWith<T>(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
     // Gradient by Gather: dUpdates += dO[Index]
-    CPUTGather<T>(ctx.GetPlace(), dOut, Index, dUpdates);
+    CPUGather<T>(ctx.GetPlace(), dOut, Index, dUpdates);
   }
 };
 

@@ -32,7 +32,7 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
 
-    GPUTGather<T>(ctx.GetPlace(), x, index, output);
+    GPUGather<T>(ctx.GetPlace(), x, index, output);
   }
 };
 
@@ -53,7 +53,7 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetEigenDevice<platform::GPUPlace>();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
 
-    GPUTScatter<T>(ctx.GetPlace(), dO, Index, dX);
+    GPUScatterAssign<T>(ctx.GetPlace(), dO, Index, dX);
   }
 };
 

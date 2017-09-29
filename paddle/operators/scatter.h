@@ -25,19 +25,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-// Implementation of CPU copy
-template <typename T>
-void CPUScatterAssign(const T* src, const int* index, const int slice_size,
-                      const int index_size, T* output) {
-  // paddle::framework::DDim output_dims = output->dims();
-  const size_t slice_bytes = slice_size * sizeof(T);
-
-  for (int i = 0; i < index_size; ++i) {
-    int index_ = index[i];
-    memcpy(output + index_ * slice_size, src + i * slice_size, slice_bytes);
-  }
-}
-
 /**
  * Return a updated tensor from source tensor, scattered according to index:
  * dst[i] = src[index[i]]
@@ -70,7 +57,12 @@ void ScatterAssign(const platform::Place& place,
   size_t slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
-  CPUScatterAssign<T>(p_src, p_index, slice_size, index_size, p_output);
+  const size_t slice_bytes = slice_size * sizeof(T);
+
+  for (int i = 0; i < index_size; ++i) {
+    int index_ = p_index[i];
+    memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
+  }
 }
 
 }  // namespace operators

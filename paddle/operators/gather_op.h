@@ -36,7 +36,7 @@ class GatherOpKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
 
-    CPUTGather<T>(ctx.GetPlace(), x, index, output);
+    CPUGather<T>(ctx.GetPlace(), x, index, output);
   }
 };
 

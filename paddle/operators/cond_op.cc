@@ -169,8 +169,8 @@ void CondOp::Run(const Scope& scope,
       tensor_child->Resize(dim);
       tensor_child->mutable_data<float>(dim, platform::CPUPlace());
 
-      CPUTGather<float>(dev_ctx.GetPlace(), tensor_parent, &index_tensors[i],
-                        tensor_child);
+      CPUGather<float>(dev_ctx.GetPlace(), tensor_parent, &index_tensors[i],
+                       tensor_child);
     }
   }
 
