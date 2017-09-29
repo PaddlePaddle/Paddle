@@ -21,7 +21,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename Place, typename T>
-class MultiplexGPUKernel : public framework::OpKernel {
+class MultiplexGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto ins = ctx.MultiInput<Tensor>("X");
@@ -51,7 +51,7 @@ class MultiplexGPUKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MultiplexGradGPUKernel : public framework::OpKernel {
+class MultiplexGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));

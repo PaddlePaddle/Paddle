@@ -230,7 +230,7 @@ void GemmConvGrad2DCompute(const framework::ExecutionContext& context) {
 }
 
 template <typename Place, typename T>
-class GemmConv2DKernel : public framework::OpKernel {
+class GemmConv2DKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     GemmConv2DCompute<Place, T>(context);
@@ -238,7 +238,7 @@ class GemmConv2DKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class GemmConvGrad2DKernel : public framework::OpKernel {
+class GemmConvGrad2DKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     GemmConvGrad2DCompute<Place, T>(context);

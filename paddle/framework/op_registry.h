@@ -100,13 +100,39 @@ class OpRegistrar : public Registrar {
   }
 };
 
-template <typename PlaceType, typename KernelType>
+template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
+struct OpKernelRegistrarFunctor;
+
+template <typename PlaceType, size_t I, typename... KernelTypes>
+struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
+  using KERNEL_TYPE =
+      typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
+
+  void operator()(const char* op_type) const {
+    using T = typename KERNEL_TYPE::ELEMENT_TYPE;
+    OperatorWithKernel::OpKernelKey key(ToDataType(std::type_index(typeid(T))),
+                                        PlaceType());
+    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
+
+    constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
+    OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
+        func;
+    func(op_type);
+  }
+};
+
+template <typename PlaceType, size_t I, typename... KernelType>
+struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
+  void operator()(const char* op_type) const {}
+};
+
+// User can register many kernel in one place. The data type could be different.
+template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
   explicit OpKernelRegistrar(const char* op_type) {
-    OperatorWithKernel::OpKernelKey key;
-    key.place_ = PlaceType();
-    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KernelType);
+    OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
+    func(op_type);
   }
 };
 

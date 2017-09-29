@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class MultiplexCPUKernel : public framework::OpKernel {
+class MultiplexCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
@@ -48,7 +48,7 @@ class MultiplexCPUKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MultiplexGradCPUKernel : public framework::OpKernel {
+class MultiplexGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));

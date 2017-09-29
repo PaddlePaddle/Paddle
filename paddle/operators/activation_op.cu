@@ -80,6 +80,13 @@ REGISTER_OP_GPU_KERNEL(
     square_grad, ops::ActivationGradKernel<paddle::platform::GPUPlace, float,
                                            ops::SquareGradFunctor<float>>);
 
+REGISTER_OP_GPU_KERNEL(softsign,
+                       ops::ActivationKernel<paddle::platform::GPUPlace, float,
+                                             ops::SoftsignFunctor<float>>);
+REGISTER_OP_GPU_KERNEL(
+    softsign_grad, ops::ActivationGradKernel<paddle::platform::GPUPlace, float,
+                                             ops::SoftsignGradFunctor<float>>);
+
 REGISTER_OP_GPU_KERNEL(brelu,
                        ops::BReluKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(brelu_grad,

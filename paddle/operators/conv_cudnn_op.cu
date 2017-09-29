@@ -38,7 +38,7 @@ std::vector<int> Dims2Vector(const framework::DDim& dims) {
 }
 
 template <typename T>
-class CudnnConvOpKernel : public framework::OpKernel {
+class CudnnConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -114,7 +114,7 @@ class CudnnConvOpKernel : public framework::OpKernel {
 };
 
 template <typename T>
-class CudnnConvGradOpKernel : public framework::OpKernel {
+class CudnnConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),

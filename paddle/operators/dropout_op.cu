@@ -47,7 +47,7 @@ struct MaskGenerator {
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
 template <typename Place, typename T, typename AttrType>
-class GPUDropoutKernel : public framework::OpKernel {
+class GPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");

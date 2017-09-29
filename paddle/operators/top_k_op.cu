@@ -279,7 +279,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int* indices,
 }
 
 template <typename T>
-class TopkOpCUDAKernel : public framework::OpKernel {
+class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),

@@ -61,7 +61,7 @@ __global__ void LookupTableGrad(T* table, const T* output, const int32_t* ids,
 }
 
 template <typename T>
-class LookupTableCUDAKernel : public framework::OpKernel {
+class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto table_t = context.Input<Tensor>("W");
@@ -85,7 +85,7 @@ class LookupTableCUDAKernel : public framework::OpKernel {
 };
 
 template <typename T>
-class LookupTableGradCUDAKernel : public framework::OpKernel {
+class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto ids_t = context.Input<Tensor>("Ids");

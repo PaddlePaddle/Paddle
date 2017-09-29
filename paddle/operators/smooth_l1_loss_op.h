@@ -45,7 +45,7 @@ struct SmoothL1LossForward {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class SmoothL1LossKernel : public framework::OpKernel {
+class SmoothL1LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
@@ -115,7 +115,7 @@ struct SmoothL1LossBackward {
 };
 
 template <typename Place, typename T, typename AttrType = T>
-class SmoothL1LossGradKernel : public framework::OpKernel {
+class SmoothL1LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("InsideWeight");

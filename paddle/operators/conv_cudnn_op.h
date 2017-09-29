@@ -25,7 +25,7 @@ using Tensor = framework::Tensor;
 // FIXME(typhoonzer): If CudnnConvOp is running on CPU
 // reuse the code from gemm_conv2d_op.h.
 template <typename Place, typename T>
-class CudnnConvKernel : public framework::OpKernel {
+class CudnnConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     GemmConv2DCompute<Place, T>(context);
@@ -33,7 +33,7 @@ class CudnnConvKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class CudnnConvGradKernel : public framework::OpKernel {
+class CudnnConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     GemmConvGrad2DCompute<Place, T>(context);
