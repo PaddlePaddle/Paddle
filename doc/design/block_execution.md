@@ -105,7 +105,7 @@ We should generate a group of OpDesc at compile-time instead of a NetOp at run-t
 
 #### Symbolic API
 
-Please refer to the survey [doc](https://github.com/QiJune/Paddle/blob/e90ec7783a1abe7f7627f97559cc46488e41cc7e/doc/design/graph_survey.md) on Computation Graph. Users will write a neural network topology with Symbolic API. And the composition of operators should be done at compile-time in this level too.
+Please refer to the survey [doc](https://github.com/QiJune/Paddle/blob/924735ca3a3d93027a07a244863bceb561b37432/doc/design/graph_survey.md) on Computation Graph. Users will write a neural network topology with Symbolic API. And the composition of operators should be done at compile-time in this level too.
 
 #### Converter
 
@@ -125,7 +125,7 @@ Both forward and backward pass will modify the same ProgramDesc.
 ##### Placement Policy
 Placement Policy is designed to set device for every operator. Currently, we only need a simple priority rule to implement the simplest version.
 
-#### Run-time solution
+### Run-time solution
 We will have several class derived from `Executor` to provide different execution strategy. And ProgramDesc will be transformed accordingly.
 
 There are mainly two kinds of `Executor`:
