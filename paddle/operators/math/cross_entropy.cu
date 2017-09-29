@@ -74,8 +74,8 @@ using Tensor = framework::Tensor;
 template <typename T>
 class CrossEntropyFunctor<platform::GPUPlace, T> {
  public:
-  void operator()(const framework::ExecutionContext& ctx,
-                  framework::Tensor* out, const framework::Tensor* prob,
+  void operator()(const framework::DeviceContext& ctx, framework::Tensor* out,
+                  const framework::Tensor* prob,
                   const framework::Tensor* labels, bool softLabel) {
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
@@ -87,20 +87,18 @@ class CrossEntropyFunctor<platform::GPUPlace, T> {
       const T* label_data = labels->data<T>();
       int block = class_num > 512 ? 512 : pow(2, int(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<
-          T><<<batch_size, block, block * sizeof(T),
-               reinterpret_cast<const platform::CUDADeviceContext&>(
-                   ctx.device_context())
-                   .stream()>>>(loss_data, prob_data, label_data, class_num);
+      SoftCrossEntropyKernel<T><<<
+          batch_size, block, block * sizeof(T),
+          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+          loss_data, prob_data, label_data, class_num);
     } else {
       const int* label_data = labels->data<int>();
       int block = 512;
       int grid = (batch_size + block - 1) / block;
       CrossEntropyKernel<T><<<
-          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(loss_data, prob_data, label_data,
-                                           batch_size, class_num);
+          grid, block, 0,
+          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+          loss_data, prob_data, label_data, batch_size, class_num);
     }
   }
 };

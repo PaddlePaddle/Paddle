@@ -42,7 +42,8 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
 
     math::SoftmaxFunctor<platform::CPUPlace, T>()(context, logits, softmax);
     math::CrossEntropyFunctor<platform::CPUPlace, T>()(
-        context, loss, softmax, labels, context.Attr<bool>("softLabel"));
+        context.device_context(), loss, softmax, labels,
+        context.Attr<bool>("softLabel"));
   }
 };
 
