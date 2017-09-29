@@ -20,14 +20,14 @@ namespace operators {
 namespace math {
 
 template <typename T>
-__global__ void KernelMaxPool2dWithIdxForward(
+__global__ void KernelMaxPool2dWithIdx(
     const int nthreads, const T* input_data, T* output_data, T* mask_data,
     const int channels, const int input_height, const int input_width,
     const int output_height, const int output_width, const int ksize_height,
     const int ksize_width, const int stride_height, const int stride_width,
     const int padding_height, const int padding_width) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < nthreads) {
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+       index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
     int ph = (index / output_width) % output_height;
     int c = (index / output_width / output_height) % channels;
@@ -43,51 +43,58 @@ __global__ void KernelMaxPool2dWithIdxForward(
 
     input_data += (batch_idx * channels + c) * input_height * input_width;
     T ele = -FLT_MAX;
-    int index = -1;
+    int max_index = -1;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        if (ele < input_data[h * input_width + w]) {
-          index = h * input_width + w;
-          ele = input_data[h * input_width + w];
+        int input_index = h * input_width + w;
+        if (ele < input_data[input_index]) {
+          max_index = input_index;
+          ele = input_data[input_index];
         }
       }
     }
     output_data[index] = ele;
-    mask_data[index] = index;
+    mask_data[index] = max_index;
   }
 }
 
 template <typename T>
-__global__ void KernelMaxPool2DWithIdxBackward(
+__global__ void KernelMaxPool2DWithIdxGrad(
     const int nthreads, T* input_grad, const T* output_grad, const T* mask_data,
     const int channels, const int input_height, const int input_width,
     const int output_height, const int output_width, const int ksize_height,
     const int ksize_width, const int stride_height, const int stride_width,
     const int padding_height, const int padding_width) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < nthreads) {
-    int offsetW = index % input_width + padding_width;
-    int offsetH = (index / input_width) % input_height + padding_height;
-    int offsetC = (index / input_width / input_height) % channels;
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+       index += blockDim.x * gridDim.x) {
+    int w_offset = index % input_width;
+    int h_offset = (index / input_width) % input_height;
+    int c_offset = (index / input_width / input_height) % channels;
     int batch_idx = index / input_width / input_height / channels;
 
-    int phstart = (offsetH < ksize_height)
-                      ? 0
-                      : (offsetH - ksize_height) / stride_height + 1;
-    int pwstart = (offsetW < ksize_width)
-                      ? 0
-                      : (offsetW - ksize_width) / stride_width + 1;
-    int phend = min(offsetH / stride_height + 1, output_height);
-    int pwend = min(offsetW / stride_width + 1, output_width);
+    int ph_start =
+        (h_offset + padding_height < ksize_height)
+            ? 0
+            : (h_offset + padding_height - ksize_height) / stride_height + 1;
+    int pw_start =
+        (w_offset + padding_width < ksize_width)
+            ? 0
+            : (w_offset + padding_width - ksize_width) / stride_width + 1;
+    int ph_end =
+        min((h_offset + padding_height) / stride_height + 1, output_height);
+    int pw_end =
+        min((w_offset + padding_width) / stride_width + 1, output_width);
+
     T gradient = 0;
+    int input_current_featuremap_idx = h_offset * input_width + w_offset;
     int output_idx =
-        (batch_idx * channels + offsetC) * output_height * output_width;
+        (batch_idx * channels + c_offset) * output_height * output_width;
+
     mask_data += output_idx;
     output_grad += output_idx;
-    for (int ph = phstart; ph < phend; ++ph) {
-      for (int pw = pwstart; pw < pwend; ++pw) {
-        if ((offsetH * input_width + offsetW) ==
-            mask_data[ph * output_width + pw])
+    for (int ph = ph_start; ph < ph_end; ++ph) {
+      for (int pw = pw_start; pw < pw_end; ++pw) {
+        if (mask_data[ph * output_width + pw] == input_current_featuremap_idx)
           gradient += output_grad[ph * output_width + pw];
       }
     }
@@ -125,7 +132,7 @@ class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool2dWithIdxForward<
+    KernelMaxPool2dWithIdx<
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(nthreads, input_data, output_data, mask_data,
@@ -167,7 +174,7 @@ class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool2DWithIdxBackward<
+    KernelMaxPool2DWithIdxGrad<
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(nthreads, input_grad_data, output_grad_data,
@@ -184,7 +191,7 @@ template class MaxPool2dWithIndexFunctor<platform::GPUPlace, double>;
 template class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, double>;
 
 template <typename T>
-__global__ void KernelMaxPool3DWithIdxForward(
+__global__ void KernelMaxPool3DWithIdx(
     const int nthreads, const T* input_data, T* output_data, T* mask_data,
     const int channels, const int input_depth, const int input_height,
     const int input_width, const int output_depth, const int output_height,
@@ -200,6 +207,7 @@ __global__ void KernelMaxPool3DWithIdxForward(
     int c = (index / output_width / output_height / output_depth) % channels;
     int batch_idx =
         index / output_width / output_height / output_depth / channels;
+
     int dstart = pd * stride_depth - padding_depth;
     int hstart = ph * stride_height - padding_height;
     int wstart = pw * stride_width - padding_width;
@@ -209,8 +217,9 @@ __global__ void KernelMaxPool3DWithIdxForward(
     dstart = max(dstart, 0);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
+
     T ele = -FLT_MAX;
-    int index = -1;
+    int max_index = -1;
     input_data +=
         (batch_idx * channels + c) * input_depth * input_height * input_width;
 
@@ -218,19 +227,19 @@ __global__ void KernelMaxPool3DWithIdxForward(
       for (int h = hstart; h < hend; ++h) {
         for (int w = wstart; w < wend; ++w) {
           if (ele < input_data[(d * input_height + h) * input_width + w]) {
-            index = (d * input_height + h) * input_width + w;
-            ele = input_data[(d * input_height + h) * input_width + w];
+            max_index = (d * input_height + h) * input_width + w;
+            ele = input_data[max_index];
           }
         }
       }
     }
     output_data[index] = ele;
-    mask_data[index] = index;
+    mask_data[index] = max_index;
   }
 }
 
 template <typename T>
-__global__ void KernelMaxPool3DWithIdxBackward(
+__global__ void KernelMaxPool3DWithIdxGrad(
     const int nthreads, T* input_grad, const T* output_grad, const T* mask,
     const int channels, const int input_depth, const int input_height,
     const int input_width, const int output_depth, const int output_height,
@@ -240,37 +249,45 @@ __global__ void KernelMaxPool3DWithIdxBackward(
     const int padding_width) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
        index += blockDim.x * gridDim.x) {
-    int offsetW = index % input_width + padding_width;
-    int offsetH = (index / input_width) % input_height + padding_height;
-    int offsetD =
-        (index / input_width / input_height) % input_depth + padding_depth;
-    int offsetC = (index / input_width / input_height / input_depth) % channels;
+    int w_offset = index % input_width;
+    int h_offset = (index / input_width) % input_height;
+    int d_offset = (index / input_width / input_height) % input_depth;
+    int c_offset =
+        (index / input_width / input_height / input_depth) % channels;
     int batch_idx = index / input_width / input_height / input_depth / channels;
 
-    int pdstart = (offsetD < ksize_depth)
-                      ? 0
-                      : (offsetD - ksize_depth) / stride_depth + 1;
-    int phstart = (offsetH < ksize_height)
-                      ? 0
-                      : (offsetH - ksize_height) / stride_height + 1;
-    int pwstart = (offsetW < ksize_width)
-                      ? 0
-                      : (offsetW - ksize_width) / stride_width + 1;
-    int pdend = min((offsetD) / stride_depth + 1, output_depth);
-    int phend = min((offsetH) / stride_height + 1, output_height);
-    int pwend = min((offsetW) / stride_width + 1, output_width);
+    int pd_start =
+        (d_offset + padding_depth < ksize_depth)
+            ? 0
+            : (d_offset + padding_depth - ksize_depth) / stride_depth + 1;
+    int ph_start =
+        (h_offset + padding_height < ksize_height)
+            ? 0
+            : (h_offset + padding_height - ksize_height) / stride_height + 1;
+    int pw_start =
+        (w_offset + padding_width < ksize_width)
+            ? 0
+            : (w_offset + padding_width - ksize_width) / stride_width + 1;
+    int pd_end =
+        min((d_offset + padding_depth) / stride_depth + 1, output_depth);
+    int ph_end =
+        min((h_offset + padding_height) / stride_height + 1, output_height);
+    int pw_end =
+        min((w_offset + padding_width) / stride_width + 1, output_width);
 
     T gradient = 0;
-    int output_idx = (batch_idx * channels + offsetC) * output_depth *
+    int input_current_feature_map_idx =
+        (d_offset * input_height + h_offset) * input_width + w_offset;
+    int output_idx = (batch_idx * channels + c_offset) * output_depth *
                      output_height * output_width;
     mask += output_idx;
     output_grad += output_idx;
 
-    for (int pd = pdstart; pd < pdend; ++pd) {
-      for (int ph = phstart; ph < phend; ++ph) {
-        for (int pw = pwstart; pw < pwend; ++pw) {
-          if (((offsetD * input_height + offsetH) * input_width + offsetW) ==
-              mask[(pd * output_height + ph) * output_width + pw])
+    for (int pd = pd_start; pd < pd_end; ++pd) {
+      for (int ph = ph_start; ph < ph_end; ++ph) {
+        for (int pw = pw_start; pw < pw_end; ++pw) {
+          if (mask[(pd * output_height + ph) * output_width + pw] ==
+              input_current_feature_map_idx)
             gradient +=
                 output_grad[(pd * output_height + ph) * output_width + pw];
         }
@@ -308,7 +325,7 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
 
     const T* input_data = input.data<T>();
     T* output_data = output.mutable_data<T>(context.GetPlace());
-    T* mask_data = output.mutable_data<T>(context.GetPlace());
+    T* mask_data = mask.mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
@@ -316,7 +333,7 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool3DWithIdxForward<
+    KernelMaxPool3DWithIdx<
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
@@ -341,10 +358,10 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
     const int input_depth = input_grad.dims()[2];
     const int input_height = input_grad.dims()[3];
     const int input_width = input_grad.dims()[4];
-    const int output_channels = input_grad.dims()[1];
-    const int output_depth = input_grad.dims()[2];
-    const int output_height = input_grad.dims()[3];
-    const int output_width = input_grad.dims()[4];
+    const int output_channels = output_grad.dims()[1];
+    const int output_depth = output_grad.dims()[2];
+    const int output_height = output_grad.dims()[3];
+    const int output_width = output_grad.dims()[4];
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
     const int ksize_width = ksize[2];
@@ -365,7 +382,7 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool3DWithIdxBackward<
+    KernelMaxPool3DWithIdxGrad<
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(

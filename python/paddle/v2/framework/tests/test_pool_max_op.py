@@ -3,7 +3,11 @@ import numpy as np
 from op_test import OpTest
 
 
-def max_pool3D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
+def max_pool3D_forward_naive(x,
+                             ksize,
+                             strides,
+                             paddings=[0, 0, 0],
+                             global_pool=0):
 
     N, C, D, H, W = x.shape
     if global_pool == 1:
@@ -25,8 +29,19 @@ def max_pool3D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
                 x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]
 
                 out[:, :, k, i, j] = np.max(x_masked, axis=(2, 3, 4))
-                # mask[:,:, k, i, j] = np.argmax(x_masked, axis=(2, 3, 4))
-    return out
+
+                for n in xrange(N):
+                    for c in xrange(C):
+                        arr = x_masked[n, c, :, :, :]
+                        index = np.where(arr == np.max(arr))
+                        sub_deep = index[0][0]
+                        sub_row = index[1][0]
+                        sub_col = index[2][0]
+                        index = ((d_start + sub_deep) * H +
+                                 (h_start + sub_row)) * W + w_start + sub_col
+                        mask[n, c, k, i, j] = index
+
+    return out, mask
 
 
 def max_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
@@ -47,19 +62,25 @@ def max_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
 
             out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
-            # mask[:,:, i, j] = np.argmax(x_masked, axis=(2, 3))
 
-    return out
+            for n in xrange(N):
+                for c in xrange(C):
+                    arr = x_masked[n, c, :, :]
+                    index = np.where(arr == np.max(arr))
+                    sub_row = index[0][0]
+                    sub_col = index[1][0]
+                    index = (r_start + sub_row) * W + c_start + sub_col
+                    mask[n, c, i, j] = index
+
+    return out, mask
 
 
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
         self.initTestCase()
-        self.op_type = "maxPool3dWithIndex"
         input = np.random.random(self.shape).astype("float32")
-        output = self.pool_forward_naive(input, self.ksize, self.strides,
-                                         self.paddings, self.global_pool)
-        # mask = np.zeros(output.shape)
+        output, mask = self.pool_forward_naive(input, self.ksize, self.strides,
+                                               self.paddings, self.global_pool)
 
         self.attrs = {
             'strides': self.strides,
@@ -69,7 +90,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
         }
 
         self.inputs = {'X': input}
-        self.outputs = {'Out': output}
+        self.outputs = {'Out': output, "Mask": mask}
 
     def test_check_output(self):
         self.check_output()
@@ -78,7 +99,8 @@ class TestMaxPoolWithIndex_Op(OpTest):
     #     self.check_grad(set(['X']), ['Out'], max_relative_error=0.07)
 
     def initTestCase(self):
-        self.global_pool = 0
+        self.global_pool = False
+        self.op_type = "maxPool3dWithIndex"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
@@ -86,10 +108,9 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.paddings = [1, 1, 1]
 
 
-""""
 class TestCase1(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
-        self.global_pool = 1
+        self.global_pool = True
         self.op_type = "maxPool3dWithIndex"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 5, 5, 5]
@@ -100,7 +121,7 @@ class TestCase1(TestMaxPoolWithIndex_Op):
 
 class TestCase2(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
-        self.global_pool = 0
+        self.global_pool = False
         self.op_type = "maxPool2dWithIndex"
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
@@ -111,7 +132,7 @@ class TestCase2(TestMaxPoolWithIndex_Op):
 
 class TestCase3(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
-        self.global_pool = 1
+        self.global_pool = True
         self.op_type = "maxPool2dWithIndex"
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 5, 5]
@@ -122,4 +143,3 @@ class TestCase3(TestMaxPoolWithIndex_Op):
 
 if __name__ == '__main__':
     unittest.main()
-"""

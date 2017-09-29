@@ -76,8 +76,8 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("X")),
-                   "X(Input) of MaxPoolWithIndexOpGrad should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "X(Input) of Pooling should not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput(framework::GradVarName("X")),
         "X@GRAD(Input@GRAD) of MaxPoolWithIndexOpGrad should not be null.");
@@ -97,28 +97,37 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "number of channels, H and W is the height and width of image.");
     AddOutput("Out",
               "The output tensor of pooling operator."
-              "The format of output tensor is also NCHW.");
+              "The format of output tensor is also NCHW."
+              "Where N is batch size, C is "
+              "the number of channels, H and W is the height and "
+              "width of image.");
     AddOutput("Mask",
               "The Mask tensor of pooling operator."
-              "The format of output tensor is also NCHW.");
+              "The format of output tensor is also NCHW."
+              "Where N is batch size, C is the number of channels, H and W "
+              "is the height and width of image."
+              "The value in it is the index in current feature map");
 
     AddAttr<std::vector<int>>(
-        "ksize", "pooling size(height, width) of pooling operator.");
+        "ksize",
+        "Pooling size(height, width) of pooling operator."
+        "If globalPooling = true, ksize is ignored and need not be "
+        "specified.");  // TODO(Add checker)
     AddAttr<bool>(
         "globalPooling",
-        "whether to use the globalPooling."
-        "int constant equal to false or true"
-        "default false"
+        "Whether to use the globalPooling."
+        "Bool constant equal to false or true."
+        "Default false."
         "If globalPooling = true, ksize is ignored and need not be specified.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
-                              "strides(height, width) of pooling operator."
-                              "default {1,1}")
-        .SetDefault({1, 1});
+                              "Strides(height, width) of pooling operator."
+                              "Default {1,1}.")
+        .SetDefault({1, 1});  // TODO(Add checker)
     AddAttr<std::vector<int>>("paddings",
-                              "paddings(height, width) of pooling operator."
-                              "default {0,0}")
-        .SetDefault({0, 0});
+                              "Paddings(height, width) of pooling operator."
+                              "Default {0,0}.")
+        .SetDefault({0, 0});  // TODO(Add checker)
 
     AddComment(R"DOC(
 The maxPooling2d with index operation calculates the output and the mask based on
@@ -140,30 +149,40 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "image.");
     AddOutput("Out",
               "The output tensor of pooling operator."
-              "The format of output tensor is also NCDHW.");
+              "The format of output tensor is also NCDHW."
+              "Where N is batch size, C is "
+              "the number of channels, D, H and W is the depth, height and "
+              "width of image.");
     AddOutput("Mask",
               "The Mask tensor of pooling operator."
-              "The format of output tensor is also NCDHW.");
+              "The format of output tensor is also NCDHW."
+              "Where N is batch size, C is the number of channels, D, H and W "
+              "is the depth, height and width of image."
+              "The value in it is the index in current feature map");
 
     AddAttr<std::vector<int>>(
-        "ksize", "pooling size(depth, height, width) of pooling operator.");
+        "ksize",
+        "Pooling size(depth, height, width) of pooling operator."
+        "If globalPooling = true, ksize is ignored and need not be "
+        "specified.");  // TODO(Add checker)
     AddAttr<bool>(
         "globalPooling",
-        "whether to use the globalPooling."
-        "int constant equal to false or true"
-        "default false"
+        "Whether to use the globalPooling."
+        "Bool constant equal to false or true."
+        "Default false."
         "If globalPooling = true, ksize is ignored and need not be specified.")
         .SetDefault(false);
     AddAttr<std::vector<int>>(
         "strides",
-        "strides(depth, height, width) of pooling operator."
-        "default {1,1,1}")
-        .SetDefault({1, 1, 1});
+        "Strides(depth, height, width) of pooling operator."
+        "Default {1,1,1}.")
+        .SetDefault({1, 1, 1});  // TODO(Add checker)
     AddAttr<std::vector<int>>(
         "paddings",
-        "paddings(depth, height, width) of pooling operator."
-        "default {0,0,0}")
-        .SetDefault({0, 0, 0});
+        "Paddings(depth, height, width) of pooling operator."
+        "Default {0,0,0}.")
+        .SetDefault({0, 0, 0});  // TODO(Add checker)
+
     AddComment(R"DOC(
 The maxpooling3d with index operation calculates the output and the mask based on
 the input and ksize, strides, paddings parameters.

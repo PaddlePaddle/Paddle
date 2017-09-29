@@ -32,11 +32,10 @@ class MaxPoolWithIndexKernel : public framework::OpKernel {
     Tensor* out = context.Output<Tensor>("Out");
     Tensor* mask = context.Output<Tensor>("Mask");
 
-    bool global_pooling = context.Attr<bool>("globalPooling");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    if (global_pooling) {
+    if (context.Attr<bool>("globalPooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
@@ -63,7 +62,7 @@ template <typename Place, typename T>
 class MaxPoolWithIndexGradKernel : public framework::OpKernel {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* mask = context.Input<Tensor>("Maks");
+    const Tensor* mask = context.Input<Tensor>("Mask");
     const Tensor* out_grad =
         context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
@@ -71,6 +70,11 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    if (context.Attr<bool>("globalPooling")) {
+      for (size_t i = 0; i < ksize.size(); ++i) {
+        ksize[i] = static_cast<int>(in_x_grad->dims()[i + 2]);
+      }
+    }
 
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());

@@ -26,7 +26,6 @@ class MaxPool2dWithIndexFunctor<platform::CPUPlace, T> {
                   framework::Tensor& mask, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings) {
     const int batch_size = input.dims()[0];
-
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
     const int output_channels = output.dims()[1];
@@ -112,11 +111,11 @@ class MaxPool2dWithIndexGradFunctor<platform::CPUPlace, T> {
             input_grad_data[input_idx] += output_grad_data[output_idx];
           }
         }
+        // offset
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+        mask_data += output_stride;
       }
-      // offset
-      input_grad_data += input_stride;
-      output_grad_data += output_stride;
-      mask_data += output_stride;
     }
   }
 };
@@ -152,6 +151,7 @@ class MaxPool3dWithIndexFunctor<platform::CPUPlace, T> {
     const int padding_width = paddings[2];
     const int input_stride = input_depth * input_height * input_width;
     const int output_stride = output_depth * output_height * output_width;
+
     const T* input_data = input.data<T>();
     T* output_data = output.mutable_data<T>(context.GetPlace());
     T* mask_data = mask.mutable_data<T>(context.GetPlace());
@@ -170,17 +170,17 @@ class MaxPool3dWithIndexFunctor<platform::CPUPlace, T> {
               int wstart = pw * stride_width - padding_width;
               int wend = std::min(wstart + ksize_width, input_width);
               wstart = std::max(wstart, 0);
+
               int output_idx = (pd * output_height + ph) * output_width + pw;
               T ele = static_cast<T>(-FLT_MAX);
               int index = -1;
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {
                   for (int w = wstart; w < wend; ++w) {
-                    if (ele <
-                        input_data[(d * input_height + h) * input_width + w]) {
-                      index = (d * input_height + h) * input_width + w;
-                      ele =
-                          input_data[(d * input_height + h) * input_width + w];
+                    int input_idx = (d * input_height + h) * input_width + w;
+                    if (ele < input_data[input_idx]) {
+                      index = input_idx;
+                      ele = input_data[input_idx];
                     }
                   }
                 }
