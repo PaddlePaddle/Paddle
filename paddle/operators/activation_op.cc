@@ -180,16 +180,18 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
   ELUOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "Input of ELU operator, it shouldn't be empty. Input is flattened "
-             "and treated as a 1D array.");
-    AddOutput("Y", "Output of ELU operator, has same shape as the input.");
-    AddComment(
-        "ELU activation operator. It applies this element-wise computation on "
-        "the input: f(x) = max(0, x) + min(0, alpha * (exp(x) - 1))."
-        "Check .. _Link: https://arxiv.org/abs/1511.07289 for more details");
-    AddAttr<AttrType>("alpha",
-                      "alpha value in the elu formulation, default to 1.")
+             "(Tensor) The input of ELU operator, it shouldn't be empty. Input "
+             "is flattened and treated as a 1D array.");
+    AddOutput("Y",
+              "(Tensor) The output of ELU operator. It has the same shape as "
+              "the input.");
+    AddAttr<AttrType>(
+        "alpha", "(float, default 1.0) Alpha value in the elu formulation.")
         .SetDefault(static_cast<AttrType>(1.));
+    AddComment(R"DOC(
+        ELU activation operator. It applies this element-wise computation on
+        the input: f(x) = max(0, x) + min(0, alpha * (exp(x) - 1)).
+        Check .. _Link: https://arxiv.org/abs/1511.07289 for more details.)DOC");
   }
 };
 
