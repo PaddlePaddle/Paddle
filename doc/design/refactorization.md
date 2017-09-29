@@ -17,7 +17,7 @@ The goals of refactoring include:
 
 1. A graph is composed of *variables* and *operators*.
 
-1. The description of graphs must be capable of being serialized/deserialized, so that
+1. The description of graphs must be capable of being serialized/deserialized, so that:
 
    1. It can to be sent to the cloud for distributed execution, and
    1. It can be sent to clients for mobile or enterprise deployment.
