@@ -175,6 +175,25 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
+class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ELUOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X",
+             "Input of ELU operator, it shouldn't be empty. Input is flattened "
+             "and treated as a 1D array.");
+    AddOutput("Y", "Output of ELU operator, has same shape as the input.");
+    AddComment(
+        "ELU activation operator. It applies this element-wise computation on "
+        "the input: f(x) = max(0, x) + min(0, alpha * (exp(x) - 1))."
+        "Check .. _Link: https://arxiv.org/abs/1511.07289 for more details");
+    AddAttr<AttrType>("alpha",
+                      "alpha value in the elu formulation, default to 1.")
+        .SetDefault(static_cast<AttrType>(1.));
+  }
+};
+
+template <typename AttrType>
 class PowOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -310,6 +329,12 @@ REGISTER_OP_CPU_KERNEL(soft_relu,
                        ops::SoftReluKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     soft_relu_grad, ops::SoftReluGradKernel<paddle::platform::CPUPlace, float>);
+
+REGISTER_OP(elu, ops::ActivationOp, ops::ELUOpMaker<float>, elu_grad,
+            ops::ActivationOpGrad);
+REGISTER_OP_CPU_KERNEL(elu, ops::ELUKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(elu_grad,
+                       ops::ELUGradKernel<paddle::platform::CPUPlace, float>);
 
 REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
             ops::ActivationOpGrad);

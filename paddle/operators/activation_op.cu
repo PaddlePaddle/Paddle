@@ -97,6 +97,10 @@ REGISTER_OP_GPU_KERNEL(soft_relu,
 REGISTER_OP_GPU_KERNEL(
     soft_relu_grad, ops::SoftReluGradKernel<paddle::platform::GPUPlace, float>);
 
+REGISTER_OP_GPU_KERNEL(elu, ops::ELUKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(elu_grad,
+                       ops::ELUGradKernel<paddle::platform::GPUPlace, float>);
+
 REGISTER_OP_GPU_KERNEL(pow, ops::PowKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(pow_grad,
                        ops::PowGradKernel<paddle::platform::GPUPlace, float>);

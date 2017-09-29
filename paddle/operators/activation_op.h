@@ -297,6 +297,46 @@ class SoftReluGradKernel : public framework::OpKernel<T> {
 };
 
 template <typename Place, typename T, typename AttrType = T>
+class ELUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* X = context.Input<framework::Tensor>("X");
+    auto* Y = context.Output<framework::Tensor>("Y");
+    auto alpha = static_cast<T>(context.Attr<AttrType>("alpha"));
+    Y->mutable_data<T>(context.GetPlace());
+
+    auto x = framework::EigenVector<T>::Flatten(*X);
+    auto y = framework::EigenVector<T>::Flatten(*Y);
+    auto place = context.GetEigenDevice<Place>();
+    y.device(place) =
+        x.cwiseMax(static_cast<T>(0)) +
+        (alpha * (x.exp() - static_cast<T>(1))).cwiseMin(static_cast<T>(0));
+  }
+};
+
+template <typename Place, typename T, typename AttrType = T>
+class ELUGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* X = context.Input<framework::Tensor>("X");
+    auto* Y = context.Input<framework::Tensor>("Y");
+    auto* dY = context.Input<framework::Tensor>(framework::GradVarName("Y"));
+    auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto alpha = static_cast<T>(context.Attr<AttrType>("alpha"));
+    dX->mutable_data<T>(context.GetPlace());
+
+    auto x = framework::EigenVector<T>::Flatten(*X);
+    auto y = framework::EigenVector<T>::Flatten(*Y);
+    auto dy = framework::EigenVector<T>::Flatten(*dY);
+    auto dx = framework::EigenVector<T>::Flatten(*dX);
+    auto place = context.GetEigenDevice<Place>();
+    dx.device(place) =
+        dy * (x > static_cast<T>(0)).template cast<T>() +
+        dy * (y + alpha) * (x < static_cast<T>(0)).template cast<T>();
+  }
+};
+
+template <typename Place, typename T, typename AttrType = T>
 class PowKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

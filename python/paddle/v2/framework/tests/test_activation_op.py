@@ -144,6 +144,26 @@ class TestSoftRelu(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
+class TestELU(OpTest):
+    def setUp(self):
+        self.op_type = "elu"
+        x = np.random.uniform(-3, 3, [4, 4]).astype("float32")
+        alpha = 1.
+        # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
+        # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
+        self.inputs = {'X': x}
+        self.attrs = {'alpha': alpha}
+        self.outputs = {
+            'Y': np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+
+
 class TestReciprocal(OpTest):
     def setUp(self):
         self.op_type = "reciprocal"
