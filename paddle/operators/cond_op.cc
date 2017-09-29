@@ -36,146 +36,157 @@ framework::Scope& CondOp::AddSubScope(const Scope& scope) const {
   return sub_scope;
 }
 
-void CondOp::AddIndexTensor(const Scope& scope) const {
+std::vector<framework::Scope*>& CondOp::GetSubScopes(
+    const framework::Scope& scope) const {
+  auto sub_scopes_var = scope.FindVar("SubScopes");
+  PADDLE_ENFORCE_NOT_NULL(sub_scopes_var,
+                          "Output(SubScopes) of CondOp should not be null.");
+  return *sub_scopes_var->GetMutable<std::vector<framework::Scope*>>();
+}
+
+LoDTensor& CondOp::AddIndexTensor(const Scope& scope) const {
   auto index_tensors_var = scope.FindVar("IndexTensors");
   PADDLE_ENFORCE_NOT_NULL(index_tensors_var,
                           "Output(IndexTensors) of CondOp should not be null.");
   auto& index_tensors =
       *index_tensors_var->GetMutable<std::vector<LoDTensor>>();
   index_tensors.push_back(LoDTensor());
+  return index_tensors.back();
+}
+
+std::vector<framework::LoDTensor>& CondOp::GetIndexTensors(
+    const framework::Scope& scope) const {
+  auto* index_tensors_var = scope.FindVar("IndexTensors");
+  PADDLE_ENFORCE_NOT_NULL(index_tensors_var,
+                          "Output(IndexTensors) of CondOp should not be null.");
+  return *index_tensors_var->GetMutable<std::vector<framework::LoDTensor>>();
 }
 
 void CondOp::DoBeforeRun(const framework::Scope& scope,
                          const platform::DeviceContext& dev_ctx) const {
-  for (int i = 0; i < 2; ++i) {
+  PADDLE_ENFORCE(!Inputs("Xs").empty(), "Inputs(Xs) of CondOp can't be empty.");
+
+  for (int i = 0; i < BRANCH_NUM; ++i) {
     // Create two sub scopes for true and false branches
-    // sub_scopes[0] for the true branch and sub_scopes[1] for the false
-    // branch
-    auto& sub_scope = AddSubScope(scope);
-
-    // Create two tensors for true and false indices
-    // index_tensors[0] for the true branch and index_tensors[1] for the false
-    // branch
+    //   sub_scopes[0] for the true branch
+    //   sub_scopes[1] for the false branch
+    AddSubScope(scope);
+    // Create two tensors for true and false indices:
+    //   index_tensors[0] for the true branch
+    //   index_tensors[1] for the false branch
     AddIndexTensor(scope);
-
-    PADDLE_ENFORCE(!Inputs("Xs").empty(),
-                   "Inputs(Xs) of CondOp can't be empty.");
-    for (auto& input : Inputs("Xs")) {
-      // Create a new tensor in sub-scope for input-type tensor
-      Variable* v = sub_scope.NewVar(input);
-      LoDTensor* sub_input = v->GetMutable<LoDTensor>();
-      sub_input->Resize(scope.FindVar(input)->GetMutable<LoDTensor>()->dims());
-    }
-
-    for (auto& output : (*sub_net_op_[i]).Outputs()) {
-      for (auto& var_name : output.second) {
-        sub_scope.NewVar(var_name);
-      }
-    }
   }
-
-  auto& index_tensors = GetIndexTensors(scope);
 
   Variable* cond_var = scope.FindVar(Input("Cond"));
   PADDLE_ENFORCE_NOT_NULL(cond_var,
                           "Input(Cond) of CondOp should not be null.");
   const LoDTensor* cond = cond_var->GetMutable<LoDTensor>();
 
-  // Step 1: get the true/false index at runtime
-  // index_[0]: vector<int>, contains all index for cond[i] == true
-  // index_[1]: vector<int>, contains all index for cond[i] == false
-  for (int i = 0; i < 2; ++i) index_[i].clear();
+  // get the true/false index at runtime according to cond tensor
+  // index_vectors[0]: vector<int>, contains all index for cond[i] == true
+  // index_vectors[1]: vector<int>, contains all index for cond[i] == false
+  std::vector<std::vector<int>> index_vectors;
+  index_vectors.resize(BRANCH_NUM);
 
   const int* cond_data = cond->data<int>();
   for (int i = 0; i < cond->dims()[0]; ++i) {
     if (cond_data[i])
-      index_[0].push_back(i);
+      index_vectors[TRUE_BRANCH].push_back(i);
     else
-      index_[1].push_back(i);
+      index_vectors[FALSE_BRANCH].push_back(i);
   }
 
-  // put index_[0] and index_[1] into two tensors:
-  // index_tensor_[0] and index_tensor_[1]
-  DDim dim = paddle::framework::make_ddim({0});
-  for (int i = 0; i < 2; ++i) {
-    dim[0] = static_cast<int64_t>(index_[i].size());
-    index_tensors[i].Resize(dim);
-    int* tmp_ptr =
+  // put index_vectors[0] and index_vectors[1] into two tensors:
+  // index_tensors[0] and index_tensors[1]
+  std::vector<framework::LoDTensor>& index_tensors = GetIndexTensors(scope);
+  std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
+
+  for (int i = 0; i < BRANCH_NUM; ++i) {
+    DDim dim = {static_cast<int64_t>(index_vectors[i].size())};
+    int* index_tensor_data_ptr =
         index_tensors[i].mutable_data<int>(dim, platform::CPUPlace());
-    memcpy(tmp_ptr, index_[i].data(), dim[0] * sizeof(int));
+    memcpy(index_tensor_data_ptr, index_vectors[i].data(),
+           dim[0] * sizeof(int));
   }
 
-  auto& sub_scopes = GetSubScopes(scope);
-  // Step 2: collect data by calling gather
-  for (int i = 0; i < 2; ++i) {
-    // i= 0/1 for True and False branches respectively
-    for (auto& input : Inputs("Xs")) {
-      // find Tensor
-      Variable* v = scope.FindVar(input);
-      PADDLE_ENFORCE_NOT_NULL(v);
-      auto* tensor_parent = &v->Get<LoDTensor>();
+  // create input in subscopes according to index_vectors
+  for (auto& input : Inputs("Xs")) {
+    Variable* var_parent = scope.FindVar(input);
+    PADDLE_ENFORCE_NOT_NULL(var_parent);
+    const auto* tensor_parent = &var_parent->Get<LoDTensor>();
 
-      v = sub_scopes[i]->FindVar(input);
-      PADDLE_ENFORCE_NOT_NULL(v);
-      LoDTensor* tensor_child = v->GetMutable<LoDTensor>();
+    for (int i = 0; i < BRANCH_NUM; ++i) {
+      Variable* var_child = sub_scopes[i]->FindVar(input);
+      PADDLE_ENFORCE_NOT_NULL(var_child);
+      auto* tensor_child = var_child->GetMutable<LoDTensor>();
 
       // Resize child
-      DDim dim = tensor_child->dims();
-      dim[0] = index_[i].size();
+      DDim dim = tensor_parent->dims();
+      dim[0] = index_tensors[i].dims()[0];
       tensor_child->mutable_data<float>(dim, platform::CPUPlace());
 
       Gather<float>(dev_ctx.GetPlace(), tensor_parent, &index_tensors[i],
                     tensor_child);
     }
   }
+
+  // create output_tensors in subscope for sub_net
+  for (int i = 0; i < BRANCH_NUM; ++i) {
+    for (auto& output : (*sub_net_op_[i]).Outputs()) {
+      for (auto& var_name : output.second) {
+        sub_scopes[i]->NewVar(var_name);
+      }
+    }
+  }
 }
 
 void CondOp::DoAfterRun(const framework::Scope& scope,
                         const platform::DeviceContext& dev_ctx) const {
-  auto& sub_scopes = GetSubScopes(scope);
-  auto& index_tensors = GetIndexTensors(scope);
+  std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
+  const std::vector<framework::LoDTensor>& index_tensors =
+      GetIndexTensors(scope);
 
+  // Infer the output dim, out_dim[0] = true_dim[0] + false_dim[0]
+  PADDLE_ENFORCE(!Outputs("Outs").empty(),
+                 "Outputs(Outs) of CondOp can't be empty.");
   for (auto& output : Outputs("Outs")) {
     const LoDTensor* tensor_t_out =
-        &sub_scopes[0]->FindVar(output)->Get<LoDTensor>();
+        &sub_scopes[TRUE_BRANCH]->FindVar(output)->Get<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(tensor_t_out, "True output should not be NULL");
     const LoDTensor* tensor_f_out =
-        &sub_scopes[1]->FindVar(output)->Get<LoDTensor>();
+        &sub_scopes[FALSE_BRANCH]->FindVar(output)->Get<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(tensor_f_out, "False output should not be NULL");
 
-    auto* tensor_out_var = scope.FindVar(output);
-    PADDLE_ENFORCE_NOT_NULL(tensor_out_var, "Output not found");
-    LoDTensor* tensor_out = tensor_out_var->GetMutable<LoDTensor>();
+    auto* var_out = scope.FindVar(output);
+    PADDLE_ENFORCE_NOT_NULL(var_out, "Output not found");
+    LoDTensor* tensor_out = var_out->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(tensor_t_out,
                             "True output tensor should not be NULL");
 
-    // check output size should be same
     DDim true_dim = tensor_t_out->dims();
     DDim false_dim = tensor_f_out->dims();
     true_dim[0] = 0;
     false_dim[0] = 0;
-    PADDLE_ENFORCE_EQ(true_dim, false_dim, "Outputs not of the same shape");
+    PADDLE_ENFORCE_EQ(true_dim, false_dim,
+                      "Outputs not of the same shape except the first dim");
+
     DDim out_dim = tensor_t_out->dims();
     out_dim[0] = tensor_t_out->dims()[0] + tensor_f_out->dims()[0];
     tensor_out->Resize(out_dim);
     tensor_out->mutable_data<float>(platform::CPUPlace());
   }
 
-  // Step 4: merge output results
-  PADDLE_ENFORCE(!Outputs("Outs").empty(),
-                 "Outputs(Outs) of CondOp can't be empty.");
-  for (int i = 0; i < 2; ++i) {
-    // i= 0/i for True and False branches respectively
-    for (auto& output : Outputs("Outs")) {
-      // find Tensor
-      Variable* v = scope.FindVar(output);
-      PADDLE_ENFORCE_NOT_NULL(v);
-      auto* tensor_parent = v->GetMutable<LoDTensor>();
+  // merge output results:
+  // output_tensor = true_output_tensor + false_output_tensor
+  for (auto& output : Outputs("Outs")) {
+    Variable* var_parent = scope.FindVar(output);
+    PADDLE_ENFORCE_NOT_NULL(var_parent);
+    auto* tensor_parent = var_parent->GetMutable<LoDTensor>();
 
-      v = sub_scopes[i]->FindVar(output);
-      PADDLE_ENFORCE_NOT_NULL(v);
-      auto* tensor_child = &v->Get<LoDTensor>();
-
+    for (int i = 0; i < BRANCH_NUM; ++i) {
+      Variable* var_child = sub_scopes[i]->FindVar(output);
+      PADDLE_ENFORCE_NOT_NULL(var_child);
+      auto* tensor_child = &var_child->Get<LoDTensor>();
       ScatterUpdate<float>(dev_ctx.GetPlace(), tensor_child, &index_tensors[i],
                            tensor_parent);
     }
@@ -185,8 +196,8 @@ void CondOp::DoAfterRun(const framework::Scope& scope,
 void CondOp::Run(const Scope& scope,
                  const platform::DeviceContext& dev_ctx) const {
   DoBeforeRun(scope, dev_ctx);
-  auto& sub_scopes = GetSubScopes(scope);
-  for (int i = 0; i < 2; ++i) {
+  std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
+  for (int i = 0; i < BRANCH_NUM; ++i) {
     sub_net_op_[i]->Run(*sub_scopes[i], dev_ctx);
   }
   DoAfterRun(scope, dev_ctx);
