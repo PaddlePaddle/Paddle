@@ -22,11 +22,10 @@ namespace paddle {
 namespace operators {
 namespace math {
 //////////////////////
-#define FLT_MAX __FLT_MAX__
-/////////////////////
+#define FLT_MAX __FLT_MAX__  //
 
 template <class T>
-class maxPool {
+class MaxPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   DEVICE inline void compute(T& y, const T& x) { y = y > x ? y : x; }
@@ -34,14 +33,14 @@ class maxPool {
 };
 
 template <class T>
-class avgPool {
+class AvgPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(0); }
   DEVICE inline void compute(T& y, const T& x) { y += x; }
   DEVICE inline void finalize(T& y, const T& poo_size) { y /= poo_size; }
 };
 template <class T>
-class maxPoolGrad {
+class MaxPoolGrad {
  public:
   DEVICE inline void compute(const T& x, const T& y, const T& dy, T& dx,
                              T scale) {
@@ -50,7 +49,7 @@ class maxPoolGrad {
 };
 
 template <class T>
-class avgPoolGrad {
+class AvgPoolGrad {
  public:
   DEVICE inline void compute(const T& x, const T& y, const T& dy, T& dx,
                              T scale) {

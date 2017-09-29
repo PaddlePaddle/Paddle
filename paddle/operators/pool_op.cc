@@ -51,7 +51,7 @@ class PoolOp : public framework::OperatorWithKernel {
         ksize[i] = static_cast<int>(in_x_dims[i + 2]);
     }
 
-    PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2,
+    PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2U,
                    "Input size and Pooling size should be consistent.");
     PADDLE_ENFORCE(ksize.size() == 2 || ksize.size() == 3,
                    "Pooling size should be 2 elements. or 3 elements.");
@@ -79,7 +79,6 @@ class PoolOpGrad : public framework::OperatorWithKernel {
                    "X(Input) of Pooling should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Input@Grad of Pooling should not be null.");
-
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -98,66 +97,36 @@ class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
               "The format of output tensor is also NCHW.");
 
     AddAttr<std::string>("poolingType",
-                         "poolingType of pooling operator."
-                         "str constant equal to 'max' or 'avg'");
+                         "PoolingType of pooling operator."
+                         "Str constant equal to 'max' or 'avg'.")
+        .InEnum({"max", "avg"});
     AddAttr<std::vector<int>>(
         "ksize",
         "Pooling size(depth, height, width) of pooling operator."
-        "If globalPooling = true, ksize is ignored and need not be specified.");
+        "If globalPooling = true, ksize is ignored and need not be "
+        "specified.");  // TODO(Add checker)
     AddAttr<bool>(
         "globalPooling",
-        "whether to use the globalPooling."
-        "int constant equal to false or true"
-        "default false"
+        "Whether to use the globalPooling."
+        "Bool constant equal to false or true."
+        "Default false."
         "If globalPooling = true, ksize is ignored and need not be specified.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
-                              "strides(height, width) of pooling operator."
-                              "default {1,1}")
-        .SetDefault({1, 1})
-        .AddCustomChecker(GreaterThanChecker_pool({0, 0}));
+                              "Strides(height, width) of pooling operator."
+                              "Default {1,1}")
+        .SetDefault({1, 1});  // TODO(Add checker)
     AddAttr<std::vector<int>>("paddings",
-                              "paddings(height, width) of pooling operator."
-                              "default {0,0}")
-        .SetDefault({0, 0})
-        .AddCustomChecker(EqualGreaterThanChecker_pool({0, 0}));
+                              "Paddings(height, width) of pooling operator."
+                              "Default {0,0}.")
+        .SetDefault({0, 0});  // TODO(Add checker)
     AddComment(R"DOC(
 The pooling2d operation calculates the output based on
 the input, poolingType and ksize, strides, paddings parameters.
 )DOC");
   }
-
- private:
-  struct GreaterThanChecker_pool {
-   public:
-    explicit GreaterThanChecker_pool(std::vector<int> lower_bound)
-        : lower_bound_(lower_bound) {}
-    void operator()(std::vector<int> &value) const {
-      PADDLE_ENFORCE(value.size() == lower_bound_.size(), "equal check fails.");
-      for (size_t i = 0; i < value.size(); ++i) {
-        PADDLE_ENFORCE(value[i] > lower_bound_[i], "larger_than check fails.");
-      }
-    }
-
-   private:
-    std::vector<int> lower_bound_;
-  };
-
-  struct EqualGreaterThanChecker_pool {
-   public:
-    explicit EqualGreaterThanChecker_pool(std::vector<int> lower_bound)
-        : lower_bound_(lower_bound) {}
-    void operator()(std::vector<int> &value) const {
-      PADDLE_ENFORCE(value.size() == lower_bound_.size(), "equal check fails.");
-      for (size_t i = 0; i < value.size(); ++i) {
-        PADDLE_ENFORCE(value[i] >= lower_bound_[i], "larger_than check fails.");
-      }
-    }
-
-   private:
-    std::vector<int> lower_bound_;
-  };
 };
+
 class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   Pool3dOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -173,67 +142,36 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
               "The format of output tensor is also NCDHW.");
 
     AddAttr<std::string>("poolingType",
-                         "poolingType of pooling operator."
-                         "str constant equal to 'max' or 'avg'");
+                         "PoolingType of pooling operator."
+                         "str constant equal to 'max' or 'avg'.")
+        .InEnum({"max", "avg"});
     AddAttr<std::vector<int>>(
         "ksize",
-        "pooling size(depth, height, width) of pooling operator."
-        "If globalPooling = true, ksize is ignored and need not be specified.");
+        "Pooling size(depth, height, width) of pooling operator."
+        "If globalPooling = true, ksize is ignored and need not be "
+        "specified.");  // TODO(Add checker)
     AddAttr<bool>(
         "globalPooling",
-        "whether to use the globalPooling."
-        "int constant equal to false or true"
-        "default false"
+        "Whether to use the globalPooling."
+        "Bool constant equal to false or true."
+        "Default false."
         "If globalPooling = true, ksize is ignored and need not be specified.")
         .SetDefault(false);
     AddAttr<std::vector<int>>(
         "strides",
-        "strides(depth, height, width) of pooling operator."
-        "default {1,1,1}")
-        .SetDefault({1, 1, 1})
-        .AddCustomChecker(GreaterThanChecker_pool({0, 0, 0}));
+        "Strides(depth, height, width) of pooling operator."
+        "Default {1,1,1}.")
+        .SetDefault({1, 1, 1});  // TODO(Add checker)
     AddAttr<std::vector<int>>(
         "paddings",
-        "paddings(depth, height, width) of pooling operator."
-        "default {0,0,0}")
-        .SetDefault({0, 0, 0})
-        .AddCustomChecker(EqualGreaterThanChecker_pool({0, 0, 0}));
+        "Paddings(depth, height, width) of pooling operator."
+        "Default {0,0,0}.")
+        .SetDefault({0, 0, 0});  // TODO(Add checker)
     AddComment(R"DOC(
 The pooling3d operation calculates the output based on
 the input, poolingType and ksize, strides, paddings parameters.
 )DOC");
   }
-
- private:
-  struct GreaterThanChecker_pool {
-   public:
-    explicit GreaterThanChecker_pool(std::vector<int> lower_bound)
-        : lower_bound_(lower_bound) {}
-    void operator()(std::vector<int> &value) const {
-      PADDLE_ENFORCE(value.size() == lower_bound_.size(), "equal check fails.");
-      for (size_t i = 0; i < value.size(); ++i) {
-        PADDLE_ENFORCE(value[i] > lower_bound_[i], "larger_than check fails.");
-      }
-    }
-
-   private:
-    std::vector<int> lower_bound_;
-  };
-
-  struct EqualGreaterThanChecker_pool {
-   public:
-    explicit EqualGreaterThanChecker_pool(std::vector<int> lower_bound)
-        : lower_bound_(lower_bound) {}
-    void operator()(std::vector<int> &value) const {
-      PADDLE_ENFORCE(value.size() == lower_bound_.size(), "equal check fails.");
-      for (size_t i = 0; i < value.size(); ++i) {
-        PADDLE_ENFORCE(value[i] >= lower_bound_[i], "larger_than check fails.");
-      }
-    }
-
-   private:
-    std::vector<int> lower_bound_;
-  };
 };
 }  // namespace operators
 }  // namespace paddle

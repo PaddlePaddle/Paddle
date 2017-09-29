@@ -31,12 +31,11 @@ class PoolKernel : public framework::OpKernel {
     const Tensor* in_x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
 
-    bool global_pooling = context.Attr<bool>("globalPooling");
     std::string pooling_type = context.Attr<std::string>("poolingType");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    if (global_pooling) {
+    if (context.Attr<bool>("globalPooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
@@ -46,17 +45,17 @@ class PoolKernel : public framework::OpKernel {
       case 2: {
         if (pooling_type == "max") {
           paddle::operators::math::Pool2dFunctor<
-              Place, paddle::operators::math::maxPool<T>, T>
+              Place, paddle::operators::math::MaxPool<T>, T>
               pool2d_forward;
-          paddle::operators::math::maxPool<T> pool_process;
+          paddle::operators::math::MaxPool<T> pool_process;
           pool2d_forward(context.device_context(), *in_x, *out, ksize, strides,
                          paddings, pool_process);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool2dFunctor<
-              Place, paddle::operators::math::avgPool<T>, T>
+              Place, paddle::operators::math::AvgPool<T>, T>
               pool2d_forward;
-          paddle::operators::math::avgPool<T> pool_process;
+          paddle::operators::math::AvgPool<T> pool_process;
           pool2d_forward(context.device_context(), *in_x, *out, ksize, strides,
                          paddings, pool_process);
         }
@@ -64,16 +63,16 @@ class PoolKernel : public framework::OpKernel {
       case 3: {
         if (pooling_type == "max") {
           paddle::operators::math::Pool3dFunctor<
-              Place, paddle::operators::math::maxPool<T>, T>
+              Place, paddle::operators::math::MaxPool<T>, T>
               pool3d_forward;
-          paddle::operators::math::maxPool<T> pool_process;
+          paddle::operators::math::MaxPool<T> pool_process;
           pool3d_forward(context.device_context(), *in_x, *out, ksize, strides,
                          paddings, pool_process);
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool3dFunctor<
-              Place, paddle::operators::math::avgPool<T>, T>
+              Place, paddle::operators::math::AvgPool<T>, T>
               pool3d_forward;
-          paddle::operators::math::avgPool<T> pool_process;
+          paddle::operators::math::AvgPool<T> pool_process;
           pool3d_forward(context.device_context(), *in_x, *out, ksize, strides,
                          paddings, pool_process);
         }
@@ -92,13 +91,12 @@ class PoolGradKernel : public framework::OpKernel {
         context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
 
-    bool global_pooling = context.Attr<bool>("globalPooling");
     std::string pooling_type = context.Attr<std::string>("poolingType");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
-    if (global_pooling) {
+    if (context.Attr<bool>("globalPooling")) {
       for (size_t i = 0; i < ksize.size(); ++i)
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
     }
@@ -118,9 +116,9 @@ class PoolGradKernel : public framework::OpKernel {
                             *out_grad, ksize, strides, paddings);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool2dGradFunctor<
-                Place, paddle::operators::math::avgPoolGrad<T>, T>
+                Place, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool2d_backward;
-            paddle::operators::math::avgPoolGrad<T> pool_process;
+            paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool2d_backward(context.device_context(), *in_x, *in_x_grad, *out,
                             *out_grad, ksize, strides, paddings, pool_process);
           }
@@ -133,9 +131,9 @@ class PoolGradKernel : public framework::OpKernel {
                             *out_grad, ksize, strides, paddings);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool3dGradFunctor<
-                Place, paddle::operators::math::avgPoolGrad<T>, T>
+                Place, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool3d_backward;
-            paddle::operators::math::avgPoolGrad<T> pool_process;
+            paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool3d_backward(context.device_context(), *in_x, *in_x_grad, *out,
                             *out_grad, ksize, strides, paddings, pool_process);
           }
