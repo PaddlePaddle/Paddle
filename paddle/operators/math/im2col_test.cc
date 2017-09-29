@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/operators/math/im2col.h"
 #include <gtest/gtest.h>
-#include <iostream>
 
 template <typename Place>
 void testIm2col() {
@@ -112,6 +111,9 @@ void testIm2col() {
   EXPECT_EQ(out_ocf_ptr[5], 2);
   EXPECT_EQ(out_ocf_ptr[6], 4);
   EXPECT_EQ(out_ocf_ptr[7], 5);
+
+  delete place;
+  delete context;
 }
 
 TEST(math, im2col) {
