@@ -80,7 +80,7 @@ class TestCrossEntropyOp3(OpTest):
         cross_entropy2 = (-label * np.log(X)).sum(
             axis=1, keepdims=True).astype("float32")
 
-        self.inputs = {"X": X, "Label": label}
+        self.inputs = {"X": X, "Label": label.astype(np.float32)}
         self.outputs = {"Y": cross_entropy}
         self.attrs = {"softLabel": True}
 
