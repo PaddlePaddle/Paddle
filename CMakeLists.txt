@@ -86,6 +86,14 @@ if(ANDROID OR IOS)
         "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLML OFF CACHE STRING
         "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
+
+    if(WITH_C_API)
+      # Compile PaddlePaddle mobile inference library
+      set(MOBILE_INFERENCE ON)
+      add_definitions(-DPADDLE_MOBILE_INFERENCE)
+    endif()
+    set(WITH_TESTING OFF CACHE STRING "Disable TESTING when cross-compiling
+                    for Android and iOS" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING

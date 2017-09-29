@@ -103,10 +103,12 @@ LayerPtr Layer::create(const LayerConfig& config) {
     return LayerPtr(new MultiClassCrossEntropy(config));
   else if (type == "rank-cost")
     return LayerPtr(new RankingCost(config));
+#ifndef PADDLE_MOBILE_INFERENCE
   else if (type == "auc-validation")
     return LayerPtr(new AucValidation(config));
   else if (type == "pnpair-validation")
     return LayerPtr(new PnpairValidation(config));
+#endif
 
   return LayerPtr(registrar_.createByType(config.type(), config));
 }

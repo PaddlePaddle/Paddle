@@ -37,9 +37,7 @@ set(PADDLE_CAPI_INFER_LIBS
     paddle_cuda
     paddle_function
     paddle_gserver
-    paddle_proto
-    paddle_pserver
-    paddle_network)
+    paddle_proto)
 
 cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
 
@@ -50,7 +48,9 @@ if(NOT IOS)
   add_library(paddle_capi_shared SHARED ${CAPI_SOURCES})
   set_target_properties(paddle_capi_shared	PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
   target_include_directories(paddle_capi_shared PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-  link_paddle_exe(paddle_capi_shared)
+
+link_paddle_exe(paddle_capi_shared)
+
 endif()
 
 # install library & headers.
