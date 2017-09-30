@@ -116,7 +116,7 @@ class TestCase3(TestPool2d_Op):
         self.paddings = [0, 0]
 
 
-class TestCase3(TestPool2d_Op):
+class TestCase4(TestPool2d_Op):
     def initTestCase(self):
         self.global_pool = False
         self.op_type = "pool2d"
@@ -128,7 +128,7 @@ class TestCase3(TestPool2d_Op):
         self.paddings = [0, 0]
 
 
-class TestCase3(TestPool2d_Op):
+class TestCase5(TestPool2d_Op):
     def initTestCase(self):
         self.global_pool = False
         self.op_type = "pool2d"
