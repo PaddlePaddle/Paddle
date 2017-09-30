@@ -74,11 +74,12 @@ class TensorArray {
    * `indice_map`.
    */
   LoDTensor Pack(size_t level, const std::vector<DySeqMeta> &meta,
-                 const LoD &lod);
+                 const LoD &lod) const;
 
   /*
    * Split LoDTensor in some `level` and write the generated batches to
-   * `values`, if set `desend`, will sort by length in descending order.
+   * `values`, if set `desend`, will sort by length in descending order else in
+   * ascending order.
    */
   std::vector<DySeqMeta> Unpack(const LoDTensor &source, int level,
                                 bool length_desend);

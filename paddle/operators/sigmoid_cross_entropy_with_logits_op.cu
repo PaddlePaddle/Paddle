@@ -13,11 +13,12 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/rowwise_add_op.h"
+#include "paddle/operators/sigmoid_cross_entropy_with_logits_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    rowwise_add, ops::RowwiseAddKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    rowwise_add_grad,
-    ops::RowwiseAddGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits,
+                       ops::SigmoidCrossEntropyWithLogitsKernel<
+                           paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
+                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
+                           paddle::platform::GPUPlace, float>);

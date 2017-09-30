@@ -43,7 +43,7 @@ class TestSoftmaxWithCrossEntropyOp2(OpTest):
     def setUp(self):
         self.op_type = "softmax_with_cross_entropy"
         batch_size = 2
-        class_num = 17
+        class_num = 37
 
         logits = np.random.uniform(0.1, 1.0,
                                    [batch_size, class_num]).astype("float32")

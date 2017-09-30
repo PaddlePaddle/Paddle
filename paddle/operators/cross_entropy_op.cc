@@ -47,6 +47,12 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Y", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Y");
   }
+
+  // CrossEntropy's data type just determined by "X"
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  }
 };
 
 class CrossEntropyGradientOp : public framework::OperatorWithKernel {
@@ -86,6 +92,12 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                         "Input(Label) should be 1.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  }
+
+  // CrossEntropy's data type just determined by "X"
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
   }
 };
 

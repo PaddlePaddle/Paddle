@@ -36,6 +36,11 @@ class LookupTableOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", {ids_dims[0], table_dims[1]});
     ctx->ShareLoD("Ids", /*->*/ "Out");
   }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
+  }
 };
 
 class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -68,6 +73,11 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContextBase* ctx) const override {
     auto table_dims = ctx->GetInputDim("W");
     ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
   }
 };
 

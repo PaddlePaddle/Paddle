@@ -22,7 +22,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class SumKernel : public framework::OpKernel {
+class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto ins = context.MultiInput<Tensor>("X");
@@ -43,7 +43,7 @@ class SumKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class SumGradKernel : public framework::OpKernel {
+class SumGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* input = context.Input<Tensor>(framework::GradVarName("Out"));

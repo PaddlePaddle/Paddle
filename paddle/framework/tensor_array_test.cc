@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include "paddle/framework/tensor_array.h"
 
 #include <gtest/gtest.h>
@@ -18,8 +32,8 @@ class TensorArrayTester : public ::testing::Test {
   }
 
   TensorArray ta;
-  const int batch_size{16};
-  const int dim{32};
+  const int batch_size = 16;
+  const int dim = 32;
 };
 
 TEST_F(TensorArrayTester, Read) {
@@ -108,7 +122,9 @@ TEST_F(TensorArrayPackTester, Pack) {
   LoDTensor packed = ta.Pack(0, meta, lod);
 }
 
-TEST_F(TensorArrayTester, size) { ASSERT_EQ(ta.size(), (size_t)batch_size); }
+TEST_F(TensorArrayTester, size) {
+  ASSERT_EQ(ta.size(), static_cast<size_t>(batch_size));
+}
 
 }  // namespace framework
 }  // namespace paddle
