@@ -3,7 +3,7 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 
-USE_OP(add);
+USE_OP(sum);
 
 namespace paddle {
 namespace framework {
@@ -41,17 +41,24 @@ namespace f = paddle::framework;
 
 TEST(GradOpBuilder, AddTwo) {
   std::shared_ptr<f::OperatorBase> add_op(f::OpRegistry::CreateOp(
-      "add", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
+      "sum", {{"X", {"x", "y"}}}, {{"Out", {"out"}}}, {}));
   std::shared_ptr<f::OperatorBase> grad_add_op =
       f::OpRegistry::CreateGradOp(*add_op);
-  EXPECT_EQ(grad_add_op->Inputs().size(), 4UL);
-  EXPECT_EQ(grad_add_op->Outputs().size(), 2UL);
-  EXPECT_EQ(grad_add_op->Input("X"), "x");
-  EXPECT_EQ(grad_add_op->Input("Y"), "y");
-  EXPECT_EQ(grad_add_op->Input("Out"), "out");
+
+  EXPECT_EQ(grad_add_op->Inputs().size(), 1UL);
+  EXPECT_EQ(grad_add_op->Outputs().size(), 1UL);
   EXPECT_EQ(grad_add_op->Input(f::GradVarName("Out")), f::GradVarName("out"));
-  EXPECT_EQ(grad_add_op->Output(f::GradVarName("X")), f::GradVarName("x"));
-  EXPECT_EQ(grad_add_op->Output(f::GradVarName("Y")), f::GradVarName("y"));
+  auto &outputs = grad_add_op->Outputs(f::GradVarName("X"));
+  EXPECT_EQ(2UL, outputs.size());
+  auto in_output = [&outputs](const std::string &name) {
+    for (auto &output_name : outputs) {
+      if (output_name == name) return true;
+    }
+    return false;
+  };
+
+  EXPECT_TRUE(in_output(f::GradVarName("x")));
+  EXPECT_TRUE(in_output(f::GradVarName("y")));
 }
 
 REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, mult_io_grad, f::NOP);
