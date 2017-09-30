@@ -1,174 +1,206 @@
 # Design Doc: Python API
 
-The top level user API in Python should be as same as API in `paddle.v2` after refactoring Paddle from a layer based framework to an operator based framework. There are many new classes in C++ in [compile time] for describing neural networks, such as `Variable`, `Operator`, `Block`. The issue about current design is how to give a proper way to wrap the C++ API to `paddle.v2` API and write layers in Python.
+Due to the refactorization of the PaddlePaddle core, we need Python classes to construct corresponding protobuf messages that describe a DL program.
 
-This implementation of Python API includes two steps.
-
-1. Implement the Python API using current C++ runtime concepts.
-2. Replace the implementation by using compile-time concepts when they are completed.
-
-The implementation of the first step is a temporary implementation. We should design our Python API concepts based on `compile-time` concepts. We just use `runtime` classes to implement it for now.
-
-
-## Python Class and compile-time protobuf
-
-Since we design our Python API concepts based on `compile-time`, we try to map our Python classes to every compile-time result, i.e., the protobuf messages. They are:
-
-
-| Python Class | Compile-time protobuf |
+| Python classes | Protobuf messages |
 | --- | --- |
 | Program | ProgramDesc |
 | Block | BlockDesc |
 | Operator | OpDesc |
 | Variable | VarDesc |
 
+Please be aware that these Python classes need to maintain some construction-time information, which are not part of the protobuf messages.
+
+## Core Concepts
+
 ### Program
 
-`Program` is the description of the whole training process and there can only be one `Program` object, which is created automatically by the system at the very beginning. `Program` is formed by a series of `Block`.
+A `ProgramDesc` describes a [DL program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md), which is composed of an array of `BlockDesc`s.  A `BlockDesc` refers to its parent block by its index in the array.  For example, operators in the step block of an RNN operator needs to be able to access variables in its ancessor blocks.
+
+Whenever we create a block, we need set its parent block to the current block, so the Python class `Program` needs to maintain a data member `current_block`.
 
 ```python
 class Program(objects):
     def __init__(self):
+        self.proto = core.NewProgram() # a C++ ProgramDesc pointer.
         self.blocks = vector<Block>()
-        self.blocks.append(Block(None))
-        self.current_block_idx = 0
+        self.blocks.append(Block(self, -1)) # the global block
+        self.current_block = 0          # initialized to the global block
 
-    def get_block(block_idx):
-        return self.blocks[block_idx]
+    def global_block():
+        return self.blocks[0]
 
     def current_block():
-        return self.get_block(self.current_block_idx)
-    
-    def fallback_current_block():
-        self.current_block_idx = self.current_block().parent_idx
+        return self.get_block(self.current_block)
 
+    def rollback():
+        self.current_block = self.current_block().parent_idx
 
     def create_block():
         new_block_idx = len(self.block)
-        self.blocks.append(Block(parent_idx=self.current_block_idx,
-                                 idx=new_block_idx))
-        self.current_block_idx = new_block_idx
+        self.blocks.append(Block(self, self.current_block))
+        self.current_block = new_block_idx
+        return current_block()
 ```
 
-`Program` will create the first block in its constructor. The first block is called 'global block'. It is where all parameters are stored.
+`Program` is an accessor to the protobuf message `ProgramDesc`, which is created in C++ space, because the InferShape function is in C++, which manipulates `VarDesc` messages, which are in turn members of `BlockDesc`, which is a member of `ProgramDesc`.
+
+`Program` creates the first block as the global block in its constructor.  All parameters and their initializer operators are in the global block.
 
 ### Block
 
-Block is just like programming languages `{}`, which contains many operators and variables. There are two data fields in `Block`.  1) An associate map, whose key is variable name and value is variable itself; 2) A list of operators.
+A [Block](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md) includes
 
-The block is hierarchical because PaddlePaddle supports RNN and IfElse. For example, RNN is like `for-loop` in programming languages. There is new `block` inside a `for-loop`. To represent hierarchies, `Block` stores the index of `parent Block` inside. The 'index' means the block's position in `Program`'s `blocks`. If `parent_idx=None`, the block itself is the outermost block, i.e., the 'global block'.
-
+1. a map from variable names to an instance of the Python `Variable` class, and
+1. a list of `Operator` instances.
 
 ```python
 class Block(objects):
-    def __init__(self, parent_idx, idx):
+    def __init__(self, program, parent_idx):
+        self.proto = core.NewBlock(program.proto)
+        self.program = program
         self.vars = map<string, Variable>()
         self.ops = vector<Operator>()
-        self.idx = idx
         self.parent_idx = parent_idx
-    
+
     def create_var(self, ...):
-        # create variable in `self.vars`
-        return Variable(...)
-    
-    
-    def create_global_var(self, ...):
-        if self.parent_idx is not None:
-            parent_block = program.get_block(parent_idx)
-            return parent_block.create_global_var(...)
-        else:
-            return self.create_var(...)
-    
-    def create_parameter(self, ...):
-        return self.create_global_var(...)
-    
+        return Variable(self, ...)
+
+    def _create_global_var(self, ...):
+        program.global_block().create_var(...)
+
+    def create_parameter(self, name, ...):
+        # Parameter is a subclass of variable. See Parameter section for details.
+        self.vars[name] = Parameter(self._create_global_var(...), ...)
+        return self.vars[name]
+
     def append_operator(self, ...):
-        self.ops.append(...)
-        
-    def prepend_operator(self, ...):
-       self.ops.prepend(...)
+        self.ops.append(Operator(self, ...))
+
+    def prepend_operator(self, ...): # Parameter's ctor prepands initialize operators.
+       self.ops.prepend(Operator(self, ...))
 ```
 
-Users are able to create a global variable inside any block since they many create parameters inside a RNN or IfElse. All parameters should be stored in the global block, not the step block in RNN.
+`create_parameter` is necessary because parameters are global variables, those defined in the global block, but can be created in some sub-blocks, e.g., an FC layer in the step block of an RNN operator.
 
-Users can create local variables for outputs of operators. Users can also append and prepend an operator in current block. Prepending `random initialize` operator or `load` operator is very useful to initialize parameters before training.
-
+`prepand_operator` is necessary because the constructor of `Parameter` needs to create the initialize (or load) operator of the parameter, and would like to put it in the *preamble* of the global block.
 
 ### Operator
 
-Operator class will take inputs, outputs and attributes of the operator into `protobuf` OpDesc and create a C++ `OpDesc` instance. The `infer_shape` perform on C++ objects.
+The `Operator` class fills in the `OpDesc` message and calls the C++ function `InferShape` to infer output shape from input shape.
 
 ```python
 class Operator(object):
-    def __init__(self, type, inputs, outputs, attrs):
-        # create OpDesc in Python
-        op_desc = ...
-        self.cpp_op_desc_ptr = core.OpDesc(op_desc)
-        cpp.infer_shape(self.cpp_op_desc_ptr, inputs, outputs)
+    def __init__(self,
+                 block,  # Block
+                 type,   # string
+                 inputs, # dict<string, Variable>
+                 outputs,# dict<stirng, Variable>
+                 attrs   # dict<string, Any>
+                 ):
+        self.proto = core.NewOpDesc(block.proto, type, inputs, outputs, attrs)
+        core.infer_shape(self.proto, inputs, outputs)
 
     def type(self):
-        return self.cpp_op_desc_ptr.type()
+        return self.proto.type()
 ```
 
-After creating a C++ `OpDesc`, `Operator` in Python can only reads the attribute from C++ side.
+`Operator` creates the `OpDesc` message in C++ space, so could it call the `InferShape` function, which is in C++.
 
 ### Variable
 
-Operators' inputs, outputs, and parameters are all variables. In our design, a variable has four key attributes: its name(`name`), the block it belongs to(`block`), a pointer pointed to its C++ Protobuf object(`cpp_var_desc_ptr`), and the operator it is created by(`op`). All of these attributes are initialized in the constructor, except the `op`. The `op` will keep being `None` till the variable is taken as an operator's output.
+Operators take Variables as its inputs and outputs.
 
 ```python
 class Variable(object):
-    def __init__(self, shape, dtype="float32", name=None, block=None):
+    def __init__(self,
+                 block=None,      # Block
+                 name=None,       # string
+                 shape,           # tuple
+                 dtype="float32", # string
+                 lod_level=None   # int
+                 ):
         if name is None:
             name = unique_name_generator()
         self.name = name
         self.block = block
-        # build C++ Protobuf object
-        self.cpp_var_desc_ptr = ...
-        self.op = None
-
-    def shape(self):
-        cpp_shape = self.cpp_var_desc_ptr.shape()
-        return [None if elem < 0 else elem for elem in cpp_shape]
+        self.proto = core.NewVarDesc(block.proto, name, shape, lod_level)
+        self.writer = None
 ```
 
-The Protobuf object should be created in C++ not Python because it is needed by infershape, and infershape is implemented by C++ code. The C++ Protobuf object is accessible for Python through the `cpp_var_desc_ptr`, just like how `shape()` function does.
-
-The user is allowed to build a variable without specifying its name. If so, it is going to be assigned with an automatically generated unique name.
+Please be aware of `self.writer`, that tracks operator who creates the variable.  It possible that there are more than one operators who write a variable, but in Python space, each writes to a variable is represented by a Variable class.  This is guaranteed by the fact that **`core.NewVarDesc` must NOT create a new `VarDesc` message if its name already exists in the specified block**.
 
 ### Parameter
 
-The parameter is a kind of special variable. They need to be initialized at the very beginning and updated after each batch training. So if a variable is a parameter, our compiler will add an initializer op and an optimizer op for it during the building process of computation graph. Apart from these, there is no more difference between variable and parameter. In other words, 'parameter' is only a label attached to variables, to tell the compiler these ones require additional processing.
+A parameter is a global variable with an initializer (or load) operator.
 
 ```python
 class Parameter(Variable):
-    def __init__(self, trainable, initialize_attrs, optimize_attrs):
-        pass
+    def __init__(self,
+                 block=None,      # Block
+                 name=None,       # string
+                 shape,           # tuple
+                 dtype="float32", # string
+                 lod_level=None   # int
+                 trainable,       # bool
+                 initialize_op_attrs,
+                 optimize_op_attrs):
+        super(Parameter, self).__init__(block, name, shape, dtype, lod_level)
+        self.trainable = trainable
+        self.optimize_op_attrs = optimize_op_attrs
+        block.prepend(Operator(block,  # Block
+                               initialize_op_attrs['type'],   # string
+                               None,   # no inputs
+                               self,   # output is the parameter
+                               initialize_op_attrs)
 ```
 
-The class `Parameter` is derived from class `Variable`. In addition to variables have, parameters are able to hold their initializing and updating information. A parameter's `self.op` will always be `None` because it can never be an operator's output.
+When users create a parameter, s/he can call
 
+```python
+program.create_parameter(
+  ...,
+  init_attr={
+    type: "uniform_random",
+    min: -1.0,
+    max: 1.0,
+  })
+)
+```
+
+In above example, `init_attr.type` names an initialize operator.  It can also name the load operator
+
+```python
+init_attr={
+ type: "load",
+ filename: "something.numpy",
+}
+```
+
+`optimize_op_attrs` is not in the `VarDesc` message, but kept in the Python instance, as it will be used in the Python space when creating the optimize operator's `OpDesc`, and will be in the `OpDesc` message.
 
 ## Layer Functions
 
-A layer is a Python function. When it is invoked, it creates a series of operators and variables then inserts them into the block. It is something like the macro in C++. It is called 'Layer' because the combination of added operators acts just like what a neural network layer does. 
-
-Here are examples of how to write a data layer and FC layer:
+A layer is a Python function that creates some operators and variables.  Layers simplify the work of application programmers.
 
 ### Data Layer
 
 ```python
-def data_layer(name, type):
-    block = program.current_block()
-    # type = dense_vector(size=10) / integer_value(range=10)
-    return block.create_global_var(
-            name=name, 
-            shape=[None] + type.dims(), 
+def data_layer(name, type, column_name):
+    block = the_current_program.glolal_block()
+    var = block.create_global_var(
+            name=name,
+            shape=[None] + type.dims(),
             dtype=type.dtype)
+    block.prepend_operator(block,
+                           type="Feed",
+                           inputs = None,
+                           outputs = [var],
+                           {column_name: column_name})
+    return var
+```
 
-``` 
-
-All the new variables and operators will be built in the `current block`. In the above `data_layer` code, a variable is created and be inserted into the root block to make it global. This variable is going to be used as input data of the whole network.
+The input to the feed operator is a special variable in the global scope, which is the output of [Python readers](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md).
 
 ### FC Layer
 
@@ -178,9 +210,7 @@ def fc_layer(input, size, ...):
     w = block.create_parameter(...)
     b = block.create_parameter(...)
     out = block.create_var()
-    op = block.append_operator(Operator("FC", X=input, W=w, b=b, Out=out))
-    out.op = op
+    op = block.append_operator("FC", X=input, W=w, b=b, out=out)
+    out.writer = op
     return out
 ```
-
-In the `fc_layer` code, we create two parameters(`w` and `b`), one variable(`out`) and one operator(`FC operator`), then insert all of them into the `current block`.
