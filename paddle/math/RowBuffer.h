@@ -99,7 +99,11 @@ public:
   /**
    * @brief clear local buffer. It only affect auto-growth buffer.
    */
-  inline void clear() { rowStore_.clear(); }
+  inline void clear() {
+    // swap an empty vector to it to free the memory.
+    std::vector<real, AlignedAllocator<real, 32>> empty;
+    rowStore_.swap(empty);
+  }
 
   /**
    * @brief get current number of rows.

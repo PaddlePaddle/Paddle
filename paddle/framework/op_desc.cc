@@ -89,6 +89,12 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
+void OpDescBind::SetAttrMap(
+    const std::unordered_map<std::string, Attribute> &attr_map) {
+  attrs_ = attr_map;
+  need_update_ = true;
+}
+
 Attribute OpDescBind::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
@@ -99,6 +105,11 @@ int OpDescBind::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return boost::get<BlockDesc *>(it->second)->idx();
+}
+
+const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
+    const {
+  return attrs_;
 }
 
 void OpDescBind::Sync() {

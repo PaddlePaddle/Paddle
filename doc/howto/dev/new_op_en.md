@@ -293,41 +293,27 @@ class TestMulGradOp(GradientChecker):
             'Y': np.random.random((84, 100)).astype("float32")
         }
 
-    def test_cpu_gpu_compare(self):
-        self.compare_grad(self.op, self.inputs)
-
-    def test_normal(self):
+    def test_check_grad_normal(self):
         # mul op will enlarge the relative error
-        self.check_grad(
-            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
 
-    def test_ignore_x(self):
+    def test_check_grad_ingore_x(self):
         self.check_grad(
-            self.op,
-            self.inputs, ["Y"],
-            "Out",
-            max_relative_error=0.5,
-            no_grad_set={"X"})
+            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
 
-    def test_ignore_y(self):
+    def test_check_grad_ingore_y(self):
         self.check_grad(
-            self.op,
-            self.inputs, ["X"],
-            "Out",
-            max_relative_error=0.5,
-            no_grad_set={"Y"})
+            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 ```
 
 Some key points in the code above include:
 
 - `create_op("mul")` creates the backward operator's corresponding forward operator.
-- `compare_grad` compares results between utilizing the CPU and the GPU.
 - `test_normal` calls `check_grad` to validate scaling tests' correctness and stability through numeric methods.
-  - The first variable `self.op` denotes the forward operator.
-  - The second variable `self.inputs` denotes the input dictionary, which has its key value identical to its `ProtoMaker` definitions.
-  - The third variable `["X", "Y"]` appoints `X` and `Y` to be scale tested.
-  - The fourth variable `"Out"` points to the network's final output target `Out`.
-- `test_ignore_x` and `test_ignore_y`branches test the cases where there is only one scaling input.
+  - The first variable `["X", "Y"]` appoints `X` and `Y` to be scale tested.
+  - The second variable `"Out"` points to the network's final output target `Out`.
+  - The third variable `max_relative_error` points to the maximum relative tolerance error during scaling tests.
+- `test_check_grad_ingore_x` and `test_check_grad_ingore_y`branches test the cases where there is only one scaling input.
 
 ### Compiling and Running
 

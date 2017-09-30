@@ -243,3 +243,24 @@ TEST(math_function, gemm_trans_clbas) {
   EXPECT_EQ(input3_ptr[6], 86);
   EXPECT_EQ(input3_ptr[7], 99);
 }
+
+TEST(math_function, zero) {
+  paddle::framework::Tensor tensor;
+  auto* cpu_place = new paddle::platform::CPUPlace();
+  float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
+  paddle::platform::CPUDeviceContext context(*cpu_place);
+  paddle::operators::math::SetConstant<paddle::platform::CPUPlace, float>(
+      context, &tensor, 0);
+  EXPECT_EQ(t[0], 0);
+  EXPECT_EQ(t[1], 0);
+  EXPECT_EQ(t[2], 0);
+  EXPECT_EQ(t[3], 0);
+
+  paddle::operators::math::SetConstant<paddle::platform::CPUPlace, float>(
+      context, &tensor, 1);
+
+  EXPECT_EQ(t[0], 1);
+  EXPECT_EQ(t[1], 1);
+  EXPECT_EQ(t[2], 1);
+  EXPECT_EQ(t[3], 1);
+}

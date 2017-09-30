@@ -132,6 +132,17 @@ class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftsignOpMaker(framework::OpProto *proto,
+                  framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softsign operator");
+    AddOutput("Y", "Output of Softsign operator");
+    AddComment("Softsign activation operator, softsign(x) = x / (1 + |x|)");
+  }
+};
+
 template <typename AttrType>
 class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -195,111 +206,57 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OP(sigmoid, ops::ActivationOp, ops::SigmoidOpMaker, sigmoid_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(sigmoid,
-                       ops::ActivationKernel<paddle::platform::CPUPlace, float,
-                                             ops::SigmoidFunctor<float>>);
-REGISTER_OP_CPU_KERNEL(
-    sigmoid_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
-                                            ops::SigmoidGradFunctor<float>>);
 
 REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    exp,
-    ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::ExpFunctor>);
-REGISTER_OP_CPU_KERNEL(exp_grad,
-                       ops::ActivationGradKernel<paddle::platform::CPUPlace,
-                                                 float, ops::ExpGradFunctor>);
 
 REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(relu,
-                       ops::ActivationKernel<paddle::platform::CPUPlace, float,
-                                             ops::ReluFunctor<float>>);
-REGISTER_OP_CPU_KERNEL(
-    relu_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
-                                         ops::ReluGradFunctor<float>>);
 
 REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    tanh,
-    ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::TanhFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    tanh_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
-                                         ops::TanhGradFunctor<float>>);
 
 REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    sqrt,
-    ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::SqrtFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    sqrt_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
-                                         ops::SqrtGradFunctor<float>>);
 
 REGISTER_OP(abs, ops::ActivationOp, ops::AbsOpMaker, abs_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    abs,
-    ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::AbsFunctor>);
-REGISTER_OP_CPU_KERNEL(abs_grad,
-                       ops::ActivationGradKernel<paddle::platform::CPUPlace,
-                                                 float, ops::AbsGradFunctor>);
 
 REGISTER_OP(reciprocal, ops::ActivationOp, ops::ReciprocalOpMaker,
             reciprocal_grad, ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(reciprocal,
-                       ops::ActivationKernel<paddle::platform::CPUPlace, float,
-                                             ops::ReciprocalFunctor<float>>);
-REGISTER_OP_CPU_KERNEL(
-    reciprocal_grad,
-    ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
-                              ops::ReciprocalGradFunctor<float>>);
 
 REGISTER_OP(log, ops::ActivationOp, ops::LogOpMaker, log_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    log,
-    ops::ActivationKernel<paddle::platform::CPUPlace, float, ops::LogFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    log_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
-                                        ops::LogGradFunctor<float>>);
 
 REGISTER_OP(square, ops::ActivationOp, ops::SquareOpMaker, square_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(square,
-                       ops::ActivationKernel<paddle::platform::CPUPlace, float,
-                                             ops::SquareFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    square_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace, float,
-                                           ops::SquareGradFunctor<float>>);
+
+REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
+            ops::ActivationOpGrad);
 
 REGISTER_OP(brelu, ops::ActivationOp, ops::BReluOpMaker<float>, brelu_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(brelu,
-                       ops::BReluKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(brelu_grad,
-                       ops::BReluGradKernel<paddle::platform::CPUPlace, float>);
 
 REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker<float>,
             soft_relu_grad, ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(soft_relu,
-                       ops::SoftReluKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    soft_relu_grad, ops::SoftReluGradKernel<paddle::platform::CPUPlace, float>);
 
 REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(pow, ops::PowKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(pow_grad,
-                       ops::PowGradKernel<paddle::platform::CPUPlace, float>);
 
 REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
             ops::ActivationOpGrad);
-REGISTER_OP_CPU_KERNEL(stanh,
-                       ops::STanhKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(stanh_grad,
-                       ops::STanhGradKernel<paddle::platform::CPUPlace, float>);
+
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
+  REGISTER_OP_CPU_KERNEL(                                                      \
+      act_type,                                                                \
+      paddle::operators::ActivationKernel<paddle::platform::CPUPlace,          \
+                                          paddle::operators::functor<float>>); \
+  REGISTER_OP_CPU_KERNEL(act_type##_grad,                                      \
+                         paddle::operators::ActivationGradKernel<              \
+                             paddle::platform::CPUPlace,                       \
+                             paddle::operators::grad_functor<float>>);
+
+FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);
