@@ -63,7 +63,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
    * pre-state in the first time step will be initialized with an zero tensor or
    * a tensor in parent scope if is provided.
    */
-  void InitStates(Scope* step_scopes) const;
+  void InitStates(const Scope& scope) const;
 
   /*
    * Concatenate outputs in each time step and generate a LoDTensor.
@@ -93,6 +93,8 @@ class DynamicRecurrentOp : public framework::OperatorBase {
     std::vector<Scope*>* scopes;
     std::map<std::string, Variable*> inlinks;
     std::map<std::string, Variable*> outlinks;
+
+    size_t num_steps;
 
     void Init(const rnn::ArgumentName& name, const OperatorBase& op,
               const Scope& scope, const rnn::Argument* arg);
