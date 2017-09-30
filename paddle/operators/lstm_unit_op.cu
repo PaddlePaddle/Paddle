@@ -89,8 +89,8 @@ __global__ void LSTMUnitGradientKernel(const int nthreads, const int dim,
   }
 }
 
-template <typename T, typename AttrType = T>
-class LstmUnitOpCUDAKernel : public framework::OpKernel {
+template <typename T>
+class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -101,7 +101,7 @@ class LstmUnitOpCUDAKernel : public framework::OpKernel {
     auto* c_tensor = ctx.Output<framework::Tensor>("C");
     auto* h_tensor = ctx.Output<framework::Tensor>("H");
 
-    auto forget_bias = static_cast<T>(ctx.Attr<AttrType>("forget_bias"));
+    auto forget_bias = static_cast<T>(ctx.Attr<float>("forget_bias"));
 
     int b_size = c_tensor->dims()[0];
     int D = c_tensor->dims()[1];
@@ -120,8 +120,8 @@ class LstmUnitOpCUDAKernel : public framework::OpKernel {
   }
 };
 
-template <typename T, typename AttrType = T>
-class LstmUnitGradOpCUDAKernel : public framework::OpKernel {
+template <typename T>
+class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -153,7 +153,7 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel {
     int N = c_tensor->dims()[0];
     int D = c_tensor->dims()[1];
 
-    auto forget_bias = static_cast<T>(ctx.Attr<AttrType>("forget_bias"));
+    auto forget_bias = static_cast<T>(ctx.Attr<float>("forget_bias"));
 
     int block = 512;
     int n = N * D;
@@ -169,5 +169,7 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(lstm_unit, ops::LstmUnitOpCUDAKernel<float>);
-REGISTER_OP_GPU_KERNEL(lstm_unit_grad, ops::LstmUnitGradOpCUDAKernel<float>);
+REGISTER_OP_GPU_KERNEL(lstm_unit, ops::LstmUnitOpCUDAKernel<float>,
+                       ops::LstmUnitOpCUDAKernel<double>);
+REGISTER_OP_GPU_KERNEL(lstm_unit_grad, ops::LstmUnitGradOpCUDAKernel<float>,
+                       ops::LstmUnitGradOpCUDAKernel<double>);

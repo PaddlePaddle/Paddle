@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class CosSimKernel : public framework::OpKernel {
+class CosSimKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get Tensor
@@ -67,7 +67,7 @@ class CosSimKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class CosSimGradKernel : public framework::OpKernel {
+class CosSimGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get Tensor

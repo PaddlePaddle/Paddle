@@ -25,7 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename Place, typename T>
-class GemmConv2DKernel : public framework::OpKernel {
+class GemmConv2DKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<Tensor>("Input");
@@ -98,7 +98,7 @@ class GemmConv2DKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class GemmConvGrad2DKernel : public framework::OpKernel {
+class GemmConvGrad2DKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<Tensor>("Input");

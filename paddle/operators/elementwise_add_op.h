@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ElementwiseAddKernel : public framework::OpKernel {
+class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseCompute<EigenAddFunctor, Place, T>(ctx);
@@ -101,7 +101,7 @@ struct ElementwiseAddBroadCast2GradFunctor {
 };
 
 template <typename Place, typename T>
-class ElementwiseAddGradKernel : public framework::OpKernel {
+class ElementwiseAddGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<Place, T, ElementwiseAddGradFunctor<T>,

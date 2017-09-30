@@ -78,10 +78,6 @@ void ScatterUpdate(const platform::Place& place,
   for (int i = 1; i < src_dims.size(); i++)
     PADDLE_ENFORCE(src_dims[i] == dst_dims[i]);
 
-  // slice size
-  size_t slice_size = 1;
-  for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-
   if (platform::is_cpu_place(place)) {
     CPUScatterUpdate<T>(src, index->data<int>(), index_size, output);
   } else {

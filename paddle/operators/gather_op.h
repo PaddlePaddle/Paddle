@@ -24,7 +24,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename Place, typename T>
-class GatherOpKernel : public framework::OpKernel {
+class GatherOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *X = ctx.Input<Tensor>("X");
@@ -37,7 +37,7 @@ class GatherOpKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class GatherGradientOpKernel : public framework::OpKernel {
+class GatherGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *Index = ctx.Input<Tensor>("Index");

@@ -54,5 +54,44 @@ OperatorBase* BuildGradOp(const OperatorBase* op) {
   return grad_info.Creator()(info.grad_op_type_, inputs, outputs, op->Attrs());
 }
 
+static void TransOpDescArg(const OpDescBind* src_op, const OpArgType& src_type,
+                           bool is_grad, OpDescBind* dst_op,
+                           const OpArgType& dst_type) {
+  PADDLE_ENFORCE(dst_op != nullptr,
+                 "Protobuf desc of gradient op must be initialized first.");
+  const auto& proto = OpInfoMap::Instance().Get(src_op->Type()).Proto();
+  const auto& src_arg_list =
+      src_type == OpArgType::IN ? proto.inputs() : proto.outputs();
+  for (const auto& arg : src_arg_list) {
+    if (arg.not_in_gradient() && !is_grad) continue;
+    const std::string src_name = arg.name();
+    std::vector<std::string> vars = src_type == OpArgType::IN
+                                        ? src_op->Input(src_name)
+                                        : src_op->Output(src_name);
+    if (is_grad) {
+      for (std::string& var : vars) {
+        var = GradVarName(var);
+      }
+    }
+    std::string dst_name = is_grad ? GradVarName(src_name) : src_name;
+    dst_type == OpArgType::IN ? dst_op->SetInput(dst_name, vars)
+                              : dst_op->SetOutput(dst_name, vars);
+  }
+}
+
+void CompleteGradOpDesc(const OpDescBind* forw_op, OpDescBind* grad_op) {
+  auto& info = OpInfoMap::Instance().Get(forw_op->Type());
+  PADDLE_ENFORCE(info.HasGradientOp());
+
+  grad_op->SetType(info.grad_op_type_);
+
+  TransOpDescArg(forw_op, OpArgType::IN, false, grad_op, OpArgType::IN);
+  TransOpDescArg(forw_op, OpArgType::OUT, false, grad_op, OpArgType::IN);
+  TransOpDescArg(forw_op, OpArgType::OUT, true, grad_op, OpArgType::IN);
+  TransOpDescArg(forw_op, OpArgType::IN, true, grad_op, OpArgType::OUT);
+
+  grad_op->SetAttrMap(forw_op->GetAttrMap());
+}
+
 }  // namespace framework
 }  // namespace paddle
