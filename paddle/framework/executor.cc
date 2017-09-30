@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/executor.h"
-
+#include <memory>
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
@@ -78,17 +78,28 @@ class ExecutorImpl : public Executor {
   ProgramDescView* view_;
 };
 
+template <typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args) {
+  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
+static std::unique_ptr<platform::CPUDeviceContext> g_cpu_device_context =
+    make_unique<platform::CPUDeviceContext>(platform::CPUPlace());
+
+#ifndef PADDLE_ONLY_CPU
+static std::unique_ptr<platform::CUDADeviceContext> g_cuda_device_context =
+    make_unique<platform::CUDADeviceContext>(platform::GPUPlace(0));
+#endif
+
 static Executor* NewLocalExecutor(const platform::Place& place,
                                   const ProgramDesc& pdesc, bool is_linear) {
   platform::DeviceContext* device_context = nullptr;
   if (platform::is_cpu_place(place)) {
-    device_context =
-        new platform::CPUDeviceContext(boost::get<platform::CPUPlace>(place));
+    device_context = g_cpu_device_context.get();
   }
 #ifndef PADDLE_ONLY_CPU
   else if {
-    device_context =
-        new platform::CUDADeviceContext(boost::get<platform::GPUPlace>(place));
+    device_context = g_cuda_device_context.get();
   }
 #endif
   return new ExecutorImpl(device_context, &pdesc, is_linear);
