@@ -341,6 +341,32 @@ class RuntimeInferShapeContext : public InferShapeContextBase {
     return var != nullptr;
   }
 
+  bool HasInputs(const std::string& name) const {
+    auto inputs = op_.Inputs(name);
+    if (inputs.size() == 0UL) {
+      return false;
+    }
+    for (auto& input : inputs) {
+      if (scope_.FindVar(input) == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool HasOutputs(const std::string& name) const {
+    auto outputs = op_.Outputs(name);
+    if (outputs.size() == 0UL) {
+      return false;
+    }
+    for (auto& output : outputs) {
+      if (scope_.FindVar(output) == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   DDim GetInputDim(const std::string& name) const {
     return GetDim(op_.Input(name));
   }

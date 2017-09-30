@@ -17,7 +17,7 @@ The goals of refactoring include:
 
 1. A graph is composed of *variables* and *operators*.
 
-1. The description of graphs must be capable of being serialized/deserialized, so that
+1. The description of graphs must be capable of being serialized/deserialized, so that:
 
    1. It can to be sent to the cloud for distributed execution, and
    1. It can be sent to clients for mobile or enterprise deployment.
@@ -137,19 +137,18 @@ Compile Time -> IR -> Runtime
 * `Eigen::Tensor` contains basic math and element-wise functions.
     * Note that `Eigen::Tensor` has broadcast implementation.
     * Limit the number of `tensor.device(dev) = ` in your code.
-* `thrust::tranform` and `std::transform`.
-    * `thrust` has the same API as C++ standard library. Using `transform`, one can quickly implement customized elementwise kernels.
+* `thrust::transform` and `std::transform`.
+    * `thrust` has the same API as C++ standard library. Using `transform`, one can quickly implement customized element-wise kernels.
     * `thrust` also has more complex APIs, like `scan`, `reduce`, `reduce_by_key`.
 * Hand-writing `GPUKernel` and `CPU` code
     * Do not write in header (`.h`) files. CPU Kernel should be in cpp source (`.cc`) and GPU kernels should be in cuda (`.cu`) files. (GCC cannot compile GPU code.)
 ---
 # Operator Registration
 
-## Why registration is necessary?
+## Why is registration necessary?
 We need a method to build mappings between Op type names and Op classes.
 
 ## How is registration implemented?
-
 Maintaining a map, whose key is the type name and the value is the corresponding Op constructor.
 
 ---
@@ -170,7 +169,7 @@ Maintaining a map, whose key is the type name and the value is the corresponding
 # Related Concepts
 
 ### Op_Maker
-It's constructor takes `proto` and `checker`. They are compeleted during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
+It's constructor takes `proto` and `checker`. They are completed during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
 
 ### Register Macros
 ```cpp
@@ -200,7 +199,7 @@ Make sure the registration process is executed and linked.
 ---
 # Backward Module (2/2)
 ### Build Backward Network
-- **Input**: graph of forwarding operators
+- **Input**: graph of forward operators
 - **Output**: graph of backward operators
 - **Corner cases in construction**
 	- Shared Variables => insert an `Add` operator to combine gradients
@@ -224,7 +223,7 @@ Make sure the registration process is executed and linked.
 
 ---
 # Block (in design)
-## the difference with original RNNOp
+## the difference between original RNNOp and Block
 - As an operator is more intuitive than `RNNOp`,
 - Offers a new interface `Eval(targets)` to deduce the minimal block to `Run`,
 - Fits the compile-time/ runtime separation design paradigm.
