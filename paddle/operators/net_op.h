@@ -54,16 +54,6 @@ class NetOp : public framework::OperatorBase {
   }
 
   /**
-   * Infer all the operators' input and output variables' shapes, will be called
-   * before every mini-batch
-   */
-  void InferShape(const framework::Scope& scope) const override {
-    for (auto& op : ops_) {
-      op->InferShape(scope);
-    }
-  }
-
-  /**
    * @brief Run the network.
    *
    * Run all the operators with the `scope`, if no scope is provided, default

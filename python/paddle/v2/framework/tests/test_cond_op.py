@@ -66,7 +66,6 @@ class TestCondOp(unittest.TestCase):
         self.create_cond_op()
         self.create_sub_net()
         ctx = core.DeviceContext.create(core.CPUPlace())
-        self.condop.infer_shape(self.scope)
         self.condop.run(self.scope, ctx)
         return np.array(self.scope.find_var("Out").get_tensor())
 

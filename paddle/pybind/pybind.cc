@@ -77,20 +77,18 @@ PYBIND11_PLUGIN(core) {
            })
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
+      .def("set", PyCPUTensorSetFromArray<double>)
 #ifndef PADDLE_ONLY_CPU
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
+      .def("set", PyCUDATensorSetFromArray<double>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
-      .def("set_float_element",
-           [](Tensor &self, size_t offset, float f) {
-             // TODO(yuyang18): Only support GPU now.
-             self.data<float>()[offset] = f;
-           })
-      .def("get_float_element", [](Tensor &self, size_t offset) -> float {
-        // TODO(yuyang18): Only support GPU now.
-        return self.data<float>()[offset];
-      });
+      .def("set_float_element", TensorSetElement<float>)
+      .def("get_float_element", TensorGetElement<float>)
+      .def("set_double_element", TensorSetElement<double>)
+      .def("get_double_element", TensorGetElement<double>)
+      .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
       .def_buffer(
@@ -230,7 +228,6 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &no_grad_vars) {
              return Backward(forwardOp, no_grad_vars).release();
            })
-      .def("infer_shape", &OperatorBase::InferShape)
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::DeviceContext &dev_ctx) {

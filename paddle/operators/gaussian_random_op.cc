@@ -16,7 +16,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class CPUGaussianRandomKernel : public framework::OpKernel {
+class CPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
@@ -56,6 +56,11 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
                    "dims can be one int or array. dims must be set.");
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return static_cast<framework::DataType>(Attr<int>("data_type"));
+  }
 };
 
 class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -76,6 +81,8 @@ Use to initialize tensor with gaussian random generator.
                  "Random seed of generator."
                  "0 means use system wide seed")
         .SetDefault(0);
+    AddAttr<int>("data_type", "output data type")
+        .SetDefault(framework::DataType::FP32);
   }
 };
 
