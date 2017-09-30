@@ -27,6 +27,8 @@ using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 using CUDADeviceContext = platform::CUDADeviceContext;
 
+static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES = 1024 * 1024 * 1024;
+
 // NOTE: framework::vectorize converts to type int64_t
 //       which does not fit cudnn inputs.
 std::vector<int> Dims2Vector(const framework::DDim& dims) {
@@ -51,6 +53,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+    int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -83,20 +86,26 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     int group_offset_Y =
         output_channels / groups * output_height * output_width;
     int group_offset_filter = filter->numel() / groups;
+    // ------------------- cudnn conv workspace ---------------------
+    void* cudnn_workspace = nullptr;
+    size_t workspace_size_in_bytes;  // final workspace to allocate.
+    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    if (user_workspace_size > 0) {
+      workspace_size_limit = user_workspace_size * 1024 * 1024;
+    }
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
     auto handle = ctx.cuda_device_context().cudnn_handle();
 
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, &algo));
-    // ------------------- cudnn conv workspace ---------------------
-    void* cudnn_workspace = nullptr;
-    size_t workspace_size_in_bytes = 0;
+        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+        workspace_size_limit, &algo));
+    // get workspace size able to allocate
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
-    // Already on GPU
+    // Allocate on GPU memory
     platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv forward ---------------------
@@ -133,6 +142,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+    int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
 
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
@@ -172,6 +182,11 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdDataAlgo_t data_algo;
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
+    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    if (user_workspace_size > 0) {
+      workspace_size_limit = user_workspace_size * 1024 * 1024;
+    }
+
     auto handle = ctx.cuda_device_context().cudnn_handle();
     if (input_grad) {
       cudnn_input_grad_desc = input_grad_desc.descriptor<T>(
@@ -184,8 +199,9 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
               cudnn_output_grad_desc, cudnn_conv_desc,
               // dxDesc: Handle to the previously initialized output tensor
               // descriptor.
-              cudnn_input_grad_desc, CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST,
-              0, &data_algo));
+              cudnn_input_grad_desc,
+              CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+              workspace_size_limit, &data_algo));
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
               handle, cudnn_filter_desc, cudnn_output_grad_desc,
@@ -199,8 +215,9 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
               handle, cudnn_input_desc, cudnn_output_grad_desc, cudnn_conv_desc,
-              cudnn_filter_desc, CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST, 0,
-              &filter_algo));
+              cudnn_filter_desc,
+              CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+              workspace_size_limit, &filter_algo));
 
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(

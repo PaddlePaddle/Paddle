@@ -36,6 +36,8 @@ class CudnnConvOpMaker : public Conv2DOpMaker {
       : Conv2DOpMaker(proto, op_checker) {
     AddAttr<std::vector<int>>("dilations", "paddings of convolution operator.")
         .SetDefault(std::vector<int>{1, 1});
+    AddAttr<int>("workspace_size_MB", "workspace size for cudnn, in MB.")
+        .SetDefault(4096);
   }
 };
 
