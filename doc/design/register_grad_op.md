@@ -56,14 +56,14 @@ We should chagne register macros at the same time. In the current solution, ther
 The user interface should be
 
 ```cpp
-vector<OpDesc> SumOpGradMakerƒ(OpDesc) {...}
-REGISTER_OPERATOR(sum, SumOp, SumOpProtoAndCheckerMaker, SumOpGradMaker);
+vector<OpDesc> MinusOpGradMaker(OpDesc) {...}
+REGISTER_OPERATOR(minus, MinusOp, MinusOpProtoAndCheckerMaker, SumOpGradMaker);
 // Developers can still manually implement gradient operator.
-REGISTER_OPERATOR(sum_grad, SumGradOp);
+REGISTER_OPERATOR(minus_grad, MinusGradOp);
 ```
 
 The interface of current `REGISTER_OP` macro could not be changed. In `REGISTER_OP`, it will invoke `REGISTER_OPERATOR` two times and generate GradOpDescMaker inside.
 
 ```cpp
-REGISTER_OP(sum, SumOp, SumOpProtoAndCheckerMaker, sum_grad, SumGradOp);
+REGISTER_OP(minus, MinusOp, MinusOpProtoAndCheckerMaker, minus_grad, MinusGradOp);
 ```
