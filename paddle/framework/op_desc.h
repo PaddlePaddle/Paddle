@@ -60,17 +60,31 @@ class OpDescBind {
 
   void SetBlockAttr(const std::string &name, BlockDescBind &block);
 
-  // Only be used in C++
-  void SetAttrMap(const std::unordered_map<std::string, Attribute> &attr_map);
-
   Attribute GetAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
 
-  // Only be used in C++
+  // The following methods should only be used in C++
   const std::unordered_map<std::string, Attribute> &GetAttrMap() const;
 
+  void SetAttrMap(const std::unordered_map<std::string, Attribute> &attr_map);
+
+  std::vector<std::string> InputParamNames() const { return MapKeys(inputs_); }
+  std::vector<std::string> OutputParamNames() const {
+    return MapKeys(outputs_);
+  }
+
  private:
+  template <typename MapType>
+  static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
+    std::vector<typename MapType::key_type> ret_val;
+    ret_val.reserve(map.size());
+    std::transform(
+        map.begin(), map.end(), ret_val.begin(),
+        [](const typename MapType::value_type &pair) { return pair.first; });
+    return ret_val;
+  }
+
   struct SetAttrDescVisitor : public boost::static_visitor<void> {
     explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
     mutable OpDesc::Attr *attr_;
