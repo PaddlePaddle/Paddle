@@ -25,7 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename Place, typename T>
-class MaxPoolWithIndexKernel : public framework::OpKernel {
+class MaxPoolWithIndexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");
@@ -59,7 +59,7 @@ class MaxPoolWithIndexKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MaxPoolWithIndexGradKernel : public framework::OpKernel {
+class MaxPoolWithIndexGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* mask = context.Input<Tensor>("Mask");

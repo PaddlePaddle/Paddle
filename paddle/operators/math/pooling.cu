@@ -637,7 +637,7 @@ __global__ void KernelMaxPool2dWithIdx(
     const int output_height, const int output_width, const int ksize_height,
     const int ksize_width, const int stride_height, const int stride_width,
     const int padding_height, const int padding_width) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
     int ph = (index / output_width) % output_height;
@@ -676,7 +676,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(
     const int output_height, const int output_width, const int ksize_height,
     const int ksize_width, const int stride_height, const int stride_width,
     const int padding_height, const int padding_width) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int w_offset = index % input_width;
     int h_offset = (index / input_width) % input_height;
@@ -766,7 +766,6 @@ class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
     const int input_channels = input_grad.dims()[1];
     const int input_height = input_grad.dims()[2];
     const int input_width = input_grad.dims()[3];
-    const int output_channels = output_grad.dims()[1];
     const int output_height = output_grad.dims()[2];
     const int output_width = output_grad.dims()[3];
     const int ksize_height = ksize[0];
@@ -810,7 +809,7 @@ __global__ void KernelMaxPool3DWithIdx(
     const int ksize_width, const int stride_depth, const int stride_height,
     const int stride_width, const int padding_depth, const int padding_height,
     const int padding_width) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
     int ph = (index / output_width) % output_height;
@@ -858,7 +857,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
     const int ksize_width, const int stride_depth, const int stride_height,
     const int stride_width, const int padding_depth, const int padding_height,
     const int padding_width) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int w_offset = index % input_width;
     int h_offset = (index / input_width) % input_height;
@@ -969,7 +968,6 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
     const int input_depth = input_grad.dims()[2];
     const int input_height = input_grad.dims()[3];
     const int input_width = input_grad.dims()[4];
-    const int output_channels = output_grad.dims()[1];
     const int output_depth = output_grad.dims()[2];
     const int output_height = output_grad.dims()[3];
     const int output_width = output_grad.dims()[4];

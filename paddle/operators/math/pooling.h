@@ -117,6 +117,43 @@ class MaxPool3dGradFunctor {
                   std::vector<int>& strides, std::vector<int>& paddings);
 };
 
+template <typename Place, typename T>
+class MaxPool2dWithIndexFunctor {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& output,
+                  framework::Tensor& mask, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings);
+};
+
+template <typename Place, typename T>
+class MaxPool2dWithIndexGradFunctor {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  framework::Tensor& input_grad,
+                  const framework::Tensor& output_grad,
+                  const framework::Tensor& mask, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings);
+};
+
+template <typename Place, typename T>
+class MaxPool3dWithIndexFunctor {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor& output,
+                  framework::Tensor& mask, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings);
+};
+
+template <typename Place, typename T>
+class MaxPool3dWithIndexGradFunctor {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  framework::Tensor& input_grad,
+                  const framework::Tensor& output_grad,
+                  const framework::Tensor& mask, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings);
+};
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
