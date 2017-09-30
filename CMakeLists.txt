@@ -87,11 +87,15 @@ if(ANDROID OR IOS)
     set(WITH_MKLML OFF CACHE STRING
         "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
 
-    if(WITH_C_API)
-      # Compile PaddlePaddle mobile inference library
-      set(MOBILE_INFERENCE ON)
-      add_definitions(-DPADDLE_MOBILE_INFERENCE)
+    # Compile PaddlePaddle mobile inference library
+    if (NOT WITH_C_API)
+        set(WITH_C_API ON CACHE STRING
+            "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
     endif()
+    set(MOBILE_INFERENCE ON)
+    add_definitions(-DPADDLE_MOBILE_INFERENCE)
+
+    # TODO: Need Open the WITH_TESTING
     set(WITH_TESTING OFF CACHE STRING "Disable TESTING when cross-compiling
                     for Android and iOS" FORCE)
 endif()
