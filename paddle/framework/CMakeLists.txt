@@ -22,7 +22,7 @@ cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
-cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
+cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto proto_desc)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
