@@ -478,9 +478,20 @@ class OperatorWithKernel : public OperatorBase {
     this->InferShape(&infer_shape_ctx);
 
     ExecutionContext ctx(*this, scope, dev_ctx);
-    auto& opKernel = AllOpKernels().at(type_).at(
-        OpKernelKey(IndicateDataType(ctx), dev_ctx));
-    opKernel->Compute(ctx);
+    PADDLE_ENFORCE_GT(AllOpKernels().count(type_), 0, "op[%s] has no kernel",
+                      type_);
+    OpKernelMap& kernels = AllOpKernels().at(type_);
+    DataType data_type = IndicateDataType(ctx);
+    auto kernel_key = OpKernelKey(data_type, dev_ctx);
+    if (kernels.count(kernel_key) == 0) {
+      const ::google::protobuf::EnumDescriptor* descriptor =
+          DataType_descriptor();
+      std::string data_type_str =
+          descriptor->FindValueByNumber(data_type)->name();
+      PADDLE_THROW("op[%s] has no kernel with data_type[%s]", type_,
+                   data_type_str);
+    }
+    kernels.at(kernel_key)->Compute(ctx);
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
