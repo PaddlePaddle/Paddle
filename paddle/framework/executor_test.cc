@@ -15,4 +15,12 @@ limitations under the License. */
 #include "paddle/framework/executor.h"
 #include "gtest/gtest.h"
 
-TEST(Executor, Init) {}
+using namespace paddle::platform;
+using namespace paddle::framework;
+
+TEST(Executor, Init) {
+  ProgramDesc pdesc;
+  CPUPlace cpu_place;
+  Executor* executor = NewLocalExecutor(cpu_place, pdesc, true);
+  executor->Run();
+}

@@ -40,7 +40,7 @@ class GraphView : public ProgramDescView {
   void Initialize(const ProgramDesc*) override;
 };
 
-static ProgramDescView* Create(bool is_linear) {
+ProgramDescView* ProgramDescView::Create(bool is_linear) {
   if (is_linear) {
     return new LinearListView();
   } else {
@@ -91,8 +91,8 @@ static std::unique_ptr<platform::CUDADeviceContext> g_cuda_device_context =
     make_unique<platform::CUDADeviceContext>(platform::GPUPlace(0));
 #endif
 
-static Executor* NewLocalExecutor(const platform::Place& place,
-                                  const ProgramDesc& pdesc, bool is_linear) {
+Executor* NewLocalExecutor(const platform::Place& place,
+                           const ProgramDesc& pdesc, bool is_linear) {
   platform::DeviceContext* device_context = nullptr;
   if (platform::is_cpu_place(place)) {
     device_context = g_cpu_device_context.get();

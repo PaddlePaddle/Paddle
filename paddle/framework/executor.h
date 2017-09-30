@@ -26,7 +26,7 @@ class Executor {
   virtual void Run() = 0;
 };
 
-static Executor* NewLocalExecutor(const platform::Place&, const ProgramDesc&);
+Executor* NewLocalExecutor(const platform::Place&, const ProgramDesc&, bool);
 
 }  // namespace framework
 }  // namespace paddle
