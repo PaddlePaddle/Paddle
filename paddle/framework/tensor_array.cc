@@ -25,10 +25,6 @@ namespace framework {
 
 namespace detail {
 
-void ta_check_index(size_t index, size_t MAX_SIZE) {
-  PADDLE_ENFORCE_LE(index, MAX_SIZE, "index[%d] too large", index);
-}
-
 /*
  * Offer an iterator over the length-sorted lod-tensor's top level. The top
  * level of a lod-tensor stores batch-size of sequences, each top-level sequence
@@ -83,7 +79,7 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
 }  // namespace detail
 
 const LoDTensor& TensorArray::Read(size_t index) const {
-  detail::ta_check_index(index, MAX_SIZE);
+  PADDLE_ENFORCE_LE(index, MAX_SIZE, "index[%d] too large", index);
   if (index >= size()) {
     values_.resize(index + 1);
   }
@@ -91,7 +87,8 @@ const LoDTensor& TensorArray::Read(size_t index) const {
 }
 
 void TensorArray::Write(size_t index, const LoDTensor& value) {
-  detail::ta_check_index(index, MAX_SIZE);
+  PADDLE_ENFORCE_LE(index, MAX_SIZE, "index[%d] too large", index);
+
   if (index >= size()) {
     values_.resize(index + 1);
   }
@@ -102,7 +99,7 @@ void TensorArray::Write(size_t index, const LoDTensor& value) {
 }
 
 void TensorArray::WriteShared(size_t index, const LoDTensor& value) {
-  detail::ta_check_index(index, MAX_SIZE);
+  PADDLE_ENFORCE_LE(index, MAX_SIZE, "index[%d] too large", index);
   if (index >= size()) {
     values_.resize(index + 1);
   }
@@ -111,13 +108,14 @@ void TensorArray::WriteShared(size_t index, const LoDTensor& value) {
 }
 
 LoDTensor TensorArray::Pack(size_t level, const std::vector<DySeqMeta>& meta,
-                            const LoD& lod) {
+                            const LoD& lod) const {
   return detail::PackDynamicBatch(values_, meta, lod, level);
 }
 
 std::vector<DySeqMeta> TensorArray::Unpack(const LoDTensor& source, int level,
                                            bool length_desend) {
-  detail::DynamicBatchUnpacker unpacker(source, level, true /*descend*/);
+  detail::DynamicBatchUnpacker unpacker(source, level,
+                                        length_desend /*descend*/);
 
   // find max length of all the sequences
   size_t max_length = 0;
