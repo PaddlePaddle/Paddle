@@ -1,8 +1,17 @@
-# Design Doc: Register Gradient Operator
+# Design Doc: Gradient Operators Registration
 
-## Problem
 
-Since we separate users program in two stages, compile time and runtime, we should record and look up the mapping relationship between an operator and its gradient operators when compile. However, we register this relationship in runtime by these `OpInfo` fields.
+## The Problem Posed
+
+In our current operator registration mechanism, for each operator, the programmer should register a *gradient operator creator* function, which takes a C++ operator instance, and returns the corresponding gradient instance.
+
+However, as we decided to separate the *compilation* and *execution* of DL models, we need to reshape the creator to take a protobuf `OpDesc` message, and returns a corresponding message.
+
+More than that, the new registration mechanism need to support the fact that an operators' gradient computation might be a composition of operators.
+
+## Current Implementation
+
+OpInfos store in a association map which key is the operator type. The `grad_op_type` indicate associated gradient operator type. Operator can create gradient operator by `OpInfo::creator_` of gradient. The pseudo code is
 
 ```cpp
 struct OpInfo {
@@ -10,11 +19,7 @@ struct OpInfo {
   std::string grad_op_type_;
   ...
 };
-```
 
-OpInfos store in a association map which key is the operator type. The `grad_op_type` indicate associated gradient operator type. Operator can create gradient operator by `OpInfo::creator_` of gradient. The pseudo code is
-
-```cpp
 map<string, OpInfo> OpInfoMap;
 
 OperatorBase* CreateGradientOperator(const OperatorBase& op) {
@@ -22,14 +27,7 @@ OperatorBase* CreateGradientOperator(const OperatorBase& op) {
 }
 ```
 
-At the same time, an operator's gradient operator could be composed of many forward operators. For example, the gradient operator of `minus_op` could  consist of an `identity` operator and a `scale` operator. To compose a gradient operator by forwarding operators could: 1) Reuse forwarding operator; 2) Calculate second derivative, third derivative, etc.
-
-We use `NetOp` to represent a composed operator since the `NetOp` is `vector<OperatorBase>`. However, `NetOp` is also a runtime concept. We should provide a mechanism to compose operators as a gradient operator.
-
-In conclusion, the problem that we want to resolve in this design doc is to register the mapping relationship between the forward operator and its gradient operators during compile time.
-
-
-## Solution
+## Proposed Solution
 
 The mapping relationship between an operator and its gradient operators is a function. The interface of that function is:
 
