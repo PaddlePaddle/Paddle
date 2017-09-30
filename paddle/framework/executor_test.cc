@@ -23,4 +23,5 @@ TEST(Executor, Init) {
   CPUPlace cpu_place;
   Executor* executor = NewLocalExecutor(cpu_place, pdesc, true);
   executor->Run();
+  delete executor;
 }
