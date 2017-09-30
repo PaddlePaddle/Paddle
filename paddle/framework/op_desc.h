@@ -74,6 +74,18 @@ class OpDescBind {
     return MapKeys(outputs_);
   }
 
+  void SetInput(
+      const std::unordered_map<std::string, std::vector<std::string>> &input) {
+    this->inputs_ = input;
+    this->need_update_ = true;
+  }
+
+  void SetOutput(
+      const std::unordered_map<std::string, std::vector<std::string>> &output) {
+    this->outputs_ = output;
+    this->need_update_ = true;
+  }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {

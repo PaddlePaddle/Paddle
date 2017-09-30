@@ -79,8 +79,6 @@ class OpRegistry {
                                                 AttributeMap attrs);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
-
-  static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
 };
 
 template <typename OpType, typename ProtoMakerType, typename GradOpType>

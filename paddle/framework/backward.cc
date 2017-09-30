@@ -154,6 +154,9 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       net->InsertOp(pos.first + 1, std::move(pos.second));
     }
   } else {
+    OpDescBind fwd_desc;
+    fwd_desc.SetInput(forwardOp.Inputs());
+
     std::unique_ptr<OperatorBase> grad_op(OpRegistry::CreateGradOp(forwardOp));
 
     ForEachVarName(grad_op->Inputs(), [&no_grad_names, &net, &grad_op](

@@ -52,10 +52,5 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return CreateOp(op_desc.type(), inputs, outputs, attrs);
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateGradOp(const OperatorBase& op) {
-  PADDLE_ENFORCE(!op.IsNetOp(), "Use framework::Backward to get backward ops");
-  return std::unique_ptr<OperatorBase>(BuildGradOp(&op));
-}
-
 }  // namespace framework
 }  // namespace paddle
