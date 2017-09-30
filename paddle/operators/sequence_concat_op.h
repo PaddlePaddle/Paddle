@@ -23,7 +23,7 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
-// Concat Lod, the initialized Lod of Output is lod(x0),
+// Concat LoD, the initialized LoD of Output is lod(x0),
 // if axis is not 0, the LoD(Out) will be the same as Inputs, if axis is 0:
 // Case1:
 //  There is one level, the Output LoD will be modified:
@@ -37,26 +37,26 @@ using LoD = framework::LoD;
 //  LoD(x1) = {{0,3,5}, {0,1,3,4,5}}
 //  LoD(Out) = {{0,5,9}, {0,1,2,4,5,6,7,8,9}}
 template <typename T>
-LoD concatLod(const std::vector<const T*> ins, const size_t axis,
+LoD concatLoD(const std::vector<const T*> ins, const size_t axis,
               const size_t level) {
   auto out_lod = ins[0]->lod();
   const size_t n = ins.size();
   if (axis == 0UL) {
     if (level == 0) {
-      for (size_t i = 1; i < n; i++) {
-        for (size_t j = 0; j < ins[i]->lod()[0].size(); j++) {
+      for (size_t i = 1; i < n; ++i) {
+        for (size_t j = 0; j < ins[i]->lod()[0].size(); ++j) {
           out_lod[0][j] += ins[i]->lod()[0][j];
         }
       }
     } else if (level == 1) {
-      for (size_t i = 1; i < n; i++) {
-        PADDLE_ENFORCE_EQ(ins[i]->NumLevels(), 2UL,
-                          "All the LoDTensors of Inputs(X) should "
-                          "have two level.");
-        for (size_t j = 0; j < ins[i]->lod()[0].size(); j++) {
+      PADDLE_ENFORCE_EQ(ins[0]->NumLevels(), 2UL,
+                        "If the level is 1, all of the inputs "
+                        "should be the the nested sequence.");
+      for (size_t i = 1; i < n; ++i) {
+        for (size_t j = 0; j < ins[i]->lod()[0].size(); ++j) {
           out_lod[0].push_back(ins[i]->lod()[0][j]);
         }
-        for (size_t j = 0; j < ins[i]->lod()[1].size(); j++) {
+        for (size_t j = 0; j < ins[i]->lod()[1].size(); ++j) {
           out_lod[1][j] += ins[i]->lod()[1][j];
         }
       }
@@ -66,7 +66,7 @@ LoD concatLod(const std::vector<const T*> ins, const size_t axis,
 }
 
 template <typename Place, typename T>
-class SequenceConcatOpKernel : public framework::OpKernel {
+class SequenceConcatOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<LoDTensor>("X");
@@ -74,18 +74,37 @@ class SequenceConcatOpKernel : public framework::OpKernel {
     const size_t axis = static_cast<size_t>(ctx.Attr<int>("axis"));
     const size_t level = static_cast<size_t>(ctx.Attr<int>("level"));
     const size_t n = ins.size();
+
+    for (size_t i = 1; i < n; ++i) {
+      PADDLE_ENFORCE_EQ(ins[0]->NumLevels(), ins[i]->NumLevels(),
+                        "The level number of all the input LoDTensors "
+                        "should be the same.");
+      PADDLE_ENFORCE_EQ(ins[0]->dims().size(), ins[i]->dims().size(),
+                        "The dimensions size of all the input LoDTensors "
+                        "should be the same.");
+
+      const size_t dims_size = ins[i]->dims().size();
+      for (size_t j = 0; j < dims_size; ++j) {
+        if (j == axis) continue;
+        PADDLE_ENFORCE_EQ(ins[0]->dims()[j], ins[i]->dims()[j],
+                          "The dimensions of all the input LoDTensors "
+                          "except for the specify axis should be "
+                          "matched exactly.");
+      }
+    }
+
     out->mutable_data<T>(ctx.GetPlace());
-    auto out_lod = concatLod<LoDTensor>(ins, axis, level);
+    auto out_lod = concatLoD<LoDTensor>(ins, axis, level);
     out->set_lod(out_lod);
 
     auto out_lod_level = out_lod[level];
-    for (size_t i = 0; i < out_lod_level.size() - 1; i++) {
+    for (size_t i = 0; i < out_lod_level.size() - 1; ++i) {
       Tensor out_t = out->Slice<T>(static_cast<int>(out_lod_level[i]),
                                    static_cast<int>(out_lod_level[i + 1]));
       auto out_stride = framework::stride(out_t.dims());
       size_t offset = 0;
 
-      for (size_t j = 0; j < n; j++) {
+      for (size_t j = 0; j < n; ++j) {
         auto in_lod_level = ins[j]->lod()[level];
         auto in_stride = framework::stride(ins[j]->dims());
         Tensor in_t = ins[j]->Slice<T>(static_cast<int>(in_lod_level[i]),
@@ -100,7 +119,7 @@ class SequenceConcatOpKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class SequenceConcatGradOpKernel : public framework::OpKernel {
+class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
@@ -118,17 +137,17 @@ class SequenceConcatGradOpKernel : public framework::OpKernel {
       x_grads[i]->mutable_data<T>(ctx.GetPlace());
     }
 
-    auto out_lod = concatLod<LoDTensor>(ins, axis, level);
+    auto out_lod = concatLoD<LoDTensor>(ins, axis, level);
     auto out_lod_level = out_lod[level];
 
-    for (size_t i = 0; i < out_lod_level.size() - 1; i++) {
+    for (size_t i = 0; i < out_lod_level.size() - 1; ++i) {
       Tensor out_grad_t =
           out_grad->Slice<T>(static_cast<int>(out_lod_level[i]),
                              static_cast<int>(out_lod_level[i + 1]));
       auto out_grad_stride = framework::stride(out_grad_t.dims());
       size_t offset = 0;
 
-      for (size_t j = 0; j < n; j++) {
+      for (size_t j = 0; j < n; ++j) {
         auto x_grad_lod_level = x_grads[j]->lod()[level];
         auto x_grad_stride = framework::stride(x_grads[j]->dims());
         Tensor x_grad_t =
