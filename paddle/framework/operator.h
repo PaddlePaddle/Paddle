@@ -478,23 +478,25 @@ class OperatorWithKernel : public OperatorBase {
     this->InferShape(&infer_shape_ctx);
 
     ExecutionContext ctx(*this, scope, dev_ctx);
-    auto& all_op_kernels = AllOpKernels();
-    auto kernels_it = all_op_kernels.find(type_);
-    PADDLE_ENFORCE_NE(kernels_it, all_op_kernels.end(), "op[%s] has no kernel",
-                      type_);
 
-    OpKernelMap& kernels = kernels_it->second;
-    DataType data_type = IndicateDataType(ctx);
-    auto kernel_key = OpKernelKey(data_type, dev_ctx);
-    if (kernels.find(kernel_key) == kernels.end()) {
-      const ::google::protobuf::EnumDescriptor* descriptor =
-          DataType_descriptor();
-      std::string data_type_str =
-          descriptor->FindValueByNumber(data_type)->name();
-      PADDLE_THROW("op[%s] has no kernel with data_type[%s]", type_,
-                   data_type_str);
+    // check if op[type] has kernel registered.
+    auto& all_op_kernels = AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(type_);
+    if (kernels_iter == all_op_kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel", type_);
     }
-    kernels.at(kernel_key)->Compute(ctx);
+
+    // check if op[type] have kernel for kernel_key
+    OpKernelMap& kernels = kernels_iter->second;
+    auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+    auto kernel_iter = kernels.find(kernel_key);
+
+    if (kernel_iter == kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel with kernel_key[%s]", type_,
+                   kernel_key);
+    }
+
+    kernel_iter->second->Compute(ctx);
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -542,6 +544,9 @@ class OperatorWithKernel : public OperatorBase {
     return static_cast<DataType>(data_type);
   }
 };
+
+std::ostream& operator<<(std::ostream& os,
+                         const OperatorWithKernel::OpKernelKey& kernel_key);
 
 }  // namespace framework
 }  // namespace paddle
