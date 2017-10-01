@@ -173,3 +173,14 @@ TEST(OpRegistry, CustomChecker) {
   int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }
+
+class CosineOpComplete : public paddle::framework::CosineOp {
+ public:
+  DEFINE_OP_CONSTRUCTOR(CosineOpComplete, paddle::framework::CosineOp);
+  DEFINE_OP_CLONE_METHOD(CosineOpComplete);
+};
+
+TEST(OperatorRegistrar, Test) {
+  using namespace paddle::framework;
+  OperatorRegistrar<CosineOpComplete, CosineOpProtoAndCheckerMaker> reg("cos");
+}
