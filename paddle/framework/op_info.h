@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -72,11 +73,6 @@ class OpInfoMap {
  public:
   static OpInfoMap& Instance();
 
-  OpInfoMap(const OpInfoMap& o) = delete;
-  OpInfoMap(OpInfoMap&& o) = delete;
-  OpInfoMap& operator=(const OpInfoMap& o) = delete;
-  OpInfoMap& operator=(OpInfoMap&& o) = delete;
-
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();
   }
@@ -112,6 +108,8 @@ class OpInfoMap {
  private:
   OpInfoMap() = default;
   std::unordered_map<std::string, const OpInfo> map_;
+
+  DISABLE_COPY_AND_ASSIGN(OpInfoMap);
 };
 
 }  // namespace framework
