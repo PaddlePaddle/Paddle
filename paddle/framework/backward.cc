@@ -161,7 +161,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
             insert_add_out = name;
           }
           if (output_idx != 0) {
-            insert_add_y = name + "@SHARED@" + std::to_string(output_idx);
+            insert_add_y = name + "@SHARED@" + std::to_string(output_idx-1);
           }
           insert_position.push_back(
               {dup_op.back(),
