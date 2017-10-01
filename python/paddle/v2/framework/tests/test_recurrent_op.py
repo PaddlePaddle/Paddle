@@ -197,7 +197,4 @@ class RecurrentGradientOpTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    exit(
-        0
-    )  # FIXME(yuyang18): InferShape has been removed, this unittest may error
     unittest.main()

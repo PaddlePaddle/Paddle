@@ -41,6 +41,11 @@ class RecurrentAlgorithm {
     stepnet_ = stepnet;
   }
 
+  /**
+   * InferShape must be called before Run.
+   */
+  void InferShape(const framework::Scope& scope) const;
+
  protected:
   /*
    * The step scopes will be stored in the father scope as a variable.
@@ -89,6 +94,11 @@ class RecurrentGradientAlgorithm {
   void LinkBootMemoryGradients(framework::Scope* step_scopes,
                                bool infer_shape_mode) const;
 
+  /**
+ * InferShape must be called before Run.
+ */
+  void InferShape(const framework::Scope& scope) const;
+
  protected:
   inline const std::vector<framework::Scope*>& GetStepScopes(
       const framework::Scope& scope) const {
@@ -123,7 +133,12 @@ class RecurrentOp : public framework::OperatorBase {
   void set_stepnet(std::unique_ptr<OperatorBase> net) {
     stepnet_ = std::move(net);
   }
+
   const OperatorBase& stepnet() const { return *stepnet_; }
+
+  void InferShape(const framework::Scope& scope) const {
+    alg_.InferShape(scope);
+  }
 
   static const rnn::ArgumentName kArgName;
 
@@ -145,6 +160,10 @@ class RecurrentGradientOp : public framework::OperatorBase {
             static_cast<const framework::OperatorBase&>(o)) {
     // TODO(yuyang18): Implement Copy ctor.
     PADDLE_THROW("Not Implemented");
+  }
+
+  void InferShape(const framework::Scope& scope) const {
+    alg_.InferShape(scope);
   }
 
   void Run(const framework::Scope& scope,
