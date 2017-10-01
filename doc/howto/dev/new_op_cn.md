@@ -206,7 +206,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
     - `REGISTER_OP` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`。
     - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
-    - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulKernel`类。
+    - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulGradKernel`类。
 
 
 - 在 `.cu`文件中注册GPU Kernel。
