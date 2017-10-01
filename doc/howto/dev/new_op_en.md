@@ -205,7 +205,7 @@ The definition of its corresponding backward operator, if applicable, is similar
 
     - `REGISTER_OP` registers the `ops::MulOp` class, type named `mul`, its type `ProtoMaker` is `ops::MulOpMaker`, registering `ops::MulOpGrad` as `mul_grad`.
     - `REGISTER_OP_WITHOUT_GRADIENT` registers an operator without gradient.
-    - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulKernel`.
+    - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulGradKernel`.
 
 
 - Registering GPU Kernel in `.cu` files
