@@ -43,8 +43,10 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of sum operator.").AsDuplicable();
-    AddOutput("Out", "the output tensor of sum operator.");
+    AddInput("X", "the input tensors of sum operator.")
+        .AsDuplicable()
+        .NotInGradient();
+    AddOutput("Out", "the output tensor of sum operator.").NotInGradient();
     AddComment(R"DOC(
 Sum the input tensors.
 
