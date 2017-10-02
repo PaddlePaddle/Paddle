@@ -17,7 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/framework/attribute.h"
-#include "paddle/framework/op_info.h"
+#include "paddle/framework/type_defs.h"
 #include "paddle/framework/var_desc.h"
 
 namespace paddle {
