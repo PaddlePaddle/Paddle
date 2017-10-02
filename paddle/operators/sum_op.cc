@@ -22,14 +22,15 @@ class SumOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
     auto x_dims = ctx->GetInputsDim("X");
-    PADDLE_ENFORCE(!x_dims.empty(), "Input(X) of SumOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SumOp should not be null.");
 
-    auto in_dim = x_dims[0];
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+
+    auto in_dim = x_dims[0];
     for (size_t i = 1; i < N; i++) {
       auto dim = x_dims[i];
       PADDLE_ENFORCE(in_dim == dim, "Input tensors must have same shape");

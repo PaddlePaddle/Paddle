@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/var_desc.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -33,9 +34,6 @@ class BlockDescBind {
  public:
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
-
-  BlockDescBind(const BlockDescBind &o) = delete;
-  BlockDescBind &operator=(const BlockDescBind &o) = delete;
 
   int32_t ID() const { return desc_->idx(); }
 
@@ -68,6 +66,8 @@ class BlockDescBind {
 
   std::deque<std::unique_ptr<OpDescBind>> ops_;
   std::unordered_map<std::string, std::unique_ptr<VarDescBind>> vars_;
+
+  DISABLE_COPY_AND_ASSIGN(BlockDescBind);
 };
 }  // namespace framework
 }  // namespace paddle
