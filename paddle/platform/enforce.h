@@ -185,7 +185,7 @@ inline void throw_on_error(T e) {
         std::make_exception_ptr(                                       \
             std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
         __FILE__, __LINE__);                                           \
-  } while (0)
+  } while (false)
 
 #define PADDLE_ENFORCE(...)                                             \
   do {                                                                  \
@@ -195,7 +195,7 @@ inline void throw_on_error(T e) {
       throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
                                               __FILE__, __LINE__);      \
     }                                                                   \
-  } while (0)
+  } while (false)
 
 /*
  * Some enforce helpers here, usage:

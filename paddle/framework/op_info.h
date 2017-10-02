@@ -19,16 +19,11 @@
 #include <unordered_map>
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.h"
-#include "paddle/platform/macros.h"
+#include "paddle/framework/type_defs.h"
+
 
 namespace paddle {
 namespace framework {
-class OperatorBase;
-using VariableNameMap = std::map<std::string, std::vector<std::string>>;
-
-using OpCreator = std::function<OperatorBase*(
-    const std::string& /*type*/, const VariableNameMap& /*inputs*/,
-    const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
 class GradOpDescMakerBase {
  public:
