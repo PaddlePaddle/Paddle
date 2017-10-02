@@ -45,11 +45,11 @@ __global__ void ScatterCUDAKernel(const T* params, const int* indices,
  * return: output tensor
  */
 template <typename T>
-void GPUScatterAssign(const platform::Place& place,
+void GPUScatterAssign(const platform::DeviceContext& ctx,
                       const paddle::framework::Tensor* src,
                       const paddle::framework::Tensor* index,
                       paddle::framework::Tensor* output) {
-  PADDLE_ENFORCE(platform::is_gpu_place(place));
+  // PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
   PADDLE_ENFORCE(index->dims().size() == 1);
   int index_size = index->dims()[0];
@@ -70,8 +70,10 @@ void GPUScatterAssign(const platform::Place& place,
   int n = slice_size * index_size;
   int grid = (n + block - 1) / block;
 
-  ScatterCUDAKernel<T><<<grid, block>>>(p_src, p_index, p_output, index_size,
-                                        slice_size);
+  ScatterCUDAKernel<T><<<
+      grid, block, 0,
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      p_src, p_index, p_output, index_size, slice_size);
 }
 
 }  // namespace operators
