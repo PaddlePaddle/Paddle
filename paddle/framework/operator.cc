@@ -245,5 +245,12 @@ std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
   return res;
 }
 
+std::ostream& operator<<(std::ostream& os,
+                         const OperatorWithKernel::OpKernelKey& kernel_key) {
+  os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
+     << "]";
+  return os;
+}
+
 }  // namespace framework
 }  // namespace paddle
