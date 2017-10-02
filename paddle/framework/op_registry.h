@@ -21,49 +21,42 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/details/op_registry.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/grad_op_builder.h"
-#include "paddle/framework/op_info.h"
-#include "paddle/framework/op_proto_maker.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
+template <typename... ARGS>
+struct OperatorRegistrar {
+  explicit OperatorRegistrar(const char* op_type) : op_type(op_type) {
+    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
+                   "'%s' is registered more than once.", op_type);
+    static_assert(sizeof...(ARGS) != 0,
+                  "OperatorRegistrar should be invoked at least by OpClass");
+    details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
+  }
+
+  ~OperatorRegistrar() { OpInfoMap::Instance().Insert(op_type, info); }
+
+  const char* op_type;
+
+  OpInfo info;
+};
+
 class OpRegistry {
  public:
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
                          const std::string& grad_op_type) {
-    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
-                   "'%s' is registered more than once.", op_type);
-    OpInfo op_info;
-    op_info.creator_ = [](
-        const std::string& type, const VariableNameMap& inputs,
-        const VariableNameMap& outputs, const AttributeMap& attrs) {
-      return new OpType(type, inputs, outputs, attrs);
-    };
-    op_info.grad_op_type_ = grad_op_type;
-    if (std::type_index(typeid(ProtoMakerType)) !=
-        std::type_index(typeid(NOPMaker))) {
-      op_info.proto_ = new OpProto;
-      op_info.checker_ = new OpAttrChecker;
-      auto maker = ProtoMakerType(op_info.proto_, op_info.checker_);
-      maker.Validate();
-      op_info.proto_->set_type(op_type);
-      PADDLE_ENFORCE(
-          op_info.proto_->IsInitialized(),
-          "Fail to initialize %s's OpProto, because %s is not initialized",
-          op_type, op_info.proto_->InitializationErrorString());
-    } else {
-      op_info.proto_ = nullptr;
-      op_info.checker_ = nullptr;
-    }
-    OpInfoMap::Instance().Insert(op_type, op_info);
+    OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
+    reg.info.grad_op_type_ = grad_op_type;
     // register gradient op
     if (!grad_op_type.empty()) {
-      RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "");
+      OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
     }
   }
 
