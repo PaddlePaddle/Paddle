@@ -14,12 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/framework/op_desc.h"
 #include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace framework {
 
 OperatorBase* BuildGradOp(const OperatorBase* op);
+
+void CompleteGradOpDesc(const OpDescBind* forw_op, OpDescBind* grad_op);
 
 }  // namespace framework
 }  // namespace paddle

@@ -60,9 +60,15 @@ class OpDescBind {
 
   void SetBlockAttr(const std::string &name, BlockDescBind &block);
 
+  // Only be used in C++
+  void SetAttrMap(const std::unordered_map<std::string, Attribute> &attr_map);
+
   Attribute GetAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
+
+  // Only be used in C++
+  const std::unordered_map<std::string, Attribute> &GetAttrMap() const;
 
  private:
   struct SetAttrDescVisitor : public boost::static_visitor<void> {

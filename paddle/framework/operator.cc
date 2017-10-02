@@ -22,14 +22,14 @@ namespace framework {
 template <>
 Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_.get_eigen_device<Eigen::DefaultDevice>();
+  return *device_context_.GetEigenDevice<platform::CPUPlace>();
 }
 
 #ifndef PADDLE_ONLY_CPU
 template <>
 Eigen::GpuDevice&
 ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_.get_eigen_device<Eigen::GpuDevice>();
+  return *device_context_.GetEigenDevice<platform::GPUPlace>();
 }
 #endif
 
@@ -243,6 +243,13 @@ std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
                                          : var->GetMutable<LoDTensor>();
                  });
   return res;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const OperatorWithKernel::OpKernelKey& kernel_key) {
+  os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
+     << "]";
+  return os;
 }
 
 }  // namespace framework

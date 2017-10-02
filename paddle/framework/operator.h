@@ -296,21 +296,6 @@ template <>
 std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
     const std::string& name) const;
 
-template <typename T>
-struct EigenDeviceConverter;
-
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
-
-#ifndef PADDLE_ONLY_CPU
-template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
-#endif
-
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
@@ -318,8 +303,8 @@ class ExecutionContext : public InferShapeContext {
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
-            typename DeviceType =
-                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+            typename DeviceType = typename platform::EigenDeviceConverter<
+                PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
@@ -347,6 +332,32 @@ class RuntimeInferShapeContext : public InferShapeContextBase {
     auto ipt = op_.Output(name);
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
+  }
+
+  bool HasInputs(const std::string& name) const {
+    auto inputs = op_.Inputs(name);
+    if (inputs.size() == 0UL) {
+      return false;
+    }
+    for (auto& input : inputs) {
+      if (scope_.FindVar(input) == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool HasOutputs(const std::string& name) const {
+    auto outputs = op_.Outputs(name);
+    if (outputs.size() == 0UL) {
+      return false;
+    }
+    for (auto& output : outputs) {
+      if (scope_.FindVar(output) == nullptr) {
+        return false;
+      }
+    }
+    return true;
   }
 
   DDim GetInputDim(const std::string& name) const {
@@ -467,9 +478,25 @@ class OperatorWithKernel : public OperatorBase {
     this->InferShape(&infer_shape_ctx);
 
     ExecutionContext ctx(*this, scope, dev_ctx);
-    auto& opKernel = AllOpKernels().at(type_).at(
-        OpKernelKey(IndicateDataType(ctx), dev_ctx));
-    opKernel->Compute(ctx);
+
+    // check if op[type] has kernel registered.
+    auto& all_op_kernels = AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(type_);
+    if (kernels_iter == all_op_kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel", type_);
+    }
+
+    // check if op[type] have kernel for kernel_key
+    OpKernelMap& kernels = kernels_iter->second;
+    auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+    auto kernel_iter = kernels.find(kernel_key);
+
+    if (kernel_iter == kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel with kernel_key[%s]", type_,
+                   kernel_key);
+    }
+
+    kernel_iter->second->Compute(ctx);
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -517,6 +544,9 @@ class OperatorWithKernel : public OperatorBase {
     return static_cast<DataType>(data_type);
   }
 };
+
+std::ostream& operator<<(std::ostream& os,
+                         const OperatorWithKernel::OpKernelKey& kernel_key);
 
 }  // namespace framework
 }  // namespace paddle
