@@ -98,7 +98,7 @@ class OpDescBind {
     std::vector<typename MapType::key_type> ret_val;
     ret_val.reserve(map.size());
     std::transform(
-        map.begin(), map.end(), ret_val.begin(),
+        map.begin(), map.end(), std::back_inserter(ret_val),
         [](const typename MapType::value_type &pair) { return pair.first; });
     return ret_val;
   }

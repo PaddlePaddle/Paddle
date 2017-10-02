@@ -42,19 +42,11 @@ struct OpInfo {
     return *proto_;
   }
 
-  const OpAttrChecker& Checker() const {
-    PADDLE_ENFORCE_NOT_NULL(checker_,
-                            "Operator Checker has not been registered");
-    return *checker_;
-  }
-
   const OpCreator& Creator() const {
     PADDLE_ENFORCE_NOT_NULL(creator_,
                             "Operator Creator has not been registered");
     return creator_;
   }
-
-  bool HasGradientOp() const { return !grad_op_type_.empty(); }
 };
 
 class OpInfoMap {

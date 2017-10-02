@@ -23,7 +23,9 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type, const VariableNameMap& inputs,
     const VariableNameMap& outputs, AttributeMap attrs) {
   auto& info = OpInfoMap::Instance().Get(type);
-  info.Checker().Check(attrs);
+  if (info.checker_ != nullptr) {
+    info.checker_->Check(attrs);
+  }
   auto op = info.Creator()(type, inputs, outputs, attrs);
   return std::unique_ptr<OperatorBase>(op);
 }
