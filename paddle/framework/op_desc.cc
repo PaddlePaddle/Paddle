@@ -112,6 +112,30 @@ const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
   return attrs_;
 }
 
+struct SetAttrDescVisitor : public boost::static_visitor<void> {
+  explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
+  mutable OpDesc::Attr *attr_;
+  void operator()(int v) const { attr_->set_i(v); }
+  void operator()(float v) const { attr_->set_f(v); }
+  void operator()(const std::string &v) const { attr_->set_s(v); }
+  void operator()(bool b) const { attr_->set_b(b); }
+
+  void operator()(const std::vector<int> &v) const {
+    VectorToRepeated(v, attr_->mutable_ints());
+  }
+  void operator()(const std::vector<float> &v) const {
+    VectorToRepeated(v, attr_->mutable_floats());
+  }
+  void operator()(const std::vector<std::string> &v) const {
+    VectorToRepeated(v, attr_->mutable_strings());
+  }
+  void operator()(const std::vector<bool> &v) const {
+    VectorToRepeated(v, attr_->mutable_bools());
+  }
+  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->idx()); }
+  void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
+};
+
 void OpDescBind::Sync() {
   if (need_update_) {
     this->op_desc_.mutable_inputs()->Clear();
@@ -134,7 +158,8 @@ void OpDescBind::Sync() {
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
           static_cast<framework::AttrType>(attr.second.which() - 1));
-      boost::apply_visitor(SetAttrDescVisitor(attr_desc), attr.second);
+      SetAttrDescVisitor visitor(attr_desc);
+      boost::apply_visitor(visitor, attr.second);
     }
 
     need_update_ = false;
