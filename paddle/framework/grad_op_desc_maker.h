@@ -79,6 +79,8 @@ class GradOpDescMakerBase {
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {
  public:
+  using GradOpDescMakerBase::GradOpDescMakerBase;
+
   std::vector<OpDescBind> operator()() const { return {this->Apply()}; }
 
  protected:
@@ -86,6 +88,9 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
 };
 
 class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
+ public:
+  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+
  protected:
   virtual OpDescBind Apply() const {
     OpDescBind grad;
