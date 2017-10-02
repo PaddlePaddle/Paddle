@@ -48,7 +48,7 @@ class RecurrentAlgorithm {
    * NOTE the scopes are reused in both the forward and backward, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(const framework::Scope& scope) const;
+  void CreateScopes(const framework::Scope& scope, size_t seq_len) const;
 
   const std::vector<framework::Scope*>& GetStepScopes(
       const framework::Scope& scope) const {
@@ -56,12 +56,11 @@ class RecurrentAlgorithm {
                 ->GetMutable<std::vector<framework::Scope*>>();
   }
 
-  void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
+  void InitMemories(framework::Scope* step_scopes) const;
 
  private:
   std::unique_ptr<framework::OperatorBase>* stepnet_;
   rnn::Argument* arg_;
-  mutable size_t seq_len_;
 };
 
 class RecurrentGradientAlgorithm {
@@ -86,8 +85,7 @@ class RecurrentGradientAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void LinkBootMemoryGradients(framework::Scope* step_scopes,
-                               bool infer_shape_mode) const;
+  void LinkBootMemoryGradients(framework::Scope* step_scopes) const;
 
  protected:
   inline const std::vector<framework::Scope*>& GetStepScopes(
@@ -98,7 +96,6 @@ class RecurrentGradientAlgorithm {
 
  private:
   rnn::Argument* arg_;
-  mutable size_t seq_len_;
   std::unique_ptr<framework::OperatorBase>* stepnet_;
 };
 
@@ -123,6 +120,7 @@ class RecurrentOp : public framework::OperatorBase {
   void set_stepnet(std::unique_ptr<OperatorBase> net) {
     stepnet_ = std::move(net);
   }
+
   const OperatorBase& stepnet() const { return *stepnet_; }
 
   static const rnn::ArgumentName kArgName;
