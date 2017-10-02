@@ -319,100 +319,82 @@ class ExecutionContext : public InferShapeContext {
 
 class CompileTimeInferShapeContext : public InferShapeContextBase {
  public:
-  CompileTimeInferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
+  CompileTimeInferShapeContext(const OpDescBind& op, const BlockDescBind& block)
+      : op_(op), block_(block) {}
 
   bool HasInput(const std::string& name) const {
-    auto ipt = op_.Input(name);
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    const std::vector<std::string>& input_names = op_.Input(name);
+    PADDLE_ENFORCE_EQ(input_names.size(), 1UL, "Inputs(%s) length is not 1",
+                      name);
+    return block_.HasVar(input_names[0]);
   }
 
   bool HasOutput(const std::string& name) const {
-    auto ipt = op_.Output(name);
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    const std::vector<std::string>& output_names = op_.Output(name);
+    PADDLE_ENFORCE_EQ(output_names.size(), 1UL, "Outputs(%s) length is not 1",
+                      name);
+    return block_.HasVar(output_names[0]);
   }
 
   bool HasInputs(const std::string& name) const {
-    auto inputs = op_.Inputs(name);
-    if (inputs.size() == 0UL) {
-      return false;
-    }
-    for (auto& input : inputs) {
-      if (scope_.FindVar(input) == nullptr) {
-        return false;
-      }
+    const std::vector<std::string>& input_names = op_.Input(name);
+    PADDLE_ENFORCE_GT(input_names.size(), 0UL, "Inputs(%s) length is 0", name);
+    for (auto& input : input_names) {
+      if (!block_.HasVar(input)) return false;
     }
     return true;
   }
 
   bool HasOutputs(const std::string& name) const {
-    auto outputs = op_.Outputs(name);
-    if (outputs.size() == 0UL) {
-      return false;
-    }
-    for (auto& output : outputs) {
-      if (scope_.FindVar(output) == nullptr) {
-        return false;
-      }
+    const std::vector<std::string>& output_names = op_.Output(name);
+    PADDLE_ENFORCE_GT(output_names.size(), 0UL, "Inputs(%s) length is 0", name);
+    for (auto& output : output_names) {
+      if (!block_.HasVar(name)) return false;
     }
     return true;
   }
 
   DDim GetInputDim(const std::string& name) const {
-    return GetDim(op_.Input(name));
+    std::vector<DDim> ddims = GetInputsDim(name);
+    PADDLE_ENFORCE_EQ(ddims.size(), 1UL, "Inputs(%s) length is not 1", name);
+    return ddims[0];
   }
 
   void SetInputDim(const std::string& name, const DDim& dim) {
-    SetDim(op_.Input(name), dim);
+    SetInputsDim(name, {dim});
   }
 
   DDim GetOutputDim(const std::string& name) const {
-    return GetDim(op_.Output(name));
+    std::vector<DDim> ddims = GetOutputsDim(name);
+    PADDLE_ENFORCE_EQ(ddims.size(), 1UL, "Outputs(%s) length is not 1", name);
+    return ddims[0];
   }
 
   void SetOutputDim(const std::string& name, const DDim& dim) {
-    SetDim(op_.Output(name), dim);
+    SetOutputsDim(name, {dim});
   }
 
-  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
+  AttrReader Attrs() const { return AttrReader(op_.GetAttrMap()); }
 
   const std::vector<std::string>& Inputs(const std::string& name) const {
-    return op_.Inputs(name);
+    return op_.Input(name);
   }
 
   const std::vector<std::string>& Outputs(const std::string& name) const {
-    return op_.Outputs(name);
+    return op_.Output(name);
   }
 
  private:
-  template <bool Allocate>
-  Tensor* GetTensor(const std::string& name) const {
-    Tensor* t = nullptr;
-    auto* var = scope_.FindVar(name);
-    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
-      if (Allocate) {
-        t = var->GetMutable<LoDTensor>();
-      } else {
-        PADDLE_THROW("Variable(%s) should be tensor", name);
-      }
-    } else {
-      t = GetTensorFromVar(scope_.FindVar(name));
-    }
-    return t;
-  }
-
   DDim GetDim(const std::string& name) const {
-    return GetTensor<false>(name)->dims();
+    return framework::make_ddim(block_.Var(name)->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) {
-    GetTensor<true>(name)->Resize(dim);
+    block_.Var(name)->SetShape(framework::vectorize(dim));
   }
 
-  const OperatorBase& op_;
-  const Scope& scope_;
+  const OpDescBind& op_;
+  const BlockDescBind& block_;
 };
 
 class RuntimeInferShapeContext : public InferShapeContextBase {

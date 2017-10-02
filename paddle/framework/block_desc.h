@@ -45,6 +45,8 @@ class BlockDescBind {
 
   VarDescBind *Var(const std::string &name_bytes) const;
 
+  bool HasVar(const std::string &var_name) const;
+
   std::vector<VarDescBind *> AllVars() const;
 
   BlockDescBind *ParentBlock() const;
