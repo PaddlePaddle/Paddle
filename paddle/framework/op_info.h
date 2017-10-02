@@ -20,7 +20,7 @@
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/type_defs.h"
-
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
