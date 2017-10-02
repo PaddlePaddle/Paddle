@@ -33,29 +33,42 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   static const rnn::ArgumentName kArgName;
   using value_type = float;
 
+  DynamicRecurrentOp(const std::string& type,
+                     const framework::VariableNameMap& inputs,
+                     const framework::VariableNameMap& outputs,
+                     const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  DynamicRecurrentOp(const DynamicRecurrentOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    // TODO(yuyang18): Implement copy ctor well.
+    PADDLE_THROW("Not implemented");
+  }
+
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
 
   /*
    * Split the inputs(LoDTensors) to segments for each time step.
    */
-  void SplitInputs(const Scope& scope) const;
+  void SplitInputs() const;
 
   /*
    * Create step-scopes to store temporary outputs in each time steps.
    */
-  void CreateScopes(const Scope& scope) const;
+  void CreateScopes() const;
 
   /*
    * Link TensorArray steps to the corresponding variables located in
    * step-scopes.
    */
-  void WriteStepInputs(const Scope& scope) const;
+  void WriteStepInputs() const;
 
   /*
    * Write output of each step to the corresponding TensorArray.
    */
-  void WriteStepOutputs(const Scope& scope) const;
+  void WriteStepOutputs() const;
 
   /*
    * Initialize the states, each state will have a corresponding pre-state,
@@ -63,12 +76,12 @@ class DynamicRecurrentOp : public framework::OperatorBase {
    * pre-state in the first time step will be initialized with an zero tensor or
    * a tensor in parent scope if is provided.
    */
-  void InitStates(const Scope& scope) const;
+  void InitStates() const;
 
   /*
    * Concatenate outputs in each time step and generate a LoDTensor.
    */
-  void ConcatOutputs(const Scope& scope) const;
+  void ConcatOutputs() const;
 
   /*
    * set a stepnet that is created according to a RecurrentOp's stepnet.
@@ -78,18 +91,9 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   }
   const OperatorBase& GetStepNet() const { return *stepnet_; }
 
-  /*
-   * Create the temporary inputs of a step-net in a step-scope.
-   */
-  void CreateTempInputsInScope(Scope& scope) const;
-
-  /*
-   * Create the temporary outputs of a step-net in a step-scope.
-   */
-  void CreateTempOutputsInScope(Scope& scope) const;
-
  protected:
   struct ArgCache {
+    Scope const* scope;
     std::vector<Scope*>* scopes;
     std::map<std::string, Variable*> inlinks;
     std::map<std::string, Variable*> outlinks;
@@ -123,7 +127,19 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   mutable std::map<std::string, std::vector<framework::DySeqMeta>>
       dy_seq_metas_;
   rnn::Argument arg_;
-  mutable ArgCache arg_cache_;
+  mutable ArgCache cache_;
+};
+
+class DynamicRecurrentGradientOp : public framework::OperatorBase {
+ public:
+  DynamicRecurrentGradientOp(const std::string& type,
+                             const framework::VariableNameMap& inputs,
+                             const framework::VariableNameMap& outputs,
+                             const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override;
 };
 
 }  // namespace operators

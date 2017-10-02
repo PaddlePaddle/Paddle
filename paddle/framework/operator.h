@@ -142,9 +142,9 @@ class OperatorBase {
 // Macro for define a clone method.
 // If you are writing an kernel operator, `Clone` will be defined when you
 // register it. i.e. `Clone` method is not needed to define by yourself.
-#define DEFINE_OP_CLONE_METHOD(cls)                       \
-  std::unique_ptr<OperatorBase> Clone() const final {     \
-    return std::unique_ptr<OperatorBase>(new cls(*this)); \
+#define DEFINE_OP_CLONE_METHOD(cls)                                            \
+  std::unique_ptr<::paddle::framework::OperatorBase> Clone() const final {     \
+    return std::unique_ptr<::paddle::framework::OperatorBase>(new cls(*this)); \
   }
 
 // Macro for define a default constructor for Operator.

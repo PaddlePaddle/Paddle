@@ -67,14 +67,15 @@ class OpRegistry {
     }
   }
 
-  static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
-                                                const VariableNameMap& inputs,
-                                                const VariableNameMap& outputs,
-                                                AttributeMap attrs);
+  static std::unique_ptr<::paddle::framework::OperatorBase> CreateOp(
+      const std::string& type, const VariableNameMap& inputs,
+      const VariableNameMap& outputs, AttributeMap attrs);
 
-  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
+  static std::unique_ptr<::paddle::framework::OperatorBase> CreateOp(
+      const OpDesc& op_desc);
 
-  static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
+  static std::unique_ptr<::paddle::framework::OperatorBase> CreateGradOp(
+      const OperatorBase& op);
 };
 
 class Registrar {
