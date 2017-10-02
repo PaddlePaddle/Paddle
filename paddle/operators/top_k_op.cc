@@ -22,21 +22,26 @@ class TopkOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input of TopkOP must be initialized.");
-    auto *input = ctx.Input<framework::Tensor>("X");
-    const int k = static_cast<int>(ctx.Attr<int>("k"));
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of TopkOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of TopkOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Indices"),
+                   "Output(Indices) of TopkOp should not be null.");
+
+    auto input_dims = ctx->GetInputDim("X");
+    const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
 
     PADDLE_ENFORCE_GE(k, 1, "k must >= 1");
-    PADDLE_ENFORCE_GE(input->dims().size(), 1, "input must have >= 1d shape");
-    PADDLE_ENFORCE_GE(input->dims()[input->dims().size() - 1], k,
+    PADDLE_ENFORCE_GE(input_dims.size(), 1, "input must have >= 1d shape");
+    PADDLE_ENFORCE_GE(input_dims[input_dims.size() - 1], k,
                       "input must have >= k columns");
 
-    framework::DDim dims = input->dims();
+    framework::DDim dims = input_dims;
     dims[dims.size() - 1] = k;
-    ctx.Output<Tensor>("Out")->Resize(dims);
-    ctx.Output<Tensor>("Indices")->Resize(dims);
+    ctx->SetOutputDim("Out", dims);
+    ctx->SetOutputDim("Indices", dims);
   }
 };
 

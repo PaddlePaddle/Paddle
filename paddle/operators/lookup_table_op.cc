@@ -22,19 +22,31 @@ class LookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &context) const override {
-    auto table_t = context.Input<Tensor>("W");
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto output_t = context.Output<Tensor>("Out");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("W"),
+                   "Input(W) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Ids"),
+                   "Input(Ids) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of LookupTableOp should not be null.");
 
-    output_t->Resize({ids_t->dims()[0], table_t->dims()[1]});
+    auto table_dims = ctx->GetInputDim("W");
+    auto ids_dims = ctx->GetInputDim("Ids");
+
+    ctx->SetOutputDim("Out", {ids_dims[0], table_dims[1]});
+    ctx->ShareLoD("Ids", /*->*/ "Out");
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
   }
 };
 
 class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupTableOpMaker(framework::OpProto *proto,
-                     framework::OpAttrChecker *op_checker)
+  LookupTableOpMaker(framework::OpProto* proto,
+                     framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("W",
              "An input represents embedding tensors,"
@@ -43,9 +55,13 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "An input with type int32 or int64"
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type with W.");
-    AddComment(
-        "This operator is used to perform lookups on the parameter W,"
-        "then concatenated into a dense tensor.");
+    AddComment(R"DOC(
+This operator is used to perform lookups on the parameter W,
+then concatenated into a dense tensor.
+
+The input `Ids` can carry the LoD (Level of Details) information,
+or not. And the output only shares the LoD with input `Ids`.
+)DOC");
   }
 };
 
@@ -54,10 +70,14 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &context) const override {
-    auto table = context.Input<Tensor>("W");
-    auto d_table = context.Output<Tensor>(framework::GradVarName("W"));
-    d_table->Resize(table->dims());
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    auto table_dims = ctx->GetInputDim("W");
+    ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
   }
 };
 

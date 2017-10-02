@@ -26,27 +26,7 @@ namespace operators {
 using Scope = framework::Scope;
 using Variable = framework::Variable;
 using Tensor = framework::Tensor;
-
-void RecurrentAlgorithm::InferShape(const Scope& scope) const {
-  seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
-                 ->GetMutable<Tensor>()
-                 ->dims()[0];
-  CreateScopes(scope);
-  auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-  InitMemories(step_scopes[0], true /*infer_shape_mode*/);
-
-  for (size_t i = 0; i < seq_len_; i++) {
-    if (i > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, i, -1,
-                        true /*infer_shape_mode*/);
-    }
-    (*stepnet_)->InferShape(*step_scopes[i]);
-  }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-}
+using LoDTensor = framework::LoDTensor;
 
 void RecurrentAlgorithm::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
@@ -77,7 +57,6 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
   PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "net_op has no outputs");
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
@@ -88,7 +67,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
         // the weight are located in parent scope
         for (auto& var_name : input.second) {
           if (!step_scope.FindVar(var_name)) {
-            step_scope.NewVar(var_name)->GetMutable<Tensor>();
+            step_scope.NewVar(var_name)->GetMutable<LoDTensor>();
           }
         }
       }
@@ -106,11 +85,12 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
 void RecurrentAlgorithm::InitMemories(Scope* step_scope,
                                       bool infer_shape_mode) const {
   for (auto& attr : arg_->memories) {
-    Tensor* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<Tensor>();
+    auto* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<LoDTensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists", attr.var,
                    attr.boot_var);
-    Tensor* boot_mem = step_scope->FindVar(attr.boot_var)->GetMutable<Tensor>();
+    auto* boot_mem =
+        step_scope->FindVar(attr.boot_var)->GetMutable<LoDTensor>();
     if (infer_shape_mode) {
       pre_mem->Resize(boot_mem->dims());
       PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
@@ -121,14 +101,12 @@ void RecurrentAlgorithm::InitMemories(Scope* step_scope,
 }
 
 const rnn::ArgumentName RecurrentOp::kArgName{
-    "step_net", "step_scopes",  "inlinks",
-    "outlinks", "inlink_alias", "outlink_alias",
+    "step_net", "step_scopes",  "inlinks",      "outlinks",
     "memories", "pre_memories", "boot_memories"};
 
 const rnn::ArgumentName RecurrentGradientOp::kArgName{
-    "step_net",    "step_scopes",  "outlink@grad",
-    "inlink@grad", "inlink_alias", "outlink_alias",
-    "memories",    "pre_memories", "boot_memories@grad"};
+    "step_net", "step_scopes@GRAD", "outlinks@GRAD",     "inlinks@GRAD",
+    "memories", "pre_memories",     "boot_memories@GRAD"};
 
 RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::VariableNameMap& inputs,
@@ -158,8 +136,6 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.inlink_alias, "alias of inlinks");
-    AddAttr<std::vector<std::string>>(name.outlink_alias, "alias of outlinks");
     AddAttr<std::vector<std::string>>(name.pre_memories,
                                       "names of pre-memories");
     AddAttr<std::vector<std::string>>(name.memories, "names of memories");
@@ -192,9 +168,9 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
                    "memory variable [%s] does not exists", attr.var);
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "boot variable [%s] does not exists", attr.boot_var);
-    Tensor* mem_grad = step_scope->NewVar(attr.var)->GetMutable<Tensor>();
-    Tensor* boot_mem_grad =
-        step_scope->NewVar(attr.boot_var)->GetMutable<Tensor>();
+    auto* mem_grad = step_scope->NewVar(attr.var)->GetMutable<LoDTensor>();
+    auto* boot_mem_grad =
+        step_scope->NewVar(attr.boot_var)->GetMutable<LoDTensor>();
     if (infer_shape_mode) {
       boot_mem_grad->Resize(mem_grad->dims());
     } else {
@@ -203,37 +179,18 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
   }
 }
 
-void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
-  seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
-                 ->GetMutable<Tensor>()
-                 ->dims()[0];
-  auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-  for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
-    if (static_cast<size_t>(step_id) != seq_len_ - 1) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1,
-                        true /*infer_shape_mode*/);
-    }
-    (*stepnet_)->InferShape(*step_scopes[step_id]);
-  }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-  LinkBootMemoryGradients(step_scopes[0], true /*infer_shape_mode*/);
-}
-
 RecurrentGradientOp::RecurrentGradientOp(
     const std::string& type, const framework::VariableNameMap& inputs,
     const framework::VariableNameMap& outputs,
     const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
-  rnn::InitArgument(kArgName, &arg_, *this);
+  rnn::InitArgument(kArgName, &arg_, *this, true /*is grad*/);
   alg_.Init(&arg_, &stepnet_);
 }
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(
-    recurrent, paddle::operators::RecurrentOp,
-    paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);
+REGISTER_OP(recurrent, paddle::operators::RecurrentOp,
+            paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
+            recurrent_grad, paddle::operators::RecurrentGradientOp);

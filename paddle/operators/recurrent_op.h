@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
-// TODO(Yan Chunwei):
+// TODO(Superjom)
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
 // 3. Internal Memory.
@@ -40,11 +40,6 @@ class RecurrentAlgorithm {
     arg_ = arg;
     stepnet_ = stepnet;
   }
-
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const;
 
  protected:
   /*
@@ -94,11 +89,6 @@ class RecurrentGradientAlgorithm {
   void LinkBootMemoryGradients(framework::Scope* step_scopes,
                                bool infer_shape_mode) const;
 
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const;
-
  protected:
   inline const std::vector<framework::Scope*>& GetStepScopes(
       const framework::Scope& scope) const {
@@ -123,12 +113,6 @@ class RecurrentOp : public framework::OperatorBase {
             static_cast<const framework::OperatorBase&>(o)) {
     // TODO(yuyang18): Implement copy ctor well.
     PADDLE_THROW("Not implemented");
-  }
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const override {
-    alg_.InferShape(scope);
   }
 
   void Run(const framework::Scope& scope,
@@ -163,13 +147,6 @@ class RecurrentGradientOp : public framework::OperatorBase {
     PADDLE_THROW("Not Implemented");
   }
 
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const override {
-    alg_.InferShape(scope);
-  }
-
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
@@ -177,6 +154,9 @@ class RecurrentGradientOp : public framework::OperatorBase {
 
   static const rnn::ArgumentName kArgName;
 
+  /*
+   * set a stepnet that is created according to a RecurrentOp's stepnet.
+   */
   void set_stepnet(std::unique_ptr<OperatorBase> net) {
     stepnet_ = std::move(net);
   }

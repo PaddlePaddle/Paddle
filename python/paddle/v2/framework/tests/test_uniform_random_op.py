@@ -4,7 +4,7 @@ import paddle.v2.framework.core as core
 import numpy
 
 
-class UniformRandomTest(unittest.TestCase):
+class TestUniformRandomOp(unittest.TestCase):
     def test_uniform_random_cpu(self):
         self.uniform_random_test(place=core.CPUPlace())
 
@@ -24,7 +24,6 @@ class UniformRandomTest(unittest.TestCase):
             max=10.0,
             seed=10)
 
-        op.infer_shape(scope)
         ctx = core.DeviceContext.create(place)
         op.run(scope, ctx)
         tensor = numpy.array(scope.find_var('X').get_tensor())

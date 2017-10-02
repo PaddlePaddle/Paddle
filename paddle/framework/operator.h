@@ -15,14 +15,18 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "op_info.h"
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
@@ -55,6 +59,9 @@ class OperatorBase;
 class InferShapeContext;
 class ExecutionContext;
 
+extern const Tensor* GetTensorFromVar(const Variable* var);
+extern Tensor* GetTensorFromVar(Variable* var);
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -76,10 +83,6 @@ class OperatorBase {
   }
 
   virtual std::string DebugString() const;
-
-  /// InferShape infer the size of Variables used by this Operator with
-  /// information inside scope
-  virtual void InferShape(const Scope& scope) const = 0;
 
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope,
@@ -158,77 +161,11 @@ class OperatorBase {
 class NOP : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
   std::unique_ptr<OperatorBase> Clone() const override {
     return std::unique_ptr<OperatorBase>(new NOP(*this));
   }
-};
-
-// this class not only make proto but also init attribute checkers.
-class OpProtoAndCheckerMaker {
- public:
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : proto_(proto), op_checker_(op_checker) {}
-
-  ~OpProtoAndCheckerMaker() {
-    PADDLE_ENFORCE(validated_, "should call Validate after build");
-  }
-
-  void Validate();
-
- protected:
-  struct VariableBuilder {
-    OpProto::Var* var_;
-
-    VariableBuilder& AsDuplicable() {
-      var_->set_duplicable(true);
-      return *this;
-    }
-
-    VariableBuilder& AsIntermediate() {
-      var_->set_intermediate(true);
-      return *this;
-    }
-
-    VariableBuilder& NotInGradient() {
-      var_->set_not_in_gradient(true);
-      return *this;
-    }
-  };
-
-  VariableBuilder AddInput(const std::string& name, const std::string& comment);
-
-  VariableBuilder AddOutput(const std::string& name,
-                            const std::string& comment);
-
-  template <typename T>
-  TypedAttrChecker<T>& AddAttr(const std::string& name,
-                               const std::string& comment,
-                               bool generated = false) {
-    auto* attr = proto_->add_attrs();
-    attr->set_name(name);
-    attr->set_comment(comment);
-    attr->set_generated(generated);
-    attr->set_type(AttrTypeID<T>());
-    return op_checker_->AddAttrChecker<T>(name);
-  }
-
-  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
-
- private:
-  void CheckNoDuplicatedInOutAttrs();
-
-  OpProto* proto_;
-  OpAttrChecker* op_checker_;
-  bool validated_{false};
-};
-
-class NOPMaker : public OpProtoAndCheckerMaker {
- public:
-  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
 };
 
 class InferShapeContext {
@@ -276,9 +213,9 @@ class InferShapeContext {
     return res;
   }
 
-  std::vector<const Variable*> MultiOutputVar(const std::string& name) const {
+  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
     auto names = op_.Outputs(name);
-    std::vector<const Variable*> res;
+    std::vector<Variable*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
@@ -326,47 +263,159 @@ class InferShapeContext {
     return res;
   }
 
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const {
+    PADDLE_ENFORCE_LT(i, InputSize(in));
+    PADDLE_ENFORCE_LT(j, OutputSize(out));
+    auto* in_var = MultiInputVar(in)[i];
+    auto* out_var = MultiOutputVar(out)[j];
+    if (!in_var->IsType<LoDTensor>()) return;
+    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+    auto in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_lod(in_tensor.lod());
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
 
-template <typename T>
-struct EigenDeviceConverter;
+template <>
+const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const;
 
 template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
+const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+    const std::string& name) const;
 
-#ifndef PADDLE_ONLY_CPU
 template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
-#endif
+Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
+    const std::string& name) const;
 
 class ExecutionContext : public InferShapeContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext* device_context)
+                   const platform::DeviceContext& device_context)
       : InferShapeContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
-            typename DeviceType =
-                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+            typename DeviceType = typename platform::EigenDeviceConverter<
+                PlaceType>::EigenDeviceType>
   DeviceType& GetEigenDevice() const;
 
-  platform::Place GetPlace() const { return device_context_->GetPlace(); }
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
-  const platform::DeviceContext* device_context() const {
+  const platform::DeviceContext& device_context() const {
     return device_context_;
   }
 
-  const platform::DeviceContext* device_context_;
+ private:
+  const platform::DeviceContext& device_context_;
 };
 
-class OpKernel {
+class RuntimeInferShapeContext : public InferShapeContextBase {
+ public:
+  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
+
+  bool HasInput(const std::string& name) const {
+    auto ipt = op_.Input(name);
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  bool HasOutput(const std::string& name) const {
+    auto ipt = op_.Output(name);
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  bool HasInputs(const std::string& name) const {
+    auto inputs = op_.Inputs(name);
+    if (inputs.size() == 0UL) {
+      return false;
+    }
+    for (auto& input : inputs) {
+      if (scope_.FindVar(input) == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool HasOutputs(const std::string& name) const {
+    auto outputs = op_.Outputs(name);
+    if (outputs.size() == 0UL) {
+      return false;
+    }
+    for (auto& output : outputs) {
+      if (scope_.FindVar(output) == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  DDim GetInputDim(const std::string& name) const {
+    return GetDim(op_.Input(name));
+  }
+
+  void SetInputDim(const std::string& name, const DDim& dim) {
+    SetDim(op_.Input(name), dim);
+  }
+
+  DDim GetOutputDim(const std::string& name) const {
+    return GetDim(op_.Output(name));
+  }
+
+  void SetOutputDim(const std::string& name, const DDim& dim) {
+    SetDim(op_.Output(name), dim);
+  }
+
+  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
+
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
+ private:
+  template <bool Allocate>
+  Tensor* GetTensor(const std::string& name) const {
+    Tensor* t = nullptr;
+    auto* var = scope_.FindVar(name);
+    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
+      if (Allocate) {
+        t = var->GetMutable<LoDTensor>();
+      } else {
+        PADDLE_THROW("Variable(%s) should be tensor", name);
+      }
+    } else {
+      t = GetTensorFromVar(scope_.FindVar(name));
+    }
+    return t;
+  }
+
+  DDim GetDim(const std::string& name) const {
+    return GetTensor<false>(name)->dims();
+  }
+
+  void SetDim(const std::string& name, const DDim& dim) {
+    GetTensor<true>(name)->Resize(dim);
+  }
+
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
+
+class OpKernelBase {
  public:
   /**
    * ExecutionContext is the only parameter of Kernel Run function.
@@ -377,46 +426,77 @@ class OpKernel {
 
   virtual void Compute(const ExecutionContext& context) const = 0;
 
-  virtual ~OpKernel() {}
+  virtual ~OpKernelBase() = default;
+};
+
+template <typename T>
+class OpKernel : public OpKernelBase {
+ public:
+  using ELEMENT_TYPE = T;
 };
 
 class OperatorWithKernel : public OperatorBase {
  public:
   struct OpKernelKey {
     platform::Place place_;
+    DataType data_type_;
 
-    OpKernelKey() = default;
-    explicit OpKernelKey(const platform::DeviceContext& dev_ctx) {
-      place_ = dev_ctx.GetPlace();
-    }
+    OpKernelKey(DataType data_type, platform::Place place)
+        : place_(place), data_type_(data_type) {}
+
+    OpKernelKey(DataType data_type, const platform::DeviceContext& dev_ctx)
+        : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
 
     bool operator==(const OpKernelKey& o) const {
-      return platform::places_are_same_class(place_, o.place_);
+      return platform::places_are_same_class(place_, o.place_) &&
+             data_type_ == o.data_type_;
     }
   };
 
   struct OpKernelHash {
-    std::hash<bool> hash_;
+    std::hash<int> hash_;
     size_t operator()(const OpKernelKey& key) const {
-      return hash_(platform::is_gpu_place(key.place_));
+      int place = key.place_.which();
+      int data_type = static_cast<int>(key.data_type_);
+      int pre_hash = data_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
+                     (place & ((1 << NUM_PLACE_TYPE_LIMIT_IN_BIT) - 1));
+      return hash_(pre_hash);
     }
   };
 
   using OpKernelMap =
-      std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
+      std::unordered_map<OpKernelKey, std::unique_ptr<OpKernelBase>,
+                         OpKernelHash>;
 
   OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void InferShape(const Scope& scope) const override {
-    InferShape(InferShapeContext(*this, scope));
-  }
-
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
-    auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(ExecutionContext(*this, scope, &dev_ctx));
+    RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+    this->InferShape(&infer_shape_ctx);
+
+    ExecutionContext ctx(*this, scope, dev_ctx);
+
+    // check if op[type] has kernel registered.
+    auto& all_op_kernels = AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(type_);
+    if (kernels_iter == all_op_kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel", type_);
+    }
+
+    // check if op[type] have kernel for kernel_key
+    OpKernelMap& kernels = kernels_iter->second;
+    auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+    auto kernel_iter = kernels.find(kernel_key);
+
+    if (kernel_iter == kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel with kernel_key[%s]", type_,
+                   kernel_key);
+    }
+
+    kernel_iter->second->Compute(ctx);
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -426,14 +506,47 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   bool SupportGPU() const override {
-    OperatorWithKernel::OpKernelKey key;
-    key.place_ = platform::GPUPlace();
-    return OperatorWithKernel::AllOpKernels().at(type_).count(key) != 0;
+    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+    return std::any_of(op_kernels.begin(), op_kernels.end(),
+                       [](OpKernelMap::const_reference kern_pair) {
+                         return platform::is_gpu_place(kern_pair.first.place_);
+                       });
   }
 
  protected:
-  virtual void InferShape(const InferShapeContext& ctx) const = 0;
+  virtual void InferShape(InferShapeContextBase* ctx) const = 0;
+
+  // indicate kernel DataType by input data. Defaultly all input data must be
+  // same.
+  virtual DataType IndicateDataType(const ExecutionContext& ctx) const {
+    auto& scope = ctx.scope();
+    int data_type = -1;
+    for (auto& input : this->inputs_) {
+      for (auto& ipt_name : input.second) {
+        auto* var = scope.FindVar(ipt_name);
+        if (var != nullptr) {
+          const Tensor* t = nullptr;
+          if (var->IsType<Tensor>()) {
+            t = &var->Get<Tensor>();
+          } else if (var->IsType<LoDTensor>()) {
+            t = &var->Get<LoDTensor>();
+          }
+          if (t != nullptr) {
+            int tmp = static_cast<int>(ToDataType(t->type()));
+            PADDLE_ENFORCE(tmp == data_type || data_type == -1,
+                           "DataType of Paddle Op must be same.");
+            data_type = tmp;
+          }
+        }
+      }
+    }
+    PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
+    return static_cast<DataType>(data_type);
+  }
 };
+
+std::ostream& operator<<(std::ostream& os,
+                         const OperatorWithKernel::OpKernelKey& kernel_key);
 
 }  // namespace framework
 }  // namespace paddle

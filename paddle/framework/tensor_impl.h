@@ -22,7 +22,7 @@ namespace framework {
 template <typename T>
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
-      holder_, "Tenosr holds no memory. Call Tensor::mutable_data first.");
+      holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
   PADDLE_ENFORCE_GE(
       holder_->size(), numel() * sizeof(T) + offset_,
       "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
@@ -130,26 +130,29 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   PADDLE_ENFORCE_LE(end_idx, dims_[0], "Slice end index is out of bound.");
   PADDLE_ENFORCE_LT(begin_idx, end_idx,
                     "Begin index must be less than end index.");
-  PADDLE_ENFORCE_NE(dims_[0], 1, "Can not slice a tensor with dims_[0] = 1.");
-  size_t base = numel() / dims_[0];
-  Tensor dst;
-  dst.holder_ = holder_;
-  DDim dst_dims = dims_;
-  dst_dims[0] = end_idx - begin_idx;
-  dst.Resize(dst_dims);
-  dst.offset_ = offset_ + begin_idx * base * sizeof(T);
-  return dst;
+
+  if (dims_[0] == 1) {
+    return *this;
+  } else {
+    size_t base = numel() / dims_[0];
+    Tensor dst;
+    dst.holder_ = holder_;
+    DDim dst_dims = dims_;
+    dst_dims[0] = end_idx - begin_idx;
+    dst.Resize(dst_dims);
+    dst.offset_ = offset_ + begin_idx * base * sizeof(T);
+    return dst;
+  }
 }
 
 inline Tensor& Tensor::Resize(const DDim& dims) {
   dims_ = dims;
-  numel_ = product(dims_);
   return *this;
 }
 
 inline const DDim& Tensor::dims() const { return dims_; }
 
-inline int64_t Tensor::numel() const { return numel_; }
+inline int64_t Tensor::numel() const { return product(dims_); }
 
 template <typename T>
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {

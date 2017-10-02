@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ReshapeKernel : public framework::OpKernel {
+class ReshapeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out = ctx.Output<framework::Tensor>("Out");
@@ -39,7 +39,7 @@ class ReshapeKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class ReshapeGradKernel : public framework::OpKernel {
+class ReshapeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));

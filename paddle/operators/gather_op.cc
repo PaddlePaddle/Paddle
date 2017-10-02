@@ -23,12 +23,24 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    int batch_size = ctx.Input<Tensor>("Index")->dims()[0];
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of GatherOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Index"),
+                   "Input(Index) of GatherOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of GatherOp should not be null.");
+
+    int batch_size = ctx->GetInputDim("Index")[0];
     PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
-    framework::DDim output_dims(ctx.Input<Tensor>("X")->dims());
+    framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
-    ctx.Output<Tensor>("Out")->Resize(output_dims);
+    ctx->SetOutputDim("Out", output_dims);
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
   }
 };
 
@@ -37,23 +49,25 @@ class GatherGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto X_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto X = ctx.Input<Tensor>("X");
+  void InferShape(framework::InferShapeContextBase* ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
 
-    X_grad->Resize(X->dims());
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
   }
 };
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GatherOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  GatherOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
     AddOutput("Out", "The output of add op");
     AddComment(R"DOC(
-Gather Operator by selecting from the first axis, 
+Gather Operator by selecting from the first axis,
 
 Out = X[Index]
 )DOC");

@@ -21,23 +21,36 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/type_defs.h"
 #include "paddle/platform/enforce.h"
-#include "paddle/platform/variant.h"
 
 namespace paddle {
 namespace framework {
 
-typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                       std::vector<float>, std::vector<std::string>,
-                       std::vector<std::pair<int, int>>>
-    Attribute;
-
-typedef std::unordered_map<std::string, Attribute> AttributeMap;
+ProgramDesc& GetProgramDesc();
 
 template <typename T>
-AttrType AttrTypeID();
+inline AttrType AttrTypeID() {
+  Attribute tmp = T();
+  return static_cast<AttrType>(tmp.which() - 1);
+}
 
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
+
+class AttrReader {
+ public:
+  explicit AttrReader(const AttributeMap& attrs) : attrs_(attrs) {}
+
+  template <typename T>
+  inline const T& Get(const std::string& name) const {
+    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
+                   name);
+    return boost::get<T>(attrs_.at(name));
+  }
+
+ private:
+  const AttributeMap& attrs_;
+};
 
 // check whether a value(attribute) fit a certain limit
 template <typename T>

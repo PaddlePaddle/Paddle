@@ -21,48 +21,42 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/details/op_registry.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/grad_op_builder.h"
-#include "paddle/framework/op_info.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
+template <typename... ARGS>
+struct OperatorRegistrar {
+  explicit OperatorRegistrar(const char* op_type) : op_type(op_type) {
+    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
+                   "'%s' is registered more than once.", op_type);
+    static_assert(sizeof...(ARGS) != 0,
+                  "OperatorRegistrar should be invoked at least by OpClass");
+    details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
+  }
+
+  ~OperatorRegistrar() { OpInfoMap::Instance().Insert(op_type, info); }
+
+  const char* op_type;
+
+  OpInfo info;
+};
+
 class OpRegistry {
  public:
   template <typename OpType, typename ProtoMakerType, typename GradOpType>
   static void RegisterOp(const std::string& op_type,
                          const std::string& grad_op_type) {
-    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
-                   "'%s' is registered more than once.", op_type);
-    OpInfo op_info;
-    op_info.creator_ = [](
-        const std::string& type, const VariableNameMap& inputs,
-        const VariableNameMap& outputs, const AttributeMap& attrs) {
-      return new OpType(type, inputs, outputs, attrs);
-    };
-    op_info.grad_op_type_ = grad_op_type;
-    if (std::type_index(typeid(ProtoMakerType)) !=
-        std::type_index(typeid(NOPMaker))) {
-      op_info.proto_ = new OpProto;
-      op_info.checker_ = new OpAttrChecker;
-      auto maker = ProtoMakerType(op_info.proto_, op_info.checker_);
-      maker.Validate();
-      op_info.proto_->set_type(op_type);
-      PADDLE_ENFORCE(
-          op_info.proto_->IsInitialized(),
-          "Fail to initialize %s's OpProto, because %s is not initialized",
-          op_type, op_info.proto_->InitializationErrorString());
-    } else {
-      op_info.proto_ = nullptr;
-      op_info.checker_ = nullptr;
-    }
-    OpInfoMap::Instance().Insert(op_type, op_info);
+    OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
+    reg.info.grad_op_type_ = grad_op_type;
     // register gradient op
     if (!grad_op_type.empty()) {
-      RegisterOp<GradOpType, NOPMaker, NOP>(grad_op_type, "");
+      OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
     }
   }
 
@@ -99,13 +93,39 @@ class OpRegistrar : public Registrar {
   }
 };
 
-template <typename PlaceType, typename KernelType>
+template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
+struct OpKernelRegistrarFunctor;
+
+template <typename PlaceType, size_t I, typename... KernelTypes>
+struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
+  using KERNEL_TYPE =
+      typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
+
+  void operator()(const char* op_type) const {
+    using T = typename KERNEL_TYPE::ELEMENT_TYPE;
+    OperatorWithKernel::OpKernelKey key(ToDataType(std::type_index(typeid(T))),
+                                        PlaceType());
+    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
+
+    constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
+    OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
+        func;
+    func(op_type);
+  }
+};
+
+template <typename PlaceType, size_t I, typename... KernelType>
+struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
+  void operator()(const char* op_type) const {}
+};
+
+// User can register many kernel in one place. The data type could be different.
+template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
   explicit OpKernelRegistrar(const char* op_type) {
-    OperatorWithKernel::OpKernelKey key;
-    key.place_ = PlaceType();
-    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KernelType);
+    OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
+    func(op_type);
   }
 };
 
