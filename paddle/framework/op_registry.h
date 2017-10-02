@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/details/op_registry.h"
 #include "paddle/framework/framework.pb.h"
-#include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/grad_op_desc_maker.h"
+#include "paddle/framework/op_desc.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 
@@ -46,14 +46,14 @@ class Registrar {
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) : op_type(op_type) {
+    std::cerr << "Reg operator " << op_type << std::endl;
     PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
     details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
+    OpInfoMap::Instance().Insert(op_type, info);
   }
-
-  ~OperatorRegistrar() { OpInfoMap::Instance().Insert(op_type, info); }
 
   const char* op_type;
 
@@ -79,6 +79,8 @@ class OpRegistry {
                                                 AttributeMap attrs);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
+
+  static std::unique_ptr<OperatorBase> CreateOp(OpDescBind* op_desc);
 };
 
 template <typename OpType, typename ProtoMakerType, typename GradOpType>

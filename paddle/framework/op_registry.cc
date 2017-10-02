@@ -52,5 +52,11 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return CreateOp(op_desc.type(), inputs, outputs, attrs);
 }
 
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(OpDescBind* op_desc) {
+  op_desc->Sync();
+  return CreateOp(op_desc->Type(), op_desc->Inputs(), op_desc->Outputs(),
+                  op_desc->GetAttrMap());
+}
+
 }  // namespace framework
 }  // namespace paddle

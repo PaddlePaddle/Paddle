@@ -76,17 +76,21 @@ class OpDescBind {
     return MapKeys(outputs_);
   }
 
-  void SetInput(
-      const std::unordered_map<std::string, std::vector<std::string>> &input) {
+  void SetInputMap(const VariableNameMap &input) {
     this->inputs_ = input;
     this->need_update_ = true;
   }
 
-  void SetOutput(
-      const std::unordered_map<std::string, std::vector<std::string>> &output) {
+  void SetOutputMap(const VariableNameMap &output) {
     this->outputs_ = output;
     this->need_update_ = true;
   }
+
+  void Sync();
+
+  const VariableNameMap &Inputs() const { return inputs_; }
+
+  const VariableNameMap &Outputs() const { return outputs_; }
 
  private:
   template <typename MapType>
@@ -98,8 +102,6 @@ class OpDescBind {
         [](const typename MapType::value_type &pair) { return pair.first; });
     return ret_val;
   }
-
-  void Sync();
 
   OpDesc op_desc_;
   VariableNameMap inputs_;
