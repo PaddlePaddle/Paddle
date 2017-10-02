@@ -53,9 +53,9 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
                                       size_t seq_len) const {
   // TODO(superjom) Only two scopes are needed for inference, this case will be
   // supported later.
-  auto step_scopes_var = scope.FindVar(arg_->step_scopes);
+  auto* step_scopes_var = scope.FindVar(arg_->step_scopes);
   PADDLE_ENFORCE(step_scopes_var != nullptr, "");
-  auto step_scopes = step_scopes_var->GetMutable<std::vector<Scope*>>();
+  auto* step_scopes = step_scopes_var->GetMutable<std::vector<Scope*>>();
 
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
@@ -148,7 +148,7 @@ void RecurrentGradientAlgorithm::Run(
   auto* input0 = scope.FindVar(arg_->inlinks[0]);
   PADDLE_ENFORCE_NOT_NULL(input0);
   size_t seq_len = input0->GetMutable<LoDTensor>()->dims()[0];
-  auto step_scopes = GetStepScopes(scope);
+  auto& step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
     if (step_id != seq_len - 1) {
