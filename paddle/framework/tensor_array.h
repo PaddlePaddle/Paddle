@@ -48,13 +48,6 @@ class TensorArray {
   const size_t MAX_SIZE{100000};
 
   /*
-   * Inputs:
-   *   - value_shared: share memory between tensors.
-   */
-  explicit TensorArray(bool values_shared = true)
-      : values_shared_(values_shared) {}
-
-  /*
    * Read the value at location `index` in the `TensorArray`.
    */
   const LoDTensor &Read(size_t index) const;
@@ -111,7 +104,6 @@ class TensorArray {
 
  private:
   mutable std::vector<LoDTensor> values_;
-  bool values_shared_;
 };  // class TensorArray
 
 }  // namespace framework
