@@ -48,7 +48,7 @@ class RecurrentAlgorithm {
    * NOTE the scopes are reused in both the forward and backward, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(const framework::Scope& scope) const;
+  void CreateScopes(const framework::Scope& scope, size_t seq_len) const;
 
   const std::vector<framework::Scope*>& GetStepScopes(
       const framework::Scope& scope) const {
@@ -61,7 +61,6 @@ class RecurrentAlgorithm {
  private:
   std::unique_ptr<framework::OperatorBase>* stepnet_;
   rnn::Argument* arg_;
-  mutable size_t seq_len_;
 };
 
 class RecurrentGradientAlgorithm {
@@ -97,7 +96,6 @@ class RecurrentGradientAlgorithm {
 
  private:
   rnn::Argument* arg_;
-  mutable size_t seq_len_;
   std::unique_ptr<framework::OperatorBase>* stepnet_;
 };
 

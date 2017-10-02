@@ -53,12 +53,12 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& outlinks,
                    const size_t seq_len) {
   for (size_t i = 0; i < outlinks.size(); i++) {
-    auto output_var = step_scopes[0]->parent().FindVar(outlinks[i]);
+    auto* output_var = step_scopes[0]->parent().FindVar(outlinks[i]);
     PADDLE_ENFORCE_NOT_NULL(output_var, "output link [%s] is not in scope.",
                             outlinks[i]);
     LoDTensor* output = output_var->GetMutable<LoDTensor>();
 
-    auto step_scope_var = step_scopes[0]->FindVar(outlinks[i]);
+    auto* step_scope_var = step_scopes[0]->FindVar(outlinks[i]);
     PADDLE_ENFORCE_NOT_NULL(step_scope_var, "%s not in scope", outlinks[i]);
     f::DDim step_dims =
         step_scope_var->template GetMutable<LoDTensor>()->dims();
@@ -89,8 +89,8 @@ void LinkMemories(const std::vector<Scope*>& scopes,
       step_id + offset, scopes.size(),
       "offset [%d] is out of range, it must be less than (%d - %d)", offset,
       scopes.size(), step_id);
-  auto scope = scopes[step_id];
-  auto linked_scope = scopes[step_id + offset];
+  auto* scope = scopes[step_id];
+  auto* linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
     auto mem = scope->FindVar(attr.pre_var)->GetMutable<LoDTensor>();
     auto linked_mem = linked_scope->FindVar(attr.var)->GetMutable<LoDTensor>();

@@ -32,24 +32,25 @@ void RecurrentAlgorithm::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
   auto* input0 = scope.FindVar(arg_->inlinks[0]);
   PADDLE_ENFORCE_NOT_NULL(input0);
-  seq_len_ = input0->GetMutable<LoDTensor>()->dims()[0];
-  PADDLE_ENFORCE_GT(seq_len_, 0);
+  size_t seq_len = input0->GetMutable<LoDTensor>()->dims()[0];
+  PADDLE_ENFORCE_GT(seq_len, 0);
 
-  CreateScopes(scope);
+  CreateScopes(scope, seq_len);
   auto& step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
   InitMemories(step_scopes[0]);
 
-  for (size_t i = 0; i < seq_len_; i++) {
-    if (i > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, i, -1);
+  for (size_t step_id = 0; step_id < seq_len; step_id++) {
+    if (step_id > 0) {
+      rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1);
     }
-    (*stepnet_)->Run(*step_scopes[i], dev_ctx);
+    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len);
 }
 
-void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
+void RecurrentAlgorithm::CreateScopes(const Scope& scope,
+                                      size_t seq_len) const {
   // TODO(superjom) Only two scopes are needed for inference, this case will be
   // supported later.
   auto step_scopes_var = scope.FindVar(arg_->step_scopes);
@@ -60,8 +61,8 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
   PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
 
-  if (seq_len_ > step_scopes->size()) {
-    for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
+  if (seq_len > step_scopes->size()) {
+    for (size_t i = step_scopes->size(); i < seq_len; ++i) {
       auto& step_scope = scope.NewScope();
 
       // create step net's temp inputs
@@ -144,17 +145,18 @@ class RecurrentAlgorithmProtoAndCheckerMaker
 
 void RecurrentGradientAlgorithm::Run(
     const Scope& scope, const platform::DeviceContext& dev_ctx) const {
-  seq_len_ =
-      scope.FindVar(arg_->inlinks[0])->GetMutable<LoDTensor>()->dims()[0];
+  auto* input0 = scope.FindVar(arg_->inlinks[0]);
+  PADDLE_ENFORCE_NOT_NULL(input0);
+  size_t seq_len = input0->GetMutable<LoDTensor>()->dims()[0];
   auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
-  for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
-    if (static_cast<size_t>(step_id) != seq_len_ - 1) {
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
+  for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
+    if (step_id != seq_len - 1) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len);
   LinkBootMemoryGradients(step_scopes[0]);
 }
 
