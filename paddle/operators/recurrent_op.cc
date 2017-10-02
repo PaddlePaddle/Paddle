@@ -28,7 +28,8 @@ using Variable = framework::Variable;
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-void RecurrentAlgorithm::InferShape(const Scope& scope) const {
+void RecurrentAlgorithm::Run(const Scope& scope,
+                             const platform::DeviceContext& dev_ctx) const {
   auto* input0 = scope.FindVar(arg_->inlinks[0]);
   PADDLE_ENFORCE_NOT_NULL(input0);
   seq_len_ = input0->GetMutable<LoDTensor>()->dims()[0];
@@ -36,38 +37,16 @@ void RecurrentAlgorithm::InferShape(const Scope& scope) const {
 
   CreateScopes(scope);
   auto& step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-  InitMemories(step_scopes[0], true /*infer_shape_mode*/);
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
+  InitMemories(step_scopes[0]);
 
   for (size_t i = 0; i < seq_len_; i++) {
     if (i > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, i, -1,
-                        true /*infer_shape_mode*/);
+      rnn::LinkMemories(step_scopes, arg_->memories, i, -1);
     }
-    (*stepnet_)->InferShape(*step_scopes[i]);
+    (*stepnet_)->Run(*step_scopes[i], dev_ctx);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-}
-
-void RecurrentAlgorithm::Run(const Scope& scope,
-                             const platform::DeviceContext& dev_ctx) const {
-  auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
-                     false /*infer_shape_mode*/);
-  InitMemories(step_scopes[0], false /*infer_shape_mode*/);
-
-  for (size_t step_id = 0; step_id < seq_len_; step_id++) {
-    // create output alias variables
-    if (step_id > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1,
-                        false /*infer_shape_mode*/);
-    }
-    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
-  }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
-                     false /*infer_shape_mode*/);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
 }
 
 void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
@@ -105,8 +84,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   }
 }
 
-void RecurrentAlgorithm::InitMemories(Scope* step_scope,
-                                      bool infer_shape_mode) const {
+void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
   for (auto& attr : arg_->memories) {
     auto* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<LoDTensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
@@ -114,12 +92,9 @@ void RecurrentAlgorithm::InitMemories(Scope* step_scope,
                    attr.boot_var);
     auto* boot_mem =
         step_scope->FindVar(attr.boot_var)->GetMutable<LoDTensor>();
-    if (infer_shape_mode) {
-      pre_mem->Resize(boot_mem->dims());
-      PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
-    } else {
-      pre_mem->ShareDataWith<float>(*boot_mem);
-    }
+    pre_mem->Resize(boot_mem->dims());
+    PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
+    pre_mem->ShareDataWith<float>(*boot_mem);
   }
 }
 
@@ -169,23 +144,22 @@ class RecurrentAlgorithmProtoAndCheckerMaker
 
 void RecurrentGradientAlgorithm::Run(
     const Scope& scope, const platform::DeviceContext& dev_ctx) const {
+  seq_len_ =
+      scope.FindVar(arg_->inlinks[0])->GetMutable<LoDTensor>()->dims()[0];
   auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
-                     false /*infer_shape_mode*/);
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
   for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len_ - 1) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1,
-                        false /*infer_shape_mode*/);
+      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
-  LinkBootMemoryGradients(step_scopes[0], false);
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
-                     false /*infer_shape_mode*/);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
+  LinkBootMemoryGradients(step_scopes[0]);
 }
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
-    Scope* step_scope, bool infer_shape_mode) const {
+    Scope* step_scope) const {
   for (auto& attr : arg_->memories) {
     PADDLE_ENFORCE(step_scope->FindVar(attr.var) != nullptr,
                    "memory variable [%s] does not exists", attr.var);
@@ -194,30 +168,9 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
     auto* mem_grad = step_scope->NewVar(attr.var)->GetMutable<LoDTensor>();
     auto* boot_mem_grad =
         step_scope->NewVar(attr.boot_var)->GetMutable<LoDTensor>();
-    if (infer_shape_mode) {
-      boot_mem_grad->Resize(mem_grad->dims());
-    } else {
-      boot_mem_grad->ShareDataWith<float>(*mem_grad);
-    }
+    boot_mem_grad->Resize(mem_grad->dims());
+    boot_mem_grad->ShareDataWith<float>(*mem_grad);
   }
-}
-
-void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
-  seq_len_ =
-      scope.FindVar(arg_->inlinks[0])->GetMutable<LoDTensor>()->dims()[0];
-  auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-  for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
-    if (static_cast<size_t>(step_id) != seq_len_ - 1) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1,
-                        true /*infer_shape_mode*/);
-    }
-    (*stepnet_)->InferShape(*step_scopes[step_id]);
-  }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_,
-                     true /*infer_shape_mode*/);
-  LinkBootMemoryGradients(step_scopes[0], true /*infer_shape_mode*/);
 }
 
 RecurrentGradientOp::RecurrentGradientOp(
