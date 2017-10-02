@@ -15,7 +15,7 @@ class PySimpleCond(object):
         for i in range(1, 10, 2):
             array[i] = 0
         self.cond = np.array(array)
-        self.x = np.ones(shape=(10, 1))
+        self.x = np.ones(shape=(10, 1)).astype("float32")
 
     def forward(self):
         self.index_t = np.where(self.cond == 1)
