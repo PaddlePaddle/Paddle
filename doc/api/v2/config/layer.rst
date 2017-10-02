@@ -345,6 +345,11 @@ clip
 ..  autoclass:: paddle.v2.layer.clip
     :noindex:
 
+resize
+------
+..  autoclass:: paddle.v2.layer.resize
+    :noindex:
+
 slope_intercept
 ---------------
 ..  autoclass:: paddle.v2.layer.slope_intercept
