@@ -25,14 +25,12 @@ Executor::Executor(const std::vector<platform::Place>& places) {
   device_contexts_.resize(places.size());
   for (size_t i = 0; i < places.size(); i++) {
     if (platform::is_cpu_place(places[i])) {
-      device_contexts_[i] = platform::DeviceContextManager::Get()
-                                ->GetDeviceContext<platform::CPUPlace>(
-                                    boost::get<platform::CPUPlace>(places[i]));
+      device_contexts_[i].reset(new platform::CPUDeviceContext(
+          boost::get<platform::CPUPlace>(places[i])));
     } else {
 #ifndef PADDLE_ONLY_CPU
-      device_contexts_[i] = platform::DeviceContextManager::Get()
-                                ->GetDeviceContext<platform::GPUPlace>(
-                                    boost::get<platform::GPUPlace>(places[i]));
+      device_contexts_[i].reset(new platform::CUDADeviceContext(
+          boost::get<platform::CPUPlace>(places[i])));
 #else
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #endif
@@ -63,7 +61,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope,
   }
 
   // TODO(tonyyang-svail): need to test gpu device
-  for (auto device_context : device_contexts_) {
+  for (auto& device_context : device_contexts_) {
     device_context->Wait();
   }
 }
