@@ -49,7 +49,7 @@ std::vector<std::string> OpDescBind::InputNames() const {
   return retv;
 }
 
-std::vector<std::string> InputArgumentNames() const {
+std::vector<std::string> OpDescBind::InputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->inputs_) {
     retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
@@ -80,7 +80,7 @@ std::vector<std::string> OpDescBind::OutputNames() const {
   return retv;
 }
 
-std::vector<std::string> OutputArgumentNames() const {
+std::vector<std::string> OpDescBind::OutputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->outputs_) {
     retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
@@ -137,12 +137,13 @@ const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
   return attrs_;
 }
 
-void Rename(const std::string &old_name, const std::string &new_name) {
-  for (std : string &input : inputs_) {
+void OpDescBind::Rename(const std::string &old_name,
+                        const std::string &new_name) {
+  for (auto &input : inputs_) {
     std::replace(input.second.begin(), input.second.end(), old_name, new_name);
   }
-  for (std::string &output : outputs_) {
-    std::repalce(output.second.begin(), output.second.end(), old_name,
+  for (auto &output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
                  new_name);
   }
   need_update_ = true;

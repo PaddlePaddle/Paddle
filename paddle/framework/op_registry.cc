@@ -57,7 +57,8 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateGradOp(const OperatorBase& op) {
   return std::unique_ptr<OperatorBase>(BuildGradOp(&op));
 }
 
-static std::vector<OpDescBind> CreateGradOpDescs(const OpDescBind& op_desc) {
+static std::vector<std::unique_ptr<OpDescBind>> OpRegistry::CreateGradOpDescs(
+    const OpDescBind& op_desc) {
   auto& info = OpInfoMap::Instance().Get(op_desc.Type());
   return info.grad_op_maker_(op_desc);
 }

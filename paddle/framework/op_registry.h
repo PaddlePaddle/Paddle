@@ -69,7 +69,8 @@ class OpRegistry {
 
   static std::unique_ptr<OperatorBase> CreateGradOp(const OperatorBase& op);
 
-  static std::vector<OpDescBind> CreateGradOpDescs(const OpDescBind& op_desc);
+  static std::vector<std::unique_ptr<OpDescBind>> CreateGradOpDescs(
+      const OpDescBind& op_desc);
 };
 
 class Registrar {
