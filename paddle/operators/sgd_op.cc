@@ -27,9 +27,13 @@ class SGDOp : public framework::OperatorWithKernel {
                    "Input(param) of SGDOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("grad"),
                    "Input(grad) of SGDOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("learning_rate"),
+                   "Input(learning_rate) of SGDOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("param_out"),
                    "Output(param_out) of SGDOp should not be null.");
 
+    auto lr_dims = ctx->GetInputsDim("learning_rate");
+    PADDLE_ENFORCE_EQ(lr_dims.size(), 1, "learning_rate should have 1 dim");
     auto param_dim = ctx->GetInputDim("param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("grad"),
                       "Two input of SGD Op's dimension must be same.");
@@ -43,8 +47,8 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
+    AddInput("learning_rate", "learning rate of sgd");
     AddOutput("param_out", "output parameter");
-    AddAttr<float>("learning_rate", "learning rate of sgd");
     AddComment(R"DOC(
 
 Simplest sgd algorithm.
