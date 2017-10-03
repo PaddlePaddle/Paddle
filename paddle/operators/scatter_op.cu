@@ -32,7 +32,7 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     Out->ShareDataWith<T>(*Ref);
 
-    GPUScatterAssign<T>(ctx.device_context(), Updates, Index, Out);
+    GPUScatterAssign<T>(ctx.device_context(), *Updates, *Index, Out);
   }
 };
 
@@ -51,7 +51,7 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
     dRef->ShareDataWith<T>(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
     // Gradient by Gather: dUpdates = dO[Index]
-    GPUGather<T>(ctx.device_context(), dOut, Index, dUpdates);
+    GPUGather<T>(ctx.device_context(), *dOut, *Index, dUpdates);
   }
 };
 

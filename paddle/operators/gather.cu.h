@@ -46,14 +46,14 @@ __global__ void GatherCUDAKernel(const T* params, const int* indices, T* output,
  * return: output tensor
  */
 template <typename T>
-void GPUGather(const platform::DeviceContext& ctx, const Tensor* src,
-               const Tensor* index, Tensor* output) {
+void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
+               const Tensor& index, Tensor* output) {
   // PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
-  PADDLE_ENFORCE(index->dims().size() == 1);
-  int index_size = index->dims()[0];
+  PADDLE_ENFORCE(index.dims().size() == 1);
+  int index_size = index.dims()[0];
 
-  auto src_dims = src->dims();
+  auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
@@ -61,8 +61,8 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor* src,
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
-  const T* p_src = src->data<T>();
-  const int* p_index = index->data<int>();
+  const T* p_src = src.data<T>();
+  const int* p_index = index.data<int>();
   T* p_output = output->data<T>();
 
   int block = 512;

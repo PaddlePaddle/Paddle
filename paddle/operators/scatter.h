@@ -33,20 +33,18 @@ using Tensor = framework::Tensor;
  * return: output tensor
  */
 template <typename T>
-void ScatterAssign(const platform::DeviceContext& ctx,
-                   const paddle::framework::Tensor* src,
-                   const paddle::framework::Tensor* index,
-                   paddle::framework::Tensor* output) {
+void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
+                   const Tensor& index, Tensor* output) {
   PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // check index of shape 1-D
-  PADDLE_ENFORCE(index->dims().size() == 1);
-  int index_size = index->dims()[0];
+  PADDLE_ENFORCE(index.dims().size() == 1);
+  int index_size = index.dims()[0];
 
-  auto src_dims = src->dims();
+  auto src_dims = src.dims();
   auto dst_dims = output->dims();
 
-  const T* p_src = src->data<T>();
-  const int* p_index = index->data<int>();
+  const T* p_src = src.data<T>();
+  const int* p_index = index.data<int>();
   T* p_output = output->data<T>();
 
   // check src shape and dst shape should match

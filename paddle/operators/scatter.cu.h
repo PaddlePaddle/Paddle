@@ -19,6 +19,8 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
@@ -45,16 +47,14 @@ __global__ void ScatterCUDAKernel(const T* params, const int* indices,
  * return: output tensor
  */
 template <typename T>
-void GPUScatterAssign(const platform::DeviceContext& ctx,
-                      const paddle::framework::Tensor* src,
-                      const paddle::framework::Tensor* index,
-                      paddle::framework::Tensor* output) {
+void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
+                      const Tensor& index, Tensor* output) {
   // PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
-  PADDLE_ENFORCE(index->dims().size() == 1);
-  int index_size = index->dims()[0];
+  PADDLE_ENFORCE(index.dims().size() == 1);
+  int index_size = index.dims()[0];
 
-  auto src_dims = src->dims();
+  auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
@@ -62,8 +62,8 @@ void GPUScatterAssign(const platform::DeviceContext& ctx,
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
-  const T* p_src = src->data<T>();
-  const int* p_index = index->data<int>();
+  const T* p_src = src.data<T>();
+  const int* p_index = index.data<int>();
   T* p_output = output->data<T>();
 
   int block = 512;

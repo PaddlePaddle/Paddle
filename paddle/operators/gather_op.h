@@ -36,7 +36,7 @@ class GatherOpKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
 
-    CPUGather<T>(ctx.device_context(), x, index, output);
+    CPUGather<T>(ctx.device_context(), *x, *index, output);
   }
 };
 
@@ -56,7 +56,7 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetEigenDevice<platform::CPUPlace>();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
 
-    ScatterAssign<T>(ctx.device_context(), dO, Index, dX);
+    ScatterAssign<T>(ctx.device_context(), *dO, *Index, dX);
   }
 };
 
