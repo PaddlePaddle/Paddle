@@ -49,6 +49,14 @@ std::vector<std::string> OpDescBind::InputNames() const {
   return retv;
 }
 
+std::vector<std::string> InputArgumentNames() const {
+  std::vector<std::string> retv;
+  for (auto &ipt : this->inputs_) {
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
+  }
+  return retv;
+}
+
 void OpDescBind::SetInput(const std::string &param_name,
                           const std::vector<std::string> &args) {
   need_update_ = true;
@@ -68,6 +76,14 @@ std::vector<std::string> OpDescBind::OutputNames() const {
   retv.reserve(this->outputs_.size());
   for (auto &ipt : this->outputs_) {
     retv.push_back(ipt.first);
+  }
+  return retv;
+}
+
+std::vector<std::string> OutputArgumentNames() const {
+  std::vector<std::string> retv;
+  for (auto &ipt : this->outputs_) {
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
   }
   return retv;
 }
