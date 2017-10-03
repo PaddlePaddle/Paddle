@@ -31,7 +31,7 @@ namespace framework {
 struct OpInfo {
   OpCreator creator_;
   std::string grad_op_type_;
-  std::function<std::vector<OpDescBind>(const OpDescBind&)> grad_op_maker_;
+  GradOpMakerFN grad_op_maker_;
   OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
 
