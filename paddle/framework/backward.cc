@@ -159,7 +159,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
         insert_position.push_back(
             {dup_op.back(),
              OpRegistry::CreateOp(
-                 "add", {{"X", {insert_add_x}}, {"X", {insert_add_y}}},
+                 "sum", {{"X", {insert_add_x}}, {"X", {insert_add_y}}},
                  {{"Out", {insert_add_out}}}, {})});
       }
     }
