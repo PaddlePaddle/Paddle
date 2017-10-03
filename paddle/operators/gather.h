@@ -24,49 +24,40 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// Implementation of CPU copy
-template <typename T>
-void CPUGather(const T* src, const int* indices, const int slice_size,
-               const int index_size, T* output) {
-  const size_t slice_bytes = slice_size * sizeof(T);
-
-  for (int i = 0; i < index_size; ++i) {
-    int index_ = indices[i];
-    memcpy(output + i * slice_size, src + index_ * slice_size, slice_bytes);
-  }
-}
-
-// Implementation of GPU copy:
-template <typename T>
-void GPUGather(const T* src, const int* index, const int slice_size,
-               const int index_size, T* output);
+using framework::Tensor;
 
 /**
+ * A thin wrapper for gathering on cpu tensor
  * Return a new tensor from source tensor, gathered according to index
  * input[src]: type-T source Tensor
  * input[index]: type-int index Tensor (1-D)
  * return: output tensor
  */
 template <typename T>
-void Gather(const platform::Place& place, const paddle::framework::Tensor* src,
-            const paddle::framework::Tensor* index,
-            paddle::framework::Tensor* output) {
+void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
+               const Tensor& index, Tensor* output) {
+  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // check index of shape 1-D
-  PADDLE_ENFORCE(index->dims().size() == 1);
-  int index_size = index->dims()[0];
+  PADDLE_ENFORCE(index.dims().size() == 1);
+  int index_size = index.dims()[0];
 
-  auto src_dims = src->dims();
+  auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
+
+  const T* p_src = src.data<T>();
+  const int* p_index = index.data<int>();
+  T* p_output = output->data<T>();
 
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
-  // Gathering
-  if (platform::is_cpu_place(place)) {
-    CPUGather<T>(src->data<T>(), index->data<int>(), slice_size, index_size,
-                 output->data<T>());
+  const size_t slice_bytes = slice_size * sizeof(T);
+
+  for (int i = 0; i < index_size; ++i) {
+    int index_ = p_index[i];
+    memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }
 
