@@ -6,9 +6,13 @@ GAN implementation, just a demo.
 from paddle.v2 as pd
 import numpy as np
 import logging
-
-X = pd.data(pd.float_vector(784))
 ```
+
+<p align="center">
+<img src="./dcgan.png" width = "90%" align="center"/><br/>
+The original GAN paper.
+</p>
+
 # Conditional-GAN should be a class. 
 ### Class member function: the initializer.
 ```python
@@ -21,7 +25,7 @@ class DCGAN(object):
     self.z_dim = z_dim # input noise dimension
 
     # define parameters of discriminators
-    self.D_W0 = pd.Variable(shape=[784, 128], data=pd.gaussian_normal_randomizer())
+    self.D_W0 = pd.Variable(shape=[3,3, 1, 128], data=pd.gaussian_normal_randomizer())
     self.D_b0 = pd.Variable(np.zeros(128)) # variable also support initialization using a  numpy data
     self.D_W1 = pd.Variable(shape=[784, 128], data=pd.gaussian_normal_randomizer())
     self.D_b1 = pd.Variable(np.zeros(128)) # variable also support initialization using a  numpy data
@@ -51,7 +55,7 @@ def generator(self, z, y = None):
     G_h0_bn = pd.batch_norm(G_h0)
     G_h0_relu = pd.relu(G_h0_bn)
     
-    G_h1 = pd.fc(G_h0_relu, self.G_w1, self.G_b1)
+    G_h1 = pd.deconv(G_h0_relu, self.G_w1, self.G_b1)
     G_h1_bn = pd.batch_norm(G_h1)
     G_h1_relu = pd.relu(G_h1_bn)
     
