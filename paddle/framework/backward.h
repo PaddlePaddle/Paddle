@@ -23,5 +23,10 @@ namespace framework {
 extern std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
+
+extern void AppendBackwardOps(
+    BlockDescBind& block_desc,
+    const std::unordered_set<std::string>& no_grad_vars);
+
 }  // namespace framework
 }  // namespace paddle

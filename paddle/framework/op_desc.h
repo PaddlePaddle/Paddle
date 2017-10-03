@@ -26,6 +26,11 @@ class BlockDescBind;
 
 class OpDescBind {
  public:
+  OpDescBind() {}
+
+  OpDescBind(const std::string &type, const VariableNameMap &inputs,
+             const VariableNameMap &outputs, const AttributeMap &attrs);
+
   OpDesc *Proto();
 
   std::string Type() const { return op_desc_.type(); }
@@ -66,6 +71,8 @@ class OpDescBind {
   Attribute GetAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
+
+  void Rename(const std::string &old_name, const std::string &new_name);
 
   // Only be used in C++
   const std::unordered_map<std::string, Attribute> &GetAttrMap() const;

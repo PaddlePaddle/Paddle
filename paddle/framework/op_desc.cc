@@ -18,6 +18,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
+                       const VariableNameMap &outputs,
+                       const AttributeMap &attrs) {
+  op_desc_.set_type(type);
+  inputs_ = inputs;
+  outputs_ = outputs;
+  attrs_ = attrs;
+}
+
 OpDesc *OpDescBind::Proto() {
   Sync();
   return &op_desc_;
@@ -110,6 +119,17 @@ int OpDescBind::GetBlockAttr(const std::string &name) const {
 const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
     const {
   return attrs_;
+}
+
+void Rename(const std::string &old_name, const std::string &new_name) {
+  for (std : string &input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  for (std::string &output : outputs_) {
+    std::repalce(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
+  need_update_ = true;
 }
 
 void OpDescBind::Sync() {
