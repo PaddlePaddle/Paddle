@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/executor.h"
+#include "paddle/framework/attribute.h"
+
 #include "gtest/gtest.h"
 
 using namespace paddle::platform;
@@ -20,6 +22,41 @@ using namespace paddle::framework;
 
 TEST(Executor, Init) {
   ProgramDesc pdesc;
+
+  auto root_block = pdesc.add_blocks();
+  root_block->set_idx(0);
+  root_block->set_parent_idx(-1);
+
+  auto a = root_block->add_vars();
+  a->set_name("a");
+  auto a_lt = a->mutable_lod_tensor();
+  a_lt->set_data_type(paddle::framework::DataType::FP32);
+  a_lt->add_dims(640);
+  a_lt->add_dims(640);
+
+  auto b = root_block->add_vars();
+  b->set_name("b");
+  auto b_lt = b->mutable_lod_tensor();
+  b_lt->set_data_type(paddle::framework::DataType::FP32);
+  b_lt->add_dims(640);
+  b_lt->add_dims(640);
+
+  auto c = root_block->add_vars();
+  c->set_name("c");
+  auto c_lt = c->mutable_lod_tensor();
+  c_lt->set_data_type(paddle::framework::DataType::FP32);
+  c_lt->add_dims(640);
+  c_lt->add_dims(640);
+
+  auto op1 = root_block->add_ops();
+  op1->set_type("elementwise_add");
+  auto X = op1->add_inputs();
+  X->set_parameter("X");
+  X->add_arguments("a");
+  auto Y = op1->add_inputs();
+  Y->set_parameter("Y");
+  Y->add_arguments("b");
+
   CPUPlace cpu_place;
   Executor* executor = NewLocalExecutor(cpu_place, pdesc, true);
   executor->Run();

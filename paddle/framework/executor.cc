@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/executor.h"
 #include <memory>
+#include <vector>
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
@@ -21,6 +22,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+// using std::unique_ptr<OperatorBase> op_ptr;
 
 class LinearListView;
 class GraphView;
@@ -158,14 +161,27 @@ Executor* NewLocalExecutor(const platform::Place& place,
 }
 
 void ExecutorImpl::Run() {
-  // operators running
-  scope_->NewVar();
-  device_->cpu_device_context->Wait();
-#ifndef PADDLE_ONLY_CPU
-  if (device_->cuda_device_context) {
-    device_->cuda_device_context->Wait();
+  // TODO(tonyyang-svail): only runs the first block
+  auto& block = program_desc_->blocks(0);
+
+  for (auto& var : block.vars()) {
+    scope_->NewVar(var.name());
   }
-#endif
+
+  // std::vector<op_ptr> ops;
+  for (auto& op_desc : block.ops()) {
+    auto op = framework::OpRegistry::CreateOp(op_desc);
+    op->InferShape(device_->cpu_device_context);
+    op->Compute();
+  }
+
+  // TODO(tonyyang-svail): need to test gpu device
+  //   device_->cpu_device_context->Wait();
+  // #ifndef PADDLE_ONLY_CPU
+  //   if (device_->cuda_device_context) {
+  //     device_->cuda_device_context->Wait();
+  //   }
+  // #endif
 }
 
 void ExecutorImpl::Initialize() {
