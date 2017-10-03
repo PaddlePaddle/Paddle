@@ -20,6 +20,7 @@ Both examples show that the elements of sequences are usually of the same size. 
 
 The real challenge is that in most cases, sentences have variable lengths, and we will need an index data structure to segment the tensor into sequences.  Also, sequences might consist of sub-sequences.
 
+
 ## A Solution: The LoD Index
 
 To understand our solution, it is best to look at some examples.
@@ -74,6 +75,7 @@ In this case, we don't lose any information by ignoring the many 1's in the inde
 ### Model Parameters
 
 A model parameter is just a usual Tensor, which, just like the above example, is a **0-level LoD Tensor**.
+
 
 ## The LoD Tensor
 
