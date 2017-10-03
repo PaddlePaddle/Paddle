@@ -31,6 +31,10 @@ class AdamaxOp : public framework::OperatorWithKernel {
                    "Input(moment) of AdamaxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("inf_norm"),
                    "Input(inf_norm) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("learning_rate"),
+                   "Input(learning_rate) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("time_step"),
+                   "Input(time_step) of AdamaxOp should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("param_out"),
                    "Output(param_out) of AdamaxOp should not be null.");
@@ -62,15 +66,15 @@ class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "Input parameter");
     AddInput("grad", "Input gradient");
+    AddInput("learning_rate", "Learning rate");
     AddInput("moment", "First moment");
     AddInput("inf_norm", "Input exponentially weighted infinity norm");
+    AddInput("time_step", "Time step");
 
     AddOutput("param_out", "Output parameter");
     AddOutput("moment_out", "Output first moment");
     AddOutput("inf_norm_out", "Output exponentially weighted infinity norm");
 
-    AddAttr<int>("time_step", "Time step");
-    AddAttr<float>("learning_rate", "Learning rate");
     AddAttr<float>("beta_1",
                    "exponential decay rate for the 1st moment estimates.");
     AddAttr<float>(

@@ -22,16 +22,12 @@ class TestAdamaxOp(OpTest):
             'param': param,
             'grad': grad,
             'moment': moment,
-            'inf_norm': inf_norm
+            'inf_norm': inf_norm,
+            'time_step': time_step,
+            'learning_rate': learning_rate
         }
 
-        self.attrs = {
-            'time_step': time_step,
-            'learning_rate': learning_rate,
-            'beta_1': beta_1,
-            'beta_2': beta_2,
-            'epsilon': epsilon
-        }
+        self.attrs = {'beta_1': beta_1, 'beta_2': beta_2, 'epsilon': epsilon}
 
         moment_out = beta_1 * moment + (1 - beta_1) * grad
         inf_norm_out = np.maximum(beta_2 * inf_norm + epsilon, np.abs(grad))

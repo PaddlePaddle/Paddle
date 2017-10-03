@@ -37,11 +37,11 @@ class AdamaxOpKernel : public framework::OpKernel<T> {
     moment_out->mutable_data<T>(ctx.GetPlace());
     norm_out->mutable_data<T>(ctx.GetPlace());
 
-    float lr = ctx.Attr<float>("learning_rate");
     float beta_1 = ctx.Attr<float>("beta_1");
     float beta_2 = ctx.Attr<float>("beta_2");
     float epsilon = ctx.Attr<float>("epsilon");
-    int t = ctx.Attr<int>("time_step");
+    float lr = *ctx.Input<float>("learning_rate");
+    int t = *ctx.Input<int>("time_step");
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("param"));
     auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("grad"));
