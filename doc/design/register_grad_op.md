@@ -33,21 +33,44 @@ The mapping relationship between an operator and its gradient operators is a fun
 
 ```cpp
 // (OpDesc) --> vector<OpDesc>
-using GradOpDescMaker = std::function<std::vector<OpDesc>(const OpDesc&)>;
+std::function<std::vector<OpDescBind>(const OpDescBind&)>;
 ```
 
-The function take a `OpDesc` of the forward operator and return one or many gradient operator descriptions.
+The function takes an `OpDescBind` of the forward operator and returns one or many gradient operator descriptions. `OpDescBind` is a C++ wrapper for protobuf message `OpDesc` to manipulate `OpDesc` fast.
 
 The `GradOpDescMaker` will be registered in `OpInfo`, to replace `grad_op_type_` field. The `OpInfo` should be
 
 ```cpp
 struct OpInfo {
-  GradOpDescMaker grad_op_maker_;
+  std::function<std::vector<OpDescBind>(const OpDescBind&)>  grad_op_maker_;
   ...
 };
 ```
 
 The `grad_op_maker_ ` is `nullptr` if the operator does not have associated gradient operators.
+
+We propose a base class called `GradOpDescMakerBase` to let operator developers generate `Gradient Operators` easily. The public interface of that class is
+
+```cpp
+class GradOpDescMakerBase {
+public:
+  GradOpDescMakerBase(const OpDescBind& );
+  virtual std::vector<OpDescBind> operator()()const = 0;
+};
+```
+
+We can convert `GradOpDescMakerBase` to `std::function<std::vector<OpDescBind>(const OpDescBind&)>` by
+
+```cpp
+using GradOpMaker = ...;
+std::function<std::vector<OpDescBind>(const OpDescBind&)> func;
+func = [] (const OpDescBind& fwd_op) {
+  GradOpMaker maker(fwd_op);
+  return maker();
+};
+```
+
+We can write many helper functions since the `GradOpDescMakerBase` is a class now. The basic helper functions get the variables of `Input`, `Output`, `InputGradient` and `OutputGradient` in the forwarding operator.
 
 We should chagne register macros at the same time. In the current solution, there is no difference between forwarding operators and backward operators. So `REGISTER_OP` just register one operator. If the `REGISTER_OPERATOR ` contains `OpProtoAndCheckerMaker` and `GradOpDescMaker`, we just list them in the same macro. It can be done by a macro contains `__VA_ARGS__`.
 
