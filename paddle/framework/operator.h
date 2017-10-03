@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "op_info.h"
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/block_desc.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
@@ -349,7 +350,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
     const std::vector<std::string>& output_names = op_.Output(name);
     PADDLE_ENFORCE_GT(output_names.size(), 0UL, "Inputs(%s) length is 0", name);
     for (auto& output : output_names) {
-      if (!block_.HasVar(name)) return false;
+      if (!block_.HasVar(output)) return false;
     }
     return true;
   }
