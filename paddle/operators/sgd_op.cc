@@ -32,8 +32,9 @@ class SGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("param_out"),
                    "Output(param_out) of SGDOp should not be null.");
 
-    auto lr_dims = ctx->GetInputsDim("learning_rate");
-    PADDLE_ENFORCE_EQ(lr_dims.size(), 1, "learning_rate should have 1 dim");
+    auto lr_dims = ctx->GetInputDim("learning_rate");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "learning_rate should have 1 element");
     auto param_dim = ctx->GetInputDim("param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("grad"),
                       "Two input of SGD Op's dimension must be same.");
