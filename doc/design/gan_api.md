@@ -1,15 +1,17 @@
 '''
 GAN implementation, just a demo.
 '''
+```python
 # pd for short, should be more concise.
 from paddle.v2 as pd
 import numpy as np
 import logging
 
 X = pd.data(pd.float_vector(784))
-
+```
 # Conditional-GAN should be a class. 
 ### Class member function: the initializer.
+```python
 class DCGAN(object):
   def __init__(self, y_dim=None):
   
@@ -19,22 +21,26 @@ class DCGAN(object):
     self.z_dim = z_dim # input noise dimension
 
     # define parameters of discriminators
+    self.D_W0 = pd.Variable(shape=[784, 128], data=pd.gaussian_normal_randomizer())
+    self.D_b0 = pd.Variable(np.zeros(128)) # variable also support initialization using a  numpy data
     self.D_W1 = pd.Variable(shape=[784, 128], data=pd.gaussian_normal_randomizer())
     self.D_b1 = pd.Variable(np.zeros(128)) # variable also support initialization using a  numpy data
     self.D_W2 = pd.Varialble(np.random.rand(128, 1))
     self.D_b2 = pd.Variable(np.zeros(128))
-    self.theta_D = [D_W1, D_b1, D_W2, D_b2]
+    self.theta_D = [self.D_W0, self.D_b0, self.D_W1, self.D_b1, self.D_W2, self.D_b2]
 
     # define parameters of generators
+    self.G_W0 = pd.Variable(shape=[784, 128], data=pd.gaussian_normal_randomizer())
+    self.G_b0 = pd.Variable(np.zeros(128)) # variable also support initialization using a  numpy data
     self.G_W1 = pd.Variable(shape=[784, 128], data=pd.gaussian_normal_randomizer())
     self.G_b1 = pd.Variable(np.zeros(128)) # variable also support initialization using a  numpy data
     self.G_W2 = pd.Varialble(np.random.rand(128, 1))
     self.G_b2 = pd.Variable(np.zeros(128))
-    self.theta_G = [D_W1, D_b1, D_W2, D_b2]
-    
-    self.build_model()
+    self.theta_G = [self.G_W0, self.G_b0, self.G_W1, self.G_b1, self.G_W2, self.G_b2]
+```
 
 ### Class member function: Generator Net
+```python
 def generator(self, z, y = None):
 
     # Generator Net
@@ -52,8 +58,10 @@ def generator(self, z, y = None):
     G_h2 = pd.deconv(G_h1_relu, self.G_W2, self.G_b2))
     G_im = pd.tanh(G_im)
     return G_im
-    
+```
+
 ### Class member function: Discriminator Net
+```python
 def discriminator(self, image):
 
     # Discriminator Net
@@ -67,8 +75,10 @@ def discriminator(self, image):
     
     D_h2 = pd.fc(D_h1_relu, self.D_w2, self.D_b2)
     return D_h2
+```
 
 ### Class member function: Build the model
+```python
 def build_model(self):
 
     # input data
@@ -97,8 +107,10 @@ def build_model(self):
     self.d_loss = self.d_loss_real + self.d_loss_fake
     
     self.g_loss = pd.reduce_mean(pd.cross_entropy(self.D_f, np.ones(self.batch_szie))
+```
 
 # Main function for the demo:
+```python
 if __name__ == "__main__":
 
     # dcgan
@@ -109,7 +121,7 @@ if __name__ == "__main__":
     data_X, data_y = self.load_mnist()
     
     # Two subgraphs required!!!
-    d_optim = pd.train.Adam(lr = .001, beta= .1).minimize(self.d_loss)
+    d_optim = pd.train.Adam(lr = .001, beta= .1).minimize(self.d_loss, )
     g_optim = pd.train.Adam(lr = .001, beta= .1).minimize(self.g_loss)
 
     # executor
@@ -125,10 +137,11 @@ if __name__ == "__main__":
         batch_z = np.random.uniform(-1., 1., [batch_size, z_dim])
 
         if batch_id % 2 == 0:
-          sess.run(d_optim, 
+          sess.eval(d_optim, 
                    feed_dict = {dcgan.images: batch_im,
                                 dcgan.y: batch_label,
                                 dcgan.z: batch_z})
         else:
-          sess.run(g_optim,
+          sess.eval(g_optim,
                    feed_dict = {dcgan.z: batch_z})
+```
