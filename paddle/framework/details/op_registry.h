@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/framework/grad_op_desc_maker.h"
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/op_proto_maker.h"
 #include "paddle/framework/operator.h"
@@ -96,7 +97,10 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
 template <typename T>
 struct OpInfoFiller<T, kGradOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->grad_op_maker_ = new T();
+    info->grad_op_maker_ = [](const OpDescBind& fwd_op) {
+      T maker(fwd_op);
+      return maker();
+    };
   }
 };
 }  // namespace details
