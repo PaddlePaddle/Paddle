@@ -35,14 +35,10 @@ class OpDescBind {
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
-  std::vector<std::string> InputNames() const;
-
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
 
   const std::vector<std::string> &Output(const std::string &name) const;
-
-  std::vector<std::string> OutputNames() const;
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
@@ -71,10 +67,8 @@ class OpDescBind {
   // Only be used in C++
   void SetAttrMap(const AttributeMap &attr_map);
 
-  std::vector<std::string> InputParamNames() const { return MapKeys(inputs_); }
-  std::vector<std::string> OutputParamNames() const {
-    return MapKeys(outputs_);
-  }
+  std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
+  std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
 
  private:
   template <typename MapType>

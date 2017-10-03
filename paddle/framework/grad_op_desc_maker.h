@@ -44,12 +44,12 @@ class GradOpDescMakerBase {
     return ToGradNames(fwd_op_.Output(name));
   }
 
-  std::vector<std::string> InputParamNames() const {
-    return this->fwd_op_.InputParamNames();
+  std::vector<std::string> InputNames() const {
+    return this->fwd_op_.InputNames();
   }
 
-  std::vector<std::string> OutputParamNames() const {
-    return this->fwd_op_.OutputParamNames();
+  std::vector<std::string> OutputNames() const {
+    return this->fwd_op_.OutputNames();
   }
 
   std::vector<std::string> Input(const std::string& name) const {
@@ -96,12 +96,12 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
     OpDescBind grad;
     grad.SetType(this->GradOpType());
 
-    for (auto& input_param : this->InputParamNames()) {
+    for (auto& input_param : this->InputNames()) {
       grad.SetInput(input_param, this->Input(input_param));
       grad.SetOutput(GradVarName(input_param), this->InputGrad(input_param));
     }
 
-    for (auto& output_param : this->OutputParamNames()) {
+    for (auto& output_param : this->OutputNames()) {
       grad.SetInput(output_param, this->Output(output_param));
       grad.SetInput(GradVarName(output_param), this->OutputGrad(output_param));
     }
