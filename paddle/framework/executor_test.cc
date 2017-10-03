@@ -25,13 +25,12 @@ limitations under the License. */
 USE_OP(elementwise_add);
 USE_OP(gaussian_random);
 
+using std::string;
 using namespace paddle::platform;
 using namespace paddle::framework;
 
 typedef paddle::framework::BlockDesc proto_block;
 typedef paddle::framework::OpDesc proto_op;
-
-using std::string;
 
 void add_gaussian_random_op(string var_name, proto_block* block) {
   std::vector<int> dim{2, 3};
@@ -59,42 +58,59 @@ void add_gaussian_random_op(string var_name, proto_block* block) {
   Out->add_arguments(var_name);
 }
 
-TEST(Executor, Init) {
-  ProgramDesc pdesc;
+class ExecutorTester : public ::testing::Test {
+ public:
+  virtual void SetUp() override {
+    auto root_block = pdesc_.add_blocks();
+    root_block->set_idx(0);
+    root_block->set_parent_idx(-1);
 
-  auto root_block = pdesc.add_blocks();
-  root_block->set_idx(0);
-  root_block->set_parent_idx(-1);
+    add_gaussian_random_op("a", root_block);
+    add_gaussian_random_op("b", root_block);
 
-  add_gaussian_random_op("a", root_block);
-  add_gaussian_random_op("b", root_block);
+    auto c = root_block->add_vars();
+    c->set_name("c");
+    auto c_lt = c->mutable_lod_tensor();
+    c_lt->set_data_type(paddle::framework::DataType::FP32);
 
-  auto c = root_block->add_vars();
-  c->set_name("c");
-  auto c_lt = c->mutable_lod_tensor();
-  c_lt->set_data_type(paddle::framework::DataType::FP32);
+    auto op = root_block->add_ops();
+    op->set_type("elementwise_add");
+    auto X = op->add_inputs();
+    X->set_parameter("X");
+    X->add_arguments("a");
+    auto Y = op->add_inputs();
+    Y->set_parameter("Y");
+    Y->add_arguments("b");
+    auto Out = op->add_outputs();
+    Out->set_parameter("Out");
+    Out->add_arguments("c");
+  }
 
-  auto op = root_block->add_ops();
-  op->set_type("elementwise_add");
-  auto X = op->add_inputs();
-  X->set_parameter("X");
-  X->add_arguments("a");
-  auto Y = op->add_inputs();
-  Y->set_parameter("Y");
-  Y->add_arguments("b");
-  auto Out = op->add_outputs();
-  Out->set_parameter("Out");
-  Out->add_arguments("c");
+ protected:
+  std::vector<Tensor>* outputs_{nullptr};
+  ProgramDesc pdesc_;
+  Scope scope_;
+};
 
-  CPUPlace cpu_place1, cpu_place2;
+TEST_F(ExecutorTester, InitCPU) {
   std::vector<Place> places;
+  CPUPlace cpu_place1, cpu_place2;
   places.push_back(cpu_place1);
   places.push_back(cpu_place2);
 
   Executor* executor = new Executor(places);
-  Scope s;
-  std::vector<Tensor>* outputs{nullptr};
-  executor->Run(pdesc, &s, outputs);
-
+  executor->Run(pdesc_, &scope_, outputs_);
   delete executor;
 }
+
+#ifndef PADDLE_ONLY_CPU
+TEST_F(ExecutorTester, InitGPU) {
+  std::vector<Place> places;
+  GPUPlace gpu_place0(0);
+  places.push_back(gpu_place0);
+
+  Executor* executor = new Executor(places);
+  executor->Run(pdesc_, &scope_, outputs_);
+  delete executor;
+}
+#endif

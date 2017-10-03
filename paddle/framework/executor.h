@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
-#include "paddle/platform/device.h"
+#include "paddle/platform/device_context_manager.h"
 
 namespace paddle {
 namespace framework {
@@ -30,7 +30,7 @@ class Executor {
   void Run(const ProgramDesc&, Scope*, std::vector<Tensor>*);
 
  private:
-  std::vector<platform::Device*> devices_;
+  std::vector<platform::DeviceContext*> device_contexts_;
 };
 
 }  // namespace framework

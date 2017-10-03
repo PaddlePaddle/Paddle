@@ -13,33 +13,46 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include "paddle/platform/device_context.h"
-#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace platform {
 
-struct Device {
-  CPUDeviceContext* cpu_device_context;
-#ifndef PADDLE_ONLY_CPU
-  CUDADeviceContext* cuda_device_context;
-#endif
+template <typename T>
+struct Converter;
 
-#ifndef PADDLE_ONLY_CPU
-  Device(CPUDeviceContext* cpu, CUDADeviceContext* gpu)
-      : cpu_device_context(cpu), cuda_device_context(gpu) {}
-#else
-  explicit Device(CPUDeviceContext* cpu) : cpu_device_context(cpu) {}
-#endif
+template <>
+struct Converter<CPUPlace> {
+  using DeviceContextType = CPUDeviceContext;
 };
 
-CPUDeviceContext* GetCPUDeviceContext(const platform::CPUPlace& place);
-
 #ifndef PADDLE_ONLY_CPU
-CUDADeviceContext* GetCUDADeviceContext(const platform::GPUPlace& place);
+template <>
+struct Converter<GPUPlace> {
+  using DeviceContextType = CUDADeviceContext;
+};
 #endif
 
-Device* GetDevice(const platform::Place& place);
+class DeviceContextManager {
+ public:
+  DeviceContextManager();
+  ~DeviceContextManager();
+
+  template <typename PlaceType, typename DeviceType = typename Converter<
+                                    PlaceType>::DeviceContextType>
+  DeviceType* GetDeviceContext(const PlaceType& place);
+
+  static DeviceContextManager* Get() {
+    static DeviceContextManager inst;
+    return &inst;
+  }
+
+ private:
+  CPUDeviceContext* cpu_context_;
+#ifndef PADDLE_ONLY_CPU
+  int device_count_;
+  std::vector<CUDADeviceContext*> cuda_contexts_;
+#endif
+};
 }  // namespace platform
 }  // namespace paddle

@@ -24,9 +24,21 @@ namespace paddle {
 namespace framework {
 
 Executor::Executor(const std::vector<platform::Place>& places) {
-  devices_.resize(places.size());
+  device_contexts_.resize(places.size());
   for (size_t i = 0; i < places.size(); i++) {
-    devices_[i] = platform::GetDevice(places[i]);
+    if (platform::is_cpu_place(places[i])) {
+      device_contexts_[i] = platform::DeviceContextManager::Get()
+                                ->GetDeviceContext<platform::CPUPlace>(
+                                    boost::get<platform::CPUPlace>(places[i]));
+    } else {
+#ifndef PADDLE_ONLY_CPU
+      device_contexts_[i] = platform::DeviceContextManager::Get()
+                                ->GetDeviceContext<platform::GPUPlace>(
+                                    boost::get<platform::GPUPlace>(places[i]));
+#else
+      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#endif
+    }
   }
 }
 
@@ -37,7 +49,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope,
   //    - only runs on the first device
   //    - test on gpu
   auto& block = pdesc.blocks(0);
-  auto& device = devices_[0];
+  auto& device = device_contexts_[0];
 
   // TODO(tonyyang-svail):
   //    - runs on a new local scope
@@ -49,17 +61,18 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope,
 
   for (auto& op_desc : block.ops()) {
     auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-    op->Run(*scope, *device->cpu_device_context);
+    op->Run(*scope, *device);
   }
 
-  // print tensor value
-  for (auto& var : block.vars()) {
-    std::cout << var.name() << std::endl;
-    auto v = scope->FindVar(var.name());
-    const LoDTensor& t = v->Get<LoDTensor>();
-    for (int i = 0; i < t.numel(); ++i) std::cout << t.data<float>()[i] << " ";
-    std::cout << std::endl;
-  }
+  // // print tensor value
+  // for (auto& var : block.vars()) {
+  //   std::cout << var.name() << std::endl;
+  //   auto v = scope->FindVar(var.name());
+  //   const LoDTensor& t = v->Get<LoDTensor>();
+  //   for (int i = 0; i < t.numel(); ++i)
+  //     std::cout << t.data<float>()[i] << " ";
+  //   std::cout << std::endl;
+  // }
 }
 
 }  // namespace framework
