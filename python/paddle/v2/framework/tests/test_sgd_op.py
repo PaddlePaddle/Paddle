@@ -11,7 +11,6 @@ class TestSGDOp(OpTest):
         lr = 0.1
 
         self.inputs = {'param': w, 'grad': g, 'learning_rate': lr}
-        # self.attrs = {'learning_rate': lr}
         self.outputs = {'param_out': w - lr * g}
 
     def test_check_output(self):
