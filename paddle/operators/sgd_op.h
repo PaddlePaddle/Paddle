@@ -30,8 +30,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto param = ctx.Input<Tensor>("param");
     auto grad = ctx.Input<Tensor>("grad");
+    float lr = ctx.Input<Tensor>("learning_rate")->data<float>()[0];
     auto param_out = ctx.Output<Tensor>("param_out");
-    float lr = ctx.Attr<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());
 

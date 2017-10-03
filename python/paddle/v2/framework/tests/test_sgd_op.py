@@ -8,10 +8,9 @@ class TestSGDOp(OpTest):
         self.op_type = "sgd"
         w = np.random.random((102, 105)).astype("float32")
         g = np.random.random((102, 105)).astype("float32")
-        lr = 0.1
+        lr = np.array([0.1]).astype("float32")
 
-        self.inputs = {'param': w, 'grad': g}
-        self.attrs = {'learning_rate': lr}
+        self.inputs = {'param': w, 'grad': g, 'learning_rate': lr}
         self.outputs = {'param_out': w - lr * g}
 
     def test_check_output(self):
