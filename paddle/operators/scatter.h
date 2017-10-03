@@ -33,11 +33,11 @@ using Tensor = framework::Tensor;
  * return: output tensor
  */
 template <typename T>
-void ScatterAssign(const platform::Place& place,
+void ScatterAssign(const platform::DeviceContext& ctx,
                    const paddle::framework::Tensor* src,
                    const paddle::framework::Tensor* index,
                    paddle::framework::Tensor* output) {
-  PADDLE_ENFORCE(platform::is_cpu_place(place));
+  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // check index of shape 1-D
   PADDLE_ENFORCE(index->dims().size() == 1);
   int index_size = index->dims()[0];
