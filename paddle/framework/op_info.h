@@ -17,10 +17,13 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/type_defs.h"
 #include "paddle/platform/macros.h"
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {

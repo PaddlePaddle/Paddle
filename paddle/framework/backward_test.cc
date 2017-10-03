@@ -21,21 +21,31 @@
 namespace paddle {
 namespace framework {
 
-using OperatorBase = framework::OperatorBase;
-using OpProtoAndCheckerMaker = framework::OpProtoAndCheckerMaker;
-using OpProto = framework::OpProto;
-using OpAttrChecker = framework::OpAttrChecker;
-using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
 
 class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").NotInGradient();
-    AddInput("b", "Bias of Add").NotInGradient();
-    AddOutput("Out", "Out of Add").NotInGradient();
+    AddInput("X", "Input X of Add");
+    AddInput("b", "Bias of Add");
+    AddOutput("Out", "Out of Add");
     AddComment("Add Op");
+  }
+};
+
+class RowWiseAddGradMaker : public SingleGradOpDescMaker {
+ public:
+  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  OpDescBind Apply() const override {
+    OpDescBind grad_op;
+    grad_op.SetInput(GradVarName("Out"), OutputGrad("Out"));
+    grad_op.SetOutput(GradVarName("X"), InputGrad("X"));
+    grad_op.SetOutput(GradVarName("b"), InputGrad("b"));
+    grad_op.SetType("rowwise_add_grad");
+    return grad_op;
   }
 };
 
@@ -148,8 +158,9 @@ class AddOpMaker : public OpProtoAndCheckerMaker {
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
-REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, rowwise_add_grad,
-            f::NOP);
+REGISTER_OPERATOR(rowwise_add, f::NOP, f::RowWiseAddOpMaker,
+                  f::RowWiseAddGradMaker);
+REGISTER_OPERATOR(rowwise_add_grad, f::NOP);
 REGISTER_OP(mul, f::NOP, f::MulOpMaker, mul_grad, f::NOP);
 REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, sigmoid_grad, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
@@ -378,7 +389,6 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
                 + 2U /* internal variable number*/);
-  std::cerr << grad_fc.DebugString() << std::endl;
 
   EXPECT_EQ(grad_fc.Outputs(all).size(),
             2UL       /* input number of mul*/

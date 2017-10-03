@@ -36,7 +36,7 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
   MeanOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
-    AddOutput("Out", "The output of mean op").NotInGradient();
+    AddOutput("Out", "The output of mean op");
     AddComment(R"DOC( Mean Operator
 )DOC");
   }
@@ -52,11 +52,28 @@ class MeanGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class MeanGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  framework::OpDescBind Apply() const override {
+    framework::OpDescBind grad_op;
+    grad_op.SetType("mean_grad");
+    grad_op.SetInput("X", Input("X"));
+    grad_op.SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op.SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    return grad_op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
+
+REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanGradMaker);
+REGISTER_OPERATOR(mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean,
                        ops::MeanKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mean_grad,

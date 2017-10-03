@@ -49,9 +49,9 @@ class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MinusOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The left tensor of minus operator.").NotInGradient();
-    AddInput("Y", "The right tensor of minus operator.").NotInGradient();
-    AddOutput("Out", "The output tensor of minus operator.").NotInGradient();
+    AddInput("X", "The left tensor of minus operator.");
+    AddInput("Y", "The right tensor of minus operator.");
+    AddOutput("Out", "The output tensor of minus operator.");
 
     AddComment(R"DOC(Minus Operator
 
@@ -64,26 +64,25 @@ or not. But the output only shares the LoD with input `X`.
 )DOC");
   }
 };
-template <typename AttrType>
-class MinusGradOp : public NetOp {
+
+class MinusGradMaker : public framework::GradOpDescMakerBase {
  public:
-  MinusGradOp(const std::string &type, const framework::VariableNameMap &inputs,
-              const framework::VariableNameMap &outputs,
-              const framework::AttributeMap &attrs)
-      : NetOp(type, inputs, outputs, attrs) {
-    auto out_grad = Input(framework::GradVarName("Out"));
-    auto x_grad = Output(framework::GradVarName("X"));
-    auto y_grad = Output(framework::GradVarName("Y"));
+  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-    // x_grad = out_grad
-    AppendOp(framework::OpRegistry::CreateOp("identity", {{"X", {out_grad}}},
-                                             {{"Y", {x_grad}}}, {}));
+  std::vector<framework::OpDescBind> operator()() const override {
+    std::vector<framework::OpDescBind> ops;
+    ops.resize(2);
 
-    framework::AttributeMap scale_attr;
-    scale_attr["scale"] = static_cast<AttrType>(-1);
-    AppendOp(framework::OpRegistry::CreateOp("scale", {{"X", {out_grad}}},
-                                             {{"Out", {y_grad}}}, scale_attr));
-    CompleteAddOp(false);
+    ops[0].SetType("scale");
+    ops[0].SetInput("X", OutputGrad("Out"));
+    ops[0].SetOutput("Out", InputGrad("X"));
+    ops[0].SetAttr("scale", 1.0f);
+
+    ops[1].SetType("scale");
+    ops[1].SetInput("X", OutputGrad("Out"));
+    ops[1].SetOutput("Out", InputGrad("Y"));
+    ops[1].SetAttr("scale", -1.0f);
+    return ops;
   }
 };
 
@@ -91,7 +90,6 @@ class MinusGradOp : public NetOp {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(minus, ops::MinusOp, ops::MinusOpMaker, minus_grad,
-            ops::MinusGradOp<float>);
+REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker, ops::MinusGradMaker);
 REGISTER_OP_CPU_KERNEL(minus,
                        ops::MinusKernel<paddle::platform::CPUPlace, float>);

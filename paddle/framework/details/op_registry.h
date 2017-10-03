@@ -85,7 +85,6 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
     info->proto_ = new OpProto;
     info->checker_ = new OpAttrChecker();
     auto maker = T(info->proto_, info->checker_);
-    std::cerr << "Assign Maker " << op_type << std::endl;
     maker.Validate();
     info->proto_->set_type(op_type);
     PADDLE_ENFORCE(

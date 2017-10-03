@@ -27,15 +27,14 @@ class SoftmaxWithCrossEntropyOpMaker
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "
              "which is a 2-D tensor with shape [N x K]. N is the batch_size, "
-             "and K is the class number.")
-        .NotInGradient();
-    AddInput(
-        "Label",
-        "(Tensor, default: Tensor<int>), The ground truth which is a 2-D "
-        "tensor. "
-        "If softLable is set to 0, Label is a Tensor<int> with shape [N x 1]. "
-        "If softLable is set to 1, Label is a Tensor<float/double> "
-        "with shape [N x K].");
+             "and K is the class number.");
+    AddInput("Label",
+             "(Tensor, default: Tensor<int>), The ground truth which is a 2-D "
+             "tensor. "
+             "If softLable is set to 0, Label is a Tensor<int> with shape [N x "
+             "1]. "
+             "If softLable is set to 1, Label is a Tensor<float/double> "
+             "with shape [N x K].");
     AddOutput(
         "Softmax",
         "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N x K]. "
@@ -163,15 +162,35 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  framework::OpDescBind Apply() const override {
+    framework::OpDescBind grad_op;
+    grad_op.SetType("softmax_with_cross_entropy_grad");
+    grad_op.SetInput("Label", Input("Label"));
+    grad_op.SetInput("Softmax", Output("Softmax"));
+    grad_op.SetInput("Loss", Output("Loss"));
+    grad_op.SetInput(framework::GradVarName("Softmax"), OutputGrad("Softmax"));
+    grad_op.SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    grad_op.SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+    grad_op.SetAttrMap(Attrs());
+    return grad_op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
-            ops::SoftmaxWithCrossEntropyOpMaker,
-            softmax_with_cross_entropy_grad,
-            ops::SoftmaxWithCrossEntropyOpGrad);
+REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
+                  ops::SoftmaxWithCrossEntropyOpMaker,
+                  ops::SoftmaxWithCrossEntropyOpMaker);
+REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
+                  ops::SoftmaxWithCrossEntropyOpGrad);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
                        ops::SoftmaxWithCrossEntropyKernel<float>);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
