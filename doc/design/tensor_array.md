@@ -1,8 +1,6 @@
 # Design for TensorArray
-RNN is composed of multiple time steps, in each step, there are several input segments, states and output segments.
-
 ## Background
-Steps are the core concept of RNNs. In each time step, there should be some input segments, states, and output segments; all the three complements act like arrays, for example, call `states[step_id]` will get the state in `step_id`th time step.
+Steps are the core concept of RNNs. In each time step, there should be several input segments, states, and output segments; all the three complements act like arrays, for example, call `states[step_id]` will get the state in `step_id`th time step.
 
 An RNN can be simply implemented with the following pseudo codes
 
