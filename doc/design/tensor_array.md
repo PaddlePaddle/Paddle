@@ -1,8 +1,53 @@
 # Design for TensorArray
+This design doc presents the necessity of a new C++ class `TensorArray`.
+In addition to the very simple C++ implementation
+
+```c++
+class TensorArray {
+ public:
+  explicit TensorArray(const LoDTensor&);
+  explicit TensorArray(size_t size);
+
+ private:
+  vector<LoDTensor> values_;
+};
+```
+
+We also need to expose it to PaddlePaddle's Python API,
+because users would want to use it with our very flexible operators `WhileLoop`.
+An example for a RNN based on dynamic operators is 
+
+```python
+input = pd.data(...)
+num_steps = Var(12)
+
+TensorArray states(size=num_steps)
+TensorArray step_inputs(unstack_from=input)
+TensorArray step_outputs(size=num_steps)
+
+W = Tensor(...)
+U = Tensor(...)
+default_state = some_op()
+
+step = Var(1)
+
+wloop = paddle.create_whileloop(loop_vars=[step])
+with wloop.frame():
+    wloop.break_if(pd.equal(step, num_steps)
+    pre_state = states.read(step-1, default_state)
+    step_input = step_inputs.read(step)
+    state = pd.sigmoid(pd.matmul(U, pre_state) + pd.matmul(W, step_input))
+    states.write(step, state)
+    step_outputs.write(step, state) # output state
+    step.update(state+1)
+
+output = step_outputs.stack()
+```
+
 ## Background
 Steps are one of the core concepts of RNN. In each time step of RNN, there should be several input segments, states, and output segments; all these components act like arrays, for example, call `states[step_id]` will get the state in `step_id`th time step.
 
-An RNN could be implemented with the following pseudo codes
+An RNN could be implemented with the following pseudocode
 
 ```c++
 Array states;
@@ -19,25 +64,32 @@ while_loop {
    step++;
 }
 ```
-According to the [RNN roadmap](https://github.com/PaddlePaddle/Paddle/issues/4561), there are several different RNNs to support.
- 
-Currently, we have an RNN implementation called `recurrent_op` which takes tensor as input; it splits the input tensors into `input_segments`. 
+According to the [RNN roadmap](https://github.com/PaddlePaddle/Paddle/issues/4561), there are several different RNNs that PaddlePaddle will eventually support.
 
-Considering a tensor can't store variable-length sequences directly, we proposed the tensor with the level of details (`LoDTensor` for short). Segmenting the `LoDTensor` is much more complicated than splitting a tensor, that makes it necessary to refactor the `recurrent_op` with `LoDTensor` segmenting support.
+Currently, the basic RNN implementation supported by PaddlePaddle is the `recurrent_op` which takes tensors as input and splits them into `input_segments`.
 
-In the second stage, `dynamic_recurrent_op` should be introduced to handle inputs with variable-length sequences. 
-The implementation is the same with `recurrent_op` except that **how to split the original input `LoDTensors` and outputs to get the `input_segments` and `output_segments`** . 
 
-In the next stage, a dynamic RNN model based on dynamic operators would be supported. Though it can't be built on `recurrent_op` or `dynamic_recurrent_op` directly, the logic about how to split a tensor or a LoD tensor and get `input_segments` is the same.
+Since a tensor cannot store variable-length sequences directly, PaddlePaddle implements the tensor with level of details (`LoDTensor` for short).
+Segmenting the `LoDTensor` is much more complicated than splitting a tensor, that makes it necessary to refactor the `recurrent_op` with `LoDTensor` segmenting support.
+
+As the next step in RNN support, `dynamic_recurrent_op` should be introduced to handle inputs with variable-length sequences.
+
+The implementation is similar to `recurrent_op`. 
+The key difference is the way **the original input `LoDTensors` and outupts are split to get the `input_segments` and the `output_segments`.**
+
+
+Though it can't be built over `recurrent_op` or `dynamic_recurrent_op` directly,
+the logic behind splitting a tensor or a LoD tensor into `input_segments` remains the same.
 
 ## Why `TensorArray`
-In the three different RNNs, the logic of how to split the inputs to segments, states and outputs are similar and could be shared as a separate module.
+The logic behind splitting the inputs to segments, states and outputs is similar and can be shared in a seperate module.
 
 The array of `states`, `input_segments` and `output_segments` would be exposed to users when writing a dynamic RNN model similar to the above pseudo codes. 
 
-So there should be an array-like container which might store the segments of a tensor or LoD tensor.
-**This container could store an array of tensor and provides several methods to split a tensor or a LoD tensor** ,
-that's where the notion `TensorArray` comes from.
+So there should be an array-like container, which can store the segments of a tensor or LoD tensor.
+
+**This container could store an array of tensors and provides several methods to split a tensor or a LoD tensor** .
+This is where the notion of `TensorArray` comes from.
 
 ## Introduce TensorArray to uniform all the three RNNs
 TensorArray as a new concept is borrowed from TensorFlow, 
