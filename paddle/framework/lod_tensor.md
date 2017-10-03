@@ -1,6 +1,6 @@
 # Design Doc: LoD (Level-of-Detail) Tensor
 
-As other deep learning systems, PaddlePaddle supports training models from sequence data.  Also, like other systems, PaddlePaddle represent a mini-batch of sequences as a Tensor.  What is different is that PaddlePaddle doesn't require that all sequences in a mini-batch are of the same length. Thus no need for padding zeros.
+Like other deep learning systems, PaddlePaddle supports training models from sequence data.  Also, like other systems, PaddlePaddle represent a mini-batch of sequences as a Tensor.  What is different is that PaddlePaddle doesn't require all sequences in a mini-batch to be of the same length. Thus no need for padding zeros.
 
 |                       | TensorFlow | PaddlePaddle |
 |-----------------------|------------|--------------|
@@ -9,24 +9,24 @@ As other deep learning systems, PaddlePaddle supports training models from seque
 | padding zeros         | Must       | No need      |
 | blob data type        | Tensor     | LoDTensor    |
 
-PaddlePaddle achieves this flexibility by passing through a new data type, *LoD Tensor*, which is a Tensor attached with segmentation index known as *LoD*, between operators.  The LoD index doesn't only segments a tensor, but also recursively segments sub-sequences.  This document presents the design of LoD and LoDTensor.
+PaddlePaddle achieves this flexibility by passing through a new data type, *LoD Tensor*, which is a Tensor attached with segmentation index known as *LoD*, between operators.  The LoD index doesn't only segment a tensor, but also recursively segments sub-sequences.  This document presents the design of LoD and LoDTensor.
 
 
 ## The Challenge: Variable-length Sequences
 
 Most deep learning systems represent a mini-batch as a Tensor.  For example, a mini-batch of 10 images, each of size 32x32, is a 10x32x32 Tensor.  Another example is that each mini-batch contains N sentences, where each word is a D-dimensional one-hot vector.  Suppose that all sentences have the same length L, we can represent this mini-batch by a NxLxD tensor.
 
-Both examples show that the elements of sequences are usually of the same size.  In the first example, all images are 32x32, and in the second one, all words are D-dimensional vectors.  It doesn't make sense to allow variable-sized images, as that would require transformations like convolution represented by variable-sized Tensors.
+Both examples show that the elements of sequences are usually of the same size.  In the first example, all images are 32x32, and in the second one, all words are D-dimensional vectors.  It doesn't make sense to allow variable-sized images, as that would require transformations like convolution to handle variable-sized Tensors.
 
 The real challenge is that in most cases, sentences have variable lengths, and we will need an index data structure to segment the tensor into sequences.  Also, sequences might consist of sub-sequences.
 
 ## A Solution: The LoD Index
 
-Let is visit this challenge from examples.
+To understand our solution, it is best to look at some examples.
 
 ### A Mini-Batch of Sentences
 
-Let's imagine a mini-batch of 3 variable lengths sentences composed by 3, 1, and 2 words respectively.  We can represent it by a (3+1+2)xD tensor plus some index information:
+Let's imagine a mini-batch of 3 variable lengths sentences composed of 3, 1, and 2 words, respectively.  We can represent the mini-batch by a (3+1+2)xD tensor plus some index information:
 
 ```
 3   1 2
@@ -37,7 +37,7 @@ where each `|` represents a D-dimensional word vector.  The numbers, 3, 1, and 2
 
 ### Recursive Sequences
 
-Let check another example of a 2-level LoD Tensor.  Consider a mini-batch of three articles with 3, 1, and 2 sentences, and each sentence consists of words:
+Let check another example of a 2-level LoD Tensor.  Consider a mini-batch of three articles with 3, 1, and 2 sentences, and each sentence consists of a variable number of words:
 
 ```
 3           1  2
@@ -47,7 +47,7 @@ Let check another example of a 2-level LoD Tensor.  Consider a mini-batch of thr
 
 ### A Mini-Batch of Videos
 
-LoD Tensor generalizes to the case where elements are higher dimensional objects, like images.  Suppose that a mini-batch contains videos of the same frame size 640x480.  Here is a mini-batch of 3 videos with 3, 1, and 2 frames respectively.
+LoD tensors generalize to the case where elements are higher dimensional objects, like images.  Suppose that a mini-batch contains videos of the same frame size 640x480.  Here is a mini-batch of 3 videos with 3, 1, and 2 frames, respectively.
 
 ```
 3     1  2
@@ -65,7 +65,7 @@ In traditional cases like a mini-batch with N fixed-sized images,  the LoD Tenso
 口口口口 ... 口
 ```
 
-It doesn't loss anything to ignore the many 1's in the index and to consider this LoD Tensor a usual Tensor:
+In this case, we don't lose any information by ignoring the many 1's in the index and simply considering this LoD Tensor as a usual Tensor:
 
 ```
 口口口口 ... 口
@@ -91,7 +91,7 @@ For example, the third sentence in above example is identified by branch <0,2>, 
 
 ### The LoD Index
 
-We can save the LoD index in above example
+We can save the LoD index in the above example
 
 ```
 3           1  2
@@ -129,13 +129,13 @@ into offsets
 
 so we know that the first sentence is from word 0 to word 3, and the second sentence from work 3 to word 5.
 
-Similarly, lengths in the top level LoD
+Similarly, the lengths in the top level LoD
 
 ```
 3 1 2
 ```
 
-is transformed into offsets of elements/words:
+are transformed into offsets of elements/words as follows:
 
 ```
 0 9     10  15
@@ -148,9 +148,9 @@ so we can tell that the first article is from word 0 to word 9, and the second a
 The complete offset representation is as follows:
 
 ```
-0          9 10      15
-0  3  5    9 10  12  15
-||| || |||| |  || |||
+0           9 10       15
+0   3  5    9 10  12   15
+ ||| || |||| |  ||  |||
 ```
 
 ## Slicing of LoD Tensors
