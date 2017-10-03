@@ -40,15 +40,6 @@ const std::vector<std::string> &OpDescBind::Input(
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::InputNames() const {
-  std::vector<std::string> retv;
-  retv.reserve(this->inputs_.size());
-  for (auto &ipt : this->inputs_) {
-    retv.push_back(ipt.first);
-  }
-  return retv;
-}
-
 std::vector<std::string> OpDescBind::InputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->inputs_) {
@@ -69,15 +60,6 @@ const std::vector<std::string> &OpDescBind::Output(
   PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
                  name, Type());
   return it->second;
-}
-
-std::vector<std::string> OpDescBind::OutputNames() const {
-  std::vector<std::string> retv;
-  retv.reserve(this->outputs_.size());
-  for (auto &ipt : this->outputs_) {
-    retv.push_back(ipt.first);
-  }
-  return retv;
 }
 
 std::vector<std::string> OpDescBind::OutputArgumentNames() const {

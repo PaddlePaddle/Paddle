@@ -40,16 +40,12 @@ class OpDescBind {
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
-  std::vector<std::string> InputNames() const;
-
   std::vector<std::string> InputArgumentNames() const;
 
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
 
   const std::vector<std::string> &Output(const std::string &name) const;
-
-  std::vector<std::string> OutputNames() const;
 
   std::vector<std::string> OutputArgumentNames() const;
 
@@ -70,9 +66,6 @@ class OpDescBind {
 
   void SetBlockAttr(const std::string &name, BlockDescBind &block);
 
-  // Only be used in C++
-  void SetAttrMap(const AttributeMap &attr_map);
-
   Attribute GetAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
@@ -82,7 +75,23 @@ class OpDescBind {
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
 
+  // Only be used in C++
+  void SetAttrMap(const AttributeMap &attr_map);
+
+  std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
+  std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
+
  private:
+  template <typename MapType>
+  static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
+    std::vector<typename MapType::key_type> ret_val;
+    ret_val.reserve(map.size());
+    std::transform(
+        map.begin(), map.end(), std::back_inserter(ret_val),
+        [](const typename MapType::value_type &pair) { return pair.first; });
+    return ret_val;
+  }
+
   void Sync();
 
   OpDesc op_desc_;
