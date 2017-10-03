@@ -57,8 +57,15 @@ TEST(Executor, Init) {
   Y->set_parameter("Y");
   Y->add_arguments("b");
 
-  CPUPlace cpu_place;
-  Executor* executor = NewLocalExecutor(cpu_place, pdesc, true);
-  executor->Run();
+  CPUPlace cpu_place1, cpu_place2;
+  std::vector<Place> places;
+  places.push_back(cpu_place1);
+  places.push_back(cpu_place2);
+
+  Executor* executor = new Executor(places);
+  Scope s;
+  std::vector<Tensor>* outputs{nullptr};
+  executor->Run(pdesc, &s, outputs);
+
   delete executor;
 }

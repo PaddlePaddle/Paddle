@@ -15,18 +15,22 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/framework.pb.h"
-#include "paddle/platform/place.h"
+#include "paddle/framework/scope.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device.h"
 
 namespace paddle {
 namespace framework {
 
 class Executor {
  public:
-  virtual ~Executor() {}
-  virtual void Run() = 0;
-};
+  explicit Executor(const std::vector<platform::Place>& places);
+  ~Executor() {}
+  void Run(const ProgramDesc&, Scope*, std::vector<Tensor>*);
 
-Executor* NewLocalExecutor(const platform::Place&, const ProgramDesc&, bool);
+ private:
+  std::vector<platform::Device*> devices_;
+};
 
 }  // namespace framework
 }  // namespace paddle
