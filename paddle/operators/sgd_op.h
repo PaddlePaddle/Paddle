@@ -31,7 +31,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
     auto param = ctx.Input<Tensor>("param");
     auto grad = ctx.Input<Tensor>("grad");
     auto param_out = ctx.Output<Tensor>("param_out");
-    float lr = ctx.Attr<float>("learning_rate");
+    float lr = *ctx.Input<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
