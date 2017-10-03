@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device.h"

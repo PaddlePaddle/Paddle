@@ -44,7 +44,7 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device scope framework_proto)
+cc_library(executor SRCS executor.cc DEPS op_registry device scope framework_proto ${GLOB_OP_LIB})
 cc_test(executor_test SRCS executor_test.cc DEPS executor)
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)

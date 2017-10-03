@@ -13,9 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/executor.h"
+#include "gtest/gtest.h"
 #include "paddle/framework/attribute.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+#include "paddle/framework/grad_op_builder.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
+
+USE_OP(elementwise_add);
 
 using namespace paddle::platform;
 using namespace paddle::framework;
