@@ -22,9 +22,21 @@ namespace paddle {
 namespace framework {
 
 Executor::Executor(const std::vector<platform::Place>& places) {
-  devices_.resize(places.size());
+  device_contexts_.resize(places.size());
   for (size_t i = 0; i < places.size(); i++) {
-    devices_[i] = platform::GetDevice(places[i]);
+    if (platform::is_cpu_place(places[i])) {
+      device_contexts_[i] = platform::DeviceContextManager::Get()
+                                ->GetDeviceContext<platform::CPUPlace>(
+                                    boost::get<platform::CPUPlace>(places[i]));
+    } else {
+#ifndef PADDLE_ONLY_CPU
+      device_contexts_[i] = platform::DeviceContextManager::Get()
+                                ->GetDeviceContext<platform::GPUPlace>(
+                                    boost::get<platform::GPUPlace>(places[i]));
+#else
+      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#endif
+    }
   }
 }
 
@@ -34,37 +46,25 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope,
   // TODO(tonyyang-svail):
   //    - only runs the first block
   //    - only runs on the first device
+  Scope& local_scope = scope->NewScope();
+
   auto& block = pdesc.blocks(0);
-  auto& device = devices_[0];
+  auto& device_context = device_contexts_[0];
 
   for (auto& var : block.vars()) {
-    scope->NewVar(var.name());
+    local_scope.NewVar(var.name());
   }
 
   // std::vector<op_ptr> ops;
   for (auto& op_desc : block.ops()) {
     auto op = framework::OpRegistry::CreateOp(op_desc);
-    // op->InferShape(*scope);
-    op->Run(*scope, *device->cpu_device_context);
+    // InferShape is now doing inside Run method.
+    op->Run(local_scope, *device_context);
   }
 
   // TODO(tonyyang-svail): need to test gpu device
-  //   device_->cpu_device_context->Wait();
-  // #ifndef PADDLE_ONLY_CPU
-  //   if (device_->cuda_device_context) {
-  //     device_->cuda_device_context->Wait();
-  //   }
-  // #endif
-
-  Scope& local_scope = scope->NewScope();
-  local_scope.NewVar();
-  for (auto device : devices_) {
-    device->cpu_device_context->Wait();
-#ifndef PADDLE_ONLY_CPU
-    if (device->cuda_device_context) {
-      device->cuda_device_context->Wait();
-    }
-#endif
+  for (auto device_context : device_contexts_) {
+    device_context->Wait();
   }
 }
 

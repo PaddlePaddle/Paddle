@@ -23,7 +23,7 @@ cc_library(device_context SRCS device_context.cc DEPS memory buddy_allocator
     system_allocator memory_block meta_data meta_cache place eigen3 ${GPU_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cc DEPS device_context gpu_info)
 
-cc_library(device SRCS device.cc DEPS device_context)
+cc_library(device_context_manager SRCS device_context_manager.cc DEPS device_context)
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
 nv_test(transform_test SRCS transform_test.cu DEPS paddle_memory place device_context)
