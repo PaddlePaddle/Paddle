@@ -42,7 +42,7 @@ The `GradOpDescMaker` will be registered in `OpInfo`, to replace `grad_op_type_`
 
 ```cpp
 struct OpInfo {
-  std::function<std::vector<OpDescBind>(const OpDescBind&)>  grad_op_maker_;
+  std::function<std::vector<std::unique_ptr<OpDescBind>>(const OpDescBind&)>  grad_op_maker_;
   ...
 };
 ```
@@ -55,11 +55,11 @@ We propose a base class called `GradOpDescMakerBase` to let operator developers 
 class GradOpDescMakerBase {
 public:
   GradOpDescMakerBase(const OpDescBind& );
-  virtual std::vector<OpDescBind> operator()()const = 0;
+  virtual std::vector<std::unique_ptr<OpDescBind>> operator()()const = 0;
 };
 ```
 
-We can convert `GradOpDescMakerBase` to `std::function<std::vector<OpDescBind>(const OpDescBind&)>` by
+We can convert `GradOpDescMakerBase` to `std::function<std::vector<std::unique_ptr<OpDescBind>>(const OpDescBind&)>` by
 
 ```cpp
 using GradOpMaker = ...;
