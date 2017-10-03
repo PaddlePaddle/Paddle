@@ -34,13 +34,13 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
 
-    float lr = ctx.Attr<float>("learningRate");
     float epsilon = ctx.Attr<float>("epsilon");
     float decay = ctx.Attr<float>("decayRate");
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
     auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
     auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
+    float lr = ctx.Input<Tensor>("LearningRate")->data<float>()[0];
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto m_out = EigenVector<T>::Flatten(*moment_out);
     auto place = ctx.GetEigenDevice<Place>();

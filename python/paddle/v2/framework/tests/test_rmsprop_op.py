@@ -10,18 +10,19 @@ class TestRmspropOp(OpTest):
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
         moment = np.zeros((123, 321)).astype("float32")
+        learning_rate = np.array([0.01]).astype("float32")
 
-        learning_rate = 0.01
         epsilon = 1e-6
         decay_rate = 0.9
 
-        self.inputs = {'Param': param, 'Grad': grad, 'Moment': moment}
-
-        self.attrs = {
-            'learningRate': learning_rate,
-            'epsilon': epsilon,
-            'decayRate': decay_rate
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Moment': moment,
+            'LearningRate': learning_rate
         }
+
+        self.attrs = {'epsilon': epsilon, 'decayRate': decay_rate}
 
         moment_out = decay_rate * moment + (1 - decay_rate) * grad * grad
         param_out = param - learning_rate * grad / (np.sqrt(moment_out) +
