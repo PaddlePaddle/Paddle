@@ -16,15 +16,48 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/framework/attribute.h"
 
-#include <gtest/gtest.h>
 #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 
+#include <vector>
+
 USE_OP(elementwise_add);
+USE_OP(gaussian_random);
 
 using namespace paddle::platform;
 using namespace paddle::framework;
+
+typedef paddle::framework::BlockDesc proto_block;
+typedef paddle::framework::OpDesc proto_op;
+
+using std::string;
+
+void add_gaussian_random_op(string var_name, proto_block* block) {
+  std::vector<int> dim{2, 3};
+
+  // insert variable
+  auto a = block->add_vars();
+  a->set_name(var_name);
+  auto a_lt = a->mutable_lod_tensor();
+  a_lt->set_data_type(paddle::framework::DataType::FP32);
+  for (int i : dim) {
+    a_lt->add_dims(i);
+  }
+
+  // insert operation
+  auto op = block->add_ops();
+  op->set_type("gaussian_random");
+  auto dims = op->add_attrs();
+  dims->set_name("dims");
+  dims->set_type(paddle::framework::AttrType::INTS);
+  for (int i : dim) {
+    dims->add_ints(i);
+  }
+  auto Out = op->add_outputs();
+  Out->set_parameter("Out");
+  Out->add_arguments(var_name);
+}
 
 TEST(Executor, Init) {
   ProgramDesc pdesc;
@@ -33,35 +66,25 @@ TEST(Executor, Init) {
   root_block->set_idx(0);
   root_block->set_parent_idx(-1);
 
-  auto a = root_block->add_vars();
-  a->set_name("a");
-  auto a_lt = a->mutable_lod_tensor();
-  a_lt->set_data_type(paddle::framework::DataType::FP32);
-  a_lt->add_dims(640);
-  a_lt->add_dims(640);
-
-  auto b = root_block->add_vars();
-  b->set_name("b");
-  auto b_lt = b->mutable_lod_tensor();
-  b_lt->set_data_type(paddle::framework::DataType::FP32);
-  b_lt->add_dims(640);
-  b_lt->add_dims(640);
+  add_gaussian_random_op("a", root_block);
+  add_gaussian_random_op("b", root_block);
 
   auto c = root_block->add_vars();
   c->set_name("c");
   auto c_lt = c->mutable_lod_tensor();
   c_lt->set_data_type(paddle::framework::DataType::FP32);
-  c_lt->add_dims(640);
-  c_lt->add_dims(640);
 
-  auto op1 = root_block->add_ops();
-  op1->set_type("elementwise_add");
-  auto X = op1->add_inputs();
+  auto op = root_block->add_ops();
+  op->set_type("elementwise_add");
+  auto X = op->add_inputs();
   X->set_parameter("X");
   X->add_arguments("a");
-  auto Y = op1->add_inputs();
+  auto Y = op->add_inputs();
   Y->set_parameter("Y");
   Y->add_arguments("b");
+  auto Out = op->add_outputs();
+  Out->set_parameter("Out");
+  Out->add_arguments("c");
 
   CPUPlace cpu_place1, cpu_place2;
   std::vector<Place> places;

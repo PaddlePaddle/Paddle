@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/executor.h"
+#include <iostream>
 #include <memory>
 #include <vector>
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 
@@ -30,41 +32,33 @@ Executor::Executor(const std::vector<platform::Place>& places) {
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope,
                    std::vector<Tensor>* outputs) {
-  // operators running
   // TODO(tonyyang-svail):
   //    - only runs the first block
   //    - only runs on the first device
+  //    - test on gpu
   auto& block = pdesc.blocks(0);
   auto& device = devices_[0];
+
+  // TODO(tonyyang-svail):
+  //    - runs on a new local scope
+  // Scope& local_scope = scope->NewScope();
 
   for (auto& var : block.vars()) {
     scope->NewVar(var.name());
   }
 
-  // std::vector<op_ptr> ops;
   for (auto& op_desc : block.ops()) {
-    auto op = framework::OpRegistry::CreateOp(op_desc);
-    // op->InferShape(*scope);
+    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
     op->Run(*scope, *device->cpu_device_context);
   }
 
-  // TODO(tonyyang-svail): need to test gpu device
-  //   device_->cpu_device_context->Wait();
-  // #ifndef PADDLE_ONLY_CPU
-  //   if (device_->cuda_device_context) {
-  //     device_->cuda_device_context->Wait();
-  //   }
-  // #endif
-
-  Scope& local_scope = scope->NewScope();
-  local_scope.NewVar();
-  for (auto device : devices_) {
-    device->cpu_device_context->Wait();
-#ifndef PADDLE_ONLY_CPU
-    if (device->cuda_device_context) {
-      device->cuda_device_context->Wait();
-    }
-#endif
+  // print tensor value
+  for (auto& var : block.vars()) {
+    std::cout << var.name() << std::endl;
+    auto v = scope->FindVar(var.name());
+    const LoDTensor& t = v->Get<LoDTensor>();
+    for (int i = 0; i < t.numel(); ++i) std::cout << t.data<float>()[i] << " ";
+    std::cout << std::endl;
   }
 }
 
