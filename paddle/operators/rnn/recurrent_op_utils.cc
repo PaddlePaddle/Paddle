@@ -108,7 +108,7 @@ void LinkMemories(const std::vector<Scope*>& scopes,
   }
 }
 
-void InitArgument(const ArgumentName& name, const Argument* arg,
+void InitArgument(const ArgumentName& name, Argument* arg,
                   const framework::OperatorBase& op, bool is_grad) {
   arg->step_scopes =
       is_grad ? op.Input(name.step_scopes) : op.Output(name.step_scopes);

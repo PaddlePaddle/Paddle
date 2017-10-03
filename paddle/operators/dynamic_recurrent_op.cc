@@ -176,7 +176,7 @@ void DynamicRecurrentOp::InitStates() const {
 
 void DynamicRecurrentOp::ArgCache::Init(
     const rnn::ArgumentName& name, const paddle::framework::OperatorBase& op,
-    const paddle::framework::Scope& scope, const rnn::Argument* arg) {
+    const paddle::framework::Scope& scope, rnn::Argument* arg) {
   this->scope = &scope;
   InitArgument(name, op, arg);
   CacheScopes(scope, *arg);
@@ -186,7 +186,7 @@ void DynamicRecurrentOp::ArgCache::Init(
 
 void DynamicRecurrentOp::ArgCache::InitArgument(const rnn::ArgumentName& name,
                                                 const OperatorBase& op,
-                                                const rnn::Argument* arg) {
+                                                rnn::Argument* arg) {
   rnn::InitArgument(name, arg, op, false /*is_grad*/);
 }
 
@@ -234,5 +234,5 @@ void DynamicRecurrentGradientOp::Run(
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    dynamic_recurrent, paddle::operators::DynamicRecurrentOp,
+    dynamic_recurrent_op, paddle::operators::DynamicRecurrentOp,
     paddle::operators::DynamicRecurrentAlgorithmProtoAndCheckerMaker);

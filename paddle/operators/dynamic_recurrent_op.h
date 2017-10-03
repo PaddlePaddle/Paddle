@@ -101,7 +101,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
     size_t num_steps;
 
     void Init(const rnn::ArgumentName& name, const OperatorBase& op,
-              const Scope& scope, const rnn::Argument* arg);
+              const Scope& scope, rnn::Argument* arg);
 
     Scope& GetScope(size_t index) {
       PADDLE_ENFORCE_LT(index, scopes->size());
@@ -110,13 +110,15 @@ class DynamicRecurrentOp : public framework::OperatorBase {
 
    protected:
     void InitArgument(const rnn::ArgumentName& name, const OperatorBase& op,
-                      const rnn::Argument* arg);
+                      rnn::Argument* arg);
     void CacheScopes(const Scope& scope, const rnn::Argument& arg);
     void CacheInlinks(const Scope& scope,
                       const std::vector<std::string>& names);
     void CacheOutlinks(const Scope& scope,
                        const std::vector<std::string>& names);
     Variable* GetVariable(const Scope& scope, const std::string& name);
+
+    friend class DynamicRecurrentOpTestHelper;
   };
 
  private:
@@ -126,7 +128,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   mutable std::map<std::string, TensorArray> step_outputs_;
   mutable std::map<std::string, std::vector<framework::DySeqMeta>>
       dy_seq_metas_;
-  rnn::Argument arg_;
+  mutable rnn::Argument arg_;
   mutable ArgCache cache_;
 };
 
