@@ -20,6 +20,11 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
+
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -34,12 +39,14 @@ class AdagradOpKernel : public framework::OpKernel<T> {
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
 
-    float lr = ctx.Attr<float>("learning_rate");
+    float lr = ctx.Input<Tensor>("learning_rate")->data<float>()[0];
     float epsilon = ctx.Attr<float>("epsilon");
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("param"));
     auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("grad"));
     auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("moment"));
+    auto lr = EigenScalar<T>::From(*ctx.Input<Tensor>("learning_rate"));
+
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto m_out = EigenVector<T>::Flatten(*moment_out);
     auto place = ctx.GetEigenDevice<Place>();

@@ -11,7 +11,7 @@ class TestAdagradOp(OpTest):
         grad = np.random.random((123, 321)).astype("float32")
         moment = np.zeros((123, 321)).astype("float32")
 
-        learning_rate = 0.01
+        lr = np.array([0.01]).astype("float32")
         epsilon = 1e-6
 
         self.inputs = {'param': param, 'grad': grad, 'moment': moment}
@@ -19,8 +19,7 @@ class TestAdagradOp(OpTest):
         self.attrs = {'learning_rate': learning_rate, 'epsilon': epsilon}
 
         moment_out = moment + grad * grad
-        param_out = param - learning_rate * grad / (np.sqrt(moment_out) +
-                                                    epsilon)
+        param_out = param - lr * grad / (np.sqrt(moment_out) + epsilon)
 
         self.outputs = {'param_out': param_out, 'moment_out': moment_out}
 
