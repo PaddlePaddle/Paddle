@@ -24,6 +24,10 @@ class InferShapeContextBase {
   virtual ~InferShapeContextBase() {}
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
+
+  virtual bool HasInputs(const std::string &name) const = 0;
+  virtual bool HasOutputs(const std::string &name) const = 0;
+
   virtual framework::DDim GetInputDim(const std::string &name) const = 0;
   std::vector<framework::DDim> GetInputsDim(const std::string &name) const {
     const std::vector<std::string> &names = Inputs(name);

@@ -3,7 +3,7 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 
-USE_OP(add);
+USE_OP(sum);
 
 namespace paddle {
 namespace framework {
@@ -38,21 +38,6 @@ class IOIgnoredOpMaker : public OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace f = paddle::framework;
-
-TEST(GradOpBuilder, AddTwo) {
-  std::shared_ptr<f::OperatorBase> add_op(f::OpRegistry::CreateOp(
-      "add", {{"X", {"x"}}, {"Y", {"y"}}}, {{"Out", {"out"}}}, {}));
-  std::shared_ptr<f::OperatorBase> grad_add_op =
-      f::OpRegistry::CreateGradOp(*add_op);
-  EXPECT_EQ(grad_add_op->Inputs().size(), 4UL);
-  EXPECT_EQ(grad_add_op->Outputs().size(), 2UL);
-  EXPECT_EQ(grad_add_op->Input("X"), "x");
-  EXPECT_EQ(grad_add_op->Input("Y"), "y");
-  EXPECT_EQ(grad_add_op->Input("Out"), "out");
-  EXPECT_EQ(grad_add_op->Input(f::GradVarName("Out")), f::GradVarName("out"));
-  EXPECT_EQ(grad_add_op->Output(f::GradVarName("X")), f::GradVarName("x"));
-  EXPECT_EQ(grad_add_op->Output(f::GradVarName("Y")), f::GradVarName("y"));
-}
 
 REGISTER_OP(mult_io, f::NOP, f::MutiInOutOpMaker, mult_io_grad, f::NOP);
 REGISTER_OP(io_ignored, f::NOP, f::IOIgnoredOpMaker, io_ignored_grad, f::NOP);
