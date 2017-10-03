@@ -25,23 +25,26 @@ Currently, we have an RNN implementation called `recurrent_op` which takes tenso
 
 Considering a tensor can't store variable-length sequences directly, we proposed the tensor with the level of details (`LoDTensor` for short). Segmenting the `LoDTensor` is much more complicated than splitting a tensor, that makes it necessary to refactor the `recurrent_op` with `LoDTensor` segmenting support.
 
-In the second stage, `dynamic_recurrent_op` should be introduced to handle inputs with variable-length sequences. The implementation is the same with `recurrent_op` except that ** how to split the original input `LoDTensors` and outputs to get the `input_segments` and `output_segments`.**. 
+In the second stage, `dynamic_recurrent_op` should be introduced to handle inputs with variable-length sequences. 
+The implementation is the same with `recurrent_op` except that **how to split the original input `LoDTensors` and outputs to get the `input_segments` and `output_segments`** . 
 
 In the next stage, a dynamic RNN model based on dynamic operators would be supported. Though it can't be built on `recurrent_op` or `dynamic_recurrent_op` directly, the logic about how to split a tensor or a LoD tensor and get `input_segments` is the same.
 
 ## Why `TensorArray`
-The three different RNNs may have different logic, but the implementation of how to split the inputs to segments, states and outputs could be shared as a separate module.
+In the three different RNNs, the logic of how to split the inputs to segments, states and outputs are similar and could be shared as a separate module.
 
 The array of `states`, `input_segments` and `output_segments` would be exposed to users when writing a dynamic RNN model similar to the above pseudo codes. 
 
 So there should be an array-like container which might store the segments of a tensor or LoD tensor.
+**This container could store an array of tensor and provides several methods to split a tensor or a LoD tensor** ,
+that's where the notion `TensorArray` comes from.
 
 ## Introduce TensorArray to uniform all the three RNNs
 TensorArray as a new concept is borrowed from TensorFlow, 
 it is meant to be used with dynamic iteration primitives such as `while_loop` and `map_fn`.
 
 This concept can be used to support our new design of dynamic operations, and help to refactor some existing variant-sentence-related layers, 
-such as `RecurrentGradientMachine`.
+such as `recurrent_op`, `RecurrentGradientMachine`.
 
 In [our design for dynamic RNN](https://github.com/PaddlePaddle/Paddle/pull/4401), 
 `TensorArray` is used to segment inputs and store states in all time steps.
