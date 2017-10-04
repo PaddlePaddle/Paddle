@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 
 #include <cuda_runtime.h>
 #include <stddef.h>
