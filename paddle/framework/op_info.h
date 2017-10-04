@@ -20,20 +20,15 @@
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/type_defs.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
 
-class GradOpDescMakerBase {
- public:
-  virtual ~GradOpDescMakerBase() = default;
-  virtual std::vector<OpDescBind> operator()(const OpDescBind&) const = 0;
-};
-
 struct OpInfo {
   OpCreator creator_;
   std::string grad_op_type_;
-  GradOpDescMakerBase* grad_op_maker_{nullptr};
+  GradOpMakerFN grad_op_maker_;
   OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
 
@@ -66,11 +61,6 @@ struct OpInfo {
 class OpInfoMap {
  public:
   static OpInfoMap& Instance();
-
-  OpInfoMap(const OpInfoMap& o) = delete;
-  OpInfoMap(OpInfoMap&& o) = delete;
-  OpInfoMap& operator=(const OpInfoMap& o) = delete;
-  OpInfoMap& operator=(OpInfoMap&& o) = delete;
 
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();
@@ -107,6 +97,8 @@ class OpInfoMap {
  private:
   OpInfoMap() = default;
   std::unordered_map<std::string, const OpInfo> map_;
+
+  DISABLE_COPY_AND_ASSIGN(OpInfoMap);
 };
 
 }  // namespace framework

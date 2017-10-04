@@ -14,5 +14,3 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(sum, ops::SumKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(sum_grad,
-                       ops::SumGradKernel<paddle::platform::GPUPlace, float>);
