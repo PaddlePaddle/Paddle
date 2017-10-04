@@ -14,21 +14,18 @@ Borrow this photo from the original DC-GAN paper.
 ## The Conditional-GAN might be a class. 
 This design we adopt the popular open source design in https://github.com/carpedm20/DCGAN-tensorflow and https://github.com/rajathkmp/DCGAN. It contains following data structure:
 
-### DCGAN(object):
-which contains everything required to build a GAN model. It provides following member functions methods as API:
+- DCGAN(object): which contains everything required to build a GAN model. It provides following member functions methods as API:
 
-### __init__(...):
-Initialize hyper-parameters (like conv dimension and so forth), and declare model parameters of discriminator and generator as well.
+- __init__(...): Initialize hyper-parameters (like conv dimension and so forth), and declare model parameters of discriminator and generator as well.
 
-### generator(z, y=None):
-Generate a fake image from input noise z. If the label y is provided, the conditional GAN model will be chosen.
+- generator(z, y=None): Generate a fake image from input noise z. If the label y is provided, the conditional GAN model will be chosen.
 Returns a generated image.
 
-### discriminator(image):
+- discriminator(image):
 Given an image, decide if it is from a real source or a fake one. 
 Returns a 0/1 binary label.
 
-### build_model(self):
+- build_model(self):
 build the whole GAN model, define training loss for both generator and discrimator.
 
 ## Discussion on Engine Functions required to build GAN
