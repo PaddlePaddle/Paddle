@@ -109,8 +109,6 @@ class ConvShiftGradKernel : public framework::OpKernel<T> {
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
-            int index = i + j - y_half_width;
-            index = (index + x_width) % x_width;
             dx(k, i) += dout(k, i) * y(k, j);
           }
         }
