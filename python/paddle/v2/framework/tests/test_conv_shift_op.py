@@ -34,13 +34,13 @@ class TestConvShiftOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
 
-    # def test_check_grad_ignore_x(self):
-    #     self.check_grad(
-    #         ['Y'], 'Out', max_relative_error=0.05, no_grad_set=set("X"))
-    #
-    # def test_check_grad_ignore_y(self):
-    #     self.check_grad(
-    #         ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Y'))
+    def test_check_grad_ignore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.05, no_grad_set=set("X"))
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Y'))
 
 
 if __name__ == '__main__':

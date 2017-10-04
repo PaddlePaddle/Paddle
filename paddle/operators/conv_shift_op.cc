@@ -53,16 +53,18 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Y")),
-                   "Output(Y@GRAD) should be not null.");
 
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      auto x_dims = ctx->GetInputDim("X");
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
 
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->SetOutputDim(framework::GradVarName("Y"), y_dims);
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput(y_grad_name)) {
+      auto y_dims = ctx->GetInputDim("Y");
+      ctx->SetOutputDim(y_grad_name, y_dims);
+    }
   }
 };
 

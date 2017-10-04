@@ -46,6 +46,7 @@ class ConvShiftKernel : public framework::OpKernel<T> {
     size_t x_width = x_dims[1];
     size_t y_width = y_dims[1];
     size_t y_half_width = (y_width - 1) / 2;
+
     for (size_t k = 0; k < batch_size; ++k) {
       for (size_t i = 0; i < x_width; ++i) {
         for (size_t j = 0; j < y_width; ++j) {
@@ -66,22 +67,21 @@ class ConvShiftGradKernel : public framework::OpKernel<T> {
     auto *Y = context.Input<Tensor>("Y");
     auto *dOut =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    framework::Tensor *dX =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
-    dX->mutable_data<T>(context.GetPlace());
-    framework::Tensor *dY =
-        context.Output<framework::Tensor>(framework::GradVarName("Y"));
-    dY->mutable_data<T>(context.GetPlace());
+    auto *dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *dY = context.Output<framework::Tensor>(framework::GradVarName("Y"));
 
     auto x = EigenMatrix<T>::Reshape(*X, 1 /* num_col_dims */);
     auto y = EigenMatrix<T>::Reshape(*Y, 1 /* num_col_dims */);
     auto dout = EigenMatrix<T>::Reshape(*dOut, 1 /* num_col_dims */);
-    auto dx = EigenMatrix<T>::Reshape(*dX, 1 /* num_col_dims */);
-    auto dy = EigenMatrix<T>::Reshape(*dY, 1 /* num_col_dims */);
 
+    // Allocate space for the gradients and initialize to zero.
     auto place = context.GetEigenDevice<Place>();
-    dx.device(place) = dx.constant(static_cast<T>(0));
-    dy.device(place) = dy.constant(static_cast<T>(0));
+    if (dX) {
+      dX->mutable_data<T>(context.GetPlace());
+    }
+    if (dY) {
+      dY->mutable_data<T>(context.GetPlace());
+    }
 
     auto x_dims = X->dims();
     auto y_dims = Y->dims();
@@ -89,13 +89,46 @@ class ConvShiftGradKernel : public framework::OpKernel<T> {
     size_t x_width = x_dims[1];
     size_t y_width = y_dims[1];
     size_t y_half_width = (y_width - 1) / 2;
-    for (size_t k = 0; k < batch_size; ++k) {
-      for (size_t i = 0; i < x_width; ++i) {
-        for (size_t j = 0; j < y_width; ++j) {
-          int index = i + j - y_half_width;
-          index = (index + x_width) % x_width;
-          dx(k, i) += dout(k, i) * y(k, j);
-          dy(k, j) += x(k, index) * dout(k, i);
+
+    // The below trades code duplication for efficiency (keeping the if
+    // statement outside of the loop).
+    if (dX && dY) {
+      auto dx = EigenMatrix<T>::Reshape(*dX, 1 /* num_col_dims */);
+      dx.device(place) = dx.constant(static_cast<T>(0));
+      auto dy = EigenMatrix<T>::Reshape(*dY, 1 /* num_col_dims */);
+      dy.device(place) = dy.constant(static_cast<T>(0));
+      for (size_t k = 0; k < batch_size; ++k) {
+        for (size_t i = 0; i < x_width; ++i) {
+          for (size_t j = 0; j < y_width; ++j) {
+            int index = i + j - y_half_width;
+            index = (index + x_width) % x_width;
+            dx(k, i) += dout(k, i) * y(k, j);
+            dy(k, j) += x(k, index) * dout(k, i);
+          }
+        }
+      }
+    } else if (dX) {
+      auto dx = EigenMatrix<T>::Reshape(*dX, 1 /* num_col_dims */);
+      dx.device(place) = dx.constant(static_cast<T>(0));
+      for (size_t k = 0; k < batch_size; ++k) {
+        for (size_t i = 0; i < x_width; ++i) {
+          for (size_t j = 0; j < y_width; ++j) {
+            int index = i + j - y_half_width;
+            index = (index + x_width) % x_width;
+            dx(k, i) += dout(k, i) * y(k, j);
+          }
+        }
+      }
+    } else if (dY) {
+      auto dy = EigenMatrix<T>::Reshape(*dY, 1 /* num_col_dims */);
+      dy.device(place) = dy.constant(static_cast<T>(0));
+      for (size_t k = 0; k < batch_size; ++k) {
+        for (size_t i = 0; i < x_width; ++i) {
+          for (size_t j = 0; j < y_width; ++j) {
+            int index = i + j - y_half_width;
+            index = (index + x_width) % x_width;
+            dy(k, j) += x(k, index) * dout(k, i);
+          }
         }
       }
     }
