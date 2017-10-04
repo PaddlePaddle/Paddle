@@ -43,7 +43,7 @@ int GetCurrentDeviceId() {
 }
 
 void SetDeviceId(int id) {
-  PADDLE_ENFORCE(id < GetDeviceCount(), "id must less than GPU count")
+  PADDLE_ENFORCE(id < GetDeviceCount(), "id must less than GPU count");
   PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }

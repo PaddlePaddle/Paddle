@@ -25,11 +25,11 @@ namespace framework {
 class Executor {
  public:
   explicit Executor(const std::vector<platform::Place>& places);
-  ~Executor() {}
+  ~Executor();
   void Run(const ProgramDesc&, Scope*, std::vector<Tensor>*);
 
  private:
-  std::vector<std::unique_ptr<platform::DeviceContext>> device_contexts_;
+  std::vector<platform::DeviceContext*> device_contexts_;
 };
 
 }  // namespace framework

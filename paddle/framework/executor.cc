@@ -27,15 +27,23 @@ Executor::Executor(const std::vector<platform::Place>& places) {
   device_contexts_.resize(places.size());
   for (size_t i = 0; i < places.size(); i++) {
     if (platform::is_cpu_place(places[i])) {
-      device_contexts_[i].reset(new platform::CPUDeviceContext(
-          boost::get<platform::CPUPlace>(places[i])));
-    } else {
+      device_contexts_[i] = new platform::CPUDeviceContext(
+          boost::get<platform::CPUPlace>(places[i]));
+    } else if (platform::is_gpu_place(places[i])) {
 #ifndef PADDLE_ONLY_CPU
-      device_contexts_[i].reset(new platform::CUDADeviceContext(
-          boost::get<platform::CPUPlace>(places[i])));
+      device_contexts_[i] = new platform::CUDADeviceContext(
+          boost::get<platform::GPUPlace>(places[i]));
 #else
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #endif
+    }
+  }
+}
+
+Executor::~Executor() {
+  for (auto& device_context : device_contexts_) {
+    if (device_context) {
+      delete device_context;
     }
   }
 }
@@ -59,6 +67,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope,
 
   for (auto& op_desc : block.ops()) {
     auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    std::cout << op->DebugString() << std::endl;
     op->Run(*scope, *device);
   }
 
