@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/framework/attribute.h"
 #include "paddle/framework/ddim.h"
 
 namespace paddle {
