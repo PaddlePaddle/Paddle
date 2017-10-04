@@ -60,9 +60,6 @@ class DynamicRecurrentOp : public framework::OperatorBase {
    * Create step-scopes to store temporary outputs in each time steps.
    */
   void CreateScopes() const;
-  void CreateStepInputs(Scope& scope);
-  void CreateStepOutputs(Scope& scope);
-  void CreateStepStates(Scope& scope);
 
   /*
    * Link TensorArray steps to the corresponding variables located in
