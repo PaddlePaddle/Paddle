@@ -79,7 +79,7 @@ class OpRegistry {
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
-  static std::unique_ptr<OperatorBase> CreateOp(OpDescBind* op_desc);
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
 };
 
 template <typename OpType, typename ProtoMakerType, typename GradOpType>
