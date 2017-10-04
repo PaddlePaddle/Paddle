@@ -55,6 +55,10 @@ class OpRegistry {
                          const std::string& grad_op_type) {
     OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
     reg.info.grad_op_type_ = grad_op_type;
+    auto proto = reg.info.Proto();
+    std::cout << "====== " << op_type << " =======" << std::endl;
+    std::cout << proto.SerializeAsString() << std::endl;
+    std::cout << "=============" << std::endl;
     ShapeInferenceMap::Instance().CreateOpWithKernel(reg.info, op_type);
     // register gradient op
     if (!grad_op_type.empty()) {

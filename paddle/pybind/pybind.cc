@@ -223,6 +223,15 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc.InitializationErrorString());
                     return OpRegistry::CreateOp(desc);
                   })
+      .def("infer_shape",
+           [](const OpDescBind &op_desc, BlockDescBind &block) {
+             auto &shape_inference_map = ShapeInferenceMap::Instance();
+             auto *op = shape_inference_map.GetOpWithKernel(op_desc.Type());
+             if (op != nullptr) {
+               auto ctx = CompileTimeInferShapeContext(op_desc, block);
+               op->InferShape(&ctx);
+             }
+           })
       .def("backward",
            [](const OperatorBase &forwardOp,
               const std::unordered_set<std::string> &no_grad_vars) {

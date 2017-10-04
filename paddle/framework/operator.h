@@ -598,9 +598,9 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
 
- protected:
   virtual void InferShape(InferShapeContextBase* ctx) const = 0;
 
+ protected:
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
   virtual DataType IndicateDataType(const ExecutionContext& ctx) const {

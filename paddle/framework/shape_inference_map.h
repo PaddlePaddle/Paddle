@@ -27,14 +27,6 @@ class ShapeInferenceMap {
  public:
   static ShapeInferenceMap& Instance();
 
-  const OperatorBase* GetOperator(const std::string& op_type) {
-    auto it = op_shape_inference_map_.find(op_type);
-    if (it == op_shape_inference_map_.end()) {
-      PADDLE_THROW("op with kernel for Op(%s) is not registered", op_type);
-    }
-    return it->second;
-  }
-
   void CreateOpWithKernel(const OpInfo& op_info, const std::string& op_type);
 
   OperatorWithKernel* GetOpWithKernel(const std::string& op_type) {

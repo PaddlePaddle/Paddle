@@ -37,10 +37,13 @@ ShapeInferenceMap& ShapeInferenceMap::Instance() {
 
 void ShapeInferenceMap::CreateOpWithKernel(const OpInfo& op_info,
                                            const std::string& op_type) {
-  const VariableNameMap inputs =
-      ConvertOpProtoVarsToVarNameMap(op_info.Proto().inputs());
+  auto proto = op_info.Proto();
+  std::cout << "========= " << op_type << " in======" << std::endl;
+  std::cout << proto.SerializeAsString() << std::endl;
+  std::cout << "========= " << op_type << " out======" << std::endl;
+  const VariableNameMap inputs = ConvertOpProtoVarsToVarNameMap(proto.inputs());
   const VariableNameMap outputs =
-      ConvertOpProtoVarsToVarNameMap(op_info.Proto().outputs());
+      ConvertOpProtoVarsToVarNameMap(proto.outputs());
   auto* op = op_info.Creator()(op_type, inputs, outputs, {});
   auto* op_with_kernel = dynamic_cast<OperatorWithKernel*>(op);
   auto it = op_shape_inference_map_.find(op_type);
