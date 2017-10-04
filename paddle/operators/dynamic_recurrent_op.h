@@ -60,6 +60,9 @@ class DynamicRecurrentOp : public framework::OperatorBase {
    * Create step-scopes to store temporary outputs in each time steps.
    */
   void CreateScopes() const;
+  void CreateStepInputs(Scope& scope);
+  void CreateStepOutputs(Scope& scope);
+  void CreateStepStates(Scope& scope);
 
   /*
    * Link TensorArray steps to the corresponding variables located in
@@ -89,6 +92,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
    * set a stepnet that is created according to a RecurrentOp's stepnet.
    */
   void SetStepNet(std::unique_ptr<OperatorBase> net) {
+    PADDLE_ENFORCE_NOT_NULL(net);
     stepnet_ = std::move(net);
   }
   const OperatorBase& GetStepNet() const { return *stepnet_; }
@@ -96,7 +100,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
  protected:
   struct ArgCache {
     Scope const* scope;
-    std::vector<std::unique_ptr<Scope>>* scopes;
+    std::vector<Scope*>* scopes;
     std::map<std::string, Variable*> inlinks;
     std::map<std::string, Variable*> outlinks;
 

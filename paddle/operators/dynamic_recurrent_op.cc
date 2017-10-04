@@ -19,6 +19,17 @@
 namespace paddle {
 namespace operators {
 
+namespace detail {
+
+inline void CreateVariables(Scope& scope,
+                            const std::vector<std::string>& var_names) {
+  for (const auto& name : var_names) {
+    scope.NewVar(name);
+  }
+}
+
+}  // namespace detail
+
 class DynamicRecurrentAlgorithmProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
@@ -93,8 +104,10 @@ void DynamicRecurrentOp::WriteStepInputs() const {
     for (size_t step = 0; step < ta.size(); step++) {
       auto tensor = ta.Read(step);
       auto& step_scope = cache_.GetScope(step);
-      auto var = step_scope.FindVar(item.first);
-      PADDLE_ENFORCE_NOT_NULL(var);
+      Variable* var = step_scope.FindVar(item.first);
+      if (var == nullptr) {
+        var = step_scope.NewVar(item.first);
+      }
       var->GetMutable<LoDTensor>()->ShareDataWith<value_type>(tensor);
     }
   }
@@ -104,9 +117,12 @@ void DynamicRecurrentOp::WriteStepOutputs() const {
   for (size_t step = 0; step < cache_.scopes->size(); step++) {
     auto& scope = cache_.GetScope(step);
     for (auto& item : step_outputs_) {
-      const auto& step_output_var = scope.FindVar(item.first);
-      auto& step_output = step_output_var->Get<LoDTensor>();
-      item.second.WriteShared(step, step_output);
+      auto* var = scope.FindVar(item.first);
+      if (var == nullptr) {
+        var = scope.NewVar(item.first);
+      }
+      auto* tensor = var->GetMutable<LoDTensor>();
+      item.second.WriteShared(step, *tensor);
     }
   }
 }
@@ -114,30 +130,28 @@ void DynamicRecurrentOp::WriteStepOutputs() const {
 void DynamicRecurrentOp::CreateScopes() const {
   PADDLE_ENFORCE_GT(cache_.num_steps, 0);
   // resize scopes
-  for (size_t i = 0; i < cache_.num_steps - cache_.scopes->size(); i++) {
-    cache_.scopes->emplace_back(new Scope);
+  size_t num_scopes_need_create = cache_.num_steps - cache_.scopes->size();
+  for (size_t i = 0; i < num_scopes_need_create; i++) {
+    cache_.scopes->emplace_back(&cache_.scope->NewScope());
   }
 
   // init temporary inputs
-  for (size_t step = cache_.scopes->size(); step < cache_.num_steps; step++) {
-    auto& scope = cache_.GetScope(step);
-    // create temporary inputs
-    for (auto& input : stepnet_->Inputs()) {
-      for (const std::string& var : input.second) {
-        if (!scope.FindVar(var)) {
-          scope.NewVar(var)->GetMutable<LoDTensor>();
-        }
-      }
-    }
+  PADDLE_ENFORCE_NOT_NULL(stepnet_, "stepnet should be set first");
+  std::vector<std::string> memories;
+  std::vector<std::string> pre_memories;
+  std::transform(arg_.memories.begin(), arg_.memories.end(),
+                 std::back_inserter(memories),
+                 [](const rnn::MemoryAttr& m) { return m.var; });
+  std::transform(arg_.memories.begin(), arg_.memories.end(),
+                 std::back_inserter(pre_memories),
+                 [](const rnn::MemoryAttr& m) { return m.pre_var; });
 
-    // create temporary outputs
-    for (auto& input : stepnet_->Outputs()) {
-      for (const std::string& var : input.second) {
-        if (!scope.FindVar(var)) {
-          scope.NewVar(var)->GetMutable<LoDTensor>();
-        }
-      }
-    }
+  for (size_t step = 0; step < cache_.num_steps; step++) {
+    auto& scope = cache_.GetScope(step);
+    detail::CreateVariables(scope, arg_.inlinks);
+    detail::CreateVariables(scope, arg_.outlinks);
+    detail::CreateVariables(scope, memories);
+    detail::CreateVariables(scope, pre_memories);
   }
 }
 
@@ -161,22 +175,32 @@ void DynamicRecurrentOp::InitStates() const {
     auto* boot_state_var = cache_.scope->FindVar(memory.boot_var);
     PADDLE_ENFORCE_NOT_NULL(boot_state_var);
     auto& boot_state = boot_state_var->Get<LoDTensor>();
+    const auto& dims = boot_state.dims();
+
     for (size_t step = 0; step < cache_.num_steps; step++) {
       // link pre-state to boot_state
       auto& cur_scope = cache_.GetScope(step);
-      auto* var = cur_scope.FindVar(memory.pre_var);
-      PADDLE_ENFORCE_NOT_NULL(var);
+      // init state and pre-state
+      auto* pre_state = cur_scope.FindVar(memory.pre_var);
+      PADDLE_ENFORCE_NOT_NULL(pre_state);
+      pre_state->GetMutable<LoDTensor>();
+
+      auto* state = cur_scope.FindVar(memory.var);
+      PADDLE_ENFORCE_NOT_NULL(state);
+      state->GetMutable<LoDTensor>()->Resize(dims);
+      state->GetMutable<LoDTensor>()->mutable_data<value_type>(
+          platform::CPUPlace());
+
       if (step == 0) {
-        auto* cur_state_tensor = var->GetMutable<LoDTensor>();
+        auto* cur_state_tensor = pre_state->GetMutable<LoDTensor>();
         cur_state_tensor->Resize(boot_state.dims());
         cur_state_tensor->ShareDataWith<value_type>(boot_state);
       } else {
         auto& pre_scope = cache_.GetScope(step - 1);
         auto* state_pre = pre_scope.FindVar(memory.var);
         PADDLE_ENFORCE_NOT_NULL(state_pre);
-        auto* pre_state = cur_scope.FindVar(memory.pre_var);
         pre_state->GetMutable<LoDTensor>()->ShareDataWith<value_type>(
-            state_pre->Get<LoDTensor>());
+            *state_pre->GetMutable<LoDTensor>());
       }
     }
   }
@@ -205,7 +229,7 @@ void DynamicRecurrentOp::ArgCache::CacheScopes(const Scope& scope,
                  "the step_scopes output argument [%s] should be created first "
                  "by framework.",
                  arg.step_scopes);
-  scopes = scopes_var->GetMutable<std::vector<std::unique_ptr<Scope>>>();
+  this->scopes = scopes_var->GetMutable<std::vector<Scope*>>();
 }
 
 void DynamicRecurrentOp::ArgCache::CacheInlinks(
