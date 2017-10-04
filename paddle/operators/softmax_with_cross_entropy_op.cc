@@ -167,17 +167,17 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  framework::OpDescBind Apply() const override {
-    framework::OpDescBind grad_op;
-    grad_op.SetType("softmax_with_cross_entropy_grad");
-    grad_op.SetInput("Label", Input("Label"));
-    grad_op.SetInput("Softmax", Output("Softmax"));
-    grad_op.SetInput("Loss", Output("Loss"));
-    grad_op.SetInput(framework::GradVarName("Softmax"), OutputGrad("Softmax"));
-    grad_op.SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    grad_op.SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
-    grad_op.SetAttrMap(Attrs());
-    return grad_op;
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto* grad_op = new framework::OpDescBind();
+    grad_op->SetType("softmax_with_cross_entropy_grad");
+    grad_op->SetInput("Label", Input("Label"));
+    grad_op->SetInput("Softmax", Output("Softmax"));
+    grad_op->SetInput("Loss", Output("Loss"));
+    grad_op->SetInput(framework::GradVarName("Softmax"), OutputGrad("Softmax"));
+    grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDescBind>(grad_op);
   }
 };
 

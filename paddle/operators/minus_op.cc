@@ -69,19 +69,22 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<framework::OpDescBind> operator()() const override {
-    std::vector<framework::OpDescBind> ops;
+  std::vector<std::unique_ptr<framework::OpDescBind>> operator()()
+      const override {
+    std::vector<std::unique_ptr<framework::OpDescBind>> ops;
     ops.resize(2);
 
-    ops[0].SetType("scale");
-    ops[0].SetInput("X", OutputGrad("Out"));
-    ops[0].SetOutput("Out", InputGrad("X"));
-    ops[0].SetAttr("scale", 1.0f);
+    ops[0].reset(new framework::OpDescBind());
+    ops[0]->SetType("scale");
+    ops[0]->SetInput("X", OutputGrad("Out"));
+    ops[0]->SetOutput("Out", InputGrad("X"));
+    ops[0]->SetAttr("scale", 1.0f);
 
-    ops[1].SetType("scale");
-    ops[1].SetInput("X", OutputGrad("Out"));
-    ops[1].SetOutput("Out", InputGrad("Y"));
-    ops[1].SetAttr("scale", -1.0f);
+    ops[1].reset(new framework::OpDescBind());
+    ops[1]->SetType("scale");
+    ops[1]->SetInput("X", OutputGrad("Out"));
+    ops[1]->SetOutput("Out", InputGrad("Y"));
+    ops[1]->SetAttr("scale", -1.0f);
     return ops;
   }
 };

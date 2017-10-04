@@ -111,18 +111,18 @@ class PadOpGrad : public framework::OperatorWithKernel {
 };
 
 class PadOpGradMaker : public framework::SingleGradOpDescMaker {
- protected:
-  framework::OpDescBind Apply() const override {
-    framework::OpDescBind bind;
-    bind.SetInput("X", Input("X"));
-    bind.SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind.SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    bind.SetAttrMap(Attrs());
-    return bind;
-  }
-
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto* bind = new framework::OpDescBind();
+    bind->SetInput("X", Input("X"));
+    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    bind->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDescBind>(bind);
+  }
 };
 
 }  // namespace operators

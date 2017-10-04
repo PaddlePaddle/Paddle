@@ -39,13 +39,13 @@ class RowWiseAddGradMaker : public SingleGradOpDescMaker {
   using SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  OpDescBind Apply() const override {
-    OpDescBind grad_op;
-    grad_op.SetInput(GradVarName("Out"), OutputGrad("Out"));
-    grad_op.SetOutput(GradVarName("X"), InputGrad("X"));
-    grad_op.SetOutput(GradVarName("b"), InputGrad("b"));
-    grad_op.SetType("rowwise_add_grad");
-    return grad_op;
+  std::unique_ptr<OpDescBind> Apply() const override {
+    auto grad_op = new OpDescBind();
+    grad_op->SetInput(GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(GradVarName("X"), InputGrad("X"));
+    grad_op->SetOutput(GradVarName("b"), InputGrad("b"));
+    grad_op->SetType("rowwise_add_grad");
+    return std::unique_ptr<OpDescBind>(grad_op);
   }
 };
 
@@ -147,10 +147,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SumOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of sum operator.")
-        .AsDuplicable()
-        .NotInGradient();
-    AddOutput("Out", "the output tensor of sum operator.").NotInGradient();
+    AddInput("X", "the input tensors of sum operator.").AsDuplicable();
+    AddOutput("Out", "the output tensor of sum operator.");
     AddComment("");
   }
 };

@@ -36,9 +36,11 @@ static inline std::unique_ptr<OperatorBase> CreateGradOp(
   auto grad_descs = info.grad_op_maker_(op_desc);
   std::vector<std::unique_ptr<OperatorBase>> grad_ops;
   grad_ops.reserve(grad_descs.size());
-  std::transform(
-      grad_descs.begin(), grad_descs.end(), std::back_inserter(grad_ops),
-      [](OpDescBind& grad_desc) { return OpRegistry::CreateOp(&grad_desc); });
+  std::transform(grad_descs.begin(), grad_descs.end(),
+                 std::back_inserter(grad_ops),
+                 [](const std::unique_ptr<OpDescBind>& grad_desc) {
+                   return OpRegistry::CreateOp(grad_desc.get());
+                 });
   PADDLE_ENFORCE_GT(grad_ops.size(), 0);
   if (grad_ops.size() == 1) {
     return std::move(grad_ops[0]);
