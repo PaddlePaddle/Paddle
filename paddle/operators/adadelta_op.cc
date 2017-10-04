@@ -23,39 +23,38 @@ class AdadeltaOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("param"),
-                   "Input(param) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("grad"),
-                   "Input(grad) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("avg_squared_grad"),
-                   "Input(avg_squared_grad) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("avg_squared_update"),
-        "Input(avg_squared_update) of AdadeltaOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(Param) of AdadeltaOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(Grad) of AdadeltaOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("AvgSquaredGrad"),
+                   "Input(AvgSquaredGrad) of AdadeltaOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("AvgSquaredUpdate"),
+                   "Input(AvgSquaredUpdate) of AdadeltaOp should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("param_out"),
-                   "Output(param_out) of AdadeltaOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of AdadeltaOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("avg_squared_grad_out"),
-        "Output(avg_squared_grad_out) of AdadeltaOp should not be null.");
+        ctx->HasOutput("AvgSquaredGradOut"),
+        "Output(AvgSquaredGradOut) of AdadeltaOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("avg_squared_update_out"),
-        "Output(avg_squared_update_out) of AdadeltaOp should not be null.");
+        ctx->HasOutput("AvgSquaredUpdateOut"),
+        "Output(AvgSquaredUpdateOut) of AdadeltaOp should not be null.");
 
-    auto param_dim = ctx->GetInputDim("param");
+    auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("grad"),
+        param_dim, ctx->GetInputDim("Grad"),
         "param and grad input of AdadeltaOp should have same dimension");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("avg_squared_grad"),
-                      "param and avg_squared_grad input of AdadeltaOp "
+    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredGrad"),
+                      "Param and AvgSquaredGrad input of AdadeltaOp "
                       "should have same dimension");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("avg_squared_update"),
-                      "param and avg_squared_update input of AdadeltaOp "
+    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredUpdate"),
+                      "Param and AvgSquaredUpdate input of AdadeltaOp "
                       "should have same dimension");
 
-    ctx->SetOutputDim("param_out", param_dim);
-    ctx->SetOutputDim("avg_squared_grad_out", param_dim);
-    ctx->SetOutputDim("avg_squared_update_out", param_dim);
+    ctx->SetOutputDim("ParamOut", param_dim);
+    ctx->SetOutputDim("AvgSquaredGradOut", param_dim);
+    ctx->SetOutputDim("AvgSquaredUpdateOut", param_dim);
   }
 };
 
@@ -64,19 +63,27 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
   AdadeltaOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("param", "Input parameter");
-    AddInput("grad", "Input gradient");
-    AddInput("avg_squared_grad", "Input expectation of squared gradient");
-    AddInput("avg_squared_update",
-             "Input expectation of squared parameter updates");
+    AddInput("Param", "(Tensor) Input parameter");
+    AddInput("Grad", "(Tensor) Input gradient");
+    AddInput("AvgSquaredGrad",
+             "(Tensor) Input expectation of squared gradient");
+    AddInput("AvgSquaredUpdate",
+             "(Tensor) Input expectation of squared parameter updates");
 
-    AddOutput("param_out", "Output parameter");
-    AddOutput("avg_squared_grad_out", "Output expectation of squared gradient");
-    AddOutput("avg_squared_update_out",
-              "Output expectation of squared parameter updates");
+    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddOutput("AvgSquaredGradOut",
+              "(Tensor) Output expectation of squared gradient");
+    AddOutput("AvgSquaredUpdateOut",
+              "(Tensor) Output expectation of squared parameter updates");
 
-    AddAttr<float>("rho", "exponential decay rate for squared gradients.");
-    AddAttr<float>("epsilon", "Constant for numerical stability");
+    AddAttr<float>("rho",
+                   "(float, default 0.95) Exponential decay rate "
+                   "for squared gradients.")
+        .SetDefault(0.95f);
+    AddAttr<float>("epsilon",
+                   "(float, default 1.0e-6) Constant for "
+                   "numerical stability")
+        .SetDefault(1.0e-6f);
     AddComment(R"DOC(
 Adadelta Updates Operator.
 

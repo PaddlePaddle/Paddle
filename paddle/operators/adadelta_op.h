@@ -29,9 +29,9 @@ template <typename Place, typename T>
 class AdadeltaOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<Tensor>("param_out");
-    auto avg_squared_grad_out = ctx.Output<Tensor>("avg_squared_grad_out");
-    auto avg_squared_update_out = ctx.Output<Tensor>("avg_squared_update_out");
+    auto param_out = ctx.Output<Tensor>("ParamOut");
+    auto avg_squared_grad_out = ctx.Output<Tensor>("AvgSquaredGradOut");
+    auto avg_squared_update_out = ctx.Output<Tensor>("AvgSquaredUpdateOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     avg_squared_grad_out->mutable_data<T>(ctx.GetPlace());
@@ -40,14 +40,13 @@ class AdadeltaOpKernel : public framework::OpKernel<T> {
     float rho = ctx.Attr<float>("rho");
     float epsilon = ctx.Attr<float>("epsilon");
 
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("param"));
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("grad"));
+    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
+    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
     // Squared gradient accumulator
-    auto g_acc =
-        EigenVector<T>::Flatten(*ctx.Input<Tensor>("avg_squared_grad"));
+    auto g_acc = EigenVector<T>::Flatten(*ctx.Input<Tensor>("AvgSquaredGrad"));
     // Squared updates accumulator
     auto u_acc =
-        EigenVector<T>::Flatten(*ctx.Input<Tensor>("avg_squared_update"));
+        EigenVector<T>::Flatten(*ctx.Input<Tensor>("AvgSquaredUpdate"));
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto g_acc_out = EigenVector<T>::Flatten(*avg_squared_grad_out);
     auto u_acc_out = EigenVector<T>::Flatten(*avg_squared_update_out);
