@@ -25,16 +25,10 @@
 namespace paddle {
 namespace framework {
 
-class GradOpDescMakerBase {
- public:
-  virtual ~GradOpDescMakerBase() = default;
-  virtual std::vector<OpDescBind> operator()(const OpDescBind&) const = 0;
-};
-
 struct OpInfo {
   OpCreator creator_;
   std::string grad_op_type_;
-  GradOpDescMakerBase* grad_op_maker_{nullptr};
+  GradOpMakerFN grad_op_maker_;
   OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
 
