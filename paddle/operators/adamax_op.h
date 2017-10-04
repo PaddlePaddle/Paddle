@@ -29,24 +29,24 @@ template <typename Place, typename T>
 class AdamaxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<Tensor>("param_out");
-    auto moment_out = ctx.Output<Tensor>("moment_out");
-    auto norm_out = ctx.Output<Tensor>("inf_norm_out");
+    auto param_out = ctx.Output<Tensor>("ParamOut");
+    auto moment_out = ctx.Output<Tensor>("MomentOut");
+    auto norm_out = ctx.Output<Tensor>("InfNormOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
     norm_out->mutable_data<T>(ctx.GetPlace());
 
-    float beta_1 = ctx.Attr<float>("beta_1");
-    float beta_2 = ctx.Attr<float>("beta_2");
+    float beta_1 = ctx.Attr<float>("beta1");
+    float beta_2 = ctx.Attr<float>("beta2");
     float epsilon = ctx.Attr<float>("epsilon");
-    auto lr = ctx.Input<Tensor>("learning_rate")->data<float>()[0];
-    auto t = ctx.Input<Tensor>("time_step")->data<int>()[0];
+    auto lr = ctx.Input<Tensor>("LearningRate")->data<float>()[0];
+    auto t = ctx.Input<Tensor>("TimeStep")->data<int>()[0];
 
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("param"));
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("grad"));
-    auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("moment"));
-    auto u = EigenVector<T>::Flatten(*ctx.Input<Tensor>("inf_norm"));
+    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
+    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
+    auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
+    auto u = EigenVector<T>::Flatten(*ctx.Input<Tensor>("InfNorm"));
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto m_out = EigenVector<T>::Flatten(*moment_out);
     auto u_out = EigenVector<T>::Flatten(*norm_out);

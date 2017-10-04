@@ -23,52 +23,52 @@ class AdamaxOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("param"),
-                   "Input(param) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("grad"),
-                   "Input(grad) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("moment"),
-                   "Input(moment) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("inf_norm"),
-                   "Input(inf_norm) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("learning_rate"),
-                   "Input(learning_rate) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("time_step"),
-                   "Input(time_step) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(Param) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(Grad) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Moment"),
+                   "Input(Moment) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("InfNorm"),
+                   "Input(InfNorm) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("TimeStep"),
+                   "Input(TimeStep) of AdamaxOp should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("param_out"),
-                   "Output(param_out) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("moment_out"),
-                   "Output(moment_out) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("inf_norm_out"),
-                   "Output(inf_norm_out) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
+                   "Output(MomentOut) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("InfNormOut"),
+                   "Output(InfNormOut) of AdamaxOp should not be null.");
 
-    auto lr_dims = ctx->GetInputDim("learning_rate");
+    auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 dimension");
-    auto t_dims = ctx->GetInputDim("time_step");
+    auto t_dims = ctx->GetInputDim("TimeStep");
     PADDLE_ENFORCE_EQ(framework::product(t_dims), 1,
                       "Time step should have 1 dimension");
-    auto param_dim = ctx->GetInputDim("param");
+    auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("grad"),
-        "param and grad input of AdamaxOp should have same dimension");
+        param_dim, ctx->GetInputDim("Grad"),
+        "Param and Grad input of AdamaxOp should have same dimension");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("moment"),
-        "param and moment input of AdamaxOp should have same dimension");
+        param_dim, ctx->GetInputDim("Moment"),
+        "Param and Moment input of AdamaxOp should have same dimension");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("inf_norm"),
-        "param and inf_norm input of AdamaxOp should have same dimension");
+        param_dim, ctx->GetInputDim("InfNorm"),
+        "Param and InfNorm input of AdamaxOp should have same dimension");
 
-    ctx->SetOutputDim("param_out", param_dim);
-    ctx->SetOutputDim("moment_out", param_dim);
-    ctx->SetOutputDim("inf_norm_out", param_dim);
+    ctx->SetOutputDim("ParamOut", param_dim);
+    ctx->SetOutputDim("MomentOut", param_dim);
+    ctx->SetOutputDim("InfNormOut", param_dim);
   }
 
   // Datatype of operator is determined by Param tensor
   framework::DataType IndicateDataType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("param")->type());
+    return framework::ToDataType(ctx.Input<Tensor>("Param")->type());
   }
 };
 
@@ -76,28 +76,41 @@ class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   AdamaxOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("param", "Input parameter");
-    AddInput("grad", "Input gradient");
-    AddInput("learning_rate", "Learning rate");
-    AddInput("moment", "First moment");
-    AddInput("inf_norm", "Input exponentially weighted infinity norm");
-    AddInput("time_step", "Time step");
+    AddInput("Param", "(Tensor, default Tensor<float>) Input parameter");
+    AddInput("Grad", "(Tensor, default Tensor<float>) Input gradient");
+    AddInput("LearningRate", "(Tensor, default Tensor<float>) Learning rate");
+    AddInput("Moment", "(Tensor, default Tensor<float>) First moment");
+    AddInput("InfNorm",
+             "(Tensor, default Tensor<float>) "
+             "Input exponentially weighted infinity norm");
+    AddInput("TimeStep", "(Tensor, default Tensor<int>) Time step");
 
-    AddOutput("param_out", "Output parameter");
-    AddOutput("moment_out", "Output first moment");
-    AddOutput("inf_norm_out", "Output exponentially weighted infinity norm");
+    AddOutput("ParamOut", "(Tensor, default Tensor<float>) Output parameter");
+    AddOutput("MomentOut",
+              "(Tensor, default Tensor<float>) Output first moment");
+    AddOutput("InfNormOut",
+              "(Tensor, default Tensor<float>) "
+              "Output exponentially weighted infinity norm");
 
-    AddAttr<float>("beta_1",
-                   "exponential decay rate for the 1st moment estimates.");
-    AddAttr<float>(
-        "beta_2",
-        "exponential decay rate for the weighted infinity norm estimates.");
-    AddAttr<float>("epsilon", "Constant for numerical stability");
+    AddAttr<float>("beta1",
+                   "(float, default 0.9) "
+                   "Exponential decay rate for the "
+                   "1st moment estimates.")
+        .SetDefault(0.9f);
+    AddAttr<float>("beta2",
+                   "(float, default 0.999) "
+                   "exponential decay rate for the weighted "
+                   "infinity norm estimates.")
+        .SetDefault(0.999f);
+    AddAttr<float>("epsilon",
+                   "(float, default 1.0e-8) "
+                   "Constant for numerical stability")
+        .SetDefault(1.0e-8f);
     AddComment(R"DOC(
 Adamax Updates Operator.
 
 This implements the Adamax optimizer from Section 7 of the Adam
-paper(https://arxiv.org/abs/1412.6980). Adamax is a variant of the
+paper[1]. Adamax is a variant of the
 Adam algorithm based on the infinity norm.
 
 Adamax updates:
@@ -106,9 +119,13 @@ moment_out = beta_1 * moment + (1 - beta_1) * grad
 inf_norm_out = max(beta_2 * inf_norm + epsilon, abs(grad))
 param_out = param - (learning_rate/(1 - beta_1^t)) * moment_out/inf_norm_out
 
-The original paper(https://arxiv.org/abs/1412.6980) does not have an
-epsilon attribute. However, it is added here for numerical stability
+The original paper does not have an epsilon attribute.
+However, it is added here for numerical stability
 by preventing divide by 0.
+
+References:
+  [1] Adam: A Method for Stochastic Optimization
+      (https://arxiv.org/abs/1412.6980)
 
 )DOC");
   }
