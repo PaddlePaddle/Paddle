@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 TEST(DepthwiseConv, Forward) {
   DepthwiseConvolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
       "GemmConv-CPU", "DepthwiseConv-GPU", forward);
