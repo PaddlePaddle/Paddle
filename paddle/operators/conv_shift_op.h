@@ -33,12 +33,10 @@ class ConvShiftKernel : public framework::OpKernel<T> {
     auto *Out = context.Output<framework::Tensor>("Out");
     Out->mutable_data<T>(context.GetPlace());
 
-    auto x = EigenMatrix<T>::Reshape(*X, 1 /* num_col_dims */);
-    auto y = EigenMatrix<T>::Reshape(*Y, 1 /* num_col_dims */);
-    auto out = EigenMatrix<T>::Reshape(*Out, 1 /* num_col_dims */);
-
-    auto place = context.GetEigenDevice<Place>();
-    out.device(place) = out.constant(static_cast<T>(0));
+    auto x = EigenMatrix<T>::From(*X);
+    auto y = EigenMatrix<T>::From(*Y);
+    auto out = EigenMatrix<T>::From(*Out);
+    out.setZero();
 
     auto x_dims = X->dims();
     auto y_dims = Y->dims();
@@ -70,12 +68,10 @@ class ConvShiftGradKernel : public framework::OpKernel<T> {
     auto *dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto *dY = context.Output<framework::Tensor>(framework::GradVarName("Y"));
 
-    auto x = EigenMatrix<T>::Reshape(*X, 1 /* num_col_dims */);
-    auto y = EigenMatrix<T>::Reshape(*Y, 1 /* num_col_dims */);
-    auto dout = EigenMatrix<T>::Reshape(*dOut, 1 /* num_col_dims */);
+    auto x = EigenMatrix<T>::From(*X);
+    auto y = EigenMatrix<T>::From(*Y);
+    auto dout = EigenMatrix<T>::From(*dOut);
 
-    // Allocate space for the gradients and initialize to zero.
-    auto place = context.GetEigenDevice<Place>();
     if (dX) {
       dX->mutable_data<T>(context.GetPlace());
     }
@@ -93,10 +89,10 @@ class ConvShiftGradKernel : public framework::OpKernel<T> {
     // The below trades code duplication for efficiency (keeping the if
     // statement outside of the loop).
     if (dX && dY) {
-      auto dx = EigenMatrix<T>::Reshape(*dX, 1 /* num_col_dims */);
-      dx.device(place) = dx.constant(static_cast<T>(0));
-      auto dy = EigenMatrix<T>::Reshape(*dY, 1 /* num_col_dims */);
-      dy.device(place) = dy.constant(static_cast<T>(0));
+      auto dx = EigenMatrix<T>::From(*dX);
+      dx.setZero();
+      auto dy = EigenMatrix<T>::From(*dY);
+      dy.setZero();
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
@@ -108,8 +104,8 @@ class ConvShiftGradKernel : public framework::OpKernel<T> {
         }
       }
     } else if (dX) {
-      auto dx = EigenMatrix<T>::Reshape(*dX, 1 /* num_col_dims */);
-      dx.device(place) = dx.constant(static_cast<T>(0));
+      auto dx = EigenMatrix<T>::From(*dX);
+      dx.setZero();
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
@@ -120,8 +116,8 @@ class ConvShiftGradKernel : public framework::OpKernel<T> {
         }
       }
     } else if (dY) {
-      auto dy = EigenMatrix<T>::Reshape(*dY, 1 /* num_col_dims */);
-      dy.device(place) = dy.constant(static_cast<T>(0));
+      auto dy = EigenMatrix<T>::From(*dY);
+      dy.setZero();
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
