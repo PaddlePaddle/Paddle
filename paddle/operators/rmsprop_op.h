@@ -28,9 +28,9 @@ template <typename Place, typename T>
 class RmspropOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<Tensor>("ParamOut");
-    auto moment_out = ctx.Output<Tensor>("MomentOut");
-    auto mean_square_out = ctx.Output<Tensor>("MeanSquareOut");
+    auto* param_out = ctx.Output<Tensor>("ParamOut");
+    auto* moment_out = ctx.Output<Tensor>("MomentOut");
+    auto* mean_square_out = ctx.Output<Tensor>("MeanSquareOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());

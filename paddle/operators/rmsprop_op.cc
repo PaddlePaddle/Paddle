@@ -89,13 +89,13 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) Constant "
                    "for numerical stability.")
-        .SetDefault(1e-10);
+        .SetDefault(1.0e-10f);
     AddAttr<float>("decay",
                    "(float, default 0.9) "
                    "Discounting factor for coming gradient.")
-        .SetDefault(0.9);
+        .SetDefault(0.9f);
     AddAttr<float>("momentum", "(float, default 0.0) Constant value")
-        .SetDefault(0.0);
+        .SetDefault(0.0f);
     AddComment(R"DOC(
 
 RMSprop
