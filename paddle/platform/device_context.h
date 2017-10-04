@@ -27,35 +27,15 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <typename T>
-struct EigenDeviceConverter;
-
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
-
-class DeviceContext {
- public:
-  virtual ~DeviceContext() {}
-  virtual Place GetPlace() const = 0;
-
-  template <typename PlaceType,
-            typename DeviceType =
-                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
-  DeviceType* GetEigenDevice() const;
-
-  virtual void Wait() const {}
-};
-
 class CPUDeviceContext : public DeviceContext {
  public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
+  CPUDeviceContext() { eigen_device_.reset(new Eigen::DefaultDevice()); }
+  explicit CPUDeviceContext(CPUPlace place) {
+    eigen_device_.reset(new Eigen::DefaultDevice());
+  }
 
-  Eigen::DefaultDevice* eigen_device() const;
-
-  Place GetPlace() const override;
+  Eigen::DefaultDevice* GetEigenDevice() const { return eigen_device_.get(); }
+  Place GetPlace() const { return CPUPlace(); }
 
  private:
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
@@ -73,6 +53,9 @@ class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(GPUPlace place);
   virtual ~CUDADeviceContext();
+
+  template <typename PlaceType>
+  Eigen::GpuDevice* GetEigenDevice() const;
 
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
@@ -103,6 +86,12 @@ class CUDADeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle_;
 };
 
+#endif
+
+#ifndef PADDLE_ONLY_CPU
+typedef boost::variant<CPUDeviceContext, CUDADeviceContext> DeviceContext;
+#else
+typedef boost::variant<CPUDeviceContext> DeviceContext;
 #endif
 
 }  // namespace platform

@@ -15,26 +15,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <>
-Eigen::DefaultDevice* DeviceContext::GetEigenDevice<
-    platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return reinterpret_cast<const CPUDeviceContext*>(this)->eigen_device();
-}
-
-CPUDeviceContext::CPUDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
-
 #ifndef PADDLE_ONLY_CPU
 
 template <>
@@ -43,6 +23,8 @@ DeviceContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
   return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
 }
 
+// Eigen functions expects callers to pass in the CUDA stream in the
+// form of an Eigen::StreamInterface.
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
   EigenCudaStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
@@ -50,6 +32,8 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
   ~EigenCudaStreamDevice() override {}
 
+  // BUG: Due to facts listed
+  // https://github.com/PaddlePaddle/Paddle/pull/3497#issue-250238535,
   void Reinitialize(const cudaStream_t* cuda_stream, GPUPlace place) {
     stream_ = cuda_stream;
     place_ = place;
