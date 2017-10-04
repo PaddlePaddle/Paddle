@@ -149,7 +149,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       for (size_t output_idx = 0; output_idx < dup_outputs.size() - 1;
            ++output_idx) {
         auto insert_add_x = dup_outputs[output_idx];
-        auto insert_add_y = dup_outputs[output_idx];
+        auto insert_add_y = dup_outputs[output_idx + 1];
         auto insert_add_out = name + "@SHARED@" + std::to_string(output_idx);
         // first add op inserted
         if (output_idx == dup_outputs.size() - 2) {
@@ -160,9 +160,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
         }
         insert_position.push_back(
             {dup_op.back(),
-             OpRegistry::CreateOp(
-                 "sum", {{"X", {insert_add_x}}, {"X", {insert_add_y}}},
-                 {{"Out", {insert_add_out}}}, {})});
+             OpRegistry::CreateOp("sum", {{"X", {insert_add_x, insert_add_y}}},
+                                  {{"Out", {insert_add_out}}}, {})});
       }
     }
 
@@ -202,7 +201,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
 
     // process recurrent gradient op as a special operator.
     if (forwardOp.Type() == "recurrent") {
-      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself), or
+      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
+      // or
       // this will result in infinite loop.
       const auto& rnnop =
           *static_cast<const operators::RecurrentOp*>(&forwardOp);
