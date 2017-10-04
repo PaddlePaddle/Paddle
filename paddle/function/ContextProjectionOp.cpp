@@ -395,7 +395,7 @@ REGISTER_TYPED_FUNC(ContextProjectionForward,
 REGISTER_TYPED_FUNC(ContextProjectionBackward,
                     CPU,
                     ContextProjectionBackwardFunc);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 REGISTER_TYPED_FUNC(ContextProjectionForward,
                     GPU,
                     ContextProjectionForwardFunc);

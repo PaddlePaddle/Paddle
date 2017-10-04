@@ -674,7 +674,7 @@ void testLayerGradKernel(TestConfig testConf,
                          bool useGpu,
                          bool useWeight,
                          float epsilon) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_GPU
   if (useGpu) return;
 #endif
   FLAGS_use_gpu = useGpu;

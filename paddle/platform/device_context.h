@@ -14,7 +14,7 @@
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/gpu_info.h"
