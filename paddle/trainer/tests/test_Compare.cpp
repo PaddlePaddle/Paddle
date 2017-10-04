@@ -146,7 +146,7 @@ void compareGradient(comData& comDataCpu, comData& comDataGpu) {
 }
 
 int main(int argc, char** argv) {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
   exit(0);
 #endif
   paddle::initMain(argc, argv);
