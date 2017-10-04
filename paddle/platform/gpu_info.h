@@ -28,6 +28,7 @@ const std::string kEnvFractionGpuMemoryToUse =
     "PADDLE_FRACTION_GPU_MEMORY_TO_USE";
 
 //! Get the total number of GPU devices in system.
+// TODO(yi): Rename into GetCUDADeviceCount().
 int GetDeviceCount();
 
 //! Get the current GPU device id in system.

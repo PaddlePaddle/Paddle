@@ -15,35 +15,26 @@ limitations under the License. */
 #include "paddle/platform/device_context.h"
 #include "gtest/gtest.h"
 
-TEST(Device, Init) {
+#ifdef PADDLE_WITH_CUDA
+TEST(DeviceContext, CUDA) {
   using paddle::platform::DeviceContext;
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::GPUPlace;
 
-  int count = paddle::platform::GetDeviceCount();
-  for (int i = 0; i < count; i++) {
-    DeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
-    Eigen::GpuDevice* gpu_device =
-        device_context->template GetEigenDevice<GPUPlace>();
-    ASSERT_NE(nullptr, gpu_device);
-    delete device_context;
+  for (int i = 0; i < paddle::platform::GetDeviceCount(); i++) {
+    DeviceContext dev_ctx(GPUPlace(i));
+    ASSERT_NE(nullptr, boost::get<CUDADeviceContext>(dev_ctx).GetEigenDevice());
+    ASSERT_NE(nullptr, boost::get<CUDADeviceContext>(dev_ctx).cudnn_handle());
+    ASSERT_NE(nullptr, boost::get<CUDADeviceContext>(dev_ctx).cublas_handle());
+    ASSERT_NE(nullptr, boost::get<CUDADeviceContext>(dev_ctx).stream());
   }
 }
+#endif  // PADDLE_WITH_CUDA
 
-TEST(Device, CUDADeviceContext) {
-  using paddle::platform::CUDADeviceContext;
-  using paddle::platform::GPUPlace;
+TEST(DeviceContext, CPU) {
+  using paddle::platform::DeviceContext;
+  using paddle::platform::CPUDeviceContext;
 
-  int count = paddle::platform::GetDeviceCount();
-  for (int i = 0; i < count; i++) {
-    CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
-    Eigen::GpuDevice* gpu_device = device_context->eigen_device();
-    ASSERT_NE(nullptr, gpu_device);
-    cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
-    ASSERT_NE(nullptr, cudnn_handle);
-    cublasHandle_t cublas_handle = device_context->cublas_handle();
-    ASSERT_NE(nullptr, cublas_handle);
-    ASSERT_NE(nullptr, device_context->stream());
-    delete device_context;
-  }
+  DeviceContext dev_ctx;  // defaults to CPUPlace
+  ASSERT_NE(nullptr, boost::get<CUDADeviceContext>(dev_ctx).GetEigenDevice());
 }
