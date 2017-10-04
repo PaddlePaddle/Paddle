@@ -25,25 +25,32 @@ class RmspropOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContextBase *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
                    "Input(Param) of RmspropOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("MeanSquare"),
+                   "Input(MeanSquare) of RmspropOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
                    "Input(Grad) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Moment"),
                    "Input(Moment) of RmspropOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of RmspropOp should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(param_out) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
-                   "Output(moment_out) of RmspropOp should not be null.");
+                   "Output(Momentum_out) of RmspropOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("MeanSquareOut"),
+                   "Output(MeanSquareOut) of RmspropOp should not be null.");
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dim, ctx->GetInputDim("Grad"),
         "Param and grad input of RmspropOp should have the same dimension.");
-    PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Moment"),
-        "Param and moment input of RmspropOp should have the same dimension.");
+    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Moment"),
+                      "Param and Momentum input of RmspropOp "
+                      "should have the same dimension.");
+    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("MeanSquare"),
+                      "Param and Momentum input of RmspropOp "
+                      "should have the same dimension.");
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
@@ -51,6 +58,7 @@ class RmspropOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
+    ctx->SetOutputDim("MeanSquareOut", param_dim);
   }
 };
 
@@ -59,27 +67,46 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
   RmspropOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Param", "Input parameter");
-    AddInput("Grad", "Input gradient");
-    AddInput("Moment", "Second moment");
-    AddInput("LearningRate", "Learning Rate");
+    AddInput("Param",
+             "(Tensor, default Tensor<float>) "
+             "Input parameter value that has to be updated");
+    AddInput("MeanSquare",
+             "(Tensor, default Tensor<float>)"
+             " The mean square value that gets updated");
+    AddInput("LearningRate",
+             "(Tensor, default Tensor<float>) "
+             "The learning rate should be a tensor of size 1");
+    AddInput("Grad",
+             "(Tensor, default Tensor<float>) "
+             "Input gradient of the parameter");
+    AddInput("Moment",
+             "(Tensor, default Tensor<float>) The moment that gets updated");
 
-    AddOutput("ParamOut", "Output parameter");
-    AddOutput("MomentOut", "Output second moment");
+    AddOutput("ParamOut", "(Tensor) Output updated parameter value");
+    AddOutput("MomentOut", "(Tensor) Output updated moment");
+    AddOutput("MeanSquareOut", "(Tensor) Output Mean squared updated value");
 
-    AddAttr<float>("epsilon", "Constant for numerical stability");
-    AddAttr<float>("decayRate", "Decay rate for moving average of gradients");
+    AddAttr<float>("epsilon",
+                   "(float, default 1e-10) Constant "
+                   "for numerical stability.")
+        .SetDefault(1e-10);
+    AddAttr<float>("decay",
+                   "(float, default 0.9) "
+                   "Discounting factor for coming gradient.")
+        .SetDefault(0.9);
+    AddAttr<float>("momentum", "(float, default 0.0) Constant value")
+        .SetDefault(0.0);
     AddComment(R"DOC(
 
 RMSprop
 
-MomentOut = decayRate * Moment + (1 - decayRate) * Grad * Grad
-ParamOut = Param - LearningRate * Grad / (sqrt(MomentOut) + epsilon)
+MeanSquareOut = decay * MeanSquare + (1 - decay) * Grad * Grad
+MomentOut = momentum * Moment +
+            LearningRate * Grad / sqrt(MeanSquareOut + epsilon)
+ParamOut = Param -  MomentOut
 
-The original slide(Slide 29 of
+The original slides that proposed RMSprop: Slide 29 of
 http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
-does not have the epsilon attribute. It is added here for numerical stability
-to avoid division by zero.
 
 )DOC");
   }

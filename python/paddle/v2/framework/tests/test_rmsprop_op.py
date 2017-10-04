@@ -8,27 +8,35 @@ class TestRmspropOp(OpTest):
         self.op_type = "rmsprop"
 
         param = np.random.random((123, 321)).astype("float32")
+        mean_square = np.random.random((123, 321)).astype("float32")
+        learning_rate = np.array([0.01]).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
         moment = np.zeros((123, 321)).astype("float32")
-        learning_rate = np.array([0.01]).astype("float32")
 
         epsilon = 1e-6
-        decay_rate = 0.9
+        decay = 0.9
+        momentum = 0.0
 
         self.inputs = {
             'Param': param,
+            'MeanSquare': mean_square,
+            'LearningRate': learning_rate,
             'Grad': grad,
             'Moment': moment,
-            'LearningRate': learning_rate
         }
 
-        self.attrs = {'epsilon': epsilon, 'decayRate': decay_rate}
+        self.attrs = {'epsilon': epsilon, 'decay': decay, 'momentum': momentum}
 
-        moment_out = decay_rate * moment + (1 - decay_rate) * grad * grad
-        param_out = param - learning_rate * grad / (np.sqrt(moment_out) +
-                                                    epsilon)
+        ms_out = decay * mean_square + (1 - decay) * grad * grad
+        moment_out = momentum * moment + \
+            learning_rate * grad / np.sqrt(ms_out + epsilon)
+        param_out = param - moment_out
 
-        self.outputs = {'ParamOut': param_out, 'MomentOut': moment_out}
+        self.outputs = {
+            'ParamOut': param_out,
+            'MomentOut': moment_out,
+            'MeanSquareOut': ms_out
+        }
 
     def test_check_output(self):
         self.check_output()

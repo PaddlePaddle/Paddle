@@ -30,23 +30,30 @@ class RmspropOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto param_out = ctx.Output<Tensor>("ParamOut");
     auto moment_out = ctx.Output<Tensor>("MomentOut");
+    auto mean_square_out = ctx.Output<Tensor>("MeanSquareOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
+    mean_square_out->mutable_data<T>(ctx.GetPlace());
 
     float epsilon = ctx.Attr<float>("epsilon");
-    float decay = ctx.Attr<float>("decayRate");
+    float rho = ctx.Attr<float>("decay");
+    float momentum = ctx.Attr<float>("momentum");
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
-    auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
+    auto ms = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanSquare"));
     float lr = ctx.Input<Tensor>("LearningRate")->data<float>()[0];
+    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
+    auto mom = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
+
     auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto m_out = EigenVector<T>::Flatten(*moment_out);
+    auto mom_out = EigenVector<T>::Flatten(*moment_out);
+    auto ms_out = EigenVector<T>::Flatten(*mean_square_out);
     auto place = ctx.GetEigenDevice<Place>();
 
-    m_out.device(place) = decay * m + (1 - decay) * g * g;
-    p_out.device(place) = p - lr * g / (m_out.sqrt() + epsilon);
+    ms_out.device(place) = rho * ms + (1 - rho) * g * g;
+    mom_out.device(place) = momentum * mom + lr * g / (ms_out + epsilon).sqrt();
+    p_out.device(place) = p - mom_out;
   }
 };
 
