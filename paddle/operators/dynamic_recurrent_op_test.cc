@@ -6,17 +6,36 @@
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
 
-static void BuildVar(const std::string& param_name,
-                     std::initializer_list<const char*> arguments,
-                     paddle::framework::OpDesc::Var* var) {
+class TestOp : public framework::OperatorBase {
+ public:
+  using framework::OperatorBase::OperatorBase;
+  DEFINE_OP_CLONE_METHOD(TestOp);
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
+};
+
+void OpDescNewVar(const std::string& param_name,
+                  std::initializer_list<const char*> arguments,
+                  paddle::framework::OpDesc::Var* var) {
   var->set_parameter(param_name);
   for (auto& arg_name : arguments) {
     var->add_arguments(arg_name);
   }
+}
+
+// create a LoD tensor in scope with specific dims
+LoDTensor* CreateVar(Scope& scope, std::string name, framework::DDim dims,
+                     const platform::Place& place) {
+  auto* var = scope.NewVar(name);
+  auto* tensor = var->GetMutable<LoDTensor>();
+  tensor->Resize(dims);
+  tensor->mutable_data<float>(place);
+  return tensor;
 }
 
 class DynamicRecurrentOpTestHelper : public ::testing::Test {
@@ -30,6 +49,7 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
     op = paddle::framework::OpRegistry::CreateOp(op_desc);
     dop = dynamic_cast<DynamicRecurrentOp*>(op.get());
     InitCacheManually();
+    InitStepNet();
   }
 
   framework::OpDesc CreateOpDesc() {
@@ -37,10 +57,10 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
     paddle::framework::OpDesc op_desc;
     op_desc.set_type("dynamic_recurrent_op");
 
-    BuildVar(argname.inlinks, {"in0"}, op_desc.add_inputs());
-    BuildVar(argname.boot_memories, {"boot_mem"}, op_desc.add_inputs());
-    BuildVar(argname.step_scopes, {"step_scopes"}, op_desc.add_outputs());
-    BuildVar(argname.outlinks, {"out0"}, op_desc.add_outputs());
+    OpDescNewVar(argname.inlinks, {"in0"}, op_desc.add_inputs());
+    OpDescNewVar(argname.boot_memories, {"boot_mem"}, op_desc.add_inputs());
+    OpDescNewVar(argname.step_scopes, {"step_scopes"}, op_desc.add_outputs());
+    OpDescNewVar(argname.outlinks, {"out0"}, op_desc.add_outputs());
 
     // set pre-memories
     auto pre_memories = op_desc.mutable_attrs()->Add();
@@ -59,20 +79,16 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
   }
 
   void CreateGlobalVariables() {
-    auto* in0 = scope.NewVar("in0");
-    auto* boot_mem = scope.NewVar("boot_mem");
-    // auto* step_scopes =
-    scope.NewVar("step_scopes");
-    // auto* out0 =
-    scope.NewVar("out0");
-
     platform::CPUPlace place;
-
-    auto* in0_lod_tensor = in0->GetMutable<LoDTensor>();
+    scope.NewVar("step_scopes");
+    CreateVar(scope, "boot_mem", framework::make_ddim({10, 20}), place);
+    // auto* out0 =
+    CreateVar(scope, "out0", framework::make_ddim({10, 20}), place);
+    auto* in0 = CreateVar(scope, "in0", framework::make_ddim({10, 8}), place);
     // 10 instanes with 4 sentences, length is 4, 3, 2, 1 respectively.
     framework::LoD in0_lod({{0, 4, 7, 9, 10}});
-    in0_lod_tensor->set_lod(in0_lod);
-    in0_lod_tensor->Resize(framework::make_ddim({10, 8}));
+    in0->set_lod(in0_lod);
+    in0->Resize(framework::make_ddim({10, 8}));
     // set the content, each sentence content is seqid.batchid
     // the seqid starts from 0
     int start = 0;
@@ -82,22 +98,24 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
         float v = seqid + batchid * 0.1;
 
         for (size_t dim = 0; dim < 8; dim++) {
-          in0_lod_tensor->data<float>()[start * 8 + dim] = v;
+          in0->data<float>()[start * 8 + dim] = v;
         }
         start++;
       }
     }
-
-    in0_lod_tensor->mutable_data<float>(place);
-
-    auto common_ddim = framework::make_ddim({6, 8});
-    auto* boot_mem_lod_tensor = boot_mem->GetMutable<LoDTensor>();
-    boot_mem_lod_tensor->Resize(common_ddim);
-    boot_mem_lod_tensor->mutable_data<float>(place);
   }
 
   void InitCacheManually() {
     dop->cache_.Init(DynamicRecurrentOp::kArgName, *dop, scope, &dop->arg_);
+  }
+
+  void InitStepNet() {
+    std::unique_ptr<framework::OperatorBase> stepnet{new NetOp};
+    dynamic_cast<NetOp*>(stepnet.get())
+        ->AppendOp(std::unique_ptr<TestOp>(new TestOp(
+            "test", {{"inlinks", {"in0"}}, {"boot_memories", {"boot_mem"}}},
+            {{"outlinks", {"out0"}}, {"step_scopes", {"step_scopes"}}}, {})));
+    dop->SetStepNet(std::move(stepnet));
   }
 
  protected:
@@ -142,8 +160,8 @@ TEST_F(DynamicRecurrentOpTestHelper, WriteStepInputs) {
 
   for (size_t step = 0; step < dop->cache_.num_steps; step++) {
     auto& scope = dop->cache_.GetScope(step);
-    for (auto name : std::vector<std::string>({"in0", "mem", "mem@pre"})) {
-      ASSERT_NE(scope.FindVar(name), nullptr);
+    for (auto name : std::vector<std::string>({"in0"})) {
+      ASSERT_TRUE(scope.FindVar(name) != nullptr);
     }
   }
 }
@@ -157,7 +175,7 @@ TEST_F(DynamicRecurrentOpTestHelper, WriteStepOutputs) {
   for (size_t step = 0; step < dop->cache_.num_steps; step++) {
     auto& scope = dop->cache_.GetScope(step);
     for (auto name : std::vector<std::string>({"out0"})) {
-      ASSERT_NE(scope.FindVar(name), nullptr);
+      ASSERT_TRUE(scope.FindVar(name));
     }
   }
 }
@@ -175,13 +193,19 @@ TEST_F(DynamicRecurrentOpTestHelper, InitStates) {
 
   for (size_t step = 0; step < dop->cache_.num_steps; step++) {
     auto& scope = dop->cache_.GetScope(step);
-    auto state = scope.FindVar("mem")->Get<LoDTensor>();
-    auto pre_state = scope.FindVar("mem@pre")->Get<LoDTensor>();
-    auto boot_state = scope.FindVar("boot_mem")->Get<LoDTensor>();
+    auto state = scope.FindVar("mem");
+    ASSERT_TRUE(state != nullptr);
+
+    auto* pre_state = scope.FindVar("mem@pre");
+    ASSERT_TRUE(pre_state != nullptr);
+
+    auto* boot_state = scope.FindVar("boot_mem");
+    ASSERT_TRUE(boot_state != nullptr);
 
     if (step == 0) {
       // check pre_state is a reference of boot_state
-      ASSERT_EQ(boot_state.data<float>(), pre_state.data<float>());
+      ASSERT_EQ(boot_state->Get<LoDTensor>().data<float>(),
+                pre_state->Get<LoDTensor>().data<float>());
     }
   }
 }
