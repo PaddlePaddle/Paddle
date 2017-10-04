@@ -121,6 +121,7 @@ class PadOpGradMaker : public framework::SingleGradOpDescMaker {
     bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     bind->SetAttrMap(Attrs());
+    bind->SetType("pad_grad");
     return std::unique_ptr<framework::OpDescBind>(bind);
   }
 };

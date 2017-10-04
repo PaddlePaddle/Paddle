@@ -30,7 +30,6 @@ namespace framework {
 
 struct OpInfo {
   OpCreator creator_;
-  std::string grad_op_type_;
   GradOpMakerFN grad_op_maker_;
   OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
@@ -50,6 +49,12 @@ struct OpInfo {
     PADDLE_ENFORCE_NOT_NULL(creator_,
                             "Operator Creator has not been registered");
     return creator_;
+  }
+
+  const GradOpMakerFN& GradOpMaker() const {
+    PADDLE_ENFORCE_NOT_NULL(grad_op_maker_,
+                            "Operator GradOpMaker has not been registered.");
+    return grad_op_maker_;
   }
 };
 

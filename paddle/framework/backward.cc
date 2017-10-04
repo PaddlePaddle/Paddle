@@ -33,7 +33,7 @@ static inline std::unique_ptr<OperatorBase> CreateGradOp(
   op_desc.SetType(op.Type());
   op_desc.SetAttrMap(op.Attrs());
   auto& info = OpInfoMap::Instance().Get(op.Type());
-  auto grad_descs = info.grad_op_maker_(op_desc);
+  auto grad_descs = info.GradOpMaker()(op_desc);
   std::vector<std::unique_ptr<OperatorBase>> grad_ops;
   grad_ops.reserve(grad_descs.size());
   std::transform(grad_descs.begin(), grad_descs.end(),
@@ -49,6 +49,7 @@ static inline std::unique_ptr<OperatorBase> CreateGradOp(
     for (auto& grad_op : grad_ops) {
       net_op->AppendOp(std::move(grad_op));
     }
+    net_op->CompleteAddOp();
     return std::unique_ptr<OperatorBase>(net_op);
   }
 }

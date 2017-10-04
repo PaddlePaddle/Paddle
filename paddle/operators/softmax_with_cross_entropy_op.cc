@@ -14,6 +14,12 @@
 
 #include "paddle/operators/softmax_with_cross_entropy_op.h"
 #include <paddle/function/TensorType.h>
+#include <iostream>
+
+#define DBG_LINE()                                   \
+  do {                                               \
+    std::cerr << "Run at " << __LINE__ << std::endl; \
+  } while (false)
 
 namespace paddle {
 namespace operators {
@@ -187,8 +193,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
-                  ops::SoftmaxWithCrossEntropyOpMaker,
-                  ops::SoftmaxWithCrossEntropyOpMaker);
+                  ops::SoftmaxWithCrossEntropyOpMaker, ops::SoftmaxGradMaker);
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyOpGrad);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
