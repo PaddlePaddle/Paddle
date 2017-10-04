@@ -86,10 +86,10 @@ Evaluates the target Operations or Variables in `targets`.
   OP's input as well:
 
   ```python
-  a = pd.constant(1.0, name="a")
-  b = pd.constant(2.0)
+  a = pd.constant(2.0, name="a")
+  b = pd.variable(name="b")
   c = pd.mul(a,b)
-  sess.eval(targets=c, feed_dict={"a":3.0}) # returns 6.0
+  sess.eval(targets=c, feed_dict={"b":3.0}) # returns 6.0
   ```
 
 ```python
@@ -107,14 +107,14 @@ session(
 )
 ```
 
-Creates a new session. One session owns one scope, so creating
+Creates a new session. One session owns one global scope, so creating
 multiple sessions will create different scopes.
 
 - *devices*: a single `string` or a list of `string` of device names,
   the corresponding devices will be the computation devices for
   `eval()`. If not specified, all available devices (e.g., all GPUs)
   will be used. The user doesn't need to specify the CPU device since
-  it will be always used.
+  it will be always used. Multiple sessions can use the same device.
 
 
 #### Example
