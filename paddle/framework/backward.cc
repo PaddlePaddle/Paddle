@@ -203,7 +203,6 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
     }
   } else {
     std::unique_ptr<OperatorBase> grad_op(CreateGradOp(forwardOp));
-    PADDLE_ENFORCE(grad_op != nullptr);
 
     ForEachVarName(grad_op->Inputs(), [&no_grad_names, &net, &grad_op](
                                           const std::string& grad_input) {

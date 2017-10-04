@@ -16,11 +16,6 @@
 #include <paddle/function/TensorType.h>
 #include <iostream>
 
-#define DBG_LINE()                                   \
-  do {                                               \
-    std::cerr << "Run at " << __LINE__ << std::endl; \
-  } while (false)
-
 namespace paddle {
 namespace operators {
 

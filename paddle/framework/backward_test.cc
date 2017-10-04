@@ -171,17 +171,6 @@ REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
 REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
             f::NOP);
 
-// TEST(Backward, simple_op_grad) {
-//  auto fwd = f::OpRegistry::CreateOp(
-//      "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
-//  ASSERT_NE(fwd, nullptr);
-//  auto gop = f::OpRegistry::CreateGradOp(*fwd);
-//  ASSERT_EQ(1UL, gop->Inputs().size());
-//  ASSERT_EQ("rowwise_add_grad", gop->Type());
-//  ASSERT_EQ(f::GradVarName("x"), gop->Output(f::GradVarName("X")));
-//  ASSERT_EQ(f::GradVarName("b"), gop->Output(f::GradVarName("b")));
-//}
-
 TEST(Backward, simple_op_not_need_grad) {
   auto fwd = f::OpRegistry::CreateOp(
       "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
@@ -390,7 +379,6 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
                 + 2U /* internal variable number*/);
-
   EXPECT_EQ(grad_fc.Outputs(all).size(),
             2UL       /* input number of mul*/
                 + 2UL /* input number of rowwise_add

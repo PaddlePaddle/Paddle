@@ -23,8 +23,6 @@
 #include "paddle/framework/type_defs.h"
 #include "paddle/platform/macros.h"
 
-#include "glog/logging.h"
-
 namespace paddle {
 namespace framework {
 

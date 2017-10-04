@@ -71,7 +71,6 @@ class MeanGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
 REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanGradMaker);
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean,
