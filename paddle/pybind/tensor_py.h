@@ -106,7 +106,7 @@ void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 template <typename T>
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,

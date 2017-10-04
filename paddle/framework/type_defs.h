@@ -20,6 +20,7 @@
 namespace paddle {
 namespace framework {
 class OperatorBase;
+class OpDescBind;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
 // The order should be as same as framework.proto
@@ -33,6 +34,9 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 using OpCreator = std::function<OperatorBase*(
     const std::string& /*type*/, const VariableNameMap& /*inputs*/,
     const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
+
+using GradOpMakerFN =
+    std::function<std::vector<std::unique_ptr<OpDescBind>>(const OpDescBind&)>;
 
 }  // namespace framework
 }  // namespace paddle
