@@ -77,7 +77,7 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
 
   // GPU buddy allocator initialization
   std::call_once(gpu_allocator_flag, [&]() {
-    int gpu_num = platform::GetDeviceCount();
+    int gpu_num = platform::GetCUDADeviceCount();
     allocators.reserve(gpu_num);
     for (int gpu = 0; gpu < gpu_num; gpu++) {
       platform::SetDeviceId(gpu);
