@@ -34,7 +34,7 @@ static size_t UniqueIntegerGenerator() {
 }
 
 bool IsCompileGPU() {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_GPU
   return false;
 #else
   return true;
@@ -78,7 +78,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
@@ -96,7 +96,7 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_GPU
             new (&instance) LoDTensor(lod);
 #else
              LoD new_lod;
@@ -107,7 +107,7 @@ PYBIND11_PLUGIN(core) {
           })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_GPU
              self.set_lod(lod);
 #else
              LoD new_lod;
@@ -117,7 +117,7 @@ PYBIND11_PLUGIN(core) {
 #endif
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_GPU
         return self.lod();
 #else
            auto lod = self.lod();
@@ -203,7 +203,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::GPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_GPU
                     PADDLE_THROW("GPUPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);

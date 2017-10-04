@@ -62,7 +62,7 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   using BuddyAllocVec = std::vector<BuddyAllocator*>;
