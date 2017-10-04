@@ -76,20 +76,19 @@ class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   AdamaxOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Param", "(Tensor, default Tensor<float>) Input parameter");
-    AddInput("Grad", "(Tensor, default Tensor<float>) Input gradient");
-    AddInput("LearningRate", "(Tensor, default Tensor<float>) Learning rate");
-    AddInput("Moment", "(Tensor, default Tensor<float>) First moment");
+    AddInput("Param", "(Tensor) Input parameter");
+    AddInput("Grad", "(Tensor) Input gradient");
+    AddInput("LearningRate", "(Tensor) Learning rate");
+    AddInput("Moment", "(Tensor) First moment");
     AddInput("InfNorm",
-             "(Tensor, default Tensor<float>) "
+             "(Tensor) "
              "Input exponentially weighted infinity norm");
-    AddInput("TimeStep", "(Tensor, default Tensor<int>) Time step");
+    AddInput("TimeStep", "(Tensor) Time step");
 
-    AddOutput("ParamOut", "(Tensor, default Tensor<float>) Output parameter");
-    AddOutput("MomentOut",
-              "(Tensor, default Tensor<float>) Output first moment");
+    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddOutput("MomentOut", "(Tensor) Output first moment");
     AddOutput("InfNormOut",
-              "(Tensor, default Tensor<float>) "
+              "(Tensor) "
               "Output exponentially weighted infinity norm");
 
     AddAttr<float>("beta1",
