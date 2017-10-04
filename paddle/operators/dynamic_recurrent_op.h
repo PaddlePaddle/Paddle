@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <gtest/gtest_prod.h>
+
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/tensor_array.h"
@@ -94,21 +96,21 @@ class DynamicRecurrentOp : public framework::OperatorBase {
  protected:
   struct ArgCache {
     Scope const* scope;
-    std::vector<Scope*>* scopes;
+    std::vector<std::unique_ptr<Scope>>* scopes;
     std::map<std::string, Variable*> inlinks;
     std::map<std::string, Variable*> outlinks;
 
-    size_t num_steps;
+    size_t num_steps{0};
 
     void Init(const rnn::ArgumentName& name, const OperatorBase& op,
               const Scope& scope, rnn::Argument* arg);
 
     Scope& GetScope(size_t index) {
-      PADDLE_ENFORCE_LT(index, scopes->size());
+      PADDLE_ENFORCE_LT(index, num_steps);
       return *scopes->at(index);
     }
 
-   protected:
+   private:
     void InitArgument(const rnn::ArgumentName& name, const OperatorBase& op,
                       rnn::Argument* arg);
     void CacheScopes(const Scope& scope, const rnn::Argument& arg);
@@ -117,8 +119,6 @@ class DynamicRecurrentOp : public framework::OperatorBase {
     void CacheOutlinks(const Scope& scope,
                        const std::vector<std::string>& names);
     Variable* GetVariable(const Scope& scope, const std::string& name);
-
-    friend class DynamicRecurrentOpTestHelper;
   };
 
  private:
@@ -130,6 +130,15 @@ class DynamicRecurrentOp : public framework::OperatorBase {
       dy_seq_metas_;
   mutable rnn::Argument arg_;
   mutable ArgCache cache_;
+
+  friend class DynamicRecurrentOpTestHelper;
+  FRIEND_TEST(DynamicRecurrentOpTestHelper, SplitInputs);
+  FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateCache);
+  FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateScopes);
+  FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepInputs);
+  FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepOutputs);
+  FRIEND_TEST(DynamicRecurrentOpTestHelper, InitStates);
+  FRIEND_TEST(DynamicRecurrentOpTestHelper, ConcatOutputs);
 };
 
 class DynamicRecurrentGradientOp : public framework::OperatorBase {

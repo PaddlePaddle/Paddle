@@ -219,7 +219,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   std::vector<size_t> indice;
   for (size_t seq_id = 0; seq_id < meta.size(); seq_id++) {
     const auto& seq_meta = meta[seq_id];
-    if (index >= seq_meta.end) break;
+    if (seq_meta.begin + index >= seq_meta.end) break;
     indice.push_back(seq_meta.begin + index);
   }
 

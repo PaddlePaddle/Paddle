@@ -87,13 +87,15 @@ void DynamicRecurrentOp::SplitInputs() const {
 void DynamicRecurrentOp::WriteStepInputs() const {
   const auto& inlinks = cache_.inlinks;
   for (auto& item : inlinks) {
+    auto ta_it = step_inputs_.find(item.first);
+    PADDLE_ENFORCE(ta_it != step_inputs_.end(), "");
     TensorArray& ta = step_inputs_[item.first];
     for (size_t step = 0; step < ta.size(); step++) {
       auto tensor = ta.Read(step);
       auto& step_scope = cache_.GetScope(step);
-      step_scope.FindVar(item.first)
-          ->GetMutable<LoDTensor>()
-          ->ShareDataWith<value_type>(tensor);
+      auto var = step_scope.FindVar(item.first);
+      PADDLE_ENFORCE_NOT_NULL(var);
+      var->GetMutable<LoDTensor>()->ShareDataWith<value_type>(tensor);
     }
   }
 }
@@ -110,8 +112,14 @@ void DynamicRecurrentOp::WriteStepOutputs() const {
 }
 
 void DynamicRecurrentOp::CreateScopes() const {
-  for (size_t step = cache_.scopes->size(); step < step_inputs_.size();
-       step++) {
+  PADDLE_ENFORCE_GT(cache_.num_steps, 0);
+  // resize scopes
+  for (size_t i = 0; i < cache_.num_steps - cache_.scopes->size(); i++) {
+    cache_.scopes->emplace_back(new Scope);
+  }
+
+  // init temporary inputs
+  for (size_t step = cache_.scopes->size(); step < cache_.num_steps; step++) {
     auto& scope = cache_.GetScope(step);
     // create temporary inputs
     for (auto& input : stepnet_->Inputs()) {
@@ -197,7 +205,7 @@ void DynamicRecurrentOp::ArgCache::CacheScopes(const Scope& scope,
                  "the step_scopes output argument [%s] should be created first "
                  "by framework.",
                  arg.step_scopes);
-  scopes = scopes_var->GetMutable<std::vector<Scope*>>();
+  scopes = scopes_var->GetMutable<std::vector<std::unique_ptr<Scope>>>();
 }
 
 void DynamicRecurrentOp::ArgCache::CacheInlinks(
@@ -212,7 +220,7 @@ void DynamicRecurrentOp::ArgCache::CacheOutlinks(
     const Scope& scope, const std::vector<std::string>& names) {
   for (auto name : names) {
     auto* var = GetVariable(scope, name);
-    inlinks[name] = var;
+    outlinks[name] = var;
   }
 }
 
