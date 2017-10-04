@@ -23,8 +23,8 @@ class TestAdamaxOp(OpTest):
             'grad': grad,
             'moment': moment,
             'inf_norm': inf_norm,
-            'time_step': time_step,
-            'learning_rate': learning_rate
+            'time_step': np.array([time_step]).astype("int32"),
+            'learning_rate': np.array([learning_rate]).astype("float32")
         }
 
         self.attrs = {'beta_1': beta_1, 'beta_2': beta_2, 'epsilon': epsilon}

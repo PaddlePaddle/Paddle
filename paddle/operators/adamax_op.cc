@@ -43,6 +43,12 @@ class AdamaxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("inf_norm_out"),
                    "Output(inf_norm_out) of AdamaxOp should not be null.");
 
+    auto lr_dims = ctx->GetInputDim("learning_rate");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "Learning rate should have 1 dimension");
+    auto t_dims = ctx->GetInputDim("time_step");
+    PADDLE_ENFORCE_EQ(framework::product(t_dims), 1,
+                      "Time step should have 1 dimension");
     auto param_dim = ctx->GetInputDim("param");
     PADDLE_ENFORCE_EQ(
         param_dim, ctx->GetInputDim("grad"),
@@ -57,6 +63,12 @@ class AdamaxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("param_out", param_dim);
     ctx->SetOutputDim("moment_out", param_dim);
     ctx->SetOutputDim("inf_norm_out", param_dim);
+  }
+
+  // Datatype of operator is determined by Param tensor
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("param")->type());
   }
 };
 
