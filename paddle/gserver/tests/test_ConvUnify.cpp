@@ -117,7 +117,7 @@ MatrixPtr doOneConvTest(size_t imgSize,
 }
 
 TEST(Layer, convParaUnified) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   MatrixPtr input, resultCpu, resultGpu;
 
   /// TEST1 for conv ///
