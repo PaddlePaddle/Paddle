@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/framework/backward.h"
+#include "paddle/operators/net_op.h"
 
 #include <deque>
 #include <list>
@@ -20,12 +21,40 @@
 
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/program_desc.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
 
 namespace paddle {
 namespace framework {
+
+static inline std::unique_ptr<OperatorBase> CreateGradOp(
+    const OperatorBase& op) {
+  OpDescBind op_desc;
+  op_desc.SetInputMap(op.Inputs());
+  op_desc.SetOutputMap(op.Outputs());
+  op_desc.SetType(op.Type());
+  op_desc.SetAttrMap(op.Attrs());
+  auto& info = OpInfoMap::Instance().Get(op.Type());
+  auto grad_descs = info.GradOpMaker()(op_desc);
+  std::vector<std::unique_ptr<OperatorBase>> grad_ops;
+  grad_ops.reserve(grad_descs.size());
+  std::transform(grad_descs.begin(), grad_descs.end(),
+                 std::back_inserter(grad_ops),
+                 [](const std::unique_ptr<OpDescBind>& grad_desc) {
+                   return OpRegistry::CreateOp(*grad_desc);
+                 });
+  PADDLE_ENFORCE(!grad_ops.empty());
+  if (grad_ops.size() == 1) {
+    return std::move(grad_ops[0]);
+  } else {
+    auto net_op = new operators::NetOp();
+    for (auto& grad_op : grad_ops) {
+      net_op->AppendOp(std::move(grad_op));
+    }
+    net_op->CompleteAddOp();
+    return std::unique_ptr<OperatorBase>(net_op);
+  }
+}
 
 template <typename Map, typename T>
 static void ForEachVarName(const Map& names, T callback) {
@@ -174,7 +203,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       net->InsertOp(pos.first + 1, std::move(pos.second));
     }
   } else {
-    std::unique_ptr<OperatorBase> grad_op(OpRegistry::CreateGradOp(forwardOp));
+    std::unique_ptr<OperatorBase> grad_op(CreateGradOp(forwardOp));
 
     ForEachVarName(grad_op->Inputs(), [&no_grad_names, &net, &grad_op](
                                           const std::string& grad_input) {
@@ -260,13 +289,14 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
     std::unordered_set<std::string>& no_grad_vars) {
   std::vector<std::unique_ptr<OpDescBind>> grad_op_descs;
   // All input gradients of forwarding operator do not need to calculat.
-  if (AllGradInSet(op_desc->InputArgumentNames(), no_grad_vars)) {
+  const std::vector<std::string>& inputs = op_desc->InArgumentNames();
+  if (AllGradInSet(inputs, no_grad_vars)) {
     return grad_op_descs;  // empty vector
   }
   // All output gradients of forwarding operator do not need to calculate.
   const std::vector<std::string>& outputs = op_desc->OutputArgumentNames();
   if (AllGradInSet(outputs, no_grad_vars)) {
-    for (const std::string& name : outputs) {
+    for (const std::string& name : inputs) {
       no_grad_vars.insert(GradVarName(name));
     }
     return grad_op_descs;  // empty vector

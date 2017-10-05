@@ -17,6 +17,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/type_defs.h"
@@ -27,7 +28,6 @@ namespace framework {
 
 struct OpInfo {
   OpCreator creator_;
-  std::string grad_op_type_;
   GradOpMakerFN grad_op_maker_;
   OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
@@ -43,19 +43,17 @@ struct OpInfo {
     return *proto_;
   }
 
-  const OpAttrChecker& Checker() const {
-    PADDLE_ENFORCE_NOT_NULL(checker_,
-                            "Operator Checker has not been registered");
-    return *checker_;
-  }
-
   const OpCreator& Creator() const {
     PADDLE_ENFORCE_NOT_NULL(creator_,
                             "Operator Creator has not been registered");
     return creator_;
   }
 
-  bool HasGradientOp() const { return !grad_op_type_.empty(); }
+  const GradOpMakerFN& GradOpMaker() const {
+    PADDLE_ENFORCE_NOT_NULL(grad_op_maker_,
+                            "Operator GradOpMaker has not been registered.");
+    return grad_op_maker_;
+  }
 };
 
 class OpInfoMap {
