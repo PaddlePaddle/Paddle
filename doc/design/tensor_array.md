@@ -103,30 +103,147 @@ In [our design for dynamic RNN](https://github.com/PaddlePaddle/Paddle/pull/4401
 By providing some methods similar to a C++ array,
 the definition of some state-based dynamic models such as RNN could be more natural and highly flexible.
 
-## Dynamic-Related Methods
-Some basic methods should be proposed as follows:
+## Dynamic-operations on TensorArray
 
-### stack()
-Pack the values in a `TensorArray` into a tensor with rank one higher than each tensor in `values`.
-### unstack(axis=0)
-Unpacks the given dimension of a rank-`R` tensor into rank-`(R-1)` tensors.
-### concat()
-Return the values in the `TensorArray` as a concatenated Tensor.
-### write(index, value, data_shared=true)
-Write value into index of the TensorArray.
-### read(index)
-Read the value at location `index` in the `TensorArray`.
-### size()
-Return the number of values.
+`TensorArray` will be used directly when defining dynamic models, so some operators listed below should be implemented
+
+```python
+# several helper operators for TensorArray
+def tensor_array_stack(ta, tensor):
+    '''
+    get a tensor array `ta`, return a packed `tensor`.
+    '''
+    pass
+
+def tensor_array_unstack(tensor, ta):
+    '''
+    get a `tensor`, unstack it and get a tensor array `ta`.
+    '''
+    pass
+
+def tensor_array_write(ta, index, tensor, data_shared):
+    '''
+    get a `tensor` and a scalar tensor `index`, write `tensor` into index-th
+    value of the tensor array `ta`.
+    `data_shared` is an attribute that specifies whether to copy or reference the tensors.
+    '''
+    pass
+
+def tensor_array_read(ta, index, tensor):
+    '''
+    get a tensor array `ta`, a scalar tensor `index`, read the index-th value of
+    `ta` and return as the `tensor`.
+    '''
+    pass
+
+def tensor_array_size(ta, tensor):
+    '''
+    get a tensor array `ta`, return the size of `ta` and return as the scalar `tensor`.
+    '''
+    pass
+```
+
+It is trivial for users to use many operators, so some helper methods should be proposed in python wrapper to make `TensorArray` easier to use.
+
+```python
+class TensorArray:
+    def __init__(self, name):
+        self.name = name
+        self.desc = TensorArrayDesc()
+
+    def stack(self, name=None):
+        '''
+        Pack the values in a `TensorArray` into a tensor with rank one higher
+        than each tensor in `values`.
+        `stack` can be used to split tensor into time steps for RNN or whileloop.
+
+        @name: str
+            the name of the variable to output.
+        '''
+        tensor = NewVar(name)
+        tensor_array_stack(self.name, tensor)
+        return tensor
+
+    def unstack(self, input):
+        '''
+        Unpacks the given dimension of a rank-`R` tensor into rank-`(R-1)` tensors.
+        `unstack` can be used to concatenate all the time steps for RNN or whileloop.
+
+        @input: str
+            the name of input tensor
+        '''
+        tensor_array_unstack(tensor, self.name)
+
+    def write(self, index, value, data_shared=True):
+        '''
+        Write value into index of the TensorArray.
+        If `data_shared` is set to True, than the index-th value in TensorArray will
+        be shared with the tensor passed in.
+
+        @index: str
+            name of a scalar tensor
+        @value: str
+            name of a tensor
+        @data_shared: bool
+        '''
+        tensor_array_write(self.name, index, value, data_shared)
+
+    def read(self, index, output):
+        '''
+        Read the value at location `index` in the `TensorArray`.
+
+        @index: str
+            name of a scalar tensor
+        @output:
+            name of a output variable
+        '''
+        tensor_array_read(self.name, index, output)
+
+
+    def size(self, output):
+        '''
+        Return the number of values.
+
+        @output: str
+            name of a scalar tensor
+        '''
+        tensor_array_size(self.name, output)
+```
 
 ## LoDTensor-related Supports
-The `RecurrentGradientMachine` in Paddle serves as a flexible RNN layer; it takes variant length sequences as input, 
-because each step of RNN could only take a tensor-represented batch of data as input, 
+The `RecurrentGradientMachine` in Paddle serves as a flexible RNN layer; it takes varience-length sequences as input, and output sequences too.
+
+Since each step of RNN could only take a tensor-represented batch of data as input, 
 some preprocess should be taken on the inputs such as sorting the sentences by their length in descending order and cut each word and pack to new batches.
 
-Such cut-like operations can be embedded into `TensorArray` as general methods called `unpack` and `pack`.
+Such cut-like operations can be embedded into `TensorArray` as general methods called `unpack` and `pack`,
+these two operations are similar to `stack` and `unstack` except that they operate on variable-length sequences formated as a LoD tensor rather than a tensor.
 
-With these two methods, a variant-sentence-RNN can be implemented like
+Some definitions are like
+
+```python
+def unpack(level):
+    '''
+    Split LodTensor in some `level` and generate batches, if set `sort_by_length`,
+    will sort by length.
+
+    Returns:
+        - a new `TensorArray`, whose values are LodTensors and represents batches
+          of data.
+        - an int32 Tensor, which stores the map from the new batch's indices to
+          original LoDTensor
+    '''
+    pass
+
+def pack(level, indices_map):
+    '''
+    Recover the original LoD-arranged LoDTensor with the values in a `TensorArray`
+    and `level` and `indices_map`.
+    '''
+    pass
+```
+
+With these two methods, a varience-length sentence supported RNN can be implemented like
 
 ```c++
 // input is the varient-length data
@@ -151,16 +268,3 @@ LoDTensor rnn_output = ta.pack(ta, indice_map);
 ```
 the code above shows that by embedding the LoDTensor-related preprocess operations into `TensorArray`,
 the implementation of a RNN that supports varient-length sentences is far more concise than `RecurrentGradientMachine` because the latter mixes all the codes together, hard to read and extend.
-
-
-some details are as follows.
-
-### unpack(level, sort_by_length)
-Split LodTensor in some `level` and generate batches, if set `sort_by_length`, will sort by length.
-
-Returns:
-
-- a new `TensorArray`, whose values are LodTensors and represents batches of data.
-- an int32 Tensor, which stores the map from the new batch's indices to original LoDTensor
-### pack(level, indices_map)
-Recover the original LoD-arranged LoDTensor with the values in a `TensorArray` and `level` and `indices_map`.
