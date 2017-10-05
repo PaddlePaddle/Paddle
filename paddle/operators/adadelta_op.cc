@@ -87,8 +87,8 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Adadelta Updates Operator.
 
-This implements the Adadelta optimizer from https://arxiv.org/abs/1212.5701.
-Adadelta is a per0-dimension learning rate method for gradient descent.
+This implements the Adadelta optimizer[1]. Adadelta is a per-dimension
+adaptive learning rate method for gradient descent.
 
 Adadelta updates:
 
@@ -97,6 +97,10 @@ param_update =  - sqrt((avg_squared_update + epsilon) /
                        (avg_squared_grad_out + epsilon)) * grad
 avg_squared_update_out = rho * avg_squared_update + (1 - rho) * param_update**2
 param_out = param + param_update
+
+References:
+  [1] ADADELTA: An Adaptive Learning Rate Method
+      https://arxiv.org/abs/1212.5701
 
 )DOC");
   }
