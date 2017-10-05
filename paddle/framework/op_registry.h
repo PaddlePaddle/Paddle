@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
-#include "paddle/framework/shape_inference_map.h"
 
 namespace paddle {
 namespace framework {
@@ -55,16 +54,10 @@ class OpRegistry {
                          const std::string& grad_op_type) {
     OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
     reg.info.grad_op_type_ = grad_op_type;
-    auto proto = reg.info.Proto();
-    std::cout << "====== " << op_type << " =======" << std::endl;
-    std::cout << proto.SerializeAsString() << std::endl;
-    std::cout << "=============" << std::endl;
-    ShapeInferenceMap::Instance().CreateOpWithKernel(reg.info, op_type);
+
     // register gradient op
     if (!grad_op_type.empty()) {
       OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
-      ShapeInferenceMap::Instance().CreateOpWithKernel(grad_reg.info,
-                                                       grad_op_type);
     }
   }
 

@@ -20,6 +20,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class InferShapeContextBase;
+
+typedef std::function<void(InferShapeContextBase *)> InferShapeFn;
+
 class InferShapeContextBase {
  public:
   virtual ~InferShapeContextBase() {}
