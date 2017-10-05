@@ -22,8 +22,8 @@ class TestMomentumOp(OpTest):
 
         self.attrs = {'mu': mu}
 
-        velocity_out = mu * velocity - learning_rate * grad
-        param_out = param + velocity_out
+        velocity_out = mu * velocity + grad
+        param_out = param - learning_rate * velocity_out
 
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 

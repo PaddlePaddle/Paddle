@@ -57,25 +57,30 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
   MomentumOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Param", "Input parameter");
-    AddInput("Grad", "Input gradient");
-    AddInput("Velocity", "Input velocity");
-    AddInput("LearningRate", "Input learning rate");
+    AddInput("Param",
+             "(Tensor, default Tensor<float>) "
+             "Input parameter that has to be updated");
+    AddInput("Grad",
+             "(Tensor, default Tensor<float>) "
+             "Input gradient of the parameter");
+    AddInput("Velocity",
+             "(Tensor, default Tensor<float>) "
+             "Input velocity (corresponding to the parameter) "
+             "that has to be updated");
+    AddInput("LearningRate",
+             "(Tensor, default Tensor<float>) "
+             "Input learning rate");
 
-    AddOutput("ParamOut", "Output parameter");
-    AddOutput("VelocityOut", "Output velocity");
+    AddOutput("ParamOut", "(Tensor) Output updated parameter");
+    AddOutput("VelocityOut", "(Tensor) Output updated velocity");
 
-    AddAttr<float>("mu", "Momentum coefficient");
+    AddAttr<float>("mu", "(float) Momentum coefficient");
     AddComment(R"DOC(
 
 Momentum Algorithm (momentum).
 
-velocity_out = mu * velocity - learning_rate * grad
-param_out = param + velocity_out
-
-Ref: Sutskever, Ilya, et al. "On the importance of initialization
-     and momentum in deep learning." ICML 2013;
-     http://jmlr.org/proceedings/papers/v28/sutskever13.pdf
+velocity = mu * velocity + gradient
+param = param - learning_rate * velocity
 
 )DOC");
   }

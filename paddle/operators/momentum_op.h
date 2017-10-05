@@ -36,16 +36,16 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
     float mu = ctx.Attr<float>("mu");
 
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
-    auto v = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Velocity"));
-    float lr = ctx.Input<Tensor>("LearningRate")->data<float>()[0];
+    auto param = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
+    auto grad = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
+    auto velocity = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Velocity"));
+    float learning_rate = ctx.Input<Tensor>("LearningRate")->data<float>()[0];
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto v_out = EigenVector<T>::Flatten(*velocity_out);
     auto place = ctx.GetEigenDevice<Place>();
 
-    v_out.device(place) = mu * v - lr * g;
-    p_out.device(place) = p + v_out;
+    v_out.device(place) = velocity * mu + grad;
+    p_out.device(place) = param - learning_rate * v_out;
   }
 };
 
