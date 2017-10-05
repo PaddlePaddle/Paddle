@@ -175,6 +175,19 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
+class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  Relu6OpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Relu6 operator");
+    AddOutput("Y", "Output of Relu6 operator");
+    AddComment("Relu6 activation operator, relu6 = min(max(0, x), 6)");
+    AddAttr<AttrType>("threshold", "The threshold value of Relu6")
+        .SetDefault(static_cast<AttrType>(6));
+  }
+};
+
+template <typename AttrType>
 class PowOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -242,6 +255,9 @@ REGISTER_OP(brelu, ops::ActivationOp, ops::BReluOpMaker<float>, brelu_grad,
 
 REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker<float>,
             soft_relu_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(relu6, ops::ActivationOp, ops::Relu6OpMaker<float>, relu6_grad,
+            ops::ActivationOpGrad);
 
 REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
             ops::ActivationOpGrad);
