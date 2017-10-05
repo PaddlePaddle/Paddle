@@ -111,6 +111,24 @@ class Tensor {
 
   std::type_index type() const { return holder_->type(); }
 
+  /**
+   *  @brief Serialize tensor to char bytes. Please check model_format.md for
+   * detail.
+   *
+   *  @param
+   *  @return return string
+   */
+  std::string SerializeToString() const;
+
+  void SerializeToString(std::string* s) const;
+
+  /**
+   *  @brief Deserialize char bytes to tensor.
+   *  @param
+   *  @return return string
+   */
+  void DeserializeFromString(const std::string& s);
+
  private:
   template <typename T>
   inline void check_memory_size() const;

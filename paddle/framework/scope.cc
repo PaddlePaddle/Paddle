@@ -62,5 +62,22 @@ void Scope::DropKids() {
   kids_.clear();
 }
 
+std::unordered_set<std::string> Scope::Introspection(bool recursive) const {
+  std::unordered_set<std::string> known_vars;
+
+  if (recursive) {
+    for (auto& kid : kids_) {
+      auto kid_vars = kid->Introspection();
+      for (auto& p : kid_vars) {
+        known_vars.insert(p);
+      }
+    }
+  }
+  for (auto& p : vars_) {
+    known_vars.insert(p.first);
+  }
+  return known_vars;
+}
+
 }  // namespace framework
 }  // namespace paddle
