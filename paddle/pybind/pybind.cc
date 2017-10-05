@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/operators/cond_op.h"
+#include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
@@ -288,6 +289,25 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_stepnet", [](operators::RecurrentOp &self,
                              const operators::NetOp &net) -> void {
         self.set_stepnet(net.Clone());
+      });
+
+  py::class_<operators::DynamicRecurrentOp, OperatorBase>(m,
+                                                          "DynamicRecurrentOp")
+      .def_static("create",
+                  [](py::bytes protobin) -> operators::DynamicRecurrentOp * {
+                    OpDesc desc;
+                    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                                   "Cannot parse user input to OpDesc");
+                    PADDLE_ENFORCE(desc.IsInitialized(),
+                                   "User OpDesc is not initialized, reason %s",
+                                   desc.InitializationErrorString());
+                    auto rnn_op = OpRegistry::CreateOp(desc);
+                    return static_cast<operators::DynamicRecurrentOp *>(
+                        rnn_op.release());
+                  })
+      .def("set_stepnet", [](operators::DynamicRecurrentOp &self,
+                             const operators::NetOp &net) -> void {
+        self.SetStepNet(net.Clone());
       });
 
   // cond_op
