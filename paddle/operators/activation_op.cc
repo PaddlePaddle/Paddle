@@ -69,6 +69,22 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  LeakyReluOpMaker(framework::OpProto *proto,
+                   framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of LeakyRelu operator");
+    AddOutput("Y", "Output of LeakyRelu operator");
+    AddComment(
+        "LeakyRelu activation operator, "
+        "leaky_relu = max(x, alpha * x)");
+    AddAttr<AttrType>("alpha", "The small negative slope")
+        .SetDefault(static_cast<AttrType>(0.02f));
+  }
+};
+
 class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   TanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -252,6 +268,9 @@ REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
 
 REGISTER_OP(brelu, ops::ActivationOp, ops::BReluOpMaker<float>, brelu_grad,
             ops::ActivationOpGrad);
+
+REGISTER_OP(leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker<float>,
+            leaky_relu_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker<float>,
             soft_relu_grad, ops::ActivationOpGrad);
