@@ -13,8 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
+#include <stdio.h>
+#include <string.h>
+#include <sstream>
+#include "paddle/framework/framework.pb.h"
 #include "paddle/memory/memcpy.h"
 #include "paddle/platform/enforce.h"
+// #include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -161,6 +167,74 @@ inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   res.Resize(flatten_to_2d(src.dims(), num_col_dims));
   return res;
 }
+
+std::string Tensor::SerializeToString1() const {
+  TTensor proto;
+  proto.set_type(DataType::FP32);
+  proto.set_size(holder_->size());
+  for (int i = 0; i < holder_->size(); ++i) {
+    proto.add_content(static_cast<float*>(holder_->ptr())[i]);
+  }
+  std::string s = proto.SerializeAsString();
+  LOG(INFO) << s.size() << " " << s;
+  return s;
+}
+
+void Tensor::DeserializeFromString1(const std::string& s) {
+  TTensor proto;
+  proto.ParseFromString(s);
+  this->Resize({proto.size()});
+  float* p = this->mutable_data<float>(platform::CPUPlace());
+  for (int i = 0; i < proto.size(); ++i) {
+    p[i] = proto.content()[i];
+  };
+}
+
+std::string Tensor::SerializeToString2() const {
+  // use new instead of our malloc to compare with protobuf
+  const int BUFFER_SIZE = holder_->size() + 100;
+  char* buffer = new char[BUFFER_SIZE];
+  memset(buffer, BUFFER_SIZE, '\n');
+  size_t length = holder_->size();
+
+  // data type 5 => float32
+  memset(buffer, 5, sizeof(size_t));
+  // data size
+  memcpy(buffer + sizeof(size_t), &length, sizeof(size_t));
+  memcpy(buffer + sizeof(size_t) * 2, static_cast<float*>(holder_->ptr()),
+         sizeof(float) * holder_->size());
+  return std::string(buffer);
+}
+
+void Tensor::DeserializeFromString2(const std::string& s) {
+  // this->mutable_data() =
+  // std::stringstream ss(s);
+  int data_type, length;
+  sscanf(s.c_str(), "%d%d", &data_type, &length);
+  // char *buffer = new char[length];
+  this->Resize({length});
+  float* p = this->mutable_data<float>(platform::CPUPlace());
+  memcpy(p, s.c_str() + sizeof(int) * 2, sizeof(int) * length);
+  // for(int i=0; i < length; ++i) {
+  //   p[i] = proto.content()[i];
+  // };
+}
+
+std::string Tensor::SerializeToString3() const {
+  TensorMeta proto;
+  proto.set_type(DataType::FP32);
+  proto.set_size(holder_->size());
+  auto str = proto.SerializeAsString();
+  char* proto_buffer = const_cast<char*>(str.c_str());
+
+  char* buffer = new char[str.size() + holder_->size()];
+  memcpy(buffer, proto_buffer, str.size());
+  memcpy(buffer + str.size(), static_cast<float*>(holder_->ptr()),
+         sizeof(float) * holder_->size());
+  return std::string(buffer);
+}
+
+void Tensor::DeserializeFromString3(const std::string& s) {}
 
 }  // namespace framework
 }  // namespace paddle

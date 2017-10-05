@@ -111,6 +111,18 @@ class Tensor {
 
   std::type_index type() const { return holder_->type(); }
 
+  std::string SerializeToString1() const;
+
+  void DeserializeFromString1(const std::string& s);
+
+  std::string SerializeToString2() const;
+
+  void DeserializeFromString2(const std::string& s);
+
+  std::string SerializeToString3() const;
+
+  void DeserializeFromString3(const std::string& s);
+
  private:
   template <typename T>
   inline void check_memory_size() const;

@@ -275,3 +275,30 @@ TEST(Tensor, ReshapeToMatrix) {
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
 }
+
+TEST(Tensor, SerializeDeserialize) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  int* src_ptr = src.mutable_data<int>({2, 3}, CPUPlace());
+  for (int i = 0; i < 2 * 3; ++i) {
+    src_ptr[i] = i;
+  }
+  std::string s1 = src.SerializeToString1();
+  std::string s2 = src.SerializeToString2();
+  std::string s3 = src.SerializeToString3();
+  Tensor dst;
+  dst.DeserializeFromString1(s1);
+  std::string d1 = dst.SerializeToString1();
+  EXPECT_STREQ(s1.c_str(), d1.c_str());
+}
+
+TEST(Tensor, TestSpeed) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, CPUPlace());
+  for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
+    src_ptr[i] = i;
+  }
+}
