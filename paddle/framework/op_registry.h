@@ -54,7 +54,6 @@ class OpRegistry {
                          const std::string& grad_op_type) {
     OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
     reg.info.grad_op_type_ = grad_op_type;
-
     // register gradient op
     if (!grad_op_type.empty()) {
       OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
