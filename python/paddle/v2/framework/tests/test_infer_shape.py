@@ -26,8 +26,6 @@ class TestInferShape(unittest.TestCase):
         sum_op_desc.set_input("X", ["x1", "x2"])
         sum_op_desc.set_output("Out", ["out"])
 
-        print(type(sum_op_desc))
-        print(type(block))
         core.Operator.infer_shape(sum_op_desc, block)
         self.assertEqual(out.shape(), shape)
 

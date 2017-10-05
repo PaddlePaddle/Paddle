@@ -14,15 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/attribute.h"
 #include "paddle/framework/ddim.h"
 
 namespace paddle {
 namespace framework {
-
-class InferShapeContextBase;
-
-typedef std::function<void(InferShapeContextBase *)> InferShapeFn;
 
 class InferShapeContextBase {
  public:
