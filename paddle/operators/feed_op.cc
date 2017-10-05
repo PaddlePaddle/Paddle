@@ -28,10 +28,17 @@ class FeedOp : public framework::OperatorWithKernel {
     int col = ctx->Attrs().Get<int>("col");
     framework::Variable* g_feed_variable =
         framework::GetScope()->FindVar("feed_value");
+
     FeedInputs tensors = g_feed_variable->Get<FeedInputs>();
+
     auto in_dim = tensors[col].dims();
-    ctx->SetOutputDim("Y", in_dim);
+    ctx->SetOutputDim("Out", in_dim);
     // need to handle LodTensor later
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return static_cast<framework::DataType>(Attr<int>("data_type"));
   }
 };
 
@@ -39,8 +46,12 @@ class FeedOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   FeedOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("col", "The col in Global Feed Variable");
+    AddAttr<int>("data_type", "output data type")
+        .SetDefault(framework::DataType::FP32);
+    AddAttr<int>("col", "The col in global feed variable").SetDefault(0);
+    AddAttr<std::vector<int>>("dims", "The dimension of random tensor.");
     AddOutput("Out", "The output of dropout op.");
+    AddComment(R"DOC(Feed data to global feed variable)DOC");
   }
 };
 

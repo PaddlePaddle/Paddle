@@ -26,7 +26,7 @@ class Executor {
  public:
   explicit Executor(const std::vector<platform::Place>& places);
   ~Executor();
-  void Run(const ProgramDesc&, Scope*, std::vector<Tensor>*);
+  void Run(const ProgramDesc&, Scope*);
 
  private:
   std::vector<platform::DeviceContext*> device_contexts_;
