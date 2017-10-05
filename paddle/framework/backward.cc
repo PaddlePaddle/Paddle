@@ -289,7 +289,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
     std::unordered_set<std::string>& no_grad_vars) {
   std::vector<std::unique_ptr<OpDescBind>> grad_op_descs;
   // All input gradients of forwarding operator do not need to calculat.
-  const std::vector<std::string>& inputs = op_desc->InArgumentNames();
+  const std::vector<std::string>& inputs = op_desc->InputArgumentNames();
   if (AllGradInSet(inputs, no_grad_vars)) {
     return grad_op_descs;  // empty vector
   }
@@ -323,8 +323,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
       }
     }
   }
+
   for (auto& p : pending_fill_zeros_ops) {
-    grad_op_descs.push_back(std::move(p));
+    grad_op_descs.insert(grad_op_descs.begin(), std::move(p));
   }
   return grad_op_descs;
 }
