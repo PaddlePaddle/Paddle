@@ -19,44 +19,52 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
 class AdamaxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<Tensor>("ParamOut");
-    auto moment_out = ctx.Output<Tensor>("MomentOut");
-    auto norm_out = ctx.Output<Tensor>("InfNormOut");
+    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
+    auto moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
+    auto inf_norm_out_tensor = ctx.Output<framework::Tensor>("InfNormOut");
+    auto beta1_pow_out_tensor = ctx.Output<framework::Tensor>("Beta1PowOut");
 
-    param_out->mutable_data<T>(ctx.GetPlace());
-    moment_out->mutable_data<T>(ctx.GetPlace());
-    norm_out->mutable_data<T>(ctx.GetPlace());
+    param_out_tensor->mutable_data<T>(ctx.GetPlace());
+    moment_out_tensor->mutable_data<T>(ctx.GetPlace());
+    inf_norm_out_tensor->mutable_data<T>(ctx.GetPlace());
+    beta1_pow_out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    float beta_1 = ctx.Attr<float>("beta1");
-    float beta_2 = ctx.Attr<float>("beta2");
+    float beta1 = ctx.Attr<float>("beta1");
+    float beta2 = ctx.Attr<float>("beta2");
     float epsilon = ctx.Attr<float>("epsilon");
-    auto lr = ctx.Input<Tensor>("LearningRate")->data<float>()[0];
-    auto t = ctx.Input<Tensor>("TimeStep")->data<int>()[0];
 
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
-    auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
-    auto u = EigenVector<T>::Flatten(*ctx.Input<Tensor>("InfNorm"));
-    auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto m_out = EigenVector<T>::Flatten(*moment_out);
-    auto u_out = EigenVector<T>::Flatten(*norm_out);
+    auto param = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Param"));
+    auto grad = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Grad"));
+    auto moment = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Moment"));
+    auto inf_norm = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("InfNorm"));
+    auto lr = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("LearningRate"));
+    auto beta1_pow = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Beta1Pow"));
+    auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
+    auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
+    auto inf_norm_out =
+        framework::EigenVector<T>::Flatten(*inf_norm_out_tensor);
+    auto beta1_pow_out =
+        framework::EigenVector<T>::Flatten(*beta1_pow_out_tensor);
     auto place = ctx.GetEigenDevice<Place>();
 
-    m_out.device(place) = beta_1 * m + (1 - beta_1) * g;
-    u_out.device(place) = g.abs().cwiseMax((beta_2 * u) + epsilon);
-
-    float lr_t = lr / (1 - std::pow(beta_1, t));
-    p_out.device(place) = p - lr_t * (m_out / u_out);
+    moment_out.device(place) = beta1 * moment + (1 - beta1) * grad;
+    inf_norm_out.device(place) =
+        grad.abs().cwiseMax((beta2 * inf_norm) + epsilon);
+    beta1_pow_out.device(place) = beta1_pow * beta1;
+    auto lr_t = lr / (1 - beta1_pow_out);
+    Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
+    param_out.device(place) =
+        param - lr_t.broadcast(m_dsize) * (moment_out / inf_norm_out);
   }
 };
 

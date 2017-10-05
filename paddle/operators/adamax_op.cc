@@ -33,8 +33,8 @@ class AdamaxOp : public framework::OperatorWithKernel {
                    "Input(InfNorm) of AdamaxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
                    "Input(LearningRate) of AdamaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("TimeStep"),
-                   "Input(TimeStep) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Beta1Pow"),
+                   "Input(Beta1Pow) of AdamaxOp should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of AdamaxOp should not be null.");
@@ -42,33 +42,30 @@ class AdamaxOp : public framework::OperatorWithKernel {
                    "Output(MomentOut) of AdamaxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("InfNormOut"),
                    "Output(InfNormOut) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Beta1PowOut"),
+                   "Output(Beta1PowOut) of AdamaxOp should not be null.");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 dimension");
-    auto t_dims = ctx->GetInputDim("TimeStep");
-    PADDLE_ENFORCE_EQ(framework::product(t_dims), 1,
-                      "Time step should have 1 dimension");
-    auto param_dim = ctx->GetInputDim("Param");
+    auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
+    PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
+                      "Beta1 power accumulator should have 1 dimension");
+    auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Grad"),
+        param_dims, ctx->GetInputDim("Grad"),
         "Param and Grad input of AdamaxOp should have same dimension");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Moment"),
+        param_dims, ctx->GetInputDim("Moment"),
         "Param and Moment input of AdamaxOp should have same dimension");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("InfNorm"),
+        param_dims, ctx->GetInputDim("InfNorm"),
         "Param and InfNorm input of AdamaxOp should have same dimension");
 
-    ctx->SetOutputDim("ParamOut", param_dim);
-    ctx->SetOutputDim("MomentOut", param_dim);
-    ctx->SetOutputDim("InfNormOut", param_dim);
-  }
-
-  // Datatype of operator is determined by Param tensor
-  framework::DataType IndicateDataType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    ctx->SetOutputDim("ParamOut", param_dims);
+    ctx->SetOutputDim("MomentOut", param_dims);
+    ctx->SetOutputDim("InfNormOut", param_dims);
+    ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
   }
 };
 
@@ -83,13 +80,14 @@ class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("InfNorm",
              "(Tensor) "
              "Input exponentially weighted infinity norm");
-    AddInput("TimeStep", "(Tensor) Time step");
+    AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("MomentOut", "(Tensor) Output first moment");
     AddOutput("InfNormOut",
               "(Tensor) "
               "Output exponentially weighted infinity norm");
+    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -114,9 +112,11 @@ Adam algorithm based on the infinity norm.
 
 Adamax updates:
 
-moment_out = beta_1 * moment + (1 - beta_1) * grad
-inf_norm_out = max(beta_2 * inf_norm + epsilon, abs(grad))
-param_out = param - (learning_rate/(1 - beta_1^t)) * moment_out/inf_norm_out
+moment_out = beta1 * moment + (1 - beta1) * grad
+inf_norm_out = max(beta2 * inf_norm + epsilon, abs(grad))
+beta1_pow_out = beta1_pow * beta1
+learning_rate_t = learning_rate/(1 - beta1_pow_out)
+param_out = param - learning_rate_t * moment_out/inf_norm_out
 
 The original paper does not have an epsilon attribute.
 However, it is added here for numerical stability
