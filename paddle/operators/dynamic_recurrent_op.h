@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gtest/gtest_prod.h>
+#include "gtest/gtest_prod.h"
 
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/operator.h"
