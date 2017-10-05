@@ -23,39 +23,45 @@ template <typename Place, typename T>
 class AdadeltaOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto avg_squared_grad_out =
+    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
+    auto avg_squared_grad_out_tensor =
         ctx.Output<framework::Tensor>("AvgSquaredGradOut");
-    auto avg_squared_update_out =
+    auto avg_squared_update_out_tensor =
         ctx.Output<framework::Tensor>("AvgSquaredUpdateOut");
 
-    param_out->mutable_data<T>(ctx.GetPlace());
-    avg_squared_grad_out->mutable_data<T>(ctx.GetPlace());
-    avg_squared_update_out->mutable_data<T>(ctx.GetPlace());
+    param_out_tensor->mutable_data<T>(ctx.GetPlace());
+    avg_squared_grad_out_tensor->mutable_data<T>(ctx.GetPlace());
+    avg_squared_update_out_tensor->mutable_data<T>(ctx.GetPlace());
 
     float rho = ctx.Attr<float>("rho");
     float epsilon = ctx.Attr<float>("epsilon");
 
-    auto p = framework::EigenVector<T>::Flatten(
+    auto param = framework::EigenVector<T>::Flatten(
         *ctx.Input<framework::Tensor>("Param"));
-    auto g = framework::EigenVector<T>::Flatten(
+    auto grad = framework::EigenVector<T>::Flatten(
         *ctx.Input<framework::Tensor>("Grad"));
     // Squared gradient accumulator
-    auto g_acc = framework::EigenVector<T>::Flatten(
+    auto avg_squared_grad = framework::EigenVector<T>::Flatten(
         *ctx.Input<framework::Tensor>("AvgSquaredGrad"));
     // Squared updates accumulator
-    auto u_acc = framework::EigenVector<T>::Flatten(
+    auto avg_squared_update = framework::EigenVector<T>::Flatten(
         *ctx.Input<framework::Tensor>("AvgSquaredUpdate"));
-    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
-    auto g_acc_out = framework::EigenVector<T>::Flatten(*avg_squared_grad_out);
-    auto u_acc_out =
-        framework::EigenVector<T>::Flatten(*avg_squared_update_out);
+    auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
+    auto avg_squared_grad_out =
+        framework::EigenVector<T>::Flatten(*avg_squared_grad_out_tensor);
+    auto avg_squared_update_out =
+        framework::EigenVector<T>::Flatten(*avg_squared_update_out_tensor);
     auto place = ctx.GetEigenDevice<Place>();
 
-    g_acc_out.device(place) = rho * g_acc + (1 - rho) * g.square();
-    auto update = -((u_acc + epsilon) / (g_acc_out + epsilon)).sqrt() * g;
-    u_acc_out.device(place) = rho * u_acc + (1 - rho) * update.square();
-    p_out.device(place) = p + update;
+    avg_squared_grad_out.device(place) =
+        rho * avg_squared_grad + (1 - rho) * grad.square();
+    auto update =
+        -((avg_squared_update + epsilon) / (avg_squared_grad_out + epsilon))
+             .sqrt() *
+        grad;
+    avg_squared_update_out.device(place) =
+        rho * avg_squared_update + (1 - rho) * update.square();
+    param_out.device(place) = param + update;
   }
 };
 
