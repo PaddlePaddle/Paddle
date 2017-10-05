@@ -30,7 +30,7 @@ Executor::Executor(const std::vector<platform::Place>& places) {
       device_contexts_[i] = new platform::CPUDeviceContext(
           boost::get<platform::CPUPlace>(places[i]));
     } else if (platform::is_gpu_place(places[i])) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
       device_contexts_[i] = new platform::CUDADeviceContext(
           boost::get<platform::GPUPlace>(places[i]));
 #else

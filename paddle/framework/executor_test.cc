@@ -103,7 +103,7 @@ TEST_F(ExecutorTester, InitCPU) {
   delete executor;
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 TEST_F(ExecutorTester, InitGPU) {
   std::vector<Place> places;
   GPUPlace gpu_place0(0);
