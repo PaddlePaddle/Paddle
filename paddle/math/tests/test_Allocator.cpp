@@ -68,7 +68,7 @@ void testPoolAllocator() {
 
 TEST(Allocator, Pool) {
   testPoolAllocator<CpuAllocator>();
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   testPoolAllocator<GpuAllocator>();
 #endif
 }
@@ -92,7 +92,7 @@ TEST(MemoryHandle, Cpu) {
   EXPECT_EQ(ptr1, ptr2);
 }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 TEST(MemoryHandle, Gpu) {
   int numGpu = hl_get_device_count();
 

@@ -336,7 +336,7 @@ private:
 
 REGISTER_TYPED_FUNC(CrossMapNormal, CPU, CrossMapNormalFunc);
 REGISTER_TYPED_FUNC(CrossMapNormalGrad, CPU, CrossMapNormalGradFunc);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(CrossMapNormal, GPU, CrossMapNormalFunc);
 REGISTER_TYPED_FUNC(CrossMapNormalGrad, GPU, CrossMapNormalGradFunc);
 #endif
