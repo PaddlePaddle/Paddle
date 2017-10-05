@@ -25,6 +25,7 @@ limitations under the License. */
 USE_OP(elementwise_add);
 USE_OP(gaussian_random);
 USE_OP(feed);
+USE_OP(fetch);
 
 using std::string;
 using namespace paddle::platform;
@@ -94,6 +95,41 @@ void add_feed_op(string var_name, int index, proto_block* block) {
   Out->add_arguments(var_name);
 }
 
+void add_fetch_op(string var_name, int index, proto_block* block) {
+  std::vector<int> dim{3};
+
+  // insert variable
+  auto a = block->add_vars();
+  a->set_name(var_name);
+  auto a_lt = a->mutable_lod_tensor();
+  a_lt->set_data_type(paddle::framework::DataType::FP32);
+  for (int i : dim) {
+    a_lt->add_dims(i);
+  }
+
+  // insert operation
+  auto op = block->add_ops();
+  op->set_type("fetch");
+
+  // set dims attr
+  auto dims = op->add_attrs();
+  dims->set_name("dims");
+  dims->set_type(paddle::framework::AttrType::INTS);
+  for (int i : dim) {
+    dims->add_ints(i);
+  }
+
+  // set col attr
+  auto col = op->add_attrs();
+  col->set_name("col");
+  col->set_type(paddle::framework::AttrType::INT);
+  col->set_i(index);
+
+  auto Out = op->add_inputs();
+  Out->set_parameter("Input");
+  Out->add_arguments(var_name);
+}
+
 std::once_flag set_variable_flag;
 
 template <typename T>
@@ -117,6 +153,27 @@ void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
     memcpy(feed_inputs[i].data<T>(), inputs[i].data(),
            inputs[i].size() * sizeof(T));
   }
+}
+
+template <typename T>
+std::vector<std::vector<T>> get_fetch_variable() {
+  typedef std::vector<paddle::framework::Tensor> FetchOutputs;
+  Variable* g_fetch_value = GetScope()->FindVar("fetch_value");
+  FetchOutputs& fetch_outputs = *(g_fetch_value->GetMutable<FetchOutputs>());
+  auto size = fetch_outputs.size();
+
+  std::vector<std::vector<T>> result;
+  result.reserve(size);
+
+  for (size_t i = 0; i < size; i++) {
+    std::vector<T> tmp;
+    tmp.reserve(fetch_outputs[i].numel());
+    memcpy(tmp.data(), fetch_outputs[i].data<T>(),
+           fetch_outputs[i].numel() * sizeof(T));
+    result.push_back(tmp);
+  }
+
+  return result;
 }
 
 class ExecutorTesterRandom : public ::testing::Test {
@@ -181,6 +238,8 @@ class ExecutorTesterFeed : public ::testing::Test {
     Out->set_parameter("Out");
     Out->add_arguments("c");
 
+    add_fetch_op("c", 0, root_block);
+
     std::vector<float> vec1 = {1.0, 2.0, 3.0};
     std::vector<float> vec2 = {4.0, 5.0, 6.0};
     inputs_.push_back(vec1);
@@ -213,8 +272,16 @@ TEST_F(ExecutorTesterFeed, CPU) {
   // 3 mini-batch
   for (int i = 0; i < 3; i++) {
     // need to set feed variable before Executor::Run
+    std::cout << "start mini-batch " << i << std::endl;
     set_feed_variable<float>(inputs_);
     executor->Run(pdesc_, GetScope());
+    std::vector<std::vector<float>> result = get_fetch_variable<float>();
+    for (auto& vec : result) {
+      for (auto& num : vec) {
+        std::cout << num << " ";
+      }
+      std::cout << std::endl;
+    }
   }
 
   delete executor;

@@ -74,7 +74,10 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 framework::Scope* GetScope() {
   static std::unique_ptr<framework::Scope> g_scope =
       make_unique<framework::Scope>();
-  std::call_once(feed_variable_flag, [&]() { g_scope->NewVar("feed_value"); });
+  std::call_once(feed_variable_flag, [&]() {
+    g_scope->NewVar("feed_value");
+    g_scope->NewVar("fetch_value");
+  });
   return g_scope.get();
 }
 
