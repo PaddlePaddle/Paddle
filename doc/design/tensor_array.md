@@ -47,7 +47,7 @@ output = step_outputs.stack()
 ## Background
 Steps are one of the core concepts of RNN. In each time step of RNN, there should be several input segments, states, and output segments; all these components act like arrays, for example, call `states[step_id]` will get the state in `step_id`th time step.
 
-An RNN could be implemented with the following pseudocode
+An RNN can be implemented with the following pseudocode
 
 ```c++
 Array states;
@@ -88,7 +88,7 @@ The array of `states`, `input_segments` and `output_segments` would be exposed t
 
 So there should be an array-like container, which can store the segments of a tensor or LoD tensor.
 
-**This container could store an array of tensors and provides several methods to split a tensor or a LoD tensor** .
+**This container can store an array of tensors and provides several methods to split a tensor or a LoD tensor** .
 This is where the notion of `TensorArray` comes from.
 
 ## Introduce TensorArray to uniform all the three RNNs
@@ -101,7 +101,7 @@ such as `recurrent_op`, `RecurrentGradientMachine`.
 In [our design for dynamic RNN](https://github.com/PaddlePaddle/Paddle/pull/4401), 
 `TensorArray` is used to segment inputs and store states in all time steps.
 By providing some methods similar to a C++ array,
-the definition of some state-based dynamic models such as RNN could be more natural and highly flexible.
+the definition of some state-based dynamic models such as RNN can be more natural and highly flexible.
 
 ## Dynamic-operations on TensorArray
 
@@ -143,7 +143,8 @@ def tensor_array_size(ta, tensor):
     pass
 ```
 
-It is trivial for users to use many operators, so some helper methods should be proposed in python wrapper to make `TensorArray` easier to use.
+It is trivial for users to use so many low-level operators, so some helper methods should be proposed in python wrapper to make `TensorArray` easier to use, 
+for example
 
 ```python
 class TensorArray:
@@ -213,7 +214,7 @@ class TensorArray:
 ## LoDTensor-related Supports
 The `RecurrentGradientMachine` in Paddle serves as a flexible RNN layer; it takes varience-length sequences as input, and output sequences too.
 
-Since each step of RNN could only take a tensor-represented batch of data as input, 
+Since each step of RNN can only take a tensor-represented batch of data as input, 
 some preprocess should be taken on the inputs such as sorting the sentences by their length in descending order and cut each word and pack to new batches.
 
 Such cut-like operations can be embedded into `TensorArray` as general methods called `unpack` and `pack`,
