@@ -42,10 +42,9 @@ class SaveOpMaker : public framework::OpProtoAndCheckerMaker {
              "values will be saved.")
         .AsDuplicable()
         .NotInGradient();
-    AddAttr<std::string>("absolute_path", "the absolute_path for save model.")
-        .NotInGradient();
+    AddAttr<std::string>("absolute_path", "the absolute_path for save model.");
     AddComment(R"DOC(
-Save the input tensors to a tar file based on input names and absolute path.
+Save the input tensors to a binary file based on input tensor names and absolute path.
 
 All the inputs can carry the LoD (Level of Details) information,
 or not.
@@ -53,25 +52,26 @@ or not.
   }
 };
 
-template <typename Place, typename T>
+template <typename T>
 class SaveKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto ins = context.MultiInput<std::string>("X");
+    auto ins = context.MultiInput<Tensor>("X");
     std::string absolute_path = ctx.Attr<std::string>("absolute_path");
 
-    auto place = context.GetEigenDevice<Place>();
     FILE* fp;
     fp = fopen(absolute_path.c_str())
         PADDLE_ENFORCE(fp != nullptr, "open file for model failed.");
     int N = ins.size();
     for (int i = 0; i < N; i++) {
       // at present, we only support tensor serialization instead of variable
+
       std::string bytes = ins[i].SerializeToString();
       size_t count =
           fwrite(bytes.c_str(), sizeof(char), sizeof(char) * bytes.size(), fp);
       PADDLE_ENFORCE(count == bytes.size(), "write to model file failed.");
     }
+    fclose(fp);
   }
 };
 
@@ -93,37 +93,35 @@ class RestoreOpMaker : public framework::OpProtoAndCheckerMaker {
   RestoreOpMaker(framework::OpProto* proto,
                  framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X",
-             "(tensor), the tensor count can be 1~INT_MAX, tensors names which "
-             "values will be saved.")
+    AddOutput("Out",
+              "(tensor), the tensor count can be 1~INT_MAX, tensors which "
+              "values will be restores.")
         .AsDuplicable()
         .NotInGradient();
-    AddAttr<std::string>("absolute_path", "the absolute_path for save model.")
-        .NotInGradient();
+    AddAttr<std::string>("absolute_path", "the absolute_path for model file.");
     AddComment(R"DOC(
-Save the input tensors to a tar file based on input names and absolute path.
+Restore the tensors from model file based on absolute path.
 
-All the inputs can carry the LoD (Level of Details) information,
+All the tensors outputs may carry the LoD (Level of Details) information,
 or not.
 )DOC");
   }
 };
 
-template <typename Place, typename T>
+template <typename T>
 class RestoreKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto ins = context.MultiInput<std::string>("X");
+    auto outs = context.MultiOutput<std::string>("Out");
     std::string absolute_path = ctx.Attr<std::string>("absolute_path");
 
-    auto place = context.GetEigenDevice<Place>();
     FILE* fp;
     fp = fopen(absolute_path.c_str())
-        PADDLE_ENFORCE(fp != nullptr, "open file for model failed.");
-    int N = ins.size();
+        PADDLE_ENFORCE(fp != nullptr, "open model file failed.");
     for (int i = 0; i < N; i++) {
       // at present, we only support tensor serialization instead of variable
-      std::string bytes = ins[i].SerializeToString();
+
+      std::string bytes = ins[i].DeserializeFromString();
       size_t count =
           fwrite(bytes.c_str(), sizeof(char), sizeof(char) * bytes.size(), fp);
       PADDLE_ENFORCE(count == bytes.size(), "write to model file failed.");

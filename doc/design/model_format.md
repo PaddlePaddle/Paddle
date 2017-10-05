@@ -17,7 +17,7 @@ The parameters are saved as a binary file. As we all know, the protobuf message 
 0000     32 bit integer  1            	  1 for little endian, 0 for big endian
 0004     32 bit integer  0x0000006E(0110) version number, 0110 for paddle version 0.11.0
 0008     32 bit integer  ??               md5checksum of Tensors
-0009     unsigned byte    0			   	 0 for tensor, 1 for LoDTensor
+0009     unsigned byte    0	              0 for tensor, 1 for LoDTensor
 0013     32 bit integer  28               Tensor Name length
 0017     unsigned byte   ??               Tensor Name chars 
 0018     unsigned byte   ??               ..
@@ -28,9 +28,8 @@ The parameters are saved as a binary file. As we all know, the protobuf message 
 ...
 00150     unsigned byte   ??              Tensor value
 00151     unsigned byte   ??               ..
-
 ```
 
 ## Summary
 
-We introduce the model format, the `ProgramDesc` describe the **topology**, and a particular binary format for **parameters**.
+We introduce the model format, the `ProgramDesc` describe the **topology**, and a bunch of particular format binary tensors describe the **parameters**.
