@@ -40,7 +40,7 @@ class CPUAllocator : public SystemAllocator {
   virtual bool UseGpu() const;
 };
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 class GPUAllocator : public SystemAllocator {
  public:
   virtual void* Alloc(size_t& index, size_t size);

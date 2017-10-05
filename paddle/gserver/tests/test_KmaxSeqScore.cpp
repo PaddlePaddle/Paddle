@@ -97,7 +97,7 @@ TEST(Layer, kmaxSeqScoreLayer) {
       Matrix::create(subSeqStartPosition.back(), 1, false, false);
 
   std::vector<bool> mode = {false};
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   mode.push_back(true);
 #endif
 

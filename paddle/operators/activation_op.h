@@ -310,6 +310,33 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct LeakyReluFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.cwiseMax(alpha * x);
+  }
+};
+
+template <typename T>
+struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    auto temp1 = alpha * (x < static_cast<T>(0)).template cast<T>().eval();
+    auto temp2 = (x >= static_cast<T>(0)).template cast<T>().eval();
+    dx.device(d) = dy * (temp1 + temp2).template cast<T>();
+  }
+};
+
+template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
   float factor;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -379,4 +406,5 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
   __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);      \
   __macro(pow, PowFunctor, PowGradFunctor);                      \
   __macro(stanh, STanhFunctor, STanhGradFunctor);                \
-  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor)
+  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);       \
+  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor)

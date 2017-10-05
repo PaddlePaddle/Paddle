@@ -151,7 +151,7 @@ TEST(Layer, priorBoxLayerFwd) {
                     useGpu,
                     result);
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   // reset the input parameters
   variance[1] = 0.1;
   variance[3] = 0.2;

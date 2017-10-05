@@ -321,7 +321,7 @@ TEST(Layer, SelectiveFcLayer_train_dense_mul) {
       "filelist=gserver/tests/SelectiveFcTest/dense_mul_list";
 
   for (auto useGpu : {false, true}) {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
     if (useGpu) {
       break;
     }
@@ -388,7 +388,7 @@ void testSelectiveFcLayerTrainSparseMul(const LayerConfig& config,
                           outMatSelfc->getWidth(),
                           outMatSelfc->getElementCnt()));
   cpuOutMatSelfc->copyFrom(*outMatSelfc, HPPL_STREAM_DEFAULT);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   if (useGpu) {
     hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
@@ -418,7 +418,7 @@ void testSelectiveFcLayerTrainSparseMul(const LayerConfig& config,
   MatrixPtr cpuOutMatFc(
       new CpuMatrix(outMatFc->getHeight(), outMatFc->getWidth()));
   cpuOutMatFc->copyFrom(*outMatFc, HPPL_STREAM_DEFAULT);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   if (useGpu) {
     hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
@@ -443,7 +443,7 @@ TEST(Layer, SelectiveFcLayer_train_sparse_mul) {
   selLayerConfig.set_size(fcLayerWidth);
 
   testSelectiveFcLayerTrainSparseMul(selLayerConfig, false);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   testSelectiveFcLayerTrainSparseMul(selLayerConfig, true);
 #endif
 }

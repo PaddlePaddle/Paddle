@@ -195,7 +195,7 @@ TEST(Layer, SeqSliceLayer) {
   vector<vector<real>> ends;
 
   std::vector<bool> mode = {false};
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   mode.push_back(true);
 #endif
   genSeqInfo(seqStartPos, subSeqStartPos);

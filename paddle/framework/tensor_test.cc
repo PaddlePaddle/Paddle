@@ -74,7 +74,7 @@ TEST(Tensor, MutableData) {
     EXPECT_EQ(p1, p2);
   }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
     float* p1 = nullptr;
@@ -126,7 +126,7 @@ TEST(Tensor, ShareDataWith) {
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
     Tensor dst_tensor;
@@ -163,7 +163,7 @@ TEST(Tensor, Slice) {
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
   }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
     src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
@@ -218,7 +218,7 @@ TEST(Tensor, CopyFrom) {
       EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
     }
   }
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
     Tensor gpu_tensor;

@@ -51,7 +51,7 @@ void checkGradientTest(const string& configFile,
 
 TEST(checkGradient, cpu) { checkGradientTest(configFile1, false, false); }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 TEST(checkGradient, gpu) { checkGradientTest(configFile1, true, false); }
 
 TEST(checkGradient, multiGpu) {
@@ -97,7 +97,7 @@ TEST(checkGradient, hsigmoid) { checkGradientTest(configFile2, false, false); }
 
 TEST(checkGradient, chunk) {
   checkGradientTest(configFile3, false, false);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   checkGradientTest(configFile3, true, true);
 #endif
 }

@@ -12,23 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
+#define EIGEN_USE_GPU
+#include "paddle/operators/adadelta_op.h"
 
-#include <boost/config.hpp>
-
-#ifdef PADDLE_WITH_CUDA
-
-// Because boost's variadic templates has bug on nvcc, boost will disable
-// variadic template support when GPU enabled on nvcc.
-// Define BOOST_NO_CXX11_VARIADIC_TEMPLATES on gcc/clang to generate same
-// function symbols.
-//
-// https://github.com/PaddlePaddle/Paddle/issues/3386
-#ifndef BOOST_NO_CXX11_VARIADIC_TEMPLATES
-#define BOOST_NO_CXX11_VARIADIC_TEMPLATES
-#endif
-#endif
-
-#include <boost/mpl/comparison.hpp>
-#include <boost/mpl/less_equal.hpp>
-#include <boost/variant.hpp>
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(
+    adadelta, ops::AdadeltaOpKernel<paddle::platform::GPUPlace, float>);

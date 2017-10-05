@@ -17,7 +17,7 @@ limitations under the License. */
 
 using namespace paddle;  // NOLINT
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 TEST(MatrixBatchTransTest, test_batch_matrix_transpose) {
   const int nx = 100;
   const int ny = 50;
