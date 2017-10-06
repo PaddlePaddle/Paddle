@@ -232,7 +232,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   result.Resize(make_ddim(record_dims_vec));
   result.mutable_data<value_type>(platform::CPUPlace());
 
-  for (size_t i = 0; i < indice.size() - 1; i++) {
+  for (size_t i = 0; i < indice.size(); i++) {
     auto index = indice[i];
     auto target = result.Slice<value_type>(i, i + 1);
     auto source_ = source->Slice<value_type>(index, index + 1);
