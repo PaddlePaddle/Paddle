@@ -119,7 +119,7 @@ TEST(Layer, batchNorm) {
   CHECK_EQ(static_cast<int>(convLayer->getOutputValue()->getWidth()), 576);
 }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 void batchNormInference(int n, int c, int h, int w) {
   MatrixPtr input = std::make_shared<GpuMatrix>(n, c * h * w);
   MatrixPtr cudnnOut = std::make_shared<GpuMatrix>(n, c * h * w);
