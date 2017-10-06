@@ -15,7 +15,7 @@
 #pragma once
 
 #include <memory>
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
@@ -29,7 +29,7 @@
 namespace paddle {
 namespace framework {
 
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
 template <typename T>
 using Vector = std::vector<T>;
 #else

@@ -29,7 +29,7 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
@@ -113,7 +113,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   }
 }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(

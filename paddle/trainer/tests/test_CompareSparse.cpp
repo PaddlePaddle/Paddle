@@ -174,7 +174,7 @@ TEST(compareSparse, multiGradientMachine) {
     FLAGS_local = local;
     FLAGS_ports_num_for_sparse = 5;
     for (bool useGpu : {false, true}) {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
       if (useGpu) continue;
 #endif
       FLAGS_parallel_nn = useGpu;
@@ -198,7 +198,7 @@ TEST(compareSparse, NeuralNetwork) {
     FLAGS_local = local;
     FLAGS_ports_num_for_sparse = 5;
     for (bool useGpu : {false, true}) {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
       if (useGpu) continue;
 #endif
       FLAGS_parallel_nn = useGpu;

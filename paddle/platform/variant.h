@@ -16,7 +16,7 @@
 
 #include <boost/config.hpp>
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 
 // Because boost's variadic templates has bug on nvcc, boost will disable
 // variadic template support when GPU enabled on nvcc.

@@ -33,7 +33,7 @@ namespace memory {
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 
 /**
  * \brief   Copy memory from one place to another place.
