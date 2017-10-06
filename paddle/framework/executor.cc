@@ -56,9 +56,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
   auto& block = pdesc.blocks(0);
   auto& device = device_contexts_[0];
 
-  // TODO(tonyyang-svail):
-  //    - runs on a new local scope
-  // Scope& local_scope = scope->NewScope();
+  Scope& local_scope = scope->NewScope();
 
   for (auto& var : block.vars()) {
     scope->NewVar(var.name());
@@ -67,7 +65,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
   for (auto& op_desc : block.ops()) {
     auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
     std::cout << op->DebugString() << std::endl;
-    op->Run(*scope, *device);
+    op->Run(local_scope, *device);
   }
 
   // TODO(tonyyang-svail): need to test gpu device

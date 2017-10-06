@@ -27,7 +27,7 @@ class FetchOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Input"), "Input should be not null.");
     int col = ctx->Attrs().Get<int>("col");
     framework::Variable* g_fetch_variable =
-        framework::GetScope()->FindVar("fetch_value");
+        framework::GetGlobalScope()->FindVar("fetch_value");
 
     FetchOutputs* tensors = g_fetch_variable->GetMutable<FetchOutputs>();
     if (tensors->size() < static_cast<size_t>(col + 1)) {

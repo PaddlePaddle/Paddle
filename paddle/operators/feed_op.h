@@ -19,17 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 class FeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     typedef std::vector<framework::Tensor> FeedInputs;
-    Tensor* out = ctx.Output<Tensor>("Out");
+    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     framework::Variable* g_feed_variable =
-        framework::GetScope()->FindVar("feed_value");
+        framework::GetGlobalScope()->FindVar("feed_value");
     int col = ctx.template Attr<int>("col");
     const FeedInputs& tensors = g_feed_variable->Get<FeedInputs>();
     out->CopyFrom<T>(tensors[col], ctx.GetPlace());

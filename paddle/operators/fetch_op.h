@@ -19,17 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 class FetchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     typedef std::vector<framework::Tensor> FetchOutputs;
-    const Tensor* input = ctx.Input<Tensor>("Input");
+    const framework::Tensor* input = ctx.Input<framework::Tensor>("Input");
     int col = ctx.template Attr<int>("col");
     framework::Variable* g_fetch_variable =
-        framework::GetScope()->FindVar("fetch_value");
+        framework::GetGlobalScope()->FindVar("fetch_value");
     FetchOutputs* tensors = g_fetch_variable->GetMutable<FetchOutputs>();
     (*tensors)[col].mutable_data<T>(platform::CPUPlace());
     (*tensors)[col].CopyFrom<T>(*input, platform::CPUPlace());

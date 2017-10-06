@@ -27,7 +27,7 @@ class FeedOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output should be not null.");
     int col = ctx->Attrs().Get<int>("col");
     framework::Variable* g_feed_variable =
-        framework::GetScope()->FindVar("feed_value");
+        framework::GetGlobalScope()->FindVar("feed_value");
 
     const FeedInputs& tensors = g_feed_variable->Get<FeedInputs>();
 
