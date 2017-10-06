@@ -122,6 +122,7 @@ class LoDTensor : public Tensor {
   /**
    *  @brief Serialize tensor to char bytes.
    *  Please check model_format.md for the format detail.
+   *  NOTE: GPUTensor will copy data to cpu implicitly.
    *  @return return string
    */
   std::string SerializeToString() const;

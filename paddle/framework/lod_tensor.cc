@@ -13,10 +13,16 @@
    limitations under the License. */
 
 #include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/framework.pb.h"
+#include "paddle/framework/saver.pb.h"
+#include "paddle/memory/memcpy.h"
+#include "paddle/memory/memory.h"
+
+#include <stdint.h>
+#include <string.h>
+#include <algorithm>
+#include <iterator>
 
 #include <glog/logging.h>
-#include <stdint.h>
 
 namespace paddle {
 namespace framework {
@@ -106,7 +112,8 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
 }
 
 std::string LoDTensor::SerializeToString() const {
-  LoDTensorDesc desc;
+  LoDTensorProto desc;
+
   // set data_type
   if (this->type() == typeid(bool)) desc.set_data_type(DataType::BOOL);
   if (this->type() == typeid(int16_t)) desc.set_data_type(DataType::INT16);
@@ -125,11 +132,56 @@ std::string LoDTensor::SerializeToString() const {
 
   // set lod information
   desc.set_lod_level(this->NumLevels());
+  std::string desc_bytes = desc.SerializeAsString();
+
+  // FIXME(dzh) : implement fix chunk size buffer.
+  size_t DESC_SIZE = desc_bytes.size();
+  size_t DATA_SIZE = holder_->size() - offset_;
+
+  const size_t BUFFER_SIZE = DESC_SIZE + DATA_SIZE + 2 * sizeof(size_t);
+  char* buffer =
+      static_cast<char*>(memory::Alloc(platform::CPUPlace(), BUFFER_SIZE));
+
+  // format: desc_size data_size, desc_bytes, data_bytes.
+  platform::Place place = holder_->place();
+  platform::Place src_place = platform::CPUPlace();
+  platform::Place dst_place = platform::CPUPlace();
+
+  memory::Copy(dst_place, buffer, src_place, &DESC_SIZE, sizeof(size_t));
+  memory::Copy(dst_place, buffer + sizeof(size_t), src_place, &DATA_SIZE,
+               sizeof(size_t));
+  memory::Copy(dst_place, buffer + sizeof(size_t) * 2, src_place,
+               desc_bytes.c_str(), desc_bytes.size());
+
+  // copy gpu data to cpu implicitly.
+  PADDLE_ENFORCE(this->numel() != 0, " Serialize a empty Tensor!");
+  int element_width = holder->size() / this->numel();
+  memory::Copy(
+      dst_place, buffer + sizeof(size_t) * 2 + desc_bytes.size(), place,
+      static_cast<char*>(holder_->ptr()) + offset_ / element_width, DATA_SIZE);
+
+  return std::string(buffer, BUFFER_SIZE);
 }
 
-void LoDTensor::SerializeToString(std::string* s) const {}
+void LoDTensor::DeserializeFromString(const std::string& s) {
+  size_t DESC_SIZE, DATA_SIZE;
+  platform::Place src_place = platform::CPUPlace();
+  platform::Place dst_place = holder_->place();
+  memory::Copy(dst_place, &DESC_SIZE, src_place, s.c_str(), sizeof(size_t));
+  memory::Copy(dst_place, &DATA_SIZE, src_place, s.c_str() + sizeof(size_t),
+               sizeof(size_t));
 
-void LoDTensor::DeserializeFromString(const std::string& s) {}
+  // parse LoDTensorDesc
+  LoDTensorProto desc;
+  desc.ParseFromArray(s.c_str() + sizeof(size_t) * 2, DESC_SIZE);
+
+  std::vector<int64_t> dims;
+  std::copy(desc.dims.begin(), desc.dims().end(), std::back_inserter(dims));
+  this->Resize(dims);
+  auto* ptr = this->mutable_data(dst_place);
+  memory::Copy(dst_place, ptr, src_place,
+               s.c_str() + sizeof(size_t) * 2 + DESC_SIZE, DATA_SIZE);
+}
 
 }  // namespace framework
 }  // namespace paddle

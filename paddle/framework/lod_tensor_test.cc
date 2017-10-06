@@ -102,5 +102,10 @@ TEST_F(LoDTensorTester, ShrinkInLevel) {
   ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
 }
 
+TEST_F(LoDTensorTester, SerializeDeserialize) {
+  LoDTensor new_lod_tensor = lod_tensor_;
+  std::string s = lod_tensor_.SerializeToString();
+}
+
 }  // namespace framework
 }  // namespace paddle

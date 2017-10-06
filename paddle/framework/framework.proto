@@ -106,9 +106,7 @@ message LoDTensorDesc {
 message VarDesc {
   required string name = 1;
   optional LoDTensorDesc lod_tensor = 2;
-
-  // If the variable is stateful, it needs to be stored in checkpoint.
-  optional bool is_persistent = 3;
+  optional bool persistable = 3 [ default = false ];
 }
 
 message BlockDesc {
