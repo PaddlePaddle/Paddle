@@ -126,8 +126,7 @@ void CondOp::PrepareDataForSubnet(
       dim[0] = index_tensors[i].dims()[0];
       tensor_child->mutable_data<float>(dim, platform::CPUPlace());
 
-      Gather<float>(dev_ctx.GetPlace(), tensor_parent, &index_tensors[i],
-                    tensor_child);
+      CPUGather<float>(dev_ctx, *tensor_parent, index_tensors[i], tensor_child);
     }
   }
 
@@ -188,7 +187,7 @@ void CondOp::MergeDataFromSubnet(const framework::Scope& scope,
       Variable* var_child = sub_scopes[i]->FindVar(output);
       PADDLE_ENFORCE_NOT_NULL(var_child);
       auto* tensor_child = &var_child->Get<LoDTensor>();
-      ScatterUpdate<float>(dev_ctx.GetPlace(), tensor_child, &index_tensors[i],
+      ScatterAssign<float>(dev_ctx, *tensor_child, index_tensors[i],
                            tensor_parent);
     }
   }
