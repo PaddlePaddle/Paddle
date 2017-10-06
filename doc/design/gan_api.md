@@ -98,18 +98,18 @@ class DCGAN(object):
     # output G_im: generated fake images
     
     if not self.y_dim:
-      z = pd.concat(1, [z, y])
+      z = pd.layer.concat(1, [z, y])
       
-    G_h0 = pd.fc(z, self.G_w0, self.G_b0)
-    G_h0_bn = pd.batch_norm(G_h0)
-    G_h0_relu = pd.relu(G_h0_bn)
+    G_h0 = pd.layer.fc(z, self.G_w0, self.G_b0)
+    G_h0_bn = pd.layer.batch_norm(G_h0)
+    G_h0_relu = pd.layer.relu(G_h0_bn)
     
-    G_h1 = pd.deconv(G_h0_relu, self.G_w1, self.G_b1)
-    G_h1_bn = pd.batch_norm(G_h1)
-    G_h1_relu = pd.relu(G_h1_bn)
+    G_h1 = pd.layer.deconv(G_h0_relu, self.G_w1, self.G_b1)
+    G_h1_bn = pd.layer.batch_norm(G_h1)
+    G_h1_relu = pd.layer.relu(G_h1_bn)
     
-    G_h2 = pd.deconv(G_h1_relu, self.G_W2, self.G_b2))
-    G_im = pd.tanh(G_im)
+    G_h2 = pd.layer.deconv(G_h1_relu, self.G_W2, self.G_b2))
+    G_im = pd.layer.tanh(G_im)
     return G_im
 ```
 
@@ -122,15 +122,15 @@ class DCGAN(object):
     # input image: either generated images or real ones
     # output D_h2: binary logit of the label
 
-    D_h0 = pd.conv2d(image, self.D_w0, self.D_b0)
-    D_h0_bn = pd.batchnorm(h0)
-    D_h0_relu = pd.lrelu(h0_bn)
+    D_h0 = pd.layer.conv2d(image, w=self.D_w0, b=self.D_b0)
+    D_h0_bn = pd.layer.batchnorm(h0)
+    D_h0_relu = pd.layer.lrelu(h0_bn)
     
-    D_h1 = pd.conv2d(D_h0_relu, self.D_w1, self.D_b1)
-    D_h1_bn = pd.batchnorm(D_h1)
-    D_h1_relu = pd.lrelu(D_h1_bn)
+    D_h1 = pd.layer.conv2d(D_h0_relu, w=self.D_w1, b=self.D_b1)
+    D_h1_bn = pd.layer.batchnorm(D_h1)
+    D_h1_relu = pd.layer.lrelu(D_h1_bn)
     
-    D_h2 = pd.fc(D_h1_relu, self.D_w2, self.D_b2)
+    D_h2 = pd.layer.fc(D_h1_relu, w=self.D_w2, b=self.D_b2)
     return D_h2
 ```
 
