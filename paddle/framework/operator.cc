@@ -25,7 +25,7 @@ Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
   return *device_context_.GetEigenDevice<platform::CPUPlace>();
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 template <>
 Eigen::GpuDevice&
 ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {

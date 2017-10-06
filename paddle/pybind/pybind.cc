@@ -34,7 +34,7 @@ static size_t UniqueIntegerGenerator() {
 }
 
 bool IsCompileGPU() {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   return false;
 #else
   return true;
@@ -78,7 +78,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
@@ -96,7 +96,7 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
             new (&instance) LoDTensor(lod);
 #else
              LoD new_lod;
@@ -107,7 +107,7 @@ PYBIND11_PLUGIN(core) {
           })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
              self.set_lod(lod);
 #else
              LoD new_lod;
@@ -117,7 +117,7 @@ PYBIND11_PLUGIN(core) {
 #endif
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
         return self.lod();
 #else
            auto lod = self.lod();
@@ -143,6 +143,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_int",
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
+      .def("is_float", [](const Variable &var) { return var.IsType<float>(); })
+      .def("set_float",
+           [](Variable &var, float val) -> void {
+             *var.GetMutable<float>() = val;
+           })
+      .def("get_float",
+           [](const Variable &var) -> float { return var.Get<float>(); })
       .def("get_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
@@ -196,7 +203,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::GPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
                     PADDLE_THROW("GPUPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);
