@@ -239,6 +239,7 @@ class ExecutorTesterFeed : public ::testing::Test {
   std::vector<std::vector<float>> inputs_;
 };
 
+#ifndef PADDLE_WITH_CUDA
 TEST_F(ExecutorTesterRandom, CPU) {
   std::vector<Place> places;
   CPUPlace cpu_place;
@@ -292,13 +293,19 @@ TEST_F(ExecutorTesterFeed, CPU) {
 
   delete executor;
 }
-
-#ifdef PADDLE_WITH_CUDA
+#else
 TEST_F(ExecutorTesterRandom, GPU) {
   std::vector<Place> places;
   GPUPlace gpu_place(0);
   places.push_back(gpu_place);
 
+  // We have a global Scope and BuddyAllocator, and we must ensure
+  // global BuddyAllocator is initialized before global Scope. Thus,
+  // global Scope will deconstruct before BuddyAllocator. Otherwise,
+  // "pointer being freed was not allocated" error will appear.
+  // If paddle is compiled with GPU, both CPU and GPU BuddyAllocator
+  // need to be used at first.
+  paddle::memory::Used(CPUPlace());
   paddle::memory::Used(gpu_place);
 
   Executor* executor = new Executor(places);
@@ -310,7 +317,13 @@ TEST_F(ExecutorTesterFeed, GPU) {
   std::vector<Place> places;
   GPUPlace gpu_place(0);
   places.push_back(gpu_place);
-
+  // We have a global Scope and BuddyAllocator, and we must ensure
+  // global BuddyAllocator is initialized before global Scope. Thus,
+  // global Scope will deconstruct before BuddyAllocator. Otherwise,
+  // "pointer being freed was not allocated" error will appear.
+  // If paddle is compiled with GPU, both CPU and GPU BuddyAllocator
+  // need to be used at first.
+  paddle::memory::Used(CPUPlace());
   paddle::memory::Used(gpu_place);
 
   Executor* executor = new Executor(places);
