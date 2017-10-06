@@ -101,10 +101,6 @@ class TestTensorArray(unittest.TestCase):
         self.assertTrue((np.array(self.tensor) == np.array(tensor)).all())
         self.assertTrue(tensor.lod(), self.tensor.lod())
 
-        for i in range(self.ta.size()):
-            te = self.ta.read(i)
-            print i, np.array(te)
-
 
 if __name__ == '__main__':
     unittest.main()
