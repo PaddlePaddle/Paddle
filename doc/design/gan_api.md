@@ -10,8 +10,8 @@ In our GAN design, we wrap it as a user-friendly easily customized python API to
 |---------------------------|-------------------|----------|
 | convolution 2d (done)     | Chengduo          | Y        |
 | cudnn conv 2d (missing)   | Chengduo          | N        |
-| deconv 2d (missing)       | Zhuoyuan          | Y        |
-| cudnn deconv 2d (missing) | Zhuoyuan          | N        |
+| deconv 2d (missing)       | Zhuoyuan, Zhihong | Y        |
+| cudnn deconv 2d (missing) | Zhuoyuan, Zhihong | N        |
 | batch norm (missing)      | Zhuoyuan, Jiayi   | Y        |
 | cudnn batch norm (missing)| Zhuoyuan, Jiayi   | N        |
 | max-pooling (done)        | ?                 | Y        |
