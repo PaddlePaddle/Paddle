@@ -1,10 +1,12 @@
 # ddim lib
+proto_library(framework_proto SRCS framework.proto)
+
 cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
-cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
-cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
+cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context framework_proto)
+cc_test(mytensor_test SRCS tensor_test.cc DEPS tensor glog)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor)
@@ -16,7 +18,6 @@ cc_test(variable_test SRCS variable_test.cc)
 cc_library(scope SRCS scope.cc)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
-proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute)

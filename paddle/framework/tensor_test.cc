@@ -13,7 +13,11 @@
 
 #include "paddle/framework/tensor.h"
 #include <gtest/gtest.h>
+#include <time.h>
+#include <unistd.h>
+#include <functional>
 #include <string>
+#include <vector>
 
 TEST(Tensor, Dims) {
   using namespace paddle::framework;
@@ -274,4 +278,128 @@ TEST(Tensor, ReshapeToMatrix) {
   Tensor res = ReshapeToMatrix<int>(src, 2);
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
+}
+
+TEST(Tensor, option1) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  float* src_ptr = src.mutable_data<float>({2, 3}, CPUPlace());
+  for (int i = 0; i < 2 * 3; ++i) {
+    src_ptr[i] = i;
+  }
+  std::string s1 = src.SerializeToString1();
+
+  Tensor dst;
+  dst.DeserializeFromString1(s1);
+  float* dst_ptr = dst.data<float>();
+
+  for (int i = 0; i < 2 * 3; ++i) {
+    EXPECT_EQ(dst_ptr[i], src_ptr[i]);
+  }
+}
+
+TEST(Tensor, option2) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  float* src_ptr = src.mutable_data<float>({2, 3}, CPUPlace());
+  for (int i = 0; i < 2 * 3; ++i) {
+    src_ptr[i] = i;
+  }
+  std::string s1 = src.SerializeToString2();
+
+  Tensor dst;
+  dst.DeserializeFromString2(s1);
+  float* dst_ptr = dst.data<float>();
+
+  for (int i = 0; i < 2 * 3; ++i) {
+    EXPECT_EQ(dst_ptr[i], src_ptr[i]);
+  }
+}
+
+TEST(Tensor, option3) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  float* src_ptr = src.mutable_data<float>({2, 3}, CPUPlace());
+  for (int i = 0; i < 2 * 3; ++i) {
+    src_ptr[i] = i;
+  }
+  std::string s1 = src.SerializeToString3();
+
+  Tensor dst;
+  dst.DeserializeFromString3(s1);
+  float* dst_ptr = dst.data<float>();
+
+  for (int i = 0; i < 2 * 3; ++i) {
+    EXPECT_EQ(dst_ptr[i], src_ptr[i]);
+  }
+}
+
+TEST(Tensor, TestSpeed) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  Tensor dst;
+
+  std::vector<int> arr = {1, 10, 100, 1000};
+  const int STOP = 1000;
+  std::vector<std::vector<double>> metric(3);
+
+  for (int j = 0; j < STOP; ++j) {
+    for (int i = 1; i < arr.size(); i++) {
+      const long long ROUND_NUM = arr[i];
+      float* src_ptr =
+          src.mutable_data<float>({ROUND_NUM, ROUND_NUM}, CPUPlace());
+      src_ptr[0] = 0;
+      memset(src_ptr, 0, sizeof(float) * ROUND_NUM * ROUND_NUM);
+      const clock_t start = clock();
+      std::string s1 = src.SerializeToString1();
+      dst.DeserializeFromString1(s1);
+      double seconds = (clock() - start) / (double)(CLOCKS_PER_SEC);
+      metric[0].push_back(seconds);
+      LOG(INFO) << "option1 : " << ROUND_NUM << ": cost " << seconds;
+    }
+
+    for (int i = 1; i < arr.size(); i++) {
+      const long long ROUND_NUM = arr[i];
+      float* src_ptr =
+          src.mutable_data<float>({ROUND_NUM, ROUND_NUM}, CPUPlace());
+      memset(src_ptr, 0, sizeof(float) * ROUND_NUM * ROUND_NUM);
+      const clock_t start = clock();
+      std::string s1 = src.SerializeToString2();
+      dst.DeserializeFromString2(s1);
+      double seconds = (clock() - start) / (double)(CLOCKS_PER_SEC);
+      metric[1].push_back(seconds);
+      LOG(INFO) << "option2 : " << ROUND_NUM << ": cost " << seconds;
+    }
+
+    for (int i = 1; i < arr.size(); i++) {
+      const long long ROUND_NUM = arr[i];
+      float* src_ptr =
+          src.mutable_data<float>({ROUND_NUM, ROUND_NUM}, CPUPlace());
+      memset(src_ptr, 0, sizeof(float) * ROUND_NUM * ROUND_NUM);
+      const clock_t start = clock();
+      std::string s1 = src.SerializeToString3();
+      dst.DeserializeFromString3(s1);
+      double seconds = (clock() - start) / (double)(CLOCKS_PER_SEC);
+      metric[2].push_back(seconds);
+      LOG(INFO) << "option3 : " << ROUND_NUM << ": cost " << seconds;
+    }
+  }
+
+  auto avg = [&](const std::vector<double>& data) {
+    double ret = .0;
+    for (int i = 0; i < data.size(); ++i) {
+      ret += data[i];
+    }
+    if (data.size() == 0) return .0;
+    return ret / data.size();
+  };
+
+  for (int i = 0; i < 3; ++i) {
+    LOG(INFO) << "option" << i << "  : "
+              << ": cost " << avg(metric[i]);
+  }
 }
