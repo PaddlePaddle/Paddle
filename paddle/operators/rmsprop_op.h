@@ -32,6 +32,8 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto* moment_out = ctx.Output<Tensor>("MomentOut");
     auto* mean_square_out = ctx.Output<Tensor>("MeanSquareOut");
 
+    auto grad = ctx.Input<Tensor>("Grad");
+
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
     mean_square_out->mutable_data<T>(ctx.GetPlace());
@@ -42,8 +44,8 @@ class RmspropOpKernel : public framework::OpKernel<T> {
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
     auto ms = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanSquare"));
-    float lr = ctx.Input<Tensor>("LearningRate")->data<float>()[0];
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Grad"));
+    auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
+    auto g = EigenVector<T>::Flatten(*grad);
     auto mom = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
 
     auto p_out = EigenVector<T>::Flatten(*param_out);
@@ -51,8 +53,12 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto ms_out = EigenVector<T>::Flatten(*mean_square_out);
     auto place = ctx.GetEigenDevice<Place>();
 
+    Eigen::DSizes<int, 1> grad_dsize(grad->numel());
+
     ms_out.device(place) = rho * ms + (1 - rho) * g * g;
-    mom_out.device(place) = momentum * mom + lr * g / (ms_out + epsilon).sqrt();
+    mom_out.device(place) =
+        momentum * mom +
+        lr.broadcast(grad_dsize) * g / (ms_out + epsilon).sqrt();
     p_out.device(place) = p - mom_out;
   }
 };
