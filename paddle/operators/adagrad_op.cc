@@ -23,33 +23,33 @@ class AdagradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("param"),
-                   "Input(param) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("grad"),
-                   "Input(grad) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("moment"),
-                   "Input(moment) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("learning_rate"),
-                   "Input(learning_rate) of AdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(Param) of AdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(Grad) of AdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Moment"),
+                   "Input(Moment) of AdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of AdagradOp should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("param_out"),
-                   "Output(param_out) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("moment_out"),
-                   "Output(moment_out) of AdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of AdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
+                   "Output(MomentOut) of AdagradOp should not be null.");
 
-    auto lr_dims = ctx->GetInputDim("learning_rate");
+    auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "learning_rate should have one element");
-    auto param_dim = ctx->GetInputDim("param");
+                      "LearningRate should have one element");
+    auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("grad"),
-        "Param and grad input of AdagradOp should have the same dimension.");
+        param_dims, ctx->GetInputDim("Grad"),
+        "Param and Grad input of AdagradOp should have the same dimension.");
     PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("moment"),
-        "Param and moment input of AdagradOp should have the same dimension.");
+        param_dims, ctx->GetInputDim("Moment"),
+        "Param and Moment input of AdagradOp should have the same dimension.");
 
-    ctx->SetOutputDim("param_out", param_dim);
-    ctx->SetOutputDim("moment_out", param_dim);
+    ctx->SetOutputDim("ParamOut", param_dims);
+    ctx->SetOutputDim("MomentOut", param_dims);
   }
 };
 
@@ -58,15 +58,18 @@ class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
   AdagradOpMaker(framework::OpProto *proto,
                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("param", "Input parameter");
-    AddInput("grad", "Input gradient");
-    AddInput("moment", "Second moment");
-    AddInput("learning_rate", "learning rate of adagrad");
+    AddInput("Param", "(Tensor) Input parameter");
+    AddInput("Grad", "(Tensor) Input gradient");
+    AddInput("Moment", "(Tensor) Second moment");
+    AddInput("LearningRate", "(Tensor) Learning rate");
 
-    AddOutput("param_out", "Output parameter");
-    AddOutput("moment_out", "Output second moment");
+    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddOutput("MomentOut", "(Tensor) Output second moment");
 
-    AddAttr<float>("epsilon", "Constant for numerical stability");
+    AddAttr<float>("epsilon",
+                   "(float, default 1.0e-6) "
+                   "Constant for numerical stability")
+        .SetDefault(1.0e-6f);
     AddComment(R"DOC(
 
 Adaptive Gradient Algorithm (Adagrad).
