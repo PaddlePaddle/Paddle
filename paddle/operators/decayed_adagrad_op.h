@@ -19,34 +19,36 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
 class DecayedAdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<Tensor>("param_out");
-    auto moment_out = ctx.Output<Tensor>("moment_out");
+    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
+    auto moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
 
-    param_out->mutable_data<T>(ctx.GetPlace());
-    moment_out->mutable_data<T>(ctx.GetPlace());
+    param_out_tensor->mutable_data<T>(ctx.GetPlace());
+    moment_out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    float lr = ctx.Attr<float>("learning_rate");
-    float rho = ctx.Attr<float>("rho");
+    float decay = ctx.Attr<float>("decay");
     float epsilon = ctx.Attr<float>("epsilon");
 
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("param"));
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("grad"));
-    auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("moment"));
-    auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto m_out = EigenVector<T>::Flatten(*moment_out);
+    auto param = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Param"));
+    auto grad = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Grad"));
+    auto moment = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Moment"));
+    auto lr = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("LearningRate"));
+
+    auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
+    auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
     auto place = ctx.GetEigenDevice<Place>();
 
-    m_out.device(place) = rho * m + (1 - rho) * g * g;
-    p_out.device(place) = p - lr * g / (m_out.sqrt() + epsilon);
+    moment_out.device(place) = decay * moment + (1 - decay) * grad * grad;
+    Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
+    param_out.device(place) =
+        param - lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
   }
 };
 

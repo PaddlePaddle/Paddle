@@ -23,29 +23,33 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("param"),
-                   "Input(param) of DecayedAdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("grad"),
-                   "Input(grad) of DecayedAdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("moment"),
-                   "Input(moment) of DecayedAdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(Param) of DecayedAdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(Grad) of DecayedAdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Moment"),
+                   "Input(Moment) of DecayedAdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of AdagradOp should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("param_out"),
-                   "Output(param_out) of DecayedAdagradOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("moment_out"),
-        "Output(moment_out) of DecayedAdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of DecayedAdagradOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
+                   "Output(MomentOut) of DecayedAdagradOp should not be null.");
 
-    auto param_dim = ctx->GetInputDim("param");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("grad"),
-                      "Param and grad input of DecayedAdagradOp should have "
+    auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "LearningRate should have one element");
+    auto param_dims = ctx->GetInputDim("Param");
+    PADDLE_ENFORCE_EQ(param_dims, ctx->GetInputDim("Grad"),
+                      "Param and Grad input of DecayedAdagradOp should have "
                       "the same dimension.");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("moment"),
-                      "Param and moment input of DecayedAdagradOp should have "
+    PADDLE_ENFORCE_EQ(param_dims, ctx->GetInputDim("Moment"),
+                      "Param and Moment input of DecayedAdagradOp should have "
                       "the same dimension.");
 
-    ctx->SetOutputDim("param_out", param_dim);
-    ctx->SetOutputDim("moment_out", param_dim);
+    ctx->SetOutputDim("ParamOut", param_dims);
+    ctx->SetOutputDim("MomentOut", param_dims);
   }
 };
 
@@ -54,25 +58,28 @@ class DecayedAdagradOpMaker : public framework::OpProtoAndCheckerMaker {
   DecayedAdagradOpMaker(framework::OpProto *proto,
                         framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("param", "Input parameter");
-    AddInput("grad", "Input gradient");
-    AddInput("moment", "Second moment");
+    AddInput("Param", "(Tensor) Input parameter");
+    AddInput("Grad", "(Tensor) Input gradient");
+    AddInput("Moment", "(Tensor) Second moment");
+    AddInput("LearningRate", "(Tensor) Learning rate");
 
-    AddOutput("param_out", "Output parameter");
-    AddOutput("moment_out", "Output second moment");
+    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddOutput("MomentOut", "(Tensor) Output second moment");
 
-    AddAttr<float>("learning_rate", "Learning rate");
-    AddAttr<float>("epsilon", "Constant for numerical stability");
+    AddAttr<float>("decay",
+                   "(float, default 0.95) "
+                   "Discounting factor for coming gradient")
+        .SetDefault(0.95);
+    AddAttr<float>("epsilon",
+                   "(float, default 1.0e-6) "
+                   "Constant for numerical stability")
+        .SetDefault(1.0e-6f);
     AddComment(R"DOC(
 
-Adaptive Gradient Algorithm (Adagrad).
+Decayed Adagrad
 
-moment_out = moment + grad * grad
+moment_out = decay * moment + (1 - decay) * grad * grad
 param_out = param - learning_rate * grad / (sqrt(moment_out) + epsilon)
-
-The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
-does not have the epsilon attribute. It is added here for numerical stability 
-by avoiding division by zero.
 
 )DOC");
   }
