@@ -91,7 +91,7 @@ int VectorCheckErr(const VectorPtr& vector1, const VectorPtr& vector2) {
 typedef std::function<void(size_t size, bool useGpu)> testMatrixFunc;
 
 void testCase(testMatrixFunc matrixFunc) {
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   for (auto useGpu : {false, true}) {
 #else
   for (auto useGpu : {false}) {

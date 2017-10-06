@@ -94,7 +94,7 @@ void testWrapper(F&& f) {
   }
 }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 TEST(ExecViaCpu, test1) {
   testWrapper(f);
   testWrapper(&f);

@@ -72,7 +72,7 @@ TEST(StridedMemcpy, CPUConcat) {
   }
 }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 TEST(StridedMemcpy, GPUCrop) {
   // clang-format off
   int src[] = {

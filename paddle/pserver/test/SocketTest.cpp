@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
 
   uint64_t dataSize = FLAGS_dim * sizeof(real);
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   GpuVector gpuParam(FLAGS_dim);
   GpuVector gpuGrad(FLAGS_dim);
 #else

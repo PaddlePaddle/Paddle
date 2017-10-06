@@ -106,6 +106,7 @@ message LoDTensorDesc {
 message VarDesc {
   required string name = 1;
   optional LoDTensorDesc lod_tensor = 2;
+  optional bool persistable = 3 [ default = false ];
 }
 
 message BlockDesc {

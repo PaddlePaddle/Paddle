@@ -211,7 +211,7 @@ class OpKernelRegistrar : public Registrar {
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
 
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
 #else
 #define USE_OP_KERNEL(op_type)        \
