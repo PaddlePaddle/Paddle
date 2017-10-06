@@ -130,6 +130,7 @@ std::once_flag set_variable_flag;
 template <typename T>
 void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
   typedef std::vector<paddle::framework::Tensor> FeedInputs;
+  // Tensors in feed value variable will only be in CPUPlace
   Variable* g_feed_value = GetScope()->FindVar("feed_value");
   FeedInputs& feed_inputs = *(g_feed_value->GetMutable<FeedInputs>());
   auto size = inputs.size();
@@ -144,6 +145,7 @@ void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
 template <typename T>
 std::vector<std::vector<T>> get_fetch_variable() {
   typedef std::vector<paddle::framework::Tensor> FetchOutputs;
+  // Tensors in fetch value variable will only be in CPUPlace
   Variable* g_fetch_value = GetScope()->FindVar("fetch_value");
   FetchOutputs& fetch_outputs = *(g_fetch_value->GetMutable<FetchOutputs>());
 

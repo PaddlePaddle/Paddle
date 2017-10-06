@@ -74,16 +74,6 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
   for (auto& device_context : device_contexts_) {
     device_context->Wait();
   }
-  // // print tensor value
-  // for (auto& var : block.vars()) {
-  //   std::cout << var.name() << std::endl;
-  //   auto v = scope->FindVar(var.name());
-  //   const LoDTensor& t = v->Get<LoDTensor>();
-  //   for (int i = 0; i < t.numel(); ++i) {
-  //     std::cout << t.data<float>()[i] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
 }
 
 }  // namespace framework

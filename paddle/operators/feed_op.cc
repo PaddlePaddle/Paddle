@@ -33,7 +33,7 @@ class FeedOp : public framework::OperatorWithKernel {
 
     auto in_dim = tensors[col].dims();
     ctx->SetOutputDim("Out", in_dim);
-    // TODO(qijun) need to handle LodTensor later
+    // TODO(qijun): need to handle LodTensor later
   }
 
   framework::DataType IndicateDataType(

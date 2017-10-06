@@ -39,7 +39,7 @@ class FetchOp : public framework::OperatorWithKernel {
     tmp.Resize(input_dim);
     (*tensors)[col].Resize(input_dim);
 
-    // TODO(qijun) need to handle LodTensor later
+    // TODO(qijun): need to handle LodTensor later
   }
 
   framework::DataType IndicateDataType(

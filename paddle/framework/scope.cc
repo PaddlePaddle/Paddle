@@ -66,15 +66,10 @@ void Scope::DropKids() {
 
 std::once_flag feed_variable_flag;
 
-template <typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-
 framework::Scope* GetScope() {
-  static std::unique_ptr<framework::Scope> g_scope =
-      make_unique<framework::Scope>();
+  static std::unique_ptr<framework::Scope> g_scope{nullptr};
   std::call_once(feed_variable_flag, [&]() {
+    g_scope.reset(new framework::Scope());
     g_scope->NewVar("feed_value");
     g_scope->NewVar("fetch_value");
   });
