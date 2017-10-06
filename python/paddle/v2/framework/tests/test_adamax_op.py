@@ -5,6 +5,8 @@ from op_test import OpTest
 
 class TestAdamaxOp1(OpTest):
     def setUp(self):
+        '''Test Adamax Operator with supplied attributes
+        '''
         self.op_type = "adamax"
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -13,10 +15,10 @@ class TestAdamaxOp1(OpTest):
         inf_norm = np.random.random((102, 105)).astype("float32")
 
         learning_rate = 0.002
-        beta_1 = 0.9
-        beta_2 = 0.999
-        epsilon = 1e-8
-        beta_1_pow = beta_1**8
+        beta_1 = 0.78
+        beta_2 = 0.899
+        epsilon = 1e-5
+        beta_1_pow = beta_1**10
 
         self.inputs = {
             'Param': param,
@@ -72,8 +74,6 @@ class TestAdamaxOp2(OpTest):
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta_1_pow]).astype("float32")
         }
-
-        self.attrs = {'beta1': beta_1, 'beta2': beta_2, 'epsilon': epsilon}
 
         moment_out = beta_1 * moment + (1 - beta_1) * grad
         inf_norm_out = np.maximum(beta_2 * inf_norm + epsilon, np.abs(grad))
