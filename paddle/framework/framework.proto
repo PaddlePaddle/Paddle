@@ -120,8 +120,8 @@ message ProgramDesc { repeated BlockDesc blocks = 1; }
 message TTensor {
   optional DataType type = 1;
   optional int64 size = 2;
-  repeated float content = 3 [ packed = true ];
-  // repeated float content = 3;
+  // repeated float content = 3 [ packed = true ];
+  repeated float content = 3;
 }
 
 message TensorMeta {

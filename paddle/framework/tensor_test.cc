@@ -342,13 +342,9 @@ TEST(Tensor, TestSpeed) {
   using namespace paddle::platform;
   Tensor src;
   Tensor dst;
-  // const long long size = 10000;
-  // float* src_ptr = src.mutable_data<float>({size, size}, CPUPlace());
-  // memset(src_ptr, 1, sizeof(float)*size*size);
-  // src_ptr[0] = 0;
 
   std::vector<int> arr = {1, 10, 100, 1000};
-  const int STOP = 10;
+  const int STOP = 1000;
   std::vector<std::vector<double>> metric(3);
 
   for (int j = 0; j < STOP; ++j) {
