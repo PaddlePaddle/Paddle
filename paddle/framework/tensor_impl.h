@@ -162,14 +162,5 @@ inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   return res;
 }
 
-inline std::string SerializeToString() const {
-  std::string ret;
-  return SerializeToString(s);
-}
-
-inline void SerializeToString(std::string* s) const {}
-
-inline void DeserializeFromString(const std::string& s) {}
-
 }  // namespace framework
 }  // namespace paddle

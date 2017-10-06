@@ -13,8 +13,10 @@
    limitations under the License. */
 
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/framework.pb.h"
 
 #include <glog/logging.h>
+#include <stdint.h>
 
 namespace paddle {
 namespace framework {
@@ -102,6 +104,32 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
   lod_ = new_lod;
 }
+
+std::string LoDTensor::SerializeToString() const {
+  LoDTensorDesc desc;
+  // set data_type
+  if (this->type() == typeid(bool)) desc.set_data_type(DataType::BOOL);
+  if (this->type() == typeid(int16_t)) desc.set_data_type(DataType::INT16);
+  if (this->type() == typeid(int32_t)) desc.set_data_type(DataType::INT32);
+  if (this->type() == typeid(int64_t)) desc.set_data_type(DataType::INT64);
+  // FIXME(dzh): there is no fp16 in standard c++
+  if (this->type() == typeid(int_fast16_t)) desc.set_data_type(DataType::FP16);
+  if (this->type() == typeid(float)) desc.set_data_type(DataType::FP16);
+  if (this->type() == typeid(double)) desc.set_data_type(DataType::FP16);
+
+  // set dims
+  std::vector<int64_t> dims = vectorize(this->dims());
+  for (auto& dim : dims) {
+    desc.add_dims(dim);
+  }
+
+  // set lod information
+  desc.set_lod_level(this->NumLevels());
+}
+
+void LoDTensor::SerializeToString(std::string* s) const {}
+
+void LoDTensor::DeserializeFromString(const std::string& s) {}
 
 }  // namespace framework
 }  // namespace paddle

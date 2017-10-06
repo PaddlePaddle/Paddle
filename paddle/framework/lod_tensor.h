@@ -119,6 +119,21 @@ class LoDTensor : public Tensor {
    */
   void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
+  /**
+   *  @brief Serialize tensor to char bytes.
+   *  Please check model_format.md for the format detail.
+   *  @return return string
+   */
+  std::string SerializeToString() const;
+
+  void SerializeToString(std::string* s) const;
+
+  /**
+   *  @brief Deserialize char bytes to tensor.
+   *  @return return string
+   */
+  void DeserializeFromString(const std::string& s);
+
  private:
   LoD lod_;
 };
