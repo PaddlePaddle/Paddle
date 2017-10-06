@@ -176,7 +176,6 @@ std::string Tensor::SerializeToString1() const {
     proto.add_content(static_cast<float*>(holder_->ptr())[i]);
   }
   std::string s = proto.SerializeAsString();
-  LOG(INFO) << s.size() << " " << s;
   return s;
 }
 
@@ -185,6 +184,7 @@ void Tensor::DeserializeFromString1(const std::string& s) {
   proto.ParseFromString(s);
   this->Resize({proto.size()});
   float* p = this->mutable_data<float>(platform::CPUPlace());
+  // p[0] = 0;
   for (int i = 0; i < proto.size(); ++i) {
     p[i] = proto.content()[i];
   };
@@ -194,47 +194,74 @@ std::string Tensor::SerializeToString2() const {
   // use new instead of our malloc to compare with protobuf
   const int BUFFER_SIZE = holder_->size() + 100;
   char* buffer = new char[BUFFER_SIZE];
-  memset(buffer, BUFFER_SIZE, '\n');
-  size_t length = holder_->size();
+  // memset(buffer, BUFFER_SIZE, '\n');
+  int length = static_cast<int>(holder_->size());
 
   // data type 5 => float32
-  memset(buffer, 5, sizeof(size_t));
+  memset(buffer, 5, sizeof(int));
   // data size
-  memcpy(buffer + sizeof(size_t), &length, sizeof(size_t));
-  memcpy(buffer + sizeof(size_t) * 2, static_cast<float*>(holder_->ptr()),
-         sizeof(float) * holder_->size());
-  return std::string(buffer);
+  memcpy(buffer + sizeof(int), &length, sizeof(size_t));
+  memcpy(buffer + sizeof(int) * 2, static_cast<float*>(holder_->ptr()),
+         holder_->size());
+  std::string ret = std::string(buffer, BUFFER_SIZE);
+  delete[] buffer;
+  return ret;
 }
 
+// option2
 void Tensor::DeserializeFromString2(const std::string& s) {
-  // this->mutable_data() =
-  // std::stringstream ss(s);
   int data_type, length;
-  sscanf(s.c_str(), "%d%d", &data_type, &length);
-  // char *buffer = new char[length];
+  char* buffer = const_cast<char*>(s.c_str());
+  memcpy(&data_type, buffer, sizeof(int));
+  memcpy(&length, buffer + sizeof(int), sizeof(int));
+
   this->Resize({length});
   float* p = this->mutable_data<float>(platform::CPUPlace());
-  memcpy(p, s.c_str() + sizeof(int) * 2, sizeof(int) * length);
-  // for(int i=0; i < length; ++i) {
-  //   p[i] = proto.content()[i];
-  // };
+  memcpy(p, buffer + sizeof(int) * 2, length);
 }
 
+// option3
 std::string Tensor::SerializeToString3() const {
   TensorMeta proto;
   proto.set_type(DataType::FP32);
   proto.set_size(holder_->size());
-  auto str = proto.SerializeAsString();
+  std::string str = proto.SerializeAsString();
   char* proto_buffer = const_cast<char*>(str.c_str());
 
-  char* buffer = new char[str.size() + holder_->size()];
-  memcpy(buffer, proto_buffer, str.size());
-  memcpy(buffer + str.size(), static_cast<float*>(holder_->ptr()),
-         sizeof(float) * holder_->size());
-  return std::string(buffer);
+  const int BUFFER_SIZE = str.size() + holder_->size() + sizeof(int) * 2;
+
+  char* buffer = new char[BUFFER_SIZE];
+  int proto_len = str.size();
+  int buffer_len = holder_->size();
+
+  memcpy(buffer, &proto_len, sizeof(int));
+
+  memcpy(buffer + sizeof(int), &buffer_len, sizeof(int));
+
+  memcpy(buffer + sizeof(int) * 2, proto_buffer, str.size());
+
+  memcpy(buffer + str.size() + sizeof(int) * 2,
+         static_cast<float*>(holder_->ptr()), holder_->size());
+
+  std::string ret(buffer, BUFFER_SIZE);
+  delete[] buffer;
+  return ret;
 }
 
-void Tensor::DeserializeFromString3(const std::string& s) {}
+void Tensor::DeserializeFromString3(const std::string& s) {
+  int proto_len, buffer_len;
+  proto_len = buffer_len = -1;
+  char* buffer = const_cast<char*>(s.c_str());
+  memcpy(&proto_len, buffer, sizeof(int));
+  memcpy(&buffer_len, buffer + sizeof(int), sizeof(int));
+  char* proto_buffer = new char[proto_len];
+
+  this->Resize({buffer_len});
+  float* p = this->mutable_data<float>(platform::CPUPlace());
+
+  memcpy(proto_buffer, buffer + sizeof(int) * 2, proto_len);
+  memcpy(p, buffer + sizeof(int) * 2 + proto_len, buffer_len);
+}
 
 }  // namespace framework
 }  // namespace paddle
