@@ -217,12 +217,11 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
 
   // collect indice need to copy to the batch
   std::vector<size_t> indice;
-  for (size_t seq_id = 0; seq_id < meta.size(); seq_id++) {
-    const auto& seq_meta = meta[seq_id];
-    if (index >= seq_meta.end) break;
-    indice.push_back(seq_meta.begin + index);
+  for (const auto& seq : meta) {
+    size_t id = seq.begin + index;
+    if (id >= seq.end) break;
+    indice.push_back(id);
   }
-
   PADDLE_ENFORCE(!indice.empty(), "invalid batch at %d", index);
 
   // copy the indice of records in LoDTensor
@@ -232,10 +231,11 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   result.Resize(make_ddim(record_dims_vec));
   result.mutable_data<value_type>(platform::CPUPlace());
 
-  for (size_t i = 0; i < indice.size() - 1; i++) {
+  for (size_t i = 0; i < indice.size(); i++) {
     auto index = indice[i];
     auto target = result.Slice<value_type>(i, i + 1);
     auto source_ = source->Slice<value_type>(index, index + 1);
+
     target.CopyFrom<value_type>(source_, platform::CPUPlace());
   }
 

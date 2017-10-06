@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -269,6 +270,46 @@ All parameter, weight, gradient are variables in Paddle.
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
+      });
+
+  py::class_<framework::TensorArray>(m, "TensorArray")
+      .def("__init__",
+           [](TensorArray &instance) { new (&instance) TensorArray(); })
+      .def("read",
+           [](TensorArray &self, size_t index) { return self.Read(index); })
+      .def("write", [](TensorArray &self, size_t index,
+                       LoDTensor &value) { self.Write(index, value); })
+      .def("write_shared",
+           [](TensorArray &self, size_t index, LoDTensor &value) {
+             self.WriteShared(index, value);
+           })
+      .def("size", [](TensorArray &self) { return self.size(); })
+      .def("pack",
+           [](TensorArray &self, size_t level,
+              std::vector<std::vector<size_t>> &meta_info, LoD &lod) {
+             std::vector<DySeqMeta> meta;
+             for (auto &info : meta_info) {
+               PADDLE_ENFORCE_EQ(info.size(), 3UL);
+               meta.emplace_back(info[0], info[1], info[2]);
+             }
+             return self.Pack(level, meta, lod);
+           })
+      .def("unpack",
+           [](TensorArray &self, LoDTensor &source, int level,
+              bool length_descend) {
+             auto metas = self.Unpack(source, level, length_descend);
+             std::vector<std::vector<size_t>> meta_info;
+             for (auto meta : metas) {
+               meta_info.emplace_back(
+                   std::vector<size_t>({meta.begin, meta.end, meta.ori_idx}));
+             }
+             return meta_info;
+           })
+      .def("stack", [](TensorArray &self) { return self.Stack(); })
+      .def("unstack", [](TensorArray &self,
+                         LoDTensor &source) { return self.Unstack(source); })
+      .def("unstack_shared", [](TensorArray &self, LoDTensor &source) {
+        return self.UnstackShared(source);
       });
 
   // recurrent_op
