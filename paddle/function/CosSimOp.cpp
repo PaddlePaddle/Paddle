@@ -233,7 +233,7 @@ private:
 
 REGISTER_TYPED_FUNC(CosSimForward, CPU, CosSimForwardFunc);
 REGISTER_TYPED_FUNC(CosSimBackward, CPU, CosSimBackwardFunc);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(CosSimForward, GPU, CosSimForwardFunc);
 REGISTER_TYPED_FUNC(CosSimBackward, GPU, CosSimBackwardFunc);
 #endif

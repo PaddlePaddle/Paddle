@@ -31,7 +31,7 @@ class FeedKernel : public framework::OpKernel<T> {
     framework::Variable* g_feed_variable =
         framework::GetScope()->FindVar("feed_value");
     int col = ctx.template Attr<int>("col");
-    FeedInputs tensors = g_feed_variable->Get<FeedInputs>();
+    const FeedInputs& tensors = g_feed_variable->Get<FeedInputs>();
     out->CopyFrom<T>(tensors[col], ctx.GetPlace());
   }
 };

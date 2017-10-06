@@ -19,25 +19,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
-class SGDOpKernel : public framework::OpKernel<T> {
+using Tensor = framework::Tensor;
+
+template <typename T>
+class FetchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param = ctx.Input<framework::Tensor>("Param");
-    auto grad = ctx.Input<framework::Tensor>("Grad");
-    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-
-    param_out->mutable_data<T>(ctx.GetPlace());
-
-    auto p = framework::EigenVector<T>::Flatten(*param);
-    auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto o = framework::EigenVector<T>::Flatten(*param_out);
-    auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
-    auto place = ctx.GetEigenDevice<Place>();
-
-    Eigen::DSizes<int, 1> grad_dsize(grad->numel());
-    o.device(place) = p - lr.broadcast(grad_dsize) * g;
+    typedef std::vector<framework::Tensor> FetchOutputs;
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    int col = ctx.template Attr<int>("col");
+    framework::Variable* g_fetch_variable =
+        framework::GetScope()->FindVar("fetch_value");
+    FetchOutputs* tensors = g_fetch_variable->GetMutable<FetchOutputs>();
+    (*tensors)[col].mutable_data<T>(platform::CPUPlace());
+    (*tensors)[col].CopyFrom<T>(*input, platform::CPUPlace());
   }
 };
 

@@ -12,27 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/feed_op.h"
+#include "paddle/operators/fetch_op.h"
 
 namespace paddle {
 namespace operators {
 
-class FeedOp : public framework::OperatorWithKernel {
+class FetchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(framework::InferShapeContextBase* ctx) const override {
-    typedef std::vector<framework::Tensor> FeedInputs;
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output should be not null.");
+    typedef std::vector<framework::Tensor> FetchOutputs;
+    PADDLE_ENFORCE(ctx->HasInput("Input"), "Input should be not null.");
     int col = ctx->Attrs().Get<int>("col");
-    framework::Variable* g_feed_variable =
-        framework::GetScope()->FindVar("feed_value");
+    framework::Variable* g_fetch_variable =
+        framework::GetScope()->FindVar("fetch_value");
 
-    const FeedInputs& tensors = g_feed_variable->Get<FeedInputs>();
+    FetchOutputs* tensors = g_fetch_variable->GetMutable<FetchOutputs>();
+    if (tensors->size() < static_cast<size_t>(col + 1)) {
+      tensors->resize(col + 1);
+    }
 
-    auto in_dim = tensors[col].dims();
-    ctx->SetOutputDim("Out", in_dim);
+    auto input_dim = ctx->GetInputDim("Input");
+    (*tensors)[col].Resize(input_dim);
+
     // TODO(qijun): need to handle LodTensor later
   }
 
@@ -42,16 +46,16 @@ class FeedOp : public framework::OperatorWithKernel {
   }
 };
 
-class FeedOpMaker : public framework::OpProtoAndCheckerMaker {
+class FetchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FeedOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  FetchOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<int>("data_type", "output data type")
         .SetDefault(framework::DataType::FP32);
-    AddAttr<int>("col", "The col in global feed variable").SetDefault(0);
-    AddAttr<std::vector<int>>("dims", "The dimension of feed tensor.");
-    AddOutput("Out", "The output of feed op.");
-    AddComment(R"DOC(Feed data from global feed variable)DOC");
+    AddAttr<int>("col", "The col in global fetch variable").SetDefault(0);
+    AddAttr<std::vector<int>>("dims", "The dimension of fetch tensor.");
+    AddInput("Input", "The output of fetch op.");
+    AddComment(R"DOC(Fetch data to global fetch variable)DOC");
   }
 };
 
@@ -59,5 +63,5 @@ class FeedOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(feed, ops::FeedOp, ops::FeedOpMaker);
-REGISTER_OP_CPU_KERNEL(feed, ops::FeedKernel<float>);
+REGISTER_OP_WITHOUT_GRADIENT(fetch, ops::FetchOp, ops::FetchOpMaker);
+REGISTER_OP_CPU_KERNEL(fetch, ops::FetchKernel<float>);

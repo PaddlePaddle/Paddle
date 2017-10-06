@@ -56,7 +56,7 @@ TEST(CPUAllocator, LockMem) {
   TestAllocator(a, 0);
 }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 TEST(GPUAllocator, Alloc) {
   paddle::memory::detail::GPUAllocator a;
   TestAllocator(a, 2048);
