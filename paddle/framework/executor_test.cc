@@ -293,7 +293,7 @@ TEST_F(ExecutorTesterFeed, CPU) {
   delete executor;
 }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 TEST_F(ExecutorTesterRandom, GPU) {
   std::vector<Place> places;
   GPUPlace gpu_place(0);
@@ -315,10 +315,20 @@ TEST_F(ExecutorTesterFeed, GPU) {
 
   Executor* executor = new Executor(places);
 
-  // need to set feed variable before Executor::Run
-  set_feed_variable<float>(inputs_);
-  executor->Run(pdesc_, GetScope());
-
+  // 3 mini-batch
+  for (int i = 0; i < 3; i++) {
+    // need to set feed variable before Executor::Run
+    std::cout << "start mini-batch " << i << std::endl;
+    set_feed_variable<float>(inputs_);
+    executor->Run(pdesc_, GetScope());
+    std::vector<std::vector<float>> result = get_fetch_variable<float>();
+    for (auto& vec : result) {
+      for (auto& num : vec) {
+        std::cout << num << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
   delete executor;
 }
 #endif
