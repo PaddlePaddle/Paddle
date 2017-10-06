@@ -21,21 +21,31 @@
 namespace paddle {
 namespace framework {
 
-using OperatorBase = framework::OperatorBase;
-using OpProtoAndCheckerMaker = framework::OpProtoAndCheckerMaker;
-using OpProto = framework::OpProto;
-using OpAttrChecker = framework::OpAttrChecker;
-using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
 
 class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").NotInGradient();
-    AddInput("b", "Bias of Add").NotInGradient();
-    AddOutput("Out", "Out of Add").NotInGradient();
+    AddInput("X", "Input X of Add");
+    AddInput("b", "Bias of Add");
+    AddOutput("Out", "Out of Add");
     AddComment("Add Op");
+  }
+};
+
+class RowWiseAddGradMaker : public SingleGradOpDescMaker {
+ public:
+  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<OpDescBind> Apply() const override {
+    auto grad_op = new OpDescBind();
+    grad_op->SetInput(GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(GradVarName("X"), InputGrad("X"));
+    grad_op->SetOutput(GradVarName("b"), InputGrad("b"));
+    grad_op->SetType("rowwise_add_grad");
+    return std::unique_ptr<OpDescBind>(grad_op);
   }
 };
 
@@ -137,10 +147,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SumOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of sum operator.")
-        .AsDuplicable()
-        .NotInGradient();
-    AddOutput("Out", "the output tensor of sum operator.").NotInGradient();
+    AddInput("X", "the input tensors of sum operator.").AsDuplicable();
+    AddOutput("Out", "the output tensor of sum operator.");
     AddComment("");
   }
 };
@@ -151,8 +159,9 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
-REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, rowwise_add_grad,
-            f::NOP);
+REGISTER_OPERATOR(rowwise_add, f::NOP, f::RowWiseAddOpMaker,
+                  f::RowWiseAddGradMaker);
+REGISTER_OPERATOR(rowwise_add_grad, f::NOP);
 REGISTER_OP(mul, f::NOP, f::MulOpMaker, mul_grad, f::NOP);
 REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, sigmoid_grad, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
@@ -161,17 +170,6 @@ REGISTER_OP(sum, f::NOP, f::SumOpMaker, sum_grad, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
 REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
             f::NOP);
-
-TEST(Backward, simple_op_grad) {
-  auto fwd = f::OpRegistry::CreateOp(
-      "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
-  ASSERT_NE(fwd, nullptr);
-  auto gop = f::OpRegistry::CreateGradOp(*fwd);
-  ASSERT_EQ(1UL, gop->Inputs().size());
-  ASSERT_EQ("rowwise_add_grad", gop->Type());
-  ASSERT_EQ(f::GradVarName("x"), gop->Output(f::GradVarName("X")));
-  ASSERT_EQ(f::GradVarName("b"), gop->Output(f::GradVarName("b")));
-}
 
 TEST(Backward, simple_op_not_need_grad) {
   auto fwd = f::OpRegistry::CreateOp(
@@ -287,17 +285,6 @@ TEST(Backward, net_shared_weight) {
   auto bwd_net = static_cast<ops::NetOp *>(bwd.get());
   ASSERT_EQ(3UL, bwd_net->ops_.size());
   ASSERT_EQ("sum", bwd_net->ops_[2]->Type());
-}
-
-TEST(Backward, op_register_grad_not_for_network) {
-  auto fwd =
-      f::OpRegistry::CreateOp("fc", {{"X", {"x"}}, {"W", {"w"}}, {"b", {"b"}}},
-                              {{"mul_result", {"mul_out"}},
-                               {"add_result", {"add_out"}},
-                               {"Out", {"out1"}}},
-                              {{"temporary_index", std::vector<int>{0, 1}}});
-
-  ASSERT_THROW(f::OpRegistry::CreateGradOp(*fwd), EnforceNotMet);
 }
 
 TEST(Backward, op_all_input_are_not_need) {
