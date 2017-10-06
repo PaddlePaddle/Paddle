@@ -19,12 +19,12 @@ In our GAN design, we wrap it as a user-friendly easily customized python API to
 | softmax loss (done)       | ?                 | Y        |
 | reshape op (done)         | ?                 | Y        |
 | Dependency Engine (done)  | Jiayi             | Y *      |
-| Python API (done)         | Jiayi             | Y *      |
+| Python API (done)         | Longfei, Jiayi    | Y *      |
 | Executor (done)           | Tony              | Y *      |
-| Multi optimizer           | ?                 | Y *      |
+| Multi optimizer (woking)  | Longfei           | Y *      |
 | Optimizer with any para   | ?                 | Y *      |
-| Concat op                 | ?                 | N (Cond) |
-| Repmat op                 | ?                 | N (Cond) |
+| Concat op (done)          | ?                 | N (Cond) |
+| Repmat op (done)          | ?                 | N (Cond) |
 
 
 <p align="center">
@@ -91,7 +91,8 @@ class DCGAN(object):
 - Concatenation, batch-norm, FC operations required;
 - Deconv layer required, which is missing now...
 ```python
-def generator(self, z, y = None):
+class DCGAN(object):
+  def generator(self, z, y = None):
     # input z: the random noise
     # input y: input data label (optional)
     # output G_im: generated fake images
@@ -116,7 +117,8 @@ def generator(self, z, y = None):
 - Given a noisy input z, returns a fake image.
 - Concatenation, Convolution, batch-norm, FC, Leaky-ReLU operations required;
 ```python
-def discriminator(self, image):
+class DCGAN(object):
+  def discriminator(self, image):
     # input image: either generated images or real ones
     # output D_h2: binary logit of the label
 
@@ -137,8 +139,8 @@ def discriminator(self, image):
 - Build generator and discriminators;
 - Define two training losses for discriminator and generator, respectively. 
 ```python
-def build_model(self):
-
+class DCGAN(object):
+  def build_model(self):
     # input data
     if self.y_dim:
         self.y = pd.data(pd.float32, [self.batch_size, self.y_dim])
