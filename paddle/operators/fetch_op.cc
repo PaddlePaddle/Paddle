@@ -30,15 +30,16 @@ class FetchOp : public framework::OperatorWithKernel {
         framework::GetScope()->FindVar("fetch_value");
 
     FetchOutputs* tensors = g_fetch_variable->GetMutable<FetchOutputs>();
-    if (tensors->size() < col) {
-      tensors->resize(col);
+    if (tensors->size() < static_cast<size_t>(col + 1)) {
+      tensors->resize(col + 1);
     }
 
     auto input_dim = ctx->GetInputDim("Input");
     framework::Tensor tmp;
     tmp.Resize(input_dim);
     (*tensors)[col].Resize(input_dim);
-    // need to handle LodTensor later
+
+    // TODO(qijun) need to handle LodTensor later
   }
 
   framework::DataType IndicateDataType(

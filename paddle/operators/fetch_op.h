@@ -26,13 +26,13 @@ class FetchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     typedef std::vector<framework::Tensor> FetchOutputs;
-    Tensor* input = ctx.Output<Tensor>("Input");
+    const Tensor* input = ctx.Input<Tensor>("Input");
     int col = ctx.template Attr<int>("col");
     framework::Variable* g_fetch_variable =
         framework::GetScope()->FindVar("fetch_value");
-    FetchOutputs tensors = g_fetch_variable->Get<FetchOutputs>();
-    tensors[col].mutable_data<T>(platform::CPUPlace());
-    tensors[col].CopyFrom<T>(*input, platform::CPUPlace());
+    FetchOutputs* tensors = g_fetch_variable->GetMutable<FetchOutputs>();
+    (*tensors)[col].mutable_data<T>(platform::CPUPlace());
+    (*tensors)[col].CopyFrom<T>(*input, platform::CPUPlace());
   }
 };
 

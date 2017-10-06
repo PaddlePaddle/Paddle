@@ -29,11 +29,11 @@ class FeedOp : public framework::OperatorWithKernel {
     framework::Variable* g_feed_variable =
         framework::GetScope()->FindVar("feed_value");
 
-    FeedInputs tensors = g_feed_variable->Get<FeedInputs>();
+    const FeedInputs& tensors = g_feed_variable->Get<FeedInputs>();
 
     auto in_dim = tensors[col].dims();
     ctx->SetOutputDim("Out", in_dim);
-    // need to handle LodTensor later
+    // TODO(qijun) need to handle LodTensor later
   }
 
   framework::DataType IndicateDataType(

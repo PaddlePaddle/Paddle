@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/executor.h"
-#include <memory>  // for unique_ptr
-#include <mutex>   // for call_once
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/framework/attribute.h"
@@ -34,9 +32,8 @@ using namespace paddle::framework;
 typedef paddle::framework::BlockDesc proto_block;
 typedef paddle::framework::OpDesc proto_op;
 
-void add_gaussian_random_op(string var_name, proto_block* block) {
-  std::vector<int> dim{2, 3};
-
+void add_gaussian_random_op(string var_name, std::vector<int>& dim,
+                            proto_block* block) {
   // insert variable
   auto a = block->add_vars();
   a->set_name(var_name);
@@ -60,9 +57,8 @@ void add_gaussian_random_op(string var_name, proto_block* block) {
   Out->add_arguments(var_name);
 }
 
-void add_feed_op(string var_name, int index, proto_block* block) {
-  std::vector<int> dim{3};
-
+void add_feed_op(string var_name, std::vector<int>& dim, int index,
+                 proto_block* block) {
   // insert variable
   auto a = block->add_vars();
   a->set_name(var_name);
@@ -95,9 +91,8 @@ void add_feed_op(string var_name, int index, proto_block* block) {
   Out->add_arguments(var_name);
 }
 
-void add_fetch_op(string var_name, int index, proto_block* block) {
-  std::vector<int> dim{3};
-
+void add_fetch_op(string var_name, std::vector<int>& dim, int index,
+                  proto_block* block) {
   // insert variable
   auto a = block->add_vars();
   a->set_name(var_name);
@@ -138,20 +133,11 @@ void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
   Variable* g_feed_value = GetScope()->FindVar("feed_value");
   FeedInputs& feed_inputs = *(g_feed_value->GetMutable<FeedInputs>());
   auto size = inputs.size();
-
-  std::call_once(set_variable_flag, [&]() {
-    feed_inputs.reserve(size);
-    for (size_t i = 0; i < size; i++) {
-      paddle::framework::Tensor tmp;
-      tmp.mutable_data<T>(make_ddim({static_cast<int64_t>(inputs[i].size())}),
-                          CPUPlace());
-      feed_inputs.push_back(tmp);
-    }
-  });
-
+  feed_inputs.resize(size);
   for (size_t i = 0; i < size; i++) {
-    memcpy(feed_inputs[i].data<T>(), inputs[i].data(),
-           inputs[i].size() * sizeof(T));
+    T* dst = feed_inputs[i].mutable_data<T>(
+        make_ddim({static_cast<int64_t>(inputs[i].size())}), CPUPlace());
+    memcpy(dst, inputs[i].data(), inputs[i].size() * sizeof(T));
   }
 }
 
@@ -160,19 +146,17 @@ std::vector<std::vector<T>> get_fetch_variable() {
   typedef std::vector<paddle::framework::Tensor> FetchOutputs;
   Variable* g_fetch_value = GetScope()->FindVar("fetch_value");
   FetchOutputs& fetch_outputs = *(g_fetch_value->GetMutable<FetchOutputs>());
-  auto size = fetch_outputs.size();
 
+  auto size = fetch_outputs.size();
   std::vector<std::vector<T>> result;
   result.reserve(size);
-
   for (size_t i = 0; i < size; i++) {
     std::vector<T> tmp;
-    tmp.reserve(fetch_outputs[i].numel());
+    tmp.resize(fetch_outputs[i].numel());
     memcpy(tmp.data(), fetch_outputs[i].data<T>(),
            fetch_outputs[i].numel() * sizeof(T));
     result.push_back(tmp);
   }
-
   return result;
 }
 
@@ -183,8 +167,9 @@ class ExecutorTesterRandom : public ::testing::Test {
     root_block->set_idx(0);
     root_block->set_parent_idx(-1);
 
-    add_gaussian_random_op("a", root_block);
-    add_gaussian_random_op("b", root_block);
+    std::vector<int> dim{2, 3};
+    add_gaussian_random_op("a", dim, root_block);
+    add_gaussian_random_op("b", dim, root_block);
 
     auto c = root_block->add_vars();
     c->set_name("c");
@@ -203,12 +188,11 @@ class ExecutorTesterRandom : public ::testing::Test {
     Out->set_parameter("Out");
     Out->add_arguments("c");
 
-    scope_ = GetScope();
+    add_fetch_op("c", dim, 0, root_block);
   }
 
  protected:
   ProgramDesc pdesc_;
-  Scope* scope_;
 };
 
 class ExecutorTesterFeed : public ::testing::Test {
@@ -218,8 +202,10 @@ class ExecutorTesterFeed : public ::testing::Test {
     root_block->set_idx(0);
     root_block->set_parent_idx(-1);
 
-    add_feed_op("a", 0, root_block);
-    add_feed_op("b", 1, root_block);
+    std::vector<int> dim{6};
+
+    add_feed_op("a", dim, 0, root_block);
+    add_feed_op("b", dim, 1, root_block);
 
     auto c = root_block->add_vars();
     c->set_name("c");
@@ -238,10 +224,10 @@ class ExecutorTesterFeed : public ::testing::Test {
     Out->set_parameter("Out");
     Out->add_arguments("c");
 
-    add_fetch_op("c", 0, root_block);
+    add_fetch_op("c", dim, 0, root_block);
 
-    std::vector<float> vec1 = {1.0, 2.0, 3.0};
-    std::vector<float> vec2 = {4.0, 5.0, 6.0};
+    std::vector<float> vec1 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    std::vector<float> vec2 = {4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
     inputs_.push_back(vec1);
     inputs_.push_back(vec2);
   }
@@ -253,12 +239,24 @@ class ExecutorTesterFeed : public ::testing::Test {
 
 TEST_F(ExecutorTesterRandom, CPU) {
   std::vector<Place> places;
-  CPUPlace cpu_place1, cpu_place2;
-  places.push_back(cpu_place1);
-  places.push_back(cpu_place2);
+  CPUPlace cpu_place;
+  places.push_back(cpu_place);
+
+  // We have a global Scope and BuddyAllocator, and we must ensure
+  // global BuddyAllocator is initialized before global Scope. Thus,
+  // global Scope will deconstruct before BuddyAllocator. Otherwise,
+  // "pointer being freed was not allocated" error will appear.
+  paddle::memory::Used(cpu_place);
 
   Executor* executor = new Executor(places);
-  executor->Run(pdesc_, scope_);
+  executor->Run(pdesc_, GetScope());
+  std::vector<std::vector<float>> result = get_fetch_variable<float>();
+  for (auto& vec : result) {
+    for (auto& num : vec) {
+      std::cout << num << " ";
+    }
+    std::cout << std::endl;
+  }
   delete executor;
 }
 
@@ -266,6 +264,12 @@ TEST_F(ExecutorTesterFeed, CPU) {
   std::vector<Place> places;
   CPUPlace cpu_place;
   places.push_back(cpu_place);
+
+  // We have a global Scope and BuddyAllocator, and we must ensure
+  // global BuddyAllocator is initialized before global Scope. Thus,
+  // global Scope will deconstruct before BuddyAllocator. Otherwise,
+  // "pointer being freed was not allocated" error will appear.
+  paddle::memory::Used(cpu_place);
 
   Executor* executor = new Executor(places);
 
@@ -293,8 +297,10 @@ TEST_F(ExecutorTesterRandom, GPU) {
   GPUPlace gpu_place(0);
   places.push_back(gpu_place);
 
+  paddle::memory::Used(gpu_place);
+
   Executor* executor = new Executor(places);
-  executor->Run(pdesc_, scope_);
+  executor->Run(pdesc_, GetScope());
   delete executor;
 }
 
@@ -303,11 +309,13 @@ TEST_F(ExecutorTesterFeed, GPU) {
   GPUPlace gpu_place(0);
   places.push_back(gpu_place);
 
+  paddle::memory::Used(gpu_place);
+
   Executor* executor = new Executor(places);
 
   // need to set feed variable before Executor::Run
   set_feed_variable<float>(inputs_);
-  executor->Run(pdesc_, scope_);
+  executor->Run(pdesc_, GetScope());
 
   delete executor;
 }
