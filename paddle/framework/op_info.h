@@ -54,6 +54,8 @@ struct OpInfo {
                             "Operator GradOpMaker has not been registered.");
     return grad_op_maker_;
   }
+
+  const OpAttrChecker* Checker() const { return checker_; }
 };
 
 class OpInfoMap {

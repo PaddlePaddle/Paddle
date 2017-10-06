@@ -15,9 +15,9 @@ Please be aware that these Python classes need to maintain some construction-tim
 
 ### Program
 
-A `ProgramDesc` describes a [DL program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md), which is composed of an array of `BlockDesc`s.  A `BlockDesc` refers to its parent block by its index in the array.  For example, operators in the step block of an RNN operator needs to be able to access variables in its ancessor blocks.
+A `ProgramDesc` describes a [DL program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md), which is composed of an array of `BlockDesc`s.  The `BlockDesc`s in a `ProgramDesc` can have a tree-like hierarchical structure. However, the `ProgramDesc` onlys stores a flattened array of `BlockDesc`s. A `BlockDesc` refers to its parent block by its index in the array.  For example, operators in the step block of an RNN operator need to be able to access variables in its ancestor blocks.
 
-Whenever we create a block, we need set its parent block to the current block, so the Python class `Program` needs to maintain a data member `current_block`.
+Whenever we create a block, we need to set its parent block to the current block, hence the Python class `Program` needs to maintain a data member `current_block`.
 
 ```python
 class Program(objects):
@@ -81,13 +81,13 @@ class Block(objects):
        self.ops.prepend(Operator(self, ...))
 ```
 
-`create_parameter` is necessary because parameters are global variables, those defined in the global block, but can be created in some sub-blocks, e.g., an FC layer in the step block of an RNN operator.
+`create_parameter` is necessary because parameters are global variables, defined in the global block, but can be created in some sub-blocks. For example, an FC layer in the step block of an RNN operator.
 
-`prepand_operator` is necessary because the constructor of `Parameter` needs to create the initialize (or load) operator of the parameter, and would like to put it in the *preamble* of the global block.
+`prepend_operator` is necessary because the constructor of `Parameter` needs to create the initialize (or load) operator of the parameter, and would like to put it in the *preamble* of the global block.
 
 ### Operator
 
-The `Operator` class fills in the `OpDesc` message and calls the C++ function `InferShape` to infer output shape from input shape.
+The `Operator` class fills in the `OpDesc` message and calls the C++ function `InferShape` to infer the output shapes from the input shapes.
 
 ```python
 class Operator(object):
@@ -105,7 +105,7 @@ class Operator(object):
         return self.proto.type()
 ```
 
-`Operator` creates the `OpDesc` message in C++ space, so could it call the `InferShape` function, which is in C++.
+`Operator` creates the `OpDesc` message in C++ space, so that it can call the `InferShape` function, which is in C++.
 
 ### Variable
 
@@ -128,7 +128,7 @@ class Variable(object):
         self.writer = None
 ```
 
-Please be aware of `self.writer`, that tracks operator who creates the variable.  It possible that there are more than one operators who write a variable, but in Python space, each writes to a variable is represented by a Variable class.  This is guaranteed by the fact that **`core.NewVarDesc` must NOT create a new `VarDesc` message if its name already exists in the specified block**.
+Please be aware of `self.writer`, that tracks operator who creates the variable.  It possible that there are more than one operators who write a variable, but in Python space, each write to a variable is represented by a Variable class.  This is guaranteed by the fact that **`core.NewVarDesc` must NOT create a new `VarDesc` message if its name already exists in the specified block**.
 
 ### Parameter
 
@@ -155,7 +155,7 @@ class Parameter(Variable):
                                initialize_op_attrs)
 ```
 
-When users create a parameter, s/he can call
+When users create a parameter, they can call
 
 ```python
 program.create_parameter(
