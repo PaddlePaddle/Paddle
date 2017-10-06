@@ -120,7 +120,8 @@ std::string LoDTensor::SerializeToString() const {
   if (this->type() == typeid(int32_t)) desc.set_data_type(DataType::INT32);
   if (this->type() == typeid(int64_t)) desc.set_data_type(DataType::INT64);
   // FIXME(dzh): there is no fp16 in standard c++
-  if (this->type() == typeid(int_fast16_t)) desc.set_data_type(DataType::FP16);
+  // if (this->type() == typeid(int_fast16_t))
+  // desc.set_data_type(DataType::FP16);
   if (this->type() == typeid(float)) desc.set_data_type(DataType::FP16);
   if (this->type() == typeid(double)) desc.set_data_type(DataType::FP16);
 
@@ -132,6 +133,18 @@ std::string LoDTensor::SerializeToString() const {
 
   // set lod information
   desc.set_lod_level(this->NumLevels());
+  for (int i = 0; i < this->NumLevels(); ++i) {
+    LoDInfo* lod = desc.add_levels();
+    for (int j = 0; j < lod_[i].size(); ++j) {
+      lod->add_level(this->lod_element(i, j));
+    }
+  }
+
+  // set place information
+  platform::Place place = holder_->place();
+  if (platform::is_gpu_place(place)) desc.set_place(DevicePlace::GPUPlace);
+  if (platform::is_cpu_place(place)) desc.set_place(DevicePlace::CPUPlace);
+
   std::string desc_bytes = desc.SerializeAsString();
 
   // FIXME(dzh) : implement fix chunk size buffer.
@@ -143,7 +156,6 @@ std::string LoDTensor::SerializeToString() const {
       static_cast<char*>(memory::Alloc(platform::CPUPlace(), BUFFER_SIZE));
 
   // format: desc_size data_size, desc_bytes, data_bytes.
-  platform::Place place = holder_->place();
   platform::Place src_place = platform::CPUPlace();
   platform::Place dst_place = platform::CPUPlace();
 
@@ -155,7 +167,7 @@ std::string LoDTensor::SerializeToString() const {
 
   // copy gpu data to cpu implicitly.
   PADDLE_ENFORCE(this->numel() != 0, " Serialize a empty Tensor!");
-  int element_width = holder->size() / this->numel();
+  int element_width = holder_->size() / this->numel();
   memory::Copy(
       dst_place, buffer + sizeof(size_t) * 2 + desc_bytes.size(), place,
       static_cast<char*>(holder_->ptr()) + offset_ / element_width, DATA_SIZE);
@@ -166,19 +178,41 @@ std::string LoDTensor::SerializeToString() const {
 void LoDTensor::DeserializeFromString(const std::string& s) {
   size_t DESC_SIZE, DATA_SIZE;
   platform::Place src_place = platform::CPUPlace();
-  platform::Place dst_place = holder_->place();
-  memory::Copy(dst_place, &DESC_SIZE, src_place, s.c_str(), sizeof(size_t));
-  memory::Copy(dst_place, &DATA_SIZE, src_place, s.c_str() + sizeof(size_t),
+  memory::Copy(platform::CPUPlace(), &DESC_SIZE, src_place, s.c_str(),
                sizeof(size_t));
+  memory::Copy(platform::CPUPlace(), &DATA_SIZE, src_place,
+               s.c_str() + sizeof(size_t), sizeof(size_t));
 
   // parse LoDTensorDesc
   LoDTensorProto desc;
   desc.ParseFromArray(s.c_str() + sizeof(size_t) * 2, DESC_SIZE);
 
   std::vector<int64_t> dims;
-  std::copy(desc.dims.begin(), desc.dims().end(), std::back_inserter(dims));
-  this->Resize(dims);
-  auto* ptr = this->mutable_data(dst_place);
+  std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
+  this->Resize(make_ddim(dims));
+
+  platform::Place dst_place;
+  if (desc.place() == DevicePlace::CPUPlace) dst_place = platform::CPUPlace();
+  if (desc.place() == DevicePlace::GPUPlace) dst_place = platform::GPUPlace();
+
+  // parse data type
+  void* ptr;
+  if (desc.data_type() == DataType::BOOL)
+    ptr = this->mutable_data<bool>(dst_place);
+  if (desc.data_type() == DataType::INT16)
+    ptr = this->mutable_data<int16_t>(dst_place);
+  if (desc.data_type() == DataType::INT32)
+    ptr = this->mutable_data<int32_t>(dst_place);
+  if (desc.data_type() == DataType::INT64)
+    ptr = this->mutable_data<int64_t>(dst_place);
+  // FIXME(dzh): there is no fp16 in standard c++
+  // if (desc.data_type() == DataType::FP16) ptr =
+  // this->mutable_data<int_fast16_t>(dst_place);
+  if (desc.data_type() == DataType::FP32)
+    ptr = this->mutable_data<float>(dst_place);
+  if (desc.data_type() == DataType::FP64)
+    ptr = this->mutable_data<double>(dst_place);
+
   memory::Copy(dst_place, ptr, src_place,
                s.c_str() + sizeof(size_t) * 2 + DESC_SIZE, DATA_SIZE);
 }
