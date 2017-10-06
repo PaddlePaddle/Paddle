@@ -286,13 +286,22 @@ All parameter, weight, gradient are variables in Paddle.
       .def("size", [](TensorArray &self) { return self.size(); })
       .def("pack",
            [](TensorArray &self, size_t level,
-              std::vector<std::vector<size_t>> &meta_info, LoD &lod) {
+              std::vector<std::vector<size_t>> &meta_info,
+              const std::vector<std::vector<size_t>> &lod) {
              std::vector<DySeqMeta> meta;
              for (auto &info : meta_info) {
                PADDLE_ENFORCE_EQ(info.size(), 3UL);
                meta.emplace_back(info[0], info[1], info[2]);
              }
+
+#ifndef PADDLE_WITH_CUDA
              return self.Pack(level, meta, lod);
+#else
+             LoD new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return self.Pack(level, meta, new_lod);
+#endif
            })
       .def("unpack",
            [](TensorArray &self, LoDTensor &source, int level,
