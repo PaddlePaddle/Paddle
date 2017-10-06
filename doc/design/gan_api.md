@@ -6,15 +6,25 @@ It contains several important machine learning concepts, including building and 
 
 In our GAN design, we wrap it as a user-friendly easily customized python API to design different models. We take the conditional DC-GAN as an example due to its good performance on image generation.
 
-| important building blocks | People in Charge  |
-|---------------------------|-------------------|
-| convolution 2d (done)     | Chengduo          |
-| deconv 2d (missing)       | Zhuoyuan          |
-| batch norm (missing)      | Zhuoyuan, Jiayi   |
-| Dependency Engine (done)  | Jiayi             |
-| Executor (done)           | Tony              |
-| Multi optimizer           | ?                 |
-| Optimizer with any para   | ?                 |
+| important building blocks | People in Charge  | Required |
+|---------------------------|-------------------|----------|
+| convolution 2d (done)     | Chengduo          | Y        |
+| cudnn conv 2d (missing)   | Chengduo          | N        |
+| deconv 2d (missing)       | Zhuoyuan          | Y        |
+| cudnn deconv 2d (missing) | Zhuoyuan          | N        |
+| batch norm (missing)      | Zhuoyuan, Jiayi   | Y        |
+| cudnn batch norm (missing)| Zhuoyuan, Jiayi   | N        |
+| max-pooling (done)        | ?                 | Y        |
+| fc (done)                 | ?                 | Y        |
+| softmax loss (done)       | ?                 | Y        |
+| reshape op (done)         | ?                 | Y        |
+| Dependency Engine (done)  | Jiayi             | Y *      |
+| Python API (done)         | Jiayi             | Y *      |
+| Executor (done)           | Tony              | Y *      |
+| Multi optimizer           | ?                 | Y *      |
+| Optimizer with any para   | ?                 | Y *      |
+| Concat op                 | ?                 | N (Cond) |
+| Repmat op                 | ?                 | N (Cond) |
 
 
 <p align="center">
