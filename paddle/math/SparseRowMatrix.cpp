@@ -54,7 +54,7 @@ void SparseRowCpuMatrix::zeroMem() {
   clearRows();
 }
 
-void SparseRowCpuMatrix::applyL1Decay(real learningRate, real decayRate) {
+void SparseRowCpuMatrix::applyL1(real learningRate, real decayRate) {
   apply([=](real* buf, size_t len) {
     CpuVector value(0, nullptr);
     value.subVecFrom(buf, 0, len);

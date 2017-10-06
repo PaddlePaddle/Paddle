@@ -55,12 +55,16 @@ public:
    *        Else, just set status to popping.
    */
   void pop(const T& item) {
-    pushing() = false;
     auto& s = this->stack();
     if (item == s.top()) {
       s.pop();
     }
   }
+
+  /**
+   * @brief Indicate whether we are at forward or backward stage of computation
+   */
+  void set_stage(bool isForward) { pushing() = isForward; }
 
   /**
    * @brief clear current thread stack.

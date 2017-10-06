@@ -217,10 +217,10 @@ void SmoothL1CostLayer::forwardImp(Matrix& output,
     targetCpu->copyFrom(target);
     outputCpu->copyFrom(output);
     labelCpu->copyFrom(*label.value);
-    targetCpu->smoothL1(*outputCpu, *(labelCpu));
+    targetCpu->smoothL1(*outputCpu, *labelCpu, 1.0);
     target.copyFrom(*targetCpu);
   } else {
-    target.smoothL1(output, *label.value);
+    target.smoothL1(output, *label.value, 1.0);
   }
 }
 
@@ -238,10 +238,10 @@ void SmoothL1CostLayer::backwardImp(Matrix& output,
     outputGCpu->copyFrom(outputG);
     outputCpu->copyFrom(output);
     labelCpu->copyFrom(*label.value);
-    outputGCpu->smoothL1Bp(*outputCpu, *labelCpu);
+    outputGCpu->smoothL1Bp(*outputCpu, *labelCpu, 1.0);
     outputG.copyFrom(*outputGCpu);
   } else {
-    outputG.smoothL1Bp(output, *label.value);
+    outputG.smoothL1Bp(output, *label.value, 1.0);
   }
 }
 
@@ -572,13 +572,8 @@ void MultiBinaryLabelCrossEntropy::backwardImp(Matrix& output,
   }
 }
 
-//
-// Huber loss for robust 2-classes classification
-//
-REGISTER_LAYER(huber, HuberTwoClass);
-
-bool HuberTwoClass::init(const LayerMap& layerMap,
-                         const ParameterMap& parameterMap) {
+bool HuberCost::init(const LayerMap& layerMap,
+                     const ParameterMap& parameterMap) {
   CostLayer::init(layerMap, parameterMap);
   if (useGpu_) {
     tmpCpuInput_.reserve(inputLayers_.size());
@@ -589,7 +584,7 @@ bool HuberTwoClass::init(const LayerMap& layerMap,
   return true;
 }
 
-void HuberTwoClass::forwardImp(Matrix& output, Argument& label, Matrix& cost) {
+void HuberCost::forwardImp(Matrix& output, Argument& label, Matrix& cost) {
   if (useGpu_) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
       tmpCpuInput_[i].resizeAndCopyFrom(
@@ -597,13 +592,87 @@ void HuberTwoClass::forwardImp(Matrix& output, Argument& label, Matrix& cost) {
     }
     hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
-  forwardImpIn(output, label, cost);
 }
 
-void HuberTwoClass::forwardImpIn(Matrix& output,
-                                 Argument& label,
-                                 Matrix& target) {
+//
+// Huber loss for robust regression.
+//
+REGISTER_LAYER(huber_regression, HuberRegressionLoss);
+
+bool HuberRegressionLoss::init(const LayerMap& layerMap,
+                               const ParameterMap& parameterMap) {
+  HuberCost::init(layerMap, parameterMap);
+  delta_ = config_.delta();
+  return true;
+}
+
+void HuberRegressionLoss::forwardImp(Matrix& output,
+                                     Argument& label,
+                                     Matrix& target) {
+  HuberCost::forwardImp(output, label, target);
   size_t numSamples = target.getHeight();
+  size_t dim = output.getWidth();
+  CHECK(label.value);
+  CHECK_EQ((*label.value).getHeight(), numSamples);
+  CHECK_EQ(output.getHeight(), numSamples);
+  CHECK_EQ(dim, (*label.value).getWidth());
+  CHECK_EQ(target.getWidth(), (size_t)1);
+
+  real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
+  real* lbl =
+      useGpu_ ? tmpCpuInput_[1].value->getData() : (*label.value).getData();
+  std::vector<real> cost(numSamples, 0);
+  for (size_t i = 0; i < numSamples; ++i) {
+    for (size_t j = 0; j < dim; ++j) {
+      int index = i * dim + j;
+      real a = std::abs(lbl[index] - out[index]);
+      if (a <= delta_)
+        cost[i] += a * a / 2;
+      else
+        cost[i] += delta_ * (a - delta_ / 2);
+    }
+  }
+  target.copyFrom(cost.data(), numSamples);
+}
+
+void HuberRegressionLoss::backwardImp(Matrix& output,
+                                      Argument& label,
+                                      Matrix& outputG) {
+  size_t numSamples = output.getHeight();
+  size_t dim = output.getWidth();
+  real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
+  real* lbl =
+      useGpu_ ? tmpCpuInput_[1].value->getData() : (*label.value).getData();
+  real* grad = useGpu_ ? tmpCpuInput_[0].grad->getData() : outputG.getData();
+  for (size_t i = 0; i < numSamples; ++i) {
+    for (size_t j = 0; j < dim; ++j) {
+      int index = i * dim + j;
+      real a = lbl[index] - out[index];
+      if (std::abs(a) <= delta_)
+        grad[index] += -a;
+      else
+        grad[index] += a > 0 ? -delta_ : delta_;
+    }
+  }
+  if (useGpu_) outputG.copyFrom(grad, numSamples * dim);
+}
+
+//
+// Huber loss for robust 2-classes classification
+//
+REGISTER_LAYER(huber_classification, HuberTwoClassification);
+
+bool HuberTwoClassification::init(const LayerMap& layerMap,
+                                  const ParameterMap& parameterMap) {
+  return HuberCost::init(layerMap, parameterMap);
+}
+
+void HuberTwoClassification::forwardImp(Matrix& output,
+                                        Argument& label,
+                                        Matrix& target) {
+  HuberCost::forwardImp(output, label, target);
+  size_t numSamples = target.getHeight();
+  CHECK(label.ids);
   CHECK_EQ((*label.ids).getSize(), numSamples);
   CHECK_EQ(output.getHeight(), numSamples);
   CHECK_EQ(output.getWidth(), (size_t)1);
@@ -611,47 +680,35 @@ void HuberTwoClass::forwardImpIn(Matrix& output,
 
   real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
   int* lbl = useGpu_ ? tmpCpuInput_[1].ids->getData() : (*label.ids).getData();
-  std::vector<real> cost(numSamples);
+  std::vector<real> cost(numSamples, 0);
   for (size_t i = 0; i < numSamples; ++i) {
     int y = 2 * lbl[i] - 1;
-    if (out[i] * y < -1)
-      cost[i] = -4 * out[i] * y;
-    else if (out[i] * y < 1)
-      cost[i] = (1 - out[i] * y) * (1 - out[i] * y);
-    else
-      cost[i] = 0;
+    real a = out[i] * y;
+    if (a < -1)
+      cost[i] = -4 * a;
+    else if (a < 1)
+      cost[i] = (1 - a) * (1 - a);
   }
   target.copyFrom(cost.data(), numSamples);
 }
 
-void HuberTwoClass::backwardImp(Matrix& outputValue,
-                                Argument& label,
-                                Matrix& outputGrad) {
-  if (useGpu_) {
-    backwardImpIn(
-        *tmpCpuInput_[0].value, tmpCpuInput_[1], *tmpCpuInput_[0].grad);
-    outputGrad.copyFrom(*tmpCpuInput_[0].grad);
-  } else {
-    backwardImpIn(outputValue, label, outputGrad);
-  }
-}
-
-void HuberTwoClass::backwardImpIn(Matrix& output,
-                                  Argument& label,
-                                  Matrix& outputG) {
+void HuberTwoClassification::backwardImp(Matrix& output,
+                                         Argument& label,
+                                         Matrix& outputG) {
   size_t numSamples = output.getHeight();
-  real* out = output.getData();
-  real* grad = outputG.getData();
-  int* lbl = (*label.ids).getData();
+  real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
+  int* lbl = useGpu_ ? tmpCpuInput_[1].ids->getData() : (*label.ids).getData();
+  real* grad = useGpu_ ? tmpCpuInput_[0].grad->getData() : outputG.getData();
   for (size_t i = 0; i < numSamples; ++i) {
     int y = 2 * lbl[i] - 1;
-    if (y * out[i] < -1)
+    real a = out[i] * y;
+    if (a < -1)
       grad[i] += -4 * y;
-    else if (y * out[i] < 1)
-      grad[i] += -2 * (1 - y * out[i]) * y;
+    else if (a < 1)
+      grad[i] += -2 * (1 - a) * y;
   }
+  if (useGpu_) outputG.copyFrom(grad, numSamples);
 }
-
 /**
  * This cost layer compute the sum of its input as loss.
  * \f[

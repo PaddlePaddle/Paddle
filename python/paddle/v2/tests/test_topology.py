@@ -46,8 +46,8 @@ class TestTopology(unittest.TestCase):
         self.assertEqual(label_data_type[1].dim, 10)
 
     def test_get_layer(self):
-        pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
-        label = layer.data(name='label', type=data_type.integer_value(10))
+        pixel = layer.data(name='pixel2', type=data_type.dense_vector(784))
+        label = layer.data(name='label2', type=data_type.integer_value(10))
         hidden = layer.fc(input=pixel,
                           size=100,
                           act=conf_helps.SigmoidActivation())
@@ -56,14 +56,14 @@ class TestTopology(unittest.TestCase):
                              act=conf_helps.SoftmaxActivation())
         cost = layer.classification_cost(input=inference, label=label)
         topo = topology.Topology(cost)
-        pixel_layer = topo.get_layer("pixel")
-        label_layer = topo.get_layer("label")
+        pixel_layer = topo.get_layer("pixel2")
+        label_layer = topo.get_layer("label2")
         self.assertEqual(pixel_layer, pixel)
         self.assertEqual(label_layer, label)
 
     def test_parse(self):
-        pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
-        label = layer.data(name='label', type=data_type.integer_value(10))
+        pixel = layer.data(name='pixel3', type=data_type.dense_vector(784))
+        label = layer.data(name='label3', type=data_type.integer_value(10))
         hidden = layer.fc(input=pixel,
                           size=100,
                           act=conf_helps.SigmoidActivation())

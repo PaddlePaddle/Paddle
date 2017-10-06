@@ -1,4 +1,8 @@
 #!/bin/bash
-set -e
-docker build . -t paddle_build_doc
-docker run --rm -v $PWD/../../../../:/paddle -v $PWD:/output paddle_build_doc
+docker run --rm \
+       -v $(git rev-parse --show-toplevel):/paddle \
+       -e "WITH_GPU=OFF" \
+       -e "WITH_AVX=ON" \
+       -e "WITH_DOC=ON" \
+       -e "WOBOQ=ON" \
+       ${1:-"paddledev/paddle:dev"}

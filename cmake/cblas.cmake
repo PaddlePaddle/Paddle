@@ -5,7 +5,7 @@
 # If any cblas implementation found, the following variable will be set.
 #    CBLAS_PROVIDER  # one of MKL, ATLAS, OPENBLAS, REFERENCE
 #    CBLAS_INC_DIR   # the include directory for cblas.
-#    CBLAS_LIBS      # a list of libraries should be linked by paddle. 
+#    CBLAS_LIBS      # a list of libraries should be linked by paddle.
 #                    # Each library should be full path to object file.
 #
 # User should set one of MKL_ROOT, ATLAS_ROOT, OPENBLAS_ROOT, REFERENCE_CBLAS_ROOT
@@ -15,39 +15,57 @@
 
 set(CBLAS_FOUND OFF)
 
-## Find MKL First.
-set(INTEL_ROOT "/opt/intel" CACHE PATH "Folder contains intel libs")
-set(MKL_ROOT ${INTEL_ROOT}/mkl CACHE PATH "Folder contains MKL")
+## Find MKLML First.
+if(WITH_MKLML AND MKLML_INC_DIR AND MKLML_LIB)
+  set(CBLAS_FOUND ON)
+  set(CBLAS_PROVIDER MKLML)
+  set(CBLAS_INC_DIR ${MKLML_INC_DIR})
+  set(CBLAS_LIBRARIES ${MKLML_LIB})
+
+  add_definitions(-DPADDLE_USE_MKLML)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found cblas and lapack in MKLML "
+    "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  return()
+endif()
+
+## Then find MKL.
+set(INTEL_MKL_ROOT "/opt/intel/mkl" CACHE PATH "Folder contains intel mkl libs")
+set(MKL_ROOT $ENV{MKL_ROOT} CACHE PATH "Folder contains env MKL")
+
+set(MKL_INCLUDE_SEARCH_PATHS
+  ${MKL_ROOT}/include
+  ${INTEL_MKL_ROOT}/include)
+set(MKL_LIB_SEARCH_PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64
+  ${INTEL_MKL_ROOT}/lib
+  ${INTEL_MKL_ROOT}/lib/intel64)
 
 find_path(MKL_INC_DIR mkl.h PATHS
-  ${MKL_ROOT}/include)
+  ${MKL_INCLUDE_SEARCH_PATHS})
 find_path(MKL_LAPACK_INC_DIR mkl_lapacke.h PATHS
-  ${MKL_ROOT}/include)
+  ${MKL_INCLUDE_SEARCH_PATHS})
 find_library(MKL_CORE_LIB NAMES mkl_core PATHS
-  ${MKL_ROOT}/lib
-  ${MKL_ROOT}/lib/intel64)
+  ${MKL_LIB_SEARCH_PATHS})
 find_library(MKL_SEQUENTIAL_LIB NAMES mkl_sequential PATHS
-  ${MKL_ROOT}/lib
-  ${MKL_ROOT}/lib/intel64)
+  ${MKL_LIB_SEARCH_PATHS})
 find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
-  ${MKL_ROOT}/lib
-  ${MKL_ROOT}/lib/intel64)
+  ${MKL_LIB_SEARCH_PATHS})
 
-
-if(MKL_INC_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
-  set(CBLAS_PROVIDER MKL)
-  set(CBLAS_INC_DIR ${MKL_INC_DIR})
-  set(CBLAS_LIBRARIES ${MKL_INTEL_LP64}
-          ${MKL_SEQUENTIAL_LIB}
-          ${MKL_CORE_LIB})
-  add_definitions(-DPADDLE_USE_MKL)
-  message(STATUS "Found MKL (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+if(MKL_LAPACK_INC_DIR AND MKL_INC_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
   set(CBLAS_FOUND ON)
-  if(${MKL_LAPACK_INC_DIR})
-    add_definitions(-DPADDLE_USE_LAPACK)
-    message(STATUS "Found lapack in MKL (include: ${MKL_LAPACK_INC_DIR})")
-  endif()
-  return() # return file.
+  set(CBLAS_PROVIDER MKL)
+  set(CBLAS_INC_DIR ${MKL_INC_DIR} ${MKL_LAPACK_INC_DIR})
+  set(CBLAS_LIBRARIES ${MKL_INTEL_LP64} ${MKL_SEQUENTIAL_LIB} ${MKL_CORE_LIB})
+
+  add_definitions(-DPADDLE_USE_MKL)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found MKL (include: ${MKL_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found lapack in MKL (include: ${MKL_LAPACK_INC_DIR})")
+  return()
 endif()
 
 ## Then find atlas.
@@ -63,26 +81,26 @@ set(ATLAS_LIB_SEARCH_PATHS
         /usr/lib/atlas
         /usr/lib/atlas-base   # special for ubuntu 14.04.
     )
-find_path(ATLAS_INC_DIR NAMES cblas.h 
+find_path(ATLAS_INC_DIR NAMES cblas.h
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
 find_path(ATLAS_CLAPACK_INC_DIR NAMES clapack.h
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
-find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3 
+find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
-find_library(ATLAS_LIB NAMES lapack_atlas liblapack_atlas.so.3
+find_library(ATLAS_CLAPACK_LIB NAMES lapack_atlas liblapack_atlas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
 
-if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB AND NOT CBLAS_FOUND)
-  set(CBLAS_PROVIDER ATLAS)
-  set(CBLAS_INC_DIR ${ATLAS_INC_DIR})
-  set(CBLAS_LIBRARIES ${ATLAS_LIB} ${ATLAS_CBLAS_LIB})
-  add_definitions(-DPADDLE_USE_ATLAS)  
-  message(STATUS "Found ATLAS (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+if(ATLAS_CLAPACK_INC_DIR AND ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_CLAPACK_LIB)
   set(CBLAS_FOUND ON)
-  if(ATLAS_CLAPACK_INC_DIR)
-    add_definitions(-DPADDLE_USE_LAPACK)
-    message(STATUS "Found lapack in ATLAS (include: ${ATLAS_CLAPACK_INC_DIR})")
-  endif()
+  set(CBLAS_PROVIDER ATLAS)
+  set(CBLAS_INC_DIR ${ATLAS_INC_DIR} ${ATLAS_CLAPACK_INC_DIR})
+  set(CBLAS_LIBRARIES ${ATLAS_CLAPACK_LIB} ${ATLAS_CBLAS_LIB})
+
+  add_definitions(-DPADDLE_USE_ATLAS)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found ATLAS (include: ${ATLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found lapack in ATLAS (include: ${ATLAS_CLAPACK_INC_DIR})")
   return()
 endif()
 
@@ -107,16 +125,17 @@ find_path(OPENBLAS_LAPACKE_INC_DIR NAMES lapacke.h
 find_library(OPENBLAS_LIB NAMES openblas
   PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
 
-if(OPENBLAS_INC_DIR AND OPENBLAS_LIB)
-  set(CBLAS_PROVIDER OPENBLAS)
-  set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR})
-  set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
-  message(STATUS "Found OpenBLAS (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_LIB)
   set(CBLAS_FOUND ON)
-  if(OPENBLAS_LAPACKE_INC_DIR)
-    add_definitions(-DPADDLE_USE_LAPACK)
-    message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
-  endif()
+  set(CBLAS_PROVIDER OPENBLAS)
+  set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
+  set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
+
+  add_definitions(-DPADDLE_USE_OPENBLAS)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
   return()
 endif()
 
@@ -124,7 +143,7 @@ endif()
 ## Then find the reference-cblas.  www.netlib.org/blas/
 
 
-set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH 
+set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH
   "Folder contains reference-cblas")
 set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS
   ${REFERENCE_CBLAS_ROOT}/include
@@ -145,9 +164,17 @@ find_library(REFERENCE_CBLAS_LIBRARY NAMES cblas PATHS
         ${REFERENCE_CBLAS_LIB_SEARCH_PATHS})
 
 if (REFERENCE_CBLAS_INCLUDE_DIR AND REFERENCE_CBLAS_LIBRARY)
+  set(CBLAS_FOUND ON)
   set(CBLAS_PROVIDER REFERENCE)
   set(CBLAS_INC_DIR ${REFERENCE_CBLAS_INCLUDE_DIR})
   set(CBLAS_LIBRARIES ${REFERENCE_CBLAS_LIBRARY})
-  message(STATUS "Found reference-cblas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBS})")
+  add_definitions(-DPADDLE_USE_REFERENCE_CBLAS)
+  message(STATUS "Found reference-cblas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+endif()
+
+if(IOS_USE_VECLIB_FOR_BLAS AND VECLIB_FOUND)
   set(CBLAS_FOUND ON)
+  set(CBLAS_PROVIDER vecLib)
+  set(CBLAS_INC_DIR ${VECLIB_INC_DIR})
+  add_definitions(-DPADDLE_USE_VECLIB)
 endif()

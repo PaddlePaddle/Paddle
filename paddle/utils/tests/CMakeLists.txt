@@ -13,6 +13,6 @@ add_executable(
 link_paddle_exe(test_CustomStackTracePrint)
 if(NOT APPLE)
     add_test(NAME test_CustomStackTracePrint
-        COMMAND ${PROJ_ROOT}/paddle/utils/tests/test_CustomStackTracePrint.sh
+        COMMAND ${PADDLE_SOURCE_DIR}/paddle/utils/tests/test_CustomStackTracePrint.sh
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()

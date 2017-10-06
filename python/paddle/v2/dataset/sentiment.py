@@ -26,9 +26,9 @@ from itertools import chain
 import nltk
 from nltk.corpus import movie_reviews
 
-import common
+import paddle.v2.dataset.common
 
-__all__ = ['train', 'test', 'get_word_dict']
+__all__ = ['train', 'test', 'get_word_dict', 'convert']
 NUM_TRAINING_INSTANCES = 1600
 NUM_TOTAL_INSTANCES = 2000
 
@@ -39,12 +39,13 @@ def download_data_if_not_yet():
     """
     try:
         # make sure that nltk can find the data
-        if common.DATA_HOME not in nltk.data.path:
-            nltk.data.path.append(common.DATA_HOME)
+        if paddle.v2.dataset.common.DATA_HOME not in nltk.data.path:
+            nltk.data.path.append(paddle.v2.dataset.common.DATA_HOME)
         movie_reviews.categories()
     except LookupError:
         print "Downloading movie_reviews data set, please wait....."
-        nltk.download('movie_reviews', download_dir=common.DATA_HOME)
+        nltk.download(
+            'movie_reviews', download_dir=paddle.v2.dataset.common.DATA_HOME)
         print "Download data set success....."
         print "Path is " + nltk.data.find('corpora/movie_reviews').path
 
@@ -128,4 +129,13 @@ def test():
 
 
 def fetch():
-    nltk.download('movie_reviews', download_dir=common.DATA_HOME)
+    nltk.download(
+        'movie_reviews', download_dir=paddle.v2.dataset.common.DATA_HOME)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    paddle.v2.dataset.common.convert(path, train, 1000, "sentiment_train")
+    paddle.v2.dataset.common.convert(path, test, 1000, "sentiment_test")

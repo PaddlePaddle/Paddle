@@ -16,7 +16,8 @@ import paddle.trainer.PyDataProvider2 as pydp2
 
 import_list = [
     nm for nm in dir(pydp2)
-    if '_' in nm and nm[0] != '_' and ('value' in nm or 'vector' in nm)
+    if '_' in nm and nm[0] != '_' and ('value' in nm or 'vector' in nm or
+                                       'array' in nm)
 ]
 import_list.extend(['InputType'])
 

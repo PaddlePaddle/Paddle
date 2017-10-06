@@ -25,7 +25,9 @@ function(target_circle_link_libraries TARGET_NAME)
             endif()
         endforeach()
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-            list(APPEND LIBS "-undefined dynamic_lookup")
+            if(NOT IOS_ENABLE_BITCODE)
+                list(APPEND LIBS "-undefined dynamic_lookup")
+            endif()
         endif()
         list(REVERSE libsInArgn)
         target_link_libraries(${TARGET_NAME}
@@ -84,6 +86,7 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
+        paddle_optimizer
         ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
@@ -93,6 +96,10 @@ function(link_paddle_exe TARGET_NAME)
     if(ANDROID)
         target_link_libraries(${TARGET_NAME} log)
     endif(ANDROID)
+
+    if(WITH_MKLDNN AND WITH_MKLML AND MKLDNN_IOMP_DIR)
+      target_link_libraries(${TARGET_NAME} "-L${MKLDNN_IOMP_DIR} -liomp5 -Wl,--as-needed")
+    endif()
 
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
@@ -117,7 +124,6 @@ endfunction()
 macro(add_unittest_without_exec TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
     link_paddle_test(${TARGET_NAME})
-    add_style_check_target(${TARGET_NAME} ${ARGN})
 endmacro()
 
 # add_unittest
@@ -138,17 +144,23 @@ macro(add_simple_unittest TARGET_NAME)
 endmacro()
 
 # Creates C resources file from files in given resource file
-function(create_resources res_file output)
-    # Create empty output file
-    file(WRITE ${output} "")
-    # Get short filename
-    string(REGEX MATCH "([^/]+)$" filename ${res_file})
-    # Replace filename spaces & extension separator for C compatibility
-    string(REGEX REPLACE "\\.| |-" "_" filename ${filename})
-    # Read hex data from file
-    file(READ ${res_file} filedata HEX)
-    # Convert hex data for C compatibility
-    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
-    # Append data to output file
-    file(APPEND ${output} "const unsigned char ${filename}[] = {${filedata}0};\nconst unsigned ${filename}_size = sizeof(${filename});\n")
+function(create_resources res_file output_file)
+  add_custom_command(
+    OUTPUT ${output_file}
+    COMMAND python ARGS ${PADDLE_SOURCE_DIR}/cmake/make_resource.py ${res_file} ${output_file}
+    DEPENDS ${res_file} ${PADDLE_SOURCE_DIR}/cmake/make_resource.py)
+endfunction()
+
+
+# Create a python unittest using run_python_tests.sh,
+# which takes care of making correct running environment
+function(add_python_test TEST_NAME)
+    foreach(arg ${ARGN})
+        get_filename_component(py_fn ${arg} NAME_WE)
+        set(TRG_NAME ${TEST_NAME}_${py_fn})
+        add_test(NAME ${TRG_NAME}
+                COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
+                python2 ${arg}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endforeach()
 endfunction()

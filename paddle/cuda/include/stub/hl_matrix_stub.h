@@ -99,4 +99,38 @@ inline void hl_matrix_collect_shared_bias(real* B_d,
 inline void hl_matrix_rotate(
     real* mat, real* matRot, int dimM, int dimN, bool clockWise) {}
 
+inline void hl_matrix_vol2Col(const real* dataSrc,
+                              int channels,
+                              int depth,
+                              int height,
+                              int width,
+                              int filterD,
+                              int filterH,
+                              int filterW,
+                              int strideD,
+                              int strideH,
+                              int strideW,
+                              int paddingD,
+                              int paddingH,
+                              int paddingW,
+                              real* dataDst) {}
+
+inline void hl_matrix_col2Vol(real* dataDst,
+                              int channels,
+                              int depth,
+                              int height,
+                              int width,
+                              int filterD,
+                              int filterH,
+                              int filterW,
+                              int strideD,
+                              int strideH,
+                              int strideW,
+                              int paddingD,
+                              int paddingH,
+                              int paddingW,
+                              const real* dataSrc,
+                              real alpha,
+                              real beta) {}
+
 #endif  // HL_MATRIX_STUB_H_

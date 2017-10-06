@@ -9,7 +9,7 @@ layers {
   name: "__first_seq_0__"
   type: "seqlastins"
   size: 30
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "data"
   }
@@ -21,7 +21,7 @@ layers {
   name: "__first_seq_1__"
   type: "seqlastins"
   size: 30
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "data"
   }
@@ -33,7 +33,7 @@ layers {
   name: "__last_seq_0__"
   type: "seqlastins"
   size: 30
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "data"
   }
@@ -44,7 +44,7 @@ layers {
   name: "__last_seq_1__"
   type: "seqlastins"
   size: 30
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "data"
   }
@@ -55,7 +55,7 @@ layers {
   name: "__first_seq_2__"
   type: "seqlastins"
   size: 30
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "data"
   }
@@ -67,7 +67,7 @@ layers {
   name: "__last_seq_2__"
   type: "seqlastins"
   size: 30
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "data"
   }

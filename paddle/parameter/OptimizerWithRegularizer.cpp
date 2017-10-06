@@ -131,7 +131,8 @@ ParameterOptimizer* OptimizerWithRegularizer::create(
     bool inPserver) {
   ParameterOptimizer* optimizer =
       ParameterOptimizer::create(optConfig, inPserver);
-  if (paraConfig.gradient_clipping_threshold() > 0.0f &&
+  if ((optConfig.gradient_clipping_threshold() > 0.0f ||
+       paraConfig.gradient_clipping_threshold() > 0.0f) &&
       !dynamic_cast<AddOptimizer*>(optimizer)) {
     optimizer = new OptimizerWithGradientClipping(optConfig, optimizer);
   }

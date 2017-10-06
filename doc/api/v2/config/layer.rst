@@ -59,6 +59,11 @@ context_projection
 ..  autoclass:: paddle.v2.layer.context_projection
     :noindex:
 
+row_conv
+--------
+..  autoclass:: paddle.v2.layer.row_conv
+    :noindex:
+
 Image Pooling Layer
 ===================
 
@@ -99,6 +104,11 @@ cross_channel_norm
 ------------------
 ..  autoclass:: paddle.v2.layer.cross_channel_norm
     :noindex:
+
+row_l2_norm
+-----------
+..  autoclass:: paddle.v2.layer.row_l2_norm
+    :noindex:
     
 Recurrent Layers
 ================
@@ -130,7 +140,7 @@ recurrent_group
 ---------------
 ..  autoclass:: paddle.v2.layer.recurrent_group
     :noindex:
-    
+
 lstm_step
 ---------
 ..  autoclass:: paddle.v2.layer.lstm_step
@@ -145,12 +155,12 @@ beam_search
 ------------
 ..  autoclass:: paddle.v2.layer.beam_search
     :noindex:
-    
+
 get_output
 ----------
 ..  autoclass:: paddle.v2.layer.get_output
     :noindex:
-    
+
 Mixed Layer
 ===========
 
@@ -193,6 +203,10 @@ identity_projection
 ..  autoclass:: paddle.v2.layer.identity_projection
     :noindex:
 
+slice_projection
+-------------------
+..  autoclass:: paddle.v2.layer.slice_projection
+    :noindex:
 
 table_projection
 ----------------
@@ -203,9 +217,14 @@ trans_full_matrix_projection
 ----------------------------
 ..  autoclass:: paddle.v2.layer.trans_full_matrix_projection
     :noindex:
-    
+
 Aggregate Layers
 ================
+
+AggregateLevel
+--------------
+..  autoclass:: paddle.v2.layer.AggregateLevel
+    :noindex:
 
 ..  _api_v2.layer_pooling:
 
@@ -238,6 +257,21 @@ seq_concat
 ..  autoclass:: paddle.v2.layer.seq_concat
     :noindex:
 
+seq_slice
+---------
+..  autoclass:: paddle.v2.layer.seq_slice
+    :noindex:
+
+kmax_sequence_score
+-------------------
+..  autoclass:: paddle.v2.layer.kmax_sequence_score
+    :noindex:
+
+sub_nested_seq
+--------------
+..  autoclass:: paddle.v2.layer.sub_nested_seq
+    :noindex:
+
 Reshaping Layers
 ================
 
@@ -247,6 +281,11 @@ block_expand
     :noindex:
 
 ..  _api_v2.layer_expand:
+
+ExpandLevel
+-----------
+..  autoclass:: paddle.v2.layer.ExpandLevel
+    :noindex:
 
 expand
 ------
@@ -301,6 +340,16 @@ scaling
 ..  autoclass:: paddle.v2.layer.scaling
     :noindex:
 
+clip
+----
+..  autoclass:: paddle.v2.layer.clip
+    :noindex:
+
+resize
+------
+..  autoclass:: paddle.v2.layer.resize
+    :noindex:
+
 slope_intercept
 ---------------
 ..  autoclass:: paddle.v2.layer.slope_intercept
@@ -323,6 +372,11 @@ trans
 ..  autoclass:: paddle.v2.layer.trans
     :noindex:
 
+scale_shift
+-----------
+..  autoclass:: paddle.v2.layer.scale_shift
+    :noindex:
+
 Sampling Layers
 ===============
 
@@ -335,6 +389,12 @@ sampling_id
 -----------
 ..  autoclass:: paddle.v2.layer.sampling_id
     :noindex:
+
+multiplex
+---------
+..  autoclass:: paddle.v2.layer.multiplex
+    :noindex:
+
 
 Slicing and Joining Layers
 ==========================
@@ -364,9 +424,14 @@ multi_binary_label_cross_entropy_cost
 ..  autoclass:: paddle.v2.layer.multi_binary_label_cross_entropy_cost
     :noindex:
 
-huber_cost
-----------
-..  autoclass:: paddle.v2.layer.huber_cost
+huber_regression_cost
+-------------------------
+..  autoclass:: paddle.v2.layer.huber_regression_cost
+    :noindex:
+
+huber_classification_cost
+-------------------------
+..  autoclass:: paddle.v2.layer.huber_classification_cost
     :noindex:
 
 lambda_cost
@@ -374,9 +439,9 @@ lambda_cost
 ..  autoclass:: paddle.v2.layer.lambda_cost
     :noindex:
 
-mse_cost
+square_error_cost
 --------
-..  autoclass:: paddle.v2.layer.mse_cost
+..  autoclass:: paddle.v2.layer.square_error_cost
     :noindex:
 
 rank_cost
@@ -419,10 +484,49 @@ hsigmoid
 ..  autoclass:: paddle.v2.layer.hsigmoid
     :noindex:
 
-Check Layer 
+smooth_l1_cost
+--------------
+..  autoclass:: paddle.v2.layer.smooth_l1_cost
+    :noindex:
+
+multibox_loss
+--------------
+..  autoclass:: paddle.v2.layer.multibox_loss
+    :noindex:
+
+Check Layer
 ============
 
 eos
 ---
 ..  autoclass:: paddle.v2.layer.eos
+    :noindex:
+
+Miscs
+=====
+
+dropout
+--------------
+..  autoclass:: paddle.v2.layer.dropout
+    :noindex:
+
+Activation with learnable parameter
+===================================
+
+prelu
+--------
+..  autoclass:: paddle.v2.layer.prelu
+    :noindex:
+
+gated_unit
+-----------
+..  autoclass:: paddle.v2.layer.gated_unit
+    :noindex:
+
+Detection output Layer
+======================
+
+detection_output
+----------------
+..  autoclass:: paddle.v2.layer.detection_output
     :noindex:

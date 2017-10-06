@@ -202,7 +202,7 @@ void NeuralNetwork::prefetch(const std::vector<Argument>& inArgs) {
         auto mat = dynamic_cast<SparsePrefetchRowCpuMatrix*>(
             para->getMat(PARAMETER_VALUE).get());
         para->clearGradient();
-        mat->clearIndices();
+        if (mat) mat->clearIndices();
       }
     }
   }
@@ -241,11 +241,14 @@ void NeuralNetwork::forward(const std::vector<Argument>& inArgs,
     dataLayers_[i]->setData(inArgs[i]);
   }
 
+  gLayerStackTrace.set_stage(true);
+
   {
     for (auto& layer : layers_) {
       REGISTER_TIMER_INFO("ForwardTimer", layer->getName().c_str());
       gLayerStackTrace.push(layer->getName());
       layer->forward(passType);
+      gLayerStackTrace.pop(layer->getName());
     }
   }
 
@@ -253,9 +256,6 @@ void NeuralNetwork::forward(const std::vector<Argument>& inArgs,
   outArgs->reserve(outputLayers_.size());
   for (auto& layer : outputLayers_) {
     outArgs->push_back(layer->getOutput());
-  }
-  if (passType == PASS_TEST) {
-    gLayerStackTrace.clear();
   }
 }
 
@@ -283,9 +283,10 @@ void NeuralNetwork::getState(MachineState& machineState) {
 }
 
 void NeuralNetwork::backward(const UpdateCallback& callback) {
-  gLayerStackTrace.pop("");  // tell layer trace is during backward.
+  gLayerStackTrace.set_stage(false);
   FOR_EACH_R(layer, layers_) {
     REGISTER_TIMER_INFO("BackwardTimer", (*layer)->getName().c_str());
+    gLayerStackTrace.push((*layer)->getName());
     if ((*layer)->needGradient()) {
       (*layer)->backward(callback);
     }
@@ -308,35 +309,35 @@ public:
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
     evaluators_.emplace_back(std::move(evaluator));
   }
-  virtual void start() {
+  void start() override {
     for (auto& evaluator : evaluators_) {
       evaluator->start();
     }
   }
 
-  virtual void finish() {
+  void finish() override {
     for (auto& evaluator : evaluators_) {
       evaluator->finish();
     }
   }
 
-  virtual void eval(const NeuralNetwork& nn) {
+  void eval(const NeuralNetwork& nn) override {
     for (auto& evaluator : evaluators_) {
       evaluator->eval(nn);
     }
   }
-  virtual real evalImp(std::vector<Argument>& arguments) {
+  real evalImp(std::vector<Argument>& arguments) override {
     (void)arguments;
     return -1;
   }
-  virtual void printStats(std::ostream& os) const {
+  void printStats(std::ostream& os) const override {
     for (auto& evaluator : evaluators_) {
       evaluator->printStats(os);
       os << ' ';
     }
   }
 
-  virtual void distributeEval(ParameterClient2* client) {
+  void distributeEval(ParameterClient2* client) override {
     for (auto& evaluator : evaluators_) {
       evaluator->distributeEval(client);
     }
@@ -351,7 +352,7 @@ public:
    * @brief getNames will return all inside evaluators' names.
    * @param names [out]: return names.
    */
-  void getNames(std::vector<std::string>* names) {
+  void getNames(std::vector<std::string>* names) override {
     for (auto& eval : evaluators_) {
       eval->getNames(names);
     }
@@ -360,7 +361,7 @@ public:
   /**
    * @brief getValue could get all inside evaluators' value.
    */
-  real getValue(const std::string& name, Error* err) const {
+  real getValue(const std::string& name, Error* err) const override {
     return this->getMethodHelper<real>(
         name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
           return eval->getValue(name, err);
@@ -370,7 +371,7 @@ public:
   /**
    * @brief getType could get all inside evaluators' type.
    */
-  std::string getType(const std::string& name, Error* err) const {
+  std::string getType(const std::string& name, Error* err) const override {
     return this->getMethodHelper<std::string>(
         name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
           return eval->getType(name, err);
@@ -393,6 +394,30 @@ private:
     *err = Error("No such key %s", name.c_str());
     return T();
   }
+};
+
+class SubnetEvaluator : public CombinedEvaluator {
+public:
+  SubnetEvaluator(const std::string& layerName,
+                  std::unique_ptr<Evaluator>&& evaluator)
+      : layerName_(layerName) {
+    addEvaluator(std::move(evaluator));
+  }
+  void eval(const NeuralNetwork& nn) override {
+    const LayerPtr& layer = nn.getLayer(layerName_);
+    CHECK(layer) << "Nonexisted layer: " << layerName_ << " in submodel "
+                 << nn.getName();
+    bool accessed = false;
+    layer->accessSubNetwork([this, &accessed](NeuralNetwork& subnet) {
+      subnet.eval(evaluators_[0].get());
+      accessed = true;
+    });
+    CHECK(accessed) << "There is no subnetwork for layer " << layerName_
+                    << " in submodel " << nn.getName();
+  }
+
+protected:
+  std::string layerName_;
 };
 
 Evaluator* NeuralNetwork::makeEvaluator() const {
@@ -420,6 +445,15 @@ Evaluator* NeuralNetwork::makeEvaluator() const {
             Evaluator::create(*thisEvalConfig));
         combinedEvaluator->addEvaluator(std::move(evaluator));
       }
+    }
+    for (auto& layer : layers_) {
+      layer->accessSubNetwork(
+          [layer, combinedEvaluator](NeuralNetwork& subnet) {
+            std::unique_ptr<Evaluator> subEvaluator(new SubnetEvaluator(
+                layer->getName(),
+                std::unique_ptr<Evaluator>(subnet.makeEvaluator())));
+            combinedEvaluator->addEvaluator(std::move(subEvaluator));
+          });
     }
   } else {
     for (const EvaluatorConfig& evalConfig : config_.evaluators()) {

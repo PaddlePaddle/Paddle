@@ -14,19 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/parameter/Argument.h>
 #include <functional>
 #include <memory>
 #include "ModelConfig.pb.h"
 #include "paddle/function/Function.h"
+#include "paddle/gserver/activations/ActivationFunction.h"
 #include "paddle/math/CpuSparseMatrix.h"
+#include "paddle/parameter/Argument.h"
 #include "paddle/parameter/Parameter.h"
+#include "paddle/parameter/Weight.h"
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Util.h"
-
-#include <paddle/parameter/ParallelParameter.h>
-#include <paddle/parameter/Weight.h>
-#include "paddle/gserver/activations/ActivationFunction.h"
 
 /// Macro for registering a layer type.
 /// Example: REGISTER_LAYER(crf_error, CRFDecodingErrorLayer);
@@ -51,6 +49,12 @@ struct LayerState {
 };
 typedef std::shared_ptr<LayerState> LayerStatePtr;
 
+/// Paddle device ID, MKLDNN is -2, CPU is -1
+enum PADDLE_DEVICE_ID {
+  MKLDNN_DEVICE = -2,
+  CPU_DEVICE = -1,
+};
+
 /**
  * @brief Base class for layer.
  * Define necessary variables and functions for every layer.
@@ -61,7 +65,7 @@ protected:
   LayerConfig config_;
   /// whether to use GPU
   bool useGpu_;
-  /// Device Id. CPU is -1, and GPU is 0, 1, 2 ...
+  /// Device Id. MKLDNN is -2, CPU is -1, and GPU is 0, 1, 2 ...
   int deviceId_;
   /// Input layers
   std::vector<LayerPtr> inputLayers_;
@@ -79,6 +83,7 @@ protected:
   Argument output_;
   /// Several outputs stored on different devices, used in 'parallel_nn' case,
   /// and record them by deviceId_.
+  /// Also used in 'use_mkldnn' case.
   std::vector<Argument> outputOtherDevice_;
   /// If there are several outputs, map them by each name.
   std::map<std::string, Argument*> outputMap_;
@@ -108,9 +113,9 @@ protected:
 
 public:
   /**
-    * Wait until all input value ready.
-    * Called before Layer::forward() function.
-    */
+   * Wait until all input value ready.
+   * Called before Layer::forward() function.
+   */
   virtual void waitInputValue();
 
   /**
@@ -120,9 +125,9 @@ public:
   virtual void copyOutputToOtherDevice();
 
   /**
-    * Wait until all output grad ready and merge them to output_.grad.
-    * Called before Layer::backward() function.
-    */
+   * Wait until all output grad ready and merge them to output_.grad.
+   * Called before Layer::backward() function.
+   */
   virtual void waitAndMergeOutputGrad();
 
   /**
@@ -175,6 +180,13 @@ protected:
   }
 
   /**
+   * Get the argument of input layer with deviceId.
+   */
+  const Argument& getInput(size_t inputIndex, int deviceId) const {
+    return inputLayers_[inputIndex]->getOutput(deviceId);
+  }
+
+  /**
    * Get the forward-input value.
    */
   const MatrixPtr& getInputValue(int inputIndex) {
@@ -189,6 +201,13 @@ protected:
   }
 
   /**
+   * Get the forward-input value with deviceId.
+   */
+  const MatrixPtr& getInputValue(int inputIndex, int deviceId) {
+    return inputLayers_[inputIndex]->getOutput(deviceId).value;
+  }
+
+  /**
    * Get the forward-input grad.
    */
   const MatrixPtr& getInputGrad(int inputIndex) {
@@ -200,6 +219,13 @@ protected:
    */
   const MatrixPtr& getInputGrad(const Layer& inputLayer) {
     return inputLayer.getOutput(deviceId_).grad;
+  }
+
+  /**
+   * Get the forward-input grad.
+   */
+  const MatrixPtr& getInputGrad(int inputIndex, int deviceId) {
+    return inputLayers_[inputIndex]->getOutput(deviceId).grad;
   }
 
   /**

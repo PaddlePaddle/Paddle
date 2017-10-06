@@ -489,6 +489,13 @@ public:
   void clip(T p1, T p2);
 
   /**
+   * this = b < low ? 0 : 1
+   *
+   * this = b > high ? 0 : 1
+   */
+  void clipDerivative(BaseMatrixT& b, T p1, T p2);
+
+  /**
    * @code
    * a = a > p ? 1.0f : 0.0f
    * @endcode
@@ -758,7 +765,7 @@ public:
                  T p3);           // decayRate
 
   /// apply L1/L2 to *this*
-  void applyL1(T learningRate, T decayRate);
+  virtual void applyL1(T learningRate, T decayRate);
   void applyL1(BaseMatrixT& lr, T learningRate, T decayRate);
   void applyL2(T learningRate, T decayRate);
   void applyL2(BaseMatrixT& lr, T learningRate, T decayRate);

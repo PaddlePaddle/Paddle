@@ -29,7 +29,7 @@ Fully connected layer takes a dense input vector with dimension :math:`D_i`. It 
 
 where :math:`f(.)` is an nonlinear *activation* function, such as sigmoid, tanh, and Relu.
 
-The transformation matrix :math:`W` and bias vector :math:`b` are the *parameters* of the layer. The *parameters* of a layer are learned during training in the *backward pass*. The backward pass computes the gradients of the output function with respect to all parameters and inputs. The optimizer can use chain rule to compute the gradients of the loss function with respect to each parameter. 
+The transformation matrix :math:`W` and bias vector :math:`b` are the *parameters* of the layer. The *parameters* of a layer are learned during training in the *backward pass*. The backward pass computes the gradients of the output function with respect to all parameters and inputs. The optimizer can use chain rule to compute the gradients of the loss function with respect to each parameter.
 
 Suppose our loss function is :math:`c(y)`, then
 
@@ -37,7 +37,7 @@ Suppose our loss function is :math:`c(y)`, then
 
    \frac{\partial c(y)}{\partial x} = \frac{\partial c(y)}{\partial y} \frac{\partial y}{\partial x}
 
-Suppose :math:`z = f(W^T x + b)`, then
+Suppose :math:`z = W^T x + b`, then
 
 .. math::
 
@@ -48,7 +48,7 @@ This derivative can be automatically computed by our base layer class.
 Then, for fully connected layer, we need to compute:
 
 .. math::
-  
+
    \frac{\partial z}{\partial x} = W, \frac{\partial z_j}{\partial W_{ij}} = x_i, \frac{\partial z}{\partial b} = \mathbf 1
 
 where :math:`\mathbf 1` is an all one vector, :math:`W_{ij}` is the number at the i-th row and j-th column of the matrix :math:`W`, :math:`z_j` is the j-th component of the vector :math:`z`, and :math:`x_i` is the i-th component of the vector :math:`x`.
@@ -322,7 +322,7 @@ All the gradient check unit tests are located in :code:`paddle/gserver/tests/tes
                       /* weight */ true);
       }
     }
-    
+
 If you are creating a new file for the test, such as :code:`paddle/gserver/tests/testFCGrad.cpp`, you need to add the file to :code:`paddle/gserver/tests/CMakeLists.txt`. An example is given below. All the unit tests will run when you execute the command :code:`make tests`. Notice that some layers might need high accuracy for the gradient check unit tests to work well. You need to configure :code:`WITH_DOUBLE` to `ON` when configuring cmake.
 
 .. code-block:: bash

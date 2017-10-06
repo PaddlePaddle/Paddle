@@ -21,7 +21,7 @@ parse training set and test set into paddle reader creators.
 
 import numpy as np
 import os
-from common import download
+import paddle.v2.dataset.common
 
 __all__ = ['train', 'test']
 
@@ -29,7 +29,7 @@ URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/housing/housing
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
     'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
-    'PTRATIO', 'B', 'LSTAT'
+    'PTRATIO', 'B', 'LSTAT', 'convert'
 ]
 
 UCI_TRAIN_DATA = None
@@ -82,7 +82,7 @@ def train():
     :rtype: callable
     """
     global UCI_TRAIN_DATA
-    load_data(download(URL, 'uci_housing', MD5))
+    load_data(paddle.v2.dataset.common.download(URL, 'uci_housing', MD5))
 
     def reader():
         for d in UCI_TRAIN_DATA:
@@ -102,7 +102,7 @@ def test():
     :rtype: callable
     """
     global UCI_TEST_DATA
-    load_data(download(URL, 'uci_housing', MD5))
+    load_data(paddle.v2.dataset.common.download(URL, 'uci_housing', MD5))
 
     def reader():
         for d in UCI_TEST_DATA:
@@ -112,4 +112,12 @@ def test():
 
 
 def fetch():
-    download(URL, 'uci_housing', MD5)
+    paddle.v2.dataset.common.download(URL, 'uci_housing', MD5)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    paddle.v2.dataset.common.convert(path, train(), 1000, "uci_housing_train")
+    paddle.v2.dataset.common.convert(path, test(), 1000, "uci_houseing_test")

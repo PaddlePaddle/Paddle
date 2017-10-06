@@ -25,56 +25,59 @@ enum ParameterInitStrategy {
 }
 
 message ParameterUpdaterHookConfig {
+  // hook type such as  'pruning'
   required string type = 1;
-  optional string purning_mask_filename = 2;
+  // this represents the ratio of zero element to be set by the Parameter
+  optional double sparsity_ratio = 2 [ default = 0.6 ];
 }
 
 message ParameterConfig {
   required string name = 1;
   required uint64 size = 2;
-  optional double learning_rate = 3 [default = 1.0];
-  optional double momentum = 4 [default = 0.0];
-  optional double initial_mean = 5 [default = 0.0];
-  optional double initial_std = 6 [default = 0.01];
+  optional double learning_rate = 3 [ default = 1.0 ];
+  optional double momentum = 4 [ default = 0.0 ];
+  optional double initial_mean = 5 [ default = 0.0 ];
+  optional double initial_std = 6 [ default = 0.01 ];
   // use L2-regularization if decay_rate set and decay_rate_l1 not set
-  optional double decay_rate = 7 [default = 0.0];
+  optional double decay_rate = 7 [ default = 0.0 ];
   // use L1-regularization if decay_rate_l1 set
-  optional double decay_rate_l1 = 8 [default = 0.0];
+  optional double decay_rate_l1 = 8 [ default = 0.0 ];
   // dims of Parameter, e.g. dims[0] as height, dims[1] as width..
   repeated uint64 dims = 9;
   // the gpu device which the parameter in.
   // Only used by ParallelNeuralNetork. Ignored otherwise.
-  optional int32 device = 10 [default = -1];
+  optional int32 device = 10 [ default = -1 ];
   // how to init the parameter: 0 -> normal, 1 -> uniform
   // 0: treat initial_mean as mean, intial_std as standard deviation
   // 1: range is (initial_mean - initial_std) to (initial_mean + initial_std)
-  optional int32 initial_strategy = 11 [default = 0];
+  optional int32 initial_strategy = 11 [ default = 0 ];
   // define the variance when init the parameter, by height of the Matrix
-  optional bool initial_smart = 12 [default = false];
+  optional bool initial_smart = 12 [ default = false ];
   // apply regularization every # batches
-  optional int32 num_batches_regularization = 13 [default = 1];
+  optional int32 num_batches_regularization = 13 [ default = 1 ];
   // if is_sparse is true, para is sparse, else para is dense
-  optional bool is_sparse = 14[default = false];
-  // if para is sparse, format should be "csc" or "csr", empty means is not sparse
-  optional string format = 15 [default = ""];
+  optional bool is_sparse = 14 [ default = false ];
+  // if para is sparse, format should be "csc" or "csr", empty means is not
+  // sparse
+  optional string format = 15 [ default = "" ];
   // sparse remote update or not
-  optional bool sparse_remote_update = 16 [default = false];
+  optional bool sparse_remote_update = 16 [ default = false ];
   // gradient clipping threshold, no clipping by default
-  optional double gradient_clipping_threshold = 17 [default = 0.0];
+  optional double gradient_clipping_threshold = 17 [ default = 0.0 ];
   // static parameters are fixed when training
-  optional bool is_static = 18 [default = false];
+  optional bool is_static = 18 [ default = false ];
   // para_id should NOT be set by config_parser. It is for
   // internal use.
   optional uint64 para_id = 19;
 
   repeated ParameterUpdaterHookConfig update_hooks = 20;
   // setup load mat -> csr
-  optional bool need_compact = 21 [default = false];
+  optional bool need_compact = 21 [ default = false ];
   // whether to do sparse update for this parameter
-  optional bool sparse_update = 22 [default = false];
+  optional bool sparse_update = 22 [ default = false ];
 
   // whether this parameter is shared or not.
-  optional bool is_shared = 23 [default = false];
+  optional bool is_shared = 23 [ default = false ];
   // parameter block size
-  optional uint64 parameter_block_size = 24 [default = 0];
+  optional uint64 parameter_block_size = 24 [ default = 0 ];
 }

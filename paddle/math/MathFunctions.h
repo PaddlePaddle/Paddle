@@ -15,30 +15,55 @@ limitations under the License. */
 #ifndef MATHFUNCTIONS_H_
 #define MATHFUNCTIONS_H_
 
+#ifdef PADDLE_USE_MKLML
+#include <mkl_cblas.h>
+#include <mkl_lapacke.h>
+#include <mkl_vml_functions.h>
+#endif
+
 #ifdef PADDLE_USE_MKL
 #include <mkl.h>
-#ifdef PADDLE_USE_LAPACK
 #include <mkl_lapacke.h>
 #endif
-#else
+
+#if defined(PADDLE_USE_ATLAS) || defined(PADDLE_USE_VECLIB)
 extern "C" {
 #include <cblas.h>
-}
-#ifdef PADDLE_USE_LAPACK
-#ifdef PADDLE_USE_ATLAS
-extern "C" {
 #include <clapack.h>
 }
-#else
+#endif
+
+#ifdef PADDLE_USE_OPENBLAS
+#include <cblas.h>
 #include <lapacke.h>
 #endif
+
+#ifndef LAPACK_FOUND
+extern "C" {
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
+#include <cblas.h>
+#else
+typedef enum CBLAS_ORDER {
+  CblasRowMajor = 101,
+  CblasColMajor = 102
+} CBLAS_ORDER;
 #endif
+int LAPACKE_sgetrf(
+    int matrix_layout, int m, int n, float* a, int lda, int* ipiv);
+int LAPACKE_dgetrf(
+    int matrix_layout, int m, int n, double* a, int lda, int* ipiv);
+int LAPACKE_sgetri(
+    int matrix_layout, int n, float* a, int lda, const int* ipiv);
+int LAPACKE_dgetri(
+    int matrix_layout, int n, double* a, int lda, const int* ipiv);
+}
 #endif
 
 #include <cmath>
 
 namespace paddle {
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <class T>
 void gemm(const CBLAS_TRANSPOSE transA,
           const CBLAS_TRANSPOSE transB,
@@ -53,6 +78,7 @@ void gemm(const CBLAS_TRANSPOSE transA,
           const T beta,
           T* C,
           const int ldc);
+#endif
 
 template <class T>
 int getrf(const CBLAS_ORDER Order,
@@ -67,10 +93,21 @@ int getri(
     const CBLAS_ORDER Order, const int N, T* A, const int lda, const int* ipiv);
 
 template <class T>
-void axpy(const int n, const T alpha, const T* x, T* y);
+void axpy(const int n, const T alpha, const T* x, T* y) {
+  /// y = y + alpha * x
+  for (int i = 0; i < n; i++) {
+    y[i] = y[i] + alpha * x[i];
+  }
+}
 
 template <class T>
-T dotProduct(const int n, const T* x, const T* y);
+T dotProduct(const int n, const T* x, const T* y) {
+  T result = static_cast<T>(0);
+  for (int i = 0; i < n; i++) {
+    result += x[i] * y[i];
+  }
+  return result;
+}
 
 template <class T>
 void vExp(const int n, const T* a, T* r);

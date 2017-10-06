@@ -21,7 +21,6 @@ limitations under the License. */
 #include "MultiGradientMachine.h"
 #include "MultiNetwork.h"
 #include "NeuralNetwork.h"
-#include "NeuralNetwork.h"
 #include "ParallelNeuralNetwork.h"
 #include "hl_gpu.h"
 

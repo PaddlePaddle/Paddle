@@ -9,8 +9,6 @@ There are:
 * BeginPass
 * EndPass
 """
-import py_paddle.swig_paddle as api
-
 __all__ = [
     'EndIteration', 'BeginIteration', 'BeginPass', 'EndPass', 'TestResult'
 ]
@@ -18,6 +16,7 @@ __all__ = [
 
 class WithMetric(object):
     def __init__(self, evaluator):
+        import py_paddle.swig_paddle as api
         if not isinstance(evaluator, api.Evaluator):
             raise TypeError("Evaluator should be api.Evaluator type")
         self.__evaluator__ = evaluator
@@ -54,10 +53,13 @@ class BeginPass(object):
 class EndPass(WithMetric):
     """
     Event On One Pass Training Complete.
+    To get the output of a specific layer, add "event.gm.getLayerOutputs('predict_layer')"
+    in your event_handler call back
     """
 
-    def __init__(self, pass_id, evaluator):
+    def __init__(self, pass_id, evaluator, gm):
         self.pass_id = pass_id
+        self.gm = gm
         WithMetric.__init__(self, evaluator)
 
 
@@ -74,10 +76,13 @@ class BeginIteration(object):
 class EndIteration(WithMetric):
     """
     Event On One Batch Training Complete.
+    To get the output of a specific layer, add "event.gm.getLayerOutputs('predict_layer')"
+    in your event_handler call back
     """
 
-    def __init__(self, pass_id, batch_id, cost, evaluator):
+    def __init__(self, pass_id, batch_id, cost, evaluator, gm):
         self.pass_id = pass_id
         self.batch_id = batch_id
         self.cost = cost
+        self.gm = gm
         WithMetric.__init__(self, evaluator)

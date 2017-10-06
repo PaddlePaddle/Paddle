@@ -51,7 +51,7 @@ template <class T>
 class ThreadLocal {
 public:
   ThreadLocal() {
-    PCHECK(pthread_key_create(&threadSpecificKey_, dataDestructor) == 0);
+    CHECK_EQ(pthread_key_create(&threadSpecificKey_, dataDestructor), 0);
   }
   ~ThreadLocal() { pthread_key_delete(threadSpecificKey_); }
 
@@ -65,7 +65,7 @@ public:
     if (!p && createLocal) {
       p = new T();
       int ret = pthread_setspecific(threadSpecificKey_, p);
-      PCHECK(ret == 0);
+      CHECK_EQ(ret, 0);
     }
     return p;
   }
@@ -79,7 +79,7 @@ public:
     if (T* q = get(false)) {
       dataDestructor(q);
     }
-    PCHECK(pthread_setspecific(threadSpecificKey_, p) == 0);
+    CHECK_EQ(pthread_setspecific(threadSpecificKey_, p), 0);
   }
 
   /**
@@ -112,7 +112,7 @@ private:
 template <class T>
 class ThreadLocalD {
 public:
-  ThreadLocalD() { PCHECK(pthread_key_create(&threadSpecificKey_, NULL) == 0); }
+  ThreadLocalD() { CHECK_EQ(pthread_key_create(&threadSpecificKey_, NULL), 0); }
   ~ThreadLocalD() {
     pthread_key_delete(threadSpecificKey_);
     for (auto t : threadMap_) {
@@ -127,7 +127,7 @@ public:
     T* p = (T*)pthread_getspecific(threadSpecificKey_);
     if (!p) {
       p = new T();
-      PCHECK(pthread_setspecific(threadSpecificKey_, p) == 0);
+      CHECK_EQ(pthread_setspecific(threadSpecificKey_, p), 0);
       updateMap(p);
     }
     return p;
@@ -141,7 +141,7 @@ public:
     if (T* q = (T*)pthread_getspecific(threadSpecificKey_)) {
       dataDestructor(q);
     }
-    PCHECK(pthread_setspecific(threadSpecificKey_, p) == 0);
+    CHECK_EQ(pthread_setspecific(threadSpecificKey_, p), 0);
     updateMap(p);
   }
 

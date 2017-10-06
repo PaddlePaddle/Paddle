@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_base.h"
 #include "MulOp.h"
+#include "hl_base.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 

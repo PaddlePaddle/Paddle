@@ -14,10 +14,17 @@ limitations under the License. */
 
 #include "Flags.h"
 
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
 DEFINE_bool(use_gpu, false, "Only support CPU training");
 #else
 DEFINE_bool(use_gpu, true, "Whether to use GPU for training");
+#endif
+
+#ifdef PADDLE_USE_MKLDNN
+// TODO(TJ): change to true when MKLDNN layers support multi-inputs
+DEFINE_bool(use_mkldnn, false, "Default still keep use CPU training");
+#else
+DEFINE_bool(use_mkldnn, false, "Only support CPU training");
 #endif
 
 DEFINE_bool(parallel_nn,

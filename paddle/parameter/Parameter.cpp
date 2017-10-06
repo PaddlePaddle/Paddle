@@ -20,6 +20,7 @@ limitations under the License. */
 #include "OptimizerFunctions.h"
 #include "OptimizerWithRegularizer.h"
 #include "ParameterUpdateFunctions.h"
+#include "ThreadLocalBuffer.h"
 #include "hl_gpu.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/math/MathUtils.h"
@@ -47,7 +48,8 @@ Parameter::Parameter(const ParameterConfig& config, bool useGpu, bool doInit)
       deviceId_(-1),
       sharedCount_(0),
       updateCounter_(0),
-      updated_(false) {
+      updated_(false),
+      headerFormat_(PARAM_FORMAT_ORIGINAL) {
   setID(-1); /* capture uninitialized id */
   if (useGpu_ && FLAGS_parallel_nn) {
     /* gpu environment is specified by device property */
@@ -262,64 +264,6 @@ void Parameter::setMat(ParameterType pType, int matType) {
   }
 }
 
-SparsePrefetchRowCpuMatrix* Parameter::getPrefetchMatrix() {
-  MatrixPtr mat = mats_[PARAMETER_VALUE];
-  if (mat) {
-    return dynamic_cast<SparsePrefetchRowCpuMatrix*>(mat.get());
-  }
-
-  return nullptr;
-}
-
-void Parameter::updateWithGradient(real learningRate) {
-  sgdUpdate(learningRate * config_.learning_rate(),
-            config_.momentum(),
-            config_.decay_rate(),
-            bufs_[PARAMETER_VALUE].get(),
-            bufs_[PARAMETER_GRADIENT].get(),
-            bufs_[PARAMETER_MOMENTUM].get());
-}
-
-void Parameter::updateWithGradient(real learningRate,
-                                   MatrixPtr gradMat,
-                                   IVectorPtr t0,
-                                   int currentTime,
-                                   bool fini) {
-  SparseRowCpuMatrix* sparseMat =
-      dynamic_cast<SparseRowCpuMatrix*>(gradMat.get());
-  CHECK(sparseMat);
-  CHECK_EQ(config_.momentum(), 0.0f)
-      << "not support momentum in sparse input sgd";
-  bool useL1 = (config_.decay_rate_l1() != 0.0f);
-  sparseMat->sgdUpdate(*bufs_[PARAMETER_VALUE],
-                       *t0,
-                       learningRate * config_.learning_rate(),
-                       currentTime,
-                       useL1 ? config_.decay_rate_l1() : config_.decay_rate(),
-                       useL1,
-                       fini);
-}
-
-void Parameter::updateWithGradient(real learningRate,
-                                   VectorPtr gradVec,
-                                   bool normalUpdate) {
-  if (normalUpdate) {
-    sgdUpdate(learningRate * config_.learning_rate(),
-              config_.momentum(),
-              config_.decay_rate(),
-              bufs_[PARAMETER_VALUE].get(),
-              gradVec.get(),
-              bufs_[PARAMETER_MOMENTUM].get());
-  } else {
-    size_t size = gradVec->getSize();
-    real* mom = bufs_[PARAMETER_MOMENTUM]->getData();
-    real* grad = gradVec->getData();
-    real* value = bufs_[PARAMETER_VALUE]->getData();
-    hl_matrix_add(mom, grad, mom, 1, size, 1.0f, learningRate);
-    hl_matrix_add(value, grad, value, 1, size, 1.0f, learningRate);
-  }
-}
-
 void Parameter::incUpdate(const UpdateCallback& callback) {
   // Static parameter is fixed, and does not need to be updated
   if (isStatic()) {
@@ -342,7 +286,7 @@ bool Parameter::save(const std::string& filename) const {
 bool Parameter::save(std::ostream& s) const {
   CpuVector vec(*bufs_[PARAMETER_VALUE].get());
   Header header;
-  header.version = kFormatVersion;
+  header.format = headerFormat_;
   header.valueSize = sizeof(real);
   header.size = getSize();
 
@@ -401,8 +345,9 @@ bool Parameter::load(std::istream& s) {
   Header header;
   CHECK(s.read(reinterpret_cast<char*>(&header), sizeof(header)))
       << "Fail to read parameter " << getName();
-  CHECK_EQ(header.version, kFormatVersion) << "Incorrect format version: "
-                                           << header.version;
+  CHECK(isHeaderFormatSupported(header.format)) << "Incorrect format version: "
+                                                << header.format;
+  headerFormat_ = header.format;
   CHECK_EQ(header.size, getSize())
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << getSize() << ") of the parameter: " << getName();
@@ -469,39 +414,6 @@ bool Parameter::load(std::istream& s) {
   setValueUpdated();
 
   return true;
-}
-
-ThreadLocal<std::vector<VectorPtr>> Parameter::tlsTempBufs_;
-
-VectorPtr* Parameter::getTlsTempBufs() {
-  std::vector<VectorPtr>& bufs = *tlsTempBufs_;
-  if (bufs.empty()) {
-    bufs.resize(NUM_PARAMETER_TYPES);
-    for (auto& vec : bufs) {
-      vec.reset(new CpuVector(0, nullptr));
-    }
-  }
-  return bufs.data();
-}
-
-void Parameter::exec(ExecFunc func) {
-  auto execFunc = [this, func](int tid, size_t numThreads) {
-    if (numThreads == 1) {  // single thread
-      func(this->getBufs());
-    } else {  // multi thread
-      VectorPtr* vecs = Parameter::getTlsTempBufs();
-      auto interval = calcSplitArrayInterval(
-          this->getSize(), (size_t)tid, numThreads, 8LU /*for avx*/);
-      for (size_t i = 0; i < (size_t)NUM_PARAMETER_TYPES; ++i) {
-        if (bufs_[i]) {
-          vecs[i]->subVecFrom(*bufs_[i], interval);
-        }
-      }
-      func(vecs);
-    }
-  };
-
-  getBuf(PARAMETER_VALUE)->exec(execFunc);
 }
 
 }  // namespace paddle

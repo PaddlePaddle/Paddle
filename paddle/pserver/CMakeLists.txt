@@ -17,7 +17,7 @@ add_library(paddle_network STATIC
 add_style_check_target(paddle_network ${NETWORK_SOURCES})
 add_style_check_target(paddle_network ${NETWORK_HEADERS})
 
-add_dependencies(paddle_network gen_proto_cpp)
+add_dependencies(paddle_network paddle_proto ${external_project_dependencies})
 
 ################### paddle_pserver ######################
 set(PSERVER_SOURCES
@@ -40,19 +40,23 @@ add_library(paddle_pserver STATIC
 add_style_check_target(paddle_pserver ${PSERVER_SOURCES})
 add_style_check_target(paddle_pserver ${PSERVER_HEADERS})
 
-add_dependencies(paddle_pserver gen_proto_cpp)
+add_dependencies(paddle_pserver paddle_proto ${external_project_dependencies})
 
 set(PSERVER_MAIN_SOURCES
     ParameterServer2Main.cpp)
 
-add_executable(paddle_pserver_main
-    ${PSERVER_MAIN_SOURCES})
-link_paddle_exe(paddle_pserver_main)
 if(WITH_TESTING)
   add_subdirectory(test)
 endif()
-install(TARGETS paddle_pserver_main
-    RUNTIME DESTINATION opt/paddle/bin
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-        GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
-set_target_properties(paddle_pserver_main PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+if(NOT WITH_C_API)
+  add_executable(paddle_pserver_main ${PSERVER_MAIN_SOURCES})
+  link_paddle_exe(paddle_pserver_main)
+
+  install(TARGETS paddle_pserver_main
+          RUNTIME DESTINATION opt/paddle/bin
+          PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+          GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+  set_target_properties(paddle_pserver_main PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
