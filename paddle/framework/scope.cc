@@ -66,7 +66,7 @@ void Scope::DropKids() {
 
 std::once_flag feed_variable_flag;
 
-framework::Scope* GetScope() {
+framework::Scope* GetGlobalScope() {
   static std::unique_ptr<framework::Scope> g_scope{nullptr};
   std::call_once(feed_variable_flag, [&]() {
     g_scope.reset(new framework::Scope());

@@ -131,7 +131,7 @@ template <typename T>
 void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
   typedef std::vector<paddle::framework::Tensor> FeedInputs;
   // Tensors in feed value variable will only be in CPUPlace
-  Variable* g_feed_value = GetScope()->FindVar("feed_value");
+  Variable* g_feed_value = GetGlobalScope()->FindVar("feed_value");
   FeedInputs& feed_inputs = *(g_feed_value->GetMutable<FeedInputs>());
   auto size = inputs.size();
   feed_inputs.resize(size);
@@ -146,7 +146,7 @@ template <typename T>
 std::vector<std::vector<T>> get_fetch_variable() {
   typedef std::vector<paddle::framework::Tensor> FetchOutputs;
   // Tensors in fetch value variable will only be in CPUPlace
-  Variable* g_fetch_value = GetScope()->FindVar("fetch_value");
+  Variable* g_fetch_value = GetGlobalScope()->FindVar("fetch_value");
   FetchOutputs& fetch_outputs = *(g_fetch_value->GetMutable<FetchOutputs>());
 
   auto size = fetch_outputs.size();
@@ -252,7 +252,7 @@ TEST_F(ExecutorTesterRandom, CPU) {
   paddle::memory::Used(cpu_place);
 
   Executor* executor = new Executor(places);
-  executor->Run(pdesc_, GetScope());
+  executor->Run(pdesc_, GetGlobalScope());
   std::vector<std::vector<float>> result = get_fetch_variable<float>();
   for (auto& vec : result) {
     for (auto& num : vec) {
@@ -281,7 +281,7 @@ TEST_F(ExecutorTesterFeed, CPU) {
     // need to set feed variable before Executor::Run
     std::cout << "start mini-batch " << i << std::endl;
     set_feed_variable<float>(inputs_);
-    executor->Run(pdesc_, GetScope());
+    executor->Run(pdesc_, GetGlobalScope());
     std::vector<std::vector<float>> result = get_fetch_variable<float>();
     for (auto& vec : result) {
       for (auto& num : vec) {
@@ -309,7 +309,7 @@ TEST_F(ExecutorTesterRandom, GPU) {
   paddle::memory::Used(gpu_place);
 
   Executor* executor = new Executor(places);
-  executor->Run(pdesc_, GetScope());
+  executor->Run(pdesc_, GetGlobalScope());
   delete executor;
 }
 
@@ -333,7 +333,7 @@ TEST_F(ExecutorTesterFeed, GPU) {
     // need to set feed variable before Executor::Run
     std::cout << "start mini-batch " << i << std::endl;
     set_feed_variable<float>(inputs_);
-    executor->Run(pdesc_, GetScope());
+    executor->Run(pdesc_, GetGlobalScope());
     std::vector<std::vector<float>> result = get_fetch_variable<float>();
     for (auto& vec : result) {
       for (auto& num : vec) {
