@@ -325,15 +325,21 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
 
   bool HasInput(const std::string& name) const override {
     const std::vector<std::string>& input_names = op_.Input(name);
-    PADDLE_ENFORCE_EQ(input_names.size(), 1UL, "Inputs(%s) length is not 1",
-                      name);
+    auto length = input_names.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Input(%s) should have only one value, "
+                      "but it have %d now",
+                      name, length);
     return block_.HasVar(input_names[0]);
   }
 
   bool HasOutput(const std::string& name) const override {
     const std::vector<std::string>& output_names = op_.Output(name);
-    PADDLE_ENFORCE_EQ(output_names.size(), 1UL, "Outputs(%s) length is not 1",
-                      name);
+    auto length = output_names.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Output(%s) should have only one value, "
+                      "but it have %d now",
+                      name, length);
     return block_.HasVar(output_names[0]);
   }
 
@@ -357,7 +363,11 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
 
   DDim GetInputDim(const std::string& name) const override {
     std::vector<DDim> ddims = GetInputsDim(name);
-    PADDLE_ENFORCE_EQ(ddims.size(), 1UL, "Inputs(%s) length is not 1", name);
+    auto length = ddims.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Input(%s) should have 1 value, "
+                      "but it has %d now",
+                      name, length);
     return ddims[0];
   }
 
@@ -367,7 +377,11 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
 
   DDim GetOutputDim(const std::string& name) const override {
     std::vector<DDim> ddims = GetOutputsDim(name);
-    PADDLE_ENFORCE_EQ(ddims.size(), 1UL, "Outputs(%s) length is not 1", name);
+    auto length = ddims.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Output(%s) should have 1 value, "
+                      "but it has %d now",
+                      name, length);
     return ddims[0];
   }
 
