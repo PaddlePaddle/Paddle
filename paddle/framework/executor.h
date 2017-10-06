@@ -26,7 +26,23 @@ class Executor {
  public:
   explicit Executor(const std::vector<platform::Place>& places);
   ~Executor();
+
+  /* @Brief
+   * Runtime evaluation of the given ProgramDesc under certain Scope
+   *
+   * @param
+   *  ProgramDesc
+   *  Scope
+   */
   void Run(const ProgramDesc&, Scope*);
+
+ protected:
+  /* @Brief
+   *
+   * @param
+   *  ProgramDesc
+   */
+  std::vector<bool> Preprocess(const ProgramDesc& pdesc);
 
  private:
   std::vector<platform::DeviceContext*> device_contexts_;
