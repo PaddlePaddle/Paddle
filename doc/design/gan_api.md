@@ -6,6 +6,17 @@ It contains several important machine learning concepts, including building and 
 
 In our GAN design, we wrap it as a user-friendly easily customized python API to design different models. We take the conditional DC-GAN as an example due to its good performance on image generation.
 
+| important building blocks | People in Charge  |
+|---------------------------|-------------------|
+| convolution 2d (done)     | Chengduo          |
+| deconv 2d (missing)       | Zhuoyuan          |
+| batch norm (missing)      | Zhuoyuan, Jiayi   |
+| Dependency Engine (done)  | Jiayi             |
+| Executor (done)           | Tony              |
+| Multi optimizer           | ?                 |
+| Optimizer with any para   | ?                 |
+
+
 <p align="center">
 <img src="./dcgan.png" width = "90%" align="center"/><br/>
 Borrow this photo from the original DC-GAN paper.
