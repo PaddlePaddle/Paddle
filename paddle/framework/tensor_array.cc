@@ -242,6 +242,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   return result;
 }
 
+// TODO(supejom) to cache lod if reasonable
 LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
                            const std::vector<DySeqMeta>& meta, const LoD& lod,
                            size_t level) {
@@ -273,7 +274,6 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
   }
 
   result.set_lod(lod);
-
   return result;
 }
 
