@@ -280,20 +280,19 @@ All parameter, weight, gradient are variables in Paddle.
       .def("write", [](TensorArray &self, size_t index,
                        LoDTensor &value) { self.Write(index, value); })
       .def("write_shared",
-           [](TensorArray &self, size_t index, LoDTensor &value) {
+           [](TensorArray &self, size_t index, const LoDTensor &value) {
              self.WriteShared(index, value);
            })
       .def("size", [](TensorArray &self) { return self.size(); })
       .def("pack",
            [](TensorArray &self, size_t level,
-              std::vector<std::vector<size_t>> &meta_info,
+              const std::vector<std::vector<size_t>> &meta_info,
               const std::vector<std::vector<size_t>> &lod) {
              std::vector<DySeqMeta> meta;
              for (auto &info : meta_info) {
                PADDLE_ENFORCE_EQ(info.size(), 3UL);
                meta.emplace_back(info[0], info[1], info[2]);
              }
-
 #ifndef PADDLE_WITH_CUDA
              return self.Pack(level, meta, lod);
 #else
@@ -304,7 +303,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
            })
       .def("unpack",
-           [](TensorArray &self, LoDTensor &source, int level,
+           [](TensorArray &self, const LoDTensor &source, int level,
               bool length_descend) {
              auto metas = self.Unpack(source, level, length_descend);
              std::vector<std::vector<size_t>> meta_info;
@@ -315,9 +314,11 @@ All parameter, weight, gradient are variables in Paddle.
              return meta_info;
            })
       .def("stack", [](TensorArray &self) { return self.Stack(); })
-      .def("unstack", [](TensorArray &self,
-                         LoDTensor &source) { return self.Unstack(source); })
-      .def("unstack_shared", [](TensorArray &self, LoDTensor &source) {
+      .def("unstack",
+           [](TensorArray &self, const LoDTensor &source) {
+             return self.Unstack(source);
+           })
+      .def("unstack_shared", [](TensorArray &self, const LoDTensor &source) {
         return self.UnstackShared(source);
       });
 
