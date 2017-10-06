@@ -46,7 +46,7 @@ paddle_error paddle_matrix_set_row(paddle_matrix mat,
   if (rowID >= ptr->mat->getHeight()) return kPD_OUT_OF_RANGE;
   paddle::real* buf = ptr->mat->getRowBuf(rowID);
   size_t width = ptr->mat->getWidth();
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   hl_memcpy(buf, rowArray, sizeof(paddle::real) * width);
 #else
   std::copy(rowArray, rowArray + width, buf);

@@ -65,7 +65,7 @@ inline T* Tensor::mutable_data(platform::Place place) {
       holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size));
     } else if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
     }
 #else
@@ -103,7 +103,7 @@ inline void Tensor::CopyFrom(const Tensor& src,
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src_place) &&
            platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
