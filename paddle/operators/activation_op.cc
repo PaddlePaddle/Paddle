@@ -97,6 +97,17 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  TanhShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of TanhShrink operator");
+    AddOutput("Y", "Output of TanhShrink operator");
+    AddComment("TanhShrink activation operator, tanhshrink(x) = x - tanh(x)");
+  }
+};
+
 class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SqrtOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -234,6 +245,9 @@ REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
 
 REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
             ops::ActivationOpGrad);
+
+REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
+            tanh_shrink_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
