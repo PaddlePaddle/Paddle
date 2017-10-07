@@ -341,7 +341,7 @@ private:
 };
 
 REGISTER_TYPED_FUNC(MulOp, CPU, MulFunc);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(MulOp, GPU, MulFunc);
 #endif
 }  // namespace paddle

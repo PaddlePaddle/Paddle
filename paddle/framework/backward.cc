@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/framework/backward.h"
+#include "paddle/operators/net_op.h"
 
 #include <list>
 #include <memory>
@@ -23,6 +24,35 @@
 
 namespace paddle {
 namespace framework {
+
+static inline std::unique_ptr<OperatorBase> CreateGradOp(
+    const OperatorBase& op) {
+  OpDescBind op_desc;
+  op_desc.SetInputMap(op.Inputs());
+  op_desc.SetOutputMap(op.Outputs());
+  op_desc.SetType(op.Type());
+  op_desc.SetAttrMap(op.Attrs());
+  auto& info = OpInfoMap::Instance().Get(op.Type());
+  auto grad_descs = info.GradOpMaker()(op_desc);
+  std::vector<std::unique_ptr<OperatorBase>> grad_ops;
+  grad_ops.reserve(grad_descs.size());
+  std::transform(grad_descs.begin(), grad_descs.end(),
+                 std::back_inserter(grad_ops),
+                 [](const std::unique_ptr<OpDescBind>& grad_desc) {
+                   return OpRegistry::CreateOp(*grad_desc);
+                 });
+  PADDLE_ENFORCE(!grad_ops.empty());
+  if (grad_ops.size() == 1) {
+    return std::move(grad_ops[0]);
+  } else {
+    auto net_op = new operators::NetOp();
+    for (auto& grad_op : grad_ops) {
+      net_op->AppendOp(std::move(grad_op));
+    }
+    net_op->CompleteAddOp();
+    return std::unique_ptr<OperatorBase>(net_op);
+  }
+}
 
 template <typename Map, typename T>
 static void ForEachVarName(const Map& names, T callback) {
@@ -141,9 +171,26 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
         net->ops_[op_offset]->Rename(name, dup_outputs.back());
       }
       // collect all the offset to append `add` op for each alias
-      insert_position.push_back(
-          {dup_op.back(), OpRegistry::CreateOp("add", {{"X", {dup_outputs}}},
-                                               {{"Out", {name}}}, {})});
+      //
+      // one variable is shared between multiple operators.
+      // insert add operator one by one, then add it to output
+      for (size_t output_idx = 0; output_idx < dup_outputs.size() - 1;
+           ++output_idx) {
+        auto insert_add_x = dup_outputs[output_idx];
+        auto insert_add_y = dup_outputs[output_idx + 1];
+        auto insert_add_out = name + "@SHARED@" + std::to_string(output_idx);
+        // first add op inserted
+        if (output_idx == dup_outputs.size() - 2) {
+          insert_add_out = name;
+        }
+        if (output_idx != 0) {
+          insert_add_y = name + "@SHARED@" + std::to_string(output_idx - 1);
+        }
+        insert_position.push_back(
+            {dup_op.back(),
+             OpRegistry::CreateOp("sum", {{"X", {insert_add_x, insert_add_y}}},
+                                  {{"Out", {insert_add_out}}}, {})});
+      }
     }
 
     // make sure the inserted `add` ops follow the BFS order.
@@ -154,7 +201,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       net->InsertOp(pos.first + 1, std::move(pos.second));
     }
   } else {
-    std::unique_ptr<OperatorBase> grad_op(OpRegistry::CreateGradOp(forwardOp));
+    std::unique_ptr<OperatorBase> grad_op(CreateGradOp(forwardOp));
 
     ForEachVarName(grad_op->Inputs(), [&no_grad_names, &net, &grad_op](
                                           const std::string& grad_input) {
@@ -182,7 +229,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
 
     // process recurrent gradient op as a special operator.
     if (forwardOp.Type() == "recurrent") {
-      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself), or
+      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
+      // or
       // this will result in infinite loop.
       const auto& rnnop =
           *static_cast<const operators::RecurrentOp*>(&forwardOp);

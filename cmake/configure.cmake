@@ -49,11 +49,12 @@ if(NOT WITH_GOLANG)
 endif(NOT WITH_GOLANG)
 
 if(NOT WITH_GPU)
-    add_definitions(-DPADDLE_ONLY_CPU)
     add_definitions(-DHPPL_STUB_FUNC)
 
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
+    add_definitions(-DPADDLE_WITH_CUDA)
+
     FIND_PACKAGE(CUDA REQUIRED)
 
     if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
