@@ -115,15 +115,16 @@ std::string LoDTensor::SerializeToString() const {
   LoDTensorProto desc;
 
   // set data_type
-  if (this->type() == typeid(bool)) desc.set_data_type(DataType::BOOL);
+  if (this->type() == typeid(int8_t)) desc.set_data_type(DataType::BOOL);
   if (this->type() == typeid(int16_t)) desc.set_data_type(DataType::INT16);
   if (this->type() == typeid(int32_t)) desc.set_data_type(DataType::INT32);
   if (this->type() == typeid(int64_t)) desc.set_data_type(DataType::INT64);
   // FIXME(dzh): there is no fp16 in standard c++
-  // if (this->type() == typeid(int_fast16_t))
-  // desc.set_data_type(DataType::FP16);
-  if (this->type() == typeid(float)) desc.set_data_type(DataType::FP16);
-  if (this->type() == typeid(double)) desc.set_data_type(DataType::FP16);
+
+  if (this->type() == typeid(float))
+    desc.set_data_type(DataType::FP32);  // NOLINT
+  if (this->type() == typeid(double))
+    desc.set_data_type(DataType::FP64);  // NOLINT
 
   // set dims
   std::vector<int64_t> dims = vectorize(this->dims());
@@ -133,17 +134,15 @@ std::string LoDTensor::SerializeToString() const {
 
   // set lod information
   desc.set_lod_level(this->NumLevels());
-  for (int i = 0; i < this->NumLevels(); ++i) {
+  for (size_t i = 0; i < this->NumLevels(); ++i) {
     LoDInfo* lod = desc.add_levels();
-    for (int j = 0; j < lod_[i].size(); ++j) {
+    for (size_t j = 0; j < lod_[i].size(); ++j) {
       lod->add_level(this->lod_element(i, j));
     }
   }
 
   // set place information
   platform::Place place = holder_->place();
-  if (platform::is_gpu_place(place)) desc.set_place(DevicePlace::GPUPlace);
-  if (platform::is_cpu_place(place)) desc.set_place(DevicePlace::CPUPlace);
 
   std::string desc_bytes = desc.SerializeAsString();
 
@@ -156,8 +155,8 @@ std::string LoDTensor::SerializeToString() const {
       static_cast<char*>(memory::Alloc(platform::CPUPlace(), BUFFER_SIZE));
 
   // format: desc_size data_size, desc_bytes, data_bytes.
-  platform::Place src_place = platform::CPUPlace();
-  platform::Place dst_place = platform::CPUPlace();
+  platform::CPUPlace src_place;
+  platform::CPUPlace dst_place;
 
   memory::Copy(dst_place, buffer, src_place, &DESC_SIZE, sizeof(size_t));
   memory::Copy(dst_place, buffer + sizeof(size_t), src_place, &DATA_SIZE,
@@ -165,23 +164,38 @@ std::string LoDTensor::SerializeToString() const {
   memory::Copy(dst_place, buffer + sizeof(size_t) * 2, src_place,
                desc_bytes.c_str(), desc_bytes.size());
 
-  // copy gpu data to cpu implicitly.
   PADDLE_ENFORCE(this->numel() != 0, " Serialize a empty Tensor!");
-  int element_width = holder_->size() / this->numel();
-  memory::Copy(
-      dst_place, buffer + sizeof(size_t) * 2 + desc_bytes.size(), place,
-      static_cast<char*>(holder_->ptr()) + offset_ / element_width, DATA_SIZE);
 
-  return std::string(buffer, BUFFER_SIZE);
+  int element_width = holder_->size() / this->numel();
+  if (platform::is_cpu_place(place)) {
+    memory::Copy(dst_place, buffer + sizeof(size_t) * 2 + desc_bytes.size(),
+                 boost::get<platform::CPUPlace>(place),
+                 static_cast<char*>(holder_->ptr()) + offset_ / element_width,
+                 DATA_SIZE);
+  }
+#ifdef PADDLE_WITH_GPU
+  else if (platform::is_gpu_place(place)) {
+    memory::Copy(dst_place, buffer + sizeof(size_t) * 2 + desc_bytes.size(),
+                 boost::get<platform::GPUPlace>(place),
+                 static_cast<char*>(holder_->ptr()) + offset_ / element_width,
+                 DATA_SIZE);
+  }
+#endif
+
+  std::string ret(buffer, BUFFER_SIZE);
+  memory::Free(platform::CPUPlace(), buffer);
+  return ret;
 }
 
-void LoDTensor::DeserializeFromString(const std::string& s) {
+void LoDTensor::DeserializeFromString(const std::string& s,
+                                      const platform::Place& dst_place) {
   size_t DESC_SIZE, DATA_SIZE;
+  DESC_SIZE = DATA_SIZE = 100;
   platform::Place src_place = platform::CPUPlace();
-  memory::Copy(platform::CPUPlace(), &DESC_SIZE, src_place, s.c_str(),
-               sizeof(size_t));
-  memory::Copy(platform::CPUPlace(), &DATA_SIZE, src_place,
-               s.c_str() + sizeof(size_t), sizeof(size_t));
+  // memory::Copy(src_place, &DESC_SIZE, src_place, s.c_str(),
+  //              sizeof(size_t));
+  // memory::Copy(src_place, &DATA_SIZE, src_place,
+  //              s.c_str() + sizeof(size_t), sizeof(size_t));
 
   // parse LoDTensorDesc
   LoDTensorProto desc;
@@ -190,10 +204,6 @@ void LoDTensor::DeserializeFromString(const std::string& s) {
   std::vector<int64_t> dims;
   std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
   this->Resize(make_ddim(dims));
-
-  platform::Place dst_place;
-  if (desc.place() == DevicePlace::CPUPlace) dst_place = platform::CPUPlace();
-  if (desc.place() == DevicePlace::GPUPlace) dst_place = platform::GPUPlace();
 
   // parse data type
   void* ptr;
@@ -206,15 +216,23 @@ void LoDTensor::DeserializeFromString(const std::string& s) {
   if (desc.data_type() == DataType::INT64)
     ptr = this->mutable_data<int64_t>(dst_place);
   // FIXME(dzh): there is no fp16 in standard c++
-  // if (desc.data_type() == DataType::FP16) ptr =
-  // this->mutable_data<int_fast16_t>(dst_place);
+
   if (desc.data_type() == DataType::FP32)
     ptr = this->mutable_data<float>(dst_place);
   if (desc.data_type() == DataType::FP64)
     ptr = this->mutable_data<double>(dst_place);
 
-  memory::Copy(dst_place, ptr, src_place,
-               s.c_str() + sizeof(size_t) * 2 + DESC_SIZE, DATA_SIZE);
+  // GPU
+  if (platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), ptr, src_place,
+                 s.c_str() + sizeof(size_t) * 2 + DESC_SIZE, DATA_SIZE);
+  }
+#ifdef PADDLE_WITH_GPU
+  else if (platform::is_gpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::GPUPlace>(dst_place), ptr, src_place,
+                 s.c_str() + sizeof(size_t) * 2 + DESC_SIZE, DATA_SIZE);
+  }
+#endif
 }
 
 }  // namespace framework

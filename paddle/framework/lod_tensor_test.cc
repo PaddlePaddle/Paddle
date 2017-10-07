@@ -110,9 +110,9 @@ TEST_F(LoDTensorTester, SerializeDeserialize) {
   float* src_ptr = lod_tensor_.data<float>();
   std::string s = lod_tensor_.SerializeToString();
   LoDTensor dst;
-  dst.DeserializeFromString(s);
+  dst.DeserializeFromString(s, platform::CPUPlace());
   float* dst_ptr = dst.data<float>();
-  for (int i = 0; i < 20 * 128, ++i) {
+  for (int i = 0; i < 20 * 128; ++i) {
     EXPECT_EQ(dst_ptr[i], src_ptr[i]);
   }
 }

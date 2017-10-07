@@ -25,6 +25,7 @@
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -133,7 +134,8 @@ class LoDTensor : public Tensor {
    *  @brief Deserialize char bytes to tensor.
    *  @return return string
    */
-  void DeserializeFromString(const std::string& s);
+  void DeserializeFromString(const std::string& s,
+                             const platform::Place& dst_place);
 
  private:
   LoD lod_;
