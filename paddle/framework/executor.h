@@ -38,9 +38,13 @@ class Executor {
 
  protected:
   /* @Brief
+   * Pruning the graph
    *
    * @param
    *  ProgramDesc
+   *
+   * @return
+   *  vector<bool> Same size as ops. Indicates whether an op should be run.
    */
   std::vector<bool> Preprocess(const ProgramDesc& pdesc);
 

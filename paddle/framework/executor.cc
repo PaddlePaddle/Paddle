@@ -145,9 +145,11 @@ std::vector<bool> Executor::Preprocess(const ProgramDesc& pdesc) {
 
       // this op should be executed
       should_run.push_back(true);
+      LOG(INFO) << "Yes " << op_desc.type();
     } else {
       // this op should NOT be executed
       should_run.push_back(false);
+      LOG(INFO) << "No " << op_desc.type();
     }
   }
 

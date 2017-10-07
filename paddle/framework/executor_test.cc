@@ -226,6 +226,7 @@ class ExecutorTesterFeed : public ::testing::Test {
     Out->set_parameter("Out");
     Out->add_arguments("c");
 
+    add_fetch_op("a", dim, 0, root_block);
     add_fetch_op("c", dim, 0, root_block);
 
     std::vector<float> vec1 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
