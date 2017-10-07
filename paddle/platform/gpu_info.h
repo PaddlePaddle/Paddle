@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 #include <cuda_runtime.h>
 #include <stddef.h>
@@ -28,7 +28,7 @@ const std::string kEnvFractionGpuMemoryToUse =
     "PADDLE_FRACTION_GPU_MEMORY_TO_USE";
 
 //! Get the total number of GPU devices in system.
-int GetDeviceCount();
+int GetCUDADeviceCount();
 
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
@@ -36,7 +36,7 @@ int GetCurrentDeviceId();
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
-//！Get the memory usage of current GPU device.
+//! Get the memory usage of current GPU device.
 void GpuMemoryUsage(size_t &available, size_t &total);
 
 //! Get the maximum allocation size of current GPU device.

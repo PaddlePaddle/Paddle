@@ -23,10 +23,12 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
-class ScatterOpKernel : public framework::OpKernel {
+template <typename T>
+class ScatterOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "This kernel only runs on CPU.");
     auto *Ref = ctx.Input<Tensor>("Ref");
     auto *Index = ctx.Input<Tensor>("Index");
     auto *Updates = ctx.Input<Tensor>("Updates");
@@ -35,14 +37,16 @@ class ScatterOpKernel : public framework::OpKernel {
     // In place output: Out = Ref, Out[Index] += Updates
     Out->ShareDataWith<T>(*Ref);
     // Apply ScatterUpdate: Out[index] += Updates[:]
-    ScatterUpdate<T>(ctx.GetPlace(), Updates, Index, Out);
+    ScatterAssign<T>(ctx.device_context(), *Updates, *Index, Out);
   }
 };
 
-template <typename Place, typename T>
-class ScatterGradientOpKernel : public framework::OpKernel {
+template <typename T>
+class ScatterGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "This kernel only runs on CPU.");
     auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
     auto *Index = ctx.Input<Tensor>("Index");
@@ -52,7 +56,7 @@ class ScatterGradientOpKernel : public framework::OpKernel {
     dRef->ShareDataWith<T>(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
     // Gradient by Gather: dUpdates += dO[Index]
-    Gather<T>(ctx.GetPlace(), dOut, Index, dUpdates);
+    CPUGather<T>(ctx.device_context(), *dOut, *Index, dUpdates);
   }
 };
 

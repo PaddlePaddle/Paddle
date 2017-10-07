@@ -142,6 +142,7 @@ __all__ = [
     'img_pool3d_layer',
     'scale_shift_layer',
     'img_conv3d_layer',
+    'resize_layer',
 ]
 
 
@@ -249,6 +250,8 @@ class LayerType(object):
 
     KMAX_SEQ_SCORE = 'kmax_seq_score'
     SCALE_SHIFT_LAYER = 'scale_shift'
+
+    RESIZE = 'resize'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -921,7 +924,7 @@ def data_layer(name, size, depth=None, height=None, width=None,
 
         data = data_layer(name="input", size=1000)
 
-    :param name: The name of this layer. It is optional.
+    :param name: The name of this layer.
     :type name: basestring
     :param size: Size of this data layer.
     :type size: int
@@ -3668,6 +3671,7 @@ def gru_step_naive_layer(input,
     :param param_attr:
     :param layer_attr:
     :return:
+    :rtype: LayerOutput
     """
     if input.size % 3 != 0:
         raise ValueError("GruStep input size must be divided by 3")
@@ -6472,7 +6476,7 @@ def switch_order_layer(input,
                        act=None,
                        layer_attr=None):
     """
-    This layer switch dimension order of image input. 
+    This layer switch dimension order of image input.
     From order "batchSize, channels, height, width"
     to order "batchSize, height, width, channels".
 
@@ -6931,3 +6935,23 @@ def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
         bias=ParamAttr.to_bias(bias_attr))
     return LayerOutput(
         name, LayerType.SCALE_SHIFT_LAYER, parents=[input], size=input.size)
+
+
+@wrap_name_default("resize")
+def resize_layer(input, size, name=None):
+    """
+    The resize layer resizes the input matrix with a shape of [Height, Width]
+    into the output matrix with a shape of [Height x Width / size, size],
+    where size is the parameter of this layer indicating the output dimension.
+
+    :param input: The input to this layer.
+    :type input: LayerOutput.
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param size: The resized output dimesion of this layer.
+    :type size: int
+    :return: A LayerOutput object.
+    :rtype: LayerOutput
+    """
+    Layer(name=name, type=LayerType.RESIZE, inputs=Input(input.name), size=size)
+    return LayerOutput(name, LayerType.RESIZE, parents=[input], size=input.size)

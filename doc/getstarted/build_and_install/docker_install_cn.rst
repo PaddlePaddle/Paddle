@@ -20,7 +20,7 @@ Docker使用入门
 		  
      docker pull paddlepaddle/paddle:0.10.0
 
-  来下载Docker镜像，paddlepaddle/paddle是从官方镜像源Dockerhub.com下载的，推荐国内用户使用ocker.paddlepaddle.org/paddle下载。
+  来下载Docker镜像，paddlepaddle/paddle是从官方镜像源Dockerhub.com下载的，推荐国内用户使用docker.paddlepaddle.org/paddle下载。
 
 - *容器*： 如果说一个Docker镜像就是一个程序，那容器就是这个程序运行时产生的“进程”。
   实际上，一个容器就是一个操作系统的进程，但是是运行在独立的进程空间，文件系统以及网络之上。

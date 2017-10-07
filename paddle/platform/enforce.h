@@ -29,7 +29,7 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
@@ -107,13 +107,13 @@ struct EnforceNotMet : public std::exception {
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    int stat, const Args&... args) {
+    bool stat, const Args&... args) {
   if (UNLIKELY(!(stat))) {
     throw std::runtime_error(string::Sprintf(args...));
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
@@ -185,7 +185,7 @@ inline void throw_on_error(T e) {
         std::make_exception_ptr(                                       \
             std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
         __FILE__, __LINE__);                                           \
-  } while (0)
+  } while (false)
 
 #define PADDLE_ENFORCE(...)                                             \
   do {                                                                  \
@@ -195,7 +195,7 @@ inline void throw_on_error(T e) {
       throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
                                               __FILE__, __LINE__);      \
     }                                                                   \
-  } while (0)
+  } while (false)
 
 /*
  * Some enforce helpers here, usage:

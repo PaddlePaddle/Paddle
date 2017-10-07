@@ -71,15 +71,15 @@ void testIm2col() {
     context =
         new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
   } else {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
     context =
         new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
 #else
     PADDLE_THROW("no GPU support");
 #endif  // PADDLE_ONLY_CPU
   }
-  im2col(input, output_cfo, stride, stride, padding, padding, context);
-  im2col_ocf(input, output_ocf, stride, stride, padding, padding, context);
+  im2col(*context, input, output_cfo, stride, stride, padding, padding);
+  im2col_ocf(*context, input, output_ocf, stride, stride, padding, padding);
 
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
@@ -116,7 +116,7 @@ void testIm2col() {
 
 TEST(math, im2col) {
   testIm2col<paddle::platform::CPUPlace>();
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testIm2col<paddle::platform::GPUPlace>();
 #endif
 }

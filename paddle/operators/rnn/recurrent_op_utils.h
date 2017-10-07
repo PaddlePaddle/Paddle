@@ -41,18 +41,11 @@ struct MemoryAttr {
   std::string boot_var;
 };
 
-struct Link {
-  // input or output links name.
-  std::string internal;
-  // alias to avoid duplicate keys in scopes.
-  std::string external;
-};
-
 struct Argument {
   std::string step_net;
   std::string step_scopes;
-  std::vector<Link> inlinks;
-  std::vector<Link> outlinks;
+  std::vector<std::string> inlinks;
+  std::vector<std::string> outlinks;
   std::vector<rnn::MemoryAttr> memories;
 };
 
@@ -61,8 +54,6 @@ struct ArgumentName {
   std::string step_scopes;
   std::string inlinks;
   std::string outlinks;
-  std::string inlink_alias;   // the alias of inlinks in step net.
-  std::string outlink_alias;  // the alias of outlinks in step net.
   std::string memories;       // the memory name
   std::string pre_memories;   // the previous memory name
   std::string boot_memories;  // the boot memory name
@@ -72,22 +63,22 @@ struct ArgumentName {
  * Prepare inputs for each step net.
  */
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& inlinks, const size_t seq_len,
-                   bool infer_shape_mode);
+                   const std::vector<std::string>& inlinks,
+                   const size_t seq_len);
 
 /**
  * Process outputs of step nets and merge to variables.
  */
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
-                   const std::vector<Link>& outlinks, const size_t seq_len,
-                   bool infer_shape_mode);
+                   const std::vector<std::string>& outlinks,
+                   const size_t seq_len);
 
 void LinkMemories(const std::vector<Scope*>& step_scopes,
                   const std::vector<MemoryAttr>& memories, const size_t step_id,
-                  const int offset, bool infer_shape_mode);
+                  const int offset);
 
 void InitArgument(const ArgumentName& name, Argument* arg,
-                  const framework::OperatorBase& op);
+                  const framework::OperatorBase& op, bool is_grad = false);
 
 }  // namespace rnn
 }  // namespace operators

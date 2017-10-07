@@ -30,16 +30,9 @@ limitations under the License. */
 namespace paddle {
 
 namespace framework {
-namespace details {
-template <bool less, size_t i, typename... args>
-struct CastToPyBufferImpl;
-}
 
 class Tensor {
  public:
-  template <bool less, size_t i, typename... args>
-  friend struct details::CastToPyBufferImpl;
-
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
 
@@ -116,6 +109,8 @@ class Tensor {
     return holder_->place();
   }
 
+  std::type_index type() const { return holder_->type(); }
+
  private:
   template <typename T>
   inline void check_memory_size() const;
@@ -164,12 +159,6 @@ class Tensor {
 
   /*! points to dimensions of memory block. */
   DDim dims_;
-
-  /**
-   * A cache of the number of elements in a tensor.
-   * Would be 0 for an uninitialized tensor.
-   */
-  int64_t numel_;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
