@@ -34,7 +34,7 @@ static size_t UniqueIntegerGenerator() {
 }
 
 bool IsCompileGPU() {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
   return false;
 #else
   return true;
@@ -78,7 +78,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
@@ -96,7 +96,7 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
             new (&instance) LoDTensor(lod);
 #else
              LoD new_lod;
@@ -107,7 +107,7 @@ PYBIND11_PLUGIN(core) {
           })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
              self.set_lod(lod);
 #else
              LoD new_lod;
@@ -117,7 +117,7 @@ PYBIND11_PLUGIN(core) {
 #endif
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
         return self.lod();
 #else
            auto lod = self.lod();
@@ -203,7 +203,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::GPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
                     PADDLE_THROW("GPUPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);
@@ -229,6 +229,21 @@ All parameter, weight, gradient are variables in Paddle.
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
                     return OpRegistry::CreateOp(desc);
+                  })
+      .def_static("infer_shape",
+                  [](OpDescBind &op_desc, BlockDescBind &block) {
+                    auto op = OpRegistry::CreateOp(*op_desc.Proto());
+                    auto *op_with_kernel =
+                        dynamic_cast<OperatorWithKernel *>(op.get());
+                    if (op_with_kernel != nullptr) {
+                      auto ctx = CompileTimeInferShapeContext(op_desc, block);
+                      op_with_kernel->InferShape(&ctx);
+                    } else {
+                      PADDLE_THROW(
+                          "OP(%s) is not type of OperatorWithKernel, "
+                          "should not call this function",
+                          op_desc.Type());
+                    }
                   })
       .def("backward",
            [](const OperatorBase &forwardOp,

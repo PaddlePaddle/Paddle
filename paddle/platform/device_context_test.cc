@@ -20,7 +20,7 @@ TEST(Device, Init) {
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::GPUPlace;
 
-  int count = paddle::platform::GetDeviceCount();
+  int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
     DeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
     Eigen::GpuDevice* gpu_device =
@@ -34,7 +34,7 @@ TEST(Device, CUDADeviceContext) {
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::GPUPlace;
 
-  int count = paddle::platform::GetDeviceCount();
+  int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
     CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
