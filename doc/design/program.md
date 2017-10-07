@@ -85,7 +85,11 @@ message ProgramDesc {
 
 So the index of a block in above array is its ID.
 
-## Operators that Uses Blocks
+### Global Block
+
+The global block is the first one in above array.
+
+## Operators that Use Blocks
 
 In above example, the operator `IfElseOp` has two blocks -- the true branch and the false branch.
 

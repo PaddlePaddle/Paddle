@@ -115,4 +115,7 @@ message BlockDesc {
   repeated OpDesc ops = 4;
 }
 
+// Please refer to
+// https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
+// for more details.
 message ProgramDesc { repeated BlockDesc blocks = 1; }
