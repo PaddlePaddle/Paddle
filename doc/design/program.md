@@ -1,8 +1,10 @@
-# Design Doc: ProgramDesc
+# Design Doc: PaddlePaddle Programs
 
-The basic structure of a PaddlePaddle program is some nested blocks, as a C++ or Java program.
+## Compile and Execution
 
-As described in [graph.md](./graph.md), the first five lines of the following PaddlePaddle program
+A PaddlePaddle program consists of two parts -- the first generates a `ProgramDesc` protobuf message that describes the program, and the second runs this message using a C++ class `Executor`.
+
+A simple example PaddlePaddel program can be found in [graph.md](./graph.md):
 
 ```python
 x = layer.data("images")
@@ -13,36 +15,109 @@ optimize(cost)
 train(cost, reader=mnist.train())
 ```
 
-generates, or compiles, a PaddelPaddle program, which is represented by the following protobuf message:
+The first five lines of the following PaddlePaddle program generates, or, compiles, the `ProgramDesc` message.  The last line runs it.
+
+## Programs and Blocks
+
+The basic structure of a PaddlePaddle program is some nested blocks, as a C++ or Java program.
+
+- program: some nested blocks
+- [block](./block.md):
+  - some local variable definitions, and
+  - a sequence of operators
+
+The concept of block comes from usual programs.  For example, the following C++ program has three blocks:
+
+```c++
+int main() { // block 0
+  int i = 0;
+  if (i < 10) { // block 1
+    for (int j = 0; j < 10; j++) { // block 2
+    }
+  }
+  return 0;
+}
+```
+
+The following PaddlePaddle program has three blocks:
+
+```python
+import paddle as pd  // block 0
+
+x = minibatch([10, 20, 30]) # shape=[None, 1]
+y = var(1) # shape=[1], value=1
+z = minibatch([10, 20, 30]) # shape=[None, 1]
+cond = larger_than(x, 15) # [false, true, true]
+
+ie = pd.ifelse()
+with ie.true_block():  // block 1
+    d = pd.layer.add_scalar(x, y)
+    ie.output(d, pd.layer.softmax(d))
+with ie.false_block():  // block 2
+    d = pd.layer.fc(z)
+    ie.output(d, d+1)
+o1, o2 = ie(cond)
+```
+
+## `BlockDesc` and `ProgramDesc`
+
+All protobuf messages are defined in `framework.proto`.
+
+`BlockDesc` is straight-forward -- it includes local variable definitions, `vars`, and a sequence of operators, `ops`.
 
 ```protobuf
-message ProgramDesc {
-  repeated BlockDesc blocks = 1;
-}
-
 message BlockDesc {
   required int32 parent = 1;
   repeated VarDesc vars = 2;
   repeated OpDesc ops = 3;
 }
+```
 
+The parent ID indicates the parent block so could operators in a block refers to variables not only defined locally but also those in an ancestor block.
+
+The block ID comes from that all block are flattened in an array defined in `ProgramDesc`:
+
+```protobuf
+message ProgramDesc {
+  repeated BlockDesc blocks = 1;
+}
+```
+
+So the index of a block in above array is its ID.
+
+## Operators that Uses Blocks
+
+In above example, the operator `IfElseOp` has two blocks -- the true branch and the false branch.
+
+The definition of `OpDesc` shows that an operator could have some attributes:
+
+```protobuf
 message OpDesc {
   AttrDesc attrs = 1;
   ...
 }
+```
 
+and an attribute could be of type block, which is, in fact, a block ID as described above:
+
+```
 message AttrDesc {
-  required AttrType type = 1;
+  required string name = 1;
 
-  // index into ProgramDesc::blocks when type==BLOCK
-  optional int32 block = 2;
+  enum AttrType {
+    INT = 1,
+    STRING = 2,
+    ...
+    BLOCK = ...
+  }
+  required AttrType type = 2;
+
+  optional int32 block = 10; // when type == BLOCK
   ...
 }
 ```
 
-When each of the first five lines runs, related Python function, e.g., `layer.fc`, calls C++ InferShape functions.  This InferShape function needs to access the properties of VarDesc's accessed by the current OpDesc. These VarDesc's might not be defined in the current block, but in some ancestor blocks.  This requires that we can trace the parent of a block.
-
-A nested block is often an attribute of an operator, most likely, an IfElseOp or a WhileOp.  In above solution, all blocks are in `ProgramDesc::blocks`, this implicitly assigns a zero-based ID to each block -- the index of the block in `ProgramDesc::blocks`.  So that `AttrDesc::block` could be an integer block ID.
+## InferShape
 
 With this design, the InferShape function should take the following parameters:
 
