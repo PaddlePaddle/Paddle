@@ -69,12 +69,10 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
   }
 
   std::vector<bool> should_run = Preprocess(pdesc);
-  PADDLE_ENFORCE(should_run.size() == block.ops_size(),
-                 "should_run.size() != block.ops_size()");
-  for (int i = 0; i < should_run.size(); ++i) {
+  PADDLE_ENFORCE(should_run.size() == block.ops_size());
+  for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
       auto op = paddle::framework::OpRegistry::CreateOp(block.ops(i));
-      std::cout << op->DebugString() << std::endl;
       op->Run(*scope, *device);
     }
   }

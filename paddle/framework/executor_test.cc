@@ -127,10 +127,11 @@ void add_fetch_op(string var_name, std::vector<int>& dim, int index,
 
 std::once_flag set_variable_flag;
 
+// Tensors in feed value variable will only be in CPUPlace
+// So we can  memcpy the data from vector<T> to feed_value
 template <typename T>
 void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
   typedef std::vector<paddle::framework::Tensor> FeedInputs;
-  // Tensors in feed value variable will only be in CPUPlace
   Variable* g_feed_value = GetGlobalScope()->FindVar("feed_value");
   FeedInputs& feed_inputs = *(g_feed_value->GetMutable<FeedInputs>());
   auto size = inputs.size();
@@ -142,10 +143,11 @@ void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
   }
 }
 
+// Tensors in fetch value variable will only be in CPUPlace
+// So we can memcpy the data from fetch_value to vector<T>
 template <typename T>
 std::vector<std::vector<T>> get_fetch_variable() {
   typedef std::vector<paddle::framework::Tensor> FetchOutputs;
-  // Tensors in fetch value variable will only be in CPUPlace
   Variable* g_fetch_value = GetGlobalScope()->FindVar("fetch_value");
   FetchOutputs& fetch_outputs = *(g_fetch_value->GetMutable<FetchOutputs>());
 
@@ -159,6 +161,7 @@ std::vector<std::vector<T>> get_fetch_variable() {
            fetch_outputs[i].numel() * sizeof(T));
     result.push_back(tmp);
   }
+
   return result;
 }
 
@@ -197,7 +200,7 @@ class ExecutorTesterRandom : public ::testing::Test {
   ProgramDesc pdesc_;
 };
 
-class ExecutorTesterFeed : public ::testing::Test {
+class ExecutorTesterFeedAndFetch : public ::testing::Test {
  public:
   virtual void SetUp() override {
     auto root_block = pdesc_.add_blocks();
@@ -208,26 +211,8 @@ class ExecutorTesterFeed : public ::testing::Test {
 
     add_feed_op("a", dim, 0, root_block);
     add_feed_op("b", dim, 1, root_block);
-
-    auto c = root_block->add_vars();
-    c->set_name("c");
-    auto c_lt = c->mutable_lod_tensor();
-    c_lt->set_data_type(paddle::framework::DataType::FP32);
-
-    auto op = root_block->add_ops();
-    op->set_type("elementwise_add");
-    auto X = op->add_inputs();
-    X->set_parameter("X");
-    X->add_arguments("a");
-    auto Y = op->add_inputs();
-    Y->set_parameter("Y");
-    Y->add_arguments("b");
-    auto Out = op->add_outputs();
-    Out->set_parameter("Out");
-    Out->add_arguments("c");
-
     add_fetch_op("a", dim, 0, root_block);
-    add_fetch_op("c", dim, 0, root_block);
+    add_fetch_op("b", dim, 1, root_block);
 
     std::vector<float> vec1 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     std::vector<float> vec2 = {4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
@@ -255,6 +240,7 @@ TEST_F(ExecutorTesterRandom, CPU) {
   Executor* executor = new Executor(places);
   executor->Run(pdesc_, GetGlobalScope());
   std::vector<std::vector<float>> result = get_fetch_variable<float>();
+
   for (auto& vec : result) {
     for (auto& num : vec) {
       std::cout << num << " ";
@@ -264,7 +250,7 @@ TEST_F(ExecutorTesterRandom, CPU) {
   delete executor;
 }
 
-TEST_F(ExecutorTesterFeed, CPU) {
+TEST_F(ExecutorTesterFeedAndFetch, CPU) {
   std::vector<Place> places;
   CPUPlace cpu_place;
   places.push_back(cpu_place);
@@ -279,16 +265,15 @@ TEST_F(ExecutorTesterFeed, CPU) {
 
   // 3 mini-batch
   for (int i = 0; i < 3; i++) {
-    // need to set feed variable before Executor::Run
-    std::cout << "start mini-batch " << i << std::endl;
     set_feed_variable<float>(inputs_);
     executor->Run(pdesc_, GetGlobalScope());
     std::vector<std::vector<float>> result = get_fetch_variable<float>();
-    for (auto& vec : result) {
-      for (auto& num : vec) {
-        std::cout << num << " ";
+    PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
+    for (size_t i = 0; i < result.size(); ++i) {
+      PADDLE_ENFORCE_EQ(result[i].size(), inputs_[i].size());
+      for (size_t j = 0; j < result[i].size(); ++j) {
+        PADDLE_ENFORCE_EQ(result[i][j], inputs_[i][j]);
       }
-      std::cout << std::endl;
     }
   }
 
@@ -314,7 +299,7 @@ TEST_F(ExecutorTesterRandom, GPU) {
   delete executor;
 }
 
-TEST_F(ExecutorTesterFeed, GPU) {
+TEST_F(ExecutorTesterFeedAndFetch, GPU) {
   std::vector<Place> places;
   GPUPlace gpu_place(0);
   places.push_back(gpu_place);
@@ -331,16 +316,15 @@ TEST_F(ExecutorTesterFeed, GPU) {
 
   // 3 mini-batch
   for (int i = 0; i < 3; i++) {
-    // need to set feed variable before Executor::Run
-    std::cout << "start mini-batch " << i << std::endl;
     set_feed_variable<float>(inputs_);
     executor->Run(pdesc_, GetGlobalScope());
     std::vector<std::vector<float>> result = get_fetch_variable<float>();
-    for (auto& vec : result) {
-      for (auto& num : vec) {
-        std::cout << num << " ";
+    PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
+    for (size_t i = 0; i < result.size(); ++i) {
+      PADDLE_ENFORCE_EQ(result[i].size(), inputs_[i].size());
+      for (size_t j = 0; j < result[i].size(); ++j) {
+        PADDLE_ENFORCE_EQ(result[i][j], inputs_[i][j]);
       }
-      std::cout << std::endl;
     }
   }
   delete executor;
