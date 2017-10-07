@@ -4,7 +4,7 @@
 
 A PaddlePaddle program consists of two parts -- the first generates a `ProgramDesc` protobuf message that describes the program, and the second runs this message using a C++ class `Executor`.
 
-A simple example PaddlePaddel program can be found in [graph.md](./graph.md):
+A simple example PaddlePaddle program can be found in [graph.md](./graph.md):
 
 ```python
 x = layer.data("images")
@@ -73,9 +73,9 @@ message BlockDesc {
 }
 ```
 
-The parent ID indicates the parent block so could operators in a block refers to variables not only defined locally but also those in an ancestor block.
+The parent ID indicates the parent block so that operators in a block can refer to variables defined locally and also those defined in their ancestor blocks.
 
-The block ID comes from that all block are flattened in an array defined in `ProgramDesc`:
+All hierarchical blocks in a program are flattened and stored in an array. The block ID is the index of the block in this array.
 
 ```protobuf
 message ProgramDesc {
@@ -83,15 +83,14 @@ message ProgramDesc {
 }
 ```
 
-So the index of a block in above array is its ID.
 
 ### Global Block
 
-The global block is the first one in above array.
+The global block is the first one in the above array.
 
 ## Operators that Use Blocks
 
-In above example, the operator `IfElseOp` has two blocks -- the true branch and the false branch.
+In the above example, the operator `IfElseOp` has two blocks -- the true branch and the false branch.
 
 The definition of `OpDesc` shows that an operator could have some attributes:
 
