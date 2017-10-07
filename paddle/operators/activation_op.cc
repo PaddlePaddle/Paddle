@@ -49,6 +49,18 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  LogSigmoidOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of LogSigmoid operator");
+    AddOutput("Y", "Output of LogSigmoid operator");
+    AddComment(
+        "Logsigmoid activation operator, logsigmoid = log (1 / (1 + exp(-x)))");
+  }
+};
+
 class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ExpOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -249,6 +261,9 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(sigmoid, ops::ActivationOp, ops::SigmoidOpMaker, sigmoid_grad,
             ops::ActivationOpGrad);
+
+REGISTER_OP(logsigmoid, ops::ActivationOp, ops::LogSigmoidOpMaker,
+            logsigmoid_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
             ops::ActivationOpGrad);
