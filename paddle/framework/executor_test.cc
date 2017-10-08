@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/backward.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_desc.h"
@@ -27,6 +28,7 @@ USE_OP(gaussian_random);
 USE_OP(feed);
 USE_OP(fetch);
 USE_OP(mul);
+USE_OP(squared_l2_distance);
 
 using std::string;
 using namespace paddle::platform;
@@ -170,10 +172,16 @@ class ExecutorTesterRandom : public ::testing::Test {
           root_block);
     AddOp("mul", {{"X", {"b"}}, {"Y", {"w2"}}}, {{"Out", {"a_out"}}}, {},
           root_block);
-
-    AddOp("fetch", {{"Input", {"a_out"}}}, {},
-          {{"dims", std::vector<int>{input_dim, batch_size}}, {"col", 1}},
+    AddOp("squared_l2_distance", {{"X", {"a"}}, {"Y", {"a_out"}}},
+          {{"Out", {"l2_distance"}}, {"sub_result", {"l2_distance_sub"}}}, {},
           root_block);
+
+    AppendBackward(pdesc_, {});
+    // AddOp("fetch", {{"Input", {"sub_result"}}}, {},
+    //       {{"dims", std::vector<int>{input_dim, batch_size}}, {"col", 0}},
+    //       root_block);
+    AddOp("fetch", {{"Input", {"l2_distance"}}}, {},
+          {{"dims", std::vector<int>{batch_size}}, {"col", 1}}, root_block);
   }
 
  protected:
