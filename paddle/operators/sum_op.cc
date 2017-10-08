@@ -45,10 +45,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of sum operator.")
-        .AsDuplicable()
-        .NotInGradient();
-    AddOutput("Out", "the output tensor of sum operator.").NotInGradient();
+    AddInput("X", "the input tensors of sum operator.").AsDuplicable();
+    AddOutput("Out", "the output tensor of sum operator.");
     AddComment(R"DOC(
 Sum the input tensors.
 
@@ -58,23 +56,26 @@ or not. But the output only shares the LoD with the first input.
   }
 };
 
-class SumGradOp : public NetOp {
+class SumGradMaker : public framework::GradOpDescMakerBase {
  public:
-  SumGradOp(const std::string& type, const framework::VariableNameMap& inputs,
-            const framework::VariableNameMap& outputs,
-            const framework::AttributeMap& attrs)
-      : NetOp(type, inputs, outputs, attrs) {
-    auto& x_grad_names = Outputs(framework::GradVarName("X"));
-    auto out_grad_name = this->Input(framework::GradVarName("Out"));
+  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-    framework::AttributeMap grad_attrs;
-    grad_attrs["scale"] = 1.0f;
-    for (auto& x_grad_name : x_grad_names) {
-      AppendOp(framework::OpRegistry::CreateOp(
-          "scale", {{"X", {out_grad_name}}}, {{"Out", {x_grad_name}}},
-          grad_attrs));
-    }
-    CompleteAddOp(false);
+  std::vector<std::unique_ptr<framework::OpDescBind>> operator()()
+      const override {
+    auto x_grads = InputGrad("X");
+    std::vector<std::unique_ptr<framework::OpDescBind>> grad_ops;
+    grad_ops.reserve(x_grads.size());
+    auto og = OutputGrad("Out");
+    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
+                   [&og](const std::string& x_grad) {
+                     auto* grad_op = new framework::OpDescBind();
+                     grad_op->SetType("scale");
+                     grad_op->SetInput("X", og);
+                     grad_op->SetOutput("Out", {x_grad});
+                     grad_op->SetAttr("scale", 1.0f);
+                     return std::unique_ptr<framework::OpDescBind>(grad_op);
+                   });
+    return grad_ops;
   }
 };
 
@@ -82,5 +83,6 @@ class SumGradOp : public NetOp {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sum, ops::SumOp, ops::SumOpMaker, sum_grad, ops::SumGradOp);
+
+REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker);
 REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>);

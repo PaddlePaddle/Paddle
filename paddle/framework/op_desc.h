@@ -27,6 +27,11 @@ class BlockDescBind;
 
 class OpDescBind {
  public:
+  OpDescBind() {}
+
+  OpDescBind(const std::string &type, const VariableNameMap &inputs,
+             const VariableNameMap &outputs, const AttributeMap &attrs);
+
   OpDesc *Proto();
 
   std::string Type() const { return op_desc_.type(); }
@@ -35,10 +40,14 @@ class OpDescBind {
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
+  std::vector<std::string> InputArgumentNames() const;
+
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
 
   const std::vector<std::string> &Output(const std::string &name) const;
+
+  std::vector<std::string> OutputArgumentNames() const;
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
@@ -61,6 +70,8 @@ class OpDescBind {
 
   int GetBlockAttr(const std::string &name) const;
 
+  void Rename(const std::string &old_name, const std::string &new_name);
+
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
 
@@ -69,6 +80,22 @@ class OpDescBind {
 
   std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
+
+  void SetInputMap(const VariableNameMap &input) {
+    this->inputs_ = input;
+    this->need_update_ = true;
+  }
+
+  void SetOutputMap(const VariableNameMap &output) {
+    this->outputs_ = output;
+    this->need_update_ = true;
+  }
+
+  void Sync();
+
+  const VariableNameMap &Inputs() const { return inputs_; }
+
+  const VariableNameMap &Outputs() const { return outputs_; }
 
  private:
   template <typename MapType>
@@ -80,8 +107,6 @@ class OpDescBind {
         [](const typename MapType::value_type &pair) { return pair.first; });
     return ret_val;
   }
-
-  void Sync();
 
   OpDesc op_desc_;
   VariableNameMap inputs_;
