@@ -164,6 +164,39 @@ struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// tanhshrink(x) = x - tanh(x)
+// where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
+template <typename T>
+struct HardShrinkFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    auto temp1 = (x < (threshold * -1)).template cast<T>().eval();
+    auto temp2 = (x > threshold).template cast<T>().eval();
+    y.device(d) = x * (temp1 + temp2);
+  }
+};
+
+template <typename T>
+struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    auto temp1 = (x < (threshold * -1)).template cast<T>().eval();
+    auto temp2 = (x > threshold).template cast<T>().eval();
+    dx.device(d) = dy * (temp1 + temp2).template cast<T>();
+  }
+};
+
 // sqrt(x) = x^(1/2)
 template <typename T>
 struct SqrtFunctor : public BaseActivationFunctor<T> {
@@ -285,8 +318,6 @@ template <typename T>
 struct Relu6Functor : public BaseActivationFunctor<T> {
   float threshold;
 
-  // NOTE: Explicit hides the `BaseActivationFunctor<T>::GetAttrs`
-  // not polymorphism for speed.
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
@@ -440,21 +471,22 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_KERNEL_FUNCTOR(__macro)                         \
-  __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);          \
-  __macro(exp, ExpFunctor, ExpGradFunctor);                      \
-  __macro(relu, ReluFunctor, ReluGradFunctor);                   \
-  __macro(tanh, TanhFunctor, TanhGradFunctor);                   \
-  __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                   \
-  __macro(abs, AbsFunctor, AbsGradFunctor);                      \
-  __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor); \
-  __macro(log, LogFunctor, LogGradFunctor);                      \
-  __macro(square, SquareFunctor, SquareGradFunctor);             \
-  __macro(brelu, BReluFunctor, BReluGradFunctor);                \
-  __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);      \
-  __macro(pow, PowFunctor, PowGradFunctor);                      \
-  __macro(stanh, STanhFunctor, STanhGradFunctor);                \
-  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);       \
-  __macro(relu6, Relu6Functor, Relu6GradFunctor);                \
-  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);   \
-  __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor)
+#define FOR_EACH_KERNEL_FUNCTOR(__macro)                          \
+  __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);           \
+  __macro(exp, ExpFunctor, ExpGradFunctor);                       \
+  __macro(relu, ReluFunctor, ReluGradFunctor);                    \
+  __macro(tanh, TanhFunctor, TanhGradFunctor);                    \
+  __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                    \
+  __macro(abs, AbsFunctor, AbsGradFunctor);                       \
+  __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
+  __macro(log, LogFunctor, LogGradFunctor);                       \
+  __macro(square, SquareFunctor, SquareGradFunctor);              \
+  __macro(brelu, BReluFunctor, BReluGradFunctor);                 \
+  __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);       \
+  __macro(pow, PowFunctor, PowGradFunctor);                       \
+  __macro(stanh, STanhFunctor, STanhGradFunctor);                 \
+  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);        \
+  __macro(relu6, Relu6Functor, Relu6GradFunctor);                 \
+  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);    \
+  __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
+  __macro(hard_shrink, HardShrinkFunctor, HardShrinkGradFunctor)
