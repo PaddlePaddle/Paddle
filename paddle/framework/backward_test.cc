@@ -440,6 +440,25 @@ TEST(Backward, simple_single_op) {
             std::vector<std::string>({f::GradVarName("b")}));
 }
 
+TEST(Backward, default_attribute) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op = block->AppendOp();
+  op->SetType("mul");
+  op->SetInput("X", {"x"});
+  op->SetInput("Y", {"y"});
+  op->SetOutput("Out", {"out"});
+
+  AppendBackward(program, {});
+
+  ASSERT_EQ(block->AllOps().size(), 2UL);
+  f::OpDescBind *grad_op = block->AllOps()[1];
+  ASSERT_EQ(grad_op->Type(), "mul_grad");
+  EXPECT_EQ(boost::get<int>(grad_op->GetAttr("x_num_col_dims")), 1);
+  EXPECT_EQ(boost::get<int>(grad_op->GetAttr("y_num_col_dims")), 1);
+}
+
 TEST(Backward, simple_mult_op) {
   f::ProgramDesc *program_desc = GetNewProgramDesc();
   f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
