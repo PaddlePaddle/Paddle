@@ -21,15 +21,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
-//////////////////////
-#define FLT_MAX __FLT_MAX__  //
 
+#define FLT_MAX \
+  __FLT_MAX__  // It might need to be placed in another file, but I'm still
+               // wondering where to put it
+
+/*
+ * \brief Extracting simple operations from pooling.
+ *        Both MaxPool and AvgPool need initial, compute and finalize operation.
+ *        MaxPool initializes temp variable to the negative maximum to find the
+ * maximum value in the pooling field.
+ *        AvgPool initializes temp variable to the zero to accumulate all values
+ * in pool pooling, and takes the average.
+ *        MaxPoolGrad and AvgPoolGrad are gradient operations respectively.
+ */
 template <class T>
 class MaxPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   DEVICE inline void compute(T& y, const T& x) { y = y > x ? y : x; }
-  DEVICE inline void finalize(T& y, const T& poo_size) {}
+  DEVICE inline void finalize(T& y, const T& pool_field) {}
 };
 
 template <class T>
@@ -37,8 +48,9 @@ class AvgPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(0); }
   DEVICE inline void compute(T& y, const T& x) { y += x; }
-  DEVICE inline void finalize(T& y, const T& poo_size) { y /= poo_size; }
+  DEVICE inline void finalize(T& y, const T& pool_field) { y /= pool_field; }
 };
+
 template <class T>
 class MaxPoolGrad {
  public:
@@ -56,6 +68,20 @@ class AvgPoolGrad {
     dx += (scale * dy);
   }
 };
+
+/*
+ * \brief Getting pooling results, and calculating gradient.
+ *
+ * In pool2d, all tensors are in NCHW format. In pool3d, all tensors are in
+ * NCDHW format.
+ *
+ * In max pooling, it is possible that the pooling region has multiple maximum
+ * elements.
+ * In this case, we should compute the gradient of the first maximum element.
+ * This is different from average pooling. So we rewrite the max_pool_grad:
+ * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
+ *
+ */
 
 template <typename Place, typename PoolProcess, typename T>
 class Pool2dFunctor {
@@ -117,6 +143,14 @@ class MaxPool3dGradFunctor {
                   std::vector<int>& strides, std::vector<int>& paddings);
 };
 
+/*
+ * \brief Getting max pooling results and corresponding max index, and
+ * calculating gradient.
+ * In sub-sampling-pooling, it is necessary to know max element index.
+ * In pool2d, all tensors are in NCHW format. In pool3d, all tensors are in
+ * NCDHW format.
+ *
+ */
 template <typename Place, typename T>
 class MaxPool2dWithIndexFunctor {
  public:

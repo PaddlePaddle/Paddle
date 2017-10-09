@@ -17,15 +17,15 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
-    maxPool2dWithIndex,
+    max_pool2d_with_index,
     ops::MaxPoolWithIndexKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    maxPool2dWithIndex_grad,
+    max_pool2d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::GPUPlace, float>)
 
 REGISTER_OP_GPU_KERNEL(
-    maxPool3dWithIndex,
+    max_pool3d_with_index,
     ops::MaxPoolWithIndexKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    maxPool3dWithIndex_grad,
+    max_pool3d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::GPUPlace, float>)

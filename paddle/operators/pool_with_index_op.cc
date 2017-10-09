@@ -17,8 +17,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-int OutputSizeMaxPool(int input_size, int filter_size, int padding,
-                      int stride) {
+inline int OutputSizeMaxPool(int input_size, int filter_size, int padding,
+                             int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
 }
@@ -194,24 +194,24 @@ the input and ksize, strides, paddings parameters.
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(maxPool2dWithIndex, ops::MaxPoolWithIndexOp,
-            ops::MaxPool2dWithIndexOpMaker, maxPool2dWithIndex_grad,
+REGISTER_OP(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
+            ops::MaxPool2dWithIndexOpMaker, max_pool2d_with_index_grad,
             ops::MaxPoolWithIndexOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    maxPool2dWithIndex,
+    max_pool2d_with_index,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    maxPool2dWithIndex_grad,
+    max_pool2d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>)
 
-REGISTER_OP(maxPool3dWithIndex, ops::MaxPoolWithIndexOp,
-            ops::MaxPool3dWithIndexOpMaker, maxPool3dWithIndex_grad,
+REGISTER_OP(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
+            ops::MaxPool3dWithIndexOpMaker, max_pool3d_with_index_grad,
             ops::MaxPoolWithIndexOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    maxPool3dWithIndex,
+    max_pool3d_with_index,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    maxPool3dWithIndex_grad,
+    max_pool3d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>)

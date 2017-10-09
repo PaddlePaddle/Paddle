@@ -100,7 +100,8 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
     def initTestCase(self):
         self.global_pool = True
-        self.op_type = "maxPool3dWithIndex"
+        self.index = "max_pool3d_with_index"
+        self.op_type = "%s" % self.index
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 5, 5, 5]
         self.ksize = [3, 3, 3]
@@ -111,7 +112,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
 class TestCase1(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = True
-        self.op_type = "maxPool3dWithIndex"
+        self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 5, 5, 5]
         self.ksize = [3, 3, 3]
@@ -122,7 +123,7 @@ class TestCase1(TestMaxPoolWithIndex_Op):
 class TestCase2(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = False
-        self.op_type = "maxPool3dWithIndex"
+        self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
@@ -133,7 +134,7 @@ class TestCase2(TestMaxPoolWithIndex_Op):
 class TestCase3(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = False
-        self.op_type = "maxPool3dWithIndex"
+        self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
@@ -144,7 +145,7 @@ class TestCase3(TestMaxPoolWithIndex_Op):
 class TestCase4(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = True
-        self.op_type = "maxPool3dWithIndex"
+        self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 5, 5, 5]
         self.ksize = [3, 3, 3]
@@ -155,7 +156,7 @@ class TestCase4(TestMaxPoolWithIndex_Op):
 class TestCase5(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = True
-        self.op_type = "maxPool3dWithIndex"
+        self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 5, 5, 5]
         self.ksize = [3, 3, 3]
@@ -166,7 +167,7 @@ class TestCase5(TestMaxPoolWithIndex_Op):
 class TestCase6(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = False
-        self.op_type = "maxPool2dWithIndex"
+        self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -177,7 +178,7 @@ class TestCase6(TestMaxPoolWithIndex_Op):
 class TestCase7(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = False
-        self.op_type = "maxPool2dWithIndex"
+        self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -188,7 +189,7 @@ class TestCase7(TestMaxPoolWithIndex_Op):
 class TestCase8(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = True
-        self.op_type = "maxPool2dWithIndex"
+        self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 5, 5]
         self.ksize = [3, 3]
@@ -199,7 +200,7 @@ class TestCase8(TestMaxPoolWithIndex_Op):
 class TestCase9(TestMaxPoolWithIndex_Op):
     def initTestCase(self):
         self.global_pool = True
-        self.op_type = "maxPool2dWithIndex"
+        self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 5, 5]
         self.ksize = [3, 3]
