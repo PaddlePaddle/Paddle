@@ -52,8 +52,6 @@ class OpDescBind {
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
 
-  std::string DebugString() { return this->Proto()->DebugString(); }
-
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
   }
