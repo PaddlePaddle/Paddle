@@ -266,5 +266,5 @@ void DynamicRecurrentGradientOp::Run(
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    dynamic_recurrent_op, paddle::operators::DynamicRecurrentOp,
+    dynamic_recurrent, paddle::operators::DynamicRecurrentOp,
     paddle::operators::DynamicRecurrentOpProtoAndCheckerMaker);
