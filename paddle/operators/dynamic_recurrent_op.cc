@@ -171,7 +171,7 @@ void DynamicRecurrentOp::ConcatOutputs() const {
 void DynamicRecurrentOp::InitStates() const {
   // init the first state
   // TODO(superjom) parepare the scenerio that boot state not exists
-  for (auto memory : arg_.memories) {
+  for (const auto& memory : arg_.memories) {
     auto* boot_state_var = cache_.scope->FindVar(memory.boot_var);
     PADDLE_ENFORCE_NOT_NULL(boot_state_var);
     auto& boot_state = boot_state_var->Get<LoDTensor>();
