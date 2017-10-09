@@ -10,12 +10,12 @@ class TestInterpOp(OpTest):
         y = np.random.random((2, 3)).astype("float32")
         w = np.random.random(2).astype("float32")
 
-        minus_out = x - y
-        mul_out = minus_out * w.reshape(2, 1)
+        sub_out = x - y
+        mul_out = sub_out * w.reshape(2, 1)
         out = mul_out + y
 
         self.inputs = {'X': x, 'Y': y, 'W': w}
-        self.outputs = {'Out': out, 'MinusOut': minus_out, 'MulOut': mul_out}
+        self.outputs = {'Out': out, 'SubOut': sub_out, 'MulOut': mul_out}
 
     def test_check_output(self):
         self.check_output()
