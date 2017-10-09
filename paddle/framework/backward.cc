@@ -302,7 +302,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
     return grad_op_descs;  // empty vector
   }
 
-  grad_op_descs = OpRegistry::CreateGradOpDescs(*op_desc);
+  grad_op_descs = OpRegistry::CreateGradOpDescs(op_desc.get());
 
   std::list<std::unique_ptr<OpDescBind>> pending_fill_zeros_ops;
   for (auto& desc : grad_op_descs) {
