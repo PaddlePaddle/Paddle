@@ -24,7 +24,6 @@ class TestUniformRandomOp(unittest.TestCase):
             max=10.0,
             seed=10)
 
-        op.infer_shape(scope)
         ctx = core.DeviceContext.create(place)
         op.run(scope, ctx)
         tensor = numpy.array(scope.find_var('X').get_tensor())

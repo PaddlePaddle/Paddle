@@ -50,6 +50,11 @@ class MultiplexOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", in_dim);
   }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
+  }
 };
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -98,6 +103,11 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
       d_ins.push_back(ins[i]);
     }
     ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
   }
 };
 

@@ -217,7 +217,7 @@ public:
 
 REGISTER_TYPED_FUNC(RowConv, CPU, RowConvFunc);
 REGISTER_TYPED_FUNC(RowConvGrad, CPU, RowConvGradFunc);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(RowConv, GPU, RowConvFunc);
 REGISTER_TYPED_FUNC(RowConvGrad, GPU, RowConvGradFunc);
 #endif

@@ -24,55 +24,28 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-// Implementation of CPU copy
-template <typename T>
-void CPUScatterUpdate(const paddle::framework::Tensor* src, const int* index,
-                      const size_t index_size,
-                      paddle::framework::Tensor* output) {
-  paddle::framework::DDim output_dims = output->dims();
-
-  for (size_t i = 0; i < index_size; ++i) {
-    int index_ = index[i];
-
-    paddle::framework::Tensor src_ = *src;
-    paddle::framework::Tensor output_ = *output;
-    if (index_size > 1) src_ = src->Slice<T>(i, i + 1);
-    if (output_dims[0] > 1) output_ = output->Slice<T>(index_, index_ + 1);
-
-    auto X = EigenVector<T>::Flatten(src_);
-    auto Y = EigenVector<T>::Flatten(output_);
-
-    Y = X + Y;
-  }
-}
-
-// Implementation of GPU scatter:
-template <typename T>
-void GPUScatterUpdate(const T* src, const int* index, const int slice_size,
-                      const int index_size, T* output);
 
 /**
  * Return a updated tensor from source tensor, scattered according to index:
- * dst[i] += src[index[i]]
+ * dst[i] = src[index[i]]
  * input[src]: type-T source Tensor
  * input[index]: type-int index Tensor (1-D)
  * return: output tensor
  */
 template <typename T>
-void ScatterUpdate(const platform::Place& place,
-                   const paddle::framework::Tensor* src,
-                   const paddle::framework::Tensor* index,
-                   paddle::framework::Tensor* output) {
+void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
+                   const Tensor& index, Tensor* output) {
+  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // check index of shape 1-D
-  PADDLE_ENFORCE(index->dims().size() == 1);
-  int index_size = index->dims()[0];
+  PADDLE_ENFORCE(index.dims().size() == 1);
+  int index_size = index.dims()[0];
 
-  auto src_dims = src->dims();
+  auto src_dims = src.dims();
   auto dst_dims = output->dims();
+
+  const T* p_src = src.data<T>();
+  const int* p_index = index.data<int>();
+  T* p_output = output->data<T>();
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
@@ -80,11 +53,13 @@ void ScatterUpdate(const platform::Place& place,
 
   // slice size
   size_t slice_size = 1;
-  for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
-  if (platform::is_cpu_place(place)) {
-    CPUScatterUpdate<T>(src, index->data<int>(), index_size, output);
-  } else {
+  const size_t slice_bytes = slice_size * sizeof(T);
+
+  for (int i = 0; i < index_size; ++i) {
+    int index_ = p_index[i];
+    memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
   }
 }
 

@@ -26,46 +26,31 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class SoftmaxKernel : public framework::OpKernel {
+class SoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto X = context.Input<Tensor>("X");
-    auto Y = context.Output<Tensor>("Y");
+    auto* X = context.Input<Tensor>("X");
+    auto* Y = context.Output<Tensor>("Y");
 
     // allocate memory on device.
     Y->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<Place, T>()(context, X, Y);
+    math::SoftmaxFunctor<Place, T>()(context.device_context(), X, Y);
   }
 };
 
 template <typename Place, typename T>
-class SoftmaxGradKernel : public framework::OpKernel {
+class SoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto Y = context.Input<Tensor>("Y");
-    auto dY = context.Input<Tensor>(framework::GradVarName("Y"));
-    auto dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* Y = context.Input<Tensor>("Y");
+    auto* dY = context.Input<Tensor>(framework::GradVarName("Y"));
+    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
+
+    // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    const int batch_size = Y->dims()[0];
-    const int class_num = Y->dims()[1];
-
-    Eigen::DSizes<int, 1> along_class(1);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, class_num);
-
-    auto Y_eigen = EigenMatrix<T>::From(*Y);
-    auto dY_eigen = EigenMatrix<T>::From(*dY);
-    auto dX_eigen = EigenMatrix<T>::From(*dX);
-    auto place = context.GetEigenDevice<Place>();
-
-    auto dot = (Y_eigen * dY_eigen)
-                   .sum(along_class)
-                   .eval()
-                   .reshape(batch_by_one)
-                   .broadcast(one_by_class);
-    dX_eigen.device(place) = (dY_eigen - dot) * Y_eigen;
+    math::SoftmaxGradFunctor<Place, T>()(context.device_context(), Y, dY, dX);
   }
 };
 

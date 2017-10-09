@@ -29,20 +29,10 @@ limitations under the License. */
 
 namespace paddle {
 
-namespace pybind {
-namespace details {
-template <bool less, size_t i, typename... args>
-struct CastToPyBufferImpl;
-}
-}  // namespace pybind
-
 namespace framework {
 
 class Tensor {
  public:
-  template <bool less, size_t i, typename... args>
-  friend struct pybind::details::CastToPyBufferImpl;
-
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
 
@@ -118,6 +108,8 @@ class Tensor {
     PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get place() must contains holder");
     return holder_->place();
   }
+
+  std::type_index type() const { return holder_->type(); }
 
  private:
   template <typename T>
