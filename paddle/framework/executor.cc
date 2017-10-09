@@ -54,39 +54,33 @@ Executor::~Executor() {
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
   // TODO(tonyyang-svail):
-  //    - only runs the first block
-  //    - only runs on the first device
-  //    - test on gpu
+  //    - only runs the first block (i.e. no RNN support)
+  //    - only runs on the first device (i.e. no interdevice communication)
   auto& block = pdesc.blocks(0);
   auto& device = device_contexts_[0];
 
-  // TODO(tonyyang-svail):
-  //    - runs on a new local scope
-  // Scope& local_scope = scope->NewScope();
-
+  // Instantiate all the vars in the global scope
   for (auto& var : block.vars()) {
     scope->NewVar(var.name());
   }
+
+  Scope& local_scope = scope->NewScope();
 
   std::vector<bool> should_run = Preprocess(pdesc);
   PADDLE_ENFORCE(should_run.size() == block.ops_size());
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
+      for (auto var : block.ops(i).outputs()) {
+        for (auto argu : var.arguments()) {
+          if (local_scope.FindVar(argu) == nullptr) {
+            local_scope.NewVar(argu);
+          }
+        }
+      }
       auto op = paddle::framework::OpRegistry::CreateOp(block.ops(i));
-      op->Run(*scope, *device);
+      op->Run(local_scope, *device);
     }
   }
-
-  // // print tensor value
-  // for (auto& var : block.vars()) {
-  //   std::cout << var.name() << std::endl;
-  //   auto v = scope->FindVar(var.name());
-  //   const LoDTensor& t = v->Get<LoDTensor>();
-  //   for (int i = 0; i < t.numel(); ++i) {
-  //     std::cout << t.data<float>()[i] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
 }
 
 std::vector<bool> Executor::Preprocess(const ProgramDesc& pdesc) {
@@ -125,7 +119,6 @@ std::vector<bool> Executor::Preprocess(const ProgramDesc& pdesc) {
       }
     }
 
-    // TODO(tonyyang-svail): add VLOG here for debugging
     if (op_desc.type() == "fetch" || found_dependent_vars) {
       // erase its output to the dependency graph
       for (auto& var : op_desc.outputs()) {
@@ -141,13 +134,9 @@ std::vector<bool> Executor::Preprocess(const ProgramDesc& pdesc) {
         }
       }
 
-      // this op should be executed
       should_run.push_back(true);
-      LOG(INFO) << "Yes " << op_desc.type();
     } else {
-      // this op should NOT be executed
       should_run.push_back(false);
-      LOG(INFO) << "No " << op_desc.type();
     }
   }
 

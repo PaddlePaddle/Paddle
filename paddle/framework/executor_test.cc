@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/block_desc.h"
-#include "paddle/framework/grad_op_builder.h"
+// #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
@@ -37,68 +37,27 @@ using namespace paddle::framework;
 typedef paddle::framework::BlockDesc proto_block;
 typedef paddle::framework::OpDesc proto_op;
 
-struct SetAttrDescVisitor : public boost::static_visitor<void> {
-  explicit SetAttrDescVisitor(OpDesc::Attr* attr) : attr_(attr) {}
-  mutable OpDesc::Attr* attr_;
-  void operator()(int v) const { attr_->set_i(v); }
-  void operator()(float v) const { attr_->set_f(v); }
-  void operator()(const std::string& v) const { attr_->set_s(v); }
-  void operator()(bool b) const { attr_->set_b(b); }
-
-  void operator()(const std::vector<int>& v) const {
-    VectorToRepeated(v, attr_->mutable_ints());
-  }
-  void operator()(const std::vector<float>& v) const {
-    VectorToRepeated(v, attr_->mutable_floats());
-  }
-  void operator()(const std::vector<std::string>& v) const {
-    VectorToRepeated(v, attr_->mutable_strings());
-  }
-  void operator()(const std::vector<bool>& v) const {
-    VectorToRepeated(v, attr_->mutable_bools());
-  }
-  void operator()(BlockDesc* desc) const { attr_->set_block_idx(desc->idx()); }
-  void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
-};
-
 void AddOp(const std::string& type, const VariableNameMap& inputs,
            const VariableNameMap& outputs, AttributeMap attrs,
-           proto_block* block) {
+           paddle::framework::BlockDescBind* block) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
-      auto var = block->add_vars();
-      var->set_name(v);
-      auto var_lt = var->mutable_lod_tensor();
-      var_lt->set_data_type(paddle::framework::DataType::FP32);
+      auto var = block->NewVar(v);
+      var->SetDataType(paddle::framework::DataType::FP32);
     }
   }
 
   // insert op
-  auto op = block->add_ops();
-  op->set_type(type);
+  auto op = block->AppendOp();
+  op->SetType(type);
   for (auto kv : inputs) {
-    auto X = op->add_inputs();
-    X->set_parameter(kv.first);
-    for (auto argu : kv.second) {
-      X->add_arguments(argu);
-    }
+    op->SetInput(kv.first, kv.second);
   }
   for (auto kv : outputs) {
-    auto X = op->add_outputs();
-    X->set_parameter(kv.first);
-    for (auto argu : kv.second) {
-      X->add_arguments(argu);
-    }
+    op->SetOutput(kv.first, kv.second);
   }
-  for (auto& attr : attrs) {
-    auto* attr_desc = op->add_attrs();
-    attr_desc->set_name(attr.first);
-    attr_desc->set_type(
-        static_cast<paddle::framework::AttrType>(attr.second.which() - 1));
-    SetAttrDescVisitor visitor(attr_desc);
-    boost::apply_visitor(visitor, attr.second);
-  }
+  op->SetAttrMap(attrs);
 }
 
 std::once_flag set_variable_flag;
@@ -146,10 +105,16 @@ class ExecutorTesterRandom : public ::testing::Test {
   virtual void SetUp() override {
     int input_dim = 5, batch_size = 2, embed_dim = 5;
 
-    // init pdesc
-    auto init_root_block = init_pdesc_.add_blocks();
-    init_root_block->set_idx(0);
-    init_root_block->set_parent_idx(-1);
+    // init pdesc -----------------------------------------
+    auto temp_init_root_block = init_pdesc_.add_blocks();
+    temp_init_root_block->set_idx(0);
+    temp_init_root_block->set_parent_idx(-1);
+
+    // wrap to BlockDescBind
+    paddle::framework::ProgramDescBind& init_program =
+        paddle::framework::ProgramDescBind::Instance(&init_pdesc_);
+    paddle::framework::BlockDescBind* init_root_block = init_program.Block(0);
+
     AddOp("gaussian_random", {}, {{"Out", {"w1"}}},
           {{"dims", std::vector<int>{input_dim, embed_dim}}}, init_root_block);
     AddOp("gaussian_random", {}, {{"Out", {"w2"}}},
@@ -160,11 +125,18 @@ class ExecutorTesterRandom : public ::testing::Test {
     AddOp("fetch", {{"Input", {"w2"}}}, {},
           {{"dims", std::vector<int>{embed_dim, input_dim}}, {"col", 1}},
           init_root_block);
+    // flush
+    init_program.Proto();
 
-    // run pdesc
-    auto root_block = pdesc_.add_blocks();
-    root_block->set_idx(0);
-    root_block->set_parent_idx(-1);
+    // run pdesc -----------------------------------------
+    auto temp_root_block = pdesc_.add_blocks();
+    temp_root_block->set_idx(0);
+    temp_root_block->set_parent_idx(-1);
+
+    // wrap to BlockDescBind
+    paddle::framework::ProgramDescBind& program =
+        paddle::framework::ProgramDescBind::Instance(&pdesc_);
+    paddle::framework::BlockDescBind* root_block = program.Block(0);
 
     AddOp("gaussian_random", {}, {{"Out", {"a"}}},
           {{"dims", std::vector<int>{batch_size, input_dim}}}, root_block);
@@ -175,13 +147,16 @@ class ExecutorTesterRandom : public ::testing::Test {
     AddOp("squared_l2_distance", {{"X", {"a"}}, {"Y", {"a_out"}}},
           {{"Out", {"l2_distance"}}, {"sub_result", {"l2_distance_sub"}}}, {},
           root_block);
-
-    AppendBackward(pdesc_, {});
-    // AddOp("fetch", {{"Input", {"sub_result"}}}, {},
-    //       {{"dims", std::vector<int>{input_dim, batch_size}}, {"col", 0}},
-    //       root_block);
     AddOp("fetch", {{"Input", {"l2_distance"}}}, {},
           {{"dims", std::vector<int>{batch_size}}, {"col", 1}}, root_block);
+    // flush
+    program.Proto();
+
+    // TODO(tonyyang-svail):
+    //   - Test with Backward
+    // AddOp("gaussian_random", {}, {{"Out", {"l2_distance@GRAD"}}},
+    //       {{"dims", std::vector<int>{batch_size, 1}}}, root_block);
+    // AppendBackward(program, {});
   }
 
  protected:
@@ -192,9 +167,14 @@ class ExecutorTesterRandom : public ::testing::Test {
 class ExecutorTesterFeedAndFetch : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    auto root_block = pdesc_.add_blocks();
-    root_block->set_idx(0);
-    root_block->set_parent_idx(-1);
+    auto temp_root_block = pdesc_.add_blocks();
+    temp_root_block->set_idx(0);
+    temp_root_block->set_parent_idx(-1);
+
+    // wrap to BlockDescBind
+    paddle::framework::ProgramDescBind& program =
+        paddle::framework::ProgramDescBind::Instance(&pdesc_);
+    paddle::framework::BlockDescBind* root_block = program.Block(0);
 
     std::vector<int> dim{6};
 
@@ -206,6 +186,9 @@ class ExecutorTesterFeedAndFetch : public ::testing::Test {
           root_block);
     AddOp("fetch", {{"Input", {"b"}}}, {}, {{"dims", dim}, {"col", 1}},
           root_block);
+
+    // flush
+    program.Proto();
 
     std::vector<float> vec1 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     std::vector<float> vec2 = {4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
@@ -235,12 +218,6 @@ TEST_F(ExecutorTesterRandom, CPU) {
   executor->Run(pdesc_, GetGlobalScope());
   std::vector<std::vector<float>> result = get_fetch_variable<float>();
 
-  for (auto& vec : result) {
-    for (auto& num : vec) {
-      std::cout << num << " ";
-    }
-    std::cout << std::endl;
-  }
   delete executor;
 }
 
@@ -290,18 +267,10 @@ TEST_F(ExecutorTesterRandom, GPU) {
 
   Executor* executor = new Executor(places);
 
-  LOG(INFO) << "Run Init";
   executor->Run(init_pdesc_, GetGlobalScope());
-  LOG(INFO) << "Run";
   executor->Run(pdesc_, GetGlobalScope());
   std::vector<std::vector<float>> result = get_fetch_variable<float>();
 
-  for (auto& vec : result) {
-    for (auto& num : vec) {
-      std::cout << num << " ";
-    }
-    std::cout << std::endl;
-  }
   delete executor;
 }
 
