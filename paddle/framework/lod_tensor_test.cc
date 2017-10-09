@@ -115,6 +115,10 @@ TEST_F(LoDTensorTester, SerializeDeserialize) {
   for (int i = 0; i < 20 * 128; ++i) {
     EXPECT_EQ(dst_ptr[i], src_ptr[i]);
   }
+
+  ASSERT_EQ(dst.NumElements(0), 2UL);
+  ASSERT_EQ(dst.NumElements(1), 4UL);
+  ASSERT_EQ(dst.NumElements(2), 8UL);
 }
 
 }  // namespace framework

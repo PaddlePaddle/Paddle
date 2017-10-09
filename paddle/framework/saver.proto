@@ -28,17 +28,12 @@ message LoDInfo { repeated int64 level = 1; }
  * Save the LoDTensor Meta information through LoDTensorProto, its memory data
  * is copyed to c buffer immediately.
  */
-// enum DevicePlace {
-//   CPUPlace = 0;
-//   GPUPlace = 1;
-// }
 
 message LoDTensorProto {
   optional DataType data_type = 1;
   repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   repeated LoDInfo levels = 3;
   optional int32 lod_level = 4 [ default = 0 ];
-  // optional DevicePlace place = 5; // device information
 }
 
 message ModelProto {

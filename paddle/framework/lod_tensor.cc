@@ -121,10 +121,10 @@ std::string LoDTensor::SerializeToString() const {
   if (this->type() == typeid(int64_t)) desc.set_data_type(DataType::INT64);
   // FIXME(dzh): there is no fp16 in standard c++
 
-  if (this->type() == typeid(float))
-    desc.set_data_type(DataType::FP32);  // NOLINT
-  if (this->type() == typeid(double))
-    desc.set_data_type(DataType::FP64);  // NOLINT
+  if (this->type() == typeid(float))  // NOLINT
+    desc.set_data_type(DataType::FP32);
+  if (this->type() == typeid(double))  // NOLINT
+    desc.set_data_type(DataType::FP64);
 
   // set dims
   std::vector<int64_t> dims = vectorize(this->dims());
@@ -137,7 +137,7 @@ std::string LoDTensor::SerializeToString() const {
   for (size_t i = 0; i < this->NumLevels(); ++i) {
     LoDInfo* lod = desc.add_levels();
     for (size_t j = 0; j < lod_[i].size(); ++j) {
-      lod->add_level(this->lod_element(i, j));
+      lod->add_level(lod_[i][j]);
     }
   }
 
@@ -174,7 +174,7 @@ std::string LoDTensor::SerializeToString() const {
                  DATA_SIZE);
   }
 #ifdef PADDLE_WITH_GPU
-  else if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(place)) {
     memory::Copy(dst_place, buffer + sizeof(size_t) * 2 + desc_bytes.size(),
                  boost::get<platform::GPUPlace>(place),
                  static_cast<char*>(holder_->ptr()) + offset_ / element_width,
@@ -191,11 +191,10 @@ void LoDTensor::DeserializeFromString(const std::string& s,
                                       const platform::Place& dst_place) {
   size_t DESC_SIZE, DATA_SIZE;
   DESC_SIZE = DATA_SIZE = 100;
-  platform::Place src_place = platform::CPUPlace();
-  // memory::Copy(src_place, &DESC_SIZE, src_place, s.c_str(),
-  //              sizeof(size_t));
-  // memory::Copy(src_place, &DATA_SIZE, src_place,
-  //              s.c_str() + sizeof(size_t), sizeof(size_t));
+  platform::CPUPlace src_place;
+  memory::Copy(src_place, &DESC_SIZE, src_place, s.c_str(), sizeof(size_t));
+  memory::Copy(src_place, &DATA_SIZE, src_place, s.c_str() + sizeof(size_t),
+               sizeof(size_t));
 
   // parse LoDTensorDesc
   LoDTensorProto desc;
@@ -222,13 +221,24 @@ void LoDTensor::DeserializeFromString(const std::string& s,
   if (desc.data_type() == DataType::FP64)
     ptr = this->mutable_data<double>(dst_place);
 
-  // GPU
+  LoD lod;
+  std::vector<size_t> levels;
+  for (int i = 0; i < desc.levels().size(); ++i) {
+    auto current_level = desc.levels()[i].level();
+    std::copy(current_level.begin(), current_level.end(),
+              std::back_inserter(levels));
+    lod.emplace_back(levels);
+    levels.clear();
+  }
+
+  this->set_lod(lod);
+
   if (platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), ptr, src_place,
                  s.c_str() + sizeof(size_t) * 2 + DESC_SIZE, DATA_SIZE);
   }
 #ifdef PADDLE_WITH_GPU
-  else if (platform::is_gpu_place(dst_place)) {
+  if (platform::is_gpu_place(dst_place)) {
     memory::Copy(boost::get<platform::GPUPlace>(dst_place), ptr, src_place,
                  s.c_str() + sizeof(size_t) * 2 + DESC_SIZE, DATA_SIZE);
   }
