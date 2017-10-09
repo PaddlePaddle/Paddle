@@ -15,14 +15,14 @@
 #define EIGEN_USE_GPU
 #include "paddle/operators/activation_op.h"
 
+namespace ops = paddle::operators;
+
 #define REGISTER_ACTIVATION_GPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_GPU_KERNEL(                                                      \
       act_type,                                                                \
-      paddle::operators::ActivationKernel<paddle::platform::GPUPlace,          \
-                                          paddle::operators::functor<float>>); \
+      ops::ActivationKernel<paddle::platform::GPUPlace, ops::functor<float>>); \
   REGISTER_OP_GPU_KERNEL(act_type##_grad,                                      \
-                         paddle::operators::ActivationGradKernel<              \
-                             paddle::platform::GPUPlace,                       \
-                             paddle::operators::grad_functor<float>>);
+                         ops::ActivationGradKernel<paddle::platform::GPUPlace, \
+                                                   ops::grad_functor<float>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_GPU_KERNEL);

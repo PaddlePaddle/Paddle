@@ -17,30 +17,12 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
-    reduce_sum,
-    ops::ReduceKernel<paddle::platform::GPUPlace, float, ops::SumFunctor>);
-REGISTER_OP_GPU_KERNEL(reduce_sum_grad,
-                       ops::ReduceGradKernel<paddle::platform::GPUPlace, float,
-                                             ops::SumGradFunctor>);
+#define REGISTER_REDUCE_GPU_KERNEL(reduce_type, functor, grad_functor)     \
+  REGISTER_OP_GPU_KERNEL(                                                  \
+      reduce_type,                                                         \
+      ops::ReduceKernel<paddle::platform::GPUPlace, float, ops::functor>); \
+  REGISTER_OP_GPU_KERNEL(reduce_type##_grad,                               \
+                         ops::ReduceGradKernel<paddle::platform::GPUPlace, \
+                                               float, ops::grad_functor>);
 
-REGISTER_OP_GPU_KERNEL(
-    reduce_mean,
-    ops::ReduceKernel<paddle::platform::GPUPlace, float, ops::MeanFunctor>);
-REGISTER_OP_GPU_KERNEL(reduce_mean_grad,
-                       ops::ReduceGradKernel<paddle::platform::GPUPlace, float,
-                                             ops::MeanGradFunctor>);
-
-REGISTER_OP_GPU_KERNEL(
-    reduce_max,
-    ops::ReduceKernel<paddle::platform::GPUPlace, float, ops::MaxFunctor>);
-REGISTER_OP_GPU_KERNEL(reduce_max_grad,
-                       ops::ReduceGradKernel<paddle::platform::GPUPlace, float,
-                                             ops::MaxOrMinGradFunctor>);
-
-REGISTER_OP_GPU_KERNEL(
-    reduce_min,
-    ops::ReduceKernel<paddle::platform::GPUPlace, float, ops::MinFunctor>);
-REGISTER_OP_GPU_KERNEL(reduce_min_grad,
-                       ops::ReduceGradKernel<paddle::platform::GPUPlace, float,
-                                             ops::MaxOrMinGradFunctor>);
+FOR_EACH_KERNEL_FUNCTOR(REGISTER_REDUCE_GPU_KERNEL);
