@@ -29,8 +29,9 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
                    "Input(Grad) of DecayedAdagradOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Moment"),
                    "Input(Moment) of DecayedAdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of AdagradOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("LearningRate"),
+        "Input(LearningRate) of DecayedAdagradOp should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of DecayedAdagradOp should not be null.");
