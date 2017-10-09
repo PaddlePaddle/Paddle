@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import random
 import itertools
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
@@ -45,12 +46,17 @@ def create_op(scope, op_type, inputs, outputs, attrs):
 
 def set_input(scope, op, inputs, place):
     def __set_input__(var_name, var):
-        tensor = scope.find_var(var_name).get_tensor()
-        if isinstance(var, tuple):
-            tensor.set_lod(var[1])
-            var = var[0]
-        tensor.set_dims(var.shape)
-        tensor.set(var, place)
+        if isinstance(var, tuple) or isinstance(var, np.ndarray):
+            tensor = scope.find_var(var_name).get_tensor()
+            if isinstance(var, tuple):
+                tensor.set_lod(var[1])
+                var = var[0]
+            tensor.set_dims(var.shape)
+            tensor.set(var, place)
+        elif isinstance(var, float):
+            scope.find_var(var_name).set_float(var)
+        elif isinstance(var, int):
+            scope.find_var(var_name).set_int(var)
 
     for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:
@@ -192,6 +198,21 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
 
 class OpTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        '''Fix random seeds to remove randomness from tests'''
+        cls._np_rand_state = np.random.get_state()
+        cls._py_rand_state = random.getstate()
+
+        np.random.seed(123)
+        random.seed(124)
+
+    @classmethod
+    def tearDownClass(cls):
+        '''Restore random seeds'''
+        np.random.set_state(cls._np_rand_state)
+        random.setstate(cls._py_rand_state)
+
     def check_output_with_place(self, place, atol):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()

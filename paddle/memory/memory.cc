@@ -62,7 +62,7 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   using BuddyAllocVec = std::vector<BuddyAllocator*>;
@@ -77,7 +77,7 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
 
   // GPU buddy allocator initialization
   std::call_once(gpu_allocator_flag, [&]() {
-    int gpu_num = platform::GetDeviceCount();
+    int gpu_num = platform::GetCUDADeviceCount();
     allocators.reserve(gpu_num);
     for (int gpu = 0; gpu < gpu_num; gpu++) {
       platform::SetDeviceId(gpu);

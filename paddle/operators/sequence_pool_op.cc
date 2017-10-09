@@ -24,9 +24,9 @@ class SequencePoolOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContextBase* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceAvgPoolOp should not be null.");
+                   "Input(X) of SequencePoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceAvgPoolOp should not be null.");
+                   "Output(Out) of SequencePoolOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 };

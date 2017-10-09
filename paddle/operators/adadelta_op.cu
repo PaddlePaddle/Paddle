@@ -13,11 +13,8 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/rowwise_add_op.h"
+#include "paddle/operators/adadelta_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    rowwise_add, ops::RowwiseAddKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    rowwise_add_grad,
-    ops::RowwiseAddGradKernel<paddle::platform::GPUPlace, float>);
+    adadelta, ops::AdadeltaOpKernel<paddle::platform::GPUPlace, float>);
