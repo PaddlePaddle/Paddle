@@ -137,21 +137,26 @@ class TestBRelu(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
-class TestLeakyRelu(OpTest):
+class TestRelu6(OpTest):
     def setUp(self):
-        self.op_type = "leaky_relu"
-        alpha = 0.02
-        self.attrs = {'alpha': alpha}
-        self.inputs = {'X': np.random.uniform(-3, 3, [4, 4]).astype("float32")}
+        self.op_type = "relu6"
+        x = np.random.uniform(-1, 1, [4, 10]).astype("float32")
+        threshold = 6.0
+        # The same with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
+
+        self.inputs = {'X': x}
+        self.attrs = {'threshold': threshold}
         self.outputs = {
-            'Y': np.maximum(self.inputs['X'], alpha * self.inputs['X'])
+            'Y': np.minimum(np.maximum(self.inputs['X'], 0), threshold)
         }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
 class TestSoftRelu(OpTest):
