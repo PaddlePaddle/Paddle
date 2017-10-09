@@ -1,7 +1,7 @@
 #include "paddle/operators/math/math_function.h"
 #include "gtest/gtest.h"
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(math_function, notrans_mul_trans) {
   paddle::framework::Tensor input1;
   paddle::framework::Tensor input1_gpu;
