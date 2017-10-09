@@ -12,17 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/operators/pool_op.h"
 
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/operator.h"
+namespace ops = paddle::operators;
 
-namespace paddle {
-namespace framework {
+REGISTER_OP_GPU_KERNEL(pool2d,
+                       ops::PoolKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(pool2d_grad,
+                       ops::PoolGradKernel<paddle::platform::GPUPlace, float>);
 
-OperatorBase* BuildGradOp(const OperatorBase* op);
-
-void CompleteGradOpDesc(const OpDescBind* forw_op, OpDescBind* grad_op);
-
-}  // namespace framework
-}  // namespace paddle
+REGISTER_OP_GPU_KERNEL(pool3d,
+                       ops::PoolKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(pool3d_grad,
+                       ops::PoolGradKernel<paddle::platform::GPUPlace, float>);
