@@ -18,9 +18,18 @@ class Block(object):
 
 
 class Program(object):
+    @classmethod
+    def instance(cls):
+        # From https://stackoverflow.com/questions/8212053
+        # Making Program as a Singleton class.
+        if not hasattr(cls, '_instance'):
+            cls._instance = cls()
+        return cls._instance
+
     def __init__(self):
+        assert not hasattr(self.__class__,
+                           '_instance'), 'Do not call constructor directly!'
         self.proto = core.ProgramDesc.instance()
-        assert self.proto.num_blocks() == 1
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
 
@@ -42,4 +51,4 @@ class Program(object):
 
 
 # program is a global instance.
-g_program = Program()
+g_program = Program.instance()
