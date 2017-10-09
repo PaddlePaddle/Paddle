@@ -1,5 +1,6 @@
 import paddle.v2.framework.core as core
 import collections
+import numpy as np
 
 __all__ = ['Block', 'Variable', 'Program', 'Operator']
 
@@ -17,11 +18,11 @@ class Variable(object):
             self.proto.set_shape(shape)
 
         if dtype is not None:
-            # TODO(yuyang18): Convert dtype from numpy.dtype
+            if not isinstance(dtype, core.DataType):
+                dtype = Variable._convert_np_dtype_to_dtype_(dtype)
             self.proto.set_data_type(dtype)
 
         if lod_level is not None:
-            # TODO(yuyang18): set_lod_level is not defined.
             self.proto.set_lod_level(lod_level)
 
         self.block.vars[name] = self
@@ -33,6 +34,26 @@ class Variable(object):
     def _unique_var_name_():
         uid = core.unique_integer()  # unique during whole process.
         return "_generated_var_%d" % uid
+
+    @staticmethod
+    def _convert_np_dtype_to_dtype_(np_dtype):
+        dtype = np.dtype(np_dtype)
+        if dtype == np.float32:
+            return core.DataType.FP32
+        elif dtype == np.float64:
+            return core.DataType.FP64
+        elif dtype == np.float16:
+            return core.DataType.FP16
+        elif dtype == np.int32:
+            return core.DataType.INT32
+        elif dtype == np.int16:
+            return core.DataType.INT16
+        elif dtype == np.int64:
+            return core.DataType.INT64
+        elif dtype == np.bool:
+            return core.DataType.BOOL
+        else:
+            raise ValueError("Not supported numpy dtype " + str(dtype))
 
 
 class Operator(object):
