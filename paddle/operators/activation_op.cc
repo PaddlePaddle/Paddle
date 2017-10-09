@@ -69,6 +69,22 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  LeakyReluOpMaker(framework::OpProto *proto,
+                   framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of LeakyRelu operator");
+    AddOutput("Y", "Output of LeakyRelu operator");
+    AddComment(
+        "LeakyRelu activation operator, "
+        "leaky_relu = max(x, alpha * x)");
+    AddAttr<AttrType>("alpha", "The small negative slope")
+        .SetDefault(static_cast<AttrType>(0.02f));
+  }
+};
+
 class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   TanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -78,6 +94,17 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(
         "Tanh activation operator, tanh = (exp(x) - exp(-x)) / (exp(x) + "
         "exp(-x))");
+  }
+};
+
+class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  TanhShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of TanhShrink operator");
+    AddOutput("Y", "Output of TanhShrink operator");
+    AddComment("TanhShrink activation operator, tanhshrink(x) = x - tanh(x)");
   }
 };
 
@@ -219,6 +246,9 @@ REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
 REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
+            tanh_shrink_grad, ops::ActivationOpGrad);
+
 REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
 
@@ -239,6 +269,9 @@ REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
 
 REGISTER_OP(brelu, ops::ActivationOp, ops::BReluOpMaker<float>, brelu_grad,
             ops::ActivationOpGrad);
+
+REGISTER_OP(leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker<float>,
+            leaky_relu_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker<float>,
             soft_relu_grad, ops::ActivationOpGrad);
