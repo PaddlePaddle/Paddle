@@ -15,6 +15,7 @@ In our GAN design, we wrap it as a user-friendly easily customized python API to
 | batch norm (missing)      | Zhuoyuan, Jiayi   | Y        |
 | cudnn batch norm (missing)| Zhuoyuan, Jiayi   | N        |
 | max-pooling (done)        | ?                 | Y        |
+| cudnn-max-pool (missing)  | Chengduo          | Y        |
 | fc (done)                 | ?                 | Y        |
 | softmax loss (done)       | ?                 | Y        |
 | reshape op (done)         | ?                 | Y        |
