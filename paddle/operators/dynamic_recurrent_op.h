@@ -14,7 +14,9 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_TESTING
 #include "gtest/gtest.h"
+#endif
 
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/operator.h"
@@ -132,6 +134,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   mutable rnn::Argument arg_;
   mutable ArgCache cache_;
 
+#ifdef PADDLE_WITH_TESTING
   friend class DynamicRecurrentOpTestHelper;
   FRIEND_TEST(DynamicRecurrentOpTestHelper, SplitInputs);
   FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateCache);
@@ -140,6 +143,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepOutputs);
   FRIEND_TEST(DynamicRecurrentOpTestHelper, InitStates);
   FRIEND_TEST(DynamicRecurrentOpTestHelper, ConcatOutputs);
+#endif
 };
 
 class DynamicRecurrentGradientOp : public framework::OperatorBase {
