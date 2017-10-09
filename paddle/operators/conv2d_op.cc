@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-void ConvInferShape(framework::InferShapeContextBase* ctx) {
+void Conv2DOp::InferShape(framework::InferShapeContextBase* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("Input"),
                  "Input(Input) of Conv2DOp should not be null.");
   PADDLE_ENFORCE(ctx->HasInput("Filter"),
@@ -49,27 +49,6 @@ void ConvInferShape(framework::InferShapeContextBase* ctx) {
   ctx->SetOutputDim("Output",
                     {in_dims[0], filter_dims[0], output_height, output_width});
 }
-
-void ConvGradInferShape(framework::InferShapeContextBase* ctx) {
-  auto in_dims = ctx->GetInputDim("Input");
-  auto filter_dims = ctx->GetInputDim("Filter");
-  if (ctx->HasOutput(framework::GradVarName("Input"))) {
-    ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
-  }
-  if (ctx->HasOutput(framework::GradVarName("Filter"))) {
-    ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
-  }
-}
-
-class Conv2DOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
-    ConvInferShape(ctx);
-  }
-};
 
 Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
                              framework::OpAttrChecker* op_checker)
@@ -108,15 +87,16 @@ parameters is checked in the infer-shape.
 )DOC");
 }
 
-class Conv2DOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
-    ConvGradInferShape(ctx);
+void Conv2DOpGrad::InferShape(framework::InferShapeContextBase* ctx) const {
+  auto in_dims = ctx->GetInputDim("Input");
+  auto filter_dims = ctx->GetInputDim("Filter");
+  if (ctx->HasOutput(framework::GradVarName("Input"))) {
+    ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
   }
-};
+  if (ctx->HasOutput(framework::GradVarName("Filter"))) {
+    ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
+  }
+}
 
 }  // namespace operators
 }  // namespace paddle

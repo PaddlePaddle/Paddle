@@ -17,18 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
-class CudnnConvOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
-    ConvInferShape(ctx);
-  }
-};
-
 class CudnnConvOpMaker : public Conv2DOpMaker {
  public:
   CudnnConvOpMaker(framework::OpProto* proto,
@@ -41,24 +29,14 @@ class CudnnConvOpMaker : public Conv2DOpMaker {
   }
 };
 
-class CudnnConvGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
-    ConvGradInferShape(ctx);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv_cudnn, ops::CudnnConvOp, ops::CudnnConvOpMaker,
-            conv_cudnn_grad, ops::CudnnConvGradOp);
-REGISTER_OP_CPU_KERNEL(conv_cudnn,
-                       ops::CudnnConvKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP(conv_cudnn, ops::Conv2DOp, ops::CudnnConvOpMaker, conv_cudnn_grad,
+            ops::Conv2DOpGrad);
+REGISTER_OP_CPU_KERNEL(
+    conv_cudnn, ops::GemmConv2DKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     conv_cudnn_grad,
-    ops::CudnnConvGradKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvGrad2DKernel<paddle::platform::CPUPlace, float>);
