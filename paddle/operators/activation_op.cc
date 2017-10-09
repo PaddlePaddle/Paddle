@@ -285,11 +285,9 @@ REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_CPU_KERNEL(                                                      \
       act_type,                                                                \
-      paddle::operators::ActivationKernel<paddle::platform::CPUPlace,          \
-                                          paddle::operators::functor<float>>); \
+      ops::ActivationKernel<paddle::platform::CPUPlace, ops::functor<float>>); \
   REGISTER_OP_CPU_KERNEL(act_type##_grad,                                      \
-                         paddle::operators::ActivationGradKernel<              \
-                             paddle::platform::CPUPlace,                       \
-                             paddle::operators::grad_functor<float>>);
+                         ops::ActivationGradKernel<paddle::platform::CPUPlace, \
+                                                   ops::grad_functor<float>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);

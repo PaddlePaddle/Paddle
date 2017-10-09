@@ -168,36 +168,22 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(reduce_sum, ops::ReduceOp, ops::ReduceSumOpMaker, reduce_sum_grad,
             ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::SumFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_sum_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::SumGradFunctor>);
 
 REGISTER_OP(reduce_mean, ops::ReduceOp, ops::ReduceMeanOpMaker,
             reduce_mean_grad, ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_mean,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::MeanFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_mean_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::MeanGradFunctor>);
 
 REGISTER_OP(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_max_grad,
             ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_max,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::MaxFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_max_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::MaxOrMinGradFunctor>);
 
 REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_min_grad,
             ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_min,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::MinFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_min_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::MaxOrMinGradFunctor>);
+
+#define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)     \
+  REGISTER_OP_CPU_KERNEL(                                                  \
+      reduce_type,                                                         \
+      ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::functor>); \
+  REGISTER_OP_CPU_KERNEL(reduce_type##_grad,                               \
+                         ops::ReduceGradKernel<paddle::platform::CPUPlace, \
+                                               float, ops::grad_functor>);
+
+FOR_EACH_KERNEL_FUNCTOR(REGISTER_REDUCE_CPU_KERNEL);
