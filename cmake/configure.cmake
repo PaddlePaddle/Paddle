@@ -53,7 +53,8 @@ if(NOT WITH_GPU)
 
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
-    add_definitions(-DPADDLE_WITH_GPU)
+    add_definitions(-DPADDLE_WITH_CUDA)
+
     FIND_PACKAGE(CUDA REQUIRED)
 
     if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)

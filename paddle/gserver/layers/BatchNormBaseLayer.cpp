@@ -16,7 +16,7 @@ limitations under the License. */
 #include "BatchNormalizationLayer.h"
 #include "Layer.h"
 #include "paddle/utils/Stat.h"
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 #include "CudnnBatchNormLayer.h"
 #endif
 

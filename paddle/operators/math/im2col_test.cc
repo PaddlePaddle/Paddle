@@ -71,7 +71,7 @@ void testIm2col() {
     context =
         new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
   } else {
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
     context =
         new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
 #else
@@ -116,7 +116,7 @@ void testIm2col() {
 
 TEST(math, im2col) {
   testIm2col<paddle::platform::CPUPlace>();
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   testIm2col<paddle::platform::GPUPlace>();
 #endif
 }

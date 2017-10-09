@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 #include "paddle/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
@@ -97,7 +96,7 @@ TEST(Layer, kmaxSeqScoreLayer) {
       Matrix::create(subSeqStartPosition.back(), 1, false, false);
 
   std::vector<bool> mode = {false};
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   mode.push_back(true);
 #endif
 

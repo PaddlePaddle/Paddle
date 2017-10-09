@@ -32,6 +32,14 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
+  friend std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
+      ProgramDescBind &program_desc, int block_idx,
+      std::unordered_set<std::string> &no_grad_vars);
+
+  friend void AppendBackward(
+      ProgramDescBind &program_desc,
+      const std::unordered_set<std::string> &no_grad_vars);
+
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
 
@@ -42,6 +50,8 @@ class BlockDescBind {
   VarDescBind *NewVar(const std::string &name_bytes);
 
   VarDescBind *Var(const std::string &name_bytes) const;
+
+  bool HasVar(const std::string &var_name) const;
 
   std::vector<VarDescBind *> AllVars() const;
 

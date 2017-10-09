@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/gpu_info.h"
@@ -61,7 +61,7 @@ class CPUDeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 template <>
 struct EigenDeviceConverter<platform::GPUPlace> {
   using EigenDeviceType = Eigen::GpuDevice;

@@ -340,7 +340,7 @@ public:
 REGISTER_TYPED_FUNC(GemmConv, CPU, GemmConvFunction);
 REGISTER_TYPED_FUNC(GemmConvGradInput, CPU, GemmConvGradInputFunction);
 REGISTER_TYPED_FUNC(GemmConvGradFilter, CPU, GemmConvGradFilterFunction);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(GemmConv, GPU, GemmConvFunction);
 REGISTER_TYPED_FUNC(GemmConvGradInput, GPU, GemmConvGradInputFunction);
 REGISTER_TYPED_FUNC(GemmConvGradFilter, GPU, GemmConvGradFilterFunction);

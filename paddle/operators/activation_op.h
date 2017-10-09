@@ -146,6 +146,24 @@ struct TanhGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// tanhshrink(x) = x - tanh(x)
+// where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
+template <typename T>
+struct TanhShrinkFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x - x.tanh();
+  }
+};
+
+template <typename T>
+struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) = dy * (x.tanh() * x.tanh());
+  }
+};
+
 // sqrt(x) = x^(1/2)
 template <typename T>
 struct SqrtFunctor : public BaseActivationFunctor<T> {
@@ -262,6 +280,36 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// relu6(x) = min(max(0, x), 6)
+template <typename T>
+struct Relu6Functor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  // NOTE: Explicit hides the `BaseActivationFunctor<T>::GetAttrs`
+  // not polymorphism for speed.
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.cwiseMax(static_cast<T>(0)).cwiseMin(threshold);
+  }
+};
+
+template <typename T>
+struct Relu6GradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) =
+        dy * ((x > static_cast<T>(0)) * (x < threshold)).template cast<T>();
+  }
+};
+
 // softsign(x) = x / (1 + |x|)
 template <typename T>
 struct SoftsignFunctor : public BaseActivationFunctor<T> {
@@ -306,6 +354,33 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Y y, dY dy, dX dx) const {
     auto temp = ((x > -threshold) * (x < threshold)).template cast<T>().eval();
     dx.device(d) = dy * (static_cast<T>(1) - (-y).exp()) * temp;
+  }
+};
+
+template <typename T>
+struct LeakyReluFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.cwiseMax(alpha * x);
+  }
+};
+
+template <typename T>
+struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    auto temp1 = alpha * (x < static_cast<T>(0)).template cast<T>().eval();
+    auto temp2 = (x >= static_cast<T>(0)).template cast<T>().eval();
+    dx.device(d) = dy * (temp1 + temp2).template cast<T>();
   }
 };
 
@@ -379,4 +454,7 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
   __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);      \
   __macro(pow, PowFunctor, PowGradFunctor);                      \
   __macro(stanh, STanhFunctor, STanhGradFunctor);                \
-  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor)
+  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);       \
+  __macro(relu6, Relu6Functor, Relu6GradFunctor);                \
+  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);   \
+  __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor)

@@ -48,6 +48,21 @@ class TestTanh(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
+class TestTanhShrink(OpTest):
+    def setUp(self):
+        self.op_type = "tanh_shrink"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [10, 17]).astype("float32")
+        }
+        self.outputs = {'Y': self.inputs['X'] - np.tanh(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+
+
 class TestSqrt(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
@@ -114,6 +129,28 @@ class TestBRelu(OpTest):
         t[t < t_min] = t_min
         t[t > t_max] = t_max
         self.outputs = {'Y': t}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+
+
+class TestRelu6(OpTest):
+    def setUp(self):
+        self.op_type = "relu6"
+        x = np.random.uniform(-1, 1, [4, 10]).astype("float32")
+        threshold = 6.0
+        # The same with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
+
+        self.inputs = {'X': x}
+        self.attrs = {'threshold': threshold}
+        self.outputs = {
+            'Y': np.minimum(np.maximum(self.inputs['X'], 0), threshold)
+        }
 
     def test_check_output(self):
         self.check_output()

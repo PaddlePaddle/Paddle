@@ -35,7 +35,7 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 
 Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 
 template <>
 Eigen::GpuDevice*
