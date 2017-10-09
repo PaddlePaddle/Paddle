@@ -175,7 +175,7 @@ REGISTER_OP(reduce_mean, ops::ReduceOp, ops::ReduceMeanOpMaker,
 REGISTER_OP(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_max_grad,
             ops::ReduceGradOp);
 
-REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_min_grad,
+REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker, reduce_min_grad,
             ops::ReduceGradOp);
 
 #define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)     \
