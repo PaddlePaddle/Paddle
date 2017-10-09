@@ -11,7 +11,7 @@ class SelectedRows {
 };
 ```
 
-The field `height_` shows the first dimension of `SelectedRows`. The `rows` are the indices of which rows of `SelectedRows` are non-zeros. The `value_` field is an N-dim tensor and shape is `[NUM_ROWS, ...]`, which supplies values for each row. The dimension of `SelectedRows` satisfies `[height_] + value_.shape[1:]`.
+The field `height_` shows the first dimension of `SelectedRows`. The `rows` are the indices of which rows of `SelectedRows` are non-zeros. The `value_` field is an N-dim tensor and shape is `[rows.size() /* NUM_ROWS */, ...]`, which supplies values for each row. The dimension of `SelectedRows` satisfies `[height_] + value_.shape[1:]`.
 
 For example, given `height_=100`, `rows_ = [73, 84]`, the `value_ = [[1.0, 2.0], [3.0, 4.0]]` specifies that it is a `100*2` matrix, the 73rd row of that sparse tensor is `[1.0, 2.0]`, the 84th row of that sparse tensor is `[3.0, 4.0]`.
 
@@ -43,7 +43,7 @@ For example, the gradient operator of `TableLookup` will always generate `Select
 ```cpp
 void TableLookupGrad::InferShape(context) {
   ...
-  context.Output("Embedding.Grad").set_tensor_type(kSelectedRows);
+  context.SetDataType("Embedding.Grad", kSelectedRows);
 }
 ```
 
