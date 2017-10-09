@@ -190,7 +190,9 @@ void DynamicRecurrentOp::InitStates() const {
       state->GetMutable<LoDTensor>()->Resize(dims);
       state->GetMutable<LoDTensor>()->mutable_data<value_type>(
           platform::CPUPlace());
-
+      // write to tensor array
+      states_[memory.var].WriteShared(step, state->Get<LoDTensor>());
+      // link previous scope's state to the pre-states in current scope
       if (step == 0) {
         auto* cur_state_tensor = pre_state->GetMutable<LoDTensor>();
         cur_state_tensor->Resize(boot_state.dims());
@@ -200,7 +202,7 @@ void DynamicRecurrentOp::InitStates() const {
         auto* state_pre = pre_scope.FindVar(memory.var);
         PADDLE_ENFORCE_NOT_NULL(state_pre);
         pre_state->GetMutable<LoDTensor>()->ShareDataWith<value_type>(
-            *state_pre->GetMutable<LoDTensor>());
+            states_[memory.var].Read(step - 1));
       }
     }
   }
