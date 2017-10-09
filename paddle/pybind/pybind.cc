@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -230,6 +231,21 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc.InitializationErrorString());
                     return OpRegistry::CreateOp(desc);
                   })
+      .def_static("infer_shape",
+                  [](OpDescBind &op_desc, BlockDescBind &block) {
+                    auto op = OpRegistry::CreateOp(*op_desc.Proto());
+                    auto *op_with_kernel =
+                        dynamic_cast<OperatorWithKernel *>(op.get());
+                    if (op_with_kernel != nullptr) {
+                      auto ctx = CompileTimeInferShapeContext(op_desc, block);
+                      op_with_kernel->InferShape(&ctx);
+                    } else {
+                      PADDLE_THROW(
+                          "OP(%s) is not type of OperatorWithKernel, "
+                          "should not call this function",
+                          op_desc.Type());
+                    }
+                  })
       .def("backward",
            [](const OperatorBase &forwardOp,
               const std::unordered_set<std::string> &no_grad_vars) {
@@ -269,6 +285,56 @@ All parameter, weight, gradient are variables in Paddle.
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
+      });
+
+  py::class_<framework::TensorArray>(m, "TensorArray")
+      .def("__init__",
+           [](TensorArray &instance) { new (&instance) TensorArray(); })
+      .def("read",
+           [](TensorArray &self, size_t index) { return self.Read(index); })
+      .def("write", [](TensorArray &self, size_t index,
+                       LoDTensor &value) { self.Write(index, value); })
+      .def("write_shared",
+           [](TensorArray &self, size_t index, const LoDTensor &value) {
+             self.WriteShared(index, value);
+           })
+      .def("size", [](TensorArray &self) { return self.size(); })
+      .def("pack",
+           [](TensorArray &self, size_t level,
+              const std::vector<std::vector<size_t>> &meta_info,
+              const std::vector<std::vector<size_t>> &lod) {
+             std::vector<DySeqMeta> meta;
+             for (auto &info : meta_info) {
+               PADDLE_ENFORCE_EQ(info.size(), 3UL);
+               meta.emplace_back(info[0], info[1], info[2]);
+             }
+#ifndef PADDLE_WITH_CUDA
+             return self.Pack(level, meta, lod);
+#else
+             LoD new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return self.Pack(level, meta, new_lod);
+#endif
+           })
+      .def("unpack",
+           [](TensorArray &self, const LoDTensor &source, int level,
+              bool length_descend) {
+             auto metas = self.Unpack(source, level, length_descend);
+             std::vector<std::vector<size_t>> meta_info;
+             for (auto meta : metas) {
+               meta_info.emplace_back(
+                   std::vector<size_t>({meta.begin, meta.end, meta.ori_idx}));
+             }
+             return meta_info;
+           })
+      .def("stack", [](TensorArray &self) { return self.Stack(); })
+      .def("unstack",
+           [](TensorArray &self, const LoDTensor &source) {
+             return self.Unstack(source);
+           })
+      .def("unstack_shared", [](TensorArray &self, const LoDTensor &source) {
+        return self.UnstackShared(source);
       });
 
   // recurrent_op

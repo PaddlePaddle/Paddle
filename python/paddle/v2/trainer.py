@@ -164,11 +164,18 @@ class SGD(object):
                                                           pass_type)
                 self.__gradient_machine__.eval(pass_evaluator)
                 self.__gradient_machine__.eval(batch_evaluator)
+                event_handler(
+                    v2_event.EndForwardBackward(
+                        pass_id=pass_id,
+                        batch_id=batch_id,
+                        gm=self.__gradient_machine__))
                 for each_param in self.__gradient_machine__.getNonStaticParameters(
                 ):
                     self.__parameter_updater__.update(each_param)
                 cost_sum = out_args.sum()
                 cost = cost_sum / len(data_batch)
+                self.__parameter_updater__.finishBatch(cost)
+                batch_evaluator.finish()
                 event_handler(
                     v2_event.EndIteration(
                         pass_id=pass_id,
@@ -176,8 +183,6 @@ class SGD(object):
                         cost=cost,
                         evaluator=batch_evaluator,
                         gm=self.__gradient_machine__))
-                self.__parameter_updater__.finishBatch(cost)
-                batch_evaluator.finish()
 
             self.__parameter_updater__.finishPass()
             pass_evaluator.finish()
