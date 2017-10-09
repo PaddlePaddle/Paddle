@@ -12,19 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <google/protobuf/text_format.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <fstream>
 #include <iostream>
 #include "TrainerConfig.pb.h"
 
-bool loadPb(google::protobuf::Message* conf, const std::string& filename) {
+using google::protobuf::MessageLite;
+using google::protobuf::Message;
+
+bool loadPb(MessageLite* conf, const std::string& filename) {
   std::ifstream fin;
   fin.open(filename.c_str());
   if (fin.is_open()) {
     std::string str((std::istreambuf_iterator<char>(fin)),
                     std::istreambuf_iterator<char>());
-    bool ok = google::protobuf::TextFormat::ParseFromString(str, conf);
+    bool ok = conf->ParseFromString(str);
     fin.close();
     return ok;
   } else {
@@ -33,8 +35,8 @@ bool loadPb(google::protobuf::Message* conf, const std::string& filename) {
 }
 
 int main(int argc, char** argv) {
-  std::unique_ptr<google::protobuf::Message> config1;
-  std::unique_ptr<google::protobuf::Message> config2;
+  std::unique_ptr<MessageLite> config1;
+  std::unique_ptr<MessageLite> config2;
   if (argc == 3) {
     config1.reset(new paddle::ModelConfig());
     config2.reset(new paddle::ModelConfig());
@@ -50,7 +52,8 @@ int main(int argc, char** argv) {
     return 3;
   } else {
     if (google::protobuf::util::MessageDifferencer::ApproximatelyEquals(
-            *config1, *config2)) {
+            *reinterpret_cast<Message*>(config1.get()),
+            *reinterpret_cast<Message*>(config2.get()))) {
       return 0;
     } else {
       return 4;
