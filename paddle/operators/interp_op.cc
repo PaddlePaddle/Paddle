@@ -58,7 +58,6 @@ class InterpOp : public NetOp {
                                              {{"Out", {Output("Out")}}}, {}));
 
     CompleteAddOp(false);
-    LOG(INFO) << DebugString();
   }
 };
 
