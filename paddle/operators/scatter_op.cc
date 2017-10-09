@@ -23,7 +23,7 @@ class ScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ref"),
                    "Input(Ref) of ScatterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Index"),
@@ -60,7 +60,7 @@ class ScatterGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Updates"),
                       ctx->GetInputDim("Updates"));
     ctx->SetOutputDim(framework::GradVarName("Ref"), ctx->GetInputDim("Ref"));
