@@ -21,17 +21,22 @@ For example, given `height_=100`, `rows_ = [73, 84]`, the `value_ = [[1.0, 2.0],
 `SelectedRows` is a kind of `Variable`. `VarDesc` in protobuf should describe the `SelectedRows` information. Only the tensor dimension of a `SelectedRows` will be described in compile-time since the `rows_` and `value_` are related to training data. The `VarDesc` will unify `Dimension` field since `Dimension` is a attribute of both `LoDTensor` and `SelectedRows`.
 
 ```proto
-message VarDesc {
-  enum VarType {
-    kLodTensor = 0,
-    kSelectedRows = 1
-  };
+message TensorDesc {
+  required DataType data_type = 1;
+  repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
+}
 
-  required string name;
-  required VarType type;
-  repeated int64_t dims;
-  optional int lod_level;
-};
+message VarDesc {
+  required string name = 1;
+  enum VarType { 
+    LoDTensor = 0;
+    SelectedRows = 1;
+  }
+  optional VarType type = 2 [ default = LoDTensor ];
+  optional TensorDesc tensor = 3;
+  optional int32 lod_level = 4 [ default = 0 ];
+  optional bool persistable = 5 [ default = false ];
+}
 ```
 
 ## InferShape for Selected Rows
