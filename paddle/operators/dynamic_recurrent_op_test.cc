@@ -86,7 +86,10 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
     CreateVar(scope, "out0", framework::make_ddim({10, 20}), place);
     auto* in0 = CreateVar(scope, "in0", framework::make_ddim({10, 8}), place);
     // 10 instanes with 4 sentences, length is 4, 3, 2, 1 respectively.
-    framework::LoD in0_lod({{0, 4, 7, 9, 10}});
+    framework::LoD in0_lod(1);
+    for (int x : std::vector<int>{0, 4, 7, 9, 10}) {
+      in0_lod[0].push_back(x);
+    }
     in0->set_lod(in0_lod);
     in0->Resize(framework::make_ddim({10, 8}));
     // set the content, each sentence content is seqid.batchid

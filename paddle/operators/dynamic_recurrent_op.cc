@@ -30,11 +30,11 @@ inline void CreateVariables(Scope& scope,
 
 }  // namespace detail
 
-class DynamicRecurrentAlgorithmProtoAndCheckerMaker
+class DynamicRecurrentOpProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  DynamicRecurrentAlgorithmProtoAndCheckerMaker(
-      framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  DynamicRecurrentOpProtoAndCheckerMaker(framework::OpProto* proto,
+                                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     const auto& name = DynamicRecurrentOp::kArgName;
     // inputs and outputs stored in proto
@@ -268,5 +268,5 @@ void DynamicRecurrentGradientOp::Run(
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    dynamic_recurrent_op, paddle::operators::DynamicRecurrentOp,
-    paddle::operators::DynamicRecurrentAlgorithmProtoAndCheckerMaker);
+    dynamic_recurrent, paddle::operators::DynamicRecurrentOp,
+    paddle::operators::DynamicRecurrentOpProtoAndCheckerMaker);
