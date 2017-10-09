@@ -26,6 +26,9 @@ namespace framework {
  * in original lod-tensor.
  */
 struct DySeqMeta {
+  DySeqMeta(size_t begin, size_t end, size_t ori_idx)
+      : begin(begin), end(end), ori_idx(ori_idx) {}
+
   size_t begin;
   size_t end;  // not included
   size_t ori_idx;

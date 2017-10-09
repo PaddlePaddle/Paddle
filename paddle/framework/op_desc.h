@@ -27,6 +27,11 @@ class BlockDescBind;
 
 class OpDescBind {
  public:
+  OpDescBind() {}
+
+  OpDescBind(const std::string &type, const VariableNameMap &inputs,
+             const VariableNameMap &outputs, const AttributeMap &attrs);
+
   OpDesc *Proto();
 
   std::string Type() const { return op_desc_.type(); }
@@ -35,10 +40,14 @@ class OpDescBind {
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
+  std::vector<std::string> InputArgumentNames() const;
+
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
 
   const std::vector<std::string> &Output(const std::string &name) const;
+
+  std::vector<std::string> OutputArgumentNames() const;
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
@@ -60,6 +69,8 @@ class OpDescBind {
   Attribute GetAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
+
+  void Rename(const std::string &old_name, const std::string &new_name);
 
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
