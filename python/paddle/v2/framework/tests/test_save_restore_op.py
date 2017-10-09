@@ -1,12 +1,11 @@
-import paddle.v2 as paddle
 from paddle.v2.framework import core
 from paddle.v2.framework.op import Operator
-from op_test import OpTest
 import numpy as np
+from op_test import OpTest
 import unittest
-import os, sys
+import os
 
-ABSOLUTE_PATH = "/tmp/PADDLE_TEST_MODEL"  # directory for save parameter files.
+ABSOLUTE_PATH = "/tmp/PADDLE_MODEL"  # directory for save parameter files.
 
 scope = core.Scope()
 place = core.CPUPlace()
@@ -42,10 +41,9 @@ class TestSaveOp(OpTest):
         x1 = np.random.random((1, 2)).astype("float32")
         x2 = np.random.random((2, 1)).astype("float32")
 
-        self.inputs = {
-            "X": [("x0", x0), ("x1", x1), ("x2", x2)],
-            "absolute_path": ABSOLUTE_PATH
-        }
+        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)], }
+
+        self.attrs = {"absolute_path": ABSOLUTE_PATH}
 
     def test_check_output(self):
         if os.path.exists(ABSOLUTE_PATH):
@@ -63,9 +61,15 @@ class TestRestoreOp(OpTest):
         x2 = np.random.random((2, 1)).astype("float32")
         self.check_results = [x0, x1, x2]
 
-        self.outputs = {"Out": [], "absolute_path": ABSOLUTE_PATH}
+        self.outputs = {"Out": []}
+
+        self.attrs = {"absolute_path": ABSOLUTE_PATH}
 
     def test_check_output(self):
         self.check_output()
         for e in self.check_results:
             self.assertTrue(e in self.outputs["Out"])
+
+
+if __name__ == "__main__":
+    unittest.main()

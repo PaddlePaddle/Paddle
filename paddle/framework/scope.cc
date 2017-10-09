@@ -62,19 +62,19 @@ void Scope::DropKids() {
   kids_.clear();
 }
 
-std::unordered_set<std::string> Scope::Introspection(bool recursive) const {
-  std::unordered_set<std::string> known_vars;
+std::vector<std::string> Scope::GetAllNames(bool recursive) const {
+  std::vector<std::string> known_vars(vars_.size());
 
   if (recursive) {
     for (auto& kid : kids_) {
-      auto kid_vars = kid->Introspection();
+      auto kid_vars = kid->GetAllNames();
       for (auto& p : kid_vars) {
-        known_vars.insert(p);
+        known_vars.emplace_back(p);
       }
     }
   }
   for (auto& p : vars_) {
-    known_vars.insert(p.first);
+    known_vars.emplace_back(p.first);
   }
   return known_vars;
 }

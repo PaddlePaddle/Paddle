@@ -17,7 +17,7 @@ limitations under the License. */
 #include <list>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
+#include <vector>
 
 #include "paddle/framework/variable.h"
 #include "paddle/platform/macros.h"
@@ -64,7 +64,7 @@ class Scope {
   void DropKids();
 
   // enumerate all the variables current contains.
-  std::unordered_set<std::string> Introspection(bool recursive = false) const;
+  std::vector<std::string> GetAllNames(bool recursive = false) const;
 
  private:
   // Call Scope::NewScope for a sub-scope.

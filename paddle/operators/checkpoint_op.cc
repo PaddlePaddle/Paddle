@@ -24,26 +24,52 @@ class CheckpointOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("absolute_path"),
-                   "Input(absolute_path) of Checkpoint should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("absolutePath"),
+                   "Input(absolutePath) of Checkpoint should not be null.");
   }
 };
 
-class SaveOpMaker : public framework::OpProtoAndCheckerMaker {
+class CheckpointOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SaveOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  CheckpointOpMaker(framework::OpProto* proto,
+                    framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X",
-             "(tensor), the tensor count can be 1~INT_MAX, tensors names which "
-             "values will be saved.")
-        .AsDuplicable()
-        .NotInGradient();
-    AddAttr<std::string>("absolute_path", "the absolute_path for save model.");
+    AddAttr<std::string>("absolutePath", "the absolutePath for save model.");
+    AddAttr<int>("interval",
+                 "(int, default 0) time seconds interval for saving "
+                 "checkpoint. 0 means only save chekcpoint once");
     AddComment(R"DOC(
-Save the input tensors to a binary file based on input tensor names and absolute path.
+Save the workload environment to the absolute path.
 
-All the inputs can carry the LoD (Level of Details) information,
+All the tensors can carry the LoD (Level of Details) information,
 or not.
 )DOC");
   }
 };
+
+template <typename T>
+class CheckpointKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
+    int interval = ctx.template Attr<int>("interval");
+    auto& scope = ctx.scope();
+    std::vector<std::string> ins = scope.GetAllNames();
+    std::vector<framework::Variable*> inputs;
+    for (auto& name : ins) {
+      inputs.emplace_back(scope.FindVar(name));
+    }
+
+    framework::OpRegistry::CreateOp("save", {{"X", inputs}},
+                                    {"absolutePath", absolutePath});
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+namespace ops = paddle::operators;
+
+REGISTER_OP_WITHOUT_GRADIENT(checkpoint, ops::CheckpointOp,
+                             ops::CheckpointOpMaker);
+REGISTER_OP_CPU_KERNEL(checkpoint, ops::CheckpointKernel<float>);

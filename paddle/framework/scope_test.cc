@@ -56,14 +56,16 @@ TEST(Scope, FindScope) {
   EXPECT_EQ(&s, ss.FindScope(v));
 }
 
-TEST(Scope, Introspection) {
+TEST(Scope, GetAllNames) {
   Scope s;
   Variable* v = s.NewVar("a");
   EXPECT_EQ(&s, s.FindScope(v));
-  std::unordered_set<std::string> ans = s.Introspection();
+
+  std::vector<std::string> ans = s.GetAllNames();
   std::string str;
   for (auto& var : ans) {
     str += var;
   }
+
   EXPECT_STREQ("a", str.c_str());
 }
