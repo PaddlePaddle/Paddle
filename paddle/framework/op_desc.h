@@ -97,6 +97,11 @@ class OpDescBind {
 
   const VariableNameMap &Outputs() const { return outputs_; }
 
+  AttributeMap *MutableAttrMap() {
+    this->need_update_ = true;
+    return &this->attrs_;
+  }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
