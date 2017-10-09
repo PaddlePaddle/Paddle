@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <vector>
 #include "paddle/framework/framework.pb.h"
 #include "paddle/platform/macros.h"
