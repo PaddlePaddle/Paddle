@@ -15,10 +15,13 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "CostLayer.h"
-#include "ValidationLayer.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
+
+#ifndef PADDLE_MOBILE_INFERENCE
+#include "ValidationLayer.h"
+#endif
 
 DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
