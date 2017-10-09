@@ -94,10 +94,6 @@ if(ANDROID OR IOS)
     endif()
     set(MOBILE_INFERENCE ON)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
-
-    # TODO: Need Open the WITH_TESTING
-    set(WITH_TESTING OFF CACHE STRING "Disable TESTING when cross-compiling
-                    for Android and iOS" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
