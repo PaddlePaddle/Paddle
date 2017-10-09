@@ -25,6 +25,7 @@ limitations under the License. */
 #include <vector>
 
 #include "DataConfig.pb.h"
+#include "paddle//utils/Stat.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/math/Vector.h"
