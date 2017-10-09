@@ -9,8 +9,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+
+#include <fstream>
 
 namespace paddle {
 namespace operators {
@@ -52,7 +53,12 @@ class CheckpointKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
-    int interval = ctx.template Attr<int>("interval");
+    // TODO(dzh) : checkpoint kernel need executor support :
+    // 1. asynchronously call of operator
+    // 2. checkpoint op need at least two thread.
+    //    Because checkpoint will happen per-interval, so need a thread wait
+    //    on the timer.
+    // int interval = ctx.template Attr<int>("interval");
     auto& scope = ctx.scope();
     std::vector<std::string> ins = scope.GetAllNames();
     std::vector<framework::Variable*> inputs;
@@ -60,8 +66,13 @@ class CheckpointKernel : public framework::OpKernel<T> {
       inputs.emplace_back(scope.FindVar(name));
     }
 
-    framework::OpRegistry::CreateOp("save", {{"X", inputs}},
-                                    {"absolutePath", absolutePath});
+    std::ofstream fout(absolutePath, std::fstream::app);
+    PADDLE_ENFORCE(!fout.is_open(), "open file for model failed.");
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      std::string bytes = inputs[i]->Get<LoDTensor>().SerializeToString();
+      fout << bytes << '\n';
+    }
+    fout.close();
   }
 };
 

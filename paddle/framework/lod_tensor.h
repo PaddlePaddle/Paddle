@@ -127,12 +127,12 @@ class LoDTensor : public Tensor {
    *  @return return string
    */
 
-  // FIXME(dzh) : currently, this interface should only use in
-  // save/restore checkpoint/model. Tensor in pserver do not use shape
-  // information. So should serialize tensor to string in the trainer.
+  // FIXME(dzh) : Currently, this interface should only be used in
+  // save/restore model and checkpoint. ParameterServer do not use shape
+  // information to do the optimization, as a result, when we serialize
+  // parameter/gradient to string, we should serialize the tensor
+  // to string in the ps trainer instead of LoDTensor.
   std::string SerializeToString() const;
-
-  void SerializeToString(std::string* s) const;
 
   /**
    *  @brief Deserialize char bytes to tensor.

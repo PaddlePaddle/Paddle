@@ -18,15 +18,15 @@ package paddle.framework;
 import "framework.proto";
 
 /**
- * This file contains necessary information for tensorboard, model, checkpoint.
+ * This file contains necessary information for model, checkpoint.
  * etc.
  */
 
 message LoDInfo { repeated int64 level = 1; }
 
 /**
- * Save the LoDTensor Meta information through LoDTensorProto, its memory data
- * is copyed to c buffer immediately.
+ * Save the LoDTensorDesc information through LoDTensorProto, its data memory
+ * is copyed to c buffer immediately. See model_format.md for details.
  */
 
 message LoDTensorProto {

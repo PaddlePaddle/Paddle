@@ -12,8 +12,6 @@
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
-#include <stdio.h>
-#include <string.h>
 #include <fstream>
 
 namespace paddle {
@@ -120,6 +118,7 @@ class RestoreKernel : public framework::OpKernel<T> {
     while (std::getline(fin, line)) {
       outs[i++]->DeserializeFromString(line, ctx.GetPlace());
     }
+    fin.close();
   }
 };
 

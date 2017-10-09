@@ -10,26 +10,27 @@ As a result, In PaddlePaddle, the **topology** represents as a  [ProgramDesc](ht
 
 The topology is saved as a plain text, in detail, a self-complete protobuf file. 
 
-The parameters are saved as a binary file. As we all know, the protobuf message has the limits of [64M size](https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.io.coded_stream#CodedInputStream.SetTotalBytesLimit.details). So we design a particular format for tensor serialization, for speed we core dump the memory to disk and save the necessary information, such as the`dims`, `name` of the tensor, Even the `LoD` information in [LoDTensor](https://github.com/PaddlePaddle/Paddle/blob/1c0a4c901c9fc881d120249c703b15d1c50dae7d/paddle/framework/lod_tensor.md). In detail, as the table shows
+The parameters are saved as a binary file. As we all know, the protobuf message has the limits of [64M size](https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.io.coded_stream#CodedInputStream.SetTotalBytesLimit.details). We do a benchmark experiment 
+
+ So we design a particular format for tensor serialization. By default, arbitrary tensor in Paddle is a [LoDTensor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md), and has a description information proto of (LoDTensorDesc)[https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L99]. We save the DescProto as the byte string header, it contains the necessary information, such as the `dims`, the `name` of the tensor, and the `LoD` information in [LoDTensor](https://github.com/PaddlePaddle/Paddle/blob/1c0a4c901c9fc881d120249c703b15d1c50dae7d/paddle/framework/lod_tensor.md). Tensor stores value in a continuous memory buffer, for speed we dump the raw memory to disk and save it as the byte string content. So, the binary format of one tensor is, 
+
+|HeaderLength|ContentLength|**LoDTensorDesc**|**TensorValue**|
+
+In detail, tensor's  byte view as the table shows
 
 ```text
 [offset] [type]          [value]          [description] 
-0000     32 bit integer  1            	  1 for little endian, 0 for big endian
-0004     32 bit integer  0x0000006E(0110) version number, 0110 for paddle version 0.11.0
-0008     32 bit integer  ??               md5checksum of Tensors
-0009     unsigned byte    0	              0 for tensor, 1 for LoDTensor
-0013     32 bit integer  28               Tensor Name length
-0017     unsigned byte   ??               Tensor Name chars 
-0018     unsigned byte   ??               ..
+0000     32 bit integer  ??            	  HeaderLength, the length of LoDTensorDesc
+0004     32 bit integer  ??               ContentLength, the length of LodTensor Buffer
+0008     32 bit integer  ??               TensorDesc
+0012     32 bit integer  ??               TensorDesc
 ...
-00100     32 bit integer  3               Tensor dims count
-00104     32 bit integer  ??              Tensor dims 0 
+00100     32 bit integer  ??              Tensor Value
+00104     32 bit integer  ??              Tensor Value 
 00108     32 bit integer  ??               ..
 ...
-00150     unsigned byte   ??              Tensor value
-00151     unsigned byte   ??               ..
 ```
 
 ## Summary
 
-We introduce the model format, the `ProgramDesc` describe the **topology**, and a bunch of particular format binary tensors describe the **parameters**.
+We introduce the model format, the `ProgramDesc` describe the **topology**, and a bunch of particular format binary tensors describes the **parameters**.

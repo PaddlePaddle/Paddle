@@ -11,9 +11,11 @@ scope = core.Scope()
 place = core.CPUPlace()
 dev_ctx = core.DeviceContext.create(place)
 
+# Saver is a demo for saving arbitrary tensor.
+# TODO(dzh): Saver also need to save ProgramDesc. Should be done after
+# python API done.
 
-# Saver is a demo for saveing arbitrary tensor
-# it is a wrapper of c++ save/restore op
+
 def Saver(var_list=None):
     net = core.Net.create()
     save_tensors = []
