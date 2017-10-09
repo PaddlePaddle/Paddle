@@ -34,6 +34,10 @@ VarDescBind *BlockDescBind::Var(const std::string &name) const {
   return it->second.get();
 }
 
+bool BlockDescBind::HasVar(const std::string &name) const {
+  return vars_.find(name) != vars_.end();
+}
+
 std::vector<VarDescBind *> BlockDescBind::AllVars() const {
   std::vector<VarDescBind *> res;
   for (const auto &p : vars_) {

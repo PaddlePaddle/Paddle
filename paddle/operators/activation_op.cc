@@ -97,6 +97,17 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  TanhShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of TanhShrink operator");
+    AddOutput("Y", "Output of TanhShrink operator");
+    AddComment("TanhShrink activation operator, tanhshrink(x) = x - tanh(x)");
+  }
+};
+
 class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SqrtOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -235,6 +246,9 @@ REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
 REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
+            tanh_shrink_grad, ops::ActivationOpGrad);
+
 REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
 
@@ -271,11 +285,9 @@ REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_CPU_KERNEL(                                                      \
       act_type,                                                                \
-      paddle::operators::ActivationKernel<paddle::platform::CPUPlace,          \
-                                          paddle::operators::functor<float>>); \
+      ops::ActivationKernel<paddle::platform::CPUPlace, ops::functor<float>>); \
   REGISTER_OP_CPU_KERNEL(act_type##_grad,                                      \
-                         paddle::operators::ActivationGradKernel<              \
-                             paddle::platform::CPUPlace,                       \
-                             paddle::operators::grad_functor<float>>);
+                         ops::ActivationGradKernel<paddle::platform::CPUPlace, \
+                                                   ops::grad_functor<float>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);

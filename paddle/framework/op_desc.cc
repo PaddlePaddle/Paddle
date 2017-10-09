@@ -18,6 +18,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
+                       const VariableNameMap &outputs,
+                       const AttributeMap &attrs) {
+  op_desc_.set_type(type);
+  inputs_ = inputs;
+  outputs_ = outputs;
+  attrs_ = attrs;
+}
+
 OpDesc *OpDescBind::Proto() {
   Sync();
   return &op_desc_;
@@ -29,6 +38,14 @@ const std::vector<std::string> &OpDescBind::Input(
   PADDLE_ENFORCE(it != inputs_.end(), "Input %s cannot be found in Op %s", name,
                  Type());
   return it->second;
+}
+
+std::vector<std::string> OpDescBind::InputArgumentNames() const {
+  std::vector<std::string> retv;
+  for (auto &ipt : this->inputs_) {
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
+  }
+  return retv;
 }
 
 void OpDescBind::SetInput(const std::string &param_name,
@@ -43,6 +60,14 @@ const std::vector<std::string> &OpDescBind::Output(
   PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
                  name, Type());
   return it->second;
+}
+
+std::vector<std::string> OpDescBind::OutputArgumentNames() const {
+  std::vector<std::string> retv;
+  for (auto &ipt : this->outputs_) {
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
+  }
+  return retv;
 }
 
 void OpDescBind::SetOutput(const std::string &param_name,
@@ -92,6 +117,18 @@ int OpDescBind::GetBlockAttr(const std::string &name) const {
 const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
     const {
   return attrs_;
+}
+
+void OpDescBind::Rename(const std::string &old_name,
+                        const std::string &new_name) {
+  for (auto &input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  for (auto &output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
+  need_update_ = true;
 }
 
 struct SetAttrDescVisitor : public boost::static_visitor<void> {
