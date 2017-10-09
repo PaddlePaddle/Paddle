@@ -57,7 +57,7 @@ class CheckpointKernel : public framework::OpKernel<T> {
     // 1. asynchronously call of operator
     // 2. checkpoint op need at least two thread.
     //    Because checkpoint will happen per-interval, so need a thread wait
-    //    on the timer.
+    //    the timer/steps to reach the condition.
     // int interval = ctx.template Attr<int>("interval");
     auto& scope = ctx.scope();
     std::vector<std::string> ins = scope.GetAllNames();
