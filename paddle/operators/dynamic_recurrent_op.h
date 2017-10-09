@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "gtest/gtest_prod.h"
+#include "gtest/gtest.h"
 
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/operator.h"
@@ -94,6 +94,16 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   }
   const OperatorBase& GetStepNet() const { return *stepnet_; }
 
+  const TensorArray& state(const std::string& name) const {
+    return states_[name];
+  }
+  const TensorArray& step_input(const std::string& name) const {
+    return step_inputs_[name];
+  }
+  const TensorArray& step_output(const std::string& name) const {
+    return step_outputs_[name];
+  }
+
  protected:
   struct ArgCache {
     Scope const* scope;
@@ -124,7 +134,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
 
  private:
   std::unique_ptr<OperatorBase> stepnet_;
-  mutable TensorArray states_;
+  mutable std::map<std::string, TensorArray> states_;
   mutable std::map<std::string, TensorArray> step_inputs_;
   mutable std::map<std::string, TensorArray> step_outputs_;
   mutable std::map<std::string, std::vector<framework::DySeqMeta>>
