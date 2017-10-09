@@ -206,7 +206,7 @@ class DCGAN(object):
       self.d_loss = self.d_loss_real + self.d_loss_fake
 ```
 Some small confusion and problems with this design:
-- D\_g and D\_f are actually the same thing, but has to be written twice;
+- D\_g and D\_f are actually the same thing, but has to be written twice; i.e., if we want to run two sub-graphs conceptually, the same codes have to be written twice if they are shared by the graph.
 - Requires ability to create a block anytime, rather than in if-else or rnn only;
 
 ## Main function for the demo:
