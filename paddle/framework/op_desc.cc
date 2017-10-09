@@ -18,6 +18,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
+                       const VariableNameMap &outputs,
+                       const AttributeMap &attrs) {
+  op_desc_.set_type(type);
+  inputs_ = inputs;
+  outputs_ = outputs;
+  attrs_ = attrs;
+}
+
 OpDesc *OpDescBind::Proto() {
   Sync();
   return &op_desc_;
@@ -31,11 +40,10 @@ const std::vector<std::string> &OpDescBind::Input(
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::InputNames() const {
+std::vector<std::string> OpDescBind::InputArgumentNames() const {
   std::vector<std::string> retv;
-  retv.reserve(this->inputs_.size());
   for (auto &ipt : this->inputs_) {
-    retv.push_back(ipt.first);
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
   }
   return retv;
 }
@@ -54,11 +62,10 @@ const std::vector<std::string> &OpDescBind::Output(
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::OutputNames() const {
+std::vector<std::string> OpDescBind::OutputArgumentNames() const {
   std::vector<std::string> retv;
-  retv.reserve(this->outputs_.size());
   for (auto &ipt : this->outputs_) {
-    retv.push_back(ipt.first);
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
   }
   return retv;
 }
@@ -112,6 +119,42 @@ const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
   return attrs_;
 }
 
+void OpDescBind::Rename(const std::string &old_name,
+                        const std::string &new_name) {
+  for (auto &input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  for (auto &output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
+  need_update_ = true;
+}
+
+struct SetAttrDescVisitor : public boost::static_visitor<void> {
+  explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
+  mutable OpDesc::Attr *attr_;
+  void operator()(int v) const { attr_->set_i(v); }
+  void operator()(float v) const { attr_->set_f(v); }
+  void operator()(const std::string &v) const { attr_->set_s(v); }
+  void operator()(bool b) const { attr_->set_b(b); }
+
+  void operator()(const std::vector<int> &v) const {
+    VectorToRepeated(v, attr_->mutable_ints());
+  }
+  void operator()(const std::vector<float> &v) const {
+    VectorToRepeated(v, attr_->mutable_floats());
+  }
+  void operator()(const std::vector<std::string> &v) const {
+    VectorToRepeated(v, attr_->mutable_strings());
+  }
+  void operator()(const std::vector<bool> &v) const {
+    VectorToRepeated(v, attr_->mutable_bools());
+  }
+  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->idx()); }
+  void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
+};
+
 void OpDescBind::Sync() {
   if (need_update_) {
     this->op_desc_.mutable_inputs()->Clear();
@@ -134,7 +177,8 @@ void OpDescBind::Sync() {
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
           static_cast<framework::AttrType>(attr.second.which() - 1));
-      boost::apply_visitor(SetAttrDescVisitor(attr_desc), attr.second);
+      SetAttrDescVisitor visitor(attr_desc);
+      boost::apply_visitor(visitor, attr.second);
     }
 
     need_update_ = false;

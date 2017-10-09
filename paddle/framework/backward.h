@@ -13,8 +13,11 @@
    limitations under the License. */
 
 #pragma once
+
 #include <unordered_set>
-#include "operator.h"
+#include "paddle/framework/operator.h"
+#include "paddle/framework/program_desc.h"
+
 namespace paddle {
 namespace framework {
 
@@ -23,5 +26,9 @@ namespace framework {
 extern std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
+
+void AppendBackward(ProgramDescBind& program_desc,
+                    const std::unordered_set<std::string>& no_grad_vars);
+
 }  // namespace framework
 }  // namespace paddle

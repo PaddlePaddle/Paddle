@@ -48,6 +48,21 @@ class TestTanh(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
+class TestTanhShrink(OpTest):
+    def setUp(self):
+        self.op_type = "tanh_shrink"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [10, 17]).astype("float32")
+        }
+        self.outputs = {'Y': self.inputs['X'] - np.tanh(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+
+
 class TestSqrt(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
@@ -120,6 +135,23 @@ class TestBRelu(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y', max_relative_error=0.02)
+
+
+class TestLeakyRelu(OpTest):
+    def setUp(self):
+        self.op_type = "leaky_relu"
+        alpha = 0.02
+        self.attrs = {'alpha': alpha}
+        self.inputs = {'X': np.random.uniform(-3, 3, [4, 4]).astype("float32")}
+        self.outputs = {
+            'Y': np.maximum(self.inputs['X'], alpha * self.inputs['X'])
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
 class TestSoftRelu(OpTest):
