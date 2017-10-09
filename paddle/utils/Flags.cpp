@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "Flags.h"
 
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
 DEFINE_bool(use_gpu, false, "Only support CPU training");
 #else
 DEFINE_bool(use_gpu, true, "Whether to use GPU for training");
