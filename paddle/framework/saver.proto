@@ -35,8 +35,3 @@ message LoDTensorProto {
   repeated LoDInfo levels = 3;
   optional int32 lod_level = 4 [ default = 0 ];
 }
-
-message ModelProto {
-  optional int32 version = 1; // version number
-  optional int64 md5sum = 2;  // checksum
-}

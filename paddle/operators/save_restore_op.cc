@@ -14,11 +14,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <fstream>
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+using framework::LoDTensor;
 
 class SaveOp : public framework::OperatorWithKernel {
  public:
@@ -28,8 +30,8 @@ class SaveOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContextBase* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("X"),
                    "Input(X) of SaveOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("absolute_path"),
-                   "Input(absolute_path) of SaveOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("absolutePath"),
+                   "Input(absolutePath) of SaveOp should not be null.");
   }
 };
 
@@ -42,7 +44,7 @@ class SaveOpMaker : public framework::OpProtoAndCheckerMaker {
              "values will be saved.")
         .AsDuplicable()
         .NotInGradient();
-    AddAttr<std::string>("absolute_path", "the absolute_path for save model.");
+    AddAttr<std::string>("absolutePath", "the absolutePath for save model.");
     AddComment(R"DOC(
 Save the input tensors to a binary file based on input tensor names and absolute path.
 
@@ -55,23 +57,40 @@ or not.
 template <typename T>
 class SaveKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto ins = context.MultiInput<Tensor>("X");
-    std::string absolute_path = ctx.Attr<std::string>("absolute_path");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
 
-    FILE* fp;
-    fp = fopen(absolute_path.c_str())
-        PADDLE_ENFORCE(fp != nullptr, "open file for model failed.");
-    int N = ins.size();
-    for (int i = 0; i < N; i++) {
-      // at present, we only support tensor serialization instead of variable
+    // FILE* fp;
+    // fp = fopen(absolutePath.c_str(), "a");
+    // PADDLE_ENFORCE(fp != nullptr, "open file for model failed.");
 
-      std::string bytes = ins[i].SerializeToString();
-      size_t count =
-          fwrite(bytes.c_str(), sizeof(char), sizeof(char) * bytes.size(), fp);
-      PADDLE_ENFORCE(count == bytes.size(), "write to model file failed.");
+    std::ofstream fout(absolutePath, std::fstream::app);
+    PADDLE_ENFORCE(!fout.is_open(), "open file for model failed.");
+    for (size_t i = 0; i < ins.size(); ++i) {
+      std::string bytes = ins[i]->SerializeToString();
+      fout << bytes << '\n';
+      // size_t count =
+      //   fwrite(bytes.c_str(), sizeof(char), sizeof(char) * bytes.size(), fp);
+      // PADDLE_ENFORCE(count == bytes.size(), "write to model file failed.");
+      // PADDLE_ENFORCE(fputc('\n', fp) == 0, "write delimiter failed");
     }
-    fclose(fp);
+
+    fout.close();
+
+    //   int N = ins.size();
+    //   for (int i = 0; i < N; i++) {
+    //     // at present, we only support lodtensor serialization instead of
+    //     tensor
+
+    //     std::string bytes = ins[i]->SerializeToString();
+    //     size_t count =
+    //         fwrite(bytes.c_str(), sizeof(char), sizeof(char) * bytes.size(),
+    //         fp);
+    //     PADDLE_ENFORCE(count == bytes.size(), "write to model file failed.");
+    //     PADDLE_ENFORCE(fputc('\n', fp) == 0, "write delimiter failed");
+    //   }
+    //   fclose(fp);
   }
 };
 
@@ -81,10 +100,10 @@ class RestoreOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"),
-                   "Input(X) of RestoreOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("absolute_path"),
-                   "Input(absolute_path) of Restore Op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
+                   "Output(X) of RestoreOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("absolutePath"),
+                   "Input(absolutePath) of Restore Op should not be null.");
   }
 };
 
@@ -98,7 +117,7 @@ class RestoreOpMaker : public framework::OpProtoAndCheckerMaker {
               "values will be restores.")
         .AsDuplicable()
         .NotInGradient();
-    AddAttr<std::string>("absolute_path", "the absolute_path for model file.");
+    AddAttr<std::string>("absolutePath", "the absolutePath for model file.");
     AddComment(R"DOC(
 Restore the tensors from model file based on absolute path.
 
@@ -108,24 +127,34 @@ or not.
   }
 };
 
-template <typename T>
+template <typename Place, typename T>
 class RestoreKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto outs = context.MultiOutput<std::string>("Out");
-    std::string absolute_path = ctx.Attr<std::string>("absolute_path");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto outs = ctx.MultiOutput<LoDTensor>("Out");
+    std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
 
-    FILE* fp;
-    fp = fopen(absolute_path.c_str())
-        PADDLE_ENFORCE(fp != nullptr, "open model file failed.");
-    for (int i = 0; i < N; i++) {
-      // at present, we only support tensor serialization instead of variable
+    // FILE* fp;
+    // fp = fopen(absolutePath.c_str(), "r");
+    // PADDLE_ENFORCE(fp != nullptr, "open model file failed.");
 
-      std::string bytes = ins[i].DeserializeFromString();
-      size_t count =
-          fwrite(bytes.c_str(), sizeof(char), sizeof(char) * bytes.size(), fp);
-      PADDLE_ENFORCE(count == bytes.size(), "write to model file failed.");
+    std::ifstream fin(absolutePath);
+    PADDLE_ENFORCE(!fin.is_open(), "open model file failed.");
+    std::string line;
+    int i = 0;
+    while (std::getline(fin, line)) {
+      outs[i++]->DeserializeFromString(line, ctx.GetPlace());
     }
+
+    // while(fgets()) {
+    //   // at present, we only support tensor serialization instead of variable
+
+    //   std::string bytes = outs[i].DeserializeFromString();
+    //   size_t count =
+    //       fwrite(bytes.c_str(), sizeof(char), sizeof(char) * bytes.size(),
+    //       fp);
+    //   PADDLE_ENFORCE(count == bytes.size(), "write to model file failed.");
+    // }
   }
 };
 
@@ -133,9 +162,10 @@ class RestoreKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OP_WITHOUT_GRADIENT(save, ops::SaveOp, ops::SaveOpMaker);
-REGISTER_OP_CPU_KERNEL(save,
-                       ops::SaveKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_WITHOUT_GRADIENT(save, ops::SaveOp, ops::SaveOpMaker);
-REGISTER_OP_CPU_KERNEL(save,
+REGISTER_OP_CPU_KERNEL(save, ops::SaveKernel<float>);
+
+REGISTER_OP_WITHOUT_GRADIENT(restore, ops::RestoreOp, ops::RestoreOpMaker);
+REGISTER_OP_CPU_KERNEL(restore,
                        ops::RestoreKernel<paddle::platform::CPUPlace, float>);

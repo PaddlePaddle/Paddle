@@ -126,6 +126,10 @@ class LoDTensor : public Tensor {
    *  NOTE: GPUTensor will copy data to cpu implicitly.
    *  @return return string
    */
+
+  // FIXME(dzh) : currently, this interface should only use in
+  // save/restore checkpoint/model. Tensor in pserver do not use shape
+  // information. So should serialize tensor to string in the trainer.
   std::string SerializeToString() const;
 
   void SerializeToString(std::string* s) const;
