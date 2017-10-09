@@ -1,6 +1,7 @@
 import paddle.v2.framework.core as core
+import collections
 
-__all__ = ['Block', 'Variable', 'Program']
+__all__ = ['Block', 'Variable', 'Program', 'Operator']
 
 
 class Variable(object):
@@ -24,6 +25,7 @@ class Variable(object):
             self.proto.set_lod_level(lod_level)
 
         self.block.vars[name] = self
+        self.op = None
 
     # TODO(yuyang18): Get methods
 
@@ -33,11 +35,37 @@ class Variable(object):
         return "_generated_var_%d" % uid
 
 
+class Operator(object):
+    def __init__(self,
+                 block,
+                 proto,
+                 type=None,
+                 inputs=None,
+                 outputs=None,
+                 attrs=None):
+        self.block = block
+        self.proto = proto
+        if type is not None:
+            # TODO.
+            pass
+        if inputs is not None:
+            # TODO
+            pass
+        if outputs is not None:
+            # TODO
+            pass
+        if attrs is not None:
+            # TODO
+            pass
+
+        # TODO: Getters
+
+
 class Block(object):
     def __init__(self, program, idx):
         self.proto = program.proto.block(idx)
         self.vars = dict()  # var_name --> var
-        self.ops = list()  # operator list
+        self.ops = collections.deque()  # operator list
         self.program = program
 
     @property
@@ -50,6 +78,18 @@ class Block(object):
 
     def create_var(self, *args, **kwargs):
         return Variable(self, *args, **kwargs)
+
+    def append_op(self, *args, **kwargs):
+        op_proto = self.proto.append_op()
+        op = Operator(self, op_proto, *args, **kwargs)
+        self.ops.append(op)
+        return op
+
+    def prepend_op(self, *args, **kwargs):
+        op_proto = self.proto.prepend_op()
+        op = Operator(self, op_proto, *args, **kwargs)
+        self.ops.appendleft(op)
+        return op
 
 
 class Program(object):
