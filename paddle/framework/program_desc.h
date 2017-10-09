@@ -31,8 +31,6 @@ class ProgramDescBind {
 
   BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
 
-  std::string DebugString() { return Proto()->DebugString(); }
-
   size_t Size() const { return blocks_.size(); }
 
   ProgramDesc *Proto();
