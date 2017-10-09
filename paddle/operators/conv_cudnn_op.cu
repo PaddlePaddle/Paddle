@@ -234,8 +234,10 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     // FIXME(typhoonzero): template type T may not be the same as cudnn call.
     T alpha = 1.0f, beta = 0.0f;
     if (input_grad) {
+      T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+      auto t = framework::EigenVector<T>::Flatten(*input_grad);
+      t.device(ctx.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
       for (int i = 0; i < groups; i++) {
-        T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
             handle, &alpha, cudnn_filter_desc,
             filter_data + i * group_offset_filter, cudnn_output_grad_desc,
@@ -246,8 +248,10 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     }
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
+      T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
+      auto t = framework::EigenVector<T>::Flatten(*filter_grad);
+      t.device(ctx.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
       for (int i = 0; i < groups; i++) {
-        T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
             handle, &alpha, cudnn_input_desc, input_data + i * group_offset_X,
             cudnn_output_grad_desc, output_grad_data + i * group_offset_Y,
