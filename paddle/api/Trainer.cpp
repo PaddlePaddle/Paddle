@@ -73,7 +73,6 @@ Trainer* Trainer::create(TrainerConfig* config,
   if (retv->m->getConfig().IsInitialized()) {
     return retv;
   } else {
-    retv->m->getConfig().CheckInitialized();
     throw IOError();
   }
 }
