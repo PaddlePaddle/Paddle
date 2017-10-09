@@ -53,12 +53,12 @@ Let's explain using an example.  Suppose that we are going to compose the FC usi
 ```python
 def operator.mul(X1, X2):
     O = Var()
-    paddle.cpp.create_operator("mul", input={X1, Y1], output=O)
+    paddle.cpp.create_operator("mul", input={X1, Y1}, output=O)
     return O
 
 def operator.add(X1, X2):
     O = Var()
-    paddle.cpp.create_operator("add", input={X1, X2], output=O)
+    paddle.cpp.create_operator("add", input={X1, X2}, output=O)
     return O
 ```
 

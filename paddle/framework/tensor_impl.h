@@ -65,7 +65,7 @@ inline T* Tensor::mutable_data(platform::Place place) {
       holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size));
     } else if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
     }
 #else
@@ -103,7 +103,7 @@ inline void Tensor::CopyFrom(const Tensor& src,
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src_place) &&
            platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
@@ -130,26 +130,29 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   PADDLE_ENFORCE_LE(end_idx, dims_[0], "Slice end index is out of bound.");
   PADDLE_ENFORCE_LT(begin_idx, end_idx,
                     "Begin index must be less than end index.");
-  PADDLE_ENFORCE_NE(dims_[0], 1, "Can not slice a tensor with dims_[0] = 1.");
-  size_t base = numel() / dims_[0];
-  Tensor dst;
-  dst.holder_ = holder_;
-  DDim dst_dims = dims_;
-  dst_dims[0] = end_idx - begin_idx;
-  dst.Resize(dst_dims);
-  dst.offset_ = offset_ + begin_idx * base * sizeof(T);
-  return dst;
+
+  if (dims_[0] == 1) {
+    return *this;
+  } else {
+    size_t base = numel() / dims_[0];
+    Tensor dst;
+    dst.holder_ = holder_;
+    DDim dst_dims = dims_;
+    dst_dims[0] = end_idx - begin_idx;
+    dst.Resize(dst_dims);
+    dst.offset_ = offset_ + begin_idx * base * sizeof(T);
+    return dst;
+  }
 }
 
 inline Tensor& Tensor::Resize(const DDim& dims) {
   dims_ = dims;
-  numel_ = product(dims_);
   return *this;
 }
 
 inline const DDim& Tensor::dims() const { return dims_; }
 
-inline int64_t Tensor::numel() const { return numel_; }
+inline int64_t Tensor::numel() const { return product(dims_); }
 
 template <typename T>
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {

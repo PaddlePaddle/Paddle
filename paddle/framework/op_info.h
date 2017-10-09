@@ -19,21 +19,18 @@
 #include <unordered_map>
 
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/op_desc.h"
+#include "paddle/framework/type_defs.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
-class OperatorBase;
-using VariableNameMap = std::map<std::string, std::vector<std::string>>;
-
-using OpCreator = std::function<OperatorBase*(
-    const std::string& /*type*/, const VariableNameMap& /*inputs*/,
-    const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
 struct OpInfo {
   OpCreator creator_;
-  std::string grad_op_type_;
-  OpProto* proto_;
-  OpAttrChecker* checker_;
+  GradOpMakerFN grad_op_maker_;
+  OpProto* proto_{nullptr};
+  OpAttrChecker* checker_{nullptr};
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
@@ -46,29 +43,24 @@ struct OpInfo {
     return *proto_;
   }
 
-  const OpAttrChecker& Checker() const {
-    PADDLE_ENFORCE_NOT_NULL(checker_,
-                            "Operator Checker has not been registered");
-    return *checker_;
-  }
-
   const OpCreator& Creator() const {
     PADDLE_ENFORCE_NOT_NULL(creator_,
                             "Operator Creator has not been registered");
     return creator_;
   }
 
-  bool HasGradientOp() const { return !grad_op_type_.empty(); }
+  const GradOpMakerFN& GradOpMaker() const {
+    PADDLE_ENFORCE_NOT_NULL(grad_op_maker_,
+                            "Operator GradOpMaker has not been registered.");
+    return grad_op_maker_;
+  }
+
+  const OpAttrChecker* Checker() const { return checker_; }
 };
 
 class OpInfoMap {
  public:
   static OpInfoMap& Instance();
-
-  OpInfoMap(const OpInfoMap& o) = delete;
-  OpInfoMap(OpInfoMap&& o) = delete;
-  OpInfoMap& operator=(const OpInfoMap& o) = delete;
-  OpInfoMap& operator=(OpInfoMap&& o) = delete;
 
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();
@@ -105,6 +97,8 @@ class OpInfoMap {
  private:
   OpInfoMap() = default;
   std::unordered_map<std::string, const OpInfo> map_;
+
+  DISABLE_COPY_AND_ASSIGN(OpInfoMap);
 };
 
 }  // namespace framework

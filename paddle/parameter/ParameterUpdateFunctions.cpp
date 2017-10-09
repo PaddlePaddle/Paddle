@@ -30,6 +30,9 @@ void sgdUpdateCpu(real learningRate,
                   const real* grad,
                   real* momentumVec) {
   decayRate *= learningRate;
+#ifdef PADDLE_USE_MKLDNN
+#pragma omp parallel for
+#endif
   for (size_t i = 0; i < size; ++i) {
     momentumVec[i] = momentum * momentumVec[i] - learningRate * grad[i] -
                      decayRate * value[i];

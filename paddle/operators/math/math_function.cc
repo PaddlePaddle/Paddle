@@ -49,6 +49,32 @@ void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
 }
 
 template <>
+void gemm<platform::CPUPlace, float>(const platform::DeviceContext& context,
+                                     const bool transA, const bool transB,
+                                     const int M, const int N, const int K,
+                                     const float alpha, const float* A,
+                                     const int lda, const float* B,
+                                     const int ldb, const float beta, float* C,
+                                     const int ldc) {
+  cblas_sgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+              lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
+                                      const bool transA, const bool transB,
+                                      const int M, const int N, const int K,
+                                      const double alpha, const double* A,
+                                      const int lda, const double* B,
+                                      const int ldb, const double beta,
+                                      double* C, const int ldc) {
+  cblas_dgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+              lda, B, ldb, beta, C, ldc);
+}
+
+template <>
 void matmul<platform::CPUPlace, float>(
     const platform::DeviceContext& context, const framework::Tensor& matrix_a,
     bool trans_a, const framework::Tensor& matrix_b, bool trans_b, float alpha,

@@ -194,7 +194,7 @@ public:
 
 REGISTER_TYPED_FUNC(BlockExpand, CPU, BlockExpandForward);
 REGISTER_TYPED_FUNC(BlockExpandGrad, CPU, BlockExpandBackward);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(BlockExpand, GPU, BlockExpandForward);
 REGISTER_TYPED_FUNC(BlockExpandGrad, GPU, BlockExpandBackward);
 #endif

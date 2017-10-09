@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class MulKernel : public framework::OpKernel {
+class MulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
@@ -52,7 +52,7 @@ class MulKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MulGradKernel : public framework::OpKernel {
+class MulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int x_num_col_dims = ctx.template Attr<int>("x_num_col_dims");
