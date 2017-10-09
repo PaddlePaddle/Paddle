@@ -1,10 +1,10 @@
 # Design for GAN
 
-GAN (General Adversarial Net) is an important model for unsupervised learning and widely used in many areas. 
+GAN (General Adversarial Net [https://arxiv.org/abs/1406.2661]) is an important model for unsupervised learning and widely used in many areas. 
 
-It contains several important machine learning concepts, including building and running subgraphs, dependency tracing, different optimizers in one executor and so forth.
+It applies several important concepts in machine learning system design, including building and running subgraphs, dependency tracing, different optimizers in one executor and so forth.
 
-In our GAN design, we wrap it as a user-friendly easily customized python API to design different models. We take the conditional DC-GAN as an example due to its good performance on image generation.
+In our GAN design, we wrap it as a user-friendly easily customized python API to design different models. We take the conditional DC-GAN (Unsupervised Representation Learning with Deep Convolutional Generative Adversarial Networks [https://arxiv.org/abs/1511.06434]) as an example due to its good performance on image generation.
 
 | important building blocks | People in Charge  | Required |
 |---------------------------|-------------------|----------|
@@ -51,7 +51,7 @@ Returns a 0/1 binary label.
 build the whole GAN model, define training loss for both generator and discrimator.
 
 ## Discussion on Engine Functions required to build GAN
-- Trace the ternsor and variable dependency in the engine executor. (Very critical, otherwise GAN can'be be trained correctly)
+- Trace the tensor and variable dependency in the engine executor. (Very critical, otherwise GAN can'be be trained correctly)
 - Different optimizers responsible for optimizing different loss.
 
 To be more detailed, we introduce our design of DCGAN as following:
