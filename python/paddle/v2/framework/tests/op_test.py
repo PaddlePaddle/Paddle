@@ -46,12 +46,17 @@ def create_op(scope, op_type, inputs, outputs, attrs):
 
 def set_input(scope, op, inputs, place):
     def __set_input__(var_name, var):
-        tensor = scope.find_var(var_name).get_tensor()
-        if isinstance(var, tuple):
-            tensor.set_lod(var[1])
-            var = var[0]
-        tensor.set_dims(var.shape)
-        tensor.set(var, place)
+        if isinstance(var, tuple) or isinstance(var, np.ndarray):
+            tensor = scope.find_var(var_name).get_tensor()
+            if isinstance(var, tuple):
+                tensor.set_lod(var[1])
+                var = var[0]
+            tensor.set_dims(var.shape)
+            tensor.set(var, place)
+        elif isinstance(var, float):
+            scope.find_var(var_name).set_float(var)
+        elif isinstance(var, int):
+            scope.find_var(var_name).set_int(var)
 
     for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:

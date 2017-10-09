@@ -21,19 +21,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/type_defs.h"
 #include "paddle/platform/enforce.h"
-#include "paddle/platform/variant.h"
 
 namespace paddle {
 namespace framework {
-
-// The order should be as same as framework.proto
-typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                       std::vector<float>, std::vector<std::string>, bool,
-                       std::vector<bool>, BlockDesc*>
-    Attribute;
-
-typedef std::unordered_map<std::string, Attribute> AttributeMap;
 
 ProgramDesc& GetProgramDesc();
 
