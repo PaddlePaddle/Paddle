@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <iostream>
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
@@ -27,7 +26,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class AucKernel : public framework::OpKernel {
+class AucKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* inference = ctx.Input<Tensor>("Inference");
@@ -61,8 +60,7 @@ class AucKernel : public framework::OpKernel {
     }
 
     // Create local tensor for storing the curve: TP, FN, TN, FP
-    // TODO(typhoonzero): put these tensors in Scope
-    // TODO(typhoonzero): use op to caculate these values.
+    // TODO(typhoonzero): use eigen op to caculate these values.
     Tensor true_positive, false_positive, true_negative, false_negative;
 
     true_positive.Resize({num_thresholds});
