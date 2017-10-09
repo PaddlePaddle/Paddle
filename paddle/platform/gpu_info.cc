@@ -44,7 +44,7 @@ int GetCurrentDeviceId() {
 
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
-  PADDLE_ENFORCE(id < GetCUDADeviceCount(), "id must less than GPU count");
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }

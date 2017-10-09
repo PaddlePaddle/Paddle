@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/scope.h"
+
 #include <memory>  // for unique_ptr
 #include <mutex>   // for call_once
 #include "paddle/string/printf.h"

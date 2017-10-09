@@ -46,7 +46,7 @@ class Executor {
    * @return
    *  vector<bool> Same size as ops. Indicates whether an op should be run.
    */
-  std::vector<bool> Preprocess(const ProgramDesc& pdesc);
+  std::vector<bool> Prune(const ProgramDesc& pdesc);
 
  private:
   std::vector<platform::DeviceContext*> device_contexts_;

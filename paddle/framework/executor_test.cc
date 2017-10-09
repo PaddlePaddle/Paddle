@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/executor.h"
+
+#include <memory>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/block_desc.h"
-// #include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
@@ -34,9 +36,6 @@ using std::string;
 using namespace paddle::platform;
 using namespace paddle::framework;
 
-typedef paddle::framework::BlockDesc proto_block;
-typedef paddle::framework::OpDesc proto_op;
-
 void AddOp(const std::string& type, const VariableNameMap& inputs,
            const VariableNameMap& outputs, AttributeMap attrs,
            paddle::framework::BlockDescBind* block) {
@@ -51,10 +50,10 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
   // insert op
   auto op = block->AppendOp();
   op->SetType(type);
-  for (auto kv : inputs) {
+  for (auto& kv : inputs) {
     op->SetInput(kv.first, kv.second);
   }
-  for (auto kv : outputs) {
+  for (auto& kv : outputs) {
     op->SetOutput(kv.first, kv.second);
   }
   op->SetAttrMap(attrs);
@@ -65,11 +64,11 @@ std::once_flag set_variable_flag;
 // Tensors in feed value variable will only be in CPUPlace
 // So we can  memcpy the data from vector<T> to feed_value
 template <typename T>
-void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
+void SetFeedVariable(const std::vector<std::vector<T>>& inputs) {
   typedef std::vector<paddle::framework::Tensor> FeedInputs;
   Variable* g_feed_value = GetGlobalScope()->FindVar("feed_value");
   FeedInputs& feed_inputs = *(g_feed_value->GetMutable<FeedInputs>());
-  auto size = inputs.size();
+  size_t size = inputs.size();
   feed_inputs.resize(size);
   for (size_t i = 0; i < size; i++) {
     T* dst = feed_inputs[i].mutable_data<T>(
@@ -81,12 +80,12 @@ void set_feed_variable(const std::vector<std::vector<T>>& inputs) {
 // Tensors in fetch value variable will only be in CPUPlace
 // So we can memcpy the data from fetch_value to vector<T>
 template <typename T>
-std::vector<std::vector<T>> get_fetch_variable() {
+std::vector<std::vector<T>> GetFetchVariable() {
   typedef std::vector<paddle::framework::Tensor> FetchOutputs;
   Variable* g_fetch_value = GetGlobalScope()->FindVar("fetch_value");
   FetchOutputs& fetch_outputs = *(g_fetch_value->GetMutable<FetchOutputs>());
 
-  auto size = fetch_outputs.size();
+  size_t size = fetch_outputs.size();
   std::vector<std::vector<T>> result;
   result.reserve(size);
   for (size_t i = 0; i < size; i++) {
@@ -105,7 +104,7 @@ class ExecutorTesterRandom : public ::testing::Test {
   virtual void SetUp() override {
     int input_dim = 5, batch_size = 2, embed_dim = 5;
 
-    // init pdesc -----------------------------------------
+    // init pdesc
     auto temp_init_root_block = init_pdesc_.add_blocks();
     temp_init_root_block->set_idx(0);
     temp_init_root_block->set_parent_idx(-1);
@@ -128,7 +127,7 @@ class ExecutorTesterRandom : public ::testing::Test {
     // flush
     init_program.Proto();
 
-    // run pdesc -----------------------------------------
+    // run pdesc
     auto temp_root_block = pdesc_.add_blocks();
     temp_root_block->set_idx(0);
     temp_root_block->set_parent_idx(-1);
@@ -154,9 +153,6 @@ class ExecutorTesterRandom : public ::testing::Test {
 
     // TODO(tonyyang-svail):
     //   - Test with Backward
-    // AddOp("gaussian_random", {}, {{"Out", {"l2_distance@GRAD"}}},
-    //       {{"dims", std::vector<int>{batch_size, 1}}}, root_block);
-    // AppendBackward(program, {});
   }
 
  protected:
@@ -213,12 +209,11 @@ TEST_F(ExecutorTesterRandom, CPU) {
   // "pointer being freed was not allocated" error will appear.
   paddle::memory::Used(cpu_place);
 
-  Executor* executor = new Executor(places);
+  std::unique_ptr<Executor> executor(new Executor(places));
+
   executor->Run(init_pdesc_, GetGlobalScope());
   executor->Run(pdesc_, GetGlobalScope());
-  std::vector<std::vector<float>> result = get_fetch_variable<float>();
-
-  delete executor;
+  std::vector<std::vector<float>> result = GetFetchVariable<float>();
 }
 
 TEST_F(ExecutorTesterFeedAndFetch, CPU) {
@@ -232,13 +227,12 @@ TEST_F(ExecutorTesterFeedAndFetch, CPU) {
   // "pointer being freed was not allocated" error will appear.
   paddle::memory::Used(cpu_place);
 
-  Executor* executor = new Executor(places);
+  std::unique_ptr<Executor> executor(new Executor(places));
 
-  // 3 mini-batch
-  for (int i = 0; i < 3; i++) {
-    set_feed_variable<float>(inputs_);
+  for (int batch_id = 0; batch_id < 3; batch_id++) {
+    SetFeedVariable<float>(inputs_);
     executor->Run(pdesc_, GetGlobalScope());
-    std::vector<std::vector<float>> result = get_fetch_variable<float>();
+    std::vector<std::vector<float>> result = GetFetchVariable<float>();
     PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
     for (size_t i = 0; i < result.size(); ++i) {
       PADDLE_ENFORCE_EQ(result[i].size(), inputs_[i].size());
@@ -247,8 +241,6 @@ TEST_F(ExecutorTesterFeedAndFetch, CPU) {
       }
     }
   }
-
-  delete executor;
 }
 #else
 TEST_F(ExecutorTesterRandom, GPU) {
@@ -265,13 +257,11 @@ TEST_F(ExecutorTesterRandom, GPU) {
   paddle::memory::Used(CPUPlace());
   paddle::memory::Used(gpu_place);
 
-  Executor* executor = new Executor(places);
+  std::unique_ptr<Executor> executor(new Executor(places));
 
   executor->Run(init_pdesc_, GetGlobalScope());
   executor->Run(pdesc_, GetGlobalScope());
-  std::vector<std::vector<float>> result = get_fetch_variable<float>();
-
-  delete executor;
+  std::vector<std::vector<float>> result = GetFetchVariable<float>();
 }
 
 TEST_F(ExecutorTesterFeedAndFetch, GPU) {
@@ -287,13 +277,12 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
   paddle::memory::Used(CPUPlace());
   paddle::memory::Used(gpu_place);
 
-  Executor* executor = new Executor(places);
+  std::unique_ptr<Executor> executor(new Executor(places));
 
-  // 3 mini-batch
-  for (int i = 0; i < 3; i++) {
-    set_feed_variable<float>(inputs_);
+  for (int batch_id = 0; batch_id < 3; batch_id++) {
+    SetFeedVariable<float>(inputs_);
     executor->Run(pdesc_, GetGlobalScope());
-    std::vector<std::vector<float>> result = get_fetch_variable<float>();
+    std::vector<std::vector<float>> result = GetFetchVariable<float>();
     PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
     for (size_t i = 0; i < result.size(); ++i) {
       PADDLE_ENFORCE_EQ(result[i].size(), inputs_[i].size());
@@ -302,6 +291,5 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
       }
     }
   }
-  delete executor;
 }
 #endif

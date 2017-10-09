@@ -35,6 +35,7 @@ class FetchOp : public framework::OperatorWithKernel {
     }
 
     auto input_dim = ctx->GetInputDim("Input");
+    PADDLE_ENFORCE_GT(tensors->size(), col);
     (*tensors)[col].Resize(input_dim);
 
     // TODO(qijun): need to handle LodTensor later

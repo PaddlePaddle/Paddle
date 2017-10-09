@@ -31,6 +31,7 @@ class FeedOp : public framework::OperatorWithKernel {
 
     const FeedInputs& tensors = g_feed_variable->Get<FeedInputs>();
 
+    PADDLE_ENFORCE_GT(tensors.size(), col);
     auto in_dim = tensors[col].dims();
     ctx->SetOutputDim("Out", in_dim);
     // TODO(qijun): need to handle LodTensor later
