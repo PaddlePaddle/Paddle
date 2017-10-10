@@ -24,7 +24,7 @@ class DropoutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<float>("dropout_prob"), 0);
     PADDLE_ENFORCE_LE(ctx->Attrs().Get<float>("dropout_prob"), 1);
@@ -70,7 +70,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_training"), 1,
                       "GradOp is only callable when is_training is true");
 

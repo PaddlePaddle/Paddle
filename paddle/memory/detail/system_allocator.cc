@@ -62,7 +62,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool CPUAllocator::UseGpu() const { return false; }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 void* GPUAllocator::Alloc(size_t& index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr

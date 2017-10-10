@@ -117,7 +117,6 @@ void BindProgramDesc(py::module &m) {
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
-      .def("__str__", &ProgramDescBind::DebugString)
       .def("num_blocks", &ProgramDescBind::Size);
 }
 
@@ -191,8 +190,6 @@ void BindOpDesc(py::module &m) {
       .def("output", &OpDescBind::Output)
       .def("output_names", &OpDescBind::OutputNames)
       .def("set_output", &OpDescBind::SetOutput)
-      .def("__str__", &OpDescBind::DebugString)
-      .def("__repr__", &OpDescBind::DebugString)
       .def("has_attr", &OpDescBind::HasAttr)
       .def("attr_type", &OpDescBind::GetAttrType)
       .def("attr_names", &OpDescBind::AttrNames)

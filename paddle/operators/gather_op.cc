@@ -23,7 +23,7 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of GatherOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Index"),
@@ -31,6 +31,8 @@ class GatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GatherOp should not be null.");
 
+    auto index_dims = ctx->GetInputDim("Index");
+    PADDLE_ENFORCE(index_dims.size() == 1);
     int batch_size = ctx->GetInputDim("Index")[0];
     PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
     framework::DDim output_dims(ctx->GetInputDim("X"));
@@ -49,7 +51,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
@@ -79,8 +81,5 @@ Out = X[Index]
 namespace ops = paddle::operators;
 REGISTER_OP(gather, ops::GatherOp, ops::GatherOpMaker, gather_grad,
             ops::GatherGradOp);
-REGISTER_OP_CPU_KERNEL(gather,
-                       ops::GatherOpKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    gather_grad,
-    ops::GatherGradientOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>);

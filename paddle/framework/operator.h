@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "op_info.h"
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/block_desc.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
@@ -56,7 +57,6 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 class OperatorBase;
-class InferShapeContext;
 class ExecutionContext;
 
 extern const Tensor* GetTensorFromVar(const Variable* var);
@@ -168,10 +168,11 @@ class NOP : public OperatorBase {
   }
 };
 
-class InferShapeContext {
+class ExecutionContext {
  public:
-  InferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
+  ExecutionContext(const OperatorBase& op, const Scope& scope,
+                   const platform::DeviceContext& device_context)
+      : op_(op), scope_(scope), device_context_(device_context) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -277,31 +278,6 @@ class InferShapeContext {
     out_tensor->set_lod(in_tensor.lod());
   }
 
- private:
-  const OperatorBase& op_;
-  const Scope& scope_;
-};
-
-template <>
-const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const;
-
-template <>
-const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
-    const std::string& name) const;
-
-template <>
-Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const;
-
-template <>
-std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
-    const std::string& name) const;
-
-class ExecutionContext : public InferShapeContext {
- public:
-  ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext& device_context)
-      : InferShapeContext(op, scope), device_context_(device_context) {}
-
   template <typename PlaceType,
             typename DeviceType = typename platform::EigenDeviceConverter<
                 PlaceType>::EigenDeviceType>
@@ -314,29 +290,141 @@ class ExecutionContext : public InferShapeContext {
   }
 
  private:
+  const OperatorBase& op_;
+  const Scope& scope_;
   const platform::DeviceContext& device_context_;
 };
 
-class RuntimeInferShapeContext : public InferShapeContextBase {
+template <>
+const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+    const std::string& name) const;
+
+class CompileTimeInferShapeContext : public InferShapeContext {
+ public:
+  CompileTimeInferShapeContext(const OpDescBind& op, const BlockDescBind& block)
+      : op_(op), block_(block) {}
+
+  bool HasInput(const std::string& name) const override {
+    const std::vector<std::string>& input_names = op_.Input(name);
+    auto length = input_names.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Input(%s) should have only one value, "
+                      "but it have %d now",
+                      name, length);
+    return block_.HasVar(input_names[0]);
+  }
+
+  bool HasOutput(const std::string& name) const override {
+    const std::vector<std::string>& output_names = op_.Output(name);
+    auto length = output_names.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Output(%s) should have only one value, "
+                      "but it have %d now",
+                      name, length);
+    return block_.HasVar(output_names[0]);
+  }
+
+  bool HasInputs(const std::string& name) const override {
+    const std::vector<std::string>& input_names = op_.Input(name);
+    PADDLE_ENFORCE(!input_names.empty(), "Inputs(%s) length is 0", name);
+    for (auto& input : input_names) {
+      if (!block_.HasVar(input)) return false;
+    }
+    return true;
+  }
+
+  bool HasOutputs(const std::string& name) const override {
+    const std::vector<std::string>& output_names = op_.Output(name);
+    PADDLE_ENFORCE(!output_names.empty(), "Inputs(%s) length is 0", name);
+    for (auto& output : output_names) {
+      if (!block_.HasVar(output)) return false;
+    }
+    return true;
+  }
+
+  DDim GetInputDim(const std::string& name) const override {
+    std::vector<DDim> ddims = GetInputsDim(name);
+    auto length = ddims.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Input(%s) should have 1 value, "
+                      "but it has %d now",
+                      name, length);
+    return ddims[0];
+  }
+
+  void SetInputDim(const std::string& name, const DDim& dim) override {
+    SetInputsDim(name, {dim});
+  }
+
+  DDim GetOutputDim(const std::string& name) const override {
+    std::vector<DDim> ddims = GetOutputsDim(name);
+    auto length = ddims.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Output(%s) should have 1 value, "
+                      "but it has %d now",
+                      name, length);
+    return ddims[0];
+  }
+
+  void SetOutputDim(const std::string& name, const DDim& dim) override {
+    SetOutputsDim(name, {dim});
+  }
+
+  AttrReader Attrs() const override { return AttrReader(op_.GetAttrMap()); }
+
+  const std::vector<std::string>& Inputs(
+      const std::string& name) const override {
+    return op_.Input(name);
+  }
+
+  const std::vector<std::string>& Outputs(
+      const std::string& name) const override {
+    return op_.Output(name);
+  }
+
+ private:
+  DDim GetDim(const std::string& name) const override {
+    return framework::make_ddim(block_.Var(name)->Shape());
+  }
+
+  void SetDim(const std::string& name, const DDim& dim) override {
+    block_.Var(name)->SetShape(framework::vectorize(dim));
+  }
+
+  const OpDescBind& op_;
+  const BlockDescBind& block_;
+};
+
+class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
-  bool HasInput(const std::string& name) const {
+  bool HasInput(const std::string& name) const override {
     auto ipt = op_.Input(name);
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
   }
 
-  bool HasOutput(const std::string& name) const {
+  bool HasOutput(const std::string& name) const override {
     auto ipt = op_.Output(name);
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
   }
 
-  bool HasInputs(const std::string& name) const {
+  bool HasInputs(const std::string& name) const override {
     auto inputs = op_.Inputs(name);
-    if (inputs.size() == 0UL) {
+    if (inputs.empty()) {
       return false;
     }
     for (auto& input : inputs) {
@@ -347,9 +435,9 @@ class RuntimeInferShapeContext : public InferShapeContextBase {
     return true;
   }
 
-  bool HasOutputs(const std::string& name) const {
+  bool HasOutputs(const std::string& name) const override {
     auto outputs = op_.Outputs(name);
-    if (outputs.size() == 0UL) {
+    if (outputs.empty()) {
       return false;
     }
     for (auto& output : outputs) {
@@ -360,29 +448,31 @@ class RuntimeInferShapeContext : public InferShapeContextBase {
     return true;
   }
 
-  DDim GetInputDim(const std::string& name) const {
+  DDim GetInputDim(const std::string& name) const override {
     return GetDim(op_.Input(name));
   }
 
-  void SetInputDim(const std::string& name, const DDim& dim) {
+  void SetInputDim(const std::string& name, const DDim& dim) override {
     SetDim(op_.Input(name), dim);
   }
 
-  DDim GetOutputDim(const std::string& name) const {
+  DDim GetOutputDim(const std::string& name) const override {
     return GetDim(op_.Output(name));
   }
 
-  void SetOutputDim(const std::string& name, const DDim& dim) {
+  void SetOutputDim(const std::string& name, const DDim& dim) override {
     SetDim(op_.Output(name), dim);
   }
 
-  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
+  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
 
-  const std::vector<std::string>& Inputs(const std::string& name) const {
+  const std::vector<std::string>& Inputs(
+      const std::string& name) const override {
     return op_.Inputs(name);
   }
 
-  const std::vector<std::string>& Outputs(const std::string& name) const {
+  const std::vector<std::string>& Outputs(
+      const std::string& name) const override {
     return op_.Outputs(name);
   }
 
@@ -403,11 +493,11 @@ class RuntimeInferShapeContext : public InferShapeContextBase {
     return t;
   }
 
-  DDim GetDim(const std::string& name) const {
+  DDim GetDim(const std::string& name) const override {
     return GetTensor<false>(name)->dims();
   }
 
-  void SetDim(const std::string& name, const DDim& dim) {
+  void SetDim(const std::string& name, const DDim& dim) override {
     GetTensor<true>(name)->Resize(dim);
   }
 
@@ -478,9 +568,25 @@ class OperatorWithKernel : public OperatorBase {
     this->InferShape(&infer_shape_ctx);
 
     ExecutionContext ctx(*this, scope, dev_ctx);
-    auto& opKernel = AllOpKernels().at(type_).at(
-        OpKernelKey(IndicateDataType(ctx), dev_ctx));
-    opKernel->Compute(ctx);
+
+    // check if op[type] has kernel registered.
+    auto& all_op_kernels = AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(type_);
+    if (kernels_iter == all_op_kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel", type_);
+    }
+
+    // check if op[type] have kernel for kernel_key
+    OpKernelMap& kernels = kernels_iter->second;
+    auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+    auto kernel_iter = kernels.find(kernel_key);
+
+    if (kernel_iter == kernels.end()) {
+      PADDLE_THROW("op[%s] has no kernel with kernel_key[%s]", type_,
+                   kernel_key);
+    }
+
+    kernel_iter->second->Compute(ctx);
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -497,9 +603,9 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
 
- protected:
-  virtual void InferShape(InferShapeContextBase* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const = 0;
 
+ protected:
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
   virtual DataType IndicateDataType(const ExecutionContext& ctx) const {
@@ -528,6 +634,9 @@ class OperatorWithKernel : public OperatorBase {
     return static_cast<DataType>(data_type);
   }
 };
+
+std::ostream& operator<<(std::ostream& os,
+                         const OperatorWithKernel::OpKernelKey& kernel_key);
 
 }  // namespace framework
 }  // namespace paddle

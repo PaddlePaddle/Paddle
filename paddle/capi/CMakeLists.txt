@@ -37,9 +37,7 @@ set(PADDLE_CAPI_INFER_LIBS
     paddle_cuda
     paddle_function
     paddle_gserver
-    paddle_proto
-    paddle_pserver
-    paddle_network)
+    paddle_proto)
 
 cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
 

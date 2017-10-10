@@ -19,28 +19,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
-class AddKernel : public framework::OpKernel<T> {
+class FillConstantOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* input0 = context.Input<Tensor>("X");
-    auto* input1 = context.Input<Tensor>("Y");
-    auto* output = context.Output<Tensor>("Out");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+    auto value = ctx.Attr<T>("value");
 
-    output->mutable_data<T>(context.GetPlace());
-
-    auto X = EigenVector<T>::Flatten(*input0);
-    auto Y = EigenVector<T>::Flatten(*input1);
-    auto Z = EigenVector<T>::Flatten(*output);
-
-    auto place = context.GetEigenDevice<Place>();
-
-    Z.device(place) = X + Y;
+    auto out_eigen = framework::EigenVector<T>::Flatten(*out);
+    auto place = ctx.GetEigenDevice<Place>();
+    out_eigen.device(place) = out_eigen.constant(static_cast<T>(value));
   }
 };
 

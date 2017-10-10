@@ -1,147 +1,175 @@
 # Design Doc: LoD (Level-of-Detail) Tensor
 
-PaddlePaddle's RNN doesn't require that all instances have the same length.  To do so, we introduce an extension to Tensor, namely, LoD Tensor.
+Like other deep learning systems, PaddlePaddle supports training models from sequence data.  Also, like other systems, PaddlePaddle represent a mini-batch of sequences as a Tensor.  What is different is that PaddlePaddle doesn't require all sequences in a mini-batch to be of the same length. Thus no need for padding zeros.
 
-## Challenge of Variable-length Inputs
+|                       | TensorFlow | PaddlePaddle |
+|-----------------------|------------|--------------|
+| RNN                   | Support    | Support      |
+| recursive RNN         | Support    | Support      |
+| padding zeros         | Must       | No need      |
+| blob data type        | Tensor     | LoDTensor    |
 
-People usually represent a mini-batch by a Tensor. For example, a mini-batch of 10 images, each of size 32x32, is a 10x32x32 Tensor.  So a transformation, T, of all images can be a matrix multiplication of the 10xOx32-dimensional tensor T and the 10x32x32 Tensor.
+PaddlePaddle achieves this flexibility by passing through a new data type, *LoD Tensor*, which is a Tensor attached with segmentation index known as *LoD*, between operators.  The LoD index doesn't only segment a tensor, but also recursively segments sub-sequences.  This document presents the design of LoD and LoDTensor.
 
-Another example is that each mini-batch contains 32 sentences, where each word is a D-dimensional one-hot vector.  If all sentences have the same length L, we can represent this mini-batch by a 32xLxD tensor.  However, in most cases, sentences have variable lengths, and we will need an index data structure to record these variable lengths.
 
-## LoD as a Solution
+## The Challenge: Variable-length Sequences
 
-### Mini-Batch of variable-length sentences
+Most deep learning systems represent a mini-batch as a Tensor.  For example, a mini-batch of 10 images, each of size 32x32, is a 10x32x32 Tensor.  Another example is that each mini-batch contains N sentences, where each word is a D-dimensional one-hot vector.  Suppose that all sentences have the same length L, we can represent this mini-batch by a NxLxD tensor.
 
-Let's imagine a mini-batch of 3 variable lengths sentences, containing 3, 1, and 2 words respectively.  We can represent it by a (3+1+2)xD tensor plus some index information:
+Both examples show that the elements of sequences are usually of the same size.  In the first example, all images are 32x32, and in the second one, all words are D-dimensional vectors.  It doesn't make sense to allow variable-sized images, as that would require transformations like convolution to handle variable-sized Tensors.
+
+The real challenge is that in most cases, sentences have variable lengths, and we will need an index data structure to segment the tensor into sequences.  Also, sequences might consist of sub-sequences.
+
+
+## A Solution: The LoD Index
+
+To understand our solution, it is best to look at some examples.
+
+### A Mini-Batch of Sentences
+
+Let's imagine a mini-batch of 3 variable lengths sentences composed of 3, 1, and 2 words, respectively.  We can represent the mini-batch by a (3+1+2)xD tensor plus some index information:
 
 ```
-   3
 3   1 2
 ||| | ||
 ```
 
-Each `|` represents a D-dimensional word vectors.  The number 3 on top indicate 3 sentences, and numbers 3, 1, and 2 on the second level represent the number of words in each sentence.
+where each `|` represents a D-dimensional word vector.  The numbers, 3, 1, and 2, form a 1-level LoD.
 
-### Mini-Batch of variable-length videos
+### Recursive Sequences
 
-This approach generalizes to the case where elements are not words, but higher dimensional objects, like images.  Suppose that a mini-batch contains videos of the same frame size 640x480.  If a mini-batch contains 3 videos of 3, 1, and 2 frames respectively.  The underlying tensor is of size (3+1+2)x640x480.  The index information illustrates as:
+Let check another example of a 2-level LoD Tensor.  Consider a mini-batch of three articles with 3, 1, and 2 sentences, and each sentence consists of a variable number of words:
 
 ```
-     3
+3           1  2
+3   2  4    1  2  3
+||| || |||| |  || |||
+```
+
+### A Mini-Batch of Videos
+
+LoD tensors generalize to the case where elements are higher dimensional objects, like images.  Suppose that a mini-batch contains videos of the same frame size 640x480.  Here is a mini-batch of 3 videos with 3, 1, and 2 frames, respectively.
+
+```
 3     1  2
 口口口 口 口口
 ```
 
-where each `口` represents an image.
+The underlying tensor is of size (3+1+2)x640x480, and each `口` represents a 640x480 image.
 
-### Mini-Batch of fixed-size images
+### A Mini-Batch of Images
 
-Let's get back to a typical example, image classification, where each mini-batch has M fixed-sized images.  The LoD Tensor representation is
+In traditional cases like a mini-batch with N fixed-sized images,  the LoD Tensor representation is as
 
 ```
-     M
 1 1 1 1     1
 口口口口 ... 口
 ```
 
-The many 1's on the second level seem duplicated.  For this particular case of 2 levels and the second level always have length 1, we can ignore the LoD index.
-
-### Design and summarization
-
-In summary, as long as that the essential elements (words  or images) have the same size, we can represent mini-batches by a LoD Tensor:
-
-- The underlying tensor has size LxD1xD2x..., where D1xD2... is the size of the essential elements, and
-- The first dimension size L has an additonal property -- a LoD index as a nested vector:
-
-  ```c++
-  typedef std::vector<std::<vector>> LoD;
-  ```
-
-- The LoD index is not necessary when there are only two levels and all elements of the second level have length 1.
-
-## Slicing of LoD Tensor
-
-Consider that we have a network with three levels of RNN: the top level one handles articles, the second level one handles sentences, and the basic level one handles words.  This network requires that mini-batches represented by 3 level LoD Tensor, for example,
+In this case, we don't lose any information by ignoring the many 1's in the index and simply considering this LoD Tensor as a usual Tensor:
 
 ```
-         3
+口口口口 ... 口
+```
+
+### Model Parameters
+
+A model parameter is just a usual Tensor, which, just like the above example, is a **0-level LoD Tensor**.
+
+
+## The LoD Tensor
+
+Let us revisit above example of the 2-level LoD Tensor
+
+```
 3           1  2
 3   2  4    1  2  3
 ||| || |||| |  || |||
 ```
 
-To allow each level of RNN to handle its input, we define **the slicing of a LoD Tensor is defined as getting the j-th sequence on level i, or the <i,j>-slice**
+It is indeed a tree, where leaves are elementary sequences identified by **branches**.
 
-For example, the <2,1>-slice of above slice is
+For example, the third sentence in above example is identified by branch <0,2>, where 0 indicates the first article with length 3, and 2 indicates the third sentence in this article with length 4.
 
-```
-2
-||
-```
+### The LoD Index
 
-and the <1,2>-slice of above example is
+We can save the LoD index in the above example
 
 ```
-2
-2  3
-|| |||
+3           1  2
+3   2  4    1  2  3
 ```
 
-Let's go on slicing this slice.  Its <1,1>-slice is
-
-```
-1
-1
-|
-```
-
-### The Slicing Algorithm
-
-The algorithm, with over-simplified data structure, is defined as
+in a not-full 2D matrix:
 
 ```c++
-typedef std::vector<std::vector<int>> LoD;
-
-struct LoDTensor {
-  LoD lod_;
-  float* tensor_;
-};
-
-LoDTensor Slice(const LoDTensor& lodt, int level, int sequence);
+typedef std::vector<std::vector<int> > LoD;
 ```
 
-Let us revisit the example above
+where
+
+- `LoD.size()` is the number of levels, or the maximum length of branches,
+- `LoD[i][j]` is the length of the j-th segment at the i-th level.
+
+## The Offset Representation
+
+To quickly access elementary sequences, we adopt an offset representation -- instead of saving the lengths, we save the beginning and ending elements of sequences.
+
+In the above example, we accumulate the length of elementary sequences:
 
 ```
-         3
-3           1  2
-3   2  4    1  2  3
-||| || |||| |  || |||
+3 2 4 1 2 3
 ```
 
-Suppose that we want to retrieve the <1,2>-slice
+into offsets
 
 ```
-2
-2  3
-|| |||
+0  3  5   9   10  12   15
+   =  =   =   =   =    =
+   3  2+3 4+5 1+9 2+10 3+12
 ```
 
-we will need to find out the starting position of this slice by summing over all leaf nodes in `LoD` to the left of the slice, i.e., 3 + 2 + 4 + 1 = 10.
+so we know that the first sentence is from word 0 to word 3, and the second sentence from work 3 to word 5.
 
-To avoid the traversal of the LoD tree at slicing time,  we can do it at the construction time -- instead of saving the lengths of the next level in the LoD tree, we can save the starting offset of the next level.  For example, above LoD Tensor can be transformed into
-
-```
-        0
-0           9  10
-0   3  5    9  10 12
-||| || |||| |  || |||
-```
-
-We don't really need the 0 on top, so the LoD Tensor could be
+Similarly, the lengths in the top level LoD
 
 ```
-0           9  10
-0   3  5    9  10 12
-||| || |||| |  || |||
+3 1 2
+```
+
+are transformed into offsets of elements/words as follows:
+
+```
+0 9     10  15
+  =     =   =
+  3+2+4 1+9 2+3+10
+```
+
+so we can tell that the first article is from word 0 to word 9, and the second article is from word 9 to word 10.
+
+The complete offset representation is as follows:
+
+```
+0           9 10       15
+0   3  5    9 10  12   15
+ ||| || |||| |  ||  |||
+```
+
+## Slicing of LoD Tensors
+
+When we use the above 2-level LoD Tensor as the input to a nested-RNN, we need to retrieve certain sequences.  Here we define the sequence identified by branch <i,j,...> as the **<i,j,...>-slice**.
+
+For example, the <2>-slice of above example is
+
+```
+10      15
+10  12  15
+  || |||
+```
+
+and the <2,0>-slice of above slice is
+
+```
+10  12
+  ||
 ```

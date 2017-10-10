@@ -19,9 +19,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class InferShapeContextBase {
+// TODO(longfei): Once after both CompileTimeInferShapeContext and
+// RuntimeInferShapeContext get merged, we can rename InferShapeContext into
+// InferShapeContext so to replace the current InferShapeContext.
+class InferShapeContext {
  public:
-  virtual ~InferShapeContextBase() {}
+  virtual ~InferShapeContext() {}
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
 

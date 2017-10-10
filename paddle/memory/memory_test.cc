@@ -80,7 +80,7 @@ TEST(BuddyAllocator, CPUMultAlloc) {
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 size_t align(size_t size, paddle::platform::GPUPlace place) {
   size += sizeof(paddle::memory::detail::Metadata);
