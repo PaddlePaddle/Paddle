@@ -56,13 +56,12 @@ Executor::~Executor() {
   }
 }
 
-void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
+void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   // TODO(tonyyang-svail):
-  //    - only runs the first block (i.e. no RNN support)
   //    - only runs on the first device (i.e. no interdevice communication)
   //    - will change to use multiple blocks for RNN op and Cond Op
-  PADDLE_ENFORCE_GT(pdesc.blocks_size(), 0);
-  auto& block = pdesc.blocks(0);
+  PADDLE_ENFORCE_GT(pdesc.blocks_size(), block_id);
+  auto& block = pdesc.blocks(block_id);
   auto& device = device_contexts_[0];
 
   // Instantiate all the vars in the global scope
@@ -72,7 +71,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
 
   Scope& local_scope = scope->NewScope();
 
-  std::vector<bool> should_run = Prune(pdesc);
+  std::vector<bool> should_run = Prune(pdesc, block_id);
   PADDLE_ENFORCE_EQ(should_run.size(), block.ops_size());
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
@@ -92,12 +91,11 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope) {
   //  - Destroy local_scope
 }
 
-std::vector<bool> Executor::Prune(const ProgramDesc& pdesc) {
+std::vector<bool> Executor::Prune(const ProgramDesc& pdesc, int block_id) {
   // TODO(tonyyang-svail):
-  //    - only runs the first block
   //    - will change to use multiple blocks for RNN op and Cond Op
 
-  auto& block = pdesc.blocks(0);
+  auto& block = pdesc.blocks(block_id);
   auto& ops = block.ops();
 
   bool expect_feed = true;
@@ -144,8 +142,10 @@ std::vector<bool> Executor::Prune(const ProgramDesc& pdesc) {
         }
       }
 
+      LOG(INFO) << "1 " << op_desc.type();
       should_run.push_back(true);
     } else {
+      LOG(INFO) << "0 " << op_desc.type();
       should_run.push_back(false);
     }
   }

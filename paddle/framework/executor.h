@@ -34,7 +34,7 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDesc&, Scope*);
+  void Run(const ProgramDesc&, Scope*, int);
 
  protected:
   /* @Brief
@@ -46,7 +46,7 @@ class Executor {
    * @return
    *  vector<bool> Same size as ops. Indicates whether an op should be run.
    */
-  std::vector<bool> Prune(const ProgramDesc& pdesc);
+  std::vector<bool> Prune(const ProgramDesc& pdesc, int block_id);
 
  private:
   std::vector<platform::DeviceContext*> device_contexts_;

@@ -104,50 +104,40 @@ class ExecutorTesterRandom : public ::testing::Test {
   virtual void SetUp() override {
     int input_dim = 5, batch_size = 2, embed_dim = 5;
 
-    // init pdesc
-    auto temp_init_root_block = init_pdesc_.add_blocks();
-    temp_init_root_block->set_idx(0);
-    temp_init_root_block->set_parent_idx(-1);
-
-    // wrap to BlockDescBind
-    paddle::framework::ProgramDescBind& init_program =
-        paddle::framework::ProgramDescBind::Instance(&init_pdesc_);
-    paddle::framework::BlockDescBind* init_root_block = init_program.Block(0);
-
-    AddOp("gaussian_random", {}, {{"Out", {"w1"}}},
-          {{"dims", std::vector<int>{input_dim, embed_dim}}}, init_root_block);
-    AddOp("gaussian_random", {}, {{"Out", {"w2"}}},
-          {{"dims", std::vector<int>{embed_dim, input_dim}}}, init_root_block);
-    AddOp("fetch", {{"Input", {"w1"}}}, {},
-          {{"dims", std::vector<int>{input_dim, embed_dim}}, {"col", 0}},
-          init_root_block);
-    AddOp("fetch", {{"Input", {"w2"}}}, {},
-          {{"dims", std::vector<int>{embed_dim, input_dim}}, {"col", 1}},
-          init_root_block);
-    // flush
-    init_program.Proto();
-
-    // run pdesc
     auto temp_root_block = pdesc_.add_blocks();
     temp_root_block->set_idx(0);
     temp_root_block->set_parent_idx(-1);
-
-    // wrap to BlockDescBind
     paddle::framework::ProgramDescBind& program =
         paddle::framework::ProgramDescBind::Instance(&pdesc_);
     paddle::framework::BlockDescBind* root_block = program.Block(0);
 
+    // block[0]
+    AddOp("gaussian_random", {}, {{"Out", {"w1"}}},
+          {{"dims", std::vector<int>{input_dim, embed_dim}}}, root_block);
+    AddOp("gaussian_random", {}, {{"Out", {"w2"}}},
+          {{"dims", std::vector<int>{embed_dim, input_dim}}}, root_block);
+    AddOp("fetch", {{"Input", {"w1"}}}, {},
+          {{"dims", std::vector<int>{input_dim, embed_dim}}, {"col", 0}},
+          root_block);
+    AddOp("fetch", {{"Input", {"w2"}}}, {},
+          {{"dims", std::vector<int>{embed_dim, input_dim}}, {"col", 1}},
+          root_block);
+
+    // block[1]
+    paddle::framework::BlockDescBind* run_block =
+        program.AppendBlock(*root_block);
     AddOp("gaussian_random", {}, {{"Out", {"a"}}},
-          {{"dims", std::vector<int>{batch_size, input_dim}}}, root_block);
+          {{"dims", std::vector<int>{batch_size, input_dim}}}, run_block);
     AddOp("mul", {{"X", {"a"}}, {"Y", {"w1"}}}, {{"Out", {"b"}}}, {},
-          root_block);
+          run_block);
     AddOp("mul", {{"X", {"b"}}, {"Y", {"w2"}}}, {{"Out", {"a_out"}}}, {},
-          root_block);
+          run_block);
     AddOp("squared_l2_distance", {{"X", {"a"}}, {"Y", {"a_out"}}},
           {{"Out", {"l2_distance"}}, {"sub_result", {"l2_distance_sub"}}}, {},
-          root_block);
+          run_block);
     AddOp("fetch", {{"Input", {"l2_distance"}}}, {},
-          {{"dims", std::vector<int>{batch_size}}, {"col", 1}}, root_block);
+          {{"dims", std::vector<int>{batch_size}}, {"col", 1}}, run_block);
+
     // flush
     program.Proto();
 
@@ -157,7 +147,6 @@ class ExecutorTesterRandom : public ::testing::Test {
 
  protected:
   ProgramDesc pdesc_;
-  ProgramDesc init_pdesc_;
 };
 
 class ExecutorTesterFeedAndFetch : public ::testing::Test {
@@ -211,8 +200,8 @@ TEST_F(ExecutorTesterRandom, CPU) {
 
   std::unique_ptr<Executor> executor(new Executor(places));
 
-  executor->Run(init_pdesc_, GetGlobalScope());
-  executor->Run(pdesc_, GetGlobalScope());
+  executor->Run(pdesc_, GetGlobalScope(), 0);
+  executor->Run(pdesc_, GetGlobalScope(), 1);
   std::vector<std::vector<float>> result = GetFetchVariable<float>();
 }
 
@@ -231,7 +220,7 @@ TEST_F(ExecutorTesterFeedAndFetch, CPU) {
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     SetFeedVariable<float>(inputs_);
-    executor->Run(pdesc_, GetGlobalScope());
+    executor->Run(pdesc_, GetGlobalScope(), 0);
     std::vector<std::vector<float>> result = GetFetchVariable<float>();
     PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
     for (size_t i = 0; i < result.size(); ++i) {
@@ -259,8 +248,8 @@ TEST_F(ExecutorTesterRandom, GPU) {
 
   std::unique_ptr<Executor> executor(new Executor(places));
 
-  executor->Run(init_pdesc_, GetGlobalScope());
-  executor->Run(pdesc_, GetGlobalScope());
+  executor->Run(pdesc_, GetGlobalScope(), 0);
+  executor->Run(pdesc_, GetGlobalScope(), 1);
   std::vector<std::vector<float>> result = GetFetchVariable<float>();
 }
 
@@ -281,7 +270,7 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     SetFeedVariable<float>(inputs_);
-    executor->Run(pdesc_, GetGlobalScope());
+    executor->Run(pdesc_, GetGlobalScope(), 0);
     std::vector<std::vector<float>> result = GetFetchVariable<float>();
     PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
     for (size_t i = 0; i < result.size(); ++i) {
