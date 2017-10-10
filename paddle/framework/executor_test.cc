@@ -35,7 +35,6 @@ USE_OP(squared_l2_distance);
 USE_OP(fill_constant);
 USE_OP(sgd);
 
-using std::string;
 using namespace paddle::platform;
 using namespace paddle::framework;
 

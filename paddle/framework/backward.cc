@@ -378,7 +378,6 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
         backward_descs[dup_op[i]]->Rename(out_name, new_name);
         sum_op_inputs.emplace_back(new_name);
       }
-      LOG(INFO) << "sum_op_inputs size " << sum_op_inputs.size();
       std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
           "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
