@@ -22,7 +22,7 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("X"),
                    "Inputs(X) of SequenceConcatOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -100,7 +100,7 @@ class SequenceConcatGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "The gradient of Out should not be null.");
     PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
