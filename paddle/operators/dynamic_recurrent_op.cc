@@ -53,7 +53,7 @@ class DynamicRecurrentOpProtoAndCheckerMaker
                                       "names of pre-memories");
     AddAttr<std::vector<std::string>>(name.memories, "names of memories");
 
-    AddComment("This is a recurrent group operator.");
+    AddComment("This is a RNN operator for varience-length sequences.");
   }
 };
 
@@ -67,7 +67,8 @@ void DynamicRecurrentOp::Run(const Scope& scope,
 
   // call stepnet in all the time steps
   for (size_t step = 0; step < cache_.num_steps; step++) {
-    stepnet_->Run(scope, dev_ctx);
+    auto& step_scope = cache_.GetScope(step);
+    stepnet_->Run(step_scope, dev_ctx);
   }
 
   WriteStepOutputs();
