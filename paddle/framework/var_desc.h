@@ -66,6 +66,10 @@ class VarDescBind {
 
   DataType GetDataType() const;
 
+  void SetLoDLevel(int32_t lod_level);
+
+  int32_t GetLodLevel() const;
+
  private:
   VarDesc desc_;
 };
