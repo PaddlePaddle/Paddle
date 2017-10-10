@@ -237,7 +237,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       auto t = framework::EigenVector<T>::Flatten(*input_grad);
-      t.device(ctx.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+      t.device(ctx.GetEigenDevice<platform::GPUPlace>()) =
+          t.constant(static_cast<T>(0));
       for (int i = 0; i < groups; i++) {
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
             handle, &alpha, cudnn_filter_desc,
@@ -251,7 +252,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     if (filter_grad) {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
       auto t = framework::EigenVector<T>::Flatten(*filter_grad);
-      t.device(ctx.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+      t.device(ctx.GetEigenDevice<platform::GPUPlace>()) =
+          t.constant(static_cast<T>(0));
       for (int i = 0; i < groups; i++) {
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
             handle, &alpha, cudnn_input_desc, input_data + i * group_offset_X,
