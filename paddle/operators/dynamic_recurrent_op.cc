@@ -53,7 +53,7 @@ class DynamicRecurrentOpProtoAndCheckerMaker
                                       "names of pre-memories");
     AddAttr<std::vector<std::string>>(name.memories, "names of memories");
 
-    AddComment("This is a recurrent group operator.");
+    AddComment("This is a RNN operator for varience-length sequences.");
   }
 };
 
@@ -65,9 +65,10 @@ void DynamicRecurrentOp::Run(const Scope& scope,
   WriteStepInputs();
   InitStates();
 
+  // call stepnet in all the time steps
   for (size_t step = 0; step < cache_.num_steps; step++) {
-    // call stepnet
-    stepnet_->Run(scope, dev_ctx);
+    auto& step_scope = cache_.GetScope(step);
+    stepnet_->Run(step_scope, dev_ctx);
   }
 
   WriteStepOutputs();
@@ -96,10 +97,10 @@ void DynamicRecurrentOp::SplitInputs() const {
 }
 
 void DynamicRecurrentOp::WriteStepInputs() const {
-  const auto& inlinks = cache_.inlinks;
-  for (auto& item : inlinks) {
+  for (auto& item : cache_.inlinks) {
     auto ta_it = step_inputs_.find(item.first);
-    PADDLE_ENFORCE(ta_it != step_inputs_.end(), "");
+    PADDLE_ENFORCE(ta_it != step_inputs_.end(),
+                   "step_inputs_ not compatible with memory set");
     TensorArray& ta = step_inputs_[item.first];
     for (size_t step = 0; step < ta.size(); step++) {
       auto tensor = ta.Read(step);
@@ -178,8 +179,8 @@ void DynamicRecurrentOp::InitStates() const {
     const auto& dims = boot_state.dims();
 
     for (size_t step = 0; step < cache_.num_steps; step++) {
-      // link pre-state to boot_state
       auto& cur_scope = cache_.GetScope(step);
+      // link pre-state to boot_state
       // init state and pre-state
       auto* pre_state = cur_scope.FindVar(memory.pre_var);
       PADDLE_ENFORCE_NOT_NULL(pre_state);
@@ -194,9 +195,9 @@ void DynamicRecurrentOp::InitStates() const {
       states_[memory.var].WriteShared(step, state->Get<LoDTensor>());
       // link previous scope's state to the pre-states in current scope
       if (step == 0) {
-        auto* cur_state_tensor = pre_state->GetMutable<LoDTensor>();
-        cur_state_tensor->Resize(boot_state.dims());
-        cur_state_tensor->ShareDataWith<value_type>(boot_state);
+        auto* pre_state_tensor = pre_state->GetMutable<LoDTensor>();
+        pre_state_tensor->Resize(boot_state.dims());
+        pre_state_tensor->ShareDataWith<value_type>(boot_state);
       } else {
         auto& pre_scope = cache_.GetScope(step - 1);
         auto* state_pre = pre_scope.FindVar(memory.var);

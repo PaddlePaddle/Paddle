@@ -55,7 +55,7 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
   framework::OpDesc CreateOpDesc() {
     // create op
     paddle::framework::OpDesc op_desc;
-    op_desc.set_type("dynamic_recurrent_op");
+    op_desc.set_type("dynamic_recurrent");
 
     OpDescNewVar(argname.inlinks, {"in0"}, op_desc.add_inputs());
     OpDescNewVar(argname.boot_memories, {"boot_mem"}, op_desc.add_inputs());

@@ -25,6 +25,7 @@ OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
   inputs_ = inputs;
   outputs_ = outputs;
   attrs_ = attrs;
+  need_update_ = true;
 }
 
 OpDesc *OpDescBind::Proto() {
