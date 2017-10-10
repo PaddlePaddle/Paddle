@@ -23,15 +23,15 @@ class FeedOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    typedef std::vector<framework::Tensor> FeedInputs;
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output should be not null.");
     int col = ctx->Attrs().Get<int>("col");
     framework::Variable* g_feed_variable =
         framework::GetGlobalScope()->FindVar("feed_value");
 
-    const FeedInputs& tensors = g_feed_variable->Get<FeedInputs>();
+    const auto& tensors =
+        g_feed_variable->Get<std::vector<framework::Tensor>>();
 
-    PADDLE_ENFORCE_GT(tensors.size(), col);
+    PADDLE_ENFORCE_GT(tensors.size(), static_cast<size_t>(col));
     auto in_dim = tensors[col].dims();
     ctx->SetOutputDim("Out", in_dim);
     // TODO(qijun): need to handle LodTensor later

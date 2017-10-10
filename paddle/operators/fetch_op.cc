@@ -23,13 +23,13 @@ class FetchOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    typedef std::vector<framework::Tensor> FetchOutputs;
     PADDLE_ENFORCE(ctx->HasInput("Input"), "Input should be not null.");
     int col = ctx->Attrs().Get<int>("col");
     framework::Variable* g_fetch_variable =
         framework::GetGlobalScope()->FindVar("fetch_value");
 
-    FetchOutputs* tensors = g_fetch_variable->GetMutable<FetchOutputs>();
+    auto* tensors =
+        g_fetch_variable->GetMutable<std::vector<framework::Tensor>>();
     if (tensors->size() < static_cast<size_t>(col + 1)) {
       tensors->resize(col + 1);
     }

@@ -60,15 +60,13 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
   op->SetAttrMap(attrs);
 }
 
-std::once_flag set_variable_flag;
-
 // Tensors in feed value variable will only be in CPUPlace
-// So we can  memcpy the data from vector<T> to feed_value
+// So we can memcpy the data from vector<T> to feed_value
 template <typename T>
 void SetFeedVariable(const std::vector<std::vector<T>>& inputs) {
-  typedef std::vector<paddle::framework::Tensor> FeedInputs;
   Variable* g_feed_value = GetGlobalScope()->FindVar("feed_value");
-  FeedInputs& feed_inputs = *(g_feed_value->GetMutable<FeedInputs>());
+  auto& feed_inputs =
+      *(g_feed_value->GetMutable<std::vector<paddle::framework::Tensor>>());
   size_t size = inputs.size();
   feed_inputs.resize(size);
   for (size_t i = 0; i < size; i++) {
@@ -82,9 +80,9 @@ void SetFeedVariable(const std::vector<std::vector<T>>& inputs) {
 // So we can memcpy the data from fetch_value to vector<T>
 template <typename T>
 std::vector<std::vector<T>> GetFetchVariable() {
-  typedef std::vector<paddle::framework::Tensor> FetchOutputs;
   Variable* g_fetch_value = GetGlobalScope()->FindVar("fetch_value");
-  FetchOutputs& fetch_outputs = *(g_fetch_value->GetMutable<FetchOutputs>());
+  auto& fetch_outputs =
+      *(g_fetch_value->GetMutable<std::vector<paddle::framework::Tensor>>());
 
   size_t size = fetch_outputs.size();
   std::vector<std::vector<T>> result;
@@ -143,22 +141,22 @@ class ExecutorTesterRandom : public ::testing::Test {
           {{"Out", {"l2_distance"}}, {"sub_result", {"l2_distance_sub"}}}, {},
           root_block);
 
-    AddOp("gaussian_random", {}, {{"Out", {"l2_distance@GRAD"}}},
-          {{"dims", std::vector<int>{batch_size, 1}}}, root_block);
-    AppendBackward(program, {});
+    // AddOp("gaussian_random", {}, {{"Out", {"l2_distance@GRAD"}}},
+    //       {{"dims", std::vector<int>{batch_size, 1}}}, root_block);
+    // AppendBackward(program, {});
 
-    program.Proto();
+    // program.Proto();
 
-    for (auto& op : pdesc_.blocks(0).ops()) {
-      if (op.type() == "sum") {
-        LOG(INFO) << "Here";
-        for (auto& var : op.inputs()) {
-          for (auto& argu : var.arguments()) {
-            LOG(INFO) << var.parameter() << " " << argu;
-          }
-        }
-      }
-    }
+    // for (auto& op : pdesc_.blocks(0).ops()) {
+    //   if (op.type() == "sum") {
+    //     LOG(INFO) << "Here";
+    //     for (auto& var : op.inputs()) {
+    //       for (auto& argu : var.arguments()) {
+    //         LOG(INFO) << var.parameter() << " " << argu;
+    //       }
+    //     }
+    //   }
+    // }
 
     AddOp("fetch", {{"Input", {"l2_distance"}}}, {},
           {{"dims", std::vector<int>{batch_size}}, {"col", 1}}, root_block);
