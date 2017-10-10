@@ -15,6 +15,7 @@
 #pragma once
 #include <functional>
 #include <map>
+#include <memory>
 #include "paddle/platform/variant.h"
 
 namespace paddle {
