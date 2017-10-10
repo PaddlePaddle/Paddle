@@ -77,6 +77,10 @@ class SequencePoolKernel : public framework::OpKernel<T> {
         case SUM:
           out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
           break;
+        case SQRT:
+          out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
+                                std::sqrt(static_cast<T>(h));
+          break;
         default:
           PADDLE_THROW("unsupported pooling strategy");
       }
@@ -114,6 +118,10 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
           break;
         case SUM:
           in_g_e.device(place) = (out_g_e).broadcast(bcast);
+          break;
+        case SQRT:
+          in_g_e.device(place) =
+              (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
           break;
         default:
           PADDLE_THROW("unsupported pooling strategy");
