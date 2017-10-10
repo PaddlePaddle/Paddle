@@ -22,7 +22,7 @@ class FeedOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     typedef std::vector<framework::Tensor> FeedInputs;
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output should be not null.");
     int col = ctx->Attrs().Get<int>("col");

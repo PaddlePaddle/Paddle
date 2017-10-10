@@ -74,7 +74,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   std::vector<bool> should_run = Prune(pdesc, block_id);
   PADDLE_ENFORCE_EQ(should_run.size(), block.ops_size());
   for (size_t i = 0; i < should_run.size(); ++i) {
-    if (should_run[i]) {
+    // if (should_run[i]) {
+    if (true) {
       for (auto& var : block.ops(i).outputs()) {
         for (auto& argu : var.arguments()) {
           if (local_scope.FindVar(argu) == nullptr) {
@@ -82,7 +83,17 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
           }
         }
       }
+      LOG(INFO) << block.ops(i).type();
+      if (block.ops(i).type() == "sum") {
+        LOG(INFO) << "Here";
+        for (auto& var : block.ops(i).inputs()) {
+          for (auto& argu : var.arguments()) {
+            LOG(INFO) << var.parameter() << " " << argu;
+          }
+        }
+      }
       auto op = paddle::framework::OpRegistry::CreateOp(block.ops(i));
+      LOG(INFO) << op->DebugString();
       op->Run(local_scope, *device);
     }
   }

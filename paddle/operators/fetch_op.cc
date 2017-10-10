@@ -22,7 +22,7 @@ class FetchOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     typedef std::vector<framework::Tensor> FetchOutputs;
     PADDLE_ENFORCE(ctx->HasInput("Input"), "Input should be not null.");
     int col = ctx->Attrs().Get<int>("col");
