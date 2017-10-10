@@ -97,6 +97,23 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softshrink operator");
+    AddOutput("Y", "Output of Softshrink operator");
+    AddComment(
+        "Softshrink activation operator, "
+        "softshrink = x - lambda, if x > lambda;"
+        " x + lambda, if x < lambda; 0 otherwise");
+    AddAttr<AttrType>("lambda", "non-negative offset")
+        .SetDefault(static_cast<AttrType>(0.5f));
+  }
+};
+
 class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   TanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -276,6 +293,9 @@ REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
 
 REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
             tanh_shrink_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(softshrink, ops::ActivationOp, ops::SoftShrinkOpMaker<float>,
+            softshrink_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
