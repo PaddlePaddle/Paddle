@@ -9,8 +9,7 @@ In deeplearning system, `Optimizer` is used to optimize(minimize) loss thow upda
 
 ### Python Interface to describe the training process
 
-1.
-User write code to describe the network:
+1. User write code to describe the network:
 
 ```python
 images = layer.data("images")
@@ -23,15 +22,13 @@ cost = layer.mse(hidden, labels)
 the code above will generate forward operators in [block](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md).
 
 
-2.
-User create a Optimizer and set parameter list that it need to update.
+2. User create a Optimizer and set parameter list that it need to update.
 
 ```python
 optimizer = AdagradOptimizer(learing_rate=0.001)
 ```
 
-3.
-User use the optimizer to `minimize` a certain `cost` thow updating parameters in parameter_list.
+3. User use the optimizer to `minimize` a certain `cost` thow updating parameters in parameter_list.
 
 ```python
 opt = optimizer.minimize(cost, parameter_list=[w1, ...])
@@ -39,8 +36,7 @@ opt = optimizer.minimize(cost, parameter_list=[w1, ...])
 
 The return value of `minimize()` is an Operator that rely on all the optimize operator.
 
-4.
-Use Session/Executor to run this opt as target.
+4. Use Session/Executor to run this opt as target.
 
 ```python
 sess.run(target=[opt], ...)
