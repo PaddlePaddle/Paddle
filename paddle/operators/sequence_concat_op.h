@@ -64,7 +64,7 @@ class SequenceConcatOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 1; i < n; ++i) {
       PADDLE_ENFORCE_EQ(ins[0]->NumLevels(), ins[i]->NumLevels(),
-                        "The level number of all the input LoDTensors "
+                        "The levels of all the input LoDTensors "
                         "should be the same.");
       PADDLE_ENFORCE_EQ(ins[0]->dims().size(), ins[i]->dims().size(),
                         "The dimension size of all the input LoDTensors "
