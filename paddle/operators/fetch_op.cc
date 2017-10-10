@@ -24,26 +24,11 @@ class FetchOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"), "Input should be not null.");
-    int col = ctx->Attrs().Get<int>("col");
-    framework::Variable* g_fetch_variable =
-        framework::GetGlobalScope()->FindVar("fetch_value");
-
-    auto* tensors =
-        g_fetch_variable->GetMutable<std::vector<framework::Tensor>>();
-    if (tensors->size() < static_cast<size_t>(col + 1)) {
-      tensors->resize(col + 1);
-    }
-
-    auto input_dim = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_GT(tensors->size(), col);
-    (*tensors)[col].Resize(input_dim);
-
-    // TODO(qijun): need to handle LodTensor later
   }
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("data_type"));
+    return static_cast<framework::DataType>(Attr<int>("dataType"));
   }
 };
 
@@ -51,10 +36,9 @@ class FetchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   FetchOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("data_type", "output data type")
+    AddAttr<int>("dataType", "output data type")
         .SetDefault(framework::DataType::FP32);
     AddAttr<int>("col", "The col in global fetch variable").SetDefault(0);
-    AddAttr<std::vector<int>>("dims", "The dimension of fetch tensor.");
     AddInput("Input", "The output of fetch op.");
     AddComment(R"DOC(Fetch data to global fetch variable)DOC");
   }

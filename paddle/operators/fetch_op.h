@@ -24,13 +24,19 @@ class FetchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const framework::Tensor* input = ctx.Input<framework::Tensor>("Input");
-    int col = ctx.template Attr<int>("col");
     framework::Variable* g_fetch_variable =
         framework::GetGlobalScope()->FindVar("fetch_value");
     auto* tensors =
         g_fetch_variable->GetMutable<std::vector<framework::Tensor>>();
+    int col = ctx.template Attr<int>("col");
+    if (tensors->size() < static_cast<size_t>(col + 1)) {
+      tensors->resize(col + 1);
+    }
+    PADDLE_ENFORCE_GT(tensors->size(), static_cast<size_t>(col));
+    (*tensors)[col].Resize(input->dims());
     (*tensors)[col].mutable_data<T>(platform::CPUPlace());
     (*tensors)[col].CopyFrom<T>(*input, platform::CPUPlace());
+    // TODO(qijun): need to handle LodTensor later
   }
 };
 

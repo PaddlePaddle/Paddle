@@ -24,15 +24,6 @@ class FeedOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output should be not null.");
-    int col = ctx->Attrs().Get<int>("col");
-    framework::Variable* g_feed_variable =
-        framework::GetGlobalScope()->FindVar("feed_value");
-
-    const auto& tensors =
-        g_feed_variable->Get<std::vector<framework::Tensor>>();
-
-    PADDLE_ENFORCE_GT(tensors.size(), static_cast<size_t>(col));
-
     auto& shape = ctx->Attrs().Get<std::vector<int>>("dims");
     std::vector<int64_t> shape_int64(shape.size(), 0);
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
@@ -43,7 +34,7 @@ class FeedOp : public framework::OperatorWithKernel {
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("data_type"));
+    return static_cast<framework::DataType>(Attr<int>("dataType"));
   }
 };
 
@@ -51,7 +42,7 @@ class FeedOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   FeedOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("data_type", "output data type")
+    AddAttr<int>("dataType", "output data type")
         .SetDefault(framework::DataType::FP32);
     AddAttr<int>("col", "The col in global feed variable").SetDefault(0);
     AddAttr<std::vector<int>>("dims", "The dimension of feed tensor.");

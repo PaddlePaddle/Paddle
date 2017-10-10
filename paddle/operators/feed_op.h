@@ -27,9 +27,10 @@ class FeedKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     framework::Variable* g_feed_variable =
         framework::GetGlobalScope()->FindVar("feed_value");
-    int col = ctx.template Attr<int>("col");
     const auto& tensors =
         g_feed_variable->Get<std::vector<framework::Tensor>>();
+    int col = ctx.template Attr<int>("col");
+    PADDLE_ENFORCE_GT(tensors.size(), static_cast<size_t>(col));
     out->CopyFrom<T>(tensors[col], ctx.GetPlace());
   }
 };
