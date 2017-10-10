@@ -131,15 +131,13 @@ class ExecutorTesterRandom : public ::testing::Test {
     paddle::framework::BlockDescBind* root_block = program.Block(0);
 
     // feed data
-    inputs_.push_back({1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+    inputs_.push_back({1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
     dims_.push_back({batch_size, input_dim});
     AddOp("feed", {}, {{"Out", {"a"}}},
           {{"dims", std::vector<int>{batch_size, input_dim}}, {"col", 0}},
           root_block);
 
     // forward
-    // AddOp("gaussian_random", {}, {{"Out", {"a"}}},
-    //       {{"dims", std::vector<int>{batch_size, input_dim}}}, root_block);
     AddOp("mul", {{"X", {"a"}}, {"Y", {"w1"}}}, {{"Out", {"b"}}}, {},
           root_block);
     AddOp("mul", {{"X", {"b"}}, {"Y", {"w2"}}}, {{"Out", {"a_out"}}}, {},
@@ -156,7 +154,8 @@ class ExecutorTesterRandom : public ::testing::Test {
 
     // update
     AddOp("fill_constant", {}, {{"Out", {"learning_rate"}}},
-          {{"shape", std::vector<int>{1}}, {"value", float(1.0)}}, root_block);
+          {{"shape", std::vector<int>{1}}, {"value", float(0.001)}},
+          root_block);
     AddOp("sgd", {{"Param", {"w1"}},
                   {"LearningRate", {"learning_rate"}},
                   {"Grad", {"w1@GRAD"}}},
@@ -285,7 +284,6 @@ TEST_F(ExecutorTesterRandom, GPU) {
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     SetFeedVariable<float>(inputs_, dims_);
     executor->Run(pdesc_, GetGlobalScope(), 0);
-    std::vector<std::vector<float>> result = GetFetchVariable<float>();
   }
 }
 
