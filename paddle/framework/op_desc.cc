@@ -200,6 +200,7 @@ static InferShapeFuncMap &InferShapeFuncs() {
     // all registered kernels
     for (auto &pair : OperatorWithKernel::AllOpKernels()) {
       auto &info = info_map.Get(pair.first);
+      // use empty type here to avoid runtime checks.
       auto op =
           static_cast<OperatorWithKernel *>(info.Creator()("", {}, {}, {}));
       g_map->insert(
