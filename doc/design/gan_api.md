@@ -6,32 +6,12 @@ It applies several important concepts in machine learning system design, includi
 
 In our GAN design, we wrap it as a user-friendly easily customized python API to design different models. We take the conditional DC-GAN (Unsupervised Representation Learning with Deep Convolutional Generative Adversarial Networks [https://arxiv.org/abs/1511.06434]) as an example due to its good performance on image generation.
 
-| important building blocks | People in Charge  | Required |
-|---------------------------|-------------------|----------|
-| convolution 2d (done)     | Chengduo          | Y        |
-| cudnn conv 2d (missing)   | Chengduo          | N        |
-| deconv 2d (missing)       | Zhuoyuan, Zhihong | Y        |
-| cudnn deconv 2d (missing) | Zhuoyuan, Zhihong | N        |
-| batch norm (missing)      | Zhuoyuan, Jiayi   | Y        |
-| cudnn batch norm (missing)| Zhuoyuan, Jiayi   | N        |
-| max-pooling (done)        | ?                 | Y        |
-| cudnn-max-pool (missing)  | Chengduo          | Y        |
-| fc (done)                 | ?                 | Y        |
-| softmax loss (done)       | ?                 | Y        |
-| reshape op (done)         | ?                 | Y        |
-| Dependency Engine (done)  | Jiayi             | Y *      |
-| Python API (done)         | Longfei, Jiayi    | Y *      |
-| Executor (done)           | Tony              | Y *      |
-| Multi optimizer (woking)  | Longfei           | Y *      |
-| Optimizer with any para   | ?                 | Y *      |
-| Concat op (done)          | ?                 | N (Cond) |
-| Repmat op (done)          | ?                 | N (Cond) |
-
 <p align="center">
 <img src="./test.dot.png" width = "50%" align="center"/><br/>
 Figure 1. The overall running logic of GAN. The black solid arrows indicate the forward pass; the green dashed arrows indicate the backward pass of generator training; the red dashed arrows indicate the backward pass of the discriminator training. The BP pass of the green (red) arrow should only update the parameters in the green (red) boxes. The diamonds indicate the data providers. d\_loss and g\_loss marked in red and green are the two targets we would like to run.
 </p>
 
+The operators, layers and functions required/optional to build a GAN demo is summarized in https://github.com/PaddlePaddle/Paddle/issues/4563.
 
 <p align="center">
 <img src="./dcgan.png" width = "90%" align="center"/><br/>
