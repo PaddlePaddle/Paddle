@@ -28,7 +28,7 @@ class CheckpointOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Step"),
                    "Input(Step) of Checkpoint should not be null.");
     std::string absolutePath = ctx->Attrs().Get<std::string>("absolutePath");
-    PADDLE_ENFORCE(absolutePath != "",
+    PADDLE_ENFORCE(!absolutePath.empty(),
                    "Input(absolutePath) of Checkpoint should not be null.");
   }
 };
@@ -64,16 +64,16 @@ class CheckpointKernel : public framework::OpKernel<T> {
     // 2. checkpoint op need at least two thread.
     //    Because checkpoint will happen every, so need a thread wait
     //    the timer/steps to reach the condition.
-    auto* Step = ctx.Input<Tensor>("Step");
-    const int* curr_step = Step->data<int>();
+    auto* step = ctx.Input<Tensor>("Step");
+    const int curr_step = *step->data<int>();
     int every_n_step = ctx.template Attr<int>("everyNStep");
     auto& scope = ctx.scope();
 
-    if (every_n_step == 0 && !run_once) {
-      run_once = true;
+    if (every_n_step == 0 && !run_once_) {
+      run_once_ = true;
     }
 
-    if (run_once || *curr_step % every_n_step != 0) return;
+    if (run_once_ || curr_step % every_n_step != 0) return;
 
     std::vector<std::string> ins = scope.GetAllNames();
     std::vector<framework::Variable*> inputs;
@@ -90,8 +90,9 @@ class CheckpointKernel : public framework::OpKernel<T> {
     fout.close();
   }
 
+ private:
   // flag indicate this op may be skipped.
-  mutable bool run_once = false;
+  mutable bool run_once_ = false;
 };
 
 }  // namespace operators
