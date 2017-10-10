@@ -13,12 +13,20 @@ class SelectedRows {
 
 The field `height_` shows the first dimension of `SelectedRows`. The `rows` are the indices of which rows of `SelectedRows` are non-zeros. The `value_` field is an N-dim tensor and shape is `[rows.size() /* NUM_ROWS */, ...]`, which supplies values for each row. The dimension of `SelectedRows` satisfies `[height_] + value_.shape[1:]`.
 
-For example, given `height_=100`, `rows_ = [73, 84]`, the `value_ = [[1.0, 2.0], [3.0, 4.0]]` specifies that it is a `100*2` matrix, the 73rd row of that sparse tensor is `[1.0, 2.0]`, the 84th row of that sparse tensor is `[3.0, 4.0]`.
+Suppose that a SelectedRows-typed variable `x` has many rows, but only two of them have values -- row 73 is `[1, 2]` and row 84 is `[3, 4]`, the `SelectedRows` representation would be:
+
+```
+x = SelectedRow {
+  rows = [73, 84],
+  value = [[1, 2], [3,4]]
+}
+```
 
 
 ## SelectedRows in Protobuf
 
-`SelectedRows` is a kind of `Variable`. `VarDesc` in protobuf should describe the `SelectedRows` information. Only the tensor dimension of a `SelectedRows` will be described in compile-time since the `rows_` and `value_` are related to training data. The `VarDesc` will unify `Dimension` field since `Dimension` is a attribute of both `LoDTensor` and `SelectedRows`.
+`SelectedRows` is a kind of `Variable`. `VarDesc` in protobuf should describe the `SelectedRows` information. Only the tensor dimension of a `SelectedRows` will be described in compile-time since the `rows_` and `value_` are related to training data. 
+So we use `TensorDesc` to unify `data_type` and `dims`. A LodTensorDesc contains a `TensorDesc` and `lod_level`. The description of `SelectedRows` is a Tensor description.
 
 ```proto
 message TensorDesc {
@@ -26,15 +34,20 @@ message TensorDesc {
   repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
 }
 
+message LodTensorDesc {
+  required TensorDesc tensor = 1;
+  optional int lod_level = 2;
+}
+
 message VarDesc {
   required string name = 1;
   enum VarType { 
-    LoDTensor = 0;
-    SelectedRows = 1;
+    LOD_TENSOR = 0;
+    SELECTED_ROWS = 1;
   }
-  optional VarType type = 2 [ default = LoDTensor ];
-  optional TensorDesc tensor = 3;
-  optional int32 lod_level = 4 [ default = 0 ];
+  required VarType type = 2;
+  optional LodTensorDesc lod_desc = 3;
+  optional TensorDesc selected_rows_desc = 4;
   optional bool persistable = 5 [ default = false ];
 }
 ```
