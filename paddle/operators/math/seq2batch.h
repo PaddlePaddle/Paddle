@@ -33,12 +33,22 @@ inline static size_t MaximumSequenceLength(const framework::LoD& lod,
 }
 
 /*
- * \brief
+ * \brief   Memory copy from sequence/batch to batch/sequence
  *
- * \param
- * \param
+ *  Copy from sequence to batch:
+ *        batch[i] = seq[lod[level][i]]
+ *  Copy from batch to seq:
+ *        seq[lod[level][i]] = batch[i]
  *
- * \note
+ *  When Padding is true, all sequences will be padded to the same length.
+ *  Example:
+ *    seq   (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
+ *    batch (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
+ *
+ * \param context       device context of this functor.
+ * \param seq           LoDTensor which is stored in sequence format.
+ * \param batch         Tensor which is stored in batch format.
+ * \param norm_by_times whether dividing sequence's length.
  */
 template <bool Padding, typename Place, typename T>
 class Seq2BatchFunctor {

@@ -104,7 +104,8 @@ set(DEPS_OPS
     cond_op
     cross_entropy_op
     softmax_with_cross_entropy_op
-    sum_op)
+    sum_op
+    warpctc_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -113,6 +114,7 @@ op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
+op_library(warpctc_op DEPS dynload_warpctc)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
