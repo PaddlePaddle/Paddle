@@ -26,7 +26,7 @@ class FeedKernel : public framework::OpKernel<T> {
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     framework::Variable* g_feed_variable =
-        framework::GetGlobalScope()->FindVar("feed_value");
+        framework::GetGlobalScope().FindVar("feed_value");
     const auto& tensors =
         g_feed_variable->Get<std::vector<framework::Tensor>>();
     int col = ctx.template Attr<int>("col");

@@ -67,14 +67,14 @@ void Scope::DropKids() {
 
 std::once_flag feed_variable_flag;
 
-framework::Scope* GetGlobalScope() {
+framework::Scope& GetGlobalScope() {
   static std::unique_ptr<framework::Scope> g_scope{nullptr};
   std::call_once(feed_variable_flag, [&]() {
     g_scope.reset(new framework::Scope());
     g_scope->NewVar("feed_value");
     g_scope->NewVar("fetch_value");
   });
-  return g_scope.get();
+  return *(g_scope.get());
 }
 
 }  // namespace framework

@@ -44,7 +44,9 @@ Executor::Executor(const std::vector<platform::Place>& places) {
       device_contexts_[i] = new platform::CUDADeviceContext(
           boost::get<platform::GPUPlace>(places[i]));
 #else
-      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+      PADDLE_THROW(
+          "'GPUPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
 #endif
     }
   }
