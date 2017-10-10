@@ -160,7 +160,7 @@ class Operator(object):
                         (in_proto.name, len(in_argus)))
                 in_argu_names = []
                 for argu in in_argus:
-                    in_argu_names.append(argu.name())
+                    in_argu_names.append(argu.name)
                 self.desc.set_input(in_proto.name, in_argu_names)
 
         if outputs is not None:
@@ -174,7 +174,7 @@ class Operator(object):
                         (out_proto.name, len(out_argus)))
                 out_argu_names = []
                 for argu in out_argus:
-                    out_argu_names.append(argu.name())
+                    out_argu_names.append(argu.name)
                 self.desc.set_output(out_proto.name, out_argu_names)
 
         if attrs is not None:
