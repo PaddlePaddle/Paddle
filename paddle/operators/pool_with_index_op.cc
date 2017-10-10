@@ -34,7 +34,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Out(Output) of Pooling should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Mask"),
-                   "Out(Output) of Pooling should not be null.");
+                   "Mask(Output) of Pooling should not be null.");
 
     auto in_x_dims = ctx->GetInputDim("X");
 
@@ -52,13 +52,11 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2U,
-                   "Pooling intput size and pooling size should be consistent");
-    PADDLE_ENFORCE(ksize.size() == 2 || ksize.size() == 3,
-                   "Pooling size size should be 2 elements. or 3 elements.");
+                   "Intput size and pooling size should be consistent.");
     PADDLE_ENFORCE_EQ(ksize.size(), strides.size(),
-                      "strides size and pooling size should be the same.");
+                      "Strides size and pooling size should be the same.");
     PADDLE_ENFORCE_EQ(ksize.size(), paddings.size(),
-                      "paddings size and pooling size should be the same.");
+                      "Paddings size and pooling size should be the same.");
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
@@ -76,11 +74,9 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContextBase *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "X(Input) of Pooling should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput(framework::GradVarName("X")),
-        "X@GRAD(Input@GRAD) of MaxPoolWithIndexOpGrad should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Input(X@GRAD) should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -110,9 +106,10 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<int>>(
         "ksize",
-        "Pooling size(height, width) of pooling operator."
+        "The pooling size(height, width) of pooling operator."
         "If globalPooling = true, ksize is ignored and need not be "
-        "specified.");  // TODO(Add checker)
+        "specified.");  // TODO(Chengduo): Add checker. (Currently,
+                        // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
         "globalPooling",
         "Whether to use the globalPooling."
@@ -123,15 +120,21 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("strides",
                               "Strides(height, width) of pooling operator."
                               "Default {1,1}.")
-        .SetDefault({1, 1});  // TODO(Add checker)
+        .SetDefault({1, 1});  // TODO(Chengduo): Add checker. (Currently,
+                              // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>("paddings",
                               "Paddings(height, width) of pooling operator."
                               "Default {0,0}.")
-        .SetDefault({0, 0});  // TODO(Add checker)
+        .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
+                              // TypedAttrChecker don't support vector type.)
 
     AddComment(R"DOC(
-The maxPooling2d with index operation calculates the output and the mask based on
-the input and ksize, strides, paddings parameters.
+The maxPooling2d with index operation calculates the output and the mask
+based on the input and ksize, strides, paddings parameters. Input(X) and
+output(Out, Mask) are in NCHW format. Where N is batch size, C is the
+number of channels, H and W is the height and width of feature.
+Parameters(ksize, strides, paddings) are two elements.
+These two elements represent height and width, respectively.
 )DOC");
   }
 };
@@ -162,9 +165,10 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<int>>(
         "ksize",
-        "Pooling size(depth, height, width) of pooling operator."
+        "The pooling size(depth, height, width) of pooling operator."
         "If globalPooling = true, ksize is ignored and need not be "
-        "specified.");  // TODO(Add checker)
+        "specified.");  // TODO(Chengduo): Add checker. (Currently,
+                        // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
         "globalPooling",
         "Whether to use the globalPooling."
@@ -176,19 +180,26 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "strides",
         "Strides(depth, height, width) of pooling operator."
         "Default {1,1,1}.")
-        .SetDefault({1, 1, 1});  // TODO(Add checker)
+        .SetDefault({1, 1, 1});  // TODO(Chengduo): Add checker. (Currently,
+                                 // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>(
         "paddings",
         "Paddings(depth, height, width) of pooling operator."
         "Default {0,0,0}.")
-        .SetDefault({0, 0, 0});  // TODO(Add checker)
+        .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
+                                 // TypedAttrChecker don't support vector type.)
 
     AddComment(R"DOC(
-The maxpooling3d with index operation calculates the output and the mask based on
-the input and ksize, strides, paddings parameters.
+The maxpooling3d with index operation calculates the output and the mask
+based on the input and ksize, strides, paddings parameters.
+Input(X) and output(Out, Mask) are in NCDHW format. Where N is batch
+size, C is the number of channels, D, H and W is the depth, height and
+width of feature. Parameters(ksize, strides, paddings) are three elements.
+These three elements represent depth, height and width, respectively.
 )DOC");
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
