@@ -262,3 +262,7 @@ if __name__ == "__main__":
           sess.run(g_step,
                    feed_dict = {dcgan.z: batch_z})
 ```
+
+# More thinking about dependency engine v.s. block design:
+- What if we just want to run an intermediate result? Do we need to run the whole block/graph?
+- Should we call eval() to get the fake images in the first stage? And then train the discriminator in the second stage?
