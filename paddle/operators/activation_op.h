@@ -96,7 +96,17 @@ struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
 };
 
 // Originally: logsigmoid(x) = -log (1 + exp(-x))
-// For numerical stability: logsigmoid(x) = - (max(-x, 0) + log(exp(-max(-x, 0))
+// For numerical stability, we can use the log-sum-exp trick:
+// https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/
+// We can rewrite the above equation as:
+// y = -log( exp(0) + exp(-x)) [since exp(0) = 1]
+//   = -log( exp(max(-x, 0) - max(-x, 0)) + exp(-x + max(-x, 0) - max(-x, 0)))
+//   = -log( exp(max(-x, 0)) * exp(-max(-x, 0)) - exp(max(-x, 0)) * exp(-x -
+//           max(-x, 0)))
+//   = -log( exp(max(-x, 0)) * (exp(-max(-x, 0)) + exp(-x - max(-x, 0))))
+//   = -log( exp(max(-x, 0)) - log(exp(-max(-x, 0)) + exp(-x - max(-x, 0)))
+//
+// Hence, logsigmoid(x) = - (max(-x, 0) + log(exp(-max(-x, 0))
 // + exp(-x - max(-x, 0))))
 template <typename T>
 struct LogSigmoidFunctor : public BaseActivationFunctor<T> {
