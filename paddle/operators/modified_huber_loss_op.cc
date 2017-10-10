@@ -22,7 +22,7 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
 
@@ -74,7 +74,7 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
     PADDLE_ENFORCE(ctx->HasInput("IntermediateVal"),

@@ -22,7 +22,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Y");
   }
@@ -33,7 +33,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Y"));
   }
 };
@@ -202,6 +202,40 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
+class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ELUOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X",
+             "(Tensor) The input of ELU operator, it shouldn't be empty. Input "
+             "is flattened and treated as a 1D array.");
+    AddOutput("Y",
+              "(Tensor) The output of ELU operator. It has the same shape as "
+              "the input.");
+    AddAttr<AttrType>(
+        "alpha", "(float, default 1.0) Alpha value in the elu formulation.")
+        .SetDefault(static_cast<AttrType>(1.));
+    AddComment(R"DOC(
+        ELU activation operator. It applies this element-wise computation on
+        the input: f(x) = max(0, x) + min(0, alpha * (exp(x) - 1)).
+        Check .. _Link: https://arxiv.org/abs/1511.07289 for more details.)DOC");
+  }
+};
+
+template <typename AttrType>
+class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  Relu6OpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Relu6 operator");
+    AddOutput("Y", "Output of Relu6 operator");
+    AddComment("Relu6 activation operator, relu6 = min(max(0, x), 6)");
+    AddAttr<AttrType>("threshold", "The threshold value of Relu6")
+        .SetDefault(static_cast<AttrType>(6));
+  }
+};
+
+template <typename AttrType>
 class PowOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -275,6 +309,12 @@ REGISTER_OP(leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker<float>,
 
 REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker<float>,
             soft_relu_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(elu, ops::ActivationOp, ops::ELUOpMaker<float>, elu_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(relu6, ops::ActivationOp, ops::Relu6OpMaker<float>, relu6_grad,
+            ops::ActivationOpGrad);
 
 REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
             ops::ActivationOpGrad);
