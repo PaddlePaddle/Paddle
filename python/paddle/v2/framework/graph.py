@@ -1,13 +1,19 @@
 import paddle.v2.framework.core as core
 import collections
 import numpy as np
+import copy
 
 __all__ = ['Block', 'Variable', 'Program', 'Operator']
 
 
 class Variable(object):
-    def __init__(self, block, name=None, shape=None, dtype=None,
-                 lod_level=None):
+    def __init__(self,
+                 block,
+                 name=None,
+                 shape=None,
+                 dtype=None,
+                 lod_level=None,
+                 **kwargs):
         self.block = block
 
         if name is None:
@@ -144,6 +150,10 @@ class Block(object):
     def create_var(self, *args, **kwargs):
         return Variable(self, *args, **kwargs)
 
+    def create_parameter(self, *args, **kwargs):
+        global_block = self.program.global_block()
+        return Parameter(global_block, *args, **kwargs)
+
     def append_op(self, *args, **kwargs):
         op_desc = self.desc.append_op()
         op = Operator(self, op_desc, *args, **kwargs)
@@ -188,6 +198,42 @@ class Program(object):
 
     def rollback(self):
         self.current_block_idx = self.current_block().parent_idx
+
+
+class Parameter(Variable):
+    def __init__(self, block, shape, dtype, **kwargs):
+        if shape is None or dtype is None:
+            raise ValueError("Parameter must set shape and dtype")
+        if len(shape) == 0:
+            raise ValueError("Parameter shape cannot be empty")
+
+        for each in shape:
+            if each < 0:
+                raise ValueError("Parameter shape should not be related with "
+                                 "batch-size")
+
+        Variable.__init__(self, block, shape=shape, dtype=dtype, **kwargs)
+        self.trainable = kwargs.get('trainable', True)
+        self.init_attr = kwargs.get('initialize_attr', {
+            'type': 'uniform_random',
+            'min': -1.0,
+            'max': 1.0
+        })
+
+        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+        self._append_initialize_ops_()
+
+    def _append_initialize_ops_(self):
+        attr = copy.deepcopy(self.init_attr)
+        op_type = attr.pop('type', None)
+        block = self.block
+        assert isinstance(block, Block)
+        shape = self.shape
+        attr['dims'] = shape
+        attr['data_type'] = int(self.data_type)
+        op = block.prepend_op(
+            type=op_type, inputs=None, outputs={'Out': [self]}, attrs=attr)
+        self.op = op
 
 
 # program is a global instance.
