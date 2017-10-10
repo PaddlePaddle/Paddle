@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/gserver/layers/Layer.h"
 #include "paddle/gserver/layers/SelectiveFullyConnectedLayer.h"
 #include "paddle/math/CpuSparseMatrix.h"
-#include "paddle/trainer/Trainer.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

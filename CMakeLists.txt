@@ -86,6 +86,14 @@ if(ANDROID OR IOS)
         "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLML OFF CACHE STRING
         "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
+
+    # Compile PaddlePaddle mobile inference library
+    if (NOT WITH_C_API)
+        set(WITH_C_API ON CACHE STRING
+            "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
+    endif()
+    set(MOBILE_INFERENCE ON)
+    add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -160,9 +168,11 @@ endif(USE_NNPACK)
 
 add_subdirectory(proto)
 
-# "add_subdirectory(go)" should be placed after the following loine,
-# because it depends on paddle/optimizer.
-add_subdirectory(paddle/optimizer)
+if(NOT MOBILE_INFERENCE)
+    # "add_subdirectory(go)" should be placed after the following loine,
+    # because it depends on paddle/optimizer.
+    add_subdirectory(paddle/optimizer)
+endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.

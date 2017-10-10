@@ -22,7 +22,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
@@ -60,7 +60,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),

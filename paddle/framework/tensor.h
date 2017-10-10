@@ -96,6 +96,19 @@ class Tensor {
   inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
 
   /**
+   * @brief   Copy the content of an external vector to a tensor.
+   *
+   * @param[in] src   The external vector.
+   * @param[in] ctx   The device context contains place where to store.
+   *
+   * * @note    CopyFromVector assumes that the tensor has been resized
+   *            before invoking.
+   */
+  template <typename T>
+  inline void CopyFromVector(const std::vector<T>& src,
+                             const platform::Place& dst_place);
+
+  /**
    * @brief   Return the slice of the tensor.
    *
    * @param[in] begin_idx   The begin index of the slice.
