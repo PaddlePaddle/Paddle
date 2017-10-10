@@ -17,9 +17,12 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 namespace paddle {
 namespace framework {
+
+const int kLodTensorSize = 20 * 128;
 
 class LoDTensorTester : public ::testing::Test {
  public:
@@ -39,7 +42,7 @@ class LoDTensorTester : public ::testing::Test {
     lod_tensor_.Resize({20 /*batch size*/, 128 /*dim*/});
     // malloc memory
     float* dst_ptr = lod_tensor_.mutable_data<float>(place);
-    for (int i = 0; i < 20 * 128; ++i) {
+    for (int i = 0; i < kLodTensorSize; ++i) {
       dst_ptr[i] = i;
     }
 
@@ -112,7 +115,7 @@ TEST_F(LoDTensorTester, SerializeDeserialize) {
   LoDTensor dst;
   dst.DeserializeFromString(s, platform::CPUPlace());
   float* dst_ptr = dst.data<float>();
-  for (int i = 0; i < 20 * 128; ++i) {
+  for (int i = 0; i < kLodTensorSize; ++i) {
     EXPECT_EQ(dst_ptr[i], src_ptr[i]);
   }
 

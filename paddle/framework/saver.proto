@@ -34,4 +34,5 @@ message LoDTensorProto {
   repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   repeated LoDInfo levels = 3;
   optional int32 lod_level = 4 [ default = 0 ];
+  optional int32 version = 5;
 }

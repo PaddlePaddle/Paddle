@@ -128,10 +128,13 @@ std::string LoDTensor::SerializeToString() const {
     desc.set_data_type(DataType::FP64);
 
   // set dims
-  std::vector<int64_t> dims = vectorize(this->dims());
-  for (auto& dim : dims) {
-    desc.add_dims(dim);
+  // std::vector<int64_t> dims = vectorize(this->dims());
+  for (int i = 0; i < dims().size(); ++i) {
+    desc.add_dims(dims()[i]);
   }
+  // for (auto& dim : dims) {
+  //   desc.add_dims(dims()dwim);
+  // }
 
   // set lod information
   desc.set_lod_level(this->NumLevels());
@@ -142,8 +145,7 @@ std::string LoDTensor::SerializeToString() const {
     }
   }
 
-  // set place information
-  platform::Place place = holder_->place();
+  desc.set_version(0);
 
   std::string desc_bytes = desc.SerializeAsString();
 
@@ -167,7 +169,9 @@ std::string LoDTensor::SerializeToString() const {
 
   PADDLE_ENFORCE(this->numel() != 0, " Serialize a empty Tensor!");
 
+  platform::Place place = holder_->place();
   int element_width = holder_->size() / this->numel();
+
   if (platform::is_cpu_place(place)) {
     memory::Copy(dst_place, buffer + sizeof(size_t) * 2 + desc_bytes.size(),
                  boost::get<platform::CPUPlace>(place),
@@ -191,8 +195,8 @@ std::string LoDTensor::SerializeToString() const {
 void LoDTensor::DeserializeFromString(const std::string& s,
                                       const platform::Place& dst_place) {
   size_t DESC_SIZE, DATA_SIZE;
-  DESC_SIZE = DATA_SIZE = 100;
   platform::CPUPlace src_place;
+
   memory::Copy(src_place, &DESC_SIZE, src_place, s.c_str(), sizeof(size_t));
   memory::Copy(src_place, &DATA_SIZE, src_place, s.c_str() + sizeof(size_t),
                sizeof(size_t));

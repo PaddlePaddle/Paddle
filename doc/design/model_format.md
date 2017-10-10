@@ -20,8 +20,7 @@ In detail, tensor's  byte view as the table shows. Note that all the signed valu
 
 ```text
 [offset] [type]              [description] 
-0000     32 bit integer      version number
-0004     32 bit integer      HeaderLength, the length of LoDTensorDesc
+0004     64 bit integer      HeaderLength, the length of LoDTensorDesc
 0008     64 bit integer      ContentLength, the length of LodTensor Buffer
 0009      8 bit char         TensorDesc
 00010     8 bit char         TensorDesc
