@@ -28,7 +28,6 @@ inline DataType ToDataType(std::type_index type) {
     return DataType::INT32;
   } else {
     PADDLE_THROW("Not supported");
-    return static_cast<DataType>(-1);
   }
 }
 
