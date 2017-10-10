@@ -32,7 +32,7 @@ class OpProtoHolder(object):
         op_protos = get_all_op_protos()
         self.op_proto_map = {}
         for proto in op_protos:
-            sefl.op_proto_map[proto.type] = proto
+            self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):
         assert type in self.op_proto_map, "Operator with type \"%s\" has not been registered." % type
@@ -116,7 +116,39 @@ class Operator(object):
                 else:
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
 
-        # TODO: Getters
+    @property
+    def type(self):
+        return self.desc.type()
+
+    def input(self, name):
+        return self.desc.input(name)
+
+    @property
+    def input_names(self):
+        return self.desc.input_names()
+
+    def output(self, name):
+        return self.desc.output(name)
+
+    @property
+    def output_names(self):
+        return self.desc.output_names()
+
+    def has_attr(self, name):
+        return self.desc.has_attr(name)
+
+    def attr_type(self, name):
+        return self.desc.attr_type(name)
+
+    @property
+    def attr_names(self):
+        return self.desc.attr_names()
+
+    def attr(self, name):
+        return self.desc.attr(name)
+
+    def block_attr(self, name):
+        return self.desc.block_attr(name)
 
 
 class Block(object):

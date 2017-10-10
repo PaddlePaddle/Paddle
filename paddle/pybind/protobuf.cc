@@ -196,7 +196,7 @@ void BindOpDesc(py::module &m) {
       .def("set_attr", &OpDescBind::SetAttr)
       .def("attr", &OpDescBind::GetAttr)
       .def("set_block_attr", &OpDescBind::SetBlockAttr)
-      .def("get_block_attr", &OpDescBind::GetBlockAttr);
+      .def("block_attr", &OpDescBind::GetBlockAttr);
 }
 
 }  // namespace pybind
