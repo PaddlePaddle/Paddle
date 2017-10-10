@@ -385,7 +385,7 @@ template <typename T>
 struct SoftplusFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Y>
   void operator()(Device d, X x, Y y) {
-    auto temp = x.cWiseMax(static_cast<T>(0));  // temp = max(x, 0)
+    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
     y.device(d) = temp + (((-temp).exp() + (x - temp).exp()).log());
   }
 };
@@ -398,7 +398,7 @@ template <typename T>
 struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Y, typename dY, typename dX>
   void operator()(Device d, X x, Y y, dY dy, dX dx) {
-    auto temp = x.cWiseMax(static_cast<T>(0));  // temp = max(x, 0)
+    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
     dx.device(d) = dy * ((x - temp).exp() / ((-temp).exp() + (x - temp).exp()));
   }
 };
