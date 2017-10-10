@@ -32,7 +32,68 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-std::vector<bool> Prune(const ProgramDesc& pdesc, int block_id) {
+Executor::Executor(const std::vector<platform::Place>& places) {
+  PADDLE_ENFORCE_GT(places.size(), 0);
+  device_contexts_.resize(places.size());
+  for (size_t i = 0; i < places.size(); i++) {
+    if (platform::is_cpu_place(places[i])) {
+      device_contexts_[i] = new platform::CPUDeviceContext(
+          boost::get<platform::CPUPlace>(places[i]));
+    } else if (platform::is_gpu_place(places[i])) {
+#ifdef PADDLE_WITH_CUDA
+      device_contexts_[i] = new platform::CUDADeviceContext(
+          boost::get<platform::GPUPlace>(places[i]));
+#else
+      PADDLE_THROW(
+          "'GPUPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
+#endif
+    }
+  }
+}
+
+Executor::~Executor() {
+  for (auto& device_context : device_contexts_) {
+    delete device_context;
+  }
+}
+
+void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
+  // TODO(tonyyang-svail):
+  //    - only runs on the first device (i.e. no interdevice communication)
+  //    - will change to use multiple blocks for RNN op and Cond Op
+  PADDLE_ENFORCE_GT(pdesc.blocks_size(), block_id);
+  auto& block = pdesc.blocks(block_id);
+  auto& device = device_contexts_[0];
+
+  // Instantiate all the vars in the global scope
+  for (auto& var : block.vars()) {
+    scope->NewVar(var.name());
+  }
+
+  Scope& local_scope = scope->NewScope();
+
+  std::vector<bool> should_run = Prune(pdesc, block_id);
+  PADDLE_ENFORCE_EQ(should_run.size(), static_cast<size_t>(block.ops_size()));
+  for (size_t i = 0; i < should_run.size(); ++i) {
+    if (should_run[i]) {
+      for (auto& var : block.ops(i).outputs()) {
+        for (auto& argu : var.arguments()) {
+          if (local_scope.FindVar(argu) == nullptr) {
+            local_scope.NewVar(argu);
+          }
+        }
+      }
+      auto op = paddle::framework::OpRegistry::CreateOp(block.ops(i));
+      op->Run(local_scope, *device);
+    }
+  }
+
+  // TODO(tonyyang-svail):
+  //  - Destroy local_scope
+}
+
+std::vector<bool> Executor::Prune(const ProgramDesc& pdesc, int block_id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 

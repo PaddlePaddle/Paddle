@@ -73,7 +73,7 @@ class Scope {
   DISABLE_COPY_AND_ASSIGN(Scope);
 };
 
-framework::Scope* GetGlobalScope();
+framework::Scope& GetGlobalScope();
 
 }  // namespace framework
 }  // namespace paddle

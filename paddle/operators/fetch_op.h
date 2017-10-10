@@ -25,7 +25,7 @@ class FetchKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const framework::Tensor* input = ctx.Input<framework::Tensor>("Input");
     framework::Variable* g_fetch_variable =
-        framework::GetGlobalScope()->FindVar("fetch_value");
+        framework::GetGlobalScope().FindVar("fetch_value");
     auto* tensors =
         g_fetch_variable->GetMutable<std::vector<framework::Tensor>>();
     int col = ctx.template Attr<int>("col");
