@@ -51,7 +51,7 @@ class GPUAllocator : public SystemAllocator {
   size_t gpu_alloc_size_ = 0;
   size_t fallback_alloc_size_ = 0;
 };
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace detail
 }  // namespace memory

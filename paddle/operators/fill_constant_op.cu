@@ -12,24 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
-#include <typeindex>
-#include "paddle/framework/framework.pb.h"
+#define EIGEN_USE_GPU
+#include "paddle/framework/op_registry.h"
+#include "paddle/operators/fill_constant_op.h"
 
-namespace paddle {
-namespace framework {
-
-inline DataType ToDataType(std::type_index type) {
-  if (typeid(float).hash_code() == type.hash_code()) {
-    return DataType::FP32;
-  } else if (typeid(double).hash_code() == type.hash_code()) {
-    return DataType::FP64;
-  } else if (typeid(int).hash_code() == type.hash_code()) {
-    return DataType::INT32;
-  } else {
-    PADDLE_THROW("Not supported");
-  }
-}
-
-}  // namespace framework
-}  // namespace paddle
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(
+    fill_constant,
+    ops::FillConstantOpKernel<paddle::platform::GPUPlace, float>);

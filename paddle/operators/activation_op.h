@@ -385,6 +385,35 @@ struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct ELUFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) =
+        x.cwiseMax(static_cast<T>(0)) +
+        (alpha * (x.exp() - static_cast<T>(1))).cwiseMin(static_cast<T>(0));
+  }
+};
+
+template <typename T>
+struct ELUGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) =
+        dy * (x > static_cast<T>(0)).template cast<T>() +
+        dy * (y + alpha) * (x < static_cast<T>(0)).template cast<T>();
+  }
+};
+
+template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
   float factor;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -481,7 +510,8 @@ struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   __macro(pow, PowFunctor, PowGradFunctor);                       \
   __macro(stanh, STanhFunctor, STanhGradFunctor);                 \
   __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);        \
-  __macro(relu6, Relu6Functor, Relu6GradFunctor);                 \
   __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);    \
+  __macro(relu6, Relu6Functor, Relu6GradFunctor);                 \
   __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
+  __macro(elu, ELUFunctor, ELUGradFunctor);                       \
   __macro(thresholded_relu, ThresholdedReluFunctor, ThresholdedReluGradFunctor);

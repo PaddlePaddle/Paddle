@@ -62,4 +62,4 @@ TEST(GPUAllocator, Alloc) {
   TestAllocator(a, 2048);
   TestAllocator(a, 0);
 }
-#endif  // PADDLE_ONLY_CPU
+#endif
