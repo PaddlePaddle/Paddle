@@ -23,35 +23,22 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
-// Concat LoD, the initialized LoD of Output is lod(x0),
-// if axis is not 0, the LoD(Out) will be the same as Inputs, if axis is 0:
-// Case1:
-//  There is one level, the Output LoD will be modified:
-//  LoD(x0) = {{0,2,4}}
-//  LoD(x1) = {{0,1,5}}
-//  LoD(Out) = {{0,3,9}}
-// Case2:
-//  There is two level, and concat level is 1,
-//  the Output LoD will be modified as followed:
-//  LoD(x0) = {{0,2,4}, {0,1,2,3,4}}
-//  LoD(x1) = {{0,3,5}, {0,1,3,4,5}}
-//  LoD(Out) = {{0,5,9}, {0,1,2,4,5,6,7,8,9}}
 template <typename T>
 LoD concatLoD(const std::vector<const T*> ins, const size_t axis,
               const size_t level) {
   auto out_lod = ins[0]->lod();
   const size_t n = ins.size();
   if (axis == 0UL) {
-    if (level == 0) {
+    if (level == 0UL) {
       for (size_t i = 1; i < n; ++i) {
         for (size_t j = 0; j < ins[i]->lod()[0].size(); ++j) {
           out_lod[0][j] += ins[i]->lod()[0][j];
         }
       }
-    } else if (level == 1) {
+    } else if (level == 1UL) {
       PADDLE_ENFORCE_EQ(ins[0]->NumLevels(), 2UL,
                         "If the level is 1, all of the inputs "
-                        "should be the the nested sequence.");
+                        "should be the nested sequence.");
       for (size_t i = 1; i < n; ++i) {
         for (size_t j = 0; j < ins[i]->lod()[0].size(); ++j) {
           out_lod[0].push_back(ins[i]->lod()[0][j]);
@@ -80,16 +67,17 @@ class SequenceConcatOpKernel : public framework::OpKernel<T> {
                         "The level number of all the input LoDTensors "
                         "should be the same.");
       PADDLE_ENFORCE_EQ(ins[0]->dims().size(), ins[i]->dims().size(),
-                        "The dimensions size of all the input LoDTensors "
+                        "The dimension size of all the input LoDTensors "
                         "should be the same.");
 
       const size_t dims_size = ins[i]->dims().size();
       for (size_t j = 0; j < dims_size; ++j) {
         if (j == axis) continue;
         PADDLE_ENFORCE_EQ(ins[0]->dims()[j], ins[i]->dims()[j],
-                          "The dimensions of all the input LoDTensors "
-                          "except for the specify axis should be "
-                          "matched exactly.");
+                          "Except for the dimension of the specified "
+                          "axis along which all the inputs are concatenated, "
+                          "dimensions of all the other axises of the input "
+                          "LoDTensors should be the same.");
       }
     }
 
