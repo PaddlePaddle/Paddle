@@ -74,6 +74,12 @@ void BlockDescBind::Sync() {
     for (auto &op_desc : ops_) {
       op_field.AddAllocated(op_desc->Proto());
     }
+    auto &var_field = *this->desc_->mutable_vars();
+    var_field.Clear();
+    var_field.Reserve(static_cast<int>(vars_.size()));
+    for (auto &var_desc : vars_) {
+      var_field.AddAllocated(var_desc.second->Proto());
+    }
     need_update_ = false;
   }
 }

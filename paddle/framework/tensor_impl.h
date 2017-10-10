@@ -124,6 +124,29 @@ inline void Tensor::CopyFrom(const Tensor& src,
 }
 
 template <typename T>
+inline void Tensor::CopyFromVector(const std::vector<T>& src,
+                                   const platform::Place& dst_place) {
+  auto src_ptr = static_cast<const void*>(src.data());
+  platform::CPUPlace src_place;
+  auto dst_ptr = static_cast<void*>(mutable_data<T>(dst_place));
+  auto size = src.size() * sizeof(T);
+
+  if (platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
+                 src_ptr, size);
+  }
+#ifdef PADDLE_WITH_CUDA
+  else if (platform::is_gpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::GPUPlace>(dst_place), dst_ptr, src_place,
+                 src_ptr, size, 0);
+  }
+  PADDLE_ENFORCE(cudaStreamSynchronize(0),
+                 "cudaStreamSynchronize failed in Tensor CopyFromVector");
+
+#endif
+}
+
+template <typename T>
 inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   check_memory_size<T>();
   PADDLE_ENFORCE_GE(begin_idx, 0, "Slice begin index is less than zero.");

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <deque>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 #include "paddle/framework/op_desc.h"

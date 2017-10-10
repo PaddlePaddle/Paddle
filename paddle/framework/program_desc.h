@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <vector>
 #include "paddle/framework/framework.pb.h"
 #include "paddle/platform/macros.h"
@@ -30,8 +31,6 @@ class ProgramDescBind {
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
   BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
-
-  std::string DebugString() { return Proto()->DebugString(); }
 
   size_t Size() const { return blocks_.size(); }
 
