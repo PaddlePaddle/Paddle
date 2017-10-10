@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-void Conv2DOp::InferShape(framework::InferShapeContextBase* ctx) const {
+void Conv2DOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("Input"),
                  "Input(Input) of Conv2DOp should not be null.");
   PADDLE_ENFORCE(ctx->HasInput("Filter"),
@@ -87,7 +87,7 @@ parameters is checked in the infer-shape.
 )DOC");
 }
 
-void Conv2DOpGrad::InferShape(framework::InferShapeContextBase* ctx) const {
+void Conv2DOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
   if (ctx->HasOutput(framework::GradVarName("Input"))) {

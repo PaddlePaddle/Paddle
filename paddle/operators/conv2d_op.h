@@ -45,7 +45,7 @@ class Conv2DOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override;
+  void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
 class Conv2DOpGrad : public framework::OperatorWithKernel {
@@ -53,7 +53,7 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override;
+  void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
 template <typename Place, typename T>
