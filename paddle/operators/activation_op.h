@@ -388,7 +388,7 @@ struct SoftplusFunctor : public BaseActivationFunctor<T> {
     auto temp = x.cWiseMax(static_cast<T>(0));  // temp = max(x, 0)
     y.device(d) = temp + (((-temp).exp() + (x - temp).exp()).log());
   }
-}
+};
 
 // d(softplus(x))/dx = exp(x) / (1 + exp(x))
 // For numerical stability:
@@ -401,7 +401,7 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
     auto temp = x.cWiseMax(static_cast<T>(0));  // temp = max(x, 0)
     dx.device(d) = dy * ((x - temp).exp() / ((-temp).exp() + (x - temp).exp()));
   }
-}
+};
 
 // softsign(x) = x / (1 + |x|)
 template <typename T>
