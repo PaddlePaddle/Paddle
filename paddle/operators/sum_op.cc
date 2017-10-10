@@ -22,7 +22,7 @@ class SumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
     auto x_dims = ctx->GetInputsDim("X");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),

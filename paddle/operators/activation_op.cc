@@ -22,7 +22,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Y");
   }
@@ -33,7 +33,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Y"));
   }
 };
@@ -223,6 +223,19 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
+class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  Relu6OpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Relu6 operator");
+    AddOutput("Y", "Output of Relu6 operator");
+    AddComment("Relu6 activation operator, relu6 = min(max(0, x), 6)");
+    AddAttr<AttrType>("threshold", "The threshold value of Relu6")
+        .SetDefault(static_cast<AttrType>(6));
+  }
+};
+
+template <typename AttrType>
 class PowOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -300,6 +313,9 @@ REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker<float>,
 REGISTER_OP(elu, ops::ActivationOp, ops::ELUOpMaker<float>, elu_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(relu6, ops::ActivationOp, ops::Relu6OpMaker<float>, relu6_grad,
+            ops::ActivationOpGrad);
+
 REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
             ops::ActivationOpGrad);
 
@@ -309,11 +325,9 @@ REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_CPU_KERNEL(                                                      \
       act_type,                                                                \
-      paddle::operators::ActivationKernel<paddle::platform::CPUPlace,          \
-                                          paddle::operators::functor<float>>); \
+      ops::ActivationKernel<paddle::platform::CPUPlace, ops::functor<float>>); \
   REGISTER_OP_CPU_KERNEL(act_type##_grad,                                      \
-                         paddle::operators::ActivationGradKernel<              \
-                             paddle::platform::CPUPlace,                       \
-                             paddle::operators::grad_functor<float>>);
+                         ops::ActivationGradKernel<paddle::platform::CPUPlace, \
+                                                   ops::grad_functor<float>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);

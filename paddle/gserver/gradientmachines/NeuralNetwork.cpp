@@ -14,15 +14,17 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
-#include "paddle/utils/CustomStackTrace.h"
-#include "paddle/utils/Logging.h"
-
-#include "MultiNetwork.h"
 #include "NeuralNetwork.h"
-#include "RecurrentGradientMachine.h"
 #include "hl_gpu.h"
 #include "paddle/gserver/layers/AgentLayer.h"
+#include "paddle/utils/CustomStackTrace.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
+
+#ifndef PADDLE_MOBILE_INFERENCE
+#include "MultiNetwork.h"
+#include "RecurrentGradientMachine.h"
+#endif
 
 namespace paddle {
 void parameterInitNN(int paramId,
@@ -54,6 +56,7 @@ void parameterInitNN(int paramId,
 }
 
 NeuralNetwork* NeuralNetwork::create(const ModelConfig& config) {
+#ifndef PADDLE_MOBILE_INFERENCE
   if (config.type() == "recurrent_nn") {
     return newNeuralNetwork("root");
   } else if (config.type() == "multi_nn") {
@@ -61,6 +64,9 @@ NeuralNetwork* NeuralNetwork::create(const ModelConfig& config) {
   } else {
     return newNeuralNetwork();
   }
+#else
+  return new NeuralNetwork();
+#endif
 }
 
 std::map<std::string, bool> NeuralNetwork::dllInitMap;
@@ -304,6 +310,8 @@ void NeuralNetwork::onPassEnd() {
   }
 }
 
+#ifndef PADDLE_MOBILE_INFERENCE
+
 class CombinedEvaluator : public Evaluator {
 public:
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
@@ -465,6 +473,8 @@ Evaluator* NeuralNetwork::makeEvaluator() const {
 }
 
 void NeuralNetwork::eval(Evaluator* evaluator) const { evaluator->eval(*this); }
+
+#endif
 
 void NeuralNetwork::setOutputGrad(const std::vector<Argument>& args) {
   CHECK_GE(outputLayers_.size(), args.size());

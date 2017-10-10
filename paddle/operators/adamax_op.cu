@@ -13,16 +13,8 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/activation_op.h"
+#include "paddle/operators/adamax_op.h"
 
 namespace ops = paddle::operators;
-
-#define REGISTER_ACTIVATION_GPU_KERNEL(act_type, functor, grad_functor)        \
-  REGISTER_OP_GPU_KERNEL(                                                      \
-      act_type,                                                                \
-      ops::ActivationKernel<paddle::platform::GPUPlace, ops::functor<float>>); \
-  REGISTER_OP_GPU_KERNEL(act_type##_grad,                                      \
-                         ops::ActivationGradKernel<paddle::platform::GPUPlace, \
-                                                   ops::grad_functor<float>>);
-
-FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_GPU_KERNEL);
+REGISTER_OP_GPU_KERNEL(adamax,
+                       ops::AdamaxOpKernel<paddle::platform::GPUPlace, float>);
