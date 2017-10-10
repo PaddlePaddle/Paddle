@@ -240,7 +240,7 @@ TEST(Tensor, CopyFrom) {
     dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Tensors
-    gpu_ctx.stream().Wait();
+    gpu_ctx.Wait();
     const int* dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(src_ptr, dst_ptr);
     for (size_t i = 0; i < 9; ++i) {
@@ -256,7 +256,7 @@ TEST(Tensor, CopyFrom) {
     dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Slice Tensors
-    gpu_ctx.stream().Wait();
+    gpu_ctx.Wait();
     const int* slice_ptr = slice_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(dst_ptr, slice_ptr);
@@ -323,7 +323,7 @@ TEST(Tensor, CopyFromVector) {
     dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Tensors
-    gpu_ctx.stream().Wait();
+    gpu_ctx.Wait();
     const int* src_ptr = src_vec.data();
     const int* cpu_ptr = cpu_tensor.data<int>();
     const int* dst_ptr = dst_tensor.data<int>();
@@ -343,7 +343,7 @@ TEST(Tensor, CopyFromVector) {
     dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Tensors
-    gpu_ctx.stream().Wait();
+    gpu_ctx.Wait();
     src_ptr = src_vec.data();
     cpu_ptr = cpu_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
