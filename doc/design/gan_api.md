@@ -29,7 +29,7 @@ In our GAN design, we wrap it as a user-friendly easily customized python API to
 
 <p align="center">
 <img src="./test.dot.png" width = "50%" align="center"/><br/>
-The overall running logic of GAN. The black solid arrows indicate the forward pass; the green dashed arrows indicate the backward pass of generator training; the red dashed arrows indicate the backward pass of the discriminator training. The BP pass of the green (red) arrow should only update the parameters in the green (red) boxes. The diamonds indicate the data providers.
+The overall running logic of GAN. The black solid arrows indicate the forward pass; the green dashed arrows indicate the backward pass of generator training; the red dashed arrows indicate the backward pass of the discriminator training. The BP pass of the green (red) arrow should only update the parameters in the green (red) boxes. The diamonds indicate the data providers. d\_loss and g\_loss mared in red and green are the two targets we would like to run.
 </p>
 
 
