@@ -1,5 +1,6 @@
 import paddle.v2.framework.core as core
 import collections
+from paddle.v2.framework.unique_name import unique_name
 import numpy as np
 import copy
 
@@ -17,7 +18,7 @@ class Variable(object):
         self.block = block
 
         if name is None:
-            name = Variable._unique_var_name_()
+            name = unique_name('_generated_var_')
         try:
             self.desc = self.block.desc.var(name)
             is_new_var = False
@@ -79,11 +80,6 @@ class Variable(object):
     @property
     def lod_level(self):
         return self.desc.lod_level()
-
-    @staticmethod
-    def _unique_var_name_():
-        uid = core.unique_integer()  # unique during whole process.
-        return "_generated_var_%d" % uid
 
     @staticmethod
     def _convert_np_dtype_to_dtype_(np_dtype):
@@ -184,6 +180,9 @@ class Program(object):
         self.current_block_idx = 0
 
     def global_block(self):
+        """
+        :rtype: Block 
+        """
         return self.blocks[0]
 
     def current_block(self):
