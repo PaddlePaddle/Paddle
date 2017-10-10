@@ -24,6 +24,7 @@ namespace detail {
 inline void CreateVariables(Scope& scope,
                             const std::vector<std::string>& var_names) {
   for (const auto& name : var_names) {
+    LOG(INFO) << "create var " << name;
     scope.NewVar(name);
   }
 }
@@ -155,12 +156,19 @@ void DynamicRecurrentOp::CreateScopes() const {
   PADDLE_ENFORCE_NOT_NULL(stepnet_, "stepnet should be set first");
   std::vector<std::string> memories;
   std::vector<std::string> pre_memories;
+  std::vector<std::string> stepnet_outputs;
   std::transform(arg_.memories.begin(), arg_.memories.end(),
                  std::back_inserter(memories),
                  [](const rnn::MemoryAttr& m) { return m.var; });
   std::transform(arg_.memories.begin(), arg_.memories.end(),
                  std::back_inserter(pre_memories),
                  [](const rnn::MemoryAttr& m) { return m.pre_var; });
+  for (const auto& item : stepnet_->Outputs()) {
+    for (const auto& var : item.second) {
+      LOG(INFO) << "create stepnet output " << var;
+      stepnet_outputs.push_back(var);
+    }
+  }
 
   for (size_t step = 0; step < cache_.num_steps; step++) {
     auto& scope = cache_.GetScope(step);
@@ -168,6 +176,7 @@ void DynamicRecurrentOp::CreateScopes() const {
     detail::CreateVariables(scope, arg_.outlinks);
     detail::CreateVariables(scope, memories);
     detail::CreateVariables(scope, pre_memories);
+    detail::CreateVariables(scope, stepnet_outputs);
   }
 }
 
