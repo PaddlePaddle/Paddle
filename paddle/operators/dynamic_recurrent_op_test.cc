@@ -11,6 +11,11 @@
 namespace paddle {
 namespace operators {
 
+using framework::Scope;
+using framework::TensorArray;
+using framework::LoDTensor;
+using framework::Variable;
+
 class TestOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
