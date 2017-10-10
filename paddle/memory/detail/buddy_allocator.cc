@@ -182,7 +182,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
       max_chunk_size_ = platform::GpuMaxChunkSize();
     }
   }
-#endif  // PADDLE_ONLY_CPU
+#endif
 
   // Allocate a new maximum sized block
   size_t index = 0;
