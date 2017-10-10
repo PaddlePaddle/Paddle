@@ -65,15 +65,15 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
 // Tensors in feed value variable will only be in CPUPlace
 // So we can memcpy the data from vector<T> to feed_value
 template <typename T>
-void SetFeedVariable(const std::vector<std::vector<T>>& inputs) {
+void SetFeedVariable(const std::vector<std::vector<T>>& inputs,
+                     const std::vector<std::vector<int64_t>>& dims) {
   Variable* g_feed_value = GetGlobalScope()->FindVar("feed_value");
   auto& feed_inputs =
       *(g_feed_value->GetMutable<std::vector<paddle::framework::Tensor>>());
   size_t size = inputs.size();
   feed_inputs.resize(size);
   for (size_t i = 0; i < size; i++) {
-    T* dst = feed_inputs[i].mutable_data<T>(
-        make_ddim({static_cast<int64_t>(inputs[i].size())}), CPUPlace());
+    T* dst = feed_inputs[i].mutable_data<T>(make_ddim(dims[i]), CPUPlace());
     memcpy(dst, inputs[i].data(), inputs[i].size() * sizeof(T));
   }
 }
@@ -103,7 +103,7 @@ std::vector<std::vector<T>> GetFetchVariable() {
 class ExecutorTesterRandom : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    int input_dim = 5, batch_size = 2, embed_dim = 5;
+    int input_dim = 3, batch_size = 2, embed_dim = 5;
 
     auto temp_init_root_block = init_pdesc_.add_blocks();
     temp_init_root_block->set_idx(0);
@@ -130,9 +130,16 @@ class ExecutorTesterRandom : public ::testing::Test {
         paddle::framework::ProgramDescBind::Instance(&pdesc_);
     paddle::framework::BlockDescBind* root_block = program.Block(0);
 
+    // feed data
+    inputs_.push_back({1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+    dims_.push_back({batch_size, input_dim});
+    AddOp("feed", {}, {{"Out", {"a"}}},
+          {{"dims", std::vector<int>{batch_size, input_dim}}, {"col", 0}},
+          root_block);
+
     // forward
-    AddOp("gaussian_random", {}, {{"Out", {"a"}}},
-          {{"dims", std::vector<int>{batch_size, input_dim}}}, root_block);
+    // AddOp("gaussian_random", {}, {{"Out", {"a"}}},
+    //       {{"dims", std::vector<int>{batch_size, input_dim}}}, root_block);
     AddOp("mul", {{"X", {"a"}}, {"Y", {"w1"}}}, {{"Out", {"b"}}}, {},
           root_block);
     AddOp("mul", {{"X", {"b"}}, {"Y", {"w2"}}}, {{"Out", {"a_out"}}}, {},
@@ -161,6 +168,7 @@ class ExecutorTesterRandom : public ::testing::Test {
 
     AddOp("fetch", {{"Input", {"w1"}}}, {}, {{"col", 0}}, root_block);
     AddOp("fetch", {{"Input", {"w2"}}}, {}, {{"col", 1}}, root_block);
+    AddOp("fetch", {{"Input", {"l2_distance"}}}, {}, {{"col", 0}}, root_block);
 
     // flush
     program.Proto();
@@ -169,6 +177,8 @@ class ExecutorTesterRandom : public ::testing::Test {
  protected:
   ProgramDesc init_pdesc_;
   ProgramDesc pdesc_;
+  std::vector<std::vector<float>> inputs_;
+  std::vector<std::vector<int64_t>> dims_;
 };
 
 class ExecutorTesterFeedAndFetch : public ::testing::Test {
@@ -199,11 +209,14 @@ class ExecutorTesterFeedAndFetch : public ::testing::Test {
     std::vector<float> vec2 = {4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
     inputs_.push_back(vec1);
     inputs_.push_back(vec2);
+    dims_.push_back({static_cast<int64_t>(vec1.size())});
+    dims_.push_back({static_cast<int64_t>(vec2.size())});
   }
 
  protected:
   ProgramDesc pdesc_;
   std::vector<std::vector<float>> inputs_;
+  std::vector<std::vector<int64_t>> dims_;
 };
 
 #ifndef PADDLE_WITH_CUDA
@@ -239,7 +252,7 @@ TEST_F(ExecutorTesterFeedAndFetch, CPU) {
   std::unique_ptr<Executor> executor(new Executor(places));
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
-    SetFeedVariable<float>(inputs_);
+    SetFeedVariable<float>(inputs_, dims_);
     executor->Run(pdesc_, GetGlobalScope(), 0);
     std::vector<std::vector<float>> result = GetFetchVariable<float>();
     PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
@@ -270,6 +283,7 @@ TEST_F(ExecutorTesterRandom, GPU) {
 
   executor->Run(init_pdesc_, GetGlobalScope(), 0);
   for (int batch_id = 0; batch_id < 3; batch_id++) {
+    SetFeedVariable<float>(inputs_, dims_);
     executor->Run(pdesc_, GetGlobalScope(), 0);
     std::vector<std::vector<float>> result = GetFetchVariable<float>();
   }
@@ -291,7 +305,7 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
   std::unique_ptr<Executor> executor(new Executor(places));
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
-    SetFeedVariable<float>(inputs_);
+    SetFeedVariable<float>(inputs_, dims_);
     executor->Run(pdesc_, GetGlobalScope(), 0);
     std::vector<std::vector<float>> result = GetFetchVariable<float>();
     PADDLE_ENFORCE_EQ(result.size(), inputs_.size());

@@ -74,8 +74,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   std::vector<bool> should_run = Prune(pdesc, block_id);
   PADDLE_ENFORCE_EQ(should_run.size(), block.ops_size());
   for (size_t i = 0; i < should_run.size(); ++i) {
-    // if (should_run[i]) {
-    if (true) {
+    if (should_run[i]) {
       for (auto& var : block.ops(i).outputs()) {
         for (auto& argu : var.arguments()) {
           if (local_scope.FindVar(argu) == nullptr) {
