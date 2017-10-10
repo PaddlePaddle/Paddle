@@ -32,9 +32,9 @@ class SoftmaxWithCrossEntropyOpMaker
     AddInput("Label",
              "(Tensor, default: Tensor<int>), The ground truth which is a 2-D "
              "tensor. "
-             "If softLable is set to 0, Label is a Tensor<int> with shape [N x "
-             "1]. "
-             "If softLable is set to 1, Label is a Tensor<float/double> "
+             "If softLabel is set to false, Label is a Tensor<int> with shape "
+             "[N x 1]."
+             "If softLabel is set to true, Label is a Tensor<float/double> "
              "with shape [N x K].");
     AddOutput(
         "Softmax",

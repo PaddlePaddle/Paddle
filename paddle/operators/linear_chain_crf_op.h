@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class CrfOpKernel : public framework::OpKernel<T> {
+class LinearChainCrfOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -29,7 +29,7 @@ class CrfOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class CrfGradOpKernel : public framework::OpKernel<T> {
+class LinearChainCrfGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
