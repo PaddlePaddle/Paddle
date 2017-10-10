@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -13,23 +13,21 @@
    limitations under the License. */
 
 #pragma once
-#include <typeindex>
-#include "paddle/framework/framework.pb.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
 
-inline DataType ToDataType(std::type_index type) {
-  if (typeid(float).hash_code() == type.hash_code()) {
-    return DataType::FP32;
-  } else if (typeid(double).hash_code() == type.hash_code()) {
-    return DataType::FP64;
-  } else if (typeid(int).hash_code() == type.hash_code()) {
-    return DataType::INT32;
-  } else {
-    PADDLE_THROW("Not supported");
-  }
-}
+template <typename Place, typename T>
+class ConvShiftKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override;
+};
 
-}  // namespace framework
+template <typename Place, typename T>
+class ConvShiftGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override;
+};
+}  // namespace operators
 }  // namespace paddle
