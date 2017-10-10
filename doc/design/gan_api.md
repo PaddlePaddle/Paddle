@@ -27,10 +27,15 @@ In our GAN design, we wrap it as a user-friendly easily customized python API to
 | Concat op (done)          | ?                 | N (Cond) |
 | Repmat op (done)          | ?                 | N (Cond) |
 
+<p align="center">
+<img src="./test.dot.png" width = "90%" align="center"/><br/>
+The overall running logic of GAN. The black solid arrows indicate the forward pass; the green dashed arrows indicate the backward pass of generator training; the red dashed arrows indicate the backward pass of the discriminator training. The BP pass of the green (red) arrow should only update the parameters in the green (red) boxes.
+</p>
+
 
 <p align="center">
 <img src="./dcgan.png" width = "90%" align="center"/><br/>
-Borrow this photo from the original DC-GAN paper.
+Photo borrowed from the original DC-GAN paper.
 </p>
 
 ## The Conditional-GAN might be a class. 
