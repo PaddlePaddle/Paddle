@@ -40,8 +40,6 @@ class PoolOp : public framework::OperatorWithKernel {
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-    PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "avg",
-                   "pooling_type should be 'max' or 'avg'");
     PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                    "Pooling intput should be 4-D or 5-D");
 
@@ -52,13 +50,11 @@ class PoolOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2U,
-                   "Input size and Pooling size should be consistent.");
-    PADDLE_ENFORCE(ksize.size() == 2 || ksize.size() == 3,
-                   "Pooling size should be 2 elements. or 3 elements.");
+                   "Input size and pooling size should be consistent.");
     PADDLE_ENFORCE_EQ(ksize.size(), strides.size(),
-                      "strides size and pooling size should be the same.");
+                      "Strides size and pooling size should be the same.");
     PADDLE_ENFORCE_EQ(ksize.size(), paddings.size(),
-                      "paddings size and pooling size should be the same.");
+                      "Paddings size and pooling size should be the same.");
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
@@ -75,10 +71,9 @@ class PoolOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "X(Input) of Pooling should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input@Grad of Pooling should not be null.");
+                   "Input(X@GRAD) should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -94,17 +89,22 @@ class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "number of channels, H and W is the height and width of feature.");
     AddOutput("Out",
               "The output tensor of pooling operator."
-              "The format of output tensor is also NCHW.");
+              "The format of output tensor is also NCHW."
+              "Where N is batch size, C is "
+              "the number of channels, H and W is the height and "
+              "width of feature.");
 
     AddAttr<std::string>("poolingType",
                          "PoolingType of pooling operator."
                          "Str constant equal to 'max' or 'avg'.")
         .InEnum({"max", "avg"});
+
     AddAttr<std::vector<int>>(
         "ksize",
-        "Pooling size(depth, height, width) of pooling operator."
+        "The pooling size(height, width) of pooling operator."
         "If globalPooling = true, ksize is ignored and need not be "
-        "specified.");  // TODO(Add checker)
+        "specified.");  // TODO(Chengduo): Add checker. (Currently,
+                        // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
         "globalPooling",
         "Whether to use the globalPooling."
@@ -114,15 +114,22 @@ class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "Strides(height, width) of pooling operator."
-                              "Default {1,1}")
-        .SetDefault({1, 1});  // TODO(Add checker)
+                              "Default {1,1}.")
+        .SetDefault({1, 1});  // TODO(Chengduo): Add checker. (Currently,
+                              // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>("paddings",
                               "Paddings(height, width) of pooling operator."
                               "Default {0,0}.")
-        .SetDefault({0, 0});  // TODO(Add checker)
+        .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
+                              // TypedAttrChecker don't support vector type.)
+
     AddComment(R"DOC(
 The pooling2d operation calculates the output based on
 the input, poolingType and ksize, strides, paddings parameters.
+Input(X) and output(Out) are in NCHW format. Where N is batch size, C is the
+number of channels, H and W is the height and width of feature.
+Parameters(ksize, strides, paddings) are two elements.
+These two elements represent height and width, respectively.
 )DOC");
   }
 };
@@ -131,25 +138,30 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   Pool3dOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X",
-             "The input tensor of pooling operator. "
-             "The format of input tensor is NCDHW. Where N is batch size, C is "
-             "the "
-             "number of channels, D, H and W is the depth, height and width of "
-             "feature.");
+    AddInput(
+        "X",
+        "The input tensor of pooling operator. "
+        "The format of input tensor is NCDHW. Where N is batch size, C is "
+        "the number of channels, D, H and W is the depth, height and width of "
+        "feature.");
     AddOutput("Out",
               "The output tensor of pooling operator."
-              "The format of output tensor is also NCDHW.");
+              "The format of output tensor is also NCDHW."
+              "Where N is batch size, C is "
+              "the number of channels, D, H and W is the depth, height and "
+              "width of feature.");
 
     AddAttr<std::string>("poolingType",
                          "PoolingType of pooling operator."
-                         "str constant equal to 'max' or 'avg'.")
+                         "Str constant equal to 'max' or 'avg'.")
         .InEnum({"max", "avg"});
+
     AddAttr<std::vector<int>>(
         "ksize",
-        "Pooling size(depth, height, width) of pooling operator."
+        "The pooling size(depth, height, width) of pooling operator."
         "If globalPooling = true, ksize is ignored and need not be "
-        "specified.");  // TODO(Add checker)
+        "specified.");  // TODO(Chengduo): Add checker. (Currently,
+                        // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
         "globalPooling",
         "Whether to use the globalPooling."
@@ -161,15 +173,22 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
         "strides",
         "Strides(depth, height, width) of pooling operator."
         "Default {1,1,1}.")
-        .SetDefault({1, 1, 1});  // TODO(Add checker)
+        .SetDefault({1, 1, 1});  // TODO(Chengduo): Add checker. (Currently,
+                                 // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>(
         "paddings",
         "Paddings(depth, height, width) of pooling operator."
         "Default {0,0,0}.")
-        .SetDefault({0, 0, 0});  // TODO(Add checker)
+        .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
+                                 // TypedAttrChecker don't support vector type.)
+
     AddComment(R"DOC(
 The pooling3d operation calculates the output based on
 the input, poolingType and ksize, strides, paddings parameters.
+Input(X) and output(Out) are in NCDHW format. Where N is batch
+size, C is the number of channels, D, H and W is the depth, height and
+width of feature. Parameters(ksize, strides, paddings) are three elements.
+These three elements represent depth, height and width, respectively.
 )DOC");
   }
 };

@@ -28,7 +28,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "X(Input) of Pooling should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -52,7 +52,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2U,
-                   "Intput size and pooling size should be consistent.");
+                   "Input size and pooling size should be consistent.");
     PADDLE_ENFORCE_EQ(ksize.size(), strides.size(),
                       "Strides size and pooling size should be the same.");
     PADDLE_ENFORCE_EQ(ksize.size(), paddings.size(),
@@ -73,7 +73,8 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Mask"), "Input(Mask) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Input(X@GRAD) should not be null.");
