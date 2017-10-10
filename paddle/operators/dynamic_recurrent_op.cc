@@ -24,7 +24,6 @@ namespace detail {
 inline void CreateVariables(Scope& scope,
                             const std::vector<std::string>& var_names) {
   for (const auto& name : var_names) {
-    LOG(INFO) << "create var " << name;
     scope.NewVar(name);
   }
 }
@@ -38,7 +37,17 @@ inline void CreateVariables(Scope& scope,
  * be reordered, but the RNN op should not change the `boot_state` as an input
  * variable's content.
  */
-inline void ReorderBootState();
+template <typename T>
+inline void ReorderBootState(const DySeqMetaBatch& metas,
+                             const LoDTensor& boot_state, LoDTensor* tensor,
+                             const platform::Place& dst_place) {
+  for (size_t seq_id = 0; seq_id < metas.size(); seq_id++) {
+    auto slice = tensor->Slice<T>(seq_id, seq_id + 1);
+    auto boot_slice =
+        boot_state.Slice<T>(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
+    slice.CopyFrom(boot_slice, dst_place);
+  }
+}
 
 }  // namespace detail
 
@@ -165,7 +174,6 @@ void DynamicRecurrentOp::CreateScopes() const {
                  [](const rnn::MemoryAttr& m) { return m.pre_var; });
   for (const auto& item : stepnet_->Outputs()) {
     for (const auto& var : item.second) {
-      LOG(INFO) << "create stepnet output " << var;
       stepnet_outputs.push_back(var);
     }
   }
@@ -196,101 +204,99 @@ void DynamicRecurrentOp::ConcatOutputs() const {
 void DynamicRecurrentOp::InitStates() const {
   // init the first state
   // TODO(superjom) parepare the scenerio that boot state not exists
-  for (const auto& memory : arg_.memories) {
-    // TODO(superjom) resort the boot_state
-    for (auto memory : arg_.memories) {
-      auto* boot_state_var = cache_.scope->FindVar(memory.boot_var);
-      PADDLE_ENFORCE_NOT_NULL(boot_state_var);
-      auto& boot_state = boot_state_var->Get<LoDTensor>();
-      const auto& dims = boot_state.dims();
+  // TODO(superjom) resort the boot_state
+  for (auto memory : arg_.memories) {
+    auto* boot_state_var = cache_.scope->FindVar(memory.boot_var);
+    PADDLE_ENFORCE_NOT_NULL(boot_state_var);
+    auto& boot_state = boot_state_var->Get<LoDTensor>();
+    const auto& dims = boot_state.dims();
 
-      for (size_t step = 0; step < cache_.num_steps; step++) {
-        auto& cur_scope = cache_.GetScope(step);
-        // link pre-state to boot_state
-        // init state and pre-state
-        auto* pre_state = cur_scope.FindVar(memory.pre_var);
-        PADDLE_ENFORCE_NOT_NULL(pre_state);
-        pre_state->GetMutable<LoDTensor>();
+    for (size_t step = 0; step < cache_.num_steps; step++) {
+      auto& cur_scope = cache_.GetScope(step);
+      // link pre-state to boot_state
+      // init state and pre-state
+      auto* pre_state = cur_scope.FindVar(memory.pre_var);
+      PADDLE_ENFORCE_NOT_NULL(pre_state);
+      pre_state->GetMutable<LoDTensor>();
 
-        auto* state = cur_scope.FindVar(memory.var);
-        PADDLE_ENFORCE_NOT_NULL(state);
-        state->GetMutable<LoDTensor>()->Resize(dims);
-        state->GetMutable<LoDTensor>()->mutable_data<value_type>(
-            platform::CPUPlace());
-        // write to tensor array
-        states_[memory.var].WriteShared(step, state->Get<LoDTensor>());
-        // link previous scope's state to the pre-states in current scope
-        if (step == 0) {
-          auto* pre_state_tensor = pre_state->GetMutable<LoDTensor>();
-          pre_state_tensor->Resize(boot_state.dims());
-          pre_state_tensor->ShareDataWith<value_type>(boot_state);
-        } else {
-          auto& pre_scope = cache_.GetScope(step - 1);
-          auto* state_pre = pre_scope.FindVar(memory.var);
-          PADDLE_ENFORCE_NOT_NULL(state_pre);
-          pre_state->GetMutable<LoDTensor>()->ShareDataWith<value_type>(
-              states_[memory.var].Read(step - 1));
-        }
+      auto* state = cur_scope.FindVar(memory.var);
+      PADDLE_ENFORCE_NOT_NULL(state);
+      state->GetMutable<LoDTensor>()->Resize(dims);
+      state->GetMutable<LoDTensor>()->mutable_data<value_type>(
+          platform::CPUPlace());
+      // write to tensor array
+      states_[memory.var].WriteShared(step, state->Get<LoDTensor>());
+      // link previous scope's state to the pre-states in current scope
+      if (step == 0) {
+        auto* pre_state_tensor = pre_state->GetMutable<LoDTensor>();
+        pre_state_tensor->Resize(boot_state.dims());
+        pre_state_tensor->ShareDataWith<value_type>(boot_state);
+      } else {
+        auto& pre_scope = cache_.GetScope(step - 1);
+        auto* state_pre = pre_scope.FindVar(memory.var);
+        PADDLE_ENFORCE_NOT_NULL(state_pre);
+        pre_state->GetMutable<LoDTensor>()->ShareDataWith<value_type>(
+            states_[memory.var].Read(step - 1));
       }
     }
   }
+}
 
-  void DynamicRecurrentOp::ArgCache::Init(
-      const rnn::ArgumentName& name, const paddle::framework::OperatorBase& op,
-      const paddle::framework::Scope& scope, rnn::Argument* arg) {
-    this->scope = &scope;
-    InitArgument(name, op, arg);
-    CacheScopes(scope, *arg);
-    CacheInlinks(scope, arg->inlinks);
-    CacheOutlinks(scope, arg->outlinks);
+void DynamicRecurrentOp::ArgCache::Init(
+    const rnn::ArgumentName& name, const paddle::framework::OperatorBase& op,
+    const paddle::framework::Scope& scope, rnn::Argument* arg) {
+  this->scope = &scope;
+  InitArgument(name, op, arg);
+  CacheScopes(scope, *arg);
+  CacheInlinks(scope, arg->inlinks);
+  CacheOutlinks(scope, arg->outlinks);
+}
+
+void DynamicRecurrentOp::ArgCache::InitArgument(const rnn::ArgumentName& name,
+                                                const OperatorBase& op,
+                                                rnn::Argument* arg) {
+  rnn::InitArgument(name, arg, op, false /*is_grad*/);
+}
+
+void DynamicRecurrentOp::ArgCache::CacheScopes(const Scope& scope,
+                                               const rnn::Argument& arg) {
+  auto scopes_var = scope.FindVar(arg.step_scopes);
+  PADDLE_ENFORCE(scopes_var != nullptr,
+                 "the step_scopes output argument [%s] should be created first "
+                 "by framework.",
+                 arg.step_scopes);
+  this->scopes = scopes_var->GetMutable<std::vector<Scope*>>();
+}
+
+void DynamicRecurrentOp::ArgCache::CacheInlinks(
+    const Scope& scope, const std::vector<std::string>& names) {
+  for (auto name : names) {
+    auto* var = GetVariable(scope, name);
+    inlinks[name] = var;
   }
+}
 
-  void DynamicRecurrentOp::ArgCache::InitArgument(const rnn::ArgumentName& name,
-                                                  const OperatorBase& op,
-                                                  rnn::Argument* arg) {
-    rnn::InitArgument(name, arg, op, false /*is_grad*/);
+void DynamicRecurrentOp::ArgCache::CacheOutlinks(
+    const Scope& scope, const std::vector<std::string>& names) {
+  for (auto name : names) {
+    auto* var = GetVariable(scope, name);
+    outlinks[name] = var;
   }
+}
 
-  void DynamicRecurrentOp::ArgCache::CacheScopes(const Scope& scope,
-                                                 const rnn::Argument& arg) {
-    auto scopes_var = scope.FindVar(arg.step_scopes);
-    PADDLE_ENFORCE(
-        scopes_var != nullptr,
-        "the step_scopes output argument [%s] should be created first "
-        "by framework.",
-        arg.step_scopes);
-    this->scopes = scopes_var->GetMutable<std::vector<Scope*>>();
-  }
+Variable* DynamicRecurrentOp::ArgCache::GetVariable(const Scope& scope,
+                                                    const std::string& name) {
+  auto* var = scope.FindVar(name);
+  PADDLE_ENFORCE_NOT_NULL(var, "variable [%s] not exist in scope", name);
+  return var;
+}
 
-  void DynamicRecurrentOp::ArgCache::CacheInlinks(
-      const Scope& scope, const std::vector<std::string>& names) {
-    for (auto name : names) {
-      auto* var = GetVariable(scope, name);
-      inlinks[name] = var;
-    }
-  }
+const rnn::ArgumentName DynamicRecurrentOp::kArgName{
+    "step_net", "step_scopes",  "inlinks",      "outlinks",
+    "memories", "pre_memories", "boot_memories"};
 
-  void DynamicRecurrentOp::ArgCache::CacheOutlinks(
-      const Scope& scope, const std::vector<std::string>& names) {
-    for (auto name : names) {
-      auto* var = GetVariable(scope, name);
-      outlinks[name] = var;
-    }
-  }
-
-  Variable* DynamicRecurrentOp::ArgCache::GetVariable(const Scope& scope,
-                                                      const std::string& name) {
-    auto* var = scope.FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var, "variable [%s] not exist in scope", name);
-    return var;
-  }
-
-  const rnn::ArgumentName DynamicRecurrentOp::kArgName{
-      "step_net", "step_scopes",  "inlinks",      "outlinks",
-      "memories", "pre_memories", "boot_memories"};
-
-  void DynamicRecurrentGradientOp::Run(
-      const Scope& scope, const platform::DeviceContext& dev_ctx) const {}
+void DynamicRecurrentGradientOp::Run(
+    const Scope& scope, const platform::DeviceContext& dev_ctx) const {}
 
 }  // namespace operators
 }  // namespace paddle
