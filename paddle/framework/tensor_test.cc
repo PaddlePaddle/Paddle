@@ -194,6 +194,7 @@ TEST(Tensor, CopyFrom) {
   {
     Tensor src_tensor;
     Tensor dst_tensor;
+    CPUDeviceContext cpu_ctx((CPUPlace()));
 
     int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
 
@@ -201,7 +202,7 @@ TEST(Tensor, CopyFrom) {
     memcpy(src_ptr, arr, 9 * sizeof(int));
 
     auto cpu_place = new paddle::platform::CPUPlace();
-    dst_tensor.CopyFrom<int>(src_tensor, *cpu_place);
+    dst_tensor.CopyFrom<int>(src_tensor, *cpu_place, cpu_ctx);
 
     const int* dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(src_ptr, dst_ptr);
@@ -210,7 +211,7 @@ TEST(Tensor, CopyFrom) {
     }
 
     Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
-    dst_tensor.CopyFrom<int>(slice_tensor, *cpu_place);
+    dst_tensor.CopyFrom<int>(slice_tensor, *cpu_place, cpu_ctx);
     const int* slice_ptr = slice_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(dst_ptr, slice_ptr);
@@ -231,13 +232,15 @@ TEST(Tensor, CopyFrom) {
 
     // CPU Tensor to GPU Tensor
     auto gpu_place = new paddle::platform::GPUPlace(0);
-    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_place);
+    CUDADeviceContext gpu_ctx(*gpu_place);
+    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_place, gpu_ctx);
 
     // GPU Tensor to CPU Tensor
     auto cpu_place = new paddle::platform::CPUPlace();
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
-    // Compare Tensors
+    // Sync before Compare Tensors
+    gpu_ctx.stream().Wait();
     const int* dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(src_ptr, dst_ptr);
     for (size_t i = 0; i < 9; ++i) {
@@ -247,12 +250,13 @@ TEST(Tensor, CopyFrom) {
     Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
 
     // CPU Slice Tensor to GPU Tensor
-    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_place);
+    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_place, gpu_ctx);
 
     // GPU Tensor to CPU Tensor
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
-    // Compare Slice Tensors
+    // Sync before Compare Slice Tensors
+    gpu_ctx.stream().Wait();
     const int* slice_ptr = slice_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(dst_ptr, slice_ptr);
@@ -273,7 +277,8 @@ TEST(Tensor, CopyFromVector) {
     // Copy to CPU Tensor
     cpu_tensor.Resize(make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
-    cpu_tensor.CopyFromVector<int>(src_vec, *cpu_place);
+    CPUDeviceContext cpu_ctx(*cpu_place);
+    cpu_tensor.CopyFromVector<int>(src_vec, cpu_ctx);
 
     // Compare Tensors
     const int* cpu_ptr = cpu_tensor.data<int>();
@@ -285,7 +290,7 @@ TEST(Tensor, CopyFromVector) {
 
     src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
     cpu_tensor.Resize(make_ddim({2, 2}));
-    cpu_tensor.CopyFromVector<int>(src_vec, *cpu_place);
+    cpu_tensor.CopyFromVector<int>(src_vec, cpu_ctx);
     cpu_ptr = cpu_tensor.data<int>();
     src_ptr = src_vec.data();
     ASSERT_NE(src_ptr, cpu_ptr);
@@ -306,16 +311,19 @@ TEST(Tensor, CopyFromVector) {
     // Copy to CPU Tensor
     cpu_tensor.Resize(make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
-    cpu_tensor.CopyFromVector<int>(src_vec, *cpu_place);
+    CPUDeviceContext cpu_ctx(*cpu_place);
+    cpu_tensor.CopyFromVector<int>(src_vec, cpu_ctx);
 
     // Copy to GPUTensor
     gpu_tensor.Resize(make_ddim({3, 3}));
     auto gpu_place = new paddle::platform::GPUPlace();
-    gpu_tensor.CopyFromVector<int>(src_vec, *gpu_place);
+    CUDADeviceContext gpu_ctx(*gpu_place);
+    gpu_tensor.CopyFromVector<int>(src_vec, gpu_ctx);
     // Copy from GPU to CPU tensor for comparison
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
-    // Compare Tensors
+    // Sync before Compare Tensors
+    gpu_ctx.stream().Wait();
     const int* src_ptr = src_vec.data();
     const int* cpu_ptr = cpu_tensor.data<int>();
     const int* dst_ptr = dst_tensor.data<int>();
@@ -329,11 +337,13 @@ TEST(Tensor, CopyFromVector) {
     src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
 
     cpu_tensor.Resize(make_ddim({2, 2}));
-    cpu_tensor.CopyFromVector<int>(src_vec, *cpu_place);
+    cpu_tensor.CopyFromVector<int>(src_vec, cpu_ctx);
     gpu_tensor.Resize(make_ddim({2, 2}));
-    gpu_tensor.CopyFromVector<int>(src_vec, *gpu_place);
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
+    gpu_tensor.CopyFromVector<int>(src_vec, gpu_ctx);
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
 
+    // Sync before Compare Tensors
+    gpu_ctx.stream().Wait();
     src_ptr = src_vec.data();
     cpu_ptr = cpu_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();

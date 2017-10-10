@@ -87,26 +87,28 @@ class Tensor {
   /**
    * @brief   Copy the content of external tensor to a new place.
    *
-   * @param[in] src   The external tensor.
-   * @param[in] ctx   The device context contains place where to store.
+   * @param[in] src        The external tensor.
+   * @param[in] dst_place  The dst place.
+   * @param[in] ctx        The device context contains CUDA stream.
    *
    * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
    */
   template <typename T>
-  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                       const platform::DeviceContext& ctx);
 
   /**
    * @brief   Copy the content of an external vector to a tensor.
    *
-   * @param[in] src   The external vector.
-   * @param[in] ctx   The device context contains place where to store.
+   * @param[in] src        The external tensor.
+   * @param[in] ctx        The device context contains CUDA stream.
    *
    * * @note    CopyFromVector assumes that the tensor has been resized
    *            before invoking.
    */
   template <typename T>
   inline void CopyFromVector(const std::vector<T>& src,
-                             const platform::Place& dst_place);
+                             const platform::DeviceContext& ctx);
 
   /**
    * @brief   Return the slice of the tensor.
