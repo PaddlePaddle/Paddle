@@ -437,24 +437,51 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = (x > static_cast<T>(threshold)).template cast<T>() * x;
+  }
+};
+
+template <typename T>
+struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) = dy * (x > static_cast<T>(threshold)).template cast<T>();
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_KERNEL_FUNCTOR(__macro)                         \
-  __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);          \
-  __macro(exp, ExpFunctor, ExpGradFunctor);                      \
-  __macro(relu, ReluFunctor, ReluGradFunctor);                   \
-  __macro(tanh, TanhFunctor, TanhGradFunctor);                   \
-  __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                   \
-  __macro(abs, AbsFunctor, AbsGradFunctor);                      \
-  __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor); \
-  __macro(log, LogFunctor, LogGradFunctor);                      \
-  __macro(square, SquareFunctor, SquareGradFunctor);             \
-  __macro(brelu, BReluFunctor, BReluGradFunctor);                \
-  __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);      \
-  __macro(pow, PowFunctor, PowGradFunctor);                      \
-  __macro(stanh, STanhFunctor, STanhGradFunctor);                \
-  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);       \
-  __macro(relu6, Relu6Functor, Relu6GradFunctor);                \
-  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);   \
-  __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor)
+#define FOR_EACH_KERNEL_FUNCTOR(__macro)                          \
+  __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);           \
+  __macro(exp, ExpFunctor, ExpGradFunctor);                       \
+  __macro(relu, ReluFunctor, ReluGradFunctor);                    \
+  __macro(tanh, TanhFunctor, TanhGradFunctor);                    \
+  __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                    \
+  __macro(abs, AbsFunctor, AbsGradFunctor);                       \
+  __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
+  __macro(log, LogFunctor, LogGradFunctor);                       \
+  __macro(square, SquareFunctor, SquareGradFunctor);              \
+  __macro(brelu, BReluFunctor, BReluGradFunctor);                 \
+  __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);       \
+  __macro(pow, PowFunctor, PowGradFunctor);                       \
+  __macro(stanh, STanhFunctor, STanhGradFunctor);                 \
+  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);        \
+  __macro(relu6, Relu6Functor, Relu6GradFunctor);                 \
+  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);    \
+  __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
+  __macro(thresholded_relu, ThresholdedReluFunctor, ThresholdedReluGradFunctor);
