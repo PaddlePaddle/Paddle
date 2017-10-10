@@ -149,6 +149,11 @@ __global__ void KernelMaxPool2DGrad(
   }
 }
 
+/*
+ * All tensors are in NCHW format.
+ * Ksize, strides, paddings are two elements. These two elements represent
+ * height and width, respectively.
+ */
 template <typename PoolProcess, typename T>
 class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
@@ -190,6 +195,11 @@ class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
   }
 };
 
+/*
+ * All tensors are in NCHW format.
+ * Ksize, strides, paddings are two elements. These two elements represent
+ * height and width, respectively.
+ */
 template <typename PoolProcess, typename T>
 class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
@@ -234,6 +244,11 @@ class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
   }
 };
 
+/*
+ * All tensors are in NCHW format.
+ * Ksize, strides, paddings are two elements. These two elements represent
+ * height and width, respectively.
+ */
 template <typename T>
 class MaxPool2dGradFunctor<platform::GPUPlace, T> {
  public:
@@ -456,6 +471,11 @@ __global__ void KernelMaxPool3DGrad(
   }
 }
 
+/*
+ * All tensors are in NCDHW format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ */
 template <typename PoolProcess, class T>
 class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
@@ -504,6 +524,11 @@ class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
   }
 };
 
+/*
+ * All tensors are in NCDHW format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ */
 template <typename PoolProcess, class T>
 class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
@@ -556,6 +581,11 @@ class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
   }
 };
 
+/*
+ * All tensors are in NCDHW format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ */
 template <class T>
 class MaxPool3dGradFunctor<platform::GPUPlace, T> {
  public:
@@ -709,6 +739,11 @@ __global__ void KernelMaxPool2DWithIdxGrad(
   }
 }
 
+/*
+ * All tensors are in NCHW format.
+ * Ksize, strides, paddings are two elements. These two elements represent
+ * height and width, respectively.
+ */
 template <typename T>
 class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
  public:
@@ -750,6 +785,11 @@ class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
   }
 };
 
+/*
+ * All tensors are in NCHW format.
+ * Ksize, strides, paddings are two elements. These two elements represent
+ * height and width, respectively.
+ */
 template <typename T>
 class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
  public:
@@ -903,6 +943,11 @@ __global__ void KernelMaxPool3DWithIdxGrad(
   }
 }
 
+/*
+ * All tensors are in NCDHW format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ */
 template <typename T>
 class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
  public:
@@ -951,6 +996,11 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
   }
 };
 
+/*
+ * All tensors are in NCDHW format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ */
 template <typename T>
 class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
  public:
