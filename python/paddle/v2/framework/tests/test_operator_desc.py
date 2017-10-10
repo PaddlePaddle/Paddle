@@ -10,9 +10,8 @@ class TestOperator(unittest.TestCase):
             block.append_op(type="no_such_op")
             self.assertFail()
         except AssertionError as err:
-            self.assertEqual(
-                err.message,
-                "Operator with type \"no_such_op\" has not been registered.")
+            self.assertEqual(err.message,
+                             "Operator \"no_such_op\" has not been registered.")
 
     def test_op_desc_creation(self):
         block = g_program.current_block()
