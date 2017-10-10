@@ -32,6 +32,8 @@ USE_OP(fetch);
 USE_OP(mul);
 USE_OP(sum);
 USE_OP(squared_l2_distance);
+USE_OP(fill_constant);
+USE_OP(sgd);
 
 using std::string;
 using namespace paddle::platform;
@@ -124,6 +126,7 @@ class ExecutorTesterRandom : public ::testing::Test {
     // flush
     init_program.Proto();
 
+    // run block
     auto temp_root_block = pdesc_.add_blocks();
     temp_root_block->set_idx(0);
     temp_root_block->set_parent_idx(-1);
@@ -131,6 +134,7 @@ class ExecutorTesterRandom : public ::testing::Test {
         paddle::framework::ProgramDescBind::Instance(&pdesc_);
     paddle::framework::BlockDescBind* root_block = program.Block(0);
 
+    // forward
     AddOp("gaussian_random", {}, {{"Out", {"a"}}},
           {{"dims", std::vector<int>{batch_size, input_dim}}}, root_block);
     AddOp("mul", {{"X", {"a"}}, {"Y", {"w1"}}}, {{"Out", {"b"}}}, {},
@@ -141,30 +145,33 @@ class ExecutorTesterRandom : public ::testing::Test {
           {{"Out", {"l2_distance"}}, {"sub_result", {"l2_distance_sub"}}}, {},
           root_block);
 
-    // AddOp("gaussian_random", {}, {{"Out", {"l2_distance@GRAD"}}},
-    //       {{"dims", std::vector<int>{batch_size, 1}}}, root_block);
-    // AppendBackward(program, {});
+    // backward
+    AddOp("fill_constant", {}, {{"Out", {"l2_distance@GRAD"}}},
+          {{"shape", std::vector<int>{batch_size, 1}}, {"value", float(1.0)}},
+          root_block);
+    AppendBackward(program, {});
 
-    // program.Proto();
+    // update
+    AddOp("fill_constant", {}, {{"Out", {"learning_rate"}}},
+          {{"shape", std::vector<int>{1}}, {"value", float(1.0)}}, root_block);
+    AddOp("sgd", {{"Param", {"w1"}},
+                  {"LearningRate", {"learning_rate"}},
+                  {"Grad", {"w1@GRAD"}}},
+          {{"ParamOut", {"w1"}}}, {}, root_block);
+    AddOp("sgd", {{"Param", {"w2"}},
+                  {"LearningRate", {"learning_rate"}},
+                  {"Grad", {"w2@GRAD"}}},
+          {{"ParamOut", {"w2"}}}, {}, root_block);
 
-    // for (auto& op : pdesc_.blocks(0).ops()) {
-    //   if (op.type() == "sum") {
-    //     LOG(INFO) << "Here";
-    //     for (auto& var : op.inputs()) {
-    //       for (auto& argu : var.arguments()) {
-    //         LOG(INFO) << var.parameter() << " " << argu;
-    //       }
-    //     }
-    //   }
-    // }
+    AddOp("fetch", {{"Input", {"w1"}}}, {},
+          {{"dims", std::vector<int>{input_dim, embed_dim}}, {"col", 0}},
+          root_block);
+    AddOp("fetch", {{"Input", {"w2"}}}, {},
+          {{"dims", std::vector<int>{embed_dim, input_dim}}, {"col", 1}},
+          root_block);
 
-    AddOp("fetch", {{"Input", {"l2_distance"}}}, {},
-          {{"dims", std::vector<int>{batch_size}}, {"col", 1}}, root_block);
     // flush
     program.Proto();
-
-    // TODO(tonyyang-svail):
-    //   - Test with Backward
   }
 
  protected:
