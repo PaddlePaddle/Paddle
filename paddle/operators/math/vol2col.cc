@@ -67,7 +67,7 @@ class Vol2ColFunctor<platform::CPUPlace, T> {
                 ((c * output_depth + d) * output_height + h) * output_width + w;
             if (h_pad < 0 || h_pad >= input_height || w_pad < 0 ||
                 w_pad >= input_width || d_pad < 0 || d_pad >= input_depth) {
-              col_data[col_idx] = T(0);
+              col_data[col_idx] = static_cast<T>(0);
             } else {
               int vol_idx =
                   ((c_in * input_depth + d_pad) * input_height + h_pad) *

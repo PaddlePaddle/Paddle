@@ -30,12 +30,12 @@ void testVol2col() {
     context =
         new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
   } else {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
     context =
         new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
 #else
     PADDLE_THROW("no GPU support");
-#endif  // PADDLE_ONLY_CPU
+#endif  // PADDLE_WITH_CUDA
   }
 
   /**
@@ -89,6 +89,7 @@ void testVol2col() {
   vol2col(*context, input, output_cfo, stride, stride, stride, padding, padding,
           padding);
 
+  float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
@@ -97,24 +98,12 @@ void testVol2col() {
     out_cfo_ptr = output_tmp.data<float>();
   }
 
-  EXPECT_EQ(out_cfo_ptr[0], 0);
-  EXPECT_EQ(out_cfo_ptr[1], 1);
-  EXPECT_EQ(out_cfo_ptr[2], 1);
-  EXPECT_EQ(out_cfo_ptr[3], 2);
-  EXPECT_EQ(out_cfo_ptr[4], 3);
-  EXPECT_EQ(out_cfo_ptr[5], 4);
-  EXPECT_EQ(out_cfo_ptr[6], 4);
-  EXPECT_EQ(out_cfo_ptr[7], 5);
-  EXPECT_EQ(out_cfo_ptr[8], 6);
-  EXPECT_EQ(out_cfo_ptr[9], 7);
-  EXPECT_EQ(out_cfo_ptr[10], 7);
-  EXPECT_EQ(out_cfo_ptr[11], 8);
-  EXPECT_EQ(out_cfo_ptr[12], 9);
-  EXPECT_EQ(out_cfo_ptr[13], 10);
-  EXPECT_EQ(out_cfo_ptr[14], 10);
-  EXPECT_EQ(out_cfo_ptr[15], 11);
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_EQ(out_cfo_ptr[i], vol_2_col[i]);
+  }
 
   // Col2Vol test
+  float col_2_vol[] = {0, 2, 2, 3, 8, 5, 6, 14, 8, 9, 20, 11};
   memset(input_ptr, 0, 12 * sizeof(float));
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
@@ -134,18 +123,9 @@ void testVol2col() {
     in_cfo_ptr = input_tmp.data<float>();
   }
 
-  EXPECT_EQ(in_cfo_ptr[0], 0);
-  EXPECT_EQ(in_cfo_ptr[1], 2);
-  EXPECT_EQ(in_cfo_ptr[2], 2);
-  EXPECT_EQ(in_cfo_ptr[3], 3);
-  EXPECT_EQ(in_cfo_ptr[4], 8);
-  EXPECT_EQ(in_cfo_ptr[5], 5);
-  EXPECT_EQ(in_cfo_ptr[6], 6);
-  EXPECT_EQ(in_cfo_ptr[7], 14);
-  EXPECT_EQ(in_cfo_ptr[8], 8);
-  EXPECT_EQ(in_cfo_ptr[9], 9);
-  EXPECT_EQ(in_cfo_ptr[10], 20);
-  EXPECT_EQ(in_cfo_ptr[11], 11);
+  for (int i = 0; i < 12; ++i) {
+    EXPECT_EQ(in_cfo_ptr[i], col_2_vol[i]);
+  }
 }
 
 TEST(math, vol2col) {
