@@ -13,121 +13,21 @@
    limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
 class ConvShiftKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<Tensor>("X");
-    auto *Y = context.Input<Tensor>("Y");
-    auto *Out = context.Output<framework::Tensor>("Out");
-    Out->mutable_data<T>(context.GetPlace());
-
-    auto x = EigenMatrix<T>::From(*X);
-    auto y = EigenMatrix<T>::From(*Y);
-    auto out = EigenMatrix<T>::From(*Out);
-    out.setZero();
-
-    auto x_dims = X->dims();
-    auto y_dims = Y->dims();
-    size_t batch_size = x_dims[0];
-    size_t x_width = x_dims[1];
-    size_t y_width = y_dims[1];
-    size_t y_half_width = (y_width - 1) / 2;
-
-    for (size_t k = 0; k < batch_size; ++k) {
-      for (size_t i = 0; i < x_width; ++i) {
-        for (size_t j = 0; j < y_width; ++j) {
-          int index = i + j - y_half_width;
-          index = (index + x_width) % x_width;
-          out(k, i) += x(k, index) * y(k, j);
-        }
-      }
-    }
-  }
+  void Compute(const framework::ExecutionContext &context) const override;
 };
 
 template <typename Place, typename T>
 class ConvShiftGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<Tensor>("X");
-    auto *Y = context.Input<Tensor>("Y");
-    auto *dOut =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto *dY = context.Output<framework::Tensor>(framework::GradVarName("Y"));
-
-    auto x = EigenMatrix<T>::From(*X);
-    auto y = EigenMatrix<T>::From(*Y);
-    auto dout = EigenMatrix<T>::From(*dOut);
-
-    if (dX) {
-      dX->mutable_data<T>(context.GetPlace());
-    }
-    if (dY) {
-      dY->mutable_data<T>(context.GetPlace());
-    }
-
-    auto x_dims = X->dims();
-    auto y_dims = Y->dims();
-    size_t batch_size = x_dims[0];
-    size_t x_width = x_dims[1];
-    size_t y_width = y_dims[1];
-    size_t y_half_width = (y_width - 1) / 2;
-
-    // The below trades code duplication for efficiency (keeping the if
-    // statement outside of the loop).
-    if (dX && dY) {
-      auto dx = EigenMatrix<T>::From(*dX);
-      dx.setZero();
-      auto dy = EigenMatrix<T>::From(*dY);
-      dy.setZero();
-      for (size_t k = 0; k < batch_size; ++k) {
-        for (size_t i = 0; i < x_width; ++i) {
-          for (size_t j = 0; j < y_width; ++j) {
-            int index = i + j - y_half_width;
-            index = (index + x_width) % x_width;
-            dx(k, i) += dout(k, i) * y(k, j);
-            dy(k, j) += x(k, index) * dout(k, i);
-          }
-        }
-      }
-    } else if (dX) {
-      auto dx = EigenMatrix<T>::From(*dX);
-      dx.setZero();
-      for (size_t k = 0; k < batch_size; ++k) {
-        for (size_t i = 0; i < x_width; ++i) {
-          for (size_t j = 0; j < y_width; ++j) {
-            dx(k, i) += dout(k, i) * y(k, j);
-          }
-        }
-      }
-    } else if (dY) {
-      auto dy = EigenMatrix<T>::From(*dY);
-      dy.setZero();
-      for (size_t k = 0; k < batch_size; ++k) {
-        for (size_t i = 0; i < x_width; ++i) {
-          for (size_t j = 0; j < y_width; ++j) {
-            int index = i + j - y_half_width;
-            index = (index + x_width) % x_width;
-            dy(k, j) += x(k, index) * dout(k, i);
-          }
-        }
-      }
-    }
-  }
+  void Compute(const framework::ExecutionContext &context) const override;
 };
-
 }  // namespace operators
 }  // namespace paddle

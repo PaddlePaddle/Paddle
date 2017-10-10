@@ -13,18 +13,22 @@
    limitations under the License. */
 
 #include "paddle/operators/conv_shift_op.h"
+#include "paddle/framework/eigen.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 class ConvShiftOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
@@ -37,7 +41,10 @@ class ConvShiftOp : public framework::OperatorWithKernel {
                       "The 1st dimension of Input(X) and Input(Y) should "
                       "be equal.");
     PADDLE_ENFORCE_EQ(y_dims[1] % 2, 1,
-                      "The 2nd dimension of Input(Y) should be odd.")
+                      "The 2nd dimension of Input(Y) should be odd.");
+    PADDLE_ENFORCE_LE(y_dims[1], x_dims[1],
+                      "The 2nd dimension of Input(Y) should be less than or "
+                      "equal to the 2nd dimension of Input(X).");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -48,7 +55,7 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContextBase *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
@@ -70,8 +77,8 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
 
 class ConvShiftOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConvShiftOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  ConvShiftOpMaker(framework::OpProto *proto,
+                   framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape B x M, "
@@ -103,6 +110,89 @@ However, the output only shares the LoD information with input `X`.
   }
 };
 
+template <typename T>
+class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *X = context.Input<Tensor>("X");
+    auto *Y = context.Input<Tensor>("Y");
+    auto *Out = context.Output<Tensor>("Out");
+    Out->mutable_data<T>(context.GetPlace());
+
+    auto x = EigenMatrix<T>::From(*X);
+    auto y = EigenMatrix<T>::From(*Y);
+    auto out = EigenMatrix<T>::From(*Out);
+    out.setZero();
+
+    size_t batch_size = X->dims()[0];
+    size_t x_width = X->dims()[1];
+    size_t y_width = Y->dims()[1];
+    size_t y_half_width = (y_width - 1) / 2;
+
+    for (size_t k = 0; k < batch_size; ++k) {
+      for (size_t i = 0; i < x_width; ++i) {
+        for (size_t j = 0; j < y_width; ++j) {
+          int index = (i + j - y_half_width + x_width) % x_width;
+          out(k, i) += x(k, index) * y(k, j);
+        }
+      }
+    }
+  }
+};
+
+template <typename T>
+class ConvShiftGradKernel<platform::CPUPlace, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *X = context.Input<Tensor>("X");
+    auto *Y = context.Input<Tensor>("Y");
+    auto *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto *dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto *dY = context.Output<Tensor>(framework::GradVarName("Y"));
+
+    auto x = EigenMatrix<T>::From(*X);
+    auto y = EigenMatrix<T>::From(*Y);
+    auto dout = EigenMatrix<T>::From(*dOut);
+
+    auto x_dims = X->dims();
+    auto y_dims = Y->dims();
+    size_t batch_size = x_dims[0];
+    size_t x_width = x_dims[1];
+    size_t y_width = y_dims[1];
+    size_t y_half_width = (y_width - 1) / 2;
+
+    // The below trades code duplication for efficiency (keeping the if
+    // statement outside of the loop).
+    if (dX) {
+      dX->mutable_data<T>(context.GetPlace());
+      auto dx = EigenMatrix<T>::From(*dX);
+      dx.setZero();
+      for (size_t k = 0; k < batch_size; ++k) {
+        for (size_t i = 0; i < x_width; ++i) {
+          for (size_t j = 0; j < y_width; ++j) {
+            int index = (i + j - y_half_width + x_width) % x_width;
+            dx(k, index) += dout(k, i) * y(k, j);
+          }
+        }
+      }
+    }
+
+    if (dY) {
+      dY->mutable_data<T>(context.GetPlace());
+      auto dy = EigenMatrix<T>::From(*dY);
+      dy.setZero();
+      for (size_t k = 0; k < batch_size; ++k) {
+        for (size_t i = 0; i < x_width; ++i) {
+          for (size_t j = 0; j < y_width; ++j) {
+            int index = (i + j - y_half_width + x_width) % x_width;
+            dy(k, j) += x(k, index) * dout(k, i);
+          }
+        }
+      }
+    }
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 

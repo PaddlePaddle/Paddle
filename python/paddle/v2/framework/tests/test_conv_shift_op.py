@@ -10,7 +10,7 @@ def conv_shift_forward(x, y):
     y_half_width = (N - 1) / 2
     for i in xrange(M):
         for j in xrange(N):
-            out[:, i] += x[:, (i + j - y_half_width) % M] * y[:, j]
+            out[:, i] += x[:, (i + j + M - y_half_width) % M] * y[:, j]
     return out
 
 
@@ -18,9 +18,9 @@ class TestConvShiftOp(OpTest):
     def setUp(self):
         self.op_type = "conv_shift"
 
-        batch_size = 3
-        x_dim = 6
-        y_dim = 3  # must be odd
+        batch_size = 4
+        x_dim = 17
+        y_dim = 3  # must be odd and <= x_dim
         x = np.random.random((batch_size, x_dim)).astype("float32")
         y = np.random.random((batch_size, y_dim)).astype("float32")
         self.inputs = {'X': x, 'Y': y}
