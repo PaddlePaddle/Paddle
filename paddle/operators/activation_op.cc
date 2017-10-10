@@ -188,6 +188,17 @@ class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftplusOpMaker(framework::OpProto *proto,
+                  framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softplus operator");
+    AddOutput("Y", "Output of Softplus operator");
+    AddComment("Softplus activation operator, softplus(x) = log(1 + exp(x))");
+  }
+};
+
 class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SoftsignOpMaker(framework::OpProto *proto,
@@ -331,6 +342,9 @@ REGISTER_OP(log, ops::ActivationOp, ops::LogOpMaker, log_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(square, ops::ActivationOp, ops::SquareOpMaker, square_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(softplus, ops::ActivationOp, ops::SoftplusOpMaker, softplus_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
