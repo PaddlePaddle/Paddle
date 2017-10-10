@@ -311,7 +311,7 @@ class TestSTanh(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
-class TestSoftplug(OpTest):
+class TestSoftplus(OpTest):
     def setUp(self):
         self.op_type = "softplus"
         self.inputs = {
