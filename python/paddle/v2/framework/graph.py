@@ -142,15 +142,25 @@ class OpProtoHolder(object):
 
 
 class Operator(object):
-    def __init__(self, block, desc, type, inputs=None, outputs=None,
+    def __init__(self,
+                 block,
+                 desc,
+                 type=None,
+                 inputs=None,
+                 outputs=None,
                  attrs=None):
         self.block = block
         self.desc = desc
-        self.proto = OpProtoHolder.instance().get_op_proto(type)
+        if len(self.desc.type()) != 0:
+            return
+        if type is None:
+            raise ValueError(
+                "`type` to initilized an Operator can not be None.")
         self.desc.set_type(type)
+        proto = OpProtoHolder.instance().get_op_proto(type)
 
         if inputs is not None:
-            for in_proto in self.proto.inputs:
+            for in_proto in proto.inputs:
                 in_argus = inputs[in_proto.name]
                 if not isinstance(in_argus, list):
                     in_argus = [in_argus]
@@ -164,7 +174,7 @@ class Operator(object):
                 self.desc.set_input(in_proto.name, in_argu_names)
 
         if outputs is not None:
-            for out_proto in self.proto.outputs:
+            for out_proto in proto.outputs:
                 out_argus = outputs[out_proto.name]
                 if not isinstance(out_argus, list):
                     out_argus = [out_argus]
@@ -175,10 +185,11 @@ class Operator(object):
                 out_argu_names = []
                 for argu in out_argus:
                     out_argu_names.append(argu.name)
+                    argu.op = self
                 self.desc.set_output(out_proto.name, out_argu_names)
 
         if attrs is not None:
-            for attr in self.proto.attrs:
+            for attr in proto.attrs:
                 attr_name = attr.name
                 if not attr_name in attrs:
                     continue
@@ -186,6 +197,8 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
                 else:
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+
+        self.desc.infer_shape(self.block.desc)
 
     @property
     def type(self):

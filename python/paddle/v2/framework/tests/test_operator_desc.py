@@ -7,10 +7,17 @@ class TestOperator(unittest.TestCase):
     def test_error_type(self):
         block = g_program.create_block()
         try:
+            block.append_op()
+            self.assertFail()
+        except ValueError as v_err:
+            self.assertEqual(
+                v_err.message,
+                "`type` to initilized an Operator can not be None.")
+        try:
             block.append_op(type="no_such_op")
             self.assertFail()
-        except AssertionError as err:
-            self.assertEqual(err.message,
+        except AssertionError as a_err:
+            self.assertEqual(a_err.message,
                              "Operator \"no_such_op\" has not been registered.")
 
     def test_op_desc_creation(self):
@@ -37,6 +44,7 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)
         self.assertEqual(mul_op.attr("x_num_col_dims"), 1)
+        self.assertEqual(mul_out.op, mul_op)
 
     def test_mult_input(self):
         block = g_program.current_block()
@@ -57,6 +65,7 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(sum_op.input("X"), ["sum.x1", "sum.x2", "sum.x3"])
         self.assertEqual(sum_op.output_names, ["Out"])
         self.assertEqual(sum_op.output("Out"), ["sum.out"])
+        self.assertEqual(sum_out.op, sum_op)
 
 
 if __name__ == '__main__':
