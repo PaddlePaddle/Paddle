@@ -152,7 +152,9 @@ class Block(object):
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
-        return Parameter(global_block, *args, **kwargs)
+        param = Parameter(global_block, *args, **kwargs)
+        self.program.parameters.append(param.name)
+        return param
 
     def append_op(self, *args, **kwargs):
         op_desc = self.desc.append_op()
@@ -182,6 +184,7 @@ class Program(object):
         self.desc = core.ProgramDesc.instance()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
+        self.parameters = []  # parameter name list stored in the global scope
 
     def global_block(self):
         return self.blocks[0]

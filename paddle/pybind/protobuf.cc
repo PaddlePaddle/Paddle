@@ -140,6 +140,11 @@ void BindBlockDesc(py::module &m) {
              return self.NewVar(name);
            },
            py::return_value_policy::reference)
+      .def("has_var",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.HasVar(name);
+           })
       .def("var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;

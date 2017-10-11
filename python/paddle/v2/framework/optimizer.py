@@ -1,10 +1,24 @@
+import paddle.v2.framework.graph as graph
+
+
+def grad_var_name(name):
+    return name + "@GRAD"
+
+
 class Optimizer(object):
     """Optimizer Base class.
 
+    Define the common interface of an optimizer.
+    User should not use this class directly, but need to use one of it's implementation.
     """
 
     def __init__(self):
         pass
+
+    def _append_optimize_op(self, block, param_and_grad):
+        """ append optimize operator to block and return all the added optimize_op
+        """
+        raise NotImplementedError()
 
     def create_backward_pass(self, loss, parameter_list=None):
         """
@@ -18,18 +32,36 @@ class Optimizer(object):
         Returns:
           list of (parameters, gradients) pair.
         """
-        return None
 
-    def create_optimization_pass(self, parameters_and_grads):
+        assert isinstance(loss, graph.Variable)
+        loss.block.program.append_backward(set())
+        parameters = loss.block.program.parameters
+        params_and_grads = []
+        for param in parameters:
+            grad = grad_var_name(param)
+            if loss.block.has_var(grad):
+                params_and_grads.append((param, grad))
+            else:
+                params_and_grads.append((param, None))
+        return params_and_grads
+
+    def create_optimization_pass(self, parameters_and_grads, loss):
         """Add optimization operators to update gradients to variables.
 
         Args:
+          loss: the target that this optimization is for.
           parameters_and_grads: a list of (variable, gradient) pair to update.
 
         Returns:
           optmization_op_list: a list of optimization operator that will update parameter using gradient.
         """
-        return None
+        optimize_ops = []
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[2] is not None:
+                optimize_op = self._append_optimize_op(loss.block,
+                                                       param_and_grad)
+                optimize_ops.append(optimize_op)
+        return optimize_ops
 
     def minimize(self, loss, parameter_list):
         """Add operations to minimize `loss` by updating `parameter_list`.
@@ -38,5 +70,5 @@ class Optimizer(object):
         `create_optimization_pass()` into one.
         """
         params_grads = self.create_backward_pass(loss, parameter_list)
-        update_ops = self.create_optimization_pass(params_grads)
-        return update_ops
+        optimize_ops = self.create_optimization_pass(params_grads, loss)
+        return optimize_ops
