@@ -111,7 +111,7 @@ size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
   return GetGPUBuddyAllocator(place.device)->Used();
 }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace memory
 }  // namespace paddle
