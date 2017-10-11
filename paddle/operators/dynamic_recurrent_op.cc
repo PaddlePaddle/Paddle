@@ -96,7 +96,6 @@ void DynamicRecurrentOp::Run(const Scope& scope,
 
   // call stepnet in all the time steps
   for (size_t step = 0; step < cache_.num_steps; step++) {
-    LOG(INFO) << "run step " << step;
     auto& step_scope = cache_.GetScope(step);
     stepnet_->Run(step_scope, dev_ctx);
   }
@@ -112,22 +111,9 @@ void DynamicRecurrentOp::SplitInputs() const {
     const auto& var = item.second;
     const auto& tensor = var->Get<LoDTensor>();
     TensorArray& ta = step_inputs_[item.first];
-    // NOTE only for debug
-    LOG(INFO) << "unpack lod " << tensor.dims();
-    LOG(INFO) << "lod: ";
-    for (auto& vec : tensor.lod()) {
-      for (auto i : vec) {
-        LOG(INFO) << i;
-      }
-    }
 
     dy_seq_metas_[item.first] =
         ta.Unpack(tensor, level, true /*length_descend*/);
-
-    // NOTE for debug
-    for (size_t i = 0; i < ta.size(); i++) {
-      LOG(INFO) << i << "-th tensor " << ta.Read(i).dims();
-    }
 
     if (cache_.num_steps) {
       PADDLE_ENFORCE_EQ(ta.size(), cache_.num_steps,
@@ -261,7 +247,6 @@ void DynamicRecurrentOp::LinkState(const rnn::MemoryAttr& memory,
 
   LoDTensor* pre_state{nullptr};
   if (step == 0) {
-    LOG(INFO) << "init 0-th prestate";
     pre_state = cache_.GetTensor(*cache_.scope, memory.boot_var);
     pre_state->mutable_data<float>(platform::CPUPlace());
     // allocate memory
@@ -270,7 +255,6 @@ void DynamicRecurrentOp::LinkState(const rnn::MemoryAttr& memory,
     detail::ReorderBootState<value_type>(some_meta, *pre_state, &state_pre,
                                          pre_state->place());
   } else {
-    LOG(INFO) << "init " << step << "-th prestate";
     pre_state = cache_.GetTensor(cache_.GetScope(step - 1), memory.var);
   }
 
