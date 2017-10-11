@@ -15,10 +15,13 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "CostLayer.h"
-#include "ValidationLayer.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
+
+#ifndef PADDLE_MOBILE_INFERENCE
+#include "ValidationLayer.h"
+#endif
 
 DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
@@ -103,10 +106,12 @@ LayerPtr Layer::create(const LayerConfig& config) {
     return LayerPtr(new MultiClassCrossEntropy(config));
   else if (type == "rank-cost")
     return LayerPtr(new RankingCost(config));
+#ifndef PADDLE_MOBILE_INFERENCE
   else if (type == "auc-validation")
     return LayerPtr(new AucValidation(config));
   else if (type == "pnpair-validation")
     return LayerPtr(new PnpairValidation(config));
+#endif
 
   return LayerPtr(registrar_.createByType(config.type(), config));
 }

@@ -24,6 +24,10 @@ if(WITH_DOUBLE)
     add_definitions(-DPADDLE_TYPE_DOUBLE)
 endif(WITH_DOUBLE)
 
+if(WITH_TESTING)
+    add_definitions(-DPADDLE_WITH_TESTING)
+endif(WITH_TESTING)
+
 if(NOT WITH_TIMER)
     add_definitions(-DPADDLE_DISABLE_TIMER)
 endif(NOT WITH_TIMER)

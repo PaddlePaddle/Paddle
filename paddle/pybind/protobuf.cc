@@ -117,7 +117,6 @@ void BindProgramDesc(py::module &m) {
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
-      .def("__str__", &ProgramDescBind::DebugString)
       .def("num_blocks", &ProgramDescBind::Size);
 }
 
@@ -167,7 +166,9 @@ void BindVarDsec(py::module &m) {
       .def("set_shape", &VarDescBind::SetShape)
       .def("set_data_type", &VarDescBind::SetDataType)
       .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
-      .def("data_type", &VarDescBind::GetDataType);
+      .def("data_type", &VarDescBind::GetDataType)
+      .def("lod_level", &VarDescBind::GetLodLevel)
+      .def("set_lod_level", &VarDescBind::SetLoDLevel);
 }
 
 void BindOpDesc(py::module &m) {
@@ -191,15 +192,14 @@ void BindOpDesc(py::module &m) {
       .def("output", &OpDescBind::Output)
       .def("output_names", &OpDescBind::OutputNames)
       .def("set_output", &OpDescBind::SetOutput)
-      .def("__str__", &OpDescBind::DebugString)
-      .def("__repr__", &OpDescBind::DebugString)
       .def("has_attr", &OpDescBind::HasAttr)
       .def("attr_type", &OpDescBind::GetAttrType)
       .def("attr_names", &OpDescBind::AttrNames)
       .def("set_attr", &OpDescBind::SetAttr)
       .def("attr", &OpDescBind::GetAttr)
       .def("set_block_attr", &OpDescBind::SetBlockAttr)
-      .def("get_block_attr", &OpDescBind::GetBlockAttr);
+      .def("get_block_attr", &OpDescBind::GetBlockAttr)
+      .def("infer_shape", &OpDescBind::InferShape);
 }
 
 }  // namespace pybind

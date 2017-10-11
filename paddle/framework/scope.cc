@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/scope.h"
+
+#include <memory>  // for unique_ptr
+#include <mutex>   // for call_once
 #include "paddle/string/printf.h"
 
 namespace paddle {
@@ -60,6 +63,18 @@ const Scope* Scope::FindScope(const Variable* var) const {
 void Scope::DropKids() {
   for (Scope* s : kids_) delete s;
   kids_.clear();
+}
+
+std::once_flag feed_variable_flag;
+
+framework::Scope& GetGlobalScope() {
+  static std::unique_ptr<framework::Scope> g_scope{nullptr};
+  std::call_once(feed_variable_flag, [&]() {
+    g_scope.reset(new framework::Scope());
+    g_scope->NewVar("feed_value");
+    g_scope->NewVar("fetch_value");
+  });
+  return *(g_scope.get());
 }
 
 }  // namespace framework
