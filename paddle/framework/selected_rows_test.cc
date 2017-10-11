@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/selected_rows.h"
-#include "paddle/operators/math/math_function.h"
-#include
 #include "gtest/gtest.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace framework {
@@ -28,11 +27,12 @@ class SelectedRowsTester : public ::testing::Test {
     int64_t row_numel = 100;
     selected_rows_.reset(new SelectedRows(rows, height));
 
-    ctx_.reset(new platform::CPUDeviceContext(place_))
-        tensor_.reset(new Tensor());
-    tensor_.mutable_data<float>(place_, make_ddim({height, row_numel}));
+    ctx_.reset(new platform::CPUDeviceContext(place_));
+    tensor_.reset(new Tensor());
+    tensor_->mutable_data<float>(make_ddim({3, row_numel}), place_);
 
-    operators::math::SetConstant(*ctx_, tensor_.get(), 2.0);
+    operators::math::SetConstant<platform::CPUPlace, float>(*ctx_,
+                                                            tensor_.get(), 2.0);
 
     selected_rows_->set_value(tensor_.get());
   }
@@ -40,27 +40,28 @@ class SelectedRowsTester : public ::testing::Test {
  protected:
   platform::CPUPlace place_;
   std::unique_ptr<platform::CPUDeviceContext> ctx_;
-  std::unque_ptr<SelectedRows> selected_rows_{nullptr};
-  std::unque_ptr<Tensor> tensor_{nullptr};
+  std::unique_ptr<SelectedRows> selected_rows_{nullptr};
+  std::unique_ptr<Tensor> tensor_{nullptr};
 };
 
-TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_.height(), 100); }
+TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_->height(), 10); }
 
 TEST_F(SelectedRowsTester, dims) {
-  ASSERT_EQ(selected_rows_.value().ddim(), make_ddim({3, 100}));
+  ASSERT_EQ(selected_rows_->value().dims(), make_ddim({3, 100}));
 }
 
 TEST_F(SelectedRowsTester, CopyToTensor) {
   Tensor output;
   platform::CPUPlace dst_place;
-  SelectedRowsToTensor(selected_rows_, dst_place, *ctx_, &output);
+  SelectedRowsToTensor<float>(*selected_rows_, dst_place, *ctx_, &output);
   ASSERT_EQ(output.dims(), make_ddim({10, 100}));
 
   float* data = output.data<float>();
 
   ASSERT_EQ(data[0 + 100 * 0], 2.0);
   ASSERT_EQ(data[1 + 100 * 1], 0.0);
-  ASSERT_EQ(data[3 + 100 * 3], 2.0);
+  ASSERT_EQ(data[5 + 100 * 3], 0.0);
+  ASSERT_EQ(data[3 + 100 * 4], 2.0);
   ASSERT_EQ(data[8 + 100 * 5], 0.0);
   ASSERT_EQ(data[7 + 100 * 7], 2.0);
   ASSERT_EQ(data[6 + 100 * 9], 0.0);
