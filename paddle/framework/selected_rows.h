@@ -78,9 +78,10 @@ void SelectedRowsToTensor(const SelectedRows& input,
                                                         static_cast<T>(0.0));
 
     for (size_t i = 0; i < rows.size(); i++) {
-      memory::Copy(dst_cpu_place, output->data<T>() + rows[i] * row_numel,
-                   src_gpu_place, input.value().data<T>() + i * row_numel,
-                   row_numel * sizeof(T));
+      memory::Copy(
+          dst_cpu_place, output->data<T>() + rows[i] * row_numel, src_gpu_place,
+          input.value().data<T>() + i * row_numel, row_numel * sizeof(T),
+          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
     }
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
@@ -94,9 +95,10 @@ void SelectedRowsToTensor(const SelectedRows& input,
                                                         static_cast<T>(0.0));
 
     for (size_t i = 0; i < rows.size(); i++) {
-      memory::Copy(dst_gpu_place, output->data<T>() + rows[i] * row_numel,
-                   src_cpu_place, input.value().data<T>() + i * row_numel,
-                   row_numel * sizeof(T));
+      memory::Copy(
+          dst_gpu_place, output->data<T>() + rows[i] * row_numel, src_cpu_place,
+          input.value().data<T>() + i * row_numel, row_numel * sizeof(T),
+          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
     }
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
@@ -109,9 +111,10 @@ void SelectedRowsToTensor(const SelectedRows& input,
     operators::math::SetConstant<platform::GPUPlace, T>(ctx, output,
                                                         static_cast<T>(0.0));
     for (size_t i = 0; i < rows.size(); i++) {
-      memory::Copy(dst_gpu_place, output->data<T>() + rows[i] * row_numel,
-                   src_gpu_place, input.value().data<T>() + i * row_numel,
-                   row_numel * sizeof(T));
+      memory::Copy(
+          dst_gpu_place, output->data<T>() + rows[i] * row_numel, src_gpu_place,
+          input.value().data<T>() + i * row_numel, row_numel * sizeof(T),
+          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
     }
 #endif
   }
