@@ -75,13 +75,13 @@ turns out
 loss(X1, X2, Label) = max(0, -Label * (X1 - X2) + margin).
 
 The attribute `margin` involved here helps make the predictions more robust.
-Denote the item ranked higher as the positive sample, otherwise negative 
-sample. If the score of the two samples statisfies 
+Denote the item ranked higher as the positive sample, otherwise the negative 
+sample. If the score of the two samples satisfies 
 
 positive sample - negative sample < margin,
 
-the pair of samples will contribute to the loss, which will backpropogate and 
-train the ranking model to enlarge the difference of the two score.
+the pair of samples will contribute to the final loss, which will backpropogate 
+and train the ranking model to enlarge the difference of the two score.
 
 For batch input with size `batch_size`, `X1`, `X2` and `Label`
 all have the same shape [batch_size x 1].
