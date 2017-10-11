@@ -35,7 +35,7 @@ struct Heaviside {
 };
 
 template <typename Place, typename T>
-class MarginRankLossKernel : public framework::OpKernel {
+class MarginRankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_t = ctx.Output<framework::Tensor>("Out");
@@ -63,7 +63,7 @@ class MarginRankLossKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MarginRankLossGradKernel : public framework::OpKernel {
+class MarginRankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_x1_t =
