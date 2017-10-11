@@ -100,7 +100,7 @@ void DynamicRecurrentOp::SplitInputs() const {
   // TODO(superjom) make level a config
   // TODO(superjom) check all the inputs has the same LoD
   int level = 0;
-  for (auto& item : cache_.inlinks) {
+  for (const auto& item : cache_.inlinks) {
     const auto& var = item.second;
     const auto& tensor = var->Get<LoDTensor>();
     TensorArray& ta = step_inputs_[item.first];
@@ -117,11 +117,11 @@ void DynamicRecurrentOp::SplitInputs() const {
 }
 
 void DynamicRecurrentOp::WriteStepInputs() const {
-  for (auto& item : cache_.inlinks) {
+  for (const auto& item : cache_.inlinks) {
     auto ta_it = step_inputs_.find(item.first);
     PADDLE_ENFORCE(ta_it != step_inputs_.end(),
                    "step_inputs_ not compatible with memory set");
-    TensorArray& ta = step_inputs_[item.first];
+    TensorArray& ta = ta_it->second;
     for (size_t step = 0; step < ta.size(); step++) {
       auto tensor = ta.Read(step);
       auto& step_scope = cache_.GetScope(step);

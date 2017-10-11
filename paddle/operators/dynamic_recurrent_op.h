@@ -27,11 +27,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Scope;
-using framework::TensorArray;
-using framework::LoDTensor;
-using framework::Variable;
-
 class DynamicRecurrentOp : public framework::OperatorBase {
  public:
   static const rnn::ArgumentName kArgName;
@@ -50,7 +45,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
     PADDLE_THROW("Not implemented");
   }
 
-  void Run(const Scope& scope,
+  void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
 
   /*
@@ -108,17 +103,17 @@ class DynamicRecurrentOp : public framework::OperatorBase {
 
  protected:
   struct ArgCache {
-    Scope const* scope;
-    std::vector<Scope*>* scopes;
-    std::map<std::string, Variable*> inlinks;
-    std::map<std::string, Variable*> outlinks;
+    framework::Scope const* scope;
+    std::vector<framework::Scope*>* scopes;
+    std::map<std::string, framework::Variable*> inlinks;
+    std::map<std::string, framework::Variable*> outlinks;
 
     size_t num_steps{0};
 
     void Init(const rnn::ArgumentName& name, const OperatorBase& op,
-              const Scope& scope, rnn::Argument* arg);
+              const framework::Scope& scope, rnn::Argument* arg);
 
-    Scope& GetScope(size_t index) {
+    framework::Scope& GetScope(size_t index) {
       PADDLE_ENFORCE_LT(index, num_steps);
       return *scopes->at(index);
     }
@@ -126,19 +121,20 @@ class DynamicRecurrentOp : public framework::OperatorBase {
    private:
     void InitArgument(const rnn::ArgumentName& name, const OperatorBase& op,
                       rnn::Argument* arg);
-    void CacheScopes(const Scope& scope, const rnn::Argument& arg);
-    void CacheInlinks(const Scope& scope,
+    void CacheScopes(const framework::Scope& scope, const rnn::Argument& arg);
+    void CacheInlinks(const framework::Scope& scope,
                       const std::vector<std::string>& names);
-    void CacheOutlinks(const Scope& scope,
+    void CacheOutlinks(const framework::Scope& scope,
                        const std::vector<std::string>& names);
-    Variable* GetVariable(const Scope& scope, const std::string& name);
+    framework::Variable* GetVariable(const framework::Scope& scope,
+                                     const std::string& name);
   };
 
  private:
   std::unique_ptr<OperatorBase> stepnet_;
-  mutable std::map<std::string, TensorArray> states_;
-  mutable std::map<std::string, TensorArray> step_inputs_;
-  mutable std::map<std::string, TensorArray> step_outputs_;
+  mutable std::map<std::string, framework::TensorArray> states_;
+  mutable std::map<std::string, framework::TensorArray> step_inputs_;
+  mutable std::map<std::string, framework::TensorArray> step_outputs_;
   mutable std::map<std::string, std::vector<framework::DySeqMeta>>
       dy_seq_metas_;
   mutable rnn::Argument arg_;
@@ -164,7 +160,7 @@ class DynamicRecurrentGradientOp : public framework::OperatorBase {
                              const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const Scope& scope,
+  void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
 };
 
