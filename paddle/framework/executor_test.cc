@@ -34,7 +34,7 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
-      auto var = block->NewVar(v);
+      auto var = block->GetOrCreateVar(v);
       var->SetDataType(paddle::framework::DataType::FP32);
     }
   }

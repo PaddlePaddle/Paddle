@@ -161,7 +161,7 @@ class TensorArray:
         @name: str
             the name of the variable to output.
         '''
-        tensor = NewVar(name)
+        tensor = GetOrCreateVar(name)
         tensor_array_stack(self.name, tensor)
         return tensor
 

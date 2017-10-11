@@ -137,7 +137,7 @@ void BindBlockDesc(py::module &m) {
       .def("new_var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
-             return self.NewVar(name);
+             return self.GetOrCreateVar(name);
            },
            py::return_value_policy::reference)
       .def("var",

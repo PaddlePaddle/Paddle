@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-VarDescBind *BlockDescBind::NewVar(const std::string &name) {
+VarDescBind *BlockDescBind::GetOrCreateVar(const std::string &name) {
   need_update_ = true;
   auto it = vars_.find(name);
   PADDLE_ENFORCE(it == vars_.end(), "Duplicated variable %s", name);
