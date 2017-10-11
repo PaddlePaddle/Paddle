@@ -103,6 +103,7 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
 void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
   BlockDesc *desc = block.RawPtr();
   this->attrs_[name] = desc;
+  need_update_ = true;
 }
 
 void OpDescBind::SetAttrMap(
