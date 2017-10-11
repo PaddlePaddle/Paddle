@@ -100,8 +100,6 @@ class OpDescBind {
     return &this->attrs_;
   }
 
-  void CheckAttrs();
-
   void InferShape(const BlockDescBind &block) const;
 
  private:

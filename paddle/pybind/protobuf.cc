@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/pybind/protobuf.h"
 #include <deque>
 #include <iostream>
-#include "paddle/framework/backward.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/program_desc.h"
@@ -117,11 +116,6 @@ void BindProgramDesc(py::module &m) {
                   py::return_value_policy::reference)
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
-      .def("append_backward",
-           [](ProgramDescBind &program_desc,
-              const std::unordered_set<std::string> &no_grad_vars) {
-             AppendBackward(program_desc, no_grad_vars);
-           })
       .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
       .def("num_blocks", &ProgramDescBind::Size);
 }
@@ -205,7 +199,6 @@ void BindOpDesc(py::module &m) {
       .def("attr", &OpDescBind::GetAttr)
       .def("set_block_attr", &OpDescBind::SetBlockAttr)
       .def("get_block_attr", &OpDescBind::GetBlockAttr)
-      .def("check_attrs", &OpDescBind::CheckAttrs)
       .def("infer_shape", &OpDescBind::InferShape);
 }
 
