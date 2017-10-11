@@ -51,7 +51,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
 
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& outlinks,
-                   const size_t seq_len) {
+                   const size_t seq_len, const platform::DeviceContext& ctx) {
   for (size_t i = 0; i < outlinks.size(); i++) {
     auto* output_var = step_scopes[0]->parent().FindVar(outlinks[i]);
     PADDLE_ENFORCE_NOT_NULL(output_var, "output link [%s] is not in scope.",
@@ -72,7 +72,7 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
       // TODO(luotao02) data type and platform::DeviceContext() should set
       // correctly
       (output->Slice<float>(j, j + 1))
-          .CopyFrom<float>(*step_output, platform::CPUPlace());
+          .CopyFrom<float>(*step_output, platform::CPUPlace(), ctx);
     }
   }
 }
