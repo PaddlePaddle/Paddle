@@ -29,22 +29,19 @@ LoD concatLoD(const std::vector<const T*> ins, const size_t axis,
   auto out_lod = ins[0]->lod();
   const size_t n = ins.size();
   if (axis == 0UL) {
-    if (level == 0UL) {
-      for (size_t i = 1; i < n; ++i) {
-        for (size_t j = 0; j < ins[i]->lod()[0].size(); ++j) {
-          out_lod[0][j] += ins[i]->lod()[0][j];
-        }
+    for (size_t i = 1; i < n; ++i) {
+      for (size_t j = 0; j < ins[i]->lod()[0].size(); ++j) {
+        out_lod[0][j] += ins[i]->lod()[0][j];
       }
-    } else if (level == 1UL) {
-      PADDLE_ENFORCE_EQ(ins[0]->NumLevels(), 2UL,
-                        "If the level is 1, all of the inputs "
-                        "should be the nested sequence.");
-      for (size_t i = 1; i < n; ++i) {
-        for (size_t j = 0; j < ins[i]->lod()[0].size(); ++j) {
-          out_lod[0].push_back(ins[i]->lod()[0][j]);
-        }
-        for (size_t j = 0; j < ins[i]->lod()[1].size(); ++j) {
-          out_lod[1][j] += ins[i]->lod()[1][j];
+
+      if (ins[0]->NumLevels() == 2) {
+        for (size_t j = 1; j < ins[i]->lod()[1].size(); ++j) {
+          if (level == 0UL) {
+            out_lod[1].push_back(out_lod[1].back() + ins[i]->lod()[1][j] -
+                                 ins[i]->lod()[1][j - 1]);
+          } else if (level == 1UL) {
+            out_lod[1][j] += ins[1]->lod()[1][j];
+          }
         }
       }
     }

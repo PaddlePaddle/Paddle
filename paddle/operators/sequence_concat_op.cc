@@ -75,17 +75,22 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
       If the axis is other than 0(here, axis is 1 and level is 1),
       each input should have the same LoD information and the LoD 
       information of the output keeps the same as the input.
+
       LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
       LoD(x1) = {{0,2,4}, {0,1,2,3,4}}; Dims(x1) = (4,4,4)
       LoD(Out) = {{0,2,4}, {0,1,2,3,4}}; Dims(Out) = (4,7,4)
+
     - Case2:
       If the axis is 0(here, leve is 0), the inputs are concatenated along 
       time steps, the LoD information of the output need to re-compute.
+
       LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
       LoD(x1) = {{0,3,5}, {0,1,2,3,5}}; Dims(x1) = (5,3,4)
       LoD(Out) = {{0,5,9}, {0,1,2,3,4,5,6,7,9}}; Dims(Out) = (9,3,4)
+
     - Case3:
       If the axis is 0(here, level is 1).
+
       LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
       LoD(x1) = {{0,3,5}, {0,1,3,4,5}}; Dims(x1) = (5,3,4)
       LoD(Out) = {{0,5,9}, {0,2,5,7,9}}; Dims(Out) = (9,3,4)
