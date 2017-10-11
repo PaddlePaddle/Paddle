@@ -1,6 +1,6 @@
 import itertools
 
-from paddle.v2.framework.activation import ActivationBase
+from paddle.v2.framework.activation import Activation
 from paddle.v2.framework.graph import g_program, Variable
 from paddle.v2.framework.unique_name import unique_name
 
@@ -24,7 +24,7 @@ def export(export_name):
     return __wrap__
 
 
-class LayerBase(object):
+class Layer(object):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -35,7 +35,7 @@ class LayerBase(object):
         return self.kwargs.get('program', g_program)
 
     def multiple_input(self, input_name='input'):
-        ipt = self.kwargs.get(param_name, None)
+        ipt = self.kwargs.get(input_name, None)
         if ipt is None:
             return []
         elif isinstance(ipt, Variable):
@@ -141,10 +141,10 @@ class LayerBase(object):
         act = self.kwargs.get('act', None)
         if act is None:
             return input
-        elif not isinstance(act, ActivationBase):
+        elif not isinstance(act, Activation):
             raise TypeError("act should be ActivationBase or None")
         else:
-            assert isinstance(act, ActivationBase)
+            assert isinstance(act, Activation)
             out = self.create_tmp_var(dtype=self.infer_dtype(input))
             self.append_op(
                 type=act.type,
@@ -155,7 +155,7 @@ class LayerBase(object):
 
 
 @export("data_layer")
-class DataLayer(LayerBase):
+class DataLayer(Layer):
     def __init__(self, dtype, shape, **kwargs):
         super(DataLayer, self).__init__(**kwargs)
         self.dtype = dtype
@@ -172,7 +172,7 @@ class DataLayer(LayerBase):
 
 
 @export("fc_layer")
-class FCLayer(LayerBase):
+class FCLayer(Layer):
     def __init__(self, num_flatten_dims=1, **kwargs):
         super(FCLayer, self).__init__(**kwargs)
         self.num_flatten_dims = num_flatten_dims
