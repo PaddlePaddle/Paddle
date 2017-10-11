@@ -34,6 +34,10 @@ VarDescBind *BlockDescBind::Var(const std::string &name) const {
   return it->second.get();
 }
 
+bool BlockDescBind::HasVar(const std::string &name) const {
+  return vars_.find(name) != vars_.end();
+}
+
 std::vector<VarDescBind *> BlockDescBind::AllVars() const {
   std::vector<VarDescBind *> res;
   for (const auto &p : vars_) {
@@ -69,6 +73,12 @@ void BlockDescBind::Sync() {
     op_field.Reserve(static_cast<int>(ops_.size()));
     for (auto &op_desc : ops_) {
       op_field.AddAllocated(op_desc->Proto());
+    }
+    auto &var_field = *this->desc_->mutable_vars();
+    var_field.Clear();
+    var_field.Reserve(static_cast<int>(vars_.size()));
+    for (auto &var_desc : vars_) {
+      var_field.AddAllocated(var_desc.second->Proto());
     }
     need_update_ = false;
   }

@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <vector>
 #include "paddle/framework/framework.pb.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -26,14 +28,9 @@ class ProgramDescBind {
  public:
   static ProgramDescBind &Instance(ProgramDesc *prog);
 
-  ProgramDescBind(const ProgramDescBind &o) = delete;
-  ProgramDescBind &operator=(const ProgramDescBind &o) = delete;
-
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
   BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
-
-  std::string DebugString() { return Proto()->DebugString(); }
 
   size_t Size() const { return blocks_.size(); }
 
@@ -46,6 +43,8 @@ class ProgramDescBind {
   ProgramDesc *prog_;
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
+
+  DISABLE_COPY_AND_ASSIGN(ProgramDescBind);
 };
 }  // namespace framework
 }  // namespace paddle

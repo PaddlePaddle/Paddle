@@ -21,7 +21,7 @@ namespace operators {
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
 template <typename T>
-class CPUUniformRandomKernel : public framework::OpKernel {
+class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* tensor = ctx.Output<framework::Tensor>("Out");
@@ -47,7 +47,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of UniformRandomOp should not be null.");
 
@@ -61,6 +61,11 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       temp.push_back(static_cast<int64_t>(dim));
     }
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return static_cast<framework::DataType>(Attr<int>("data_type"));
   }
 };
 
@@ -80,6 +85,8 @@ Used to initialize tensor with uniform random generator.
                  "Random seed of uniform random. "
                  "0 means generate a seed by system")
         .SetDefault(0);
+    AddAttr<int>("data_type", "output tensor data type")
+        .SetDefault(framework::DataType::FP32);
   }
 };
 }  // namespace operators

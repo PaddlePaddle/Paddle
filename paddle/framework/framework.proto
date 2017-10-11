@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
 package paddle.framework;
 
 enum AttrType {
@@ -66,7 +67,6 @@ message OpProto {
 
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
-    optional bool not_in_gradient = 5 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -106,6 +106,7 @@ message LoDTensorDesc {
 message VarDesc {
   required string name = 1;
   optional LoDTensorDesc lod_tensor = 2;
+  optional bool persistable = 3 [ default = false ];
 }
 
 message BlockDesc {
@@ -115,4 +116,7 @@ message BlockDesc {
   repeated OpDesc ops = 4;
 }
 
+// Please refer to
+// https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
+// for more details.
 message ProgramDesc { repeated BlockDesc blocks = 1; }

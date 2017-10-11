@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class FillZerosLikeKernel : public framework::OpKernel {
+class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* output = context.Output<framework::Tensor>("Y");

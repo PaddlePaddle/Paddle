@@ -24,7 +24,7 @@ class PadOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of PadOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of PadOp should not be null.");
@@ -56,8 +56,7 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input should be a k-D tensor(k > 0 and k < 7)");
     AddOutput("Out",
               "The output of pad op."
-              "A tensor with the same shape as X.")
-        .NotInGradient();
+              "A tensor with the same shape as X.");
     AddComment(R"DOC(
 Pad input into output, as specified by paddings and pad_value. The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
@@ -99,7 +98,7 @@ class PadOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
@@ -111,11 +110,29 @@ class PadOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class PadOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto* bind = new framework::OpDescBind();
+    bind->SetInput("X", Input("X"));
+    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    bind->SetAttrMap(Attrs());
+    bind->SetType("pad_grad");
+    return std::unique_ptr<framework::OpDescBind>(bind);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(pad, ops::PadOp, ops::PadOpMaker, pad_grad, ops::PadOpGrad);
+
+REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker, ops::PadOpGradMaker);
+REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
 REGISTER_OP_CPU_KERNEL(pad, ops::PadKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(pad_grad,
                        ops::PadGradKernel<paddle::platform::CPUPlace, float>);

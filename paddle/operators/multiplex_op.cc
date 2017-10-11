@@ -24,7 +24,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) shouldn't be null.");
     PADDLE_ENFORCE(!ctx->Inputs("X").empty(),
                    "MultiInput(X) shouldn't be empty.");
@@ -49,6 +49,11 @@ class MultiplexOp : public framework::OperatorWithKernel {
                      "All the candidate tensors must have the same size.");
     }
     ctx->SetOutputDim("Out", in_dim);
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
   }
 };
 
@@ -85,7 +90,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null.");
     PADDLE_ENFORCE(!ctx->Outputs(framework::GradVarName("X")).empty(),
                    "Output(X@Grad) should not be null.");
@@ -98,6 +103,11 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
       d_ins.push_back(ins[i]);
     }
     ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
   }
 };
 

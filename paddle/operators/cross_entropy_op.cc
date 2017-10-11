@@ -22,7 +22,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
@@ -47,6 +47,12 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Y", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Y");
   }
+
+  // CrossEntropy's data type just determined by "X"
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  }
 };
 
 class CrossEntropyGradientOp : public framework::OperatorWithKernel {
@@ -54,7 +60,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
@@ -86,6 +92,12 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                         "Input(Label) should be 1.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  }
+
+  // CrossEntropy's data type just determined by "X"
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
   }
 };
 

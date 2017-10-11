@@ -100,7 +100,7 @@ class FCOp : public NetOp {
 
       add_out = Output("AddOut");
       AppendOp(framework::OpRegistry::CreateOp(
-          "rowwise_add", {{"X", {sum_out}}, {"b", {Input("B")}}},
+          "elementwise_add", {{"X", {sum_out}}, {"Y", {Input("B")}}},
           {{"Out", {add_out}}}, {}));
     } else {
       if (Output("AddOut") != framework::kEmptyVarName) {
