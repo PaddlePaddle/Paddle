@@ -48,7 +48,7 @@ class BlockDescBind {
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
-  VarDescBind *NewVar(const std::string &name_bytes);
+  VarDescBind *GetOrCreateVar(const std::string &name_bytes);
 
   VarDescBind *Var(const std::string &name_bytes) const;
 
