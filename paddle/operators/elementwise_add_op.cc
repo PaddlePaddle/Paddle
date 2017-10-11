@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/elementwise_add_op.h"
+#include "paddle/operators/elementwise_op.h"
 
 namespace paddle {
 namespace operators {

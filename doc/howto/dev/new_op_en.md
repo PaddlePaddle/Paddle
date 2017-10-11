@@ -1,14 +1,17 @@
 # How to write a new operator
 
- - [Background](#Background)
- - [Implementing C++ Types](#Implementing_C++_Types)
-   - [Defining ProtoMaker](#Defining_ProtoMaker)
-   - [Defining Operator](#Defining_Operator)
-   - [Registering Operator](#Registering_Operator)
-   - [Compilation](#Compilation)
- - [Python Binding](#Python_Binding)
- - [Unit Tests](#Unit_Tests)
-
+ - [Background](#background)
+ - [Implementing C++ Types](#implementing-c++-types)
+   - [Defining ProtoMaker](#defining-protoMaker)
+   - [Defining Operator](#defining-operator)
+   - [Registering Operator](#registering-operator)
+   - [Compilation](#compilation)
+ - [Python Binding](#python-binding)
+ - [Unit Tests](#unit-tests)
+   - [Testing Forward Operators](#testing-forward-operators)
+   - [Testing Backward Operators](#testing-backward-operators)
+   - [Compiling and Running](#compiling-and-running)
+ - [Remarks](#remarks)
 ## Background
 
 Here are the base types needed. For details, please refer to the design docs.
@@ -179,7 +182,7 @@ Note that **different devices (CPU, GPU)share an Op definition; whether or not t
 
 `MulOp`'s CPU and GPU share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
 
-To ease the writing of `OpKernel` compute, and for reusing code cross-device, `Eigen unsupported Tensor` module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md).
+To ease the writing of `OpKernel` compute, and for reusing code cross-device, [`Eigen-unsupported Tensor`](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md?fileviewer=file-view-default) module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md).
 
 
 This concludes the forward implementation of an operator. Next its operation and kernel need to be registered in a `.cc` file.
@@ -202,7 +205,7 @@ The definition of its corresponding backward operator, if applicable, is similar
 
     - `REGISTER_OP` registers the `ops::MulOp` class, type named `mul`, its type `ProtoMaker` is `ops::MulOpMaker`, registering `ops::MulOpGrad` as `mul_grad`.
     - `REGISTER_OP_WITHOUT_GRADIENT` registers an operator without gradient.
-    - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulKernel`.
+    - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulGradKernel`.
 
 
 - Registering GPU Kernel in `.cu` files
@@ -232,4 +235,108 @@ The system will automatically bind to Python and link it to a generated library.
 
 ## Unit Tests
 
-Unit tests include comparing a forward operator's implementations on different devices, comparing a backward operator's implementation on different devices, and a scaling test for the backward operator. Here, we introduce the [unit tests for `MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py).
+Unit tests for an operator include
+
+1. comparing a forward operator's implementations on different devices,
+
+2. comparing a backward operator's implementation on different devices, and
+
+3. a scaling test for the backward operator.
+
+Here, we introduce the [unit tests for `MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py).
+
+### Testing Forward Operators
+
+A forward operator unit test inherits `unittest.TestCase` and defines metaclass `__metaclass__ = OpTestMeta`. More concrete tests are performed in `OpTestMeta`. Testing a forward operator requires the following:
+
+1. Defining input, output and relevant attributes in `setUp` method.
+
+2. Generating random input data.
+
+3. Implementing the same computation logic in a Python script:
+
+  ```python
+  import unittest
+  import numpy as np
+  from gradient_checker import GradientChecker, create_op
+  from op_test_util import OpTestMeta
+
+  class TestMulOp(unittest.TestCase):
+      __metaclass__ = OpTestMeta
+
+      def setUp(self):
+          self.type = "mul"
+          self.inputs = {
+              'X': np.random.random((32, 84)).astype("float32"),
+              'Y': np.random.random((84, 100)).astype("float32")
+          }
+          self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
+  ```
+Get its output, and compare it with the forward operator's own output.
+
+The code above first loads required packages. In addition, we have
+
+- `self.type = "mul" ` defines the type that is identical to what the operator's registered type.
+- `self.inputs` defines input, with type `numpy.array` and initializes it.
+- `self.outputs` defines output and completes the same operator computation in the Python script, and returns its result from the Python script.
+
+### Testing Backward Operators
+
+A backward operator unit test inherits `GradientChecker`, which inherits `unittest.TestCase`. As a result, **a backward operator unit test needs to be have the prefix `test_`**.
+
+```python
+class TestMulGradOp(GradientChecker):
+    def setUp(self):
+        self.op = create_op("mul")
+        self.inputs = {
+            'X': np.random.random((32, 84)).astype("float32"),
+            'Y': np.random.random((84, 100)).astype("float32")
+        }
+
+    def test_check_grad_normal(self):
+        # mul op will enlarge the relative error
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+```
+
+Some key points in the code above include:
+
+- `create_op("mul")` creates the backward operator's corresponding forward operator.
+- `test_normal` calls `check_grad` to validate scaling tests' correctness and stability through numeric methods.
+  - The first variable `["X", "Y"]` appoints `X` and `Y` to be scale tested.
+  - The second variable `"Out"` points to the network's final output target `Out`.
+  - The third variable `max_relative_error` points to the maximum relative tolerance error during scaling tests.
+- `test_check_grad_ingore_x` and `test_check_grad_ingore_y`branches test the cases where there is only one scaling input.
+
+### Compiling and Running
+
+
+Any new unit testing file of the format `test_*.py`  added to the director `python/paddle/v2/framework/tests` is automatically added to the project to compile.
+
+Note that **unlike the compile test for Ops, running unit tests requires compiling the entire project** and requires compiling with flag `WITH_TESTING` on i.e. `cmake paddle_dir -DWITH_TESTING=ON`.
+
+After successfully compiling the project, run the following command to run unit tests:
+
+```bash
+make test ARGS="-R test_mul_op -V"
+```
+
+Or,
+
+```bash
+ctest -R test_mul_op
+```
+
+## Remarks
+
+- Every `*_op.h` (if applicable), `*_op.cc`, and `*_op.cu` (if applicable) must be created for a unique Op. Compiling will fail if multiple operators are included per file.
+- The type with which an operator is registered needs to be identical to the Op's name. Registering `REGISTER_OP(B, ...)` in `A_op.cc` will cause unit testing failures.
+- If the operator does not implement a GPU kernel, please refrain from creating an empty `*_op.cu` file, or else unit tests will fail.
+- If multiple operators rely on some shared methods, a file NOT named `*_op.*` can be created to store them, such as `gather.h`.

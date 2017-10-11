@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class SquaredL2DistanceKernel : public framework::OpKernel {
+class SquaredL2DistanceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
@@ -68,7 +68,7 @@ class SquaredL2DistanceKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class SquaredL2DistanceGradKernel : public framework::OpKernel {
+class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("sub_result");

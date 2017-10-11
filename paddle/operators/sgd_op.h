@@ -19,28 +19,25 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
-class SGDOpKernel : public framework::OpKernel {
+class SGDOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param = ctx.Input<Tensor>("param");
-    auto grad = ctx.Input<Tensor>("grad");
-    auto param_out = ctx.Output<Tensor>("param_out");
-    float lr = ctx.Attr<float>("learning_rate");
+    auto param = ctx.Input<framework::Tensor>("Param");
+    auto grad = ctx.Input<framework::Tensor>("Grad");
+    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
+    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
-    auto p = EigenVector<T>::Flatten(*param);
-    auto g = EigenVector<T>::Flatten(*grad);
-    auto o = EigenVector<T>::Flatten(*param_out);
+    auto p = framework::EigenVector<T>::Flatten(*param);
+    auto g = framework::EigenVector<T>::Flatten(*grad);
+    auto o = framework::EigenVector<T>::Flatten(*param_out);
+    auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
     auto place = ctx.GetEigenDevice<Place>();
 
-    o.device(place) = p - lr * g;
+    Eigen::DSizes<int, 1> grad_dsize(grad->numel());
+    o.device(place) = p - lr.broadcast(grad_dsize) * g;
   }
 };
 

@@ -47,7 +47,7 @@ __global__ void AccuracyCudaKernel(const int N, const int D, const int* Xdata,
 }
 
 template <typename T>
-class AccuracyOpCUDAKernel : public framework::OpKernel {
+class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -69,8 +69,12 @@ class AccuracyOpCUDAKernel : public framework::OpKernel {
       return;
     }
 
-    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<1, PADDLE_CUDA_NUM_THREADS>>>(
-        num_samples, infer_width, inference_data, label_data, accuracy_data);
+    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<
+        1, PADDLE_CUDA_NUM_THREADS, 0,
+        reinterpret_cast<const platform::CUDADeviceContext&>(
+            ctx.device_context())
+            .stream()>>>(num_samples, infer_width, inference_data, label_data,
+                         accuracy_data);
   }
 };
 

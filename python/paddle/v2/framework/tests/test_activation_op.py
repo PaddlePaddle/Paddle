@@ -48,6 +48,21 @@ class TestTanh(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
+class TestTanhShrink(OpTest):
+    def setUp(self):
+        self.op_type = "tanh_shrink"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [10, 17]).astype("float32")
+        }
+        self.outputs = {'Y': self.inputs['X'] - np.tanh(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+
+
 class TestSqrt(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
@@ -122,6 +137,28 @@ class TestBRelu(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
+class TestRelu6(OpTest):
+    def setUp(self):
+        self.op_type = "relu6"
+        x = np.random.uniform(-1, 1, [4, 10]).astype("float32")
+        threshold = 6.0
+        # The same with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
+
+        self.inputs = {'X': x}
+        self.attrs = {'threshold': threshold}
+        self.outputs = {
+            'Y': np.minimum(np.maximum(self.inputs['X'], 0), threshold)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+
+
 class TestSoftRelu(OpTest):
     def setUp(self):
         self.op_type = "soft_relu"
@@ -136,6 +173,26 @@ class TestSoftRelu(OpTest):
         t[t < -threshold] = -threshold
         t[t > threshold] = threshold
         self.outputs = {'Y': np.log((np.exp(t) + 1))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+
+
+class TestELU(OpTest):
+    def setUp(self):
+        self.op_type = "elu"
+        x = np.random.uniform(-3, 3, [4, 4]).astype("float32")
+        alpha = 1.
+        # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
+        # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
+        self.inputs = {'X': x}
+        self.attrs = {'alpha': alpha}
+        self.outputs = {
+            'Y': np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -211,6 +268,23 @@ class TestSTanh(OpTest):
         scale_b = 1.7159
         self.attrs = {'scale_a': scale_a, 'scale_b': scale_b}
         self.outputs = {'Y': scale_b * np.tanh(self.inputs['X'] * scale_a)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+
+
+class TestSoftsign(OpTest):
+    def setUp(self):
+        self.op_type = "softsign"
+        self.inputs = {
+            'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
+        }
+        self.outputs = {
+            'Y': np.divide(self.inputs['X'], 1 + np.abs(self.inputs['X']))
+        }
 
     def test_check_output(self):
         self.check_output()

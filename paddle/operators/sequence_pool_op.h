@@ -38,7 +38,7 @@ enum SeqPoolType {
 };
 
 template <typename Place, typename T>
-class SequencePoolKernel : public framework::OpKernel {
+class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
@@ -46,16 +46,27 @@ class SequencePoolKernel : public framework::OpKernel {
     int strategy = context.Attr<int>("strategy");
 
     auto dims = in->dims();
-    auto lod = in->lod()[0];
+    auto lod = in->lod();
     int64_t w = in->numel() / dims[0];
+
+    // InferShape by lod
+    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
+    PADDLE_ENFORCE_GE(
+        dims[0],
+        /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
+        "The first dimension of Input(X) must be large than batch size.");
+    dims[0] = lod[0].size() - 1;
+    out->Resize({dims});
+
+    auto lod_level_0 = lod[0];
 
     out->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
-    for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      Tensor in_t =
-          in->Slice<T>(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
+    for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
+      Tensor in_t = in->Slice<T>(static_cast<int>(lod_level_0[i]),
+                                 static_cast<int>(lod_level_0[i + 1]));
       Tensor out_t = out->Slice<T>(i, i + 1);
-      int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      int64_t h = static_cast<int64_t>(lod_level_0[i + 1] - lod_level_0[i]);
       auto in_e = EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
 
@@ -74,7 +85,7 @@ class SequencePoolKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class SequencePoolGradKernel : public framework::OpKernel {
+class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");

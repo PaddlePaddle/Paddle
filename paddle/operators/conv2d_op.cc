@@ -27,27 +27,25 @@ class Conv2DOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Input"),
-                            "Input(Input) of Conv2DOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Filter"),
-                            "Input(Filter) of Conv2DOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Output"),
-                            "Output(Output) of Conv2DOp should not be null.");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Input"),
+                   "Input(Input) of Conv2DOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Filter"),
+                   "Input(Filter) of Conv2DOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Output"),
+                   "Output(Output) of Conv2DOp should not be null.");
 
-    auto in = ctx.Input<Tensor>("Input");
-    auto filter = ctx.Input<Tensor>("Filter");
-    auto out = ctx.Output<framework::Tensor>("Output");
-    std::vector<int> strides = Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = Attr<std::vector<int>>("paddings");
-    int groups = Attr<int>("groups");
-    int input_channels = in->dims()[1];
-    int output_channels = filter->dims()[0];
+    auto in_dims = ctx->GetInputDim("Input");
+    auto filter_dims = ctx->GetInputDim("Filter");
+    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    int groups = ctx->Attrs().Get<int>("groups");
+    int input_channels = in_dims[1];
+    int output_channels = filter_dims[0];
 
-    PADDLE_ENFORCE_EQ(in->dims().size(), 4, "Conv2DOp input should be 4-D.");
-    PADDLE_ENFORCE_EQ(filter->dims().size(), 4,
-                      "Conv2DOp filter should be 4-D.");
-    PADDLE_ENFORCE_EQ(input_channels, filter->dims()[1] * groups,
+    PADDLE_ENFORCE_EQ(in_dims.size(), 4, "Conv2DOp input should be 4-D.");
+    PADDLE_ENFORCE_EQ(filter_dims.size(), 4, "Conv2DOp filter should be 4-D.");
+    PADDLE_ENFORCE_EQ(input_channels, filter_dims[1] * groups,
                       "The number of input channels should be equal to filter "
                       "channels * groups.");
     PADDLE_ENFORCE_EQ(
@@ -55,17 +53,17 @@ class Conv2DOp : public framework::OperatorWithKernel {
         "The number of output channels should be divided by groups.");
 
     auto output_height =
-        outputSize(in->dims()[2], filter->dims()[2], paddings[0], strides[0]);
+        outputSize(in_dims[2], filter_dims[2], paddings[0], strides[0]);
     auto output_width =
-        outputSize(in->dims()[3], filter->dims()[3], paddings[1], strides[1]);
-    out->Resize(
-        {in->dims()[0], filter->dims()[0], output_height, output_width});
+        outputSize(in_dims[3], filter_dims[3], paddings[1], strides[1]);
+    ctx->SetOutputDim(
+        "Output", {in_dims[0], filter_dims[0], output_height, output_width});
   }
 };
 
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  Conv2DOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "Input",
@@ -108,14 +106,15 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto in = ctx.Input<Tensor>("Input");
-    auto filter = ctx.Input<Tensor>("Filter");
-    auto d_in = ctx.Output<framework::Tensor>(framework::GradVarName("Input"));
-    auto d_filter =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Filter"));
-    if (d_in) d_in->Resize(in->dims());
-    if (d_filter) d_filter->Resize(filter->dims());
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto in_dims = ctx->GetInputDim("Input");
+    auto filter_dims = ctx->GetInputDim("Filter");
+    if (ctx->HasOutput(framework::GradVarName("Input"))) {
+      ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
+    }
+    if (ctx->HasOutput(framework::GradVarName("Filter"))) {
+      ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
+    }
   }
 };
 

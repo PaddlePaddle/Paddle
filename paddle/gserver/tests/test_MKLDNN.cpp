@@ -215,15 +215,15 @@ struct testActDesc {
 static void getAddtoConfig(TestConfig& cfg, const testActDesc& pm) {
   cfg.biasSize = 0;
   cfg.layerConfig.set_type("addto");
-  size_t layerSize = pm.ih * pm.ih * pm.iw;
+  size_t layerSize = pm.ic * pm.ih * pm.iw;
   cfg.layerConfig.set_size(layerSize);
   cfg.inputDefs.push_back({INPUT_DATA, "layer_0", layerSize, 0});
   cfg.layerConfig.add_inputs();
 }
 
-void testActivation(std::string& actType, const testActDesc& pm) {
-  // TODO(TJ): mkldnn_softmax not implemented, paddle do not have elu activation
-  if (actType == "mkldnn_softmax" || actType == "mkldnn_elu") {
+void testActivation(std::string actType, const testActDesc& pm) {
+  // TODO(TJ): remove me when paddle support elu activation
+  if (actType == "mkldnn_elu") {
     return;
   }
   const std::string compareTypes[] = {actType, actType.erase(0, 7)};
@@ -240,6 +240,7 @@ TEST(MKLDNNActivation, Activations) {
   for (auto type : types) {
     /* bs, c, h, w*/
     testActivation(type, {16, 64, 32, 32});
+    testActivation(type, {2, 8, 1, 1});
   }
 }
 

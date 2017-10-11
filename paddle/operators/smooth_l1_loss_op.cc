@@ -22,33 +22,28 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "X must be initialized.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Y must be initialized.");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
 
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    PADDLE_ENFORCE_EQ(x->dims(), y->dims(),
-                      "The shape of X and Y must be the same.");
-    PADDLE_ENFORCE_GE(x->dims().size(), 2,
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    PADDLE_ENFORCE_EQ(x_dims, y_dims, "The shape of X and Y must be the same.");
+    PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       "The tensor rank of X must be at least 2.");
-    auto* inside_weight = ctx.Input<framework::Tensor>("InsideWeight");
-    if (inside_weight) {
-      auto* outside_weight = ctx.Input<framework::Tensor>("OutsideWeight");
-      PADDLE_ENFORCE_NOT_NULL(outside_weight,
-                              "If weights are provided, must specify both "
-                              "inside and outside weights.");
-      PADDLE_ENFORCE_EQ(inside_weight->dims(), x->dims(),
+    if (ctx->HasInput("InsideWeight")) {
+      PADDLE_ENFORCE(ctx->HasInput("OutsideWeight"),
+                     "If weights are provided, must specify both "
+                     "inside and outside weights.");
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("InsideWeight"), x_dims,
                         "The shape of InsideWeight must be same as X.");
-      PADDLE_ENFORCE_EQ(outside_weight->dims(), x->dims(),
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("OutsideWeight"), x_dims,
                         "The shape of OutsideWeight must be same as X.");
     }
 
-    auto* diff = ctx.Output<framework::Tensor>("Diff");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    diff->Resize(x->dims());
+    ctx->SetOutputDim("Diff", x_dims);
     // loss is a two-rank tensor
-    out->Resize({x->dims()[0], 1});
+    ctx->SetOutputDim("Out", {x_dims[0], 1});
   }
 };
 
@@ -99,12 +94,9 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    auto in_dims = ctx.Input<framework::Tensor>("X")->dims();
-    auto out_dims =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->dims();
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto in_dims = ctx->GetInputDim("X");
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
                       "The tensor rank of Input(Out@Grad) should be 2.");
@@ -114,8 +106,14 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(out_dims[1], 1,
                       "The 2nd dimension of Input(Out@Grad) must be 1.");
 
-    if (x_grad) x_grad->Resize(in_dims);
-    if (y_grad) y_grad->Resize(in_dims);
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, in_dims);
+    }
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, in_dims);
+    }
   }
 };
 

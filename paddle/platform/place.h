@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <iostream>
+
 #include "paddle/platform/variant.h"
 
 namespace paddle {
@@ -46,7 +47,17 @@ struct IsGPUPlace : public boost::static_visitor<bool> {
   bool operator()(const GPUPlace &gpu) const { return true; }
 };
 
+// Define the max number of Place in bit length. i.e., the max number of places
+// should be less equal than 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
+#define NUM_PLACE_TYPE_LIMIT_IN_BIT 4
+
 typedef boost::variant<GPUPlace, CPUPlace> Place;
+
+// static check number of place types is less equal than
+// 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
+BOOST_MPL_ASSERT((boost::mpl::less_equal<
+                  Place::types::size,
+                  boost::mpl::long_<1 << NUM_PLACE_TYPE_LIMIT_IN_BIT>>));
 
 void set_place(const Place &);
 const Place &get_place();

@@ -22,25 +22,23 @@ class AccuracyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.InputVar("Inference"),
-        "Input(Inference) of AccuracyOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Label"),
-                            "Input(Label) of AccuracyOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("Accuracy"),
-        "Output(Accuracy) of AccuracyOp should not be null.");
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Inference"),
+                   "Input(Inference) of AccuracyOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"),
+                   "Input(Label) of AccuracyOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Accuracy"),
+                   "Output(Accuracy) of AccuracyOp should not be null.");
 
-    auto *inference = ctx.Input<framework::Tensor>("Inference");
-    auto *label = ctx.Input<framework::Tensor>("Label");
+    auto inference_dim = ctx->GetInputDim("Inference");
+    auto label_dim = ctx->GetInputDim("Label");
 
-    PADDLE_ENFORCE_EQ(label->dims().size(), 1, "label must be a vector");
-    PADDLE_ENFORCE_EQ(inference->dims()[0], label->dims()[0],
+    PADDLE_ENFORCE_EQ(label_dim.size(), 1, "label must be a vector");
+    PADDLE_ENFORCE_EQ(inference_dim[0], label_dim[0],
                       "inference size must be the same as label size");
 
-    ctx.Output<framework::Tensor>("Accuracy")->Resize({1});
-    ctx.ShareLoD("Inference", /*->*/ "Accuracy");
+    ctx->SetOutputDim("Accuracy", {1});
+    ctx->ShareLoD("Inference", /*->*/ "Accuracy");
   }
 };
 
