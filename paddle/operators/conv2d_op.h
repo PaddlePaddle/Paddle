@@ -26,7 +26,7 @@ using Tensor = framework::Tensor;
 
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
-inline int outputSize(int input_size, int filter_size, int padding,
+inline int OutputSize(int input_size, int filter_size, int padding,
                       int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;

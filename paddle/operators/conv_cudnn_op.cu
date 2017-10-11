@@ -15,6 +15,7 @@
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memory.h"
+#include "paddle/operators/conv2d_op.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cudnn_helper.h"
 
@@ -83,8 +84,8 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     int output_height = output->dims()[2];
     int output_width = output->dims()[3];
 
-    int group_offset_X = input_channels / groups * input_height * input_width;
-    int group_offset_Y =
+    int group_offset_in = input_channels / groups * input_height * input_width;
+    int group_offset_out =
         output_channels / groups * output_height * output_width;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn conv workspace ---------------------
@@ -113,10 +114,10 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     T alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
       PADDLE_ENFORCE(platform::dynload::cudnnConvolutionForward(
-          handle, &alpha, cudnn_input_desc, input_data + i * group_offset_X,
+          handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
           cudnn_filter_desc, filter_data + i * group_offset_filter,
           cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes,
-          &beta, cudnn_output_desc, output_data + i * group_offset_Y));
+          &beta, cudnn_output_desc, output_data + i * group_offset_out));
     }
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);
@@ -175,8 +176,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     int output_grad_height = output_grad->dims()[2];
     int output_grad_width = output_grad->dims()[3];
 
-    int group_offset_X = input_channels / groups * input_height * input_width;
-    int group_offset_Y =
+    int group_offset_in = input_channels / groups * input_height * input_width;
+    int group_offset_out =
         output_grad_channels / groups * output_grad_height * output_grad_width;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
@@ -243,9 +244,9 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
             handle, &alpha, cudnn_filter_desc,
             filter_data + i * group_offset_filter, cudnn_output_grad_desc,
-            output_grad_data + i * group_offset_Y, cudnn_conv_desc, data_algo,
+            output_grad_data + i * group_offset_out, cudnn_conv_desc, data_algo,
             cudnn_workspace, workspace_size_in_bytes, &beta,
-            cudnn_input_grad_desc, input_grad_data + i * group_offset_X));
+            cudnn_input_grad_desc, input_grad_data + i * group_offset_in));
       }
     }
     // ------------------- cudnn conv backward filter ---------------------
@@ -256,8 +257,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
           t.constant(static_cast<T>(0));
       for (int i = 0; i < groups; i++) {
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
-            handle, &alpha, cudnn_input_desc, input_data + i * group_offset_X,
-            cudnn_output_grad_desc, output_grad_data + i * group_offset_Y,
+            handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
+            cudnn_output_grad_desc, output_grad_data + i * group_offset_out,
             cudnn_conv_desc, filter_algo, cudnn_workspace,
             workspace_size_in_bytes, &beta, cudnn_filter_grad_desc,
             filter_grad_data + i * group_offset_filter));

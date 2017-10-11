@@ -43,9 +43,9 @@ void Conv2DOp::InferShape(framework::InferShapeContext* ctx) const {
       "The number of output channels should be divided by groups.");
 
   auto output_height =
-      outputSize(in_dims[2], filter_dims[2], paddings[0], strides[0]);
+      OutputSize(in_dims[2], filter_dims[2], paddings[0], strides[0]);
   auto output_width =
-      outputSize(in_dims[3], filter_dims[3], paddings[1], strides[1]);
+      OutputSize(in_dims[3], filter_dims[3], paddings[1], strides[1]);
   ctx->SetOutputDim("Output",
                     {in_dims[0], filter_dims[0], output_height, output_width});
 }
