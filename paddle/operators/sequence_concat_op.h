@@ -77,6 +77,9 @@ class SequenceConcatOpKernel : public framework::OpKernel<T> {
                           "LoDTensors should be the same.");
       }
     }
+    PADDLE_ENFORCE_GT(ins[0]->NumLevels(), level,
+                      "The levels of all the input LoDTensors "
+                      "should be greater than the specify level");
 
     out->mutable_data<T>(ctx.GetPlace());
     auto out_lod = concatLoD<LoDTensor>(ins, axis, level);

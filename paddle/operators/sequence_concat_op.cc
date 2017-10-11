@@ -65,7 +65,8 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "If the level is 0, the inputs will be joined at the nested "
                  "sequence level."
                  "If the level is 1, the inputs will be joined at the "
-                 "sequence level.")
+                 "sequence level."
+                 "The level should be less than the levels of input")
         .SetDefault(0);
     AddComment(R"DOC(
     The sequence_concat operator concatenates multiple LoDTensors. 
