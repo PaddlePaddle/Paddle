@@ -41,7 +41,7 @@ limitations under the License. */
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 namespace paddle {
 namespace platform {
