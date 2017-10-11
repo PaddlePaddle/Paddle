@@ -17,7 +17,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   // Run the block
   Scope& local_scope = scope->NewScope();
   for (auto& op_desc : block.ops()) {
-    for (auto& var : op_desc) {
+    for (auto& var : op_desc.outputs()) {
       for (auto& argu : var.arguments()) {
         // Create temp variable in the local_scope
         if (local_scope.FindVar(argu) == nullptr) {
