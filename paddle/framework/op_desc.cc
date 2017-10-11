@@ -211,6 +211,15 @@ static InferShapeFuncMap &InferShapeFuncs() {
   return *g_map;
 }
 
+void OpDescBind::CheckAttrs() {
+  PADDLE_ENFORCE(!Type().empty(),
+                 "CheckAttr() can not be called before type is setted.");
+  const auto *checker = OpInfoMap::Instance().Get(Type()).Checker();
+  PADDLE_ENFORCE_NOT_NULL(checker, "Operator \"%s\" has no registered checker.",
+                          Type());
+  checker->Check(attrs_);
+}
+
 void OpDescBind::InferShape(const BlockDescBind &block) const {
   auto &funcs = InferShapeFuncs();
   auto it = funcs.find(this->Type());

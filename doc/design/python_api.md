@@ -22,7 +22,7 @@ Whenever we create a block, we need to set its parent block to the current block
 ```python
 class Program(objects):
     def __init__(self):
-        self.proto = core.NewProgram() # a C++ ProgramDesc pointer.
+        self.desc = core.NewProgram() # a C++ ProgramDesc pointer.
         self.blocks = vector<Block>()
         self.blocks.append(Block(self, -1)) # the global block
         self.current_block = 0          # initialized to the global block
@@ -57,7 +57,7 @@ A [Block](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.m
 ```python
 class Block(objects):
     def __init__(self, program, parent_idx):
-        self.proto = core.NewBlock(program.proto)
+        self.desc = core.NewBlock(program.desc)
         self.program = program
         self.vars = map<string, Variable>()
         self.ops = vector<Operator>()
@@ -98,11 +98,11 @@ class Operator(object):
                  outputs,# dict<stirng, Variable>
                  attrs   # dict<string, Any>
                  ):
-        self.proto = core.NewOpDesc(block.proto, type, inputs, outputs, attrs)
-        core.infer_shape(self.proto, inputs, outputs)
+        self.desc = core.NewOpDesc(block.desc, type, inputs, outputs, attrs)
+        core.infer_shape(self.desc, inputs, outputs)
 
     def type(self):
-        return self.proto.type()
+        return self.desc.type()
 ```
 
 `Operator` creates the `OpDesc` message in C++ space, so that it can call the `InferShape` function, which is in C++.
@@ -124,7 +124,7 @@ class Variable(object):
             name = unique_name_generator()
         self.name = name
         self.block = block
-        self.proto = core.NewVarDesc(block.proto, name, shape, lod_level)
+        self.desc = core.NewVarDesc(block.desc, name, shape, lod_level)
         self.writer = None
 ```
 
@@ -214,3 +214,7 @@ def fc_layer(input, size, ...):
     out.writer = op
     return out
 ```
+
+## Optimizer
+
+[Optimizer Design Doc](./optimizer.md)

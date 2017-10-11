@@ -87,12 +87,12 @@ class TensorArray {
   LoDTensor Stack() const;
 
   /*
-   * Unpacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors.
+   * Unstacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors.
    */
   void Unstack(const LoDTensor &source) const;
 
   /*
-   * Unpacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors,
+   * Unstacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors,
    * with memory of tensors shared.
    */
   void UnstackShared(const LoDTensor &source) const;
