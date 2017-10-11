@@ -3780,6 +3780,21 @@ class SwitchOrderLayer(LayerBase):
         self.config.reshape_conf.width_axis.extend(reshape['width'])
 
 
+@config_layer('factorization_machine')
+class FactorizationMachineLayer(LayerBase):
+    def __init__(self, name, inputs, factor_size, **xargs):
+        super(FactorizationMachineLayer, self).__init__(
+            name, 'factorization_machine', size=1, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'factorization machine layer must have one and only one input.')
+        self.config.factor_size = factor_size
+        input_layer = self.get_input_layer(0)
+        psize = input_layer.size * factor_size
+        dims = [input_layer.size, 1]
+        self.create_input_parameter(0, psize, dims)
+
+
 # Deprecated, use a new layer specific class instead
 @config_func
 def Layer(name, type, **xargs):

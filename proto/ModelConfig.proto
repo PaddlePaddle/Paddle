@@ -525,6 +525,9 @@ message LayerConfig {
 
   // for switch order layer
   optional ReshapeConfig reshape_conf = 59;
+
+  // for factorization machine layer
+  optional uint32 factor_size = 60;
 }
 
 message EvaluatorConfig {

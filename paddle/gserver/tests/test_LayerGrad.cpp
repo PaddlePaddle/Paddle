@@ -2359,6 +2359,25 @@ TEST(Layer, ScaleShiftLayer) {
   }
 }
 
+void testFactorizationMachineLayer(InputType type, bool useGpu) {
+  const int FACTOR_SIZE = 10;
+  TestConfig config;
+  config.layerConfig.set_type("factorization_machine");
+  config.layerConfig.set_factor_size(FACTOR_SIZE);
+  config.biasSize = 1;
+  config.inputDefs.push_back({type, "layer_0", 8192, 0});
+  config.layerConfig.add_inputs();
+  testLayerGrad(config, "factorization_machine", 16, false, useGpu, false);
+}
+
+TEST(Layer, FactorizationMachineLayer) {
+  testFactorizationMachineLayer(INPUT_DATA, false);
+  testFactorizationMachineLayer(INPUT_SPARSE_FLOAT_VALUE_DATA, false);
+#ifdef PADDLE_WITH_CUDA
+  testFactorizationMachineLayer(INPUT_DATA, true);
+#endif
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

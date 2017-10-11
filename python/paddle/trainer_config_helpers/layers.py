@@ -143,6 +143,7 @@ __all__ = [
     'scale_shift_layer',
     'img_conv3d_layer',
     'resize_layer',
+    'factorization_machine',
 ]
 
 
@@ -252,6 +253,8 @@ class LayerType(object):
     SCALE_SHIFT_LAYER = 'scale_shift'
 
     RESIZE = 'resize'
+
+    FACTORIZATION_MACHINE = 'factorization_machine'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6955,3 +6958,65 @@ def resize_layer(input, size, name=None):
     """
     Layer(name=name, type=LayerType.RESIZE, inputs=Input(input.name), size=size)
     return LayerOutput(name, LayerType.RESIZE, parents=[input], size=input.size)
+
+
+@wrap_name_default()
+@wrap_act_default(act=LinearActivation())
+@wrap_param_attr_default()
+@layer_support()
+def factorization_machine(input,
+                          factor_size,
+                          act=None,
+                          name=None,
+                          param_attr=None,
+                          layer_attr=None):
+    """
+    The Factorization Machine models pairwise feature interactions as inner
+    product of the learned latent vectors corresponding to each input feature.
+
+    The Factorization Machine can effectively capture feature interactions
+    especially when the input is sparse. In practice, usually order 2 feature
+    interactions are considered using Factorization Machine with the formula:
+
+    .. math::
+
+        y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \rangle x_i x_j
+
+    Note:
+        X is the input vector with size n. V is the factor matrix. Each row of V
+        is the latent vector corresponding to each input dimesion. The size of
+        each latent vector is k.
+
+    .. code-block:: python
+
+       factor_machine = factorization_machine(input=input_layer, factor_size=10)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param factor_size: The hyperparameter that defines the dimensionality of
+                        the latent vector size
+    :type context_len: int
+    :param act: Activation Type. Default is linear activation.
+    :type act: BaseActivation
+    :param param_attr: The Parameter Attribute. If None, the latent vectors will
+                       be initialized smartly. It's better to set it by
+                       yourself.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+
+    """
+    assert isinstance(input, LayerOutput)
+    assert factor_size > 0, "the factor_size must be greater than 0."
+
+    Layer(
+        inputs=[Input(input.name, **param_attr.attr)],
+        name=name,
+        factor_size=factor_size,
+        type=LayerType.FACTORIZATION_MACHINE,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.FACTORIZATION_MACHINE, input, activation=act, size=1)
