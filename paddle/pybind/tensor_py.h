@@ -59,8 +59,8 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       if (paddle::platform::is_gpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
         auto *src_ptr = static_cast<const void *>(tensor.data<CUR_TYPE>());
-        auto *dst_ptr = static_cast<void *>(
-            tensor.mutable_data<CUR_TYPE>(tensor.dims(), platform::CPUPlace()));
+        auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
+            tensor.dims(), platform::CPUPlace()));
         // TODO(qijun): Here we use default CUDA stream to set GPU Tensor to
         // a Python numpy array. It's better to manage CDUA stream unifiedly.
         paddle::platform::GpuMemcpySync(dst_ptr, src_ptr,
