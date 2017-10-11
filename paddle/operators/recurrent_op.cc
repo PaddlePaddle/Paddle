@@ -46,7 +46,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
 }
 
 void RecurrentAlgorithm::CreateScopes(const Scope& scope,
@@ -151,12 +151,12 @@ void RecurrentGradientAlgorithm::Run(
   auto& step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
-    if (step_id != seq_len - 1) {
+    if (static_cast<size_t>(step_id) != seq_len - 1) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
   LinkBootMemoryGradients(step_scopes[0]);
 }
 
