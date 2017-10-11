@@ -248,11 +248,13 @@ TEST(Matrix, SparseMatrixTranspose) {
             /*dense matrix transpose*/
             CpuMatrixPtr matC(new CpuMatrix(height, width));
             matC->copyFrom(*matA);
-            CpuMatrixPtr matD(new CpuMatrix(width, height));
+            MatrixPtr matD(new CpuMatrix(width, height));
             matC->transpose(matD, false);
+
             /*check result*/
             checkSMatrixEqual2Dense(
-                std::dynamic_pointer_cast<CpuSparseMatrix>(matB), matD);
+                std::dynamic_pointer_cast<CpuSparseMatrix>(matB),
+                std::dynamic_pointer_cast<CpuMatrix>(matD));
           }
         }
       }

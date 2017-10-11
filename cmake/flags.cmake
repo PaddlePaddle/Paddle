@@ -2,12 +2,7 @@
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
-        "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-        FORCE)
-endif()
+include(CheckTypeSize)
 
 function(CheckCompilerCXX11Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -31,7 +26,7 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
-LIST(APPEND CMAKE_CXX_FLAGS -std=c++11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # safe_set_flag
 #
@@ -89,6 +84,17 @@ if(NOT UINT64_MAX_EXISTS)
   endif()
 endif()
 
+SET(CMAKE_EXTRA_INCLUDE_FILES "pthread.h")
+CHECK_TYPE_SIZE(pthread_spinlock_t SPINLOCK_FOUND)
+CHECK_TYPE_SIZE(pthread_barrier_t BARRIER_FOUND)
+if(SPINLOCK_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_SPINLOCK)
+endif(SPINLOCK_FOUND)
+if(BARRIER_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_BARRIER)
+endif(BARRIER_FOUND)
+SET(CMAKE_EXTRA_INCLUDE_FILES "")
+
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
 # Do not care if this flag is support for gcc.
 set(COMMON_FLAGS
@@ -102,6 +108,7 @@ set(COMMON_FLAGS
     -Wno-unused-parameter
     -Wno-unused-function
     -Wno-error=literal-suffix
+    -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs)
 
 set(GPU_COMMON_FLAGS
@@ -111,6 +118,7 @@ set(GPU_COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
+    -Wno-error=sign-compare
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.

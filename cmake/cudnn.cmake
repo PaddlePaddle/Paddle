@@ -1,3 +1,7 @@
+if(NOT WITH_GPU)
+    return()
+endif()
+
 set(CUDNN_ROOT "" CACHE PATH "CUDNN ROOT")
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
@@ -11,6 +15,7 @@ list(APPEND CUDNN_CHECK_LIBRARY_DIRS
     ${CUDNN_ROOT}
     ${CUDNN_ROOT}/lib64
     ${CUDNN_ROOT}/lib
+    ${CUDNN_ROOT}/lib/x86_64-linux-gnu
     $ENV{CUDNN_ROOT}
     $ENV{CUDNN_ROOT}/lib64
     $ENV{CUDNN_ROOT}/lib

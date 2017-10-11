@@ -107,6 +107,10 @@ void ExpandConvBaseLayer::expandOneFrame(MatrixPtr image,
   int channel = isDeconv_ ? numFilters_ : channels_[inIdx];
 
   resetExpandInput(subK_[inIdx] * groups_[inIdx], subN_[inIdx]);
+
+  CHECK_EQ(image->getWidth(),
+           static_cast<size_t>(imgSizeH_[inIdx] * imgSizeW_[inIdx] * channel));
+
   real *imgData = image->getData() + startIdx * image->getWidth();
   MatrixPtr imageTmp =
       Matrix::create(imgData,

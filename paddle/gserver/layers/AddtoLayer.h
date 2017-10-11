@@ -44,19 +44,20 @@ public:
   /**
    * Intialization of AddtoLayer.
    */
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   /**
    * Forward propagation.
    * @note There is no weight matrix for each input,
    *       because it just a simple add operation.
    */
-  void forward(PassType passType);
+  void forward(PassType passType) override;
 
   /**
    * Backward propagation.
    */
-  void backward(const UpdateCallback& callback = nullptr);
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

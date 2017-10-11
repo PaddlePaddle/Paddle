@@ -15,17 +15,23 @@ limitations under the License. */
 #include "Util.h"
 
 #include <dirent.h>
-#include <pmmintrin.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef __SSE__
 #include <xmmintrin.h>
+#endif
+#ifdef __SSE3__
+#include <pmmintrin.h>
+#endif
 
 #include <fstream>
 #include <mutex>
 
 #include <gflags/gflags.h>
 
+#include "CpuId.h"
 #include "CustomStackTrace.h"
 #include "Logging.h"
 #include "StringUtil.h"
@@ -144,26 +150,30 @@ void runInitFunctions() {
 }
 
 void initMain(int argc, char** argv) {
-  initializeLogging(argc, argv);
   installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];
     line += ' ';
   }
-  LOG(INFO) << "commandline: " << line;
 
 #ifndef GFLAGS_GFLAGS_H_
   namespace gflags = google;
 #endif
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  initializeLogging(argc, argv);
+  LOG(INFO) << "commandline: " << line;
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();
 
+#ifdef __SSE__
   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+#endif
+#ifdef __SSE3__
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+#endif
 
   if (FLAGS_seed == 0) {
     unsigned int t = time(NULL);
@@ -185,6 +195,7 @@ void initMain(int argc, char** argv) {
   }
 
   version::printVersion();
+  checkCPUFeature().check();
   runInitFunctions();
 }
 
@@ -289,6 +300,7 @@ void mkDir(const char* filename) {
 void mkDirRecursively(const char* dir) {
   struct stat sb;
 
+  if (*dir == 0) return;  // empty string
   if (!stat(dir, &sb)) return;
 
   mkDirRecursively(path::dirname(dir).c_str());

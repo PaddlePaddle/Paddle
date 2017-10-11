@@ -54,5 +54,7 @@ bool isGpuVersion() {
 #endif
 }
 
+int getTrainerCount() { return FLAGS_trainer_count; }
+
 static_assert(NUM_PARAMETER_TYPES == paddle::NUM_PARAMETER_TYPES,
               "The Parameter Type should be same in core/api and core/common");

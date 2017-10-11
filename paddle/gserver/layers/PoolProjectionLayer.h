@@ -40,7 +40,7 @@ public:
 
   size_t getSize();
 
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 }  // namespace paddle

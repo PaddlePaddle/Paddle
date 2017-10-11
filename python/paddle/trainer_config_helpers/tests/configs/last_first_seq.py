@@ -14,4 +14,7 @@ for op in seq_op:
     for al in agg_level:
         opts.append(op(input=din, agg_level=al))
 
+for op in seq_op:
+    opts.append(op(input=din, agg_level=AggregateLevel.EACH_TIMESTEP, stride=5))
+
 outputs(opts)

@@ -239,9 +239,9 @@ parameters {
   name: "___crf_layer_0__.w0"
   size: 24
   initial_mean: 0.0
-  initial_std: 0.5
-  dims: 4
+  initial_std: 0.408248290464
   dims: 6
+  dims: 4
   initial_strategy: 0
   initial_smart: true
 }

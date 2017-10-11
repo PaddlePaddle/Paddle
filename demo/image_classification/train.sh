@@ -27,5 +27,6 @@ paddle train \
 --num_passes=300 \
 --save_dir=$output \
 2>&1 | tee $log
+paddle usage -l $log -e $? -n "image_classification_train" >/dev/null 2>&1
 
 python -m paddle.utils.plotcurve -i $log > plot.png

@@ -120,29 +120,28 @@ void hl_context_projection_forward(const real* input,
 }
 
 template <>
-void ContextProjectionForward<DEVICE_TYPE_GPU>(GpuMatrix* output,
-                                               const GpuMatrix* input,
-                                               const GpuMatrix* weight,
+void ContextProjectionForward<DEVICE_TYPE_GPU>(GpuMatrix& output,
+                                               const GpuMatrix& input,
+                                               const GpuMatrix& weight,
                                                const GpuIVector& sequence,
                                                size_t context_length,
                                                int context_start,
                                                size_t begin_pad) {
-  CHECK(input && output);
-  hl_context_projection_forward(input->getData(),
+  hl_context_projection_forward(input.getData(),
                                 sequence.getData(),
-                                weight ? weight->getData() : nullptr,
-                                output->getData(),
+                                weight ? weight.getData() : nullptr,
+                                output.getData(),
                                 sequence.getSize() - 1,
-                                input->getWidth(),
+                                input.getWidth(),
                                 context_length,
                                 context_start,
                                 begin_pad);
 }
 
-__global__ void KeContextProjectionBackwardData(real* out_grad,
+__global__ void KeContextProjectionBackwardData(const real* out_grad,
                                                 const int* sequence,
                                                 real* in_grad,
-                                                int input_dim,
+                                                size_t input_dim,
                                                 int context_length,
                                                 int context_start) {
   int idx = threadIdx.x;
@@ -153,7 +152,8 @@ __global__ void KeContextProjectionBackwardData(real* out_grad,
   real value = 0;
 
   int instances = seq_end - seq_start + context_length - 1;
-  out_grad += seq_start * input_dim * context_length;
+  auto out = const_cast<real*>(out_grad);
+  out += seq_start * input_dim * context_length;
   in_grad += seq_start * input_dim;
   for (int k = 0; k <= input_dim / block_size; k++) {
     if (idx < input_dim) {
@@ -170,7 +170,7 @@ __global__ void KeContextProjectionBackwardData(real* out_grad,
         int outx = (i - context_length) < 0 ? i : (context_length - 1);
         int outy = (i - context_length) < 0 ? 0 : (i - (context_length - 1));
         real* output_r =
-          out_grad + outy * input_dim * context_length + outx * input_dim;
+          out + outy * input_dim * context_length + outx * input_dim;
         for (int j = outy; j < seq_end - seq_start; j++) {
           value += output_r[idx];
           if (j - outy == outx) break;
@@ -195,7 +195,7 @@ __global__ void KeContextProjectionBackwardData(real* out_grad,
  * @param[in]   context_start    context start.
  *
  */
-void hl_context_projection_backward_data(real* out_grad,
+void hl_context_projection_backward_data(const real* out_grad,
                                          const int* sequence,
                                          real* input_grad,
                                          size_t num_sequences,
@@ -217,23 +217,22 @@ void hl_context_projection_backward_data(real* out_grad,
 }
 
 template <>
-void ContextProjectionBackwardData<DEVICE_TYPE_GPU>(GpuMatrix* out_grad,
-                                                    GpuMatrix* in_grad,
+void ContextProjectionBackwardData<DEVICE_TYPE_GPU>(const GpuMatrix& out_grad,
+                                                    GpuMatrix& in_grad,
                                                     const GpuIVector& sequence,
                                                     size_t context_length,
                                                     int context_start) {
-  CHECK(in_grad && out_grad);
-  hl_context_projection_backward_data(out_grad->getData(),
+  hl_context_projection_backward_data(out_grad.getData(),
                                       sequence.getData(),
-                                      in_grad->getData(),
+                                      in_grad.getData(),
                                       sequence.getSize() - 1,
-                                      in_grad->getWidth(),
+                                      in_grad.getWidth(),
                                       context_length,
                                       context_start);
 }
 
 template<int THREADS_X, int THREADS_Y>
-__global__ void KeContextProjectionBackwardWeight(real* out_grad,
+__global__ void KeContextProjectionBackwardWeight(const real* out_grad,
                                                   const int* sequence,
                                                   real* w_grad,
                                                   int num_sequences,
@@ -256,7 +255,8 @@ __global__ void KeContextProjectionBackwardWeight(real* out_grad,
     for (int seqId = idy; seqId < num_sequences; seqId += THREADS_Y) {
       int seq_start = sequence[seqId];
       int seq_end = sequence[seqId+1];
-      output_r = out_grad + seq_start * w_dim * context_length;
+      output_r = const_cast<real*>(out_grad)
+                    + seq_start * w_dim * context_length;
 
       if (context_start < 0) {
         if (padId + context_start < 0) {
@@ -320,7 +320,7 @@ __global__ void KeContextProjectionBackwardWeight(real* out_grad,
  * beginning.
  *
  */
-void hl_context_projection_backward_weight(real* out_grad,
+void hl_context_projection_backward_weight(const real* out_grad,
                                            const int* sequence,
                                            real* w_grad,
                                            size_t num_sequences,
@@ -348,19 +348,18 @@ void hl_context_projection_backward_weight(real* out_grad,
 
 template <>
 void ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(
-        GpuMatrix* out_grad,
-        GpuMatrix* w_grad,
+        const GpuMatrix& out_grad,
+        GpuMatrix& w_grad,
         const GpuIVector& seq_vec,
         size_t context_length,
         int context_start,
         size_t total_pad,
         size_t begin_pad) {
-  CHECK(out_grad && w_grad);
-  hl_context_projection_backward_weight(out_grad->getData(),
+  hl_context_projection_backward_weight(out_grad.getData(),
                                         seq_vec.getData(),
-                                        w_grad->getData(),
+                                        w_grad.getData(),
                                         seq_vec.getSize() - 1,
-                                        w_grad->getWidth(),
+                                        w_grad.getWidth(),
                                         total_pad,
                                         context_length,
                                         context_start,
@@ -368,16 +367,15 @@ void ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(
 }
 
 template <>
-void ContextProjectionBackward<DEVICE_TYPE_GPU>(GpuMatrix* out_grad,
-                                                GpuMatrix* in_grad,
-                                                GpuMatrix* w_grad,
+void ContextProjectionBackward<DEVICE_TYPE_GPU>(const GpuMatrix& out_grad,
+                                                GpuMatrix& in_grad,
+                                                GpuMatrix& w_grad,
                                                 const GpuIVector& sequence,
                                                 size_t context_length,
                                                 int context_start,
                                                 size_t begin_pad,
                                                 bool is_padding,
                                                 size_t total_pad) {
-    CHECK(out_grad);
     if (in_grad) {
         ContextProjectionBackwardData<DEVICE_TYPE_GPU>(
                 out_grad,

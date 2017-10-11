@@ -1,3 +1,6 @@
+* {
+    font-family:"Roboto","Lato","proxima-nova","Helvetica Neue",Arial,sans-serif;
+}
 body {
     padding-top: 80px;
     background-image: none !important;

@@ -30,8 +30,8 @@ private:
 public:
   explicit MaxIdLayer(const LayerConfig& config) : Layer(config) {}
 
-  virtual bool init(const LayerMap& layerMap,
-                    const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     bool ret = Layer::init(layerMap, parameterMap);
     CHECK_EQ(1UL, inputLayers_.size());
 
@@ -40,7 +40,7 @@ public:
     return ret;
   }
 
-  virtual void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
     const Argument& input = getInput(0);
     size_t batchSize = input.getBatchSize();
@@ -54,7 +54,7 @@ public:
     input.value->rowMax(*output_.ids, *output_.in);
   }
 
-  virtual void backward(const UpdateCallback& callback) {}
+  void backward(const UpdateCallback& callback) override {}
 };
 
 REGISTER_LAYER(maxid, MaxIdLayer);

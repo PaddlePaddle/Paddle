@@ -66,12 +66,27 @@ layers {
   }
 }
 layers {
+  name: "__tanh_0__"
+  type: "mixed"
+  size: 100
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "__sigmoid_0__"
+    proj_conf {
+      type: "identity"
+      name: "___tanh_0__.w0"
+      input_size: 100
+      output_size: 100
+    }
+  }
+}
+layers {
   name: "__square_0__"
   type: "mixed"
   size: 100
   active_type: "square"
   inputs {
-    input_layer_name: "__sigmoid_0__"
+    input_layer_name: "__tanh_0__"
     proj_conf {
       type: "identity"
       name: "___square_0__.w0"
@@ -81,15 +96,15 @@ layers {
   }
 }
 layers {
-  name: "__square_1__"
+  name: "__relu_0__"
   type: "mixed"
   size: 100
-  active_type: "square"
+  active_type: "relu"
   inputs {
     input_layer_name: "__square_0__"
     proj_conf {
       type: "identity"
-      name: "___square_1__.w0"
+      name: "___relu_0__.w0"
       input_size: 100
       output_size: 100
     }
@@ -101,7 +116,7 @@ layers {
   size: 100
   active_type: ""
   inputs {
-    input_layer_name: "__square_1__"
+    input_layer_name: "__relu_0__"
   }
   slope: 1.0
   intercept: 1
@@ -123,7 +138,7 @@ layers {
   size: 100
   active_type: ""
   inputs {
-    input_layer_name: "__square_1__"
+    input_layer_name: "__relu_0__"
     proj_conf {
       type: "identity"
       name: "___mixed_0__.w0"
@@ -147,7 +162,7 @@ layers {
   size: 100
   active_type: ""
   inputs {
-    input_layer_name: "__square_1__"
+    input_layer_name: "__relu_0__"
   }
   slope: -1.0
   intercept: 0.0
@@ -339,8 +354,9 @@ sub_models {
   layer_names: "__log_0__"
   layer_names: "__abs_0__"
   layer_names: "__sigmoid_0__"
+  layer_names: "__tanh_0__"
   layer_names: "__square_0__"
-  layer_names: "__square_1__"
+  layer_names: "__relu_0__"
   layer_names: "__slope_intercept_layer_0__"
   layer_names: "__slope_intercept_layer_1__"
   layer_names: "__mixed_0__"

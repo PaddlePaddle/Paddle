@@ -61,7 +61,8 @@ public:
         rand_(0, config.num_classes() - 1),
         prepared_(false) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     /* Initialize the basic parent class */
     Layer::init(layerMap, parameterMap);
 
@@ -146,7 +147,7 @@ public:
     prepared_ = true;
   }
 
-  void prefetch() {
+  void prefetch() override {
     prepareSamples();
     IVector::resizeOrCreate(labelIds_, samples_.size(), useGpu_);
     int* ids = labelIds_->getData();
@@ -163,7 +164,7 @@ public:
     }
   }
 
-  void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
 
     CHECK(!useGpu_) << "GPU is not supported";
@@ -193,12 +194,13 @@ public:
       forwardOneInput(l);
     }
 
-    activation_->forward(sampleOut_);
+    auto status = activation_->forward(sampleOut_);
+    status.check();
 
     forwardCost();
   }
 
-  void backward(const UpdateCallback& callback) {
+  void backward(const UpdateCallback& callback) override {
     Matrix::resizeOrCreate(sampleOut_.grad,
                            1,
                            samples_.size(),
@@ -207,7 +209,8 @@ public:
 
     backwardCost();
 
-    activation_->backward(sampleOut_);
+    auto status = activation_->backward(sampleOut_);
+    status.check();
 
     if (biases_->getWGrad()) {
       backwardBias(callback);

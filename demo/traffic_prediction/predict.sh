@@ -25,6 +25,6 @@ paddle train \
     --config_args=is_predict=1 \
     --predict_output_dir=. 
 
-python gen_result.py > result.txt
+python gen_result.py > result.csv
 
 rm -rf rank-00000

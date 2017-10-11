@@ -193,6 +193,59 @@ void SumOfSquaresCostLayer::backwardImp(Matrix& output,
 }
 
 //
+// class SmoothL1CostLayer
+//
+
+REGISTER_LAYER(smooth_l1, SmoothL1CostLayer);
+
+bool SmoothL1CostLayer::init(const LayerMap& layerMap,
+                             const ParameterMap& parameterMap) {
+  return CostLayer::init(layerMap, parameterMap);
+}
+
+void SmoothL1CostLayer::forwardImp(Matrix& output,
+                                   Argument& label,
+                                   Matrix& target) {
+  MatrixPtr targetCpu, outputCpu, labelCpu;
+  if (useGpu_) {
+    targetCpu =
+        Matrix::create(target.getHeight(), target.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
+    targetCpu->copyFrom(target);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
+    targetCpu->smoothL1(*outputCpu, *(labelCpu));
+    target.copyFrom(*targetCpu);
+  } else {
+    target.smoothL1(output, *label.value);
+  }
+}
+
+void SmoothL1CostLayer::backwardImp(Matrix& output,
+                                    Argument& label,
+                                    Matrix& outputG) {
+  MatrixPtr outputGCpu, outputCpu, labelCpu;
+  if (useGpu_) {
+    outputGCpu =
+        Matrix::create(outputG.getHeight(), outputG.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
+    outputGCpu->copyFrom(outputG);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
+    outputGCpu->smoothL1Bp(*outputCpu, *labelCpu);
+    outputG.copyFrom(*outputGCpu);
+  } else {
+    outputG.smoothL1Bp(output, *label.value);
+  }
+}
+
+//
 // class RankingCost
 //
 bool RankingCost::init(const LayerMap& layerMap,
@@ -366,8 +419,6 @@ void LambdaCost::backward(const UpdateCallback& callback) {
 
   getInputGrad(0)->add(*marginGrad_);
 }
-
-void LambdaCost::onPassEnd() {}
 
 void LambdaCost::calcGrad(const real* outputScore,
                           const real* score,
@@ -611,14 +662,15 @@ class SumCostLayer : public Layer {
 public:
   explicit SumCostLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     bool ret = Layer::init(layerMap, parameterMap);
     if (!ret) return ret;
     CHECK_EQ(inputLayers_.size(), 1UL);
     return true;
   }
 
-  virtual void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
     const MatrixPtr& input = getInputValue(0);
 
@@ -629,7 +681,7 @@ public:
     output_.value->sumRows(*input, /* scaleSum= */ 1, /* scaleDest= */ 0);
   }
 
-  virtual void backward(const UpdateCallback& callback = nullptr) {
+  void backward(const UpdateCallback& callback = nullptr) override {
     getInputGrad(0)->add((real)1);
   }
 };

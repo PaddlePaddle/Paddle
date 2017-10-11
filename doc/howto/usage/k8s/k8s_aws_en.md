@@ -1,26 +1,67 @@
-# Kubernetes on AWS
 
-## Create AWS Account and IAM Account
+# Distributed PaddlePaddle Training on AWS with Kubernetes
 
-To use AWS, we need to sign up an AWS account on Amazon's Web site.
-An AWS account allows us to login to the AWS Console Web interface to
-create IAM users and user groups. Usually, we create a user group with
-privileges required to run PaddlePaddle, and we create users for
-those who are going to run PaddlePaddle and add these users into the
-group. IAM users can identify themselves using password and tokens,
-where passwords allows users to log in to the AWS Console, and tokens
-make it easy for users to submit and inspect jobs from the command
-line.
+We will show you step by step on how to run distributed PaddlePaddle training on AWS cluster with Kubernetes. Let's start from core concepts.
+
+## Distributed PaddlePaddle Training Core Concepts
+
+### Distributed Training Job
+
+A distributed training job is represented by a [Kubernetes job](https://kubernetes.io/docs/user-guide/jobs/#what-is-a-job).
+
+Each Kuberentes job is described by a job config file, which specifies the information like the number of [pods](https://kubernetes.io/docs/user-guide/pods/#what-is-a-pod) in the job and environment variables.
+
+In a distributed training job, we would:
+
+1. prepare partitioned training data and configuration file on a distributed file system (in this tutorial we use Amazon Elastic File System), and
+1. create and submit the Kubernetes job config to the Kubernetes cluster to start the training job.
+
+### Parameter Servers and Trainers
+
+There are two roles in a PaddlePaddle cluster: *parameter server (pserver)* and *trainer*. Each parameter server process maintains a shard of the global model. Each trainer has its local copy of the model, and uses its local data to update the model. During the training process, trainers send model updates to parameter servers, parameter servers are responsible for aggregating these updates, so that trainers can synchronize their local copy with the global model.
+
+<center>![Model is partitioned into two shards. Managed by two parameter servers respectively.](src/pserver_and_trainer.png)</center>
+
+In order to communicate with pserver, trainer needs to know the ip address of each pserver. In kubernetes it's better to use a service discovery mechanism (e.g., DNS hostname) rather than static ip address, since any pserver's pod may be killed and a new pod could be schduled onto another node of different ip address. However, now we are using static ip. This will be improved.
+
+Parameter server and trainer are packaged into a same docker image. They will run once pod is scheduled by kubernetes job.
+
+### Trainer ID
+
+Each trainer process requires a trainer ID, a zero-based index value, passed in as a command-line parameter. The trainer process thus reads the data partition indexed by this ID.
+
+### Training
+
+The entry-point of a container is a shell script. It can see some environment variables pre-defined by Kubernetes. This includes one that gives the job's identity, which can be used in a remote call to the Kubernetes apiserver that lists all pods in the job.
+
+We rank each pod by sorting them by their ips. The rank of each pod could be the "pod ID". Because we run one trainer and one parameter server in each pod, we can use this "pod ID" as the trainer ID. A detailed workflow of the entry-point script is as follows:
+
+1. Query the api server to get pod information, and assign the `trainer_id` by sorting the ip.
+1. Copy the training data from EFS persistent volume into container.
+1. Parse the `paddle pserver` and `paddle trainer` startup parameters from environment variables, and then start up the processes.
+1. Trainer with `train_id` 0 will automatically write results onto EFS volume.
+
+
+## PaddlePaddle on AWS with Kubernetes
+
+### Choose AWS Service Region
+This tutorial requires several AWS services work in the same region. Before we create anything in AWS, please check the following link
+https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/
+Choose a region which has the following services available: EC2, EFS, VPS, CloudFormation, KMS, VPC, S3.
+In this tutorial, we use "Oregon(us-west-2)" as example.
+
+### Create AWS Account and IAM Account
+
+Under each AWS account, we can create multiple [IAM](http://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html) users. This allows us to grant some privileges to each IAM user and to create/operate AWS clusters as an IAM user.
 
 To sign up an AWS account, please
 follow
 [this guide](http://docs.aws.amazon.com/lambda/latest/dg/setting-up.html).
-To create users and user groups under an AWS account, please
+To create IAM users and user groups under an AWS account, please
 follow
 [this guide](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html).
 
-Please be aware that this tutorial needs the following privileges in
-the user group:
+Please be aware that this tutorial needs the following privileges for the user in IAM:
 
 - AmazonEC2FullAccess
 - AmazonS3FullAccess
@@ -31,25 +72,16 @@ the user group:
 - IAMUserSSHKeys
 - IAMFullAccess
 - NetworkAdministrator
+- AWSKeyManagementServicePowerUser
 
 
-By the time we write this tutorial, we noticed that Chinese AWS users
-might suffer from authentication problems when running this tutorial.
-Our solution is that we create a VM instance with the default Amazon
-AMI and in the same zone as our cluster runs, so we can SSH to this VM
-instance as a tunneling server and control our cluster and jobs from
-it.
+### Download kube-aws and kubectl
 
+#### kube-aws
 
-## PaddlePaddle on AWS
-
-Here we will show you step by step on how to run PaddlePaddle training on AWS cluster.
-
-
-###Download kube-aws and kubectl
-
-####kube-aws
-
+[kube-aws](https://github.com/coreos/kube-aws) is a CLI tool to automate cluster deployment to AWS.
+##### Verify kube-aws integrity
+Note: if you are using a non-official release (e.g RC release) kube-aws, you can skip this setp.
 Import the CoreOS Application Signing Public Key:
 
 ```
@@ -63,7 +95,7 @@ gpg2 --fingerprint FC8A365E
 ```
 The correct key fingerprint is `18AD 5014 C99E F7E3 BA5F 6CE9 50BD D3E0 FC8A 365E`
 
-Go to the [releases](https://github.com/coreos/kube-aws/releases) and download the latest release tarball and detached signature (.sig) for your architecture.
+We can download `kube-aws` from its [release page](https://github.com/coreos/kube-aws/releases). In this tutorial, we use version 0.9.1
 
 Validate the tarball's GPG signature:
 
@@ -74,7 +106,7 @@ PLATFORM=darwin-amd64
 
 gpg2 --verify kube-aws-${PLATFORM}.tar.gz.sig kube-aws-${PLATFORM}.tar.gz
 ```
-
+##### Install kube-aws
 Extract the binary:
 
 ```
@@ -88,34 +120,39 @@ mv ${PLATFORM}/kube-aws /usr/local/bin
 ```
 
 
-####kubectl
+#### kubectl
 
-Go to the [releases](https://github.com/kubernetes/kubernetes/releases) and download the latest release tarball.
+[kubectl](https://kubernetes.io/docs/user-guide/kubectl-overview/) is a command line interface for running commands against Kubernetes clusters.
 
-Extract the tarball and then concate the kubernetes binaries directory into PATH:
-
-```
-export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH
+Download `kubectl` from the Kubernetes release artifact site with the `curl` tool.
 
 ```
+# OS X
+curl -O https://storage.googleapis.com/kubernetes-release/release/"$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)"/bin/darwin/amd64/kubectl
 
-User credentials and security tokens will be generated later in user directory, not in `~/.kube/config`, they will be necessary to use the CLI or the HTTP Basic Auth.
+# Linux
+curl -O https://storage.googleapis.com/kubernetes-release/release/"$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)"/bin/linux/amd64/kubectl
+```
 
+Make the kubectl binary executable and move it to your PATH (e.g. `/usr/local/bin`):
 
-###Configure AWS Credentials
+```
+chmod +x ./kubectl
+sudo mv ./kubectl /usr/local/bin/kubectl
+```
 
-First check out [this](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) for installing the AWS command line interface, if you use ec2 instance with default amazon AMI, the cli tool has already been installed on your machine.
+### Configure AWS Credentials
 
+First check out [this](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) for installing the AWS command line interface.
 
 And then configure your AWS account information:
 
 ```
 aws configure
-
 ```
 
 
-Fill in the required fields (You can get your AWS aceess key id and AWS secrete access key by following [this](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) instruction):
+Fill in the required fields:
 
 
 ```
@@ -123,36 +160,44 @@ AWS Access Key ID: YOUR_ACCESS_KEY_ID
 AWS Secrete Access Key: YOUR_SECRETE_ACCESS_KEY
 Default region name: us-west-2
 Default output format: json
-
 ```
 
-Test that your credentials work by describing any instances you may already have running on your account:
+`YOUR_ACCESS_KEY_ID`, and `YOUR_SECRETE_ACCESS_KEY` is the IAM key and secret from [Create AWS Account and IAM Account](#create-aws-account-and-iam-account)
+
+Verify that your credentials work by describing any instances you may already have running on your account:
 
 ```
 aws ec2 describe-instances
 ```
 
-###Define Cluster Parameters
+### Define Cluster Parameters
 
-####EC2 key pair
+#### EC2 key pair
 
 The keypair that will authenticate SSH access to your EC2 instances. The public half of this key pair will be configured on each CoreOS node.
 
-After creating a key pair, you will use the name you gave the keys to configure the cluster. Key pairs are only available to EC2 instances in the same region. More info in the [EC2 Keypair docs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html).
+Follow [EC2 Keypair User Guide](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html) to create a EC2 key pair
 
-####KMS key
+After creating a key pair, you will use the key pair name to configure the cluster.
+
+Key pairs are only available to EC2 instances in the same region. We are using us-west-2 in our tutorial, so make sure to creat key pairs in that region (Oregon).
+
+Your browser will download a `key-name.pem` file which is the key to access the EC2 instances. We will use it later.
+
+
+#### KMS key
 
 Amazon KMS keys are used to encrypt and decrypt cluster TLS assets. If you already have a KMS Key that you would like to use, you can skip creating a new key and provide the Arn string for your existing key.
 
-You can create a KMS key in the AWS console, or with the aws command line tool:
+You can create a KMS key with the aws command line tool:
 
 ```
-$ aws kms --region=us-west-2 create-key --description="kube-aws assets"
+aws kms --region=us-west-2 create-key --description="kube-aws assets"
 {
     "KeyMetadata": {
         "CreationDate": 1458235139.724,
         "KeyState": "Enabled",
-        "Arn": "arn:aws:kms:us-west-2:xxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx",
+        "Arn": "arn:aws:kms:us-west-2:aaaaaaaaaaaaa:key/xxxxxxxxxxxxxxxxxxx",
         "AWSAccountId": "xxxxxxxxxxxxx",
         "Enabled": true,
         "KeyUsage": "ENCRYPT_DECRYPT",
@@ -162,14 +207,16 @@ $ aws kms --region=us-west-2 create-key --description="kube-aws assets"
 }
 ```
 
-You will use the `KeyMetadata.Arn` string to identify your KMS key in the init step.
+We will need to use the value of `Arn` later.
 
-And then you need to add several inline policies in your user permission.
+And then let's add several inline policies in your IAM user permission.
 
-kms inline policy:
+Go to [IAM Console](https://console.aws.amazon.com/iam/home?region=us-west-2#/home). Click on button `Users`, click user that we just created, and then click on `Add inline policy` button, and select `Custom Policy`.
+
+Paste into following inline policies:
 
 ```
-{
+ (Caution: node_0, node_1, node_2 directories represents PaddlePaddle node and train_id, not the Kubernetes node){
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -180,18 +227,10 @@ kms inline policy:
                 "kms:Encrypt"
             ],
             "Resource": [
-                "arn:aws:kms:*:xxxxxxxxx:key/*"
+                "arn:aws:kms:*:AWS_ACCOUNT_ID:key/*"
             ]
-        }
-    ]
-}
-```
-cloudformation inline policy:
-
-```
-"Version": "2012-10-17",
-    "Statement": [
-        {
+        },
+		{
             "Sid": "Stmt1482205746000",
             "Effect": "Allow",
             "Action": [
@@ -200,26 +239,44 @@ cloudformation inline policy:
                 "cloudformation:DeleteStack",
                 "cloudformation:DescribeStacks",
                 "cloudformation:DescribeStackResource",
-                "cloudformation:GetTemplate"
+                "cloudformation:GetTemplate",
+                "cloudformation:DescribeStackEvents"
             ],
             "Resource": [
-                "arn:aws:cloudformation:us-west-2:xxxxxxxxx:stack/YOUR_CLUSTER_NAME/*"
+                "arn:aws:cloudformation:us-west-2:AWS_ACCOUNT_ID:stack/MY_CLUSTER_NAME/*"
             ]
         }
     ]
 }
 ```
+`Version` : Its value has to be exactly "2012-10-17".
+`AWS_ACCOUNT_ID`: You can get it from following command line:
 
+```
+aws sts get-caller-identity --output text --query Account
+```
 
-####External DNS name
+`MY_CLUSTER_NAME`: Pick a MY_CLUSTER_NAME that you like, you will use it later as well. 
+Please note, stack name must satisfy regular expression pattern: [a-zA-Z][-a-zA-Z0-9*]*, which means no "_" or "-" in stack name, or kube-aws will throw error in later steps.
 
-When the cluster is created, the controller will expose the TLS-secured API on a public IP address. You will need to create an A record for the external DNS hostname you want to point to this IP address. You can find the API external IP address after the cluster is created by invoking kube-aws status.
+#### External DNS name
 
-####S3 bucket
+When the cluster is created, the controller will expose the TLS-secured API on a DNS name.
+
+DNS name should have a CNAME points to cluster DNS name or an A record points to the cluster IP address.
+
+We will need to use DNS name later in tutorial. If you don't already own one, you can choose any DNS name (e.g., `paddle`) and modify `/etc/hosts` to associate cluster IP with that DNS name for your local machine. And add name service (route53) in aws to associate the IP to paddle for cluster. We will find the cluster IP in later steps.
+
+#### S3 bucket
 
 You need to create an S3 bucket before startup the Kubernetes cluster.
 
-####Initialize an asset directory
+There are some bugs in aws cli in creating S3 bucket, so let's use the [S3 Console](https://console.aws.amazon.com/s3/home?region=us-west-2).
+
+Click on `Create Bucket`, fill in a unique BUCKET_NAME, and make sure region is us-west-2 (Oregon).
+
+
+#### Initialize Assets
 
 Create a directory on your local machine to hold the generated assets:
 
@@ -231,284 +288,245 @@ $ cd my-cluster
 Initialize the cluster CloudFormation stack with the KMS Arn, key pair name, and DNS name from the previous step:
 
 ```
-$ kube-aws init \
---cluster-name=my-cluster-name \
---external-dns-name=my-cluster-endpoint \
---region=us-west-1 \
---availability-zone=us-west-1c \
---key-name=key-pair-name \
+kube-aws init \
+--cluster-name=MY_CLUSTER_NAME \
+--external-dns-name=MY_EXTERNAL_DNS_NAME \
+--region=us-west-2 \
+--availability-zone=us-west-2a \
+--key-name=KEY_PAIR_NAME \
 --kms-key-arn="arn:aws:kms:us-west-2:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx"
 ```
 
+`MY_CLUSTER_NAME`: the one you picked in [KMS key](#kms-key)
+
+`MY_EXTERNAL_DNS_NAME`: see [External DNS name](#external-dns-name)
+
+`KEY_PAIR_NAME`: see [EC2 key pair](#ec2-key-pair)
+
+`--kms-key-arn`: the "Arn" in [KMS key](#kms-key)
+
+Here `us-west-2a` is used for parameter `--availability-zone`, but supported availability zone varies among AWS accounts.
+
+Please check if `us-west-2a` is supported by `aws ec2 --region us-west-2 describe-availability-zones`, if not switch to other supported availability zone. (e.g., `us-west-2a`, or `us-west-2b`)
+
+
 There will now be a cluster.yaml file in the asset directory. This is the main configuration file for your cluster.
 
-####Render contents of the asset directory
+By default `kube-aws` will only create one worker node. Let's edit `cluster.yaml` and change `workerCount` from 1 to 3.
+
+
+#### Render contents of the asset directory
 
 In the simplest case, you can have kube-aws generate both your TLS identities and certificate authority for you.
 
 ```
-$ kube-aws render credentials --generate-ca
+kube-aws render credentials --generate-ca
 ```
 
 The next command generates the default set of cluster assets in your asset directory.
 
 ```
-sh $ kube-aws render stack
+kube-aws render stack
 ```
-
-Here's what the directory structure looks like:
-
-```
-$ tree
-.
-├── cluster.yaml
-├── credentials
-│   ├── admin-key.pem
-│   ├── admin.pem
-│   ├── apiserver-key.pem
-│   ├── apiserver.pem
-│   ├── ca-key.pem
-│   ├── ca.pem
-│   ├── worker-key.pem
-│   └── worker.pem
-│   ├── etcd-key.pem
-│   └── etcd.pem
-│   ├── etcd-client-key.pem
-│   └── etcd-client.pem
-├── kubeconfig
-├── stack-template.json
-└── userdata
-    ├── cloud-config-controller
-    └── cloud-config-worker
-```
-
-These assets (templates and credentials) are used to create, update and interact with your Kubernetes cluster.
+Assets (templates and credentials) that are used to create, update and interact with your Kubernetes cluster will be created under your current folder.
 
 
-###Kubernetes Cluster Start Up
+### Kubernetes Cluster Start Up
 
-####Create the instances defined in the CloudFormation template
+#### Create the instances defined in the CloudFormation template
 
-Now for the exciting part, creating your cluster:
+Now let's create your cluster (choose any `PREFIX` for the command below):
 
 ```
-$ kube-aws up --s3-uri s3://<your-bucket-name>/<prefix>
+kube-aws up --s3-uri s3://BUCKET_NAME/PREFIX
 ```
 
-####Configure DNS
+`BUCKET_NAME`: the bucket name that you used in [S3 bucket](#s3-bucket)
 
-You can invoke `kube-aws status` to get the cluster API endpoint after cluster creation, if necessary. This command can take a while. And then dig the load balancer hostname to get the ip address, use this ip to setup an A record for your external dns name.
 
-####Access the cluster
+#### Configure DNS
+
+You can invoke `kube-aws status` to get the cluster API endpoint after cluster creation.
+
+```
+$ kube-aws status
+Cluster Name:		paddle-cluster
+Controller DNS Name:	paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com
+```
+
+If you own a DNS name, set the A record to any of the above ip. __Or__ you can set up CNAME point to `Controller DNS Name` (`paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com`)
+
+##### Find IP address
+
+Use command `dig` to check the load balancer hostname to get the ip address.
+
+```
+$ dig paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com
+
+;; QUESTION SECTION:
+;paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com. IN A
+
+;; ANSWER SECTION:
+paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com. 59 IN A 54.241.164.52
+paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com. 59 IN A 54.67.102.112
+```
+
+In the above output, both ip `54.241.164.52`, `54.67.102.112` will work.
+
+*If you own a DNS name*, set the A record to any of the above ip. Then you can skip to the step "Access the cluster".
+
+*If you do not own a DNS name*:
+##### Update local DNS association
+Edit `/etc/hosts` to associate above ip with the DNS name.
+##### Add Route53 private name service in VPC
+ - Open [Route53 Console](https://console.aws.amazon.com/route53/home)
+ - Create hosted zone with following config
+   - Domain name: "paddle"
+   - Type: "Private hosted zone for amazon VPC"
+   - VPC ID: `<Your VPC ID>`
+
+   ![route53 zone setting](src/route53_create_zone.png)
+ - Add A record
+    - Click on the zone "paddle" just created
+    - Click the button "Create record set"
+        - Name : leave blank
+        - type: "A"
+        - Value: `<kube-controller ec2 private ip>`
+
+        ![route53 create recordset](src/route53_create_recordset.png)
+ - Verify name service
+    - Connect to any instance created by kube-aws via ssh
+    - Run command "host paddle", see if the ip returned is the private ip of kube-controller
+
+#### Access the cluster
 
 Once the API server is running, you should see:
 
 ```
-$ kubectl --kubeconfig=kubeconfig get nodes
-NAME                                       STATUS                     AGE
-ip-10-0-0-xxx.us-west-1.compute.internal   Ready                      5m
-ip-10-0-0-xxx.us-west-1.compute.internal   Ready                      5m
-ip-10-0-0-xx.us-west-1.compute.internal    Ready,SchedulingDisabled   5m
+$ kubectl --kubeconfig=kubeconfig get nodes 
+NAME                                       STATUS    AGE
+ip-10-0-0-134.us-west-2.compute.internal   Ready     6m
+ip-10-0-0-238.us-west-2.compute.internal   Ready     6m
+ip-10-0-0-50.us-west-2.compute.internal    Ready     6m
+ip-10-0-0-55.us-west-2.compute.internal    Ready     6m
 ```
 
 
-###Setup PaddlePaddle Environment on AWS
+### Setup Elastic File System for Cluster
 
-Now, we've created a cluster with following network capability:
+Training data is usually served on a distributed filesystem, we use Elastic File System (EFS) on AWS.
 
-1. All Kubernetes nodes can communicate with each other.
+1. Create security group for EFS in [security group console](https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#SecurityGroups:sort=groupId)
+  1. Look up security group id for `paddle-cluster-sg-worker` (`sg-055ee37d` in the image below)
+  <center>![](src/worker_security_group.png)</center>
+  2. Add security group `paddle-efs` with `ALL TCP` inbound rule and custom source as group id of `paddle-cluster-sg-worker`. And VPC of `paddle-cluster-vpc`. Make sure availability zone is same as the one you used in [Initialize Assets](#initialize-assets).
+  <center>![](src/add_security_group.png)</center>
 
-1. All Docker containers on Kubernetes nodes can communicate with each other.
-
-1. All Kubernetes nodes can communicate with all Docker containers on Kubernetes nodes.
-
-1. All other traffic loads from outside of Kubernetes nodes cannot reach to the Docker containers on Kubernetes nodes except for creating the services for containers.
-
-
-For sharing the training data across all the Kubernetes nodes, we use EFS (Elastic File System) in AWS. Ceph might be a better solution, but it requires high version of Linux kernel that might not be stable enough at this moment. We haven't automated the EFS setup at this moment, so please do the following steps:
-
-
-1. Make sure you added AmazonElasticFileSystemFullAccess policy in your group.
-
-1. Create the Elastic File System in AWS console, and attach the new VPC with it.
+2. Create the Elastic File System in [EFS console](https://us-west-2.console.aws.amazon.com/efs/home?region=us-west-2#/wizard/1) with `paddle-cluster-vpc` VPC. Make sure subnet is `paddle-cluster-Subnet0` andd security group is `paddle-efs`.
 <center>![](src/create_efs.png)</center>
 
 
-1. Modify the Kubernetes security group under ec2/Security Groups, add additional inbound policy "All TCP TCP 0 - 65535 0.0.0.0/0" for Kubernetes default VPC security group. 
-<center>![](src/add_security_group.png)</center>
+### Start PaddlePaddle Training Demo on AWS
 
+#### Configure Kubernetes Volume that Points to EFS
 
-1. Follow the EC2 mount instruction to mount the disk onto all the Kubernetes nodes, we recommend to mount EFS disk onto ~/efs.
-<center>![](src/efs_mount.png)</center>
+First we need to create a [PersistentVolume](https://kubernetes.io/docs/user-guide/persistent-volumes/) to provision EFS volumn.
 
-
-Before starting the training, you should place your user config and divided training data onto EFS. When the training start, each task will copy related files from EFS into container, and it will also write the training results back onto EFS, we will show you how to place the data later in this article.
-
-
-
-###Core Concept of PaddlePaddle Training on AWS
-
-Now we've already setup a 3 nodes distributed Kubernetes cluster, and on each node we've attached the EFS volume, in this training demo, we will create three Kubernetes pod and scheduling them on 3 node. Each pod contains a PaddlePaddle container. When container gets created, it will start pserver and trainer process, load the training data from EFS volume and start the distributed training task.
-
-####Use Kubernetes Job
-
-We use Kubernetes job to represent one time of distributed training. After the job get finished, Kubernetes will destroy job container and release all related resources.
-
-We can write a yaml file to describe the Kubernetes job. The file contains lots of configuration information, for example PaddlePaddle's node number, `paddle pserver` open port number, the network card info etc., these information are passed into container for processes to use as environment variables.
-
-In one time of distributed training, user will confirm the PaddlePaddle node number first. And then upload the pre-divided training data and configuration file onth EFS volume. And then create the Kubernetes job yaml file; submit to the Kubernetes cluster to start the training job.
-
-####Create PaddlePaddle Node
-
-After Kubernetes master gets the request, it will parse the yaml file and create several pods (defined by PaddlePaddle's node number), Kubernetes will allocate these pods onto cluster's node. A pod represents a PaddlePaddle node, when pod is successfully allocated onto one physical/virtual machine, Kubernetes will startup the container in the pod, and this container will use the environment variables in yaml file and start up `paddle pserver` and `paddle trainer` processes.
-
-
-####Start up Training
-
-After container gets started, it starts up the distributed training by using scripts. We know `paddle train` process need to know other node's ip address and it's own trainer_id, since PaddlePaddle currently don't have the ability to do the service discovery, so in the start up script, each node will use job pod's name to query all to pod info from Kubernetes apiserver (apiserver's endpoint is an environment variable in container by default).
-
-With pod information, we can assign each pod a unique trainer_id. Here we sort all the pods by pod's ip, and assign the index to each PaddlePaddle node as it's trainer_id. The workflow of starting up the script is as follows:
-
-1. Query the api server to get pod information, and assign the trainer_id by sorting the ip.
-1. Copy the training data from EFS sharing volume into container.
-1. Parse the `paddle pserver` and 'paddle trainer' startup parameters from environment variables, and then start up the processes.
-1. PaddlePaddle will automatically write the result onto the PaddlePaddle node with trainer_id:0, we set the output path to be the EFS volume to save the result data.
-
-
-###Start PaddlePaddle Training Demo on AWS
-
-Now we'll start a PaddlePaddle training demo on AWS, steps are as follows:
-
-1. Build PaddlePaddle Docker image.
-1. Divide the training data file and upload it onto the EFS sharing volume.
-1. Create the training job yaml file, and start up the job.
-1. Check the result after training.
-
-####Build PaddlePaddle Docker Image
-
-PaddlePaddle docker image need to provide the runtime environment for `paddle pserver` and `paddle train`, so the container use this image should have two main function:
-
-1. Copy the training data into container.
-1. Generate the startup parameter for `paddle pserver` and `paddle train` process, and startup the training.
-
-
-Since official `paddledev/paddle:cpu-latest` have already included the PaddlePaddle binary, but lack of the above functionalities, so we will create the startup script based on this image, to achieve the work above. the detailed Dockerfile is as follows:
-
+Save following snippet as `pv.yaml`
 ```
-FROM paddledev/paddle:cpu-latest
-
-MAINTAINER zjsxzong89@gmail.com
-
-COPY start.sh /root/
-COPY start_paddle.py /root/
-CMD ["bash"," -c","/root/start.sh"]
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efsvol
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: EFS_DNS_NAME
+    path: "/"
 ```
 
-At this point, we will copy our `start.sh` and `start_paddle.py` file into container, and then exec `start_paddle.py` script to start up the training, all the steps like assigning trainer_id, getting other nodes' ip are implemented in `start_paddle.py`.
+`EFS_DNS_NAME`: DNS name as shown in description of `paddle-efs` that we created. Looks similar to `fs-2cbf7385.efs.us-west-2.amazonaws.com`
 
-`start_paddle.py` will start parsing the parameters.
-
+Run following command to create a persistent volumn:
 ```
-parser = argparse.ArgumentParser(prog="start_paddle.py",
-                                     description='simple tool for k8s')
-    args, train_args_list = parser.parse_known_args()
-    train_args = refine_unknown_args(train_args_list)
-    train_args_dict = dict(zip(train_args[:-1:2], train_args[1::2]))
-    podlist = getPodList()
+kubectl --kubeconfig=kubeconfig create -f pv.yaml
 ```
 
-And then using function `getPodList()` to query all the pod information from the job name through Kubernetes api server. When all the pods are in the running status, using `getIdMap(podlist)` to get the trainer_id.
+Next let's create a [PersistentVolumeClaim](https://kubernetes.io/docs/user-guide/persistent-volumes/) to claim the persistent volume.
 
+Save following snippet as `pvc.yaml`.
 ```
-    podlist = getPodList()
-    # need to wait until all pods are running
-    while not isPodAllRunning(podlist):
-        time.sleep(10)
-        podlist = getPodList()
-    idMap = getIdMap(podlist)
-```
-
-In function `getIdMap(podlist)`, we use podlist to get the ip address for each pod and sort them, use the index as the trainer_id.
-
-```
-def getIdMap(podlist):
-    '''
-    generate tainer_id by ip
-    '''
-    ips = []
-    for pod in podlist["items"]:
-        ips.append(pod["status"]["podIP"])
-    ips.sort()
-    idMap = {}
-    for i in range(len(ips)):
-        idMap[ips[i]] = i
-    return idMap
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: efsvol
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
 ```
 
-After getting `idMap`, we use function `startPaddle(idMap, train_args_dict)` to generate `paddle pserver` and `paddle train` start up parameters and then start up the processes.
-
-In function `startPaddle`, the most important work is to generate `paddle pserver` and `paddle train` start up parameters. For example, `paddle train` parameter parsing, we will get parameters like `PADDLE_NIC`, `PADDLE_PORT`, `PADDLE_PORTS_NUM`, and get the `trainer_id` from `idMap`.
-
+Run following command to create a persistent volumn claim:
 ```
-    program = 'paddle train'
-    args = " --nics=" + PADDLE_NIC
-    args += " --port=" + str(PADDLE_PORT)
-    args += " --ports_num=" + str(PADDLE_PORTS_NUM)
-    args += " --comment=" + "paddle_process_by_paddle"
-    ip_string = ""
-    for ip in idMap.keys():
-        ip_string += (ip + ",")
-    ip_string = ip_string.rstrip(",")
-    args += " --pservers=" + ip_string
-    args_ext = ""
-    for key, value in train_args_dict.items():
-        args_ext += (' --' + key + '=' + value)
-    localIP = socket.gethostbyname(socket.gethostname())
-    trainerId = idMap[localIP]
-    args += " " + args_ext + " --trainer_id=" + \
-        str(trainerId) + " --save_dir=" + JOB_PATH_OUTPUT
+kubectl --kubeconfig=kubeconfig create -f pvc.yaml
 ```
 
-Use `docker build` to build toe Docker Image:
+#### Prepare Training Data
 
+We will now launch a kubernetes job that downloads, saves and evenly splits training data into 3 shards on the persistent volumn that we just created.
+
+save following snippet as `paddle-data-job.yaml`
 ```
-docker build -t your_repo/paddle:mypaddle .
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: paddle-data
+spec:
+  template:
+    metadata:
+      name: pi
+    spec:
+      containers:
+      - name: paddle-data
+        image: paddledev/paddle-tutorial:k8s_data
+        imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: "/efs"
+          name: efs
+        env:
+        - name: OUT_DIR
+          value: /efs/paddle-cluster-job
+        - name: SPLIT_COUNT
+          value: "3"
+      volumes:
+        - name: efs
+          persistentVolumeClaim:
+            claimName: efsvol
+      restartPolicy: Never
 ```
 
-And then push the built image onto docker registry.
-
+Run following command to launch the job:
 ```
-docker push  your_repo/paddle:mypaddle
-```
-
-####Upload Training Data File
-
-Here we will use PaddlePaddle's official recommendation demo as the content for this training, we put the training data file into a directory named by job name, which located in EFS sharing volume, the tree structure for the directory looks like:
-
-```
-efs
-└── paddle-cluster-job
-    ├── data
-    │   ├── 0
-    │   │
-    │   ├── 1
-    │   │
-    │   └── 2
-    ├── output
-    └── recommendation
+kubectl --kubeconfig=kubeconfig create -f paddle-data-job.yaml
 ```
 
-The `paddle-cluster-job` directory is the job name for this training, this training includes 3 PaddlePaddle node, we store the pre-divided data under `paddle-cluster-job/data` directory, directory 0, 1, 2 each represent 3 nodes' trainer_id. the training data in in recommendation directory, the training results and logs will be in the output directory.
+Job may take 7 min to finish, use following command to check job status. Do not proceed until `SUCCESSFUL` for `paddle-data` job is `1`
+```
+$ kubectl --kubeconfig=kubeconfig get jobs
+NAME          DESIRED   SUCCESSFUL   AGE
+paddle-data   1         1            6m
+```
 
+Data preparation is done by docker image `paddledev/paddle-tutorial:k8s_data`, see [here](src/k8s_data/README.md) for how to build this docker image and source code.
 
-####Create Kubernetes Job
+#### Start Training
 
-Kubernetes use yaml file to describe job details, and then use command line tool to create the job in Kubernetes cluster.
-
-In yaml file, we describe the Docker image we use for this training, the node number we need to startup, the volume mounting information and all the necessary parameters we need for `paddle pserver` and `paddle train` processes.
-
-The yaml file content is as follows:
-
+Now we are ready to start paddle training job. Save following snippet as `paddle-cluster-job.yaml`
 ```
 apiVersion: batch/v1
 kind: Job
@@ -522,12 +540,12 @@ spec:
       name: paddle-cluster-job
     spec:
       volumes:
-      - name: jobpath
-        hostPath:
-          path: /home/admin/efs
+      - name: efs
+        persistentVolumeClaim:
+          claimName: efsvol
       containers:
       - name: trainer
-        image: drinkcode/paddle:k8s-job
+        image: paddledev/paddle-tutorial:k8s_train
         command: ["bin/bash",  "-c", "/root/start.sh"]
         env:
         - name: JOB_NAME
@@ -537,7 +555,7 @@ spec:
         - name: JOB_NAMESPACE
           value: default
         - name: TRAIN_CONFIG_DIR
-          value: recommendation
+          value: quick_start
         - name: CONF_PADDLE_NIC
           value: eth0
         - name: CONF_PADDLE_PORT
@@ -548,119 +566,124 @@ spec:
           value: "2"
         - name: CONF_PADDLE_GRADIENT_NUM
           value: "3"
+        - name: TRAINER_COUNT
+          value: "3"
         volumeMounts:
-        - name: jobpath
-          mountPath: /home/jobpath
+        - mountPath: "/home/jobpath"
+          name: efs
         ports:
-        - name: jobport
-          hostPort: 30001
-          containerPort: 30001
+        - name: jobport0
+          hostPort: 7164
+          containerPort: 7164
+        - name: jobport1
+          hostPort: 7165
+          containerPort: 7165
+        - name: jobport2
+          hostPort: 7166
+          containerPort: 7166
+        - name: jobport3
+          hostPort: 7167
+          containerPort: 7167
       restartPolicy: Never
-
 ```
 
-In yaml file, the metadata's name is the job's name. `parallelism, completions` means this job will simultaneously start up 3 PaddlePaddle nodes, and this job will be finished when there are 3 finished pods. For the data store volume, we declare the path jobpath, it mount the /home/admin/efs on host machine into the container with path /home/jobpath. So in container, the /home/jobpath actually stores the data onto EFS sharing volume.
+`parallelism: 3, completions: 3` means this job will simultaneously start 3 PaddlePaddle pods, and this job will be finished when there are 3 finished pods.
 
-`env` field represents container's environment variables, we pass the PaddlePaddle parameters into containers by using the `env` field.
+`env` field represents container's environment variables, we specify PaddlePaddle parameters by environment variables.
 
-`JOB_PATH` represents the sharing volume path, `JOB_NAME` represents job name, `TRAIN_CONFIG_DIR` represents the training data file directory, we can these three parameters to get the file path for this training.
+`ports` indicates that TCP port 7164 - 7167 are exposed for communication between `pserver` ans trainer. port starts continously from `CONF_PADDLE_PORT` (7164) to `CONF_PADDLE_PORT + CONF_PADDLE_PORTS_NUM + CONF_PADDLE_PORTS_NUM_SPARSE - 1` (7167). We use multiple ports for dense and sparse paramter updates to improve latency.
 
-`CONF_PADDLE_NIC` represents `paddle pserver` process's `--nics` parameters, the NIC name.
-
-`CONF_PADDLE_PORT` represents `paddle pserver` process's `--port` parameters, `CONF_PADDLE_PORTS_NUM` represents `--port_num` parameter.
-
-`CONF_PADDLE_PORTS_NUM_SPARSE` represents the sparse updated port number, `--ports_num_for_sparse` parameter.
-
-`CONF_PADDLE_GRADIENT_NUM` represents the training node number, `--num_gradient_servers` parameter.
-
-After we create the yaml file, we can use Kubernetes command line tool to create the job onto the cluster.
-
+Run following command to launch the job.
 ```
-kubectl create -f job.yaml
+kubectl --kubeconfig=kubeconfig create -f paddle-claster-job.yaml
 ```
 
-After we execute the above command, Kubernetes will create 3 pods and then pull the PaddlePaddle image, then start up the containers for training.
-
-
-
-####Check Training Results
-
-During the training, we can see the logs and models on EFS sharing volume, the output directory contains the training results. (Caution: node_0, node_1, node_2 directories represents PaddlePaddle node and train_id, not the Kubernetes node)
+Inspect individual pods
 
 ```
-[root@paddle-kubernetes-node0 output]# tree -d
-.
-├── node_0
-│   ├── server.log
-│   └── train.log
-├── node_1
-│   ├── server.log
-│   └── train.log
-├── node_2
-......
-├── pass-00002
-│   ├── done
-│   ├── ___embedding_0__.w0
-│   ├── ___embedding_1__.w0
-......
+$ kubectl --kubeconfig=kubeconfig get pods
+NAME                       READY     STATUS    RESTARTS   AGE
+paddle-cluster-job-cm469   1/1       Running   0          9m
+paddle-cluster-job-fnt03   1/1       Running   0          9m
+paddle-cluster-job-jx4xr   1/1       Running   0          9m
 ```
 
-We can always check the container training status through logs, for example:
-
+Inspect individual console output
 ```
-[root@paddle-kubernetes-node0 node_0]# cat train.log
-I1116 09:10:17.123121    50 Util.cpp:155] commandline:
- /usr/local/bin/../opt/paddle/bin/paddle_trainer
-    --nics=eth0 --port=7164
-    --ports_num=2 --comment=paddle_process_by_paddle
-    --pservers=192.168.129.66,192.168.223.143,192.168.129.71
-    --ports_num_for_sparse=2 --config=./trainer_config.py
-    --trainer_count=4 --num_passes=10 --use_gpu=0 
-    --log_period=50 --dot_period=10 --saving_period=1 
-    --local=0 --trainer_id=0
-    --save_dir=/home/jobpath/paddle-cluster-job/output
-I1116 09:10:17.123440    50 Util.cpp:130] Calling runInitFunctions
-I1116 09:10:17.123764    50 Util.cpp:143] Call runInitFunctions done.
-[WARNING 2016-11-16 09:10:17,227 default_decorators.py:40] please use keyword arguments in paddle config.
-[INFO 2016-11-16 09:10:17,239 networks.py:1282] The input order is [movie_id, title, genres, user_id, gender, age, occupation, rating]
-[INFO 2016-11-16 09:10:17,239 networks.py:1289] The output order is [__regression_cost_0__]
-I1116 09:10:17.392917    50 Trainer.cpp:170] trainer mode: Normal
-I1116 09:10:17.613910    50 PyDataProvider2.cpp:257] loading dataprovider dataprovider::process
-I1116 09:10:17.680917    50 PyDataProvider2.cpp:257] loading dataprovider dataprovider::process
-I1116 09:10:17.681543    50 GradientMachine.cpp:134] Initing parameters..
-I1116 09:10:18.012390    50 GradientMachine.cpp:141] Init parameters done.
-I1116 09:10:18.018641    50 ParameterClient2.cpp:122] pserver 0 192.168.129.66:7164
-I1116 09:10:18.018950    50 ParameterClient2.cpp:122] pserver 1 192.168.129.66:7165
-I1116 09:10:18.019069    50 ParameterClient2.cpp:122] pserver 2 192.168.223.143:7164
-I1116 09:10:18.019492    50 ParameterClient2.cpp:122] pserver 3 192.168.223.143:7165
-I1116 09:10:18.019716    50 ParameterClient2.cpp:122] pserver 4 192.168.129.71:7164
-I1116 09:10:18.019836    50 ParameterClient2.cpp:122] pserver 5 192.168.129.71:7165
+kubectl --kubeconfig=kubeconfig log -f POD_NAME
 ```
 
-It'll take around 8 hours to finish this PaddlePaddle recommendation training demo on three 2 core 8 GB EC2 machine (m3.large).
+`POD_NAME`: name of any pod (e.g., `paddle-cluster-job-cm469`).
+
+Run `kubectl --kubeconfig=kubeconfig describe job paddle-cluster-job` to check training job status. It will complete in around 20 minutes.
+
+The details for start `pserver` and `trainer` are hidden inside docker image `paddledev/paddle-tutorial:k8s_train`, see [here](src/k8s_train/README.md) for how to build the docker image and source code.
+
+#### Inspect Training Output
+
+Training output (model snapshot and logs) will be saved in EFS. We can ssh into worker EC2 instance, mount EFS and check training output.
+
+1. ssh Into Worker EC2 instance
+```
+chmod 400 key-name.pem
+ssh -i key-name.pem core@INSTANCE_IP
+```
+
+`INSTANCE_IP`: public IP address of EC2 kubernetes worker node. Go to [EC2 console](https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#Instances:sort=instanceId) and check `public IP` of any `paddle-cluster-kube-aws-worker` instance.
+
+2. Mount EFS
+```
+mkdir efs
+sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 EFS_DNS_NAME:/ efs
+```
+
+`EFS_DNS_NAME`: DNS name as shown in description of `paddle-efs` that we created. Look similar to `fs-2cbf7385.efs.us-west-2.amazonaws.com`.
+
+Now folder `efs` will have structure similar to:
+```
+-- paddle-cluster-job
+    |-- ...
+    |-- output
+    |   |-- node_0
+    |   |   |-- server.log
+    |   |   `-- train.log
+    |   |-- node_1
+    |   |   |-- server.log
+    |   |   `-- train.log
+    |   |-- node_2
+    |   |   |-- server.log
+    |   |   `-- train.log
+    |   |-- pass-00000
+    |   |   |-- ___fc_layer_0__.w0
+    |   |   |-- ___fc_layer_0__.wbias
+    |   |   |-- done
+    |   |   |-- path.txt
+    |   |   `-- trainer_config.lr.py
+	|   |-- pass-00001...
+```
+`server.log` contains log for `pserver`. `train.log` contains log for `trainer`. Model description and snapshot is stored in `pass-0000*`.
+
+### Kubernetes Cluster Tear Down
+
+#### Delete EFS
+
+Go to [EFS Console](https://us-west-2.console.aws.amazon.com/efs/home?region=us-west-2) and delete the EFS volumn that we created.
+
+#### Delete security group
+
+Go to [Security Group Console](https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#SecurityGroups:sort=groupId) and delete security group `paddle-efs`.
 
 
-###Kubernetes Cluster Tear Down
+#### Delete S3 Bucket
 
+Go to [S3 Console](https://console.aws.amazon.com/s3/home?region=us-west-2#) and delete the S3 bucket that we created.
 
-If you want to tear down the whole Kubernetes cluster, make sure to *delete* the EFS volume first (otherwise, you will get stucked on following steps), and then use the following command:
+#### Destroy Cluster
 
 ```
 kube-aws destroy
 ```
-It's an async call, it might take 5 min to tear down the whole cluster.
 
-If you created any Kubernetes Services of type LoadBalancer, you must delete these first, as the CloudFormation cannot be fully destroyed if any externally-managed resources still exist.
+The command will return immediately, but it might take 5 min to tear down the whole cluster.
 
-
-
-## For Experts with Kubernetes and AWS
-
-Sometimes we might need to create or manage the cluster on AWS manually with limited privileges, so here we will explain more on what’s going on with the Kubernetes setup script.
-
-### Some Presumptions
-
-* Instances run on CoreOS, the official IAM.
-* Kubernetes node use instance storage, no EBS get mounted. Etcd is running on additional node.
-* For networking, we use Flannel network at this moment, we will use Calico solution later on.
-* When you create a service with Type=LoadBalancer, Kubernetes will create and ELB, and create a security group for the ELB.
+You can go to [CludFormation Console](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks?filter=active) to check destroy process.

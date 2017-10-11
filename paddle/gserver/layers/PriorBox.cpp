@@ -20,7 +20,7 @@ namespace paddle {
 /**
  * @brief A layer for generating priorbox locations and variances.
  * - Input: Two and only two input layer are accepted. The input layer must be
- *        be a data output layer and a convolution output layer.
+ *          be a data output layer and a convolution output layer.
  * - Output: The priorbox locations and variances of the input data.
  * Reference:
  *    Wei Liu, Dragomir Anguelov, Dumitru Erhan, Christian Szegedy, Scott Reed,
@@ -30,10 +30,11 @@ namespace paddle {
 class PriorBoxLayer : public Layer {
 public:
   explicit PriorBoxLayer(const LayerConfig& config) : Layer(config) {}
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback) {}
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override {}
 
 protected:
   int numPriors_;
@@ -44,27 +45,32 @@ protected:
   MatrixPtr buffer_;
 };
 
+REGISTER_LAYER(priorbox, PriorBoxLayer);
+
 bool PriorBoxLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   Layer::init(layerMap, parameterMap);
   auto pbConf = config_.inputs(0).priorbox_conf();
+  std::vector<real> tmp;
+  aspectRatio_.push_back(1.);
   std::copy(pbConf.min_size().begin(),
             pbConf.min_size().end(),
             std::back_inserter(minSize_));
   std::copy(pbConf.max_size().begin(),
             pbConf.max_size().end(),
             std::back_inserter(maxSize_));
-  std::copy(pbConf.aspect_ratio().begin(),
-            pbConf.aspect_ratio().end(),
-            std::back_inserter(aspectRatio_));
   std::copy(pbConf.variance().begin(),
             pbConf.variance().end(),
             std::back_inserter(variance_));
+  std::copy(pbConf.aspect_ratio().begin(),
+            pbConf.aspect_ratio().end(),
+            std::back_inserter(tmp));
   // flip
-  int inputRatioLength = aspectRatio_.size();
-  for (int index = 0; index < inputRatioLength; index++)
-    aspectRatio_.push_back(1 / aspectRatio_[index]);
-  aspectRatio_.push_back(1.);
+  int inputRatioLength = tmp.size();
+  for (int index = 0; index < inputRatioLength; index++) {
+    aspectRatio_.push_back(tmp[index]);
+    aspectRatio_.push_back(1 / tmp[index]);
+  }
   numPriors_ = aspectRatio_.size();
   if (maxSize_.size() > 0) numPriors_++;
   return true;
@@ -93,12 +99,12 @@ void PriorBoxLayer::forward(PassType passType) {
     for (int w = 0; w < layerWidth; ++w) {
       real centerX = (w + 0.5) * stepW;
       real centerY = (h + 0.5) * stepH;
-      int minSize = 0;
+      real minSize = 0;
       for (size_t s = 0; s < minSize_.size(); s++) {
         // first prior.
         minSize = minSize_[s];
-        int boxWidth = minSize;
-        int boxHeight = minSize;
+        real boxWidth = minSize;
+        real boxHeight = minSize;
         // xmin, ymin, xmax, ymax.
         tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
         tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
@@ -111,7 +117,7 @@ void PriorBoxLayer::forward(PassType passType) {
           CHECK_EQ(minSize_.size(), maxSize_.size());
           // second prior.
           for (size_t s = 0; s < maxSize_.size(); s++) {
-            int maxSize = maxSize_[s];
+            real maxSize = maxSize_[s];
             boxWidth = boxHeight = sqrt(minSize * maxSize);
             tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
             tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
@@ -144,6 +150,5 @@ void PriorBoxLayer::forward(PassType passType) {
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(buffer_->data_, dim * 2);
 }
-REGISTER_LAYER(priorbox, PriorBoxLayer);
 
 }  // namespace paddle

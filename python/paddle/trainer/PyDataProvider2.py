@@ -45,6 +45,23 @@ class CacheType(object):
 
 
 class InputType(object):
+    """
+    InputType is the base class for paddle input types.
+
+    ..  note::
+
+        this is a base class, and should never be used by user.
+
+    :param dim: dimension of input. If the input is an integer, it means the
+                value range. Otherwise, it means the size of layer.
+    :type dim: int
+    :param seq_type: sequence type of input. 0 means it is not a sequence. 1
+                     means it is a variable length sequence. 2 means it is a
+                     nested sequence.
+    :type seq_type: int
+    :param type: data type of input.
+    :type type: int
+    """
     __slots__ = ['dim', 'seq_type', 'type']
 
     def __init__(self, dim, seq_type, tp):
@@ -54,19 +71,63 @@ class InputType(object):
 
 
 def dense_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
+    """
+    Dense Vector. It means the input feature is dense float vector. For example,
+    if the input is an image with 28*28 pixels, the input of Paddle neural
+    network should be a dense vector with dimension 784.
+
+    :param dim: dimension of this vector.
+    :type dim: int
+    :param seq_type: sequence type of input.
+    :type seq_type: int
+    :return: An input type object.
+    :rtype: InputType
+    """
     return InputType(dim, seq_type, DataType.Dense)
 
 
 def sparse_non_value_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
+    """
+    Sparse binary vector. It means the input feature is a sparse vector and the
+    every element in this vector is either zero or one.
+
+    :param dim: dimension of this vector.
+    :type dim: int
+    :param seq_type: sequence type of this input.
+    :type seq_type: int
+    :return: An input type object.
+    :rtype: InputType
+    """
     return InputType(dim, seq_type, DataType.SparseNonValue)
 
 
 def sparse_value_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
+    """
+    Sparse vector. It means the input feature is a sparse vector. Most of the
+    elements in this vector are zero, others could be any float value.
+
+    :param dim: dimension of this vector.
+    :type dim: int
+    :param seq_type: sequence type of this input.
+    :type seq_type: int
+    :return: An input type object.
+    :rtype: InputType
+    """
     return InputType(dim, seq_type, DataType.SparseValue)
 
 
-def index_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
-    return InputType(dim, seq_type, DataType.Index)
+def index_slot(value_range, seq_type=SequenceType.NO_SEQUENCE):
+    """
+    Data type of integer.
+
+    :param seq_type: sequence type of this input.
+    :type seq_type: int
+    :param value_range: range of this integer.
+    :type value_range: int
+    :return: An input type object
+    :rtype: InputType
+    """
+    return InputType(value_range, seq_type, DataType.Index)
 
 
 dense_vector = dense_slot
@@ -76,6 +137,14 @@ integer_value = index_slot
 
 
 def dense_vector_sequence(dim):
+    """
+    Data type of a sequence of dense vector.
+
+    :param dim: dimension of dense vector.
+    :type dim: int
+    :return: An input type object
+    :rtype: InputType
+    """
     return dense_vector(dim, seq_type=SequenceType.SEQUENCE)
 
 
@@ -84,6 +153,15 @@ def dense_vector_sub_sequence(dim):
 
 
 def sparse_binary_vector_sequence(dim):
+    """
+    Data type of a sequence of sparse vector, which every element is either zero
+     or one.
+
+    :param dim: dimension of sparse vector.
+    :type dim: int
+    :return: An input type object
+    :rtype: InputType
+    """
     return sparse_binary_vector(dim, seq_type=SequenceType.SEQUENCE)
 
 
@@ -92,6 +170,15 @@ def sparse_binary_vector_sub_sequence(dim):
 
 
 def sparse_vector_sequence(dim):
+    """
+    Data type of a sequence of sparse vector, which most elements are zero,
+    others could be any float value.
+
+    :param dim: dimension of sparse vector.
+    :type dim: int
+    :return: An input type object
+    :rtype: InputType
+    """
     return sparse_vector(dim, seq_type=SequenceType.SEQUENCE)
 
 
@@ -99,8 +186,14 @@ def sparse_vector_sub_sequence(dim):
     return sparse_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
 
-def integer_value_sequence(dim):
-    return integer_value(dim, seq_type=SequenceType.SEQUENCE)
+def integer_value_sequence(value_range):
+    """
+    Data type of a sequence of integer.
+
+    :param value_range: range of each element.
+    :type value_range: int
+    """
+    return integer_value(value_range, seq_type=SequenceType.SEQUENCE)
 
 
 def integer_value_sub_sequence(dim):

@@ -25,6 +25,11 @@ namespace paddle {
  * Input: a sequence
  * If SequenceLevel = kNonseq:
  *   Output: a sequence containing only the last instance of the input sequence
+ *   If stride_ > 0:
+ *      Output: a shorten sequence. The operation of getting last instance of a
+ *              sequence is independently performed on every slice of the input
+ *              sequence, which is obtained by sliding a window with the window
+ *              size set to stride_.
  * If SequenceLevel = kSeq:
  *   Check input sequence must has sub-sequence
  *   Output: a sequence containing only the last instance of each sub-sequence
@@ -37,17 +42,17 @@ class SequenceLastInstanceLayer : public SequencePoolLayer {
 protected:
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
+  std::vector<int> instanceIds_;
 
 public:
   explicit SequenceLastInstanceLayer(const LayerConfig& config)
       : SequencePoolLayer(config) {}
 
-  ~SequenceLastInstanceLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(seqlastins, SequenceLastInstanceLayer);
@@ -55,6 +60,7 @@ REGISTER_LAYER(seqlastins, SequenceLastInstanceLayer);
 bool SequenceLastInstanceLayer::init(const LayerMap& layerMap,
                                      const ParameterMap& parameterMap) {
   SequencePoolLayer::init(layerMap, parameterMap);
+  reversed_ = config_.select_first();
 
   tmpSrc_ =
       Matrix::create(nullptr, /* height= */ 1, 1, /* trans= */ false, useGpu_);
@@ -67,7 +73,8 @@ bool SequenceLastInstanceLayer::init(const LayerMap& layerMap,
 void SequenceLastInstanceLayer::forward(PassType passType) {
   SequencePoolLayer::forward(passType);
 
-  const int* starts = startPositions_->getData(false);
+  auto starts = (stride_ > 0) ? stridePositions_->getData()
+                              : startPositions_->getData(false);
   MatrixPtr inputValue = getInputValue(0);
   MatrixPtr outputValue = getOutputValue();
 
@@ -75,9 +82,10 @@ void SequenceLastInstanceLayer::forward(PassType passType) {
     AsyncGpuBlock asyncGpuBlock;
     REGISTER_TIMER_INFO("SequenceLastInstanceLayerForward", getName().c_str());
 
+    instanceIds_.clear();
     for (size_t seqId = 0; seqId < newBatchSize_; ++seqId) {
-      int insId =
-          config_.select_first() ? starts[seqId] : starts[seqId + 1] - 1;
+      int insId = reversed_ ? starts[seqId] : starts[seqId + 1] - 1;
+      instanceIds_.push_back(insId);
 
       outputValue->subMatrix(seqId, 1, tmpDest_)
           ->assign(*(inputValue->subMatrix(insId, 1, tmpSrc_)));
@@ -97,18 +105,13 @@ void SequenceLastInstanceLayer::backward(const UpdateCallback& callback) {
 
   MatrixPtr inputGrad = getInputGrad(0);
   MatrixPtr outputGrad = getOutputGrad();
-  const int* starts = startPositions_->getData(false);
-  size_t numSequences = startPositions_->getSize() - 1;
 
   if (inputGrad) {
     AsyncGpuBlock asyncGpuBlock;
     REGISTER_TIMER_INFO("SequenceLastInstanceLayerBackward", getName().c_str());
 
-    for (size_t seqId = 0; seqId < numSequences; ++seqId) {
-      int insId =
-          config_.select_first() ? starts[seqId] : starts[seqId + 1] - 1;
-
-      inputGrad->subMatrix(insId, 1, tmpDest_)
+    for (size_t seqId = 0; seqId < newBatchSize_; ++seqId) {
+      inputGrad->subMatrix(instanceIds_[seqId], 1, tmpDest_)
           ->add(*(outputGrad->subMatrix(seqId, 1, tmpSrc_)));
     }
   }

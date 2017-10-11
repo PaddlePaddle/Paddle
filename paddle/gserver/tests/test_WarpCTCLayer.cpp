@@ -148,11 +148,11 @@ LayerPtr createCTCLayer(string name,
 
   ActivationFunction* softmaxActivation = ActivationFunction::create("softmax");
 
-  softmaxActivation->forward(dataLayer->getOutput());
+  softmaxActivation->forward(dataLayer->getOutput()).check();
   layer->forward(PASS_GC);
 
   layer->backward();
-  softmaxActivation->backward(dataLayer->getOutput());
+  softmaxActivation->backward(dataLayer->getOutput()).check();
 
   return layer;
 }

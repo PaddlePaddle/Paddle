@@ -24,9 +24,6 @@ limitations under the License. */
 DEFINE_bool(allow_only_one_model_on_one_gpu,
             true,
             "If true, do not allow multiple models on one GPU device");
-#ifdef PADDLE_METRIC_LEARNING
-DECLARE_bool(external);
-#endif
 
 namespace paddle {
 
@@ -45,11 +42,7 @@ MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
       trainerBarrier_(FLAGS_trainer_count),
       allBarrier_(FLAGS_trainer_count + 1),
       inArgsCopied_(false) {
-#ifdef PADDLE_METRIC_LEARNING
-  isPassGrad_ = FLAGS_external;
-#else
   isPassGrad_ = false;
-#endif
   numThreads_ = FLAGS_trainer_count;
   if (useGpu) {
     //! TODO(yuyang18): When useGpu=false && paddle is not compiled with gpu,
@@ -282,6 +275,18 @@ void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
   backwardImp(callback);
 }
 
+Argument MultiGradientMachine::getLayerOutput(const std::string& layerName) {
+  std::vector<Argument> args;
+  args.reserve(threads_.size());
+
+  for (auto& thread : threads_) {
+    args.push_back(thread->getGradientMachine()->getLayerOutput(layerName));
+  }
+  outLayerArgs_.concat(args, false /* use_gpu */, outArgStream_, passType_);
+
+  return outLayerArgs_;
+}
+
 void MultiGradientMachine::backwardImp(const UpdateCallback& callback) {
   for (size_t i = 0; i < parameters_.size(); i++) {
     if (!parameters_[i]->useGpu() || parameters_[i]->isStatic()) continue;
@@ -334,7 +339,9 @@ Evaluator* MultiGradientMachine::makeEvaluator() const {
 void MultiGradientMachine::eval(Evaluator* evaluator) const {
   for (auto& thread : threads_) {
     SetDevice device(thread->getDeviceId());
-    thread->getGradientMachine()->eval(evaluator);
+    if (thread->hasInputData()) {
+      thread->getGradientMachine()->eval(evaluator);
+    }
   }
 }
 
@@ -344,14 +351,19 @@ void MultiGradientMachine::getOutArgs(std::vector<Argument>* outArgs,
     REGISTER_TIMER("waitOutArgs");
     thread->waitOutArgsReady();
   }
-  outArgs_.resize(threads_[0]->getOutArgs().size());
+
+  outArgs_.resize(threads_[threads_.size() - 1]->getOutArgs().size());
 
   REGISTER_TIMER("copyOutArgs");
   for (size_t i = 0; i < outArgs_.size(); ++i) {
     std::vector<Argument> args;
     args.reserve(threads_.size());
     for (auto& thread : threads_) {
-      args.push_back(thread->getOutArgs()[i]);
+      // If the thread input is empty, then the output is empty.
+      auto tmp = thread->getOutArgs();
+      if (tmp.size() > 0) {
+        args.push_back(tmp[i]);
+      }
     }
     outArgs_[i].concat(args, useGpu_, outArgStream_, passType);
   }
@@ -522,7 +534,7 @@ void TrainerThread::prefetch() {
 void TrainerThread::forward() {
   if (!inArgsCopied_) {
     REGISTER_TIMER("copyInArgs");
-    copyInArgs();
+    batchSize_ = copyInArgs();
   } else {
     inArgsCopied_ = false;
   }
@@ -552,7 +564,12 @@ void TrainerThread::forward() {
 
   {
     REGISTER_TIMER("thread_forward");
-    gradientMachine_->forward(inArgs_, &outArgs_, multiMachine_->getPassType());
+    if (batchSize_ > 0) {
+      gradientMachine_->forward(
+          inArgs_, &outArgs_, multiMachine_->getPassType());
+    } else {
+      outArgs_.clear();
+    }
   }
   outArgsReadySem_.post();
 }
@@ -562,7 +579,13 @@ void TrainerThread::backward() {
   if (multiMachine_->isPassGrad()) {
     copyOutputGrad();
   }
-  gradientMachine_->backward(backwardCallback_);
+  if (batchSize_ > 0) {
+    gradientMachine_->backward(backwardCallback_);
+  } else {
+    for (size_t i = parameters_.size(); i > 0; i--) {
+      backwardCallback(parameters_[i - 1].get());
+    }
+  }
   if (multiMachine_->hasNonstaticCpuParamters()) {
     mergeCpuGradients();
   }
@@ -720,7 +743,7 @@ void TrainerThread::notifyValueReady(int paramId) {
   notifyValueDispatch(paramId);
 }
 
-void TrainerThread::copyInArgs() {
+int TrainerThread::copyInArgs() {
   const std::vector<Argument>& fullInArgs = multiMachine_->getInArgs();
   int numThreads = multiMachine_->getAllThreads().size();
   int32_t numSequences = fullInArgs[0].getNumSequences();
@@ -736,7 +759,7 @@ void TrainerThread::copyInArgs() {
   }
 
   if (copySize == 0) {
-    return;
+    return 0;
   }
 
   for (size_t i = 0; i < fullInArgs.size(); i++) {
@@ -746,6 +769,7 @@ void TrainerThread::copyInArgs() {
         copySize,
         FLAGS_parallel_nn ? false : multiMachine_->useGpu());
   }
+  return copySize;
 }
 
 void TrainerThread::mergeCpuGradients() {

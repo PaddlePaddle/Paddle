@@ -17,7 +17,11 @@ limitations under the License. */
 
 #include <stdio.h>
 #include "hl_base.h"
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+#include "hl_neon_matrix_kernel.cuh"
+#else
 #include "hl_sse_matrix_kernel.cuh"
+#endif
 
 /**
  * @brief   cpu element wise unary operator.

@@ -21,9 +21,7 @@ function version(){
         echo "    with_double: @WITH_DOUBLE@"
         echo "    with_python: @WITH_PYTHON@"
         echo "    with_rdma: @WITH_RDMA@"
-        echo "    with_metric_learning: @WITH_METRIC@"
         echo "    with_timer: @WITH_TIMER@"
-        echo "    with_predict_sdk: @WITH_PREDICT_SDK@"
 }
 
 function ver2num() {
@@ -94,16 +92,22 @@ else:
 EOF
 
 if [ $? -eq 1 ]; then  # Older version installed, or not installed at all
-   echo "First time run paddle, need to install some python dependencies."
-   BASEDIR=$(dirname "$0")
-   pip install ${BASEDIR}/../opt/paddle/share/wheels/*-@PADDLE_VERSION@-*.whl
-   if [ $? -ne 0 ]; then
-      echo "pip install wheels failed. "
-      echo "Please use 'sudo paddle' at the first time you use PaddlePaddle"
-      echo "PaddlePaddle will install some python dependencies automatically."
-      exit 1
-   fi
-   echo "Python dependencies are installed."
+    echo "First time run paddle, need to install some python dependencies."
+    # setuptools normalizes package version, so we need to use normalized
+    # package version for paddle python package
+    PYTHON_PADDLE_VERSION=$(python -c 'import packaging
+import setuptools
+print str(packaging.version.Version("@PADDLE_VERSION@"))
+' 2>/dev/null)
+    BASEDIR=$(dirname "$0")
+    pip install ${BASEDIR}/../opt/paddle/share/wheels/*-${PYTHON_PADDLE_VERSION}-*.whl
+    if [ $? -ne 0 ]; then
+	echo "pip install wheels failed. "
+	echo "Please use 'sudo paddle' at the first time you use PaddlePaddle"
+	echo "PaddlePaddle will install some python dependencies automatically."
+	exit 1
+    fi
+    echo "Python dependencies are installed."
 fi
 
 case "$1" in
@@ -121,6 +125,9 @@ case "$1" in
         ;;
     "make_diagram")
         python -m paddle.utils.make_model_diagram ${@:2}
+        ;;
+    "usage")
+        $MYDIR/../opt/paddle/bin/paddle_usage ${@:2}
         ;;
     "version")
         version

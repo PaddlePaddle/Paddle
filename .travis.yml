@@ -1,39 +1,37 @@
 language: cpp
-cache: ccache
+cache:
+  directories:
+    - $HOME/third_party
+    - $HOME/.ccache
+    - $HOME/.cache/pip
 sudo: required
 dist: trusty
 os:
   - linux
-  - osx
 env:
   - JOB=DOCS
   - JOB=BUILD_AND_TEST
   - JOB=PRE_COMMIT
-matrix:
-  exclude:
-    - os: osx
-      env: JOB=DOCS  # Only generate documentation in linux.
-    - os: osx
-      env: JOB=PRE_COMMIT # Only check pre-commit hook in linux
-
 addons:
   apt:
     packages:
       - gcc-4.8
       - g++-4.8
-      - wget
+      - gfortran-4.8
       - git
       - build-essential
-      - libatlas-base-dev
       - python
       - python-pip
       - python2.7-dev
+      - python-numpy
+      - python-wheel
       - curl
       - swig
       - graphviz
       - clang-format-3.8
       - automake
       - libtool
+      - ccache
 before_install:
   - |
     if [ ${JOB} == "BUILD_AND_TEST" ]; then
@@ -46,12 +44,16 @@ before_install:
         fi
       fi
     fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
   - if [[ "$JOB" == "PRE_COMMIT" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
-  - pip install --upgrade pip
-  - pip install wheel protobuf sphinx recommonmark sphinx_rtd_theme virtualenv pre-commit requests==2.9.2 LinkChecker
+  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python 
+  # protobuf version.
+  - pip install numpy wheel 'protobuf==3.1' sphinx recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit requests==2.9.2 LinkChecker
+  - |
+    function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
-  - paddle/scripts/travis/main.sh
+  - | 
+    timeout 2580 paddle/scripts/travis/main.sh  # 43min timeout
+    RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
 notifications:
   email:
     on_success: change

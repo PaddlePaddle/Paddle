@@ -42,14 +42,13 @@ protected:
 public:
   explicit MaxLayer(const LayerConfig& config) : SequencePoolLayer(config) {}
 
-  ~MaxLayer() {}
-
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     return SequencePoolLayer::init(layerMap, parameterMap);
   }
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

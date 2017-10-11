@@ -14,10 +14,11 @@
 
 import functools
 import collections
+import inspect
 
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
-    ReluActivation, IdentityActivation, SoftmaxActivation
+    ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, BasePoolingType
 from .attrs import *
@@ -37,6 +38,7 @@ __all__ = [
     "dotmul_projection",
     "dotmul_operator",
     "repeat_layer",
+    "seq_reshape_layer",
     "table_projection",
     "mixed_layer",
     "data_layer",
@@ -50,6 +52,7 @@ __all__ = [
     "cos_sim",
     "hsigmoid",
     "conv_projection",
+    "mse_cost",
     "regression_cost",
     'classification_cost',
     "LayerOutput",
@@ -59,6 +62,7 @@ __all__ = [
     'img_cmrnorm_layer',
     'addto_layer',
     'concat_layer',
+    'seq_concat_layer',
     'lstm_step_layer',
     'recurrent_group',
     'memory',
@@ -70,6 +74,7 @@ __all__ = [
     'interpolation_layer',
     'bilinear_interp_layer',
     'trans_layer',
+    'rotate_layer',
     'sum_to_one_norm_layer',
     'get_output_layer',
     'LayerType',
@@ -79,6 +84,7 @@ __all__ = [
     'GeneratedInput',
     'SubsequenceInput',
     'gru_step_layer',
+    'gru_step_naive_layer',
     'recurrent_layer',
     'BaseGeneratedInput',
     'conv_operator',
@@ -107,7 +113,11 @@ __all__ = [
     'out_prod_layer',
     'print_layer',
     'priorbox_layer',
+    'cross_channel_norm_layer',
     'spp_layer',
+    'pad_layer',
+    'eos_layer',
+    'layer_support',
 ]
 
 
@@ -122,6 +132,7 @@ class LayerType(object):
     GRUMEMORY = "gated_recurrent"
     SEQUENCE_LAST_INSTANCE = "seqlastins"
     SEQUENCE_FIRST_INSTANCE = "seqfirstins"
+    SEQUENCE_RESHAPE = "seqreshape"
     POOLING_MAX = "max"
     POOLING_AVG = 'average'
     FC_LAYER = "fc"
@@ -142,6 +153,7 @@ class LayerType(object):
 
     CONCAT_LAYER = 'concat'
     CONCAT_PROJ_LAYER = 'concat2'
+    SEQUENCE_CONCAT_LAYER = 'seqconcat'
 
     LSTM_STEP_LAYER = 'lstm_step'
     GRU_STEP_LAYER = 'gru_step'
@@ -153,6 +165,7 @@ class LayerType(object):
     POWER_LAYER = 'power'
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
+    ROTATE_LAYER = 'rotate'
     OUT_PROD_LAYER = 'out_prod'
     FEATURE_MAP_EXPAND_LAYER = 'featmap_expand'
 
@@ -170,6 +183,7 @@ class LayerType(object):
     BLOCK_EXPAND = "blockexpand"
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
+    PAD_LAYER = "pad"
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
@@ -276,6 +290,14 @@ class LayerOutput(object):
         """
         assert False, "this method should not be invoked"
 
+    def set_input(self, input):
+        """
+        Set the input for a memory layer. Can only be used for memory layer
+        """
+        assert isinstance(input, LayerOutput)
+        assert self.layer_type == LayerType.MEMORY
+        SetMemoryInput(self.name, input.name)
+
 
 ERROR_CLIPPING = 'error_clipping_threshold'
 DROPOUT = 'drop_rate'
@@ -305,6 +327,11 @@ def layer_support(*attrs):
                 if isinstance(val, ExtraLayerAttribute):
                     val.check(method.__name__)
             return method(*args, **kwargs)
+
+        if hasattr(method, 'argspec'):
+            wrapper.argspec = method.argspec
+        else:
+            wrapper.argspec = inspect.getargspec(method)
 
         return wrapper
 
@@ -541,7 +568,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
     DotMulOperator takes two inputs and performs element-wise multiplication:
 
     .. math::
-       out.row[i] += scale * (x.row[i] .* y.row[i])
+       out.row[i] += scale * (a.row[i] .* b.row[i])
 
     where :math:`.*` means element-wise multiplication, and
     scale is a config scalar, its default value is one.
@@ -550,7 +577,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
 
     .. code-block:: python
 
-       op = dotmul_operator(x=layer1, y=layer2, scale=0.5)
+       op = dotmul_operator(a=layer1, b=layer2, scale=0.5)
 
     :param a: Input layer1
     :type a: LayerOutput
@@ -687,8 +714,9 @@ class MixedLayerType(LayerOutput):
         assert len(self.inputs) == 0
         return self
 
-    def __exit__(self, *args, **kwargs):
-        del args, kwargs  # unused parameter to suppress warning
+    def __exit__(self, exc_type, exc_value, tb):
+        if exc_value is not None:
+            raise exc_value
         assert len(self.inputs) != 0
         ml = MixedLayer(
             name=self.name,
@@ -700,6 +728,7 @@ class MixedLayerType(LayerOutput):
         # update the size which might be computed inside MixedLayer
         # according to the operator's output size
         self.size = ml.config.size
+        self.finalized = True
 
 
 @wrap_name_default("mixed")
@@ -778,17 +807,16 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
 
     ..  code-block:: python
 
-        data = data_layer(name="input",
-                          size=1000)
+        data = data_layer(name="input", size=1000)
 
     :param name: Name of this data layer.
     :type name: basestring
     :param size: Size of this data layer.
     :type size: int
     :param height: Height of this data layer, used for image
-    :type size: int|None
+    :type height: int|None
     :param width: Width of this data layer, used for image
-    :type size: int|None
+    :type width: int|None
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -980,6 +1008,46 @@ def priorbox_layer(input,
         parents=[input, image],
         num_filters=num_filters,
         size=size)
+
+
+@wrap_name_default("cross_channel_norm")
+def cross_channel_norm_layer(input, name=None, param_attr=None):
+    """
+    Normalize a layer's output. This layer is necessary for ssd.
+    This layer applys normalize across the channels of each sample to
+    a conv layer's output and scale the output by a group of trainable
+    factors which dimensions equal to the channel's number.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param param_attr: The Parameter Attribute|list.
+    :type param_attr: ParameterAttribute
+    :return: LayerOutput
+    """
+    assert input.num_filters is not None
+    Layer(
+        name=name,
+        type=LayerType.NORM_LAYER,
+        inputs=[
+            Input(
+                input.name,
+                norm=Norm(
+                    norm_type="cross-channel-norm",
+                    channels=input.num_filters,
+                    size=input.size,
+                    scale=0,
+                    pow=0,
+                    blocked=0),
+                **param_attr.attr)
+        ])
+    return LayerOutput(
+        name,
+        LayerType.NORM_LAYER,
+        parents=input,
+        num_filters=input.num_filters,
+        size=input.size)
 
 
 @wrap_name_default("seq_pooling")
@@ -1275,15 +1343,29 @@ def grumemory(input,
 def last_seq(input,
              name=None,
              agg_level=AggregateLevel.EACH_TIMESTEP,
+             stride=-1,
              layer_attr=None):
     """
     Get Last Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the last value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
+
+    The simple usage is:
+
+    .. code-block:: python
+
+       seq = last_seq(input=layer)
 
     :param agg_level: Aggregated level
     :param name: Layer name.
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.  
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1295,11 +1377,15 @@ def last_seq(input,
                        " series information at all. Maybe you want to use"
                        " first_seq instead.")
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_LAST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -1313,15 +1399,29 @@ def last_seq(input,
 def first_seq(input,
               name=None,
               agg_level=AggregateLevel.EACH_TIMESTEP,
+              stride=-1,
               layer_attr=None):
     """
     Get First Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the first value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
+
+    The simple usage is:
+
+    .. code-block:: python
+
+       seq = first_seq(input=layer)
 
     :param agg_level: aggregation level
     :param name: Layer name.
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.  
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1334,11 +1434,15 @@ def first_seq(input,
                        ' time series information at all. Maybe you want to use'
                        ' last_seq instead.')
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_FIRST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -1417,7 +1521,7 @@ def repeat_layer(input, num_repeats, name=None, layer_attr=None):
 
     .. code-block:: python
 
-       expand = repeat_layer(layer, 4)
+       expand = repeat_layer(input=layer, num_repeats=4)
 
     :param input: Input layer
     :type input: LayerOutput
@@ -1441,6 +1545,61 @@ def repeat_layer(input, num_repeats, name=None, layer_attr=None):
         name=name,
         size=l.config.size,
         layer_type=LayerType.FEATURE_MAP_EXPAND_LAYER,
+        parents=[input])
+
+
+@wrap_name_default("seqreshape")
+@wrap_act_default(act=IdentityActivation())
+@wrap_bias_attr_default(has_bias=False)
+@layer_support()
+def seq_reshape_layer(input,
+                      reshape_size,
+                      act=None,
+                      name=None,
+                      layer_attr=None,
+                      bias_attr=None):
+    """
+    A layer for reshaping the sequence. Assume the input sequence has T instances,
+    the dimension of each instance is M, and the input reshape_size is N, then the 
+    output sequence has T*M/N instances, the dimension of each instance is N.
+
+    Note that T*M/N must be an integer.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       reshape = seq_reshape_layer(input=layer, reshape_size=4)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param reshape_size: the size of reshaped sequence.
+    :type reshape_size: int
+    :param name: Layer name.
+    :type name: basestring
+    :param act: Activation type.
+    :type act: BaseActivation
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
+    :type bias_attr: ParameterAttribute or None or bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    Layer(
+        inputs=[input.name],
+        name=name,
+        size=reshape_size,
+        type=LayerType.SEQUENCE_RESHAPE,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraAttr.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        size=reshape_size,
+        layer_type=LayerType.SEQUENCE_RESHAPE,
         parents=[input])
 
 
@@ -1640,7 +1799,7 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
 @layer_support()
 def trans_layer(input, name=None, layer_attr=None):
     """
-    A layer for transposition.
+    A layer for transposing a minibatch matrix.
 
     .. math::
        y = x^\mathrm{T}
@@ -1673,7 +1832,53 @@ def trans_layer(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
+def rotate_layer(input, height, width, name=None, layer_attr=None):
+    """
+    A layer for rotating 90 degrees (clock-wise) for each feature channel,
+    usually used when the input sample is some image or feature map.
+
+    .. math::
+       y(j,i,:) = x(M-i-1,j,:)
+
+    where :math:`x` is (M x N x C) input, and :math:`y` is (N x M x C) output.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       rot = rotate_layer(input=layer,
+                          height=100,
+                          width=100)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param height: The height of the sample matrix
+    :type height: int
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    l = Layer(
+        name=name,
+        height=height,
+        width=width,
+        type=LayerType.ROTATE_LAYER,
+        inputs=[input.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.ROTATE_LAYER,
+        parents=[input],
+        size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
     """
     Cosine Similarity Layer. The cosine similarity equation is here.
 
@@ -1687,6 +1892,12 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
 
     Note that the above computation is for one sample. Multiple samples are
     processed in one batch.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cos = cos_sim(a=layer1, b=layer2, size=3)
 
     :param name: layer name
     :type name: basestring
@@ -1730,7 +1941,7 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
 @layer_support()
 def hsigmoid(input,
              label,
-             num_classes,
+             num_classes=None,
              name=None,
              bias_attr=None,
              param_attr=None,
@@ -1746,8 +1957,7 @@ def hsigmoid(input,
     ..  code-block:: python
 
         cost = hsigmoid(input=[layer1, layer2],
-                        label=data_layer,
-                        num_classes=3)
+                        label=data_layer)
 
     :param input: Input layers. It could be a LayerOutput or list/tuple of
                  LayerOutput.
@@ -1755,12 +1965,14 @@ def hsigmoid(input,
     :param label: Label layer.
     :type label: LayerOutput
     :param num_classes: number of classes.
-    :type num_classes: int
+    :type num_classes: int|None
     :param name: layer name
     :type name: basestring
     :param bias_attr: Bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
+    :param param_attr: Parameter Attribute. None means default parameter.
+    :type param_attr: ParameterAttribute|None
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -1779,6 +1991,11 @@ def hsigmoid(input,
     assert isinstance(input, collections.Sequence)
     assert isinstance(label, LayerOutput)
     assert label.layer_type == LayerType.DATA
+
+    if num_classes is None:
+        num_classes = label.size
+    if num_classes is None or num_classes <= 2:
+        raise ValueError("hsigmoid label size must larger than 2.")
 
     ipts_for_layer = []
     parents = []
@@ -1824,14 +2041,14 @@ def img_conv_layer(input,
                    trans=False,
                    layer_type=None):
     """
-    Convolution layer for image. Paddle can support both square and non-square 
+    Convolution layer for image. Paddle can support both square and non-square
     input currently.
 
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
 
-    Convolution Transpose (deconv) layer for image. Paddle can support both square 
+    Convolution Transpose (deconv) layer for image. Paddle can support both square
     and non-square input currently.
 
     The details of convolution transpose layer,
@@ -1848,6 +2065,16 @@ def img_conv_layer(input,
     32*4 = 128 filters to process inputs. The channels will be split into 4
     pieces. First 256/4 = 64 channels will process by first 32 filters. The
     rest channels will be processed by rest group of filters.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        conv = img_conv_layer(input=data, filter_size=1, filter_size_y=1,
+                              num_channels=8,
+                              num_filters=16, stride=1,
+                              bias_attr=False,
+                              act=ReluActivation())
 
     :param name: Layer name.
     :type name: basestring
@@ -1890,8 +2117,9 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt", otherwise layer_type 
-                       has to be either "exconv" or "cudnn_conv"
+                       layer_type has to be "exconvt" or "cudnn_convt", 
+                       otherwise layer_type has to be either "exconv" or 
+                       "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1931,7 +2159,7 @@ def img_conv_layer(input,
 
     if layer_type:
         if trans:
-            assert layer_type in ["exconvt"]
+            assert layer_type in ["exconvt", "cudnn_convt"]
         else:
             assert layer_type in ["exconv", "cudnn_conv"]
         lt = layer_type
@@ -1979,13 +2207,42 @@ def img_pool_layer(input,
                    layer_attr=None,
                    pool_size_y=None,
                    stride_y=None,
-                   padding_y=None):
+                   padding_y=None,
+                   ceil_mode=True):
     """
     Image pooling Layer.
 
     The details of pooling layer, please refer ufldl's pooling_ .
 
     .. _pooling: http://ufldl.stanford.edu/tutorial/supervised/Pooling/
+
+    - ceil_mode=True:
+
+    ..  math::
+
+        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
+        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+
+    - ceil_mode=False:
+
+    ..  math::
+
+        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
+        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        maxpool = img_pool_layer(input=conv,
+                                 pool_size=3,
+                                 pool_size_y=5,
+                                 num_channels=8,
+                                 stride=1,
+                                 stride_y=2,
+                                 padding=1,
+                                 padding_y=2,
+                                 pool_type=MaxPooling())
 
     :param padding: pooling padding width.
     :type padding: int
@@ -2010,6 +2267,10 @@ def img_pool_layer(input,
     :type stride_y: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
+                      Defalut is True. If set false, Otherwise use floor.
+
+    :type ceil_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2023,8 +2284,9 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     type_name = pool_type.name + '-projection' \
-      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
-      else pool_type.name
+        if (
+        isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
@@ -2047,6 +2309,7 @@ def img_pool_layer(input,
                     stride_y=stride_y,
                     padding_y=padding_y))
         ],
+        ceil_mode=ceil_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -2068,6 +2331,15 @@ def spp_layer(input,
     Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
     The details please refer to
     `Kaiming He's paper <https://arxiv.org/abs/1406.4729>`_.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        spp = spp_layer(input=data, 
+                        pyramid_height=2, 
+                        num_channels=16, 
+                        pool_type=MaxPooling())
 
     :param name: layer name.
     :type name: basestring
@@ -2157,6 +2429,12 @@ def img_cmrnorm_layer(input,
     The details please refer to
     `Alex's paper <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_.
 
+    The example usage is:
+
+    ..  code-block:: python
+    
+        norm = img_cmrnorm_layer(input=net, size=5)
+
     :param name: layer name.
     :type name: None|basestring
     :param input: layer's input.
@@ -2211,6 +2489,12 @@ def batch_norm_layer(input,
 
     The details of batch normalization please refer to this
     `paper <http://arxiv.org/abs/1502.03167>`_.
+
+    The example usage is:
+
+    ..  code-block:: python
+    
+        norm = batch_norm_layer(input=net, act=ReluActivation())
 
     :param name: layer name.
     :type name: basestring
@@ -2501,8 +2785,67 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
         size=sz)
 
 
+@wrap_name_default("seqconcat")
+@wrap_act_default(act=IdentityActivation())
+@wrap_bias_attr_default(has_bias=False)
+@layer_support()
+def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
+                     bias_attr=None):
+    """
+    Concat sequence a with sequence b.
+
+    Inputs: 
+      - a = [a1, a2, ..., an]
+      - b = [b1, b2, ..., bn]
+      - Note that the length of a and b should be the same.
+        
+    Output: [a1, b1, a2, b2, ..., an, bn]
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        concat = seq_concat_layer(a=layer1, b=layer2)
+
+    :param name: Layer name.
+    :type name: basestring
+    :param a: input sequence layer
+    :type a: LayerOutput
+    :param b: input sequence layer
+    :type b: LayerOutput
+    :param act: Activation type.
+    :type act: BaseActivation
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
+    :type bias_attr: ParameterAttribute or None or bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(a, LayerOutput) and isinstance(b, LayerOutput)
+    assert a.size == b.size
+    Layer(
+        name=name,
+        type=LayerType.SEQUENCE_CONCAT_LAYER,
+        inputs=[a.name, b.name],
+        active_type=act.name,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+
+    return LayerOutput(
+        name,
+        layer_type=LayerType.SEQUENCE_CONCAT_LAYER,
+        parents=[a, b],
+        activation=act,
+        size=a.size)
+
+
+@wrap_name_default("memory", "memory_name")
 def memory(name,
            size,
+           memory_name=None,
            is_seq=False,
            boot_layer=None,
            boot_bias=None,
@@ -2524,14 +2867,32 @@ def memory(name,
     If boot_layer is not null, the memory is just the boot_layer's output.
     Set :code:`is_seq` is true boot layer is sequence.
 
-
     The same name layer in recurrent group will set memory on each time
     step.
 
-    :param name: memory's name.
+    .. code-block:: python
+
+       mem = memory(size=256, name='state')
+       state = fc_layer(input=mem, size=256, name='state')
+
+    If you do not want to specify the name, you can equivalently use set_input()
+    to specify the layer needs to be remembered as the following:
+
+    .. code-block:: python
+       mem = memory(size=256)
+       state = fc_layer(input=mem, size=256)
+       mem.set_input(mem)
+
+
+    :param name: the name of the layer which this memory remembers.
+                 If name is None, user should call set_input() to specify the
+                 name of the layer which this memory remembers.
     :type name: basestring
     :param size: size of memory.
     :type size: int
+    :param memory_name: the name of the memory.
+                        It is ignored when name is provided.
+    :type memory_name: basestring
     :param is_seq: is sequence for boot_layer
     :type is_seq: bool
     :param boot_layer: boot layer of memory.
@@ -2553,13 +2914,21 @@ def memory(name,
         boot_bias = ParamAttr.to_bias(boot_bias)
 
     assert boot_layer is None or isinstance(boot_layer, LayerOutput)
+    if name is not None:
+        memory_name = None
 
-    agent_name = Memory(name, size, is_seq, boot_layer.name
-                        if boot_layer is not None else None, boot_bias,
-                        boot_bias_active_type.name, boot_with_const_id)
+    memory_name = Memory(
+        name,
+        size,
+        is_sequence=is_seq,
+        boot_layer=boot_layer.name if boot_layer is not None else None,
+        boot_bias=boot_bias,
+        boot_bias_active_type=boot_bias_active_type.name,
+        boot_with_const_id=boot_with_const_id,
+        memory_name=memory_name)
 
     lout = LayerOutput(
-        name=agent_name,
+        name=memory_name,
         size=size,
         layer_type=LayerType.MEMORY,
         parents=[boot_layer] if boot_layer is not None else None)
@@ -2661,6 +3030,7 @@ def lstm_step_layer(input,
 
 
 @wrap_bias_attr_default()
+@wrap_param_attr_default()
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(act=TanhActivation())
 @wrap_name_default('gru_step')
@@ -2672,6 +3042,7 @@ def gru_step_layer(input,
                    name=None,
                    gate_act=None,
                    bias_attr=None,
+                   param_attr=None,
                    layer_attr=None):
     """
 
@@ -2683,6 +3054,8 @@ def gru_step_layer(input,
     :param name:
     :param gate_act:
     :param bias_attr:
+    :param param_attr: the parameter_attribute for transforming the output_mem
+                       from previous step.
     :param layer_attr:
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2693,7 +3066,12 @@ def gru_step_layer(input,
     Layer(
         name=name,
         type=LayerType.GRU_STEP_LAYER,
-        inputs=[input.name, output_mem.name],
+        # The parameter here is for transforming the output_mem. The input has
+        # already been transformed outside this module so it does not need
+        # parameter associated with it.
+        # The parameter here is instead grouped with input is due to
+        # backward model compatibility.
+        inputs=[Input(input.name, **param_attr.attr), output_mem.name],
         bias=ParamAttr.to_bias(bias_attr),
         size=size,
         active_type=act.name,
@@ -2705,6 +3083,78 @@ def gru_step_layer(input,
         parents=[input, output_mem],
         size=size,
         activation=act)
+
+
+@wrap_bias_attr_default()
+@wrap_param_attr_default()
+@wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
+@wrap_act_default(act=TanhActivation())
+@wrap_name_default('gru_step_naive')
+@layer_support(ERROR_CLIPPING, DROPOUT)
+def gru_step_naive_layer(input,
+                         output_mem,
+                         size=None,
+                         name=None,
+                         act=None,
+                         gate_act=None,
+                         bias_attr=None,
+                         param_attr=None,
+                         layer_attr=None):
+    """
+    GRU Step Layer, but using MixedLayer to generate. It support ERROR_CLIPPING
+    and DROPOUT.
+
+    :param input:
+    :param output_mem:
+    :param size:
+    :param name:
+    :param act:
+    :param gate_act:
+    :param bias_attr:
+    :param param_attr:
+    :param layer_attr:
+    :return:
+    """
+    if input.size % 3 != 0:
+        raise ValueError("GruStep input size must be divided by 3")
+    if size is None:
+        size = input.size / 3
+
+    def __gate__(gate_name, offset):
+        with mixed_layer(
+                name=name + "_" + gate_name,
+                size=size,
+                layer_attr=layer_attr,
+                bias_attr=bias_attr,
+                act=gate_act) as gate:
+            gate += identity_projection(input=input, offset=offset)
+            gate += full_matrix_projection(
+                input=output_mem, param_attr=param_attr)
+        return gate
+
+    update_gate = __gate__("update", 0)
+    reset_gate = __gate__("reset", size)
+
+    with mixed_layer(
+            name=name + "_reset_output", bias_attr=False) as reset_output:
+        reset_output += dotmul_operator(a=output_mem, b=reset_gate)
+
+    with mixed_layer(
+            name=name + "_output_candidate",
+            size=size,
+            layer_attr=layer_attr,
+            bias_attr=bias_attr,
+            act=act) as output_candidate:
+        output_candidate += identity_projection(input=input, offset=2 * size)
+        output_candidate += full_matrix_projection(
+            input=reset_output, param_attr=param_attr)
+
+    with mixed_layer(name=name) as output:
+        output += identity_projection(output_mem)
+        output += dotmul_operator(a=output_mem, b=update_gate, scale=-1.0)
+        output += dotmul_operator(a=output_candidate, b=update_gate)
+
+    return output
 
 
 @wrap_name_default()
@@ -2948,8 +3398,8 @@ def recurrent_group(step,
 
     assert (targetInlink == None or targetInlink_in_inlinks())
     targetInlinkName = None if targetInlink == None \
-                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
-                                                   else targetInlink.input.name
+        else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+        else targetInlink.input.name
 
     contains_sub_seq = [False]
 
@@ -3298,7 +3748,7 @@ def __cost_input__(input, label, weight=None):
     ipts = [Input(input.name), Input(label.name)]
     parents = [input, label]
     if weight is not None:
-        assert weight.layer_type == LayerType.DATA
+        assert weight.size == 1
         ipts.append(Input(weight.name))
         parents.append(weight)
     return ipts, parents
@@ -3306,11 +3756,13 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def regression_cost(input, label, weight=None, name=None, layer_attr=None):
+def mse_cost(input, label, weight=None, name=None, layer_attr=None):
     """
-    Regression Layer.
+    mean squared error cost:
 
-    TODO(yuyang18): Complete this method.
+    ..  math::
+
+        \frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
@@ -3336,12 +3788,16 @@ def regression_cost(input, label, weight=None, name=None, layer_attr=None):
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
 
 
+regression_cost = mse_cost
+
+
 @wrap_name_default("cost")
 @layer_support()
 def classification_cost(input,
                         label,
                         weight=None,
                         name=None,
+                        top_k=None,
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
     """
@@ -3356,6 +3812,8 @@ def classification_cost(input,
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3383,7 +3841,7 @@ def classification_cost(input,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label, weight=weight)
+        e(name=e.__name__, input=input, label=label, weight=weight, top_k=top_k)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]
@@ -3403,7 +3861,8 @@ def conv_operator(img,
                   padding=0,
                   filter_size_y=None,
                   stride_y=None,
-                  padding_y=None):
+                  padding_y=None,
+                  trans=False):
     """
     Different from img_conv_layer, conv_op is an Operator, which can be used
     in mixed_layer. And conv_op takes two inputs to perform convolution.
@@ -3459,7 +3918,9 @@ def conv_operator(img,
     if filter.size is not None:
         filter.size = filter_size * filter_size_y * num_filters * num_channels
 
-    op = ConvOperator(
+    opCls = ConvTransOperator if trans else ConvOperator
+
+    op = opCls(
         input_layer_names=[img.name, filter.name],
         num_filters=num_filters,
         conv_conf=Conv(
@@ -3471,6 +3932,7 @@ def conv_operator(img,
             padding_y=padding_y,
             stride_y=stride_y,
             groups=1))
+
     op.origin = [img, filter]
     return op
 
@@ -3486,11 +3948,9 @@ def conv_projection(input,
                     stride_y=None,
                     padding_y=None,
                     groups=1,
-                    param_attr=None):
+                    param_attr=None,
+                    trans=False):
     """
-    ConvProjection with a layer as input.
-    It performs element-wise multiplication with weight.
-
     Different from img_conv_layer and conv_op, conv_projection is an Projection,
     which can be used in mixed_layer and conat_layer. It use cudnn to implement
     conv and only support GPU mode.
@@ -3499,7 +3959,7 @@ def conv_projection(input,
 
     .. code-block:: python
 
-       proj = conv_projection(img=input1,
+       proj = conv_projection(input=input1,
                               filter_size=3,
                               num_filters=64,
                               num_channels=64)
@@ -3528,6 +3988,8 @@ def conv_projection(input,
     :type groups: int
     :param param_attr: Convolution param attribute. None means default attribute
     :type param_attr: ParameterAttribute
+    :param trans: whether it is convTrans or conv
+    :type trans: boolean
     :return: A DotMulProjection Object.
     :rtype: DotMulProjection
     """
@@ -3564,7 +4026,9 @@ def conv_projection(input,
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
 
-    proj = ConvProjection(
+    projCls = ConvTransProjection if trans else ConvProjection
+
+    proj = projCls(
         input_layer_name=input.name,
         num_filters=num_filters,
         conv_conf=Conv(
@@ -3580,6 +4044,110 @@ def conv_projection(input,
 
     proj.origin = input
     return proj
+
+
+@wrap_name_default("pad")
+@layer_support()
+def pad_layer(input,
+              pad_c=None,
+              pad_h=None,
+              pad_w=None,
+              name=None,
+              layer_attr=None):
+    """
+    This operation pads zeros to the input data according to pad_c,pad_h
+    and pad_w. pad_c, pad_h, pad_w specifies the which dimension and size
+    of padding. And the input data shape is NCHW.
+
+    For example, pad_c=[2,3] means padding 2 zeros before the
+    input data and 3 zeros after the input data in channel dimension.
+    pad_h means padding zeros in height dimension. pad_w means padding zeros
+    in width dimension.
+
+    For example,
+
+    .. code-block:: python
+
+       input(2,2,2,3)  = [
+                           [ [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]] ],
+                           [ [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]] ]
+                         ]
+
+       pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
+
+       output(2,4,2,3) = [
+                           [ [[0,0,0], [0,0,0]],
+                             [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]],
+                             [[0,0,0], [0,0,0]] ],
+                           [ [[0,0,0], [0,0,0]],
+                             [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]],
+                             [[0,0,0], [0,0,0]] ]
+                         ]
+
+    The simply usage is:
+
+    .. code-block:: python
+
+       pad = pad_layer(input=ipt,
+                       pad_c=[4,4],
+                       pad_h=[0,0],
+                       pad_w=[2,2])
+
+    :param input: layer's input.
+    :type input: LayerOutput
+    :param pad_c: padding size in channel dimension.
+    :type pad_c: list|None
+    :param pad_h: padding size in height dimension.
+    :type pad_h: list|None
+    :param pad_w: padding size in width dimension.
+    :type pad_w: list|None
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param name: layer name.
+    :type name: basestring
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if pad_c is not None:
+        assert isinstance(pad_c, collections.Sequence) and len(pad_c) == 2
+    else:
+        pad_c = [0, 0]
+
+    if pad_h is not None:
+        assert isinstance(pad_h, collections.Sequence) and len(pad_h) == 2
+    else:
+        pad_h = [0, 0]
+
+    if pad_w is not None:
+        assert isinstance(pad_w, collections.Sequence) and len(pad_w) == 2
+    else:
+        pad_w = [0, 0]
+
+    assert input.num_filters is not None
+    in_ch = input.num_filters
+    out_ch = in_ch + pad_c[0] + pad_c[1]
+
+    l = Layer(
+        name=name,
+        type=LayerType.PAD_LAYER,
+        inputs=Input(
+            input.name,
+            pad=Pad(
+                channels=in_ch,
+                pad_c=pad_c,
+                pad_h=pad_h,
+                pad_w=pad_w, )),
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        layer_type=LayerType.PAD_LAYER,
+        parents=[input],
+        num_filters=out_ch,
+        size=l.config.size)
 
 
 @wrap_name_default()
@@ -3605,13 +4173,13 @@ def conv_shift_layer(a, b, name=None, layer_attr=None):
 
     .. code-block:: python
 
-       conv_shift = conv_shift_layer(input=[layer1, layer2])
+       conv_shift = conv_shift_layer(a=layer1, b=layer2)
 
     :param name: layer name
     :type name: basestring
     :param a: Input layer a.
     :type a: LayerOutput
-    :param b: input layer b
+    :param b: input layer b.
     :type b: LayerOutput
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3703,8 +4271,8 @@ def tensor_layer(a,
 @wrap_act_default()
 @layer_support()
 def selective_fc_layer(input,
-                       select,
                        size,
+                       select=None,
                        act=None,
                        name=None,
                        pass_generation=False,
@@ -3731,6 +4299,7 @@ def selective_fc_layer(input,
     :type input: LayerOutput|list|tuple
     :param select: The select layer. The output of select layer should be a
                    sparse binary matrix, and treat as the mask of selective fc.
+                   If is None, acts exactly like fc_layer.
     :type select: LayerOutput
     :param size: The layer dimension.
     :type size: int
@@ -3959,7 +4528,7 @@ def block_expand_layer(input,
 
     .. code-block:: python
 
-       block_expand = block_expand_layer(input,
+       block_expand = block_expand_layer(input=layer,
                                          num_channels=128,
                                          stride_x=1,
                                          stride_y=1,
@@ -4013,13 +4582,7 @@ def block_expand_layer(input,
 
 @wrap_name_default()
 @layer_support()
-def maxout_layer(input,
-                 groups,
-                 num_channels=None,
-                 size_x=None,
-                 size_y=None,
-                 name=None,
-                 layer_attr=None):
+def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     """
     A layer to do max out on conv layer output.
       - Input: output of a conv layer.
@@ -4049,12 +4612,6 @@ def maxout_layer(input,
     :type num_channels: int|None
     :param groups: The group number of input layer.
     :type groups: int
-    :param size_x: conv output width. If None will be set
-                   automatically from previous output.
-    :type size_x: int|None
-    :param size_y: conv output height. If None will be set
-                   automatically from previous output.
-    :type size_y: int|None
     :param name: The name of this layer, which can not specify.
     :type name: None|basestring.
     :param layer_attr: Extra Layer attribute.
@@ -4175,7 +4732,7 @@ def warp_ctc_layer(input,
         - You can set 'blank' to any value ranged in [0, num_classes], which
           should be consistent as that used in your labels.
         - As a native 'softmax' activation is interated to the warp-ctc library,
-         'linear' activation is expected instead in the 'input' layer.
+          'linear' activation is expected instead in the 'input' layer.
 
     The simple usage:
 
@@ -4308,6 +4865,13 @@ def crf_decoding_layer(input,
     this layer will also calculate error. output.value[i] is 1 for incorrect
     decoding or 0 for correct decoding.
 
+    The simple usage:
+
+    .. code-block:: python
+
+      crf_decoding = crf_decoding_layer(input=input,
+                                        size=label_dim)
+
     :param input: The first input layer.
     :type input: LayerOutput
     :param size: size of this layer.
@@ -4346,12 +4910,14 @@ def crf_decoding_layer(input,
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=1)
 
 
+@wrap_act_default(act=SigmoidActivation())
 @wrap_bias_attr_default(has_bias=True)
 @wrap_name_default()
 @layer_support()
 def nce_layer(input,
               label,
               num_classes,
+              act=None,
               weight=None,
               num_neg_samples=10,
               neg_distribution=None,
@@ -4380,6 +4946,8 @@ def nce_layer(input,
     :type weight: LayerOutput
     :param num_classes: number of classes.
     :type num_classes: int
+    :param act: Activation, default is Sigmoid.
+    :type act: BaseActivation
     :param num_neg_samples: number of negative samples. Default is 10.
     :type num_neg_samples: int
     :param neg_distribution: The distribution for generating the random negative labels.
@@ -4401,7 +4969,9 @@ def nce_layer(input,
     if neg_distribution is not None:
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
-        assert sum(neg_distribution) == 1
+        assert abs(sum(neg_distribution) - 1.0) < 1e-5
+    if not isinstance(act, BaseActivation):
+        raise TypeError()
 
     ipts_for_layer = []
     parents = []
@@ -4423,12 +4993,17 @@ def nce_layer(input,
         type=LayerType.NCE_LAYER,
         num_classes=num_classes,
         neg_sampling_dist=neg_distribution,
+        active_type=act.name,
         num_neg_samples=num_neg_samples,
         inputs=ipts_for_layer,
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
-        name, LayerType.NCE_LAYER, parents=parents, size=l.config.size)
+        name,
+        LayerType.NCE_LAYER,
+        parents=parents,
+        size=l.config.size,
+        activation=act)
 
 
 """
@@ -4573,7 +5148,12 @@ def lambda_cost(input,
 
 @wrap_name_default()
 @layer_support()
-def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
+def cross_entropy(input,
+                  label,
+                  name=None,
+                  coeff=1.0,
+                  weight=None,
+                  layer_attr=None):
     """
     A loss layer for multi class entropy.
 
@@ -4588,22 +5168,27 @@ def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
     :type input: LayerOutput.
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring.
-    :param coeff: The coefficient affects the gradient in the backward.
+    :param coeff: The cost is multiplied with coeff.
+                  The coefficient affects the gradient in the backward.
     :type coeff: float.
+    :param weight: The cost of each sample is multiplied with each weight.
+                   The weight should be a layer with size=1. Note that gradient
+                   will not be calculated for weight.
+    :type weight: LayerOutout
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput.
     """
 
+    ipts, parents = __cost_input__(input, label, weight)
     Layer(
         name=name,
         type=LayerType.CROSS_ENTROPY,
-        inputs=[input.name, label.name],
+        inputs=ipts,
         coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(
-        name, LayerType.CROSS_ENTROPY, parents=[input, label], size=1)
+    return LayerOutput(name, LayerType.CROSS_ENTROPY, parents=parents, size=1)
 
 
 @wrap_name_default()
@@ -4616,6 +5201,7 @@ def cross_entropy_with_selfnorm(input,
                                 layer_attr=None):
     """
     A loss layer for multi class entropy with selfnorm.
+    Input should be a vector of positive numbers, without normalization.
 
     .. code-block:: python
 

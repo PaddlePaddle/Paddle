@@ -123,46 +123,6 @@ static void resizeAndCopy(ICpuGpuVectorPtr& dest,
   }
 }
 
-static void resizeAndCopy(UserDefinedVectorPtr& dest,
-                          const UserDefinedVectorPtr& src,
-                          bool useGpu,
-                          hl_stream_t stream) {
-  if (src) {
-    CHECK(!useGpu) << "not implemented";
-    size_t height = src->size();
-    if (!dest) {
-      dest = std::make_shared<std::vector<void*>>(height);
-    } else {
-      dest->resize(height);
-    }
-    std::copy_n(src->begin(), height, dest->begin());
-  } else {
-    dest.reset();
-  }
-}
-
-static void resizeAndCopy(UserDefinedVectorPtr& dest,
-                          const UserDefinedVectorPtr& src,
-                          int32_t startPos,
-                          int32_t copySize,
-                          bool useGpu,
-                          hl_stream_t stream = HPPL_STREAM_DEFAULT) {
-  if (src) {
-    CHECK(!useGpu) << "not implemented";
-    CHECK_LE((size_t)startPos + copySize, src->size());
-
-    size_t height = copySize;
-    if (!dest) {
-      dest = std::make_shared<std::vector<void*>>(height);
-    } else {
-      dest->resize(height);
-    }
-    std::copy_n(src->begin() + startPos, height, dest->begin());
-  } else {
-    dest.reset();
-  }
-}
-
 static void resizeAndCopy(SVectorPtr& dest,
                           const SVectorPtr& src,
                           bool useGpu,
@@ -223,7 +183,6 @@ void Argument::resizeAndCopyFrom(const Argument& src,
                   false /* useGpu */,
                   stream);
   }
-  resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
   frameWidth = src.frameWidth;
   frameHeight = src.frameHeight;
@@ -255,7 +214,6 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
     resizeAndCopy(value, src.value, startRow, copySize, useGpu, stream);
     resizeAndCopy(grad, src.grad, startRow, copySize, useGpu, stream);
     resizeAndCopy(ids, src.ids, startRow, copySize, useGpu, stream);
-    resizeAndCopy(udp, src.udp, startRow, copySize, useGpu, stream);
     resizeAndCopy(strs, src.strs, startRow, copySize, useGpu, stream);
     return copySize;
   } else {
@@ -268,7 +226,6 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
     resizeAndCopy(value, src.value, startRow, copyFeatureSize, useGpu, stream);
     resizeAndCopy(grad, src.grad, startRow, copyFeatureSize, useGpu, stream);
     resizeAndCopy(ids, src.ids, startRow, copyFeatureSize, useGpu, stream);
-    resizeAndCopy(udp, src.udp, startRow, copySize, useGpu, stream);
     resizeAndCopy(sequenceStartPositions,
                   src.sequenceStartPositions,
                   startSeq,
@@ -583,7 +540,7 @@ void Argument::checkSubset() const {
   }
 }
 
-void Argument::degradeSequence(const Argument& input, bool useGpu) {
+void Argument::degradeSequence(const Argument& input) {
   CHECK_EQ(input.hasSubseq(), 1UL);
   size_t numSequences = input.getNumSequences();
   size_t numSubSequences = input.getNumSubSequences();
@@ -600,6 +557,87 @@ void Argument::degradeSequence(const Argument& input, bool useGpu) {
     }
   }
   tgtBuf[numSequences] = numSubSequences;
+}
+
+void Argument::poolSequenceWithStride(const Argument& input,
+                                      size_t stride,
+                                      IVectorPtr* stridePostions,
+                                      bool reversed) {
+  // If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
+  // then sequenceStartPositions = [0, 2, 3, 4, 7].
+  // If reversed = false, stridePostions = [0, 5, 9, 14, 17, 22, 27, 30];
+  // else reversed = true, stridePostions = [0, 4, 9, 14, 17, 20, 25, 30]
+
+  CHECK(input.sequenceStartPositions);
+  CHECK_EQ(input.hasSubseq(), 0UL);
+  CHECK_GT(stride, 0) << "stride must larger than 0";
+  size_t numSequences = input.getNumSequences();
+  ICpuGpuVector::resizeOrCreate(
+      sequenceStartPositions, numSequences + 1, false);
+  const int* starts = input.sequenceStartPositions->getData(false);
+  int* tgtBuf = sequenceStartPositions->getMutableData(false);
+  // first index of target sequence and stride positions are both 0
+  tgtBuf[0] = 0;
+  std::vector<int> stridePos;
+  for (size_t seqId = 0; seqId < numSequences; ++seqId) {
+    size_t seqLength = starts[seqId + 1] - starts[seqId];
+    stridePos.emplace_back(starts[seqId]);
+    if (seqLength == 0) {
+      // empty sequence
+      tgtBuf[seqId + 1] = tgtBuf[seqId];
+    } else {
+      int size = ceil((float)seqLength / stride);
+      tgtBuf[seqId + 1] = tgtBuf[seqId] + size;
+      for (int i = 0; i < size - 1; ++i) {
+        int cur = reversed ? starts[seqId + 1] - (size - 1 - i) * stride
+                           : stridePos.back() + stride;
+        stridePos.emplace_back(cur);
+      }
+    }
+  }
+  stridePos.emplace_back(starts[numSequences]);
+  int size = stridePos.size();
+  CHECK_EQ(size - 1, tgtBuf[numSequences]);
+  IVector::resizeOrCreate(*stridePostions, size, false);
+  (*stridePostions)->copyFrom(stridePos.data(), size);
+}
+
+void Argument::getValueString(
+    std::unordered_map<std::string, std::string>* out) const {
+  if (value) {
+    std::ostringstream os;
+    value->print(os);
+    out->insert({"value", os.str()});
+  }
+  if (ids) {
+    std::ostringstream os;
+    ids->print(os, ids->getSize());
+    out->insert({"ids", os.str()});
+  }
+  if (sequenceStartPositions) {
+    std::ostringstream os;
+    sequenceStartPositions->getVector(false)->print(
+        os, sequenceStartPositions->getSize());
+    out->insert({"sequence pos", os.str()});
+  }
+  if (subSequenceStartPositions) {
+    std::ostringstream os;
+    subSequenceStartPositions->getVector(false)->print(
+        os, subSequenceStartPositions->getSize());
+    out->insert({"sub-sequence pos", os.str()});
+  }
+}
+
+void Argument::printValueString(std::ostream& stream,
+                                const std::string& prefix) const {
+  std::unordered_map<std::string, std::string> out;
+  getValueString(&out);
+  for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
+    auto it = out.find(field);
+    if (it != out.end()) {
+      stream << prefix << field << ":\n" << it->second;
+    }
+  }
 }
 
 void Argument::subArgFrom(const Argument& input,

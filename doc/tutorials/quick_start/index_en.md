@@ -156,14 +156,14 @@ define_py_data_sources2(train_list='data/train.list',
                         obj="process",
                         args={"dictionary": word_dict})
 ```
-You can refer to the following link for more detailed examples and data formats: <a href = "../../api/data_provider/pydataprovider2_en.html">PyDataProvider2</a>.
+You can refer to the following link for more detailed examples and data formats: <a href = "../../api/v1/data_provider/pydataprovider2_en.html">PyDataProvider2</a>.
 
 ## Network Architecture
 We will describe four kinds of network architectures in this section.
 <center> ![](./src/PipelineNetwork_en.jpg) </center>
 
 First, you will build a logistic regression model. Later, you will also get chance to build other more powerful network architectures.
-For more detailed documentation, you could refer to: <a href = "../../api/trainer_config_helpers/layers.html">layer documentation</a>. All configuration files are in `demo/quick_start` directory.
+For more detailed documentation, you could refer to: <a href = "../../api/v1/trainer_config_helpers/layers.html">layer documentation</a>. All configuration files are in `demo/quick_start` directory.
 
 ### Logistic Regression
 The architecture is illustrated in the following picture:
@@ -366,7 +366,7 @@ You can use single layer LSTM model with Dropout for our text classification pro
 <br>
 
 ## Optimization Algorithm
-<a href = "../../api/trainer_config_helpers/optimizers.html">Optimization algorithms</a> include Momentum, RMSProp, AdaDelta, AdaGrad, Adam, and Adamax. You can use Adam optimization method here, with L2 regularization and gradient clipping, because Adam has been proved to work very well for training recurrent neural network.
+<a href = "../../api/v1/trainer_config_helpers/optimizers.html">Optimization algorithms</a> include Momentum, RMSProp, AdaDelta, AdaGrad, Adam, and Adamax. You can use Adam optimization method here, with L2 regularization and gradient clipping, because Adam has been proved to work very well for training recurrent neural network.
 
 ```python
 settings(batch_size=128,
@@ -407,7 +407,7 @@ paddle train \
 --init_model_path=./output/pass-0000x
 ```
 
-We will give an example of performing prediction using Recurrent model on a dataset with no labels. You can refer to <a href = "../../api/predict/swig_py_paddle_en.html">Python Prediction API</a> tutorial，or other <a href = "../../tutorials/index_en.html">demo</a> for the prediction process using Python. You can also use the following script for inference or evaluation.
+We will give an example of performing prediction using Recurrent model on a dataset with no labels. You can refer to <a href = "../../api/v1/predict/swig_py_paddle_en.html">Python Prediction API</a> tutorial，or other <a href = "../../tutorials/index_en.html">demo</a> for the prediction process using Python. You can also use the following script for inference or evaluation.
 
 inference script (predict.sh)：
 

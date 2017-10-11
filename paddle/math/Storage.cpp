@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "Storage.h"
 #include "Allocator.h"
+#include "paddle/utils/StringUtil.h"
 #include "paddle/utils/Util.h"
 
 DEFINE_int32(pool_limit_size,
@@ -62,7 +63,7 @@ PoolAllocator* StorageEngine::getGpuAllocator(int deviceId) {
     }
     if (gpuAllocator_[deviceId] == nullptr) {
       std::string name =
-          "gpu" + std::to_string(deviceId) + std::string("_pool");
+          "gpu" + str::to_string(deviceId) + std::string("_pool");
       gpuAllocator_[deviceId] =
           new PoolAllocator(new GpuAllocator(), FLAGS_pool_limit_size, name);
     }

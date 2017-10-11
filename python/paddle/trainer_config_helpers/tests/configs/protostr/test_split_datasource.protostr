@@ -19,7 +19,7 @@ model_config {
 data_config {
   type: "py2"
   files: "train.list"
-  async_load_data: true
+  async_load_data: false
   for_test: false
   load_data_module: "a"
   load_data_object: "c"
@@ -58,7 +58,7 @@ opt_config {
 test_data_config {
   type: "py2"
   files: "test.list"
-  async_load_data: true
+  async_load_data: false
   for_test: true
   load_data_module: "b"
   load_data_object: "d"

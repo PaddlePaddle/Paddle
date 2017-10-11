@@ -1453,6 +1453,24 @@ void BaseMatrixT<T>::divRowVector(BaseMatrixT& b) {
               true_type() /* bAsRowVector */, false_type());
 }
 
+template<class T>
+void BaseMatrixT<T>::mulColVector(BaseMatrixT& b) {
+  MatrixOffset offset(0, 0, 0, 0);
+  int numRows = height_;
+  int numCols = width_;
+  applyBinary(binary::DotMul<T>(), b, numRows, numCols, offset,
+              false_type(), true_type() /* bAsColVector */);
+}
+
+template<class T>
+void BaseMatrixT<T>::divColVector(BaseMatrixT& b) {
+  MatrixOffset offset(0, 0, 0, 0);
+  int numRows = height_;
+  int numCols = width_;
+  applyBinary(binary::DotDiv<T>(), b, numRows, numCols, offset,
+              false_type(), true_type() /* bAsColVector */);
+}
+
 template<>
 template <class Agg>
 int BaseMatrixT<real>::applyRow(Agg agg, BaseMatrixT& b) {

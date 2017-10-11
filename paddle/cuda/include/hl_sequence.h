@@ -159,4 +159,10 @@ extern void hl_sequence_avg_forward(real* dst,
                                     int width,
                                     const int mode);
 
+extern void hl_sequence_avg_backward(real* dst,
+                                     real* src,
+                                     const int* starts,
+                                     int height,
+                                     int width,
+                                     const int mode);
 #endif /* HL_SEQUENCE_H_ */

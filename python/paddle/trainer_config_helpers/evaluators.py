@@ -71,6 +71,7 @@ def evaluator_base(
         result_file=None,
         num_results=None,
         delimited=None,
+        top_k=None,
         excluded_chunk_types=None, ):
     """
     Evaluator will evaluate the network status while training/testing.
@@ -104,12 +105,15 @@ def evaluator_base(
     :param weight: An input layer which is a weight for each sample.
                    Each evaluator may calculate differently to use this weight.
     :type weight: LayerOutput.
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     """
     # inputs type assertions.
     assert classification_threshold is None or isinstance(
         classification_threshold, float)
     assert positive_label is None or isinstance(positive_label, int)
     assert num_results is None or isinstance(num_results, int)
+    assert top_k is None or isinstance(top_k, int)
 
     if not isinstance(input, list):
         input = [input]
@@ -130,6 +134,8 @@ def evaluator_base(
         dict_file=dict_file,
         result_file=result_file,
         delimited=delimited,
+        num_results=num_results,
+        top_k=top_k,
         excluded_chunk_types=excluded_chunk_types, )
 
 
@@ -139,6 +145,7 @@ def classification_error_evaluator(input,
                                    label,
                                    name=None,
                                    weight=None,
+                                   top_k=None,
                                    threshold=None):
     """
     Classification Error Evaluator. It will print error rate for classification.
@@ -167,6 +174,8 @@ def classification_error_evaluator(input,
                   then means not set weight. The larger weight it is, the more
                   important this sample is.
     :type weight: LayerOutput
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     :param threshold: The classification threshold.
     :type threshold: float
     :return: None.
@@ -178,6 +187,7 @@ def classification_error_evaluator(input,
         input=input,
         label=label,
         weight=weight,
+        top_k=top_k,
         classification_threshold=threshold, )
 
 

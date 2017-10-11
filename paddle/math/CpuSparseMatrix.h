@@ -201,7 +201,7 @@ public:
   void zeroMem();
 
   /// mem MUST be alloced outside (memAlloc=false)
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
 
   void mul(const Matrix& A, const Matrix& B, real alpha, real beta);
 

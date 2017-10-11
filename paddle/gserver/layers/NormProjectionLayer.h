@@ -36,11 +36,12 @@ public:
 
   size_t getSize();
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
-  Dims dims_;
+  TensorShape shape_;
 };
 }  // namespace paddle

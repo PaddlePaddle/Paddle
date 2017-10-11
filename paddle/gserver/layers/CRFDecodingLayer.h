@@ -32,9 +32,10 @@ namespace paddle {
 class CRFDecodingLayer : public CRFLayer {
 public:
   explicit CRFDecodingLayer(const LayerConfig& config) : CRFLayer(config) {}
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
 
 protected:
   std::unique_ptr<LinearChainCRF> crf_;

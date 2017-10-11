@@ -22,17 +22,18 @@ public:
 
   ~GetOutputLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     if (!Layer::init(layerMap, parameterMap)) return false;
     CHECK_EQ(1U, inputLayers_.size());
     CHECK_NE(inputArgument_[0], "");
     return true;
   }
 
-  void forward(PassType passType) {
+  void forward(PassType passType) override {
     output_ = getPrev(0)->getOutput(inputArgument_[0]);
   }
-  void backward(const UpdateCallback& callback = nullptr) {}
+  void backward(const UpdateCallback& callback = nullptr) override {}
 };
 
 REGISTER_LAYER(get_output, GetOutputLayer);

@@ -46,7 +46,6 @@ PaddlePaddle提供了ubuntu 14.04 deb安装包。
         with_double: OFF
         with_python: ON
         with_rdma: OFF
-        with_metric_learning:
         with_timer: OFF
         with_predict_sdk:
 

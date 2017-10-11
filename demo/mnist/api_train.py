@@ -6,33 +6,15 @@ passed to C++ side of Paddle.
 
 The user api could be simpler and carefully designed.
 """
-import py_paddle.swig_paddle as api
-from py_paddle import DataProviderConverter
-import paddle.trainer.PyDataProvider2 as dp
-import numpy as np
 import random
-from mnist_util import read_from_mnist
+
+import numpy as np
+import paddle.v2 as paddle_v2
+import py_paddle.swig_paddle as api
 from paddle.trainer_config_helpers import *
+from py_paddle import DataProviderConverter
 
-
-def optimizer_config():
-    settings(
-        learning_rate=1e-4,
-        learning_method=AdamOptimizer(),
-        batch_size=1000,
-        model_average=ModelAverage(average_window=0.5),
-        regularization=L2Regularization(rate=0.5))
-
-
-def network_config():
-    imgs = data_layer(name='pixel', size=784)
-    hidden1 = fc_layer(input=imgs, size=200)
-    hidden2 = fc_layer(input=hidden1, size=200)
-    inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
-    cost = classification_cost(
-        input=inference, label=data_layer(
-            name='label', size=10))
-    outputs(cost)
+from mnist_util import read_from_mnist
 
 
 def init_parameter(network):
@@ -75,19 +57,35 @@ def input_order_converter(generator):
 def main():
     api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
 
-    # get enable_types for each optimizer.
-    # enable_types = [value, gradient, momentum, etc]
-    # For each optimizer(SGD, Adam), GradientMachine should enable different
-    # buffers.
-    opt_config_proto = parse_optimizer_config(optimizer_config)
-    opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
-    _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
-    enable_types = _temp_optimizer_.getParameterTypes()
+    optimizer = paddle_v2.optimizer.Adam(
+        learning_rate=1e-4,
+        batch_size=1000,
+        model_average=ModelAverage(average_window=0.5),
+        regularization=L2Regularization(rate=0.5))
+
+    # Create Local Updater. Local means not run in cluster.
+    # For a cluster training, here we can change to createRemoteUpdater
+    # in future.
+    updater = optimizer.create_local_updater()
+    assert isinstance(updater, api.ParameterUpdater)
+
+    # define network
+    images = paddle_v2.layer.data(
+        name='pixel', type=paddle_v2.data_type.dense_vector(784))
+    label = paddle_v2.layer.data(
+        name='label', type=paddle_v2.data_type.integer_value(10))
+    hidden1 = paddle_v2.layer.fc(input=images, size=200)
+    hidden2 = paddle_v2.layer.fc(input=hidden1, size=200)
+    inference = paddle_v2.layer.fc(input=hidden2,
+                                   size=10,
+                                   act=paddle_v2.activation.Softmax())
+    cost = paddle_v2.layer.classification_cost(input=inference, label=label)
 
     # Create Simple Gradient Machine.
-    model_config = parse_network_config(network_config)
-    m = api.GradientMachine.createFromConfigProto(
-        model_config, api.CREATE_MODE_NORMAL, enable_types)
+    model_config = paddle_v2.layer.parse_network(cost)
+    m = api.GradientMachine.createFromConfigProto(model_config,
+                                                  api.CREATE_MODE_NORMAL,
+                                                  optimizer.enable_types())
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
@@ -96,19 +94,12 @@ def main():
     # Initialize Parameter by numpy.
     init_parameter(network=m)
 
-    # Create Local Updater. Local means not run in cluster.
-    # For a cluster training, here we can change to createRemoteUpdater
-    # in future.
-    updater = api.ParameterUpdater.createLocalUpdater(opt_config)
-    assert isinstance(updater, api.ParameterUpdater)
-
     # Initialize ParameterUpdater.
     updater.init(m)
 
     # DataProvider Converter is a utility convert Python Object to Paddle C++
     # Input. The input format is as same as Paddle's DataProvider.
-    converter = DataProviderConverter(
-        input_types=[dp.dense_vector(784), dp.integer_value(10)])
+    converter = DataProviderConverter(input_types=[images.type, label.type])
 
     train_file = './data/raw_data/train'
     test_file = './data/raw_data/t10k'

@@ -39,12 +39,11 @@ class SlopeInterceptLayer : public Layer {
 public:
   explicit SlopeInterceptLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~SlopeInterceptLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(slope_intercept, SlopeInterceptLayer);

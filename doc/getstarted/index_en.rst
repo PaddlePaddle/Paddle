@@ -2,7 +2,8 @@ GET STARTED
 ============
 
 ..  toctree::
-  :maxdepth: 2
+  :maxdepth: 1
 
   build_and_install/index_en.rst
-  basic_usage/index_en.rst
+
+- `Deep Learning 101 <http://book.paddlepaddle.org/index.en.html>`_

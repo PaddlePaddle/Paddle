@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/Stat.h"
+#include "paddle/utils/StringUtil.h"
 
 DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
 DEFINE_double(async_lagged_ratio_min,
@@ -218,7 +219,8 @@ void ParameterServer2::setConfig(const SetConfigRequest& request,
   callback(response);
 
   /// always defined, barrier slowest node function need it.
-  statSet_.reset(new StatSet("ParameterServer" + std::to_string(serverId_)));
+  statSet_.reset(new StatSet("ParameterServer" +
+                             str::to_string(static_cast<int>(serverId_))));
 }
 
 real bufferSum(const std::vector<ParameterServer2::Buffer>& buffers) {
@@ -367,11 +369,8 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
                                    std::vector<Buffer>* outputBuffers) {
   VLOG(1) << "pserver: addGradient";
 
-/// forwardbackward delta from all trainers
-/// indicate the fluctuation caused by forwardbackward.
-#ifndef PADDLE_METRIC_LEARNING
-  // @TODO(yanfei):
-  // add support tuning forwardbackward balance for metric learning
+  // forwardbackward delta from all trainers
+  // indicate the fluctuation caused by forwardbackward.
   if (!numPassFinishClients_) {
     REGISTER_BARRIER_DELTA_SERVER_SET(
         *statSet_,
@@ -381,7 +380,6 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
         request.forwardbackward_time(),
         isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
   }
-#endif
 
   {
     /// approximately pure network overhead

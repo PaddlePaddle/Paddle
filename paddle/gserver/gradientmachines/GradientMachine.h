@@ -89,39 +89,6 @@ public:
           std::vector<ParameterType>{
               PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM});
 
-  /**
-   * Create a gradient machine from the merged model file.
-   * The merged model file can be generated using tools/merge_model
-   * If dataConfig is not null, it will be filled with the DataConfig
-   * from the TrainerConfig
-   */
-  static GradientMachine* create(const std::string& modelFile,
-                                 DataConfig* dataConfig);
-
-  /**
-   * Create a gradient machine from a stream which contains the merged
-   * model file. The merged model file can be generated using tools/merge_model
-   * If dataConfig is not null, it will be filled with the DataConfig
-   * from the TrainerConfig
-   */
-  static GradientMachine* create(std::istream& is, DataConfig* dataConfig);
-
-  /**
-   * Create a gradient machine from the merged model file.
-   * The merged model file can be generated using tools/merge_model
-   * If trainerConfig is not null, it will be filled with the TrainerConfig
-   */
-  static GradientMachine* create(const std::string& modelFile,
-                                 TrainerConfig* trainerConfig);
-
-  /**
-   * Create a gradient machine from a stream which contains the merged
-   * model file. The merged model file can be generated using tools/merge_model
-   * If trainerConfig is not null, it will be filled with the TrainerConfig
-   */
-  static GradientMachine* create(std::istream& is,
-                                 TrainerConfig* trainerConfig);
-
   virtual ~GradientMachine() {}
 
   /**
@@ -166,6 +133,8 @@ public:
     forward(inArgs, outArgs, passType);
     backward(callback);
   }
+
+  virtual Argument getLayerOutput(const std::string& layerName) = 0;
 
   // see comment in Layer.h for the function with the same name
   virtual void resetState() {}

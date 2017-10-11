@@ -126,7 +126,7 @@ class ImageClassifier():
         # For oversampling, average predictions across crops.
         # If not, the shape of output[name]: (1, class_number),
         # the mean is also applicable.
-        return output[output_layer].mean(0)
+        return output[output_layer]['value'].mean(0)
 
     def predict(self, image=None, output_layer=None):
         assert isinstance(image, basestring)

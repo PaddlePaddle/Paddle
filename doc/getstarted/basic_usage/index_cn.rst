@@ -55,7 +55,7 @@ PaddlePaddle是源于百度的一个深度学习平台。这份简短的介绍�
     # 线性计算网络层: ȳ = wx + b
     ȳ = fc_layer(input=x, param_attr=ParamAttr(name='w'), size=1, act=LinearActivation(), bias_attr=ParamAttr(name='b'))
     # 计算误差函数，即  ȳ 和真实 y 之间的距离
-    cost = regression_cost(input= ȳ, label=y)
+    cost = mse_cost(input= ȳ, label=y)
     outputs(cost)
 
 
@@ -69,7 +69,7 @@ PaddlePaddle是源于百度的一个深度学习平台。这份简短的介绍�
     
     - **数据层**：数据层 `data_layer` 是神经网络的入口，它读入数据并将它们传输到接下来的网络层。这里数据层有两个，分别对应于变量 `x` 和 `y`。
     - **全连接层**：全连接层 `fc_layer` 是基础的计算单元，这里利用它建模变量之间的线性关系。计算单元是神经网络的核心，PaddlePaddle支持大量的计算单元和任意深度的网络连接，从而可以拟合任意的函数来学习复杂的数据关系。
-    - **回归误差代价层**：回归误差代价层 `regression_cost` 是众多误差代价函数层的一种，它们在训练过程作为网络的出口，用来计算模型的误差，是模型参数优化的目标函数。
+    - **回归误差代价层**：回归误差代价层 `mse_cost` 是众多误差代价函数层的一种，它们在训练过程作为网络的出口，用来计算模型的误差，是模型参数优化的目标函数。
 
 定义了网络结构并保存为 `trainer_config.py` 之后，运行以下训练命令：
 

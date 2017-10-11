@@ -48,7 +48,8 @@ public:
 
   ~ExpandConvBaseLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   size_t getOutputSize();
   /**

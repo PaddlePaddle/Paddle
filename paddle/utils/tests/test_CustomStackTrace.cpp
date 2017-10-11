@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/utils/CustomStackTrace.h"
 #include "paddle/utils/Locks.h"
+#include "paddle/utils/StringUtil.h"
 #include "paddle/utils/Util.h"
 
 DEFINE_int32(test_thread_num, 10, "testing thread number");
@@ -69,11 +70,11 @@ TEST(CustomStackTrace, normalTrain) {
     while (countDown-- > 0) {
       start.wait();
       for (size_t i = 0; i < layerSize; ++i) {
-        tracer.push("layer_" + std::to_string(i));
+        tracer.push("layer_" + paddle::str::to_string(i));
       }
       tracer.pop("");
       for (size_t i = 0; i < layerSize; ++i) {
-        tracer.pop("layer_" + std::to_string(layerSize - 1 - i));
+        tracer.pop("layer_" + paddle::str::to_string(layerSize - 1 - i));
       }
       finish.wait();
     }
@@ -89,7 +90,7 @@ TEST(CustomStackTrace, normalTest) {
     while (countDown-- > 0) {
       start.wait();
       for (size_t i = 0; i < layerSize; ++i) {
-        tracer.push("layer_" + std::to_string(i));
+        tracer.push("layer_" + paddle::str::to_string(i));
       }
       tracer.clear();  // in forward test, tracer will clear after forward.
       finish.wait();

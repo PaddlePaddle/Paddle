@@ -138,7 +138,11 @@ def main():
 
     batch = []
     for line in sys.stdin:
-        batch.append([predict.get_index(line)])
+        words = predict.get_index(line)
+        if words:
+            batch.append([words])
+        else:
+            print('All the words in [%s] are not in the dictionary.' % line)
         if len(batch) == batch_size:
             predict.batch_predict(batch)
             batch = []

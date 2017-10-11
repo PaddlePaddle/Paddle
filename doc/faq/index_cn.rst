@@ -287,21 +287,15 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
         paddle train --use_gpu=true --trainer_count=2 --gpu_id=2
 
-12. 编译源码提示warp-ctc/include/ctc.h 找不到的情况
----------------------------------------------------
 
-目前Paddle使用\ :code:`git submodule`\ 来引用一些第三方模块。简单的\
-:code:`git clone`\ 命令不能得到第三方模块的代码。需要使用\:
+12. 训练过程中出现 :code:`Floating point exception`, 训练因此退出怎么办?
+------------------------------------------------------------------------
 
-..  code-block:: bash
+Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异常(即训练过程中出现NaN或者Inf)，立刻退出。浮点异常通常的原因是浮点数溢出、除零等问题。
+主要原因包括两个方面:
 
-    git clone --recursive https://github.com/PaddlePaddle/Paddle.git
+* 训练过程中参数或者训练过程中的梯度尺度过大，导致参数累加，乘除等时候，导致了浮点数溢出。
+* 模型一直不收敛，发散到了一个数值特别大的地方。
+* 训练数据有问题，导致参数收敛到了一些奇异的情况。或者输入数据尺度过大，有些特征的取值达到数百万，这时进行矩阵乘法运算就可能导致浮点数溢出。
 
-来获取所有源码。对于已经clone的git版本库，可以在Paddle的源码目录中执行\:
-
-..  code-block:: bash
-
-    git submodule init
-    git submodule update
-
-来获得所有第三方模块。
+主要的解决办法是减小学习律或者对数据进行归一化处理。

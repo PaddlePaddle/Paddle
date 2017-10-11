@@ -37,14 +37,6 @@ void GetCublasDsoHandle(void** dso_handle);
 void GetCudnnDsoHandle(void** dso_handle);
 
 /**
- * @brief    load the DSO of CUDA Run Time
- *
- * @param    **dso_handle   dso handler
- *
- */
-void GetCudartDsoHandle(void** dso_handle);
-
-/**
  * @brief    load the DSO of CURAND
  *
  * @param    **dso_handle   dso handler

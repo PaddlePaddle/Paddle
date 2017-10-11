@@ -210,6 +210,7 @@ layers {
     input_layer_name: "__lstm_group_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__last_seq_1__"
@@ -220,6 +221,7 @@ layers {
     input_layer_name: "__lstm_group_1__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__fc_layer_0__"

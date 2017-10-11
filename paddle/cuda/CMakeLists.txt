@@ -15,7 +15,6 @@ else()
 endif()
 
 set(CUDA_CXX_WITH_GPU_SOURCES
-    src/hl_cudart_wrap.cc
     src/hl_cuda_cublas.cc
     src/hl_cuda_cudnn.cc
     src/hl_cuda_device.cc)

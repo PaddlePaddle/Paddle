@@ -46,10 +46,11 @@ public:
 
   ~FeatureMapExpandLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(featmap_expand, FeatureMapExpandLayer);
@@ -95,6 +96,9 @@ void FeatureMapExpandLayer::forward(PassType passType) {
 
 void FeatureMapExpandLayer::backward(const UpdateCallback& callback) {
   MatrixPtr inGrad = getInputGrad(0);
+  if (NULL == inGrad) {
+    return;
+  }
   MatrixPtr outGrad = getOutputGrad();
   size_t batchSize = getInput(0).getBatchSize();
   int imgSize = inGrad->getWidth();

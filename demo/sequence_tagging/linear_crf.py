@@ -27,7 +27,7 @@ settings(
     learning_method=MomentumOptimizer(),
     batch_size=batch_size,
     regularization=L2Regularization(batch_size * 1e-4),
-    average_window=0.5,
+    model_average=ModelAverage(0.5),
     learning_rate=1e-1,
     learning_rate_decay_a=1e-5,
     learning_rate_decay_b=0.25, )

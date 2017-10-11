@@ -35,7 +35,8 @@ public:
 
   ~AgentLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   // if *numSamples* set,
   // real layer output will only use first *numSamples* rows
@@ -44,8 +45,8 @@ public:
     numSamples_ = numSamples;
   }
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr) {}
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override {}
 };
 
 /**
@@ -56,8 +57,8 @@ public:
   explicit SequenceAgentLayer(const LayerConfig& config) : AgentLayer(config) {}
   ~SequenceAgentLayer() {}
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr) {}
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override {}
 };
 
 /**
@@ -78,7 +79,8 @@ public:
 
   virtual ~GatherAgentLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   // call before addRealLayer
   void copyIdAndSequenceInfo(const Argument& input,
@@ -88,8 +90,8 @@ public:
   // add one real layer, can call many times
   void addRealLayer(LayerPtr layer) { realLayers_.push_back(layer); }
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
 };
 
 /**
@@ -133,7 +135,8 @@ public:
 
   virtual ~ScatterAgentLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   /**
    * @brief set real layer in generation
@@ -182,8 +185,8 @@ public:
     numSequences_ = numSequences;
   }
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
 };
 
 /**

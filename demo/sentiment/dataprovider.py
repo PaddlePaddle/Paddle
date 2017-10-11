@@ -32,4 +32,6 @@ def process(settings, file_name):
             word_slot = [
                 settings.word_dict[w] for w in words if w in settings.word_dict
             ]
+            if not word_slot:
+                continue
             yield word_slot, label

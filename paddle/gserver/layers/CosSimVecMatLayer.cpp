@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
-
 /**
  * @brief A layer for computing cosine similarity between a vector
  * and each row of a matrix
@@ -46,10 +45,11 @@ public:
 
   ~CosSimVecMatLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(cos_vm, CosSimVecMatLayer);
@@ -97,11 +97,22 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
                            dataDim,
                            /* trans= */ false,
                            useGpu_);
+
+  CHECK(tmpRow0 && tmpRow1 && tmpRow2 && tmpRow3 && tmpMtx0 && tmpMtx1);
+
+  createFunction(forward_,
+                 "CosSimForward",
+                 FuncConfig().set("scale", (real)config_.cos_scale()));
+  createFunction(backward_,
+                 "CosSimBackward",
+                 FuncConfig().set("scale", (real)config_.cos_scale()));
+
   return true;
 }
 
 void CosSimVecMatLayer::forward(PassType passType) {
   Layer::forward(passType);
+  CHECK_EQ(forward_.size(), 1UL) << "Only one forward function needed";
 
   MatrixPtr inV0 = getInputValue(0);
   MatrixPtr inV1 = getInputValue(1);
@@ -117,17 +128,25 @@ void CosSimVecMatLayer::forward(PassType passType) {
   }
 
   MatrixPtr outV = getOutputValue();
-
+  CHECK(outV && inV0 && inV1);
   REGISTER_TIMER_INFO("FwCosVMTimer", getName().c_str());
   for (size_t i = 0; i < batchSize; i++) {
     tmpRow0->setData(inV0->rowBuf(i));
     tmpMtx0->setData(inV1->rowBuf(i));
     tmpRow2->setData(outV->rowBuf(i));
-    tmpRow2->cosSim(*(tmpMtx0), *(tmpRow0), config_.cos_scale());
+
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*tmpMtx0);
+    inputs.addArg(*tmpRow0);
+    outputs.addArg(*tmpRow2, ASSIGN_TO);
+    forward_[0]->calc(inputs, outputs);
   }
 }
 
 void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
+  CHECK_EQ(backward_.size(), 1UL) << "Only one forward function needed";
+
   MatrixPtr inV0 = getInputValue(0);
   MatrixPtr inV1 = getInputValue(1);
   MatrixPtr inG0 = getInputGrad(0);
@@ -136,27 +155,27 @@ void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
   MatrixPtr outG = getOutputGrad();
 
   size_t batchSize = inV0->getHeight();
-
+  CHECK(inV0 && inV1 && inG0 && inG1 && outV && outG);
   REGISTER_TIMER_INFO("BwCosVMTimer", getName().c_str());
 
-  if (inG0 && inG1) {
-    for (size_t i = 0; i < batchSize; i++) {
-      tmpRow0->setData(inV0->rowBuf(i));
-      tmpRow1->setData(inG0->rowBuf(i));
-      tmpMtx0->setData(inV1->rowBuf(i));
-      tmpMtx1->setData(inG1->rowBuf(i));
-      tmpRow2->setData(outV->rowBuf(i));
-      tmpRow3->setData(outG->rowBuf(i));
+  for (size_t i = 0; i < batchSize; i++) {
+    tmpRow0->setData(inV0->rowBuf(i));
+    tmpRow1->setData(inG0->rowBuf(i));
+    tmpMtx0->setData(inV1->rowBuf(i));
+    tmpMtx1->setData(inG1->rowBuf(i));
+    tmpRow2->setData(outV->rowBuf(i));
+    tmpRow3->setData(outG->rowBuf(i));
 
-      tmpRow3->cosSimDerivative(*(tmpRow2),
-                                *(tmpMtx0),
-                                *(tmpRow0),
-                                *(tmpMtx1),
-                                *(tmpRow1),
-                                config_.cos_scale());
-    }
-  } else {
-    CHECK(!inG0 || !inG1) << "Not supported";
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*tmpRow3);
+    inputs.addArg(*tmpRow2);
+    inputs.addArg(*tmpMtx0);
+    inputs.addArg(*tmpRow0);
+    outputs.addArg(*tmpMtx1, ADD_TO);
+    outputs.addArg(*tmpRow1, ADD_TO);
+
+    backward_[0]->calc(inputs, outputs);
   }
 }
 

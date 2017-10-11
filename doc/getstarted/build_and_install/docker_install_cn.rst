@@ -1,158 +1,183 @@
-安装PaddlePaddle的Docker镜像
-============================
+PaddlePaddle的Docker容器使用方式
+================================
 
-PaddlePaddle项目提供官方 `Docker <https://www.docker.com/>`_ 镜像。Docker镜像是我们目前唯一官方支持的部署和运行方式。
-
-下述内容将分为如下几个类别描述。
-
-* PaddlePaddle提供的Docker镜像版本
-* 下载和运行Docker镜像
-* 注意事项
-
-PaddlePaddle提供的Docker镜像版本
---------------------------------
-
-我们提供了12个 `Docker image <https://hub.docker.com/r/paddledev/paddle/tags/>`_ ，他们的image name都是 :code:`paddle-dev/paddle` ，tag分别为
-
-+-----------------+------------------+------------------------+-----------------------+
-|                 |   normal         |           devel        |          demo         |
-+=================+==================+========================+=======================+
-|       CPU       | cpu-latest       | cpu-devel-latest       | cpu-demo-latest       |
-+-----------------+------------------+------------------------+-----------------------+
-|       GPU       | gpu-latest       | gpu-devel-latest       | gpu-demo-latest       |
-+-----------------+------------------+------------------------+-----------------------+
-| CPU WITHOUT AVX | cpu-noavx-latest | cpu-noavx-devel-latest | cpu-noavx-demo-latest |
-+-----------------+------------------+------------------------+-----------------------+
-| GPU WITHOUT AVX | gpu-noavx-latest | gpu-noavx-devel-latest | gpu-noavx-demo-latest |
-+-----------------+------------------+------------------------+-----------------------+
-
-其中，横向包括三个版本，normal，devel和demo。
-
-* Normal: 正常的Docker image，只包括paddle的二进制
-* Devel: 包括Paddle的二进制、编译环境和源代码
-* Demo: 包括Paddle运行demo所需要的依赖
-
-纵向包括四个版本，他们是。
-
-* CPU: CPU版本。需要支持AVX指令集的CPU
-* GPU: GPU版本。需要支持AVX指令集的CPU
-* CPU WITHOUT AVX: CPU版本，不支持AVX指令集的CPU也可以运行
-* GPU WITHOUT AVX: GPU版本，不需要AVX指令集的CPU也可以运行。
-
-用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU是否支持 :code:`AVX` 指令集\:
-
-..  code-block:: bash
-
-    if cat /proc/cpuinfo | grep -q avx ; then echo "Support AVX"; else echo "Not support AVX"; fi
-
-如果输出 :code:`Support AVX`，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 :code:`paddle-dev/paddle:cpu-devel-latest` 来引用这个image。
-
-PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行PaddlePaddle
-程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 :code:`使用ssh访问PaddlePaddle镜像`
-
-下载和运行Docker镜像
---------------------
-
-为了运行PaddlePaddle的docker镜像，您需要在机器中安装好Docker。安装Docker需要您的机器
-至少具有3.10以上的linux kernel。安装方法请参考
-`Docker的官方文档 <https://docs.docker.com/engine/installation/>`_ 。如果您使用
-mac osx或者是windows机器，请参考 
-`mac osx的安装文档 <https://docs.docker.com/engine/installation/mac/>`_ 和
-`windows 的安装文档 <https://docs.docker.com/engine/installation/windows/>`_ 。
-
-您可以使用 :code:`docker pull` 命令预先下载镜像，也可以直接执行 
-:code:`docker run` 命令运行镜像。执行方法如下:
-
-..  code-block:: bash
-    
-    $ docker run -it paddledev/paddle:cpu-latest
-
-即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
-cuda相关的Driver和设备映射进container中，脚本类似于
-
-..  code-block:: bash
-
-    $ export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
-    $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
-
-进入Docker container后，运行 :code:`paddle version` 即可打印出PaddlePaddle的版本和构建
-信息。安装完成的PaddlePaddle主体包括三个部分， :code:`paddle` 脚本， python的
-:code:`paddle` 包和 :code:`py_paddle` 包。其中\:
-
-* :code:`paddle` 脚本和 :code:`paddle` 的python包是PaddlePaddle的训练主要程序。使用 
-  :code:`paddle` 脚本可以启动PaddlePaddle的训练进程和pserver。而 :code:`paddle` 脚本
-  中的二进制使用了 :code:`paddle` 的python包来做配置文件解析等工作。
-* python包 :code:`py_paddle` 是一个swig封装的PaddlePaddle包，用来做预测和简单的定制化
-  训练。
-
-注意事项
---------
-
-性能问题
-++++++++
-
-由于Docker是基于容器的轻量化虚拟方案，所以在CPU的运算性能上并不会有严重的影响。
-而GPU的驱动和设备全部映射到了容器内，所以GPU在运算性能上也不会有严重的影响。
-
-但是如果使用了高性能的网卡，例如RDMA网卡(RoCE 40GbE 或者 IB 56GbE)，或者高性能的
-以太网卡 (10GbE)。推荐使用将本地网卡，即 "--net=host" 来进行训练。而不使用docker
-的网桥来进行网络通信。
-
-远程访问问题和二次开发
-++++++++++++++++++++++
-
-由于PaddlePaddle的Docker镜像并不包含任何预定义的运行命令。所以如果想要在后台启用ssh
-远程访问，则需要进行一定的二次开发，将ssh装入系统内并开启远程访问。二次开发可以
-使用Dockerfile构建一个全新的docker image。需要参考 
-`Dockerfile的文档 <https://docs.docker.com/engine/reference/builder/>`_ 和
-`Dockerfile的最佳实践 <https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/>`_ 
-两个文档。
-
-简单的含有ssh的Dockerfile如下：
-
-..  code-block:: bash
-
-    FROM paddledev/paddle:cpu-latest
-
-    MAINTAINER PaddlePaddle dev team <paddle-dev@baidu.com>
-
-    RUN apt-get update
-    RUN apt-get install -y openssh-server
-    RUN mkdir /var/run/sshd
-    RUN echo 'root:root' | chpasswd
-
-    RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-    RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-
-    EXPOSE 22
-
-    CMD    ["/usr/sbin/sshd", "-D"]
+PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运行。 请注意，您需要更改 `Dockers设置 <https://github.com/PaddlePaddle/Paddle/issues/627>`_ 才能充分利用Mac OS X和Windows上的硬件资源。
 
 
-使用该Dockerfile构建出镜像，然后运行这个container即可。相关命令为\:
+PaddlePaddle发布的Docker镜像使用说明
+------------------------------
 
-..  code-block:: bash
+我们把PaddlePaddle的编译环境打包成一个镜像，称为开发镜像，里面涵盖了
+PaddlePaddle需要的所有编译工具。把编译出来的PaddlePaddle也打包成一个镜
+像，称为生产镜像，里面涵盖了PaddlePaddle运行所需的所有环境。每次
+PaddlePaddle发布新版本的时候都会发布对应版本的生产镜像以及开发镜像。运
+行镜像包括纯CPU版本和GPU版本以及其对应的非AVX版本。我们会在
+`dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_ 提供最新
+的Docker镜像，可以在"tags"标签下找到最新的Paddle镜像版本。为了方便在国
+内的开发者下载Docker镜像，我们提供了国内的镜像服务器供大家使用。如果您
+在国内，请把文档里命令中的paddlepaddle/paddle替换成
+docker.paddlepaddle.org/paddle。
 
-    # cd到含有Dockerfile的路径中
-    $ docker build . -t paddle_ssh
-    # 运行这个container，将宿主机的8022端口映射到container的22端口上
-    $ docker run -d -p 8022:22  --name paddle_ssh_machine paddle_ssh
+1. 开发镜像：:code:`paddlepaddle/paddle:<version>-dev`
 
-执行如下命令即可以关闭这个container，并且删除container中的数据\:
+   这个镜像包含了Paddle相关的开发工具以及编译和运行环境。用户可以使用开发镜像代替配置本地环境，完成开发，编译，发布，
+   文档编写等工作。由于不同的Paddle的版本可能需要不同的依赖和工具，所以如果需要自行配置开发环境需要考虑版本的因素。
+   开发镜像包含了以下工具：
+   
+   - gcc/clang
+   - nvcc
+   - Python
+   - sphinx
+   - woboq
+   - sshd
+   很多开发者会使用远程的安装有GPU的服务器工作，用户可以使用ssh登录到这台服务器上并执行 :code:`docker exec`进入开发镜像并开始工作，
+   也可以在开发镜像中启动一个SSHD服务，方便开发者直接登录到镜像中进行开发:
 
-..  code-block:: bash
-    
-    # 关闭container
-    $ docker stop paddle_ssh_machine
-    # 删除container
-    $ docker rm paddle_ssh_machine
+   以交互容器方式运行开发镜像：
 
-如果想要在外部机器访问这个container，即可以使用ssh访问宿主机的8022端口。用户名为
-root，密码也是root。命令为\:
+   .. code-block:: bash
 
-..  code-block:: bash
+      docker run -it --rm paddlepaddle/paddle:<version>-dev /bin/bash
 
-    $ ssh -p 8022 root@YOUR_HOST_MACHINE
+   或者，可以以后台进程方式运行容器：
 
-至此，您就可以远程的使用PaddlePaddle啦。
+   .. code-block:: bash
+
+      docker run -d -p 2202:22 -p 8888:8888 paddledev/paddle:<version>-dev
+
+   然后用密码 :code:`root` SSH进入容器：
+
+   .. code-block:: bash
+
+      ssh -p 2202 root@localhost
+
+   SSH方式的一个优点是我们可以从多个终端进入容器。比如，一个终端运行vi，另一个终端运行Python。另一个好处是我们可以把PaddlePaddle容器运行在远程服务器上，并在笔记本上通过SSH与其连接。
+
+2. 生产镜像：根据CPU、GPU和非AVX区分了如下4个镜像：
+
+   - GPU/AVX：:code:`paddlepaddle/paddle:<version>-gpu`
+   - GPU/no-AVX：:code:`paddlepaddle/paddle:<version>-gpu-noavx`
+   - CPU/AVX：:code:`paddlepaddle/paddle:<version>`
+   - CPU/no-AVX：:code:`paddlepaddle/paddle:<version>-noavx`
+
+   纯CPU镜像以及GPU镜像都会用到AVX指令集，但是2008年之前生产的旧电脑不支持AVX。以下指令能检查Linux电脑是否支持AVX：
+
+   .. code-block:: bash
+
+      if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
+
+   如果输出是No，就需要选择使用no-AVX的镜像
+
+   以上方法在GPU镜像里也能用，只是请不要忘记提前在物理机上安装GPU最新驱动。
+   为了保证GPU驱动能够在镜像里面正常运行，我们推荐使用[nvidia-docker](https://github.com/NVIDIA/nvidia-docker)来运行镜像。
+
+   .. code-block:: bash
+
+      nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+
+   注意: 如果使用nvidia-docker存在问题，你也许可以尝试更老的方法，具体如下，但是我们并不推荐这种方法。：
+
+   .. code-block:: bash
+
+      export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
+      export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
+      docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:<version>-gpu
+
+3. 运行以及发布您的AI程序
+
+   假设您已经完成了一个AI训练的python程序 :code:`a.py`，这个程序是您在开发机上使用开发镜像完成开发。此时您可以运行这个命令在开发机上进行测试运行：
+
+   .. code-block:: bash
+
+      docker run -it -v $PWD:/work paddle /work/a.py
+
+   如果要使用GPU，请运行：
+
+   .. code-block:: bash
+
+      nvidia-docker run -it -v $PWD:/work paddle /work/a.py
+
+
+   这里`a.py`包含的所有依赖假设都可以在Paddle的运行容器中。如果需要包含更多的依赖、或者需要发布您的应用的镜像，可以编写`Dockerfile`使用`FROM paddledev/paddle:<version>`
+   创建和发布自己的AI程序镜像。
+
+运行PaddlePaddle Book
+---------------------
+
+Jupyter Notebook是一个开源的web程序，大家可以通过它制作和分享带有代码、公式、图表、文字的交互式文档。用户可以通过网页浏览文档。
+
+PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Nodebook。
+如果您想要更深入了解deep learning，PaddlePaddle Book一定是您最好的选择。
+
+我们提供可以直接运行PaddlePaddle Book的Docker镜像，直接运行：
+
+.. code-block:: bash
+
+    docker run -p 8888:8888 paddlepaddle/book
+
+然后在浏览器中输入以下网址：
+
+.. code-block:: text
+
+    http://localhost:8888/
+
+就这么简单，享受您的旅程！
+
+通过Docker容器开发PaddlePaddle
+------------------------------
+
+开发人员可以在Docker开发镜像中开发PaddlePaddle。这样开发人员可以以一致的方式在不同的平台上工作 - Linux，Mac OS X和Windows。
+
+1. 制作PaddlePaddle开发镜像
+
+   PaddlePaddle每次发布新版本都会发布对应的开发镜像供开发者直接使用。这里介绍如生成造这个开发镜像。
+   生成Docker镜像的方式有两个，一个是直接把一个容器转换成镜像，另一个是创建Dockerfile并运行docker build指令按照Dockerfile生成镜像。第一个方法的好处是简单快捷，适合自己实验，可以快速迭代。第二个方法的好处是Dockerfile可以把整个生成流程描述很清楚，其他人很容易看懂镜像生成过程，持续集成系统也可以简单地复现这个过程。我们采用第二个方法。Dockerfile位于PaddlePaddle repo的根目录。生成生产镜像只需要运行：
+
+   .. code-block:: bash
+      
+      git clone https://github.com/PaddlePaddle/Paddle.git
+      cd Paddle
+      docker build -t paddle:dev .
+
+   docker build这个命令的-t指定了生成的镜像的名字，这里我们用paddle:dev。到此，PaddlePaddle开发镜像就被构建完毕了。
+
+2. 制作PaddlePaddle生产镜像
+
+   生产镜像的生成分为两步，第一步是运行：
+
+   .. code-block:: bash
+      
+      docker run -v $(pwd):/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=OFF" -e "WITH_TEST=ON" paddle:dev
+
+   以上命令会编译PaddlePaddle，生成运行程序，以及生成创建生产镜像的Dockerfile。所有生成的的文件都在build目录下。“WITH_GPU”控制生成的生产镜像是否支持GPU，“WITH_AVX”控制生成的生产镜像是否支持AVX，”WITH_TEST“控制是否生成单元测试。
+
+   第二步是运行：
+
+   .. code-block:: bash
+      
+      docker build -t paddle:prod -f build/Dockerfile ./build
+
+   以上命令会按照生成的Dockerfile把生成的程序拷贝到生产镜像中并做相应的配置，最终生成名为paddle:prod的生产镜像。
+
+3. 运行单元测试
+
+   运行以下指令：
+
+   .. code-block:: bash
+      
+      docker run -it -v $(pwd):/paddle paddle:dev bash -c "cd /paddle/build && ctest"
+
+文档
+----
+
+Paddle的Docker开发镜像带有一个通过 `woboq code browser
+<https://github.com/woboq/woboq_codebrowser>`_ 生成的HTML版本的C++源代码，便于用户浏览C++源码。
+
+只要在Docker里启动PaddlePaddle的时候给它一个名字，就可以再运行另一个Nginx Docker镜像来服务HTML代码：
+
+.. code-block:: bash
+
+   docker run -d --name paddle-cpu-doc paddle:<version>-dev
+   docker run -d --volumes-from paddle-cpu-doc -p 8088:80 nginx
+
+接着我们就能够打开浏览器在 http://localhost:8088/paddle/ 浏览代码。

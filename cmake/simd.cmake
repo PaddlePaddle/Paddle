@@ -2,6 +2,7 @@
 # so that PaddlePaddle can unleash the vectorization power of muticore.
 
 INCLUDE(CheckCXXSourceRuns)
+INCLUDE(CheckCXXSourceCompiles)
 
 IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(MMX_FLAG "-mmmx")
@@ -16,6 +17,8 @@ ELSEIF(MSVC)
     SET(AVX_FLAG "/arch:AVX")
     SET(AVX2_FLAG "/arch:AVX2")
 ENDIF()
+
+set(CMAKE_REQUIRED_FLAGS_RETAINED ${CMAKE_REQUIRED_FLAGS})
 
 # Check  MMX
 set(CMAKE_REQUIRED_FLAGS ${MMX_FLAG})
@@ -73,4 +76,5 @@ int main()
     return 0;
 }" AVX2_FOUND)
 
+set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_RETAINED})
 mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND)

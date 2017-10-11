@@ -4,6 +4,8 @@ Installing from Sources
 * [1. Download and Setup](#download)
 * [2. Requirements](#requirements)
 * [3. Build on Ubuntu](#ubuntu)
+* [4. Build on Centos](#centos)
+
 
 ## <span id="download">Download and Setup</span> 
 You can download PaddlePaddle from the [github source](https://github.com/PaddlePaddle/Paddle).
@@ -11,32 +13,22 @@ You can download PaddlePaddle from the [github source](https://github.com/Paddle
 ```bash
 git clone https://github.com/PaddlePaddle/Paddle paddle
 cd paddle
-git submodule update --init --recursive
 ```
-
-If you already have a local PaddlePaddle repo and have not initialized the submodule, your local submodule folder will be empty. You can simply run the last line of the above codes in your PaddlePaddle home directory to initialize your submodule folder.
-
-If you have already initialized your submodule and you would like to sync with the upstream submodule repo, you can run the following command
-```
-git submodule update --remote
-```
-
 ## <span id="requirements">Requirements</span>
 
 To compile the source code, your computer must be equipped with the following dependencies.
 
-- **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1)
-- **CMake**: version >= 2.8
+- **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1) and gfortran compiler
+- **CMake**: CMake >= 3.0 (at least CMake 3.4 on Mac OS X)
 - **BLAS**: MKL, OpenBlas or ATLAS
-- **Protocol Buffers**: version >= 2.4, **Note: 3.x is not supported**
-- **Python**: only python 2.7 is supported currently
+- **Python**: only support Python 2.7
 
 **Note:** For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
 For CUDA 8.0, GCC versions later than 5.3 are not supported!
 
 ### Options
 
-PaddlePaddle supports some build options. To enable it, first you need to install the related libraries. 
+PaddlePaddle supports some build options. 
 
 <html>
 <table> 
@@ -47,12 +39,21 @@ PaddlePaddle supports some build options. To enable it, first you need to instal
 </tr>
 </thead>
 <tbody>
-<tr><td class="left">WITH_GPU</td><td class="left">Compile with GPU mode.</td></tr>
-<tr><td class="left">WITH_DOUBLE</td><td class="left">Compile with double precision floating-point, default: single precision.</td></tr>
-<tr><td class="left">WITH_TESTING</td><td class="left">Compile with gtest for PaddlePaddle's unit testing.</td></tr>
-<tr><td class="left">WITH_DOC</td><td class="left">    Compile to generate PaddlePaddle's docs, default: disabled (OFF).</td></tr>
-<tr><td class="left">WITH_SWIG_PY</td><td class="left">Compile with python predict API, default: disabled (OFF).</td></tr>
-<tr><td class="left">WITH_STYLE_CHECK</td><td class="left">Compile with code style check, default: enabled (ON).</td></tr>
+<tr><td class="left">WITH_GPU</td><td class="left">Compile PaddlePaddle with NVIDIA GPU</td></tr>
+<tr><td class="left">WITH_AVX</td><td class="left">Compile PaddlePaddle with AVX intrinsics</td></tr>
+<tr><td class="left">WITH_DSO</td><td class="left">Compile PaddlePaddle with dynamic linked CUDA</td></tr>
+<tr><td class="left">WITH_TESTING</td><td class="left">Compile PaddlePaddle with unit testing</td></tr>
+<tr><td class="left">WITH_SWIG_PY</td><td class="left">Compile PaddlePaddle with inference api</td></tr>
+<tr><td class="left">WITH_STYLE_CHECK</td><td class="left">Compile PaddlePaddle with style check</td></tr>
+<tr><td class="left">WITH_PYTHON</td><td class="left">Compile PaddlePaddle with python interpreter</td></tr>
+<tr><td class="left">WITH_DOUBLE</td><td class="left">Compile PaddlePaddle with double precision</td></tr>
+<tr><td class="left">WITH_RDMA</td><td class="left">Compile PaddlePaddle with RDMA support</td></tr>
+<tr><td class="left">WITH_TIMER</td><td class="left">Compile PaddlePaddle with stats timer</td></tr>
+<tr><td class="left">WITH_PROFILER</td><td class="left">Compile PaddlePaddle with GPU profiler</td></tr>
+<tr><td class="left">WITH_DOC</td><td class="left">Compile PaddlePaddle with documentation</td></tr>
+<tr><td class="left">WITH_COVERAGE</td><td class="left">Compile PaddlePaddle with code coverage</td></tr>
+<tr><td class="left">COVERALLS_UPLOAD</td><td class="left">Package code coverage data to coveralls</td></tr>
+<tr><td class="left">ON_TRAVIS</td><td class="left">Exclude special unit test on Travis CI</td></tr>
 </tbody>
 </table>
 </html>
@@ -64,18 +65,16 @@ PaddlePaddle supports some build options. To enable it, first you need to instal
 
 As a simple example, consider the following:  
 
-1. **Python Dependencies(optional)**
+1. **BLAS Dependencies(optional)**
   
-    To compile PaddlePaddle with python predict API, make sure swig installed and set `-DWITH_SWIG_PY=ON` as follows:
+    CMake will search BLAS libraries from system. If not found, OpenBLAS will be downloaded, built and installed automatically.
+    To utilize preinstalled BLAS， you can simply specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
 
     ```bash
-    # install swig on ubuntu
-    sudo apt-get install swig
-    # install swig on Mac OS X
-    brew install swig
-
-    # active swig in cmake
-    cmake .. -DWITH_SWIG_PY=ON
+    # specify MKL
+    cmake .. -DMKL_ROOT=<mkl_path>
+    # or specify OpenBLAS
+    cmake .. -DOPENBLAS_ROOT=<openblas_path>
     ```
 
 2. **Doc Dependencies(optional)**
@@ -99,22 +98,80 @@ As a simple example, consider the following:
 
 ### Install Dependencies
 
-- **CPU Dependencies**
+- **Paddle Dependencies**
 
     ```bash
     # necessary
     sudo apt-get update
-    sudo apt-get install -y g++ make cmake swig build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git
-    # optional
-    sudo apt-get install libgoogle-glog-dev
-    sudo apt-get install libgflags-dev
-    sudo apt-get install libgtest-dev
-    sudo pip install wheel
-    pushd /usr/src/gtest
-    cmake .
-    make
-    sudo cp *.a /usr/lib
-    popd
+    sudo apt-get install -y git curl gcc g++ gfortran make build-essential automake
+    sudo apt-get install -y python python-pip python-numpy libpython-dev bison
+    sudo pip install 'protobuf==3.1.0.post1'
+
+    # install cmake 3.4
+    curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
+        cd cmake-3.4.1 && ./bootstrap && make -j4 && sudo make install && \
+        cd .. && rm -rf cmake-3.4.1
+    ```
+
+- **GPU Dependencies (optional)**
+
+    To build GPU version, you will need the following installed:
+
+        1. a CUDA-capable GPU
+        2. A supported version of Linux with a gcc compiler and toolchain
+        3. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
+        4. NVIDIA cuDNN Library (availabel at https://developer.nvidia.com/cudnn)
+
+    The CUDA development environment relies on tight integration with the host development environment,
+    including the host compiler and C runtime libraries, and is therefore only supported on
+    distribution versions that have been qualified for this CUDA Toolkit release.
+        
+    After downloading cuDNN library, issue the following commands:
+
+    ```bash
+    sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
+    sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+    ```
+    Then you need to set LD\_LIBRARY\_PATH, PATH environment variables in ~/.bashrc.
+
+    ```bash
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/usr/local/cuda/bin:$PATH
+    ```
+
+### Build and Install
+
+As usual, the best option is to create build folder under paddle project directory.
+
+```bash
+mkdir build && cd build
+``` 
+
+Finally, you can build and install PaddlePaddle:
+
+```bash
+# you can add build option here, such as:    
+cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
+# please use sudo make install, if you want to install PaddlePaddle into the system
+make -j `nproc` && make install
+# set PaddlePaddle installation path in ~/.bashrc
+export PATH=<path to install>/bin:$PATH
+# install PaddlePaddle Python modules.
+sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
+```
+## <span id="centos">Build on Centos 7</span>
+
+### Install Dependencies
+
+- **CPU Dependencies**
+
+    ```bash
+    # necessary
+    sudo yum update
+    sudo yum install -y epel-release
+    sudo yum install -y make cmake3 python-devel python-pip gcc-gfortran swig git
+    sudo pip install wheel numpy
+    sudo pip install 'protobuf>=3.0.0'
     ```
   
 - **GPU Dependencies (optional)**
@@ -149,51 +206,17 @@ As usual, the best option is to create build folder under paddle project directo
 
 ```bash
 mkdir build && cd build
-cmake ..
-```
+``` 
 
-CMake first check PaddlePaddle's dependencies in system default path. After installing some optional
-libraries, corresponding build option will be set automatically (for instance, glog, gtest and gflags).
-If still not found, you can manually set it based on CMake error information from your screen.
-
-As a simple example, consider the following:
-
-- **Only CPU with swig**
-
-  ```bash
-  cmake  .. -DWITH_GPU=OFF -DWITH_SWIG_PY=ON
-  ```
-- **GPU with swig**
-
-  ```bash
-  cmake .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON
-  ```
-
-- **GPU with doc and swig**
-
-  ```bash
-  cmake .. -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON
-  ``` 
-
-Finally, you can build PaddlePaddle:
+Finally, you can build and install PaddlePaddle:
 
 ```bash
 # you can add build option here, such as:    
-cmake .. -DWITH_GPU=ON -DCMAKE_INSTALL_PREFIX=<path to install> -DWITH_SWIG_PY=ON
+cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>
 # please use sudo make install, if you want to install PaddlePaddle into the system
 make -j `nproc` && make install
 # set PaddlePaddle installation path in ~/.bashrc
 export PATH=<path to install>/bin:$PATH
-```
-
-If you set `WITH_SWIG_PY=ON`, related python dependencies also need to be installed.
-Otherwise, PaddlePaddle will automatically install python dependencies
-at first time when user run paddle commands, such as `paddle version`, `paddle train`.
-It may require sudo privileges:
-
-```bash
-# you can run
+# install PaddlePaddle Python modules.
 sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
-# or just run 
-sudo paddle version
 ```

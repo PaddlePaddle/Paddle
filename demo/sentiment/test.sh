@@ -37,3 +37,4 @@ paddle train --config=$net_conf \
              --trainer_count=4 \
              --config_args=is_test=1 \
              2>&1 | tee 'test.log'
+paddle usage -l test.log -e $? -n "sentiment_test" >/dev/null 2>&1

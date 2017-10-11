@@ -30,15 +30,17 @@ DEFINE_bool(parallel_nn,
 DEFINE_int32(trainer_count, 1, "Defined how many trainers to train");
 DEFINE_int32(gpu_id, 0, "Which gpu core to use");
 DEFINE_int32(port, 20134, "Listening port for pserver");
-DEFINE_int32(data_server_port, 21134, "Listening port for dserver");
 DEFINE_int32(ports_num,
              1,
-             "The ports number for parameter send,"
-             " increment based on default port number");
+             "Number of ports for sending dense parameter,"
+             " following ports on parameter server will be visited"
+             " for sending dense parameter: [port, port+ports_num-1]");
 DEFINE_int32(ports_num_for_sparse,
              0,
-             "The ports number for parameter send,"
-             " increment based on default (port + ports_num)");
+             "Number of ports for sending sparse parameter,"
+             " following ports on parameter server will be visited"
+             " for sending sparse parameter:"
+             " [port+ports_num, port+ports_num+ports_num_for_sparse-1]");
 DEFINE_string(nics, "xgbe0,xgbe1", "network device name for pservers");
 DEFINE_string(rdma_tcp, "tcp", "use rdma or tcp rdma transport protocol");
 DEFINE_int32(trainer_id,

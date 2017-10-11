@@ -38,7 +38,6 @@ cd Paddle
 git checkout -b develop  # create develop branch.
 git remote add upstream https://github.com/PaddlePaddle/Paddle.git  # add upstream to baidu/Paddle
 git pull upstream develop  # update to upstream
-git submodule update --init --recursive
 ```
 
 Then you can start to develop by making a local developement branch

@@ -110,6 +110,18 @@ void testEvaluator(TestConfig testConf,
   testEvaluator->finish();
   LOG(INFO) << *testEvaluator;
 
+  std::vector<std::string> names;
+  testEvaluator->getNames(&names);
+  paddle::Error err;
+  for (auto& name : names) {
+    auto value = testEvaluator->getValue(name, &err);
+    ASSERT_TRUE(err.isOK());
+    LOG(INFO) << name << " " << value;
+    auto tp = testEvaluator->getType(name, &err);
+    ASSERT_TRUE(err.isOK());
+    ASSERT_EQ(testConf.evaluatorConfig.type(), tp);
+  }
+
   double totalScore2 = 0.0;
   if (testConf.testAccumulate) {
     testEvaluator->start();
@@ -129,6 +141,7 @@ void testEvaluatorAll(TestConfig testConf,
 TEST(Evaluator, classification_error) {
   TestConfig config;
   config.evaluatorConfig.set_type("classification_error");
+  config.evaluatorConfig.set_top_k(5);
 
   config.inputDefs.push_back({INPUT_DATA, "output", 50});
   config.inputDefs.push_back({INPUT_LABEL, "label", 50});

@@ -208,12 +208,15 @@ class ExtraLayerAttribute(object):
                  drop_rate=None,
                  device=None):
         self.attr = dict()
-        if isinstance(error_clipping_threshold, float):
-            assert error_clipping_threshold > 0
-            self.attr["error_clipping_threshold"] = error_clipping_threshold
-
-        if isinstance(drop_rate, float):
-            assert drop_rate > 0
+        if error_clipping_threshold is not None:
+            error_clipping_threshold = float(error_clipping_threshold)
+            if error_clipping_threshold < 0:
+                raise ValueError("Error clipping must > 0")
+            self.attr['error_clipping_threshold'] = error_clipping_threshold
+        if drop_rate is not None:
+            drop_rate = float(drop_rate)
+            if drop_rate < 0:
+                raise ValueError("Dropout rate must > 0")
             self.attr["drop_rate"] = drop_rate
 
         if isinstance(device, int):

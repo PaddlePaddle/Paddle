@@ -18,7 +18,8 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 
 TEST(SIMDFlags, gccTest) {
-#if (defined(__GNUC__) || defined(__GNUG__)) && !(defined(__clang__))
+#if (defined(__GNUC__) || defined(__GNUG__)) && !(defined(__clang__)) && \
+    !defined(__arm__)
   // clang-format off
   CHECK(!__builtin_cpu_supports("sse")    != HAS_SSE);
   CHECK(!__builtin_cpu_supports("sse2")   != HAS_SSE2);
@@ -43,4 +44,5 @@ TEST(SIMDFlags, normalPrint) {
   LOG(INFO) << "Has AVX:     " << std::boolalpha << HAS_AVX;
   LOG(INFO) << "Has AVX2:    " << std::boolalpha << HAS_AVX2;
   LOG(INFO) << "Has AVX512:  " << std::boolalpha << HAS_AVX512;
+  LOG(INFO) << "Has NEON:    " << std::boolalpha << HAS_NEON;
 }

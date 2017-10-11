@@ -86,10 +86,7 @@ movie_feature = construct_feature("movie")
 user_feature = construct_feature("user")
 similarity = cos_sim(a=movie_feature, b=user_feature)
 if not is_predict:
-    outputs(
-        regression_cost(
-            input=similarity, label=data_layer(
-                'rating', size=1)))
+    outputs(mse_cost(input=similarity, label=data_layer('rating', size=1)))
 
     define_py_data_sources2(
         'data/train.list',

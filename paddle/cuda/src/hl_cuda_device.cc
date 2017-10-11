@@ -22,10 +22,9 @@ limitations under the License. */
 #include <sys/time.h>
 #include <unistd.h>
 #include <mutex>
-#include "hl_cuda.h"
 #include "hl_cuda.ph"
-#include "hl_dso_loader.h"
 #include "hl_thread.ph"
+#include "hl_dso_loader.h"
 #include "paddle/utils/Logging.h"
 // clang-format on
 
@@ -77,78 +76,6 @@ CURAND_RAND_ROUTINE_EACH(DYNAMIC_LOAD_CURAND_WRAP)
 #undef CURAND_RAND_ROUTINE_EACH
 #undef DYNAMIC_LOAD_CURAND_WRAP
 
-std::once_flag cudart_dso_flag;
-void *cudart_dso_handle = nullptr;
-
-/**
- * The following macro definition can generate structs
- * (for each function) to dynamic load cuda routine
- * via operator overloading.
- *
- * note: default dynamic linked libs
- */
-#ifdef PADDLE_USE_DSO
-#define DYNAMIC_LOAD_CUDART_WRAP(__name)                                       \
-  struct DynLoad__##__name {                                                   \
-    template <typename... Args>                                                \
-    auto operator()(Args... args) -> decltype(__name(args...)) {               \
-      using cudart_func = decltype(__name(args...)) (*)(Args...);              \
-      std::call_once(cudart_dso_flag, GetCudartDsoHandle, &cudart_dso_handle); \
-      void *p_##__name = dlsym(cudart_dso_handle, #__name);                    \
-      return reinterpret_cast<cudart_func>(p_##__name)(args...);               \
-    }                                                                          \
-  } __name; /* struct DynLoad__##__name */
-#else
-#define DYNAMIC_LOAD_CUDART_WRAP(__name)                         \
-  struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
-      return __name(args...);                                    \
-    }                                                            \
-  } __name; /* struct DynLoad__##__name */
-#endif
-
-/* include all needed cuda functions in HPPL */
-// clang-format off
-#define CUDA_ROUTINE_EACH(__macro)        \
-  __macro(cudaMalloc)                     \
-  __macro(cudaHostAlloc)                  \
-  __macro(cudaFree)                       \
-  __macro(cudaFreeHost)                   \
-  __macro(cudaMemcpy)                     \
-  __macro(cudaMemset)                     \
-  __macro(cudaMemcpyAsync)                \
-  __macro(cudaSetDevice)                  \
-  __macro(cudaGetDevice)                  \
-  __macro(cudaGetDeviceCount)             \
-  __macro(cudaGetDeviceProperties)        \
-  __macro(cudaDeviceSynchronize)          \
-  __macro(cudaDeviceCanAccessPeer)        \
-  __macro(cudaDeviceEnablePeerAccess)     \
-  __macro(cudaStreamCreate)               \
-  __macro(cudaStreamDestroy)              \
-  __macro(cudaStreamSynchronize)          \
-  __macro(cudaStreamWaitEvent)            \
-  __macro(cudaEventCreate)                \
-  __macro(cudaEventRecord)                \
-  __macro(cudaEventQuery)                 \
-  __macro(cudaEventDestroy)               \
-  __macro(cudaEventSynchronize)           \
-  __macro(cudaEventElapsedTime)           \
-  __macro(cudaSetDeviceFlags)             \
-  __macro(cudaGetLastError)               \
-  __macro(cudaFuncSetCacheConfig)         \
-  __macro(cudaRuntimeGetVersion)          \
-  __macro(cudaGetErrorString)             \
-  __macro(cudaProfilerStart)              \
-  __macro(cudaProfilerStop)
-// clang-format on
-
-CUDA_ROUTINE_EACH(DYNAMIC_LOAD_CUDART_WRAP)
-
-#undef CUDA_ROUNTINE_EACH
-#undef DYNAMIC_LOAD_CUDART_WRAP
-
 } /* namespace dynload */
 
 /**
@@ -171,11 +98,11 @@ int g_cuda_lib_version = 0;
  * Check build-in cuda function using glog and it **does not**
  * support << operator for more details error info.
  */
-#define CHECK_CUDA(cudaFunc)                                                  \
-  do {                                                                        \
-    cudaError_t cudaStat = cudaFunc;                                          \
-    CHECK_EQ(cudaSuccess, cudaStat) << "Cuda Error: "                         \
-                                    << dynload::cudaGetErrorString(cudaStat); \
+#define CHECK_CUDA(cudaFunc)                                         \
+  do {                                                               \
+    cudaError_t cudaStat = cudaFunc;                                 \
+    CHECK_EQ(cudaSuccess, cudaStat) << "Cuda Error: "                \
+                                    << cudaGetErrorString(cudaStat); \
   } while (0)
 
 /**
@@ -284,13 +211,13 @@ void hl_fini() {
       tmp_stream = (char *)t_device[dev]->stream;
     }
     for (int j = 0; j < NUMBER_OF_THREAD_STREAM; j++) {
-      CHECK_CUDA(dynload::cudaStreamDestroy(t_device[dev]->stream[j]));
+      CHECK_CUDA(cudaStreamDestroy(t_device[dev]->stream[j]));
     }
 
     /* free device memory */
     hl_free_mem_device(t_device[dev]->gpu_mem);
     hl_free_mem_host(t_device[dev]->cpu_mem);
-    CHECK_CUDA(dynload::cudaEventDestroy(t_device[dev]->mem_event));
+    CHECK_CUDA(cudaEventDestroy(t_device[dev]->mem_event));
   }
 
   free(tmp);
@@ -308,7 +235,7 @@ void hl_set_device(int device) {
   CHECK(device >= 0 && device < g_system_device_num && g_device[device])
       << "Device: " << device << " is not specified in startup.";
 
-  CHECK_CUDA(dynload::cudaSetDevice(device));
+  CHECK_CUDA(cudaSetDevice(device));
 
   /* switch thread stream */
   for (int i = 0; i < NUMBER_OF_GLOBAL_STREAM; i++) {
@@ -336,7 +263,7 @@ void hl_set_device(int device) {
 
 int hl_get_device() {
   int device;
-  CHECK_CUDA(dynload::cudaGetDevice(&device));
+  CHECK_CUDA(cudaGetDevice(&device));
   return device;
 }
 
@@ -344,7 +271,7 @@ void *hl_malloc_device(size_t size) {
   void *dest_d;
 
   CHECK(size) << __func__ << ": the size for device memory is 0, please check.";
-  CHECK_CUDA(dynload::cudaMalloc((void **)&dest_d, size));
+  CHECK_CUDA(cudaMalloc((void **)&dest_d, size));
 
   return dest_d;
 }
@@ -352,7 +279,7 @@ void *hl_malloc_device(size_t size) {
 void hl_free_mem_device(void *dest_d) {
   CHECK_NOTNULL(dest_d);
 
-  cudaError_t err = dynload::cudaFree(dest_d);
+  cudaError_t err = cudaFree(dest_d);
   CHECK(cudaSuccess == err || cudaErrorCudartUnloading == err)
       << hl_get_device_error_string();
 }
@@ -361,8 +288,7 @@ void *hl_malloc_host(size_t size) {
   void *dest_h;
 
   CHECK(size) << __func__ << ": the size for device memory is 0, please check.";
-  CHECK_CUDA(
-      dynload::cudaHostAlloc((void **)&dest_h, size, cudaHostAllocDefault));
+  CHECK_CUDA(cudaHostAlloc((void **)&dest_h, size, cudaHostAllocDefault));
 
   return dest_h;
 }
@@ -370,7 +296,7 @@ void *hl_malloc_host(size_t size) {
 void hl_free_mem_host(void *dest_h) {
   CHECK_NOTNULL(dest_h);
 
-  cudaError_t err = dynload::cudaFreeHost(dest_h);
+  cudaError_t err = cudaFreeHost(dest_h);
   CHECK(cudaSuccess == err || cudaErrorCudartUnloading == err)
       << hl_get_device_error_string();
 }
@@ -381,11 +307,11 @@ void hl_memcpy(void *dst, void *src, size_t size) {
   }
   CHECK_NOTNULL(dst);
   CHECK_NOTNULL(src);
-  CHECK_CUDA(dynload::cudaMemcpy(dst, src, size, cudaMemcpyDefault));
+  CHECK_CUDA(cudaMemcpy(dst, src, size, cudaMemcpyDefault));
 }
 
 void hl_memset_device(void *dest_d, int value, size_t size) {
-  CHECK_CUDA(dynload::cudaMemset(dest_d, value, size));
+  CHECK_CUDA(cudaMemset(dest_d, value, size));
 }
 
 void hl_memcpy_host2device(void *dest_d, void *src_h, size_t size) {
@@ -394,7 +320,7 @@ void hl_memcpy_host2device(void *dest_d, void *src_h, size_t size) {
   }
   CHECK_NOTNULL(src_h);
   CHECK_NOTNULL(dest_d);
-  CHECK_CUDA(dynload::cudaMemcpy(dest_d, src_h, size, cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(dest_d, src_h, size, cudaMemcpyHostToDevice));
 }
 
 void hl_memcpy_device2host(void *dest_h, void *src_d, size_t size) {
@@ -403,7 +329,7 @@ void hl_memcpy_device2host(void *dest_h, void *src_d, size_t size) {
   }
   CHECK_NOTNULL(dest_h);
   CHECK_NOTNULL(src_d);
-  CHECK_CUDA(dynload::cudaMemcpy(dest_h, src_d, size, cudaMemcpyDeviceToHost));
+  CHECK_CUDA(cudaMemcpy(dest_h, src_d, size, cudaMemcpyDeviceToHost));
 }
 
 void hl_memcpy_device2device(void *dest_d, void *src_d, size_t size) {
@@ -412,8 +338,7 @@ void hl_memcpy_device2device(void *dest_d, void *src_d, size_t size) {
   }
   CHECK_NOTNULL(dest_d);
   CHECK_NOTNULL(src_d);
-  CHECK_CUDA(
-      dynload::cudaMemcpy(dest_d, src_d, size, cudaMemcpyDeviceToDevice));
+  CHECK_CUDA(cudaMemcpy(dest_d, src_d, size, cudaMemcpyDeviceToDevice));
 }
 
 void hl_memcpy_async(void *dst, void *src, size_t size, hl_stream_t stream) {
@@ -427,8 +352,7 @@ void hl_memcpy_async(void *dst, void *src, size_t size, hl_stream_t stream) {
   CHECK_LT(stream, HPPL_STREAM_END);
   cu_stream = t_resource.stream[stream];
 
-  CHECK_CUDA(
-      dynload::cudaMemcpyAsync(dst, src, size, cudaMemcpyDefault, cu_stream));
+  CHECK_CUDA(cudaMemcpyAsync(dst, src, size, cudaMemcpyDefault, cu_stream));
 }
 
 void hl_start() {
@@ -439,8 +363,7 @@ void hl_start() {
 
 bool hl_device_can_access_peer(int device, int peerDevice) {
   int canAccessPeer;
-  CHECK_CUDA(
-      dynload::cudaDeviceCanAccessPeer(&canAccessPeer, device, peerDevice));
+  CHECK_CUDA(cudaDeviceCanAccessPeer(&canAccessPeer, device, peerDevice));
 
   if (canAccessPeer == 1) {
     return true;
@@ -450,9 +373,9 @@ bool hl_device_can_access_peer(int device, int peerDevice) {
 }
 
 void hl_device_enable_peer_access(int peerDevice) {
-  cudaError_t err = dynload::cudaDeviceEnablePeerAccess(peerDevice, 0);
+  cudaError_t err = cudaDeviceEnablePeerAccess(peerDevice, 0);
   if (cudaErrorPeerAccessAlreadyEnabled == err) {
-    dynload::cudaGetLastError();
+    cudaGetLastError();
   } else {
     CHECK_CUDA(err);
   }
@@ -463,9 +386,9 @@ void hl_create_global_resources(hl_device_prop device_prop) {
   int device = device_prop->device;
   global_device_resources device_res = device_prop->device_resources;
 
-  CHECK_CUDA(dynload::cudaSetDevice(device));
+  CHECK_CUDA(cudaSetDevice(device));
   /* device properties */
-  CHECK_CUDA(dynload::cudaGetDeviceProperties(&cu_prop, device));
+  CHECK_CUDA(cudaGetDeviceProperties(&cu_prop, device));
 
   device_prop->major = cu_prop.major;
   device_prop->minor = cu_prop.minor;
@@ -474,7 +397,7 @@ void hl_create_global_resources(hl_device_prop device_prop) {
 
   /* create device stream */
   for (int j = 0; j < NUMBER_OF_GLOBAL_STREAM; j++) {
-    CHECK_CUDA(dynload::cudaStreamCreate(&device_res->stream[j]));
+    CHECK_CUDA(cudaStreamCreate(&device_res->stream[j]));
   }
 
   /* cublas init */
@@ -501,18 +424,18 @@ void hl_create_global_resources(hl_device_prop device_prop) {
   device_res->gen_mutex = (pthread_mutex_t *)(malloc(sizeof(pthread_mutex_t)));
   pthread_mutex_init(device_res->gen_mutex, NULL);
 
-  CHECK_CUDA(dynload::cudaRuntimeGetVersion(&g_cuda_lib_version));
+  CHECK_CUDA(cudaRuntimeGetVersion(&g_cuda_lib_version));
 }
 
 int hl_get_cuda_version() { return g_cuda_lib_version; }
 
 void hl_create_thread_resources(int device,
                                 thread_device_resources device_res) {
-  CHECK_CUDA(dynload::cudaSetDevice(device));
+  CHECK_CUDA(cudaSetDevice(device));
 
   /* create thread stream */
   for (int j = 0; j < NUMBER_OF_THREAD_STREAM; j++) {
-    CHECK_CUDA(dynload::cudaStreamCreate(&device_res->stream[j]));
+    CHECK_CUDA(cudaStreamCreate(&device_res->stream[j]));
   }
 
   /* allocation device memory */
@@ -521,14 +444,14 @@ void hl_create_thread_resources(int device,
   /* allocation host memory */
   device_res->cpu_mem = (real *)hl_malloc_host(HPPL_GPU_MEMORY_SIZE);
 
-  CHECK_CUDA(dynload::cudaEventCreate(&device_res->mem_event));
+  CHECK_CUDA(cudaEventCreate(&device_res->mem_event));
 }
 
 void hl_specify_devices_start(int *device, int number) {
   if (hl_start_flag) return;
 
   /* 1. get the number of devices */
-  CHECK_CUDA(dynload::cudaGetDeviceCount(&g_system_device_num));
+  CHECK_CUDA(cudaGetDeviceCount(&g_system_device_num));
   CHECK_NE(g_system_device_num, 0) << "[Start failed] there is no GPU device";
   if (device == NULL) {
     number = g_system_device_num;
@@ -640,7 +563,7 @@ void hl_stream_synchronize(hl_stream_t stream) {
                                     << ": the parameter stream is error.";
 
   cu_stream = t_resource.stream[stream];
-  CHECK_CUDA(dynload::cudaStreamSynchronize(cu_stream));
+  CHECK_CUDA(cudaStreamSynchronize(cu_stream));
 }
 
 void hl_create_event(hl_event_t *event) {
@@ -649,7 +572,7 @@ void hl_create_event(hl_event_t *event) {
   struct _hl_event_st *st_event =
       (struct _hl_event_st *)malloc(sizeof(struct _hl_event_st));
 
-  CHECK_CUDA(dynload::cudaEventCreate(&st_event->cu_event));
+  CHECK_CUDA(cudaEventCreate(&st_event->cu_event));
 
   *event = st_event;
 }
@@ -659,8 +582,7 @@ float hl_event_elapsed_time(hl_event_t start, hl_event_t end) {
   CHECK_NOTNULL(start);
   CHECK_NOTNULL(end);
 
-  CHECK_CUDA(
-      dynload::cudaEventElapsedTime(&time, start->cu_event, end->cu_event));
+  CHECK_CUDA(cudaEventElapsedTime(&time, start->cu_event, end->cu_event));
   return time;
 }
 
@@ -672,7 +594,7 @@ void hl_stream_record_event(hl_stream_t stream, hl_event_t event) {
                                     << ": the parameter stream is error.";
 
   cu_stream = t_resource.stream[stream];
-  CHECK_CUDA(dynload::cudaEventRecord(event->cu_event, cu_stream));
+  CHECK_CUDA(cudaEventRecord(event->cu_event, cu_stream));
 }
 
 void hl_stream_wait_event(hl_stream_t stream, hl_event_t event) {
@@ -683,12 +605,12 @@ void hl_stream_wait_event(hl_stream_t stream, hl_event_t event) {
                                     << ": the parameter stream is error.";
 
   cu_stream = t_resource.stream[stream];
-  CHECK_CUDA(dynload::cudaStreamWaitEvent(cu_stream, event->cu_event, 0));
+  CHECK_CUDA(cudaStreamWaitEvent(cu_stream, event->cu_event, 0));
 }
 
 void hl_destroy_event(hl_event_t event) {
   CHECK_NOTNULL(event);
-  CHECK_CUDA(dynload::cudaEventDestroy(event->cu_event));
+  CHECK_CUDA(cudaEventDestroy(event->cu_event));
 
   free(event);
   event = NULL;
@@ -696,7 +618,7 @@ void hl_destroy_event(hl_event_t event) {
 
 void hl_event_synchronize(hl_event_t event) {
   CHECK_NOTNULL(event);
-  CHECK_CUDA(dynload::cudaEventSynchronize(event->cu_event));
+  CHECK_CUDA(cudaEventSynchronize(event->cu_event));
 }
 
 void hl_get_device_name(char *name, int len, int device) {
@@ -725,24 +647,24 @@ void hl_get_device_compute_capability(int *major, int *minor, int device) {
   *minor = g_device[device]->minor;
 }
 
-int hl_get_device_last_error() { return (int)dynload::cudaGetLastError(); }
+int hl_get_device_last_error() { return (int)cudaGetLastError(); }
 
 const char *hl_get_device_error_string() {
-  cudaError_t err = dynload::cudaGetLastError();
-  return dynload::cudaGetErrorString(err);
+  cudaError_t err = cudaGetLastError();
+  return cudaGetErrorString(err);
 }
 
 const char *hl_get_device_error_string(size_t err) {
-  return dynload::cudaGetErrorString((cudaError_t)err);
+  return cudaGetErrorString((cudaError_t)err);
 }
 
-void hl_device_synchronize() { CHECK_CUDA(dynload::cudaDeviceSynchronize()); }
+void hl_device_synchronize() { CHECK_CUDA(cudaDeviceSynchronize()); }
 void hl_set_device_flags_block() {
-  CHECK_CUDA(dynload::cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
+  CHECK_CUDA(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
 }
 
 bool hl_cuda_event_is_ready(hl_event_t event) {
-  cudaError_t err = dynload::cudaEventQuery(event->cu_event);
+  cudaError_t err = cudaEventQuery(event->cu_event);
   CHECK(cudaSuccess == err || cudaErrorNotReady == err);
 
   if (cudaErrorNotReady == err) {
@@ -751,6 +673,6 @@ bool hl_cuda_event_is_ready(hl_event_t event) {
   return true;
 }
 
-void hl_profiler_start() { CHECK_CUDA(dynload::cudaProfilerStart()); }
+void hl_profiler_start() { CHECK_CUDA(cudaProfilerStart()); }
 
-void hl_profiler_end() { CHECK_CUDA(dynload::cudaProfilerStop()); }
+void hl_profiler_end() { CHECK_CUDA(cudaProfilerStop()); }

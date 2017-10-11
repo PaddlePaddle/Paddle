@@ -184,15 +184,6 @@
   - Specify shared dynamic library. It can be defined out of paddle by user.
   - type: string (default: "", null).
 
-## Metric Learning
-* `--external`
-   - Whether to use external machine for metric learning.
-   - type: bool (default: 0).
-
-* `--data_server_port`
-  - Listening port for dserver (data server), dserver is mainly used in metric learning.
-  - type: int32 (default: 21134).
-
 ## DataProvider
 
 * `--memory_threshold_on_load_data`
@@ -308,10 +299,6 @@
 
 * `--show_check_sparse_distribution_log`
   - show log details for sparse parameter distribution in pserver.
-  - type: bool (default: 0).
-
-* `--allow_inefficient_sparse_update`
-  - Whether to allow inefficient sparse update.
   - type: bool (default: 0).
 
 * `--check_sparse_distribution_batches`

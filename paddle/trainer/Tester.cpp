@@ -208,7 +208,7 @@ real Tester::forwardOneBatch(const DataBatch& dataBatch,
     return 0.0;  // In this case, there is no meaning to calculate cost
   }
 
-  return Argument::sumCosts(outArgs);
+  return Argument::sum(outArgs);
 }
 
 void Tester::testOnePassBatch(int passId) {
