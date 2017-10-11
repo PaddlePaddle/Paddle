@@ -16,16 +16,16 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
 
   // Run the block
   Scope& local_scope = scope->NewScope();
-  for (size_t i = 0; i < should_run.size(); ++i) {
-    for (auto var : block.ops(i).outputs()) {
-      for (auto argu : var.arguments()) {
+  for (auto& op_desc : block.ops()) {
+    for (auto& var : op_desc) {
+      for (auto& argu : var.arguments()) {
         // Create temp variable in the local_scope
         if (local_scope.FindVar(argu) == nullptr) {
           local_scope.NewVar(argu);
         }
       }
     }
-    auto op = paddle::framework::OpRegistry::CreateOp(block.ops(i));
+    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
     op->Run(local_scope, *device);
   }
 }
