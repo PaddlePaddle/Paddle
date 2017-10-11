@@ -198,6 +198,7 @@ class Operator(object):
                 else:
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
 
+        self.desc.check_attrs()
         self.desc.infer_shape(self.block.desc)
 
     @property
