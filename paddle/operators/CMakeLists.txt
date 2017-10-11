@@ -55,10 +55,18 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
+    # pool_op contains several operators
     if ("${TARGET}" STREQUAL "pool_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
+    endif()
+
+    # pool_with_index_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_with_index_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
     # activation_op contains several operators
@@ -125,3 +133,4 @@ cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
+cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc DEPS dynamic_recurrent_op recurrent_op tensor_array)

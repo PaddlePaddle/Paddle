@@ -33,6 +33,21 @@ class TestSigmoid(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.008)
 
 
+class TestLogSigmoid(OpTest):
+    def setUp(self):
+        self.op_type = "logsigmoid"
+        self.inputs = {
+            'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
+        }
+        self.outputs = {'Y': np.log(1 / (1 + np.exp(-self.inputs['X'])))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+
+
 class TestTanh(OpTest):
     def setUp(self):
         self.op_type = "tanh"
@@ -61,6 +76,46 @@ class TestTanhShrink(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y', max_relative_error=0.008)
+
+
+class TestHardShrink(OpTest):
+    def setUp(self):
+        self.op_type = "hard_shrink"
+        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
+        threshold = 0.5
+
+        self.inputs = {'X': x}
+        self.attrs = {'lambda': threshold}
+
+        t = np.copy(x)
+        t[(t >= -threshold) & (t <= threshold)] = 0
+        self.outputs = {'Y': t}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.005)
+
+
+class TestSoftShrink(OpTest):
+    def setUp(self):
+        self.op_type = "softshrink"
+        lambda_val = 0.1
+        self.attrs = {'lambda': lambda_val}
+        self.inputs = {
+            'X': np.random.uniform(0.25, 10, [4, 4]).astype("float32")
+        }
+        y = np.copy(self.inputs['X'])
+        y = (y < -lambda_val) * (y + lambda_val) + (y > lambda_val) * (
+            y - lambda_val)
+        self.outputs = {'Y': y}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
 class TestSqrt(OpTest):
@@ -137,21 +192,26 @@ class TestBRelu(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
-class TestLeakyRelu(OpTest):
+class TestRelu6(OpTest):
     def setUp(self):
-        self.op_type = "leaky_relu"
-        alpha = 0.02
-        self.attrs = {'alpha': alpha}
-        self.inputs = {'X': np.random.uniform(-3, 3, [4, 4]).astype("float32")}
+        self.op_type = "relu6"
+        x = np.random.uniform(-1, 1, [4, 10]).astype("float32")
+        threshold = 6.0
+        # The same with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
+
+        self.inputs = {'X': x}
+        self.attrs = {'threshold': threshold}
         self.outputs = {
-            'Y': np.maximum(self.inputs['X'], alpha * self.inputs['X'])
+            'Y': np.minimum(np.maximum(self.inputs['X'], 0), threshold)
         }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
 class TestSoftRelu(OpTest):
@@ -168,6 +228,26 @@ class TestSoftRelu(OpTest):
         t[t < -threshold] = -threshold
         t[t > threshold] = threshold
         self.outputs = {'Y': np.log((np.exp(t) + 1))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+
+
+class TestELU(OpTest):
+    def setUp(self):
+        self.op_type = "elu"
+        x = np.random.uniform(-3, 3, [4, 4]).astype("float32")
+        alpha = 1.
+        # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
+        # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
+        self.inputs = {'X': x}
+        self.attrs = {'alpha': alpha}
+        self.outputs = {
+            'Y': np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -243,6 +323,21 @@ class TestSTanh(OpTest):
         scale_b = 1.7159
         self.attrs = {'scale_a': scale_a, 'scale_b': scale_b}
         self.outputs = {'Y': scale_b * np.tanh(self.inputs['X'] * scale_a)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+
+
+class TestSoftplus(OpTest):
+    def setUp(self):
+        self.op_type = "softplus"
+        self.inputs = {
+            'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
+        }
+        self.outputs = {'Y': np.log(1 + np.exp(self.inputs['X']))}
 
     def test_check_output(self):
         self.check_output()

@@ -24,7 +24,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) shouldn't be null.");
     PADDLE_ENFORCE(!ctx->Inputs("X").empty(),
                    "MultiInput(X) shouldn't be empty.");
@@ -90,7 +90,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null.");
     PADDLE_ENFORCE(!ctx->Outputs(framework::GradVarName("X")).empty(),
                    "Output(X@Grad) should not be null.");

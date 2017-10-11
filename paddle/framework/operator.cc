@@ -205,13 +205,13 @@ void OperatorBase::GenerateTemporaryNames() {
 }
 
 template <>
-const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const {
+const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
   return var == nullptr ? nullptr : GetTensorFromVar(var);
 }
 
 template <>
-const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
   auto names = op().Inputs(name);
   std::vector<const Tensor*> res;
@@ -225,13 +225,13 @@ const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
 }
 
 template <>
-Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const {
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto var = OutputVar(name);
   return var == nullptr ? nullptr : var->GetMutable<LoDTensor>();
 }
 
 template <>
-std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
   auto names = op().Outputs(name);
   std::vector<Tensor*> res;
