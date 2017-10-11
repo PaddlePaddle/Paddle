@@ -27,21 +27,17 @@ class SelectedRowsTester : public ::testing::Test {
     int64_t row_numel = 100;
     selected_rows_.reset(new SelectedRows(rows, height));
 
+    Tensor& value = selected_rows_->value();
+    value.mutable_data<float>(make_ddim({3, row_numel}), place_);
+
     ctx_.reset(new platform::CPUDeviceContext(place_));
-    tensor_.reset(new Tensor());
-    tensor_->mutable_data<float>(make_ddim({3, row_numel}), place_);
-
-    operators::math::SetConstant<platform::CPUPlace, float>(*ctx_,
-                                                            tensor_.get(), 2.0);
-
-    selected_rows_->set_value(tensor_.get());
+    operators::math::SetConstant<platform::CPUPlace, float>(*ctx_, &value, 2.0);
   }
 
  protected:
   platform::CPUPlace place_;
   std::unique_ptr<platform::CPUDeviceContext> ctx_;
   std::unique_ptr<SelectedRows> selected_rows_{nullptr};
-  std::unique_ptr<Tensor> tensor_{nullptr};
 };
 
 TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_->height(), 10); }

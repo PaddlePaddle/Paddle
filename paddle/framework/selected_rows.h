@@ -38,13 +38,13 @@ using Vector = thrust::host_vector<
 class SelectedRows {
  public:
   SelectedRows(const Vector<int64_t>& rows, const int64_t& height)
-      : rows_(rows), height_(height) {}
-
-  void set_value(Tensor* value) { value_ = value; }
+      : rows_(rows), height_(height) {
+    value_.reset(new Tensor());
+  }
 
   platform::Place place() const { return value_->place(); }
 
-  const Tensor& value() const { return *value_; }
+  Tensor& value() const { return *value_; }
 
   int64_t height() const { return height_; }
 
@@ -52,7 +52,7 @@ class SelectedRows {
 
  private:
   Vector<int64_t> rows_;
-  Tensor* value_;  // not owned
+  std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
 };
 
