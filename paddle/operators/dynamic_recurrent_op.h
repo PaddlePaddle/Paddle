@@ -91,13 +91,13 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   }
   const OperatorBase& GetStepNet() const { return *stepnet_; }
 
-  const TensorArray& state(const std::string& name) const {
+  const framework::TensorArray& state(const std::string& name) const {
     return states_[name];
   }
-  const TensorArray& step_input(const std::string& name) const {
+  const framework::TensorArray& step_input(const std::string& name) const {
     return step_inputs_[name];
   }
-  const TensorArray& step_output(const std::string& name) const {
+  const framework::TensorArray& step_output(const std::string& name) const {
     return step_outputs_[name];
   }
 

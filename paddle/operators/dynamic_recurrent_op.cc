@@ -19,6 +19,12 @@
 namespace paddle {
 namespace operators {
 
+using framework::Scope;
+using framework::TensorArray;
+using framework::LoDTensor;
+using framework::Variable;
+using framework::DySeqMetaBatch;
+
 namespace detail {
 
 inline void CreateVariables(Scope& scope,
