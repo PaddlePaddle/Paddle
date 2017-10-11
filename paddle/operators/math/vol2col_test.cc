@@ -18,10 +18,9 @@ limitations under the License. */
 
 template <typename Place>
 void testVol2col() {
-  paddle::framework::Tensor input_tmp;
   paddle::framework::Tensor input;
-  paddle::framework::Tensor output_cfo;
-  paddle::framework::Tensor output_ocf;
+  paddle::framework::Tensor input_tmp;
+  paddle::framework::Tensor output;
   paddle::framework::Tensor output_tmp;
 
   auto* place = new Place();
@@ -44,14 +43,14 @@ void testVol2col() {
    *          [6, 7, 8,
    *          9, 10, 11]]
    *
-   * output_cfo = [0, 1
-   *               1, 2
-   *               3, 4
-   *               4, 5
-   *               6, 7
-   *               7, 8
-   *               9, 10
-   *               10, 11]
+   * output = [0, 1
+   *           1, 2
+   *           3, 4
+   *           4, 5
+   *           6, 7
+   *           7, 8
+   *           9, 10
+   *           10, 11]
    *
    * col2vol = [[0, 2, 2,
    *             3, 8, 5]
@@ -81,20 +80,20 @@ void testVol2col() {
   } else {
     input.CopyFrom<float>(input_tmp, *place);
   }
-  output_cfo.mutable_data<float>({1, filter_size, filter_size, filter_size,
-                                  output_depth, output_height, output_width},
-                                 *place);
+  output.mutable_data<float>({1, filter_size, filter_size, filter_size,
+                              output_depth, output_height, output_width},
+                             *place);
 
   paddle::operators::math::Vol2ColFunctor<Place, float> vol2col;
-  vol2col(*context, input, output_cfo, stride, stride, stride, padding, padding,
+  vol2col(*context, input, output, stride, stride, stride, padding, padding,
           padding);
 
   float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
-    out_cfo_ptr = output_cfo.data<float>();
+    out_cfo_ptr = output.data<float>();
   } else {
-    output_tmp.CopyFrom<float>(output_cfo, paddle::platform::CPUPlace());
+    output_tmp.CopyFrom<float>(output, paddle::platform::CPUPlace());
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -112,25 +111,25 @@ void testVol2col() {
   }
 
   paddle::operators::math::Col2VolFunctor<Place, float> col2vol;
-  col2vol(*context, input, output_cfo, stride, stride, stride, padding, padding,
+  col2vol(*context, input, output, stride, stride, stride, padding, padding,
           padding);
 
-  float* in_cfo_ptr;
+  float* in_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
-    in_cfo_ptr = input.data<float>();
+    in_ptr = input.data<float>();
   } else {
     input_tmp.CopyFrom<float>(input, paddle::platform::CPUPlace());
-    in_cfo_ptr = input_tmp.data<float>();
+    in_ptr = input_tmp.data<float>();
   }
 
   for (int i = 0; i < 12; ++i) {
-    EXPECT_EQ(in_cfo_ptr[i], col_2_vol[i]);
+    EXPECT_EQ(in_ptr[i], col_2_vol[i]);
   }
 }
 
 TEST(math, vol2col) {
   testVol2col<paddle::platform::CPUPlace>();
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testVol2col<paddle::platform::GPUPlace>();
-#endif
+#endif  // PADDLE_WITH_CUDA
 }
