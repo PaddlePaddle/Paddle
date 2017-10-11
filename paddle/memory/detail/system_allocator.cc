@@ -134,7 +134,7 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool GPUAllocator::UseGpu() const { return true; }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace detail
 }  // namespace memory

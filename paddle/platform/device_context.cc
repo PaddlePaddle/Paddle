@@ -136,7 +136,7 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace platform
 }  // namespace paddle

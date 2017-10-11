@@ -63,4 +63,4 @@ void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
 }  // namespace platform
 }  // namespace paddle
 
-#endif  // PADDLE_ONLY_CPU
+#endif

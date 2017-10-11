@@ -32,5 +32,13 @@ std::vector<int64_t> VarDescBind::Shape() const {
 DataType VarDescBind::GetDataType() const {
   return desc_.lod_tensor().data_type();
 }
+
+void VarDescBind::SetLoDLevel(int32_t lod_level) {
+  desc_.mutable_lod_tensor()->set_lod_level(lod_level);
+}
+
+int32_t VarDescBind::GetLodLevel() const {
+  return desc_.lod_tensor().lod_level();
+}
 }  // namespace framework
 }  // namespace paddle

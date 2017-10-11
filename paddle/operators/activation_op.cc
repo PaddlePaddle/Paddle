@@ -49,6 +49,18 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  LogSigmoidOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of LogSigmoid operator");
+    AddOutput("Y", "Output of LogSigmoid operator");
+    AddComment(
+        "Logsigmoid activation operator, logsigmoid = log (1 / (1 + exp(-x)))");
+  }
+};
+
 class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ExpOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -82,6 +94,23 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
         "leaky_relu = max(x, alpha * x)");
     AddAttr<AttrType>("alpha", "The small negative slope")
         .SetDefault(static_cast<AttrType>(0.02f));
+  }
+};
+
+template <typename AttrType>
+class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softshrink operator");
+    AddOutput("Y", "Output of Softshrink operator");
+    AddComment(
+        "Softshrink activation operator, "
+        "softshrink = x - lambda, if x > lambda;"
+        " x + lambda, if x < lambda; 0 otherwise");
+    AddAttr<AttrType>("lambda", "non-negative offset")
+        .SetDefault(static_cast<AttrType>(0.5f));
   }
 };
 
@@ -271,6 +300,9 @@ namespace ops = paddle::operators;
 REGISTER_OP(sigmoid, ops::ActivationOp, ops::SigmoidOpMaker, sigmoid_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(logsigmoid, ops::ActivationOp, ops::LogSigmoidOpMaker,
+            logsigmoid_grad, ops::ActivationOpGrad);
+
 REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
             ops::ActivationOpGrad);
 
@@ -282,6 +314,9 @@ REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
 
 REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
             tanh_shrink_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(softshrink, ops::ActivationOp, ops::SoftShrinkOpMaker<float>,
+            softshrink_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
