@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 
-#include <boost/range/adaptor/reversed.hpp>
-
 namespace paddle {
 namespace framework {
 
