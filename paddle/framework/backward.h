@@ -27,8 +27,6 @@ extern std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
 
-// TODO(jiayi): Add target as parameter and generate backward op
-// according to target.
 void AppendBackward(ProgramDescBind& program_desc,
                     const std::unordered_set<std::string>& no_grad_vars);
 
