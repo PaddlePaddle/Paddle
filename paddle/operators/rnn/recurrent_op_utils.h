@@ -71,7 +71,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
  */
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& outlinks,
-                   const size_t seq_len);
+                   const size_t seq_len, const platform::DeviceContext& ctx);
 
 void LinkMemories(const std::vector<Scope*>& step_scopes,
                   const std::vector<MemoryAttr>& memories, const size_t step_id,

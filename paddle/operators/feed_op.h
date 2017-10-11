@@ -34,7 +34,7 @@ class FeedKernel : public framework::OpKernel<T> {
     // TODO(qijun):
     //   check tensors[col].dims() with attribute,
     //   except the first dimenson.
-    out->CopyFrom<T>(tensors[col], ctx.GetPlace());
+    out->CopyFrom<T>(tensors[col], ctx.GetPlace(), ctx.device_context());
   }
 };
 
