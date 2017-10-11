@@ -99,7 +99,7 @@ TEST(ProtoServer, regular) {
 }
 
 TEST(ProtoServer, extended) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   ProtoClient* client;
   if (FLAGS_rdma_tcp == "rdma")
     client = new ProtoClient(FLAGS_server_addr, FLAGS_port, F_RDMA);

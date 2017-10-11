@@ -15,7 +15,7 @@ class PySimpleCond(object):
         for i in range(1, 10, 2):
             array[i] = 0
         self.cond = np.array(array)
-        self.x = np.ones(shape=(10, 1))
+        self.x = np.ones(shape=(10, 1)).astype("float32")
 
     def forward(self):
         self.index_t = np.where(self.cond == 1)
@@ -66,7 +66,6 @@ class TestCondOp(unittest.TestCase):
         self.create_cond_op()
         self.create_sub_net()
         ctx = core.DeviceContext.create(core.CPUPlace())
-        self.condop.infer_shape(self.scope)
         self.condop.run(self.scope, ctx)
         return np.array(self.scope.find_var("Out").get_tensor())
 

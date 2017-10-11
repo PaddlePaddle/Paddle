@@ -10,7 +10,6 @@ class CosineOp : public OperatorBase {
   using OperatorBase::OperatorBase;
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-  void InferShape(const Scope& scope) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -29,7 +28,6 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 class MyTestOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 };
@@ -174,4 +172,15 @@ TEST(OpRegistry, CustomChecker) {
   op->Run(scope, dev_ctx);
   int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
+}
+
+class CosineOpComplete : public paddle::framework::CosineOp {
+ public:
+  DEFINE_OP_CONSTRUCTOR(CosineOpComplete, paddle::framework::CosineOp);
+  DEFINE_OP_CLONE_METHOD(CosineOpComplete);
+};
+
+TEST(OperatorRegistrar, Test) {
+  using namespace paddle::framework;
+  OperatorRegistrar<CosineOpComplete, CosineOpProtoAndCheckerMaker> reg("cos");
 }

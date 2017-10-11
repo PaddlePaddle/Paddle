@@ -24,25 +24,25 @@ class DropoutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_GE(ctx.Attr<float>("dropout_prob"), 0);
-    PADDLE_ENFORCE_LE(ctx.Attr<float>("dropout_prob"), 1);
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<float>("dropout_prob"), 0);
+    PADDLE_ENFORCE_LE(ctx->Attrs().Get<float>("dropout_prob"), 1);
 
-    auto dims = ctx.Input<Tensor>("X")->dims();
-    ctx.Output<Tensor>("Out")->Resize(dims);
-    if (ctx.Attr<bool>("is_training")) {
-      ctx.Output<Tensor>("Mask")->Resize(dims);
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim("Out", x_dims);
+    if (ctx->Attrs().Get<bool>("is_training") == 1) {
+      ctx->SetOutputDim("Mask", x_dims);
     }
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 template <typename AttrType>
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DropoutOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  DropoutOpMaker(framework::OpProto* proto,
+                 framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<AttrType>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f);
@@ -70,27 +70,26 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.Attr<bool>("is_training"),
-                   "GradOp is only callable when is_training is true");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_training"), 1,
+                      "GradOp is only callable when is_training is true");
 
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Mask"), "Mask must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Mask"), "Mask must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) must not be null.");
 
-    PADDLE_ENFORCE_GE(ctx.Attr<AttrType>("dropout_prob"), 0);
-    PADDLE_ENFORCE_LE(ctx.Attr<AttrType>("dropout_prob"), 1);
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<AttrType>("dropout_prob"), 0);
+    PADDLE_ENFORCE_LE(ctx->Attrs().Get<AttrType>("dropout_prob"), 1);
+    auto x_dims = ctx->GetInputDim("X");
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(x_dims, out_dims,
                       "Dimensions of Input(X) and Out@Grad must be the same.");
-    auto mask_dims = ctx.Input<Tensor>("Mask")->dims();
+    auto mask_dims = ctx->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(x_dims, mask_dims,
                       "Dimensions of Input(X) and Mask must be the same.");
 
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    x_grad->Resize(x_dims);
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
 };
 

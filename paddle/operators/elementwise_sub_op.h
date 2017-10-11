@@ -13,13 +13,13 @@
    limitations under the License. */
 
 #pragma once
-#include "paddle/operators/elementwise_op.h"
+#include "paddle/operators/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ElementwiseSubKernel : public framework::OpKernel {
+class ElementwiseSubKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseCompute<EigenSubFunctor, Place, T>(ctx);
@@ -102,7 +102,7 @@ struct ElementwiseSubBroadCast2GradFunctor {
 };
 
 template <typename Place, typename T>
-class ElementwiseSubGradKernel : public framework::OpKernel {
+class ElementwiseSubGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<Place, T, ElementwiseSubGradFunctor<T>,

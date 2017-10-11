@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -26,7 +27,6 @@ class OpWithoutKernelTest : public OperatorBase {
   OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
                       const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     ++op_run_num;
@@ -86,7 +86,6 @@ TEST(OperatorBase, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope.NewVar("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
-  op->InferShape(scope);
   op->Run(scope, device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
@@ -114,11 +113,14 @@ class OpWithKernelTest : public OperatorWithKernel {
   using OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  DataType IndicateDataType(const ExecutionContext& ctx) const override {
+    return DataType::FP32;
+  }
 };
 
 template <typename T1, typename T2>
-class CPUKernelTest : public OpKernel {
+class CPUKernelTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
@@ -145,7 +147,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
   }
 };
 
-class CPUKernalMultiInputsTest : public OpKernel {
+class CPUKernalMultiInputsTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
     auto xs = ctx.op().Inputs("xs");
@@ -254,7 +256,6 @@ class OperatorClone : public paddle::framework::OperatorBase {
                 const paddle::framework::VariableNameMap& outputs,
                 const paddle::framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void InferShape(const paddle::framework::Scope& scope) const override {}
   void Run(const paddle::framework::Scope& scope,
            const paddle::platform::DeviceContext& dev_ctx) const override {}
 };
