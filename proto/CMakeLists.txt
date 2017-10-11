@@ -1,4 +1,10 @@
-file(GLOB proto_filenames . *.proto)
+if (MOBILE_INFERENCE)
+    file(GLOB proto_filenames . ModelConfig.proto ParameterConfig.proto
+         TrainerConfig.proto DataConfig.proto)
+else()
+    file(GLOB proto_filenames . *.proto)
+endif()
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 proto_library(paddle_proto SRCS ${proto_filenames})
 
