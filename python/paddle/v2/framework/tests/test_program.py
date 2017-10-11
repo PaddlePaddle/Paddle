@@ -33,20 +33,33 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-    def test_backward(self):
+    def test_append_backward(self):
         prog = core.ProgramDesc.__create_program_desc__()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
 
-        sum_op_desc = block.append_op()
-        sum_op_desc.set_type("sum")
-        sum_op_desc.set_input("X", ["x1", "x2"])
-        sum_op_desc.set_output("Out", ["out"])
+        mul_op_desc = block.append_op()
+        mul_op_desc.set_type("mul")
+        mul_op_desc.set_input("X", ["x1"])
+        mul_op_desc.set_input("Y", ["y1"])
+        mul_op_desc.set_output("Out", ["out1"])
 
-        self.assertEqual(len(block.all_ops()), 1)
-        prog.backward(set())
-        self.assertEqual(len(block.all_ops()), 3)
+        sum_op_desc = block.append_op()
+        sum_op_desc.set_type("elementwise_add")
+        sum_op_desc.set_input("X", ["out1"])
+        sum_op_desc.set_input("Y", ["b1"])
+        sum_op_desc.set_output("Out", ["out2"])
+
+        expect_ops = [
+            "mul", "elementwise_add", "elementwise_add_grad", "mul_grad"
+        ]
+        actual_ops = []
+        prog.append_backward(set())
+        for op in block.all_ops():
+            actual_ops.append(op.type())
+        print(actual_ops)
+        self.assertEqual(actual_ops, expect_ops)
 
 
 if __name__ == '__main__':
