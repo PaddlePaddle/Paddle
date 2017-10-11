@@ -79,7 +79,8 @@ void testIm2col() {
       im2col_ocf;
 
   im2col(*context, input, output_cfo, stride, stride, padding, padding);
-  im2col_ocf(*context, input, output_ocf, stride, stride, padding, padding);
+  im2col_ocf(*context, input, output_ocf, stride, padding, 0,
+             output_height * output_width);
 
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
