@@ -135,4 +135,4 @@ TEST(BuddyAllocator, GPUMultAlloc) {
   }
 }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
