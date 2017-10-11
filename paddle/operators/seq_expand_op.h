@@ -21,7 +21,6 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using LoD = paddle::framework::LoD;
 
 template <typename Place, typename T>
 class SeqExpandKernel : public framework::OpKernel<T> {
@@ -35,11 +34,11 @@ class SeqExpandKernel : public framework::OpKernel<T> {
 
     if (repeat != 0) {
       if (x->lod().size() == 0) {
-        std::vector<size_t> level0(x->dims()[0]);
+        std::vector<size_t> level0;
         for (size_t i = 0; i <= x->dims()[0]; i++) {
           level0.push_back(i * repeat);
         }
-        const LoD out_lod;
+        framework::LoD out_lod;
         out_lod.push_back(level0);
         out->set_lod(out_lod);
       }
@@ -55,14 +54,15 @@ class SeqExpandKernel : public framework::OpKernel<T> {
         }
       }
     }
-    if (paddle::platform::CPUPlace() == Place) {
+    if (platform::is_cpu_place(context.GetPlace())) {
       for (int i = 0; i < out_dim[0]; ++i) {
         memcpy(out_data + element_len * i, x_data + element_len * cpy_map[i],
                sizeof(T) * element_len);
       }
     } else {
       for (int i = 0; i < out_dim[0]; ++i) {
-        hl_memcpy(out_data + element_len * i, x_data + element_len * cpy_map[i],
+        hl_memcpy(out_data + element_len * i,
+                  const_cast<T*>(x_data) + element_len * cpy_map[i],
                   sizeof(T) * element_len);
       }
     }

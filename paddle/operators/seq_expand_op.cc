@@ -28,7 +28,7 @@ class SeqExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SeqExpandOp should not be null.");
     int repeat = ctx->Attrs().Get<int>("repeat");
-    DDim out_dim;
+    framework::DDim out_dim;
     if (repeat == 0) {
       PADDLE_ENFORCE(
           ctx->HasInput("Y"),
@@ -38,7 +38,6 @@ class SeqExpandOp : public framework::OperatorWithKernel {
     } else {
       out_dim = ctx->GetInputDim("X");
       out_dim[0] = out_dim[0] * repeat;
-      ctx->SetOutputDim("Out", y_dim);
     }
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of PadOp should not be null.");
