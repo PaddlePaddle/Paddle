@@ -78,6 +78,26 @@ class TestTanhShrink(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.008)
 
 
+class TestHardShrink(OpTest):
+    def setUp(self):
+        self.op_type = "hard_shrink"
+        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
+        threshold = 0.5
+
+        self.inputs = {'X': x}
+        self.attrs = {'lambda': threshold}
+
+        t = np.copy(x)
+        t[(t >= -threshold) & (t <= threshold)] = 0
+        self.outputs = {'Y': t}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.005)
+
+
 class TestSoftShrink(OpTest):
     def setUp(self):
         self.op_type = "softshrink"

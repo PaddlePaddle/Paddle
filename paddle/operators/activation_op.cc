@@ -137,6 +137,24 @@ class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  HardShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of HardShrink operator");
+    AddOutput("Y", "Output of HardShrink operator");
+    AddComment(
+        "HardShrink activation operator, "
+        "hard_shrink(x) = x if x > lambda"
+        "hard_shrink(x) = x if x < -lambda"
+        "hard_shrink(x) = 0 otherwise");
+    AddAttr<AttrType>("threshold", "The value of threshold for HardShrink")
+        .SetDefault(static_cast<AttrType>(0.5));
+  }
+};
+
 class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SqrtOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -356,6 +374,9 @@ REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
 
 REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
             ops::ActivationOpGrad);
+
+REGISTER_OP(hard_shrink, ops::ActivationOp, ops::HardShrinkOpMaker<float>,
+            hard_shrink_grad, ops::ActivationOpGrad);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_CPU_KERNEL(                                                      \
