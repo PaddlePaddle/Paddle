@@ -56,17 +56,17 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
               "sequence_concat Op.");
     AddAttr<int>("axis",
                  "(int, default 0)"
-                 "The axis which the inputs will be joined with."
+                 "The axis which the inputs will be joined with. "
                  "If axis is 0, the inputs will be joined with LoD index.")
         .SetDefault(0);
     AddAttr<int>("level",
                  "(int, default 0)"
-                 "The level at which the inputs will be joined."
+                 "The level at which the inputs will be joined. "
                  "If the level is 0, the inputs will be joined at the nested "
-                 "sequence level."
+                 "sequence level. "
                  "If the level is 1, the inputs will be joined at the "
-                 "sequence level."
-                 "The level should be less than the levels of input")
+                 "sequence level. "
+                 "The level should be less than the level number of inputs.")
         .SetDefault(0);
     AddComment(R"DOC(
     The sequence_concat operator concatenates multiple LoDTensors. 
