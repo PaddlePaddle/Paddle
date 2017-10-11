@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/operators/activation_op.h"
 #include "paddle/operators/math/math_function.h"
 
 #include "paddle/framework/eigen.h"
@@ -27,19 +28,35 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
+
 template <typename Place, typename T>
-class GRUUnitKernel : public framework::OpKernel {
+class GRUUnitKernel : public framework::OpKernel<T> {
  public:
+  template <typename Device, typename X, typename Y>
+  void ActCompute(const int act_type, const Device& d, X x, Y y) const {
+    if (act_type == identity)
+      y.device(d) = x;
+    else if (act_type == sigmoid)
+      SigmoidFunctor<T>()(d, x, y);
+    else if (act_type == tanh)
+      TanhFunctor<T>()(d, x, y);
+    else if (act_type == relu)
+      ReluFunctor<T>()(d, x, y);
+    else
+      PADDLE_THROW("unsupported activation type");
+  }
+
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("input");
-    auto* hidden_prev = context.Input<Tensor>("hidden_prev");
-    auto* weight = context.Input<Tensor>("weight");
-    auto* bias = context.Input<Tensor>("bias");
-    auto* gate = context.Output<Tensor>("gate");
+    auto* input = context.Input<Tensor>("Input");
+    auto* hidden_prev = context.Input<Tensor>("HiddenPrev");
+    auto* weight = context.Input<Tensor>("Weight");
+    auto* bias = context.Input<Tensor>("Bias");
+    auto* gate = context.Output<Tensor>("Gate");
     gate->mutable_data<T>(context.GetPlace());
-    auto* reset_hidden_prev = context.Output<Tensor>("reset_hidden_prev");
+    auto* reset_hidden_prev = context.Output<Tensor>("ResetHiddenPrev");
     reset_hidden_prev->mutable_data<T>(context.GetPlace());
-    auto* hidden = context.Output<Tensor>("hidden");
+    auto* hidden = context.Output<Tensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
     int batch_size = input->dims()[0];
@@ -69,12 +86,12 @@ class GRUUnitKernel : public framework::OpKernel {
     // calculate activited gate
     Eigen::array<int, 2> extents({{batch_size, frame_size}});
     Eigen::array<int, 2> u_offsets({{0, 0}});
-    g.slice(u_offsets, extents).device(place) =
-        g.slice(u_offsets, extents).sigmoid();
+    ActCompute(context.Attr<int>("gate_activation"), place,
+               g.slice(u_offsets, extents), g.slice(u_offsets, extents));
     auto u = g.slice(u_offsets, extents);  // update gate
     Eigen::array<int, 2> r_offsets({{0, frame_size}});
-    g.slice(r_offsets, extents).device(place) =
-        g.slice(r_offsets, extents).sigmoid();
+    ActCompute(context.Attr<int>("gate_activation"), place,
+               g.slice(r_offsets, extents), g.slice(r_offsets, extents));
     auto r = g.slice(r_offsets, extents);  // reset gate
     r_h_p.device(place) = r * h_p;         // reset previous hidden state
     math::gemm<Place, T>(context.device_context(), false, false, batch_size,
@@ -84,8 +101,8 @@ class GRUUnitKernel : public framework::OpKernel {
                          frame_size * 3);
 
     Eigen::array<int, 2> c_offsets({{0, frame_size * 2}});
-    g.slice(c_offsets, extents).device(place) =
-        g.slice(c_offsets, extents).tanh();
+    ActCompute(context.Attr<int>("activation"), place,
+               g.slice(c_offsets, extents), g.slice(c_offsets, extents));
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // calculate final output
@@ -94,21 +111,37 @@ class GRUUnitKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class GRUUnitGradKernel : public framework::OpKernel {
+class GRUUnitGradKernel : public framework::OpKernel<T> {
  public:
+  template <typename Device, typename X, typename Y, typename DX, typename DY>
+  void ActGradCompute(const int act_type, const Device& d, X x, Y y, DX dx,
+                      DY dy) const {
+    // x is dummy and won't be used even in Relu(use y instead)
+    if (act_type == identity)
+      dx.device(d) = dy;
+    else if (act_type == sigmoid)
+      SigmoidGradFunctor<T>()(d, x, y, dy, dx);
+    else if (act_type == tanh)
+      TanhGradFunctor<T>()(d, x, y, dy, dx);
+    else if (act_type == relu)
+      ReluGradFunctor<T>()(d, x, y, dy, dx);
+    else
+      PADDLE_THROW("unsupported activation type");
+  }
+
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("input");
-    auto* hidden_prev = context.Input<Tensor>("hidden_prev");
-    auto* weight = context.Input<Tensor>("weight");
-    auto* gate = context.Input<Tensor>("gate");
-    auto* reset_hidden_prev = context.Input<Tensor>("reset_hidden_prev");
-    auto* hidden_grad = context.Input<Tensor>(framework::GradVarName("hidden"));
-    auto* input_grad = context.Output<Tensor>(framework::GradVarName("input"));
+    auto* input = context.Input<Tensor>("Input");
+    auto* hidden_prev = context.Input<Tensor>("HiddenPrev");
+    auto* weight = context.Input<Tensor>("Weight");
+    auto* gate = context.Input<Tensor>("Gate");
+    auto* reset_hidden_prev = context.Input<Tensor>("ResetHiddenPrev");
+    auto* hidden_grad = context.Input<Tensor>(framework::GradVarName("Hidden"));
+    auto* input_grad = context.Output<Tensor>(framework::GradVarName("Input"));
     auto* hidden_prev_grad =
-        context.Output<Tensor>(framework::GradVarName("hidden_prev"));
+        context.Output<Tensor>(framework::GradVarName("HiddenPrev"));
     auto* weight_grad =
-        context.Output<Tensor>(framework::GradVarName("weight"));
-    auto* bias_grad = context.Output<Tensor>(framework::GradVarName("bias"));
+        context.Output<Tensor>(framework::GradVarName("Weight"));
+    auto* bias_grad = context.Output<Tensor>(framework::GradVarName("Bias"));
     input_grad->mutable_data<T>(context.GetPlace());
     hidden_prev_grad->mutable_data<T>(context.GetPlace());
     weight_grad->mutable_data<T>(context.GetPlace());
@@ -149,11 +182,11 @@ class GRUUnitGradKernel : public framework::OpKernel {
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // backward for unactivated update gate
-    d_g.slice(u_offsets, extents).device(place) =
-        d_h * (h_p - c) * u * (u.constant(T(1)) - u);
+    ActGradCompute(context.Attr<int>("gate_activation"), place, u, u,
+                   d_g.slice(u_offsets, extents), d_h * (h_p - c));
     // backward for unactivated output candidate
-    d_g.slice(c_offsets, extents).device(place) =
-        d_h * (u.constant(T(1)) - u) * (c.constant(T(1)) - c * c);
+    ActGradCompute(context.Attr<int>("activation"), place, c, c,
+                   d_g.slice(c_offsets, extents), d_h * (u.constant(T(1)) - u));
     // backward for reset_hidden_prev
     math::gemm<Place, T>(context.device_context(), false, true, batch_size,
                          frame_size, frame_size, 1,
@@ -167,8 +200,8 @@ class GRUUnitGradKernel : public framework::OpKernel {
         gate_grad_data + frame_size * 2, frame_size * 3, 0,
         weight_grad_data + frame_size * frame_size * 2, frame_size);
     // backward for unactivated reset gate
-    d_g.slice(r_offsets, extents).device(place) =
-        d_r_h_p * h_p * r * (r.constant(T(1)) - r);
+    ActGradCompute(context.Attr<int>("gate_activation"), place, r, r,
+                   d_g.slice(r_offsets, extents), d_r_h_p * h_p);
     // backward for update_gate_weight and reset_gate_weight
     math::gemm<Place, T>(context.device_context(), true, false, frame_size,
                          frame_size * 2, batch_size, 1, hidden_prev_data,
