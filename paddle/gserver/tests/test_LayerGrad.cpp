@@ -2371,10 +2371,8 @@ void testFactorizationMachineLayer(InputType type, bool useGpu) {
 
 TEST(Layer, FactorizationMachineLayer) {
   testFactorizationMachineLayer(INPUT_DATA, false);
-  testFactorizationMachineLayer(INPUT_SPARSE_FLOAT_VALUE_DATA, false);
-#ifdef PADDLE_WITH_CUDA
   testFactorizationMachineLayer(INPUT_DATA, true);
-#endif
+  testFactorizationMachineLayer(INPUT_SPARSE_FLOAT_VALUE_DATA, false);
 }
 
 int main(int argc, char** argv) {
