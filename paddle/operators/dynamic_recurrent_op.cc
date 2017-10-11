@@ -51,7 +51,8 @@ inline void ReorderBootState(const DySeqMetaBatch& metas,
     auto slice = tensor->Slice<T>(seq_id, seq_id + 1);
     auto boot_slice =
         boot_state.Slice<T>(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
-    slice.CopyFrom(boot_slice, dst_place);
+    // slice.CopyFrom<typename T>(boot_slice, dst_place);
+    slice.template CopyFrom<T>(boot_slice, dst_place);
   }
 }
 
@@ -91,14 +92,15 @@ void DynamicRecurrentOp::Run(const Scope& scope,
   CreateScopes();
   WriteStepInputs();
   InitStates();
+  WriteStepOutputs();
 
   // call stepnet in all the time steps
   for (size_t step = 0; step < cache_.num_steps; step++) {
+    LOG(INFO) << "run step " << step;
     auto& step_scope = cache_.GetScope(step);
     stepnet_->Run(step_scope, dev_ctx);
   }
 
-  WriteStepOutputs();
   ConcatOutputs();
 }
 
@@ -110,8 +112,22 @@ void DynamicRecurrentOp::SplitInputs() const {
     const auto& var = item.second;
     const auto& tensor = var->Get<LoDTensor>();
     TensorArray& ta = step_inputs_[item.first];
+    // NOTE only for debug
+    LOG(INFO) << "unpack lod " << tensor.dims();
+    LOG(INFO) << "lod: ";
+    for (auto& vec : tensor.lod()) {
+      for (auto i : vec) {
+        LOG(INFO) << i;
+      }
+    }
+
     dy_seq_metas_[item.first] =
         ta.Unpack(tensor, level, true /*length_descend*/);
+
+    // NOTE for debug
+    for (size_t i = 0; i < ta.size(); i++) {
+      LOG(INFO) << i << "-th tensor " << ta.Read(i).dims();
+    }
 
     if (cache_.num_steps) {
       PADDLE_ENFORCE_EQ(ta.size(), cache_.num_steps,
@@ -142,21 +158,10 @@ void DynamicRecurrentOp::WriteStepInputs() const {
 
 void DynamicRecurrentOp::WriteStepOutputs() const {
   // initialize step outputs
-  PADDLE_ENFORCE_GT(cache_.outlinks.size(), 0UL);
   for (const auto& item : cache_.outlinks) {
     step_outputs_.emplace(item.first, TensorArray());
   }
-  for (size_t step = 0; step < cache_.scopes->size(); step++) {
-    auto& scope = cache_.GetScope(step);
-    for (auto& item : step_outputs_) {
-      auto* var = scope.FindVar(item.first);
-      if (var == nullptr) {
-        var = scope.NewVar(item.first);
-      }
-      auto* tensor = var->GetMutable<LoDTensor>();
-      item.second.WriteShared(step, *tensor);
-    }
-  }
+  PADDLE_ENFORCE_GT(step_outputs_.size(), 0UL);
 }
 
 void DynamicRecurrentOp::CreateScopes() const {
@@ -197,55 +202,81 @@ void DynamicRecurrentOp::CreateScopes() const {
 void DynamicRecurrentOp::ConcatOutputs() const {
   // TODO(superjom) transform this to a config
   int level = 0;
-  // TODO(superjom) pass in some lod
-  // just a placeholder
-  framework::LoD lod;
+  for (size_t step = 0; step < cache_.num_steps; step++) {
+    auto& scope = cache_.GetScope(step);
+    for (auto& item : step_outputs_) {
+      auto* var = scope.FindVar(item.first);
+      PADDLE_ENFORCE_NOT_NULL(var);
+      auto* tensor = var->GetMutable<LoDTensor>();
+      tensor->mutable_data<value_type>(platform::CPUPlace());
+      item.second.WriteShared(step, *tensor);
+    }
+  }
+  // the inlinks' lods should be the same, so randomly get one lod.
+  const auto& some_lod =
+      cache_.scope->FindVar(arg_.inlinks.front())->Get<LoDTensor>().lod();
+  const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];
   for (auto& item : step_outputs_) {
-    auto tensor = item.second.Pack(level, dy_seq_metas_[item.first], lod);
-    auto& output = cache_.outlinks[item.first]->Get<LoDTensor>();
-    const_cast<LoDTensor*>(&output)->ShareDataWith<value_type>(tensor);
+    auto tensor = item.second.Pack(level, some_meta, some_lod);
+    auto* output = cache_.outlinks[item.first]->GetMutable<LoDTensor>();
+    const_cast<LoDTensor*>(output)->ShareDataWith<value_type>(tensor);
   }
 }
 
 void DynamicRecurrentOp::InitStates() const {
-  // init the first state
-  // TODO(superjom) parepare the scenerio that boot state not exists
-  // TODO(superjom) resort the boot_state
-  for (auto memory : arg_.memories) {
-    auto* boot_state_var = cache_.scope->FindVar(memory.boot_var);
-    PADDLE_ENFORCE_NOT_NULL(boot_state_var);
-    auto& boot_state = boot_state_var->Get<LoDTensor>();
-    const auto& dims = boot_state.dims();
-
-    for (size_t step = 0; step < cache_.num_steps; step++) {
-      auto& cur_scope = cache_.GetScope(step);
-      // link pre-state to boot_state
-      // init state and pre-state
-      auto* pre_state = cur_scope.FindVar(memory.pre_var);
-      PADDLE_ENFORCE_NOT_NULL(pre_state);
-      pre_state->GetMutable<LoDTensor>();
-
-      auto* state = cur_scope.FindVar(memory.var);
-      PADDLE_ENFORCE_NOT_NULL(state);
-      state->GetMutable<LoDTensor>()->Resize(dims);
-      state->GetMutable<LoDTensor>()->mutable_data<value_type>(
-          platform::CPUPlace());
-      // write to tensor array
-      states_[memory.var].WriteShared(step, state->Get<LoDTensor>());
-      // link previous scope's state to the pre-states in current scope
-      if (step == 0) {
-        auto* pre_state_tensor = pre_state->GetMutable<LoDTensor>();
-        pre_state_tensor->Resize(boot_state.dims());
-        pre_state_tensor->ShareDataWith<value_type>(boot_state);
-      } else {
-        auto& pre_scope = cache_.GetScope(step - 1);
-        auto* state_pre = pre_scope.FindVar(memory.var);
-        PADDLE_ENFORCE_NOT_NULL(state_pre);
-        pre_state->GetMutable<LoDTensor>()->ShareDataWith<value_type>(
-            states_[memory.var].Read(step - 1));
-      }
+  for (size_t step = 0; step < cache_.num_steps; step++) {
+    for (const auto& memory : arg_.memories) {
+      CreateState(memory, step);
+      LinkState(memory, step);
     }
   }
+}
+
+void DynamicRecurrentOp::CreateState(const rnn::MemoryAttr& memory,
+                                     size_t step) const {
+  auto& scope = cache_.GetScope(step);
+  auto& state = *cache_.GetTensor(scope, memory.var);
+  auto& boot_state = *cache_.GetTensor(*cache_.scope, memory.boot_var);
+
+  size_t num_instances =
+      step_inputs_[arg_.inlinks.front()].Read(step).dims()[0];
+  auto dims = boot_state.dims();
+  dims[0] = num_instances;
+
+  state.Resize(dims);
+  state.mutable_data<value_type>(platform::CPUPlace());
+  states_[memory.var].WriteShared(step, state);
+}
+
+void DynamicRecurrentOp::LinkState(const rnn::MemoryAttr& memory,
+                                   size_t step) const {
+  auto& scope = cache_.GetScope(step);
+  auto& state_pre = *cache_.GetTensor(scope, memory.pre_var);
+
+  // all the step_inputs' metas should be the same, just randomly select one
+  // and get the dyseq meta.
+  const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];
+  size_t num_instances =
+      step_inputs_[arg_.inlinks.front()].Read(step).dims()[0];
+
+  LoDTensor* pre_state{nullptr};
+  if (step == 0) {
+    LOG(INFO) << "init 0-th prestate";
+    pre_state = cache_.GetTensor(*cache_.scope, memory.boot_var);
+    pre_state->mutable_data<float>(platform::CPUPlace());
+    // allocate memory
+    state_pre.Resize(pre_state->dims());
+    state_pre.mutable_data<value_type>(platform::CPUPlace());
+    detail::ReorderBootState<value_type>(some_meta, *pre_state, &state_pre,
+                                         pre_state->place());
+  } else {
+    LOG(INFO) << "init " << step << "-th prestate";
+    pre_state = cache_.GetTensor(cache_.GetScope(step - 1), memory.var);
+  }
+
+  // shink and share from previous state
+  auto shrinked_pre_state = pre_state->Slice<value_type>(0, num_instances);
+  state_pre.ShareDataWith<value_type>(shrinked_pre_state);
 }
 
 void DynamicRecurrentOp::ArgCache::Init(
@@ -295,6 +326,12 @@ Variable* DynamicRecurrentOp::ArgCache::GetVariable(const Scope& scope,
   auto* var = scope.FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(var, "variable [%s] not exist in scope", name);
   return var;
+}
+
+LoDTensor* DynamicRecurrentOp::ArgCache::GetTensor(
+    const framework::Scope& scope, const std::string& name) {
+  auto* var = GetVariable(scope, name);
+  return var->GetMutable<LoDTensor>();
 }
 
 const rnn::ArgumentName DynamicRecurrentOp::kArgName{

@@ -78,6 +78,17 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   void InitStates() const;
 
   /*
+   * Create state variables for each time step.
+   */
+  void CreateState(const rnn::MemoryAttr& memory, size_t step) const;
+
+  /*
+   * Link pre-state variable in current scope to the state variable in the
+   * previous time step (scope).
+   */
+  void LinkState(const rnn::MemoryAttr& memory, size_t step) const;
+
+  /*
    * Concatenate outputs in each time step and generate a LoDTensor.
    */
   void ConcatOutputs() const;
@@ -117,6 +128,9 @@ class DynamicRecurrentOp : public framework::OperatorBase {
       PADDLE_ENFORCE_LT(index, num_steps);
       return *scopes->at(index);
     }
+
+    framework::LoDTensor* GetTensor(const framework::Scope& scope,
+                                    const std::string& name);
 
    private:
     void InitArgument(const rnn::ArgumentName& name, const OperatorBase& op,

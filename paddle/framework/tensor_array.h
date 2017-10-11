@@ -37,6 +37,11 @@ struct DySeqMeta {
 using DySeqMetaBatch = std::vector<DySeqMeta>;
 
 /*
+ * Extract the indices of instances.
+ */
+std::vector<size_t> GenDyBatchIndice(const DySeqMetaBatch &metas, int batch_id);
+
+/*
  * TensorArray is a C-array-like array of tensors, it is meant to be used with
  * dynamic iteration primitives such as while_loop. It is used to segment inputs
  * and store states in all time steps.
