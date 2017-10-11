@@ -46,6 +46,9 @@ void SequencePoolLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   const Argument& input = getInput(0);
+  CHECK(input.hasSeq() || input.hasSubseq())
+      << "Input should be a sequence or subsequence for layer " << getName();
+
   newBatchSize_ = type_ ? input.getNumSubSequences() : input.getNumSequences();
   size_t dim = getSize();
   // check
@@ -60,7 +63,7 @@ void SequencePoolLayer::forward(PassType passType) {
    * thus, in this case, output_ has no sequenceStartPositions.
    * If type_ = kSeq, seq has sub-seq degrades to a seq, thus, only in this
    * case, we should compute the new sequenceStartPositions.
-  */
+   */
   if (type_) {
     CHECK(input.subSequenceStartPositions)
         << "when trans_type = seq, input must hasSubseq";
@@ -69,9 +72,8 @@ void SequencePoolLayer::forward(PassType passType) {
   if (stride_ > 0) {
     CHECK_EQ(input.hasSubseq(), 0UL)
         << "sequence stride pooling is invalid for hasSubseq now";
-    output_.poolSequenceWithStride(
-        input, stride_, &stridePositions_, reversed_);
-    newBatchSize_ = stridePositions_->getSize() - 1;
+    output_.poolSequenceWithStride(input, stride_, &startPositions_, reversed_);
+    newBatchSize_ = startPositions_->getSize() - 1;
   }
 
   resetOutput(newBatchSize_, dim);

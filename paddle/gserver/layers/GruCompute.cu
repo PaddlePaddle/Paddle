@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "GruCompute.h"
 
 #include "hl_recurrent_apply.cuh"
@@ -31,8 +30,10 @@ void GruCompute::forward<1>(hl_gru_value value, int frameSize, int batchSize) {
 }
 
 template <>
-void GruCompute::backward<1>(hl_gru_value value, hl_gru_grad grad,
-                            int frameSize, int batchSize) {
+void GruCompute::backward<1>(hl_gru_value value,
+                             hl_gru_grad grad,
+                             int frameSize,
+                             int batchSize) {
   hl_gpu_gru_backward(hppl::backward::gru_stateGrad(),
                       hppl::backward::gru_resetGrad(),
                       value,

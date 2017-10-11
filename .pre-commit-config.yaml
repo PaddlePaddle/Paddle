@@ -3,8 +3,8 @@
     hooks:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
--   repo: https://github.com/reyoung/mirrors-yapf.git
-    sha: v0.13.2
+-   repo: https://github.com/PaddlePaddle/mirrors-yapf.git
+    sha: 0d79c0c469bab64f7229c9aca2b1186ef47f0e37
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
@@ -17,7 +17,20 @@
     -   id: detect-private-key
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
--   repo: https://github.com/PaddlePaddle/clang-format-pre-commit-hook.git
-    sha: 28c0ea8a67a3e2dbbf4822ef44e85b63a0080a29
+-   repo: local
     hooks:
-    -   id: clang-formater
+    -   id: clang-format-with-version-check
+        name: clang-format
+        description: Format files with ClangFormat.
+        entry: bash ./.clang_format.hook -i
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
+-   repo: https://github.com/PaddlePaddle/pre-commit-golang
+    sha: 8337620115c25ff8333f1b1a493bd031049bd7c0
+    hooks:
+    -   id: go-fmt
+        types:
+        - go
+    -   id: gometalinter
+        types:
+        - go

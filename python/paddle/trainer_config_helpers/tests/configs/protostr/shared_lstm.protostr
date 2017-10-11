@@ -104,7 +104,7 @@ layers {
   }
   bias_parameter_name: "lstm_bias"
   active_gate_type: "sigmoid"
-  active_state_type: "sigmoid"
+  active_state_type: "tanh"
 }
 layers {
   name: "__lstm_group_0___state@__lstm_group_0___recurrent_group"
@@ -183,7 +183,7 @@ layers {
   }
   bias_parameter_name: "lstm_bias"
   active_gate_type: "sigmoid"
-  active_state_type: "sigmoid"
+  active_state_type: "tanh"
 }
 layers {
   name: "__lstm_group_1___state@__lstm_group_1___recurrent_group"
@@ -205,7 +205,7 @@ layers {
   name: "__last_seq_0__"
   type: "seqlastins"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__lstm_group_0__"
   }
@@ -216,7 +216,7 @@ layers {
   name: "__last_seq_1__"
   type: "seqlastins"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__lstm_group_1__"
   }
@@ -341,24 +341,19 @@ sub_models {
   memories {
     layer_name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0__+delay1@__lstm_group_0___recurrent_group"
-    is_sequence: false
   }
   memories {
     layer_name: "__lstm_group_0___state@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0___state+delay1@__lstm_group_0___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__mixed_0__"
     link_name: "__mixed_0__@__lstm_group_0___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0__"
-    has_subseq: false
   }
-  target_inlinkid: -1
 }
 sub_models {
   name: "__lstm_group_1___recurrent_group"
@@ -373,23 +368,18 @@ sub_models {
   memories {
     layer_name: "__lstm_group_1__@__lstm_group_1___recurrent_group"
     link_name: "__lstm_group_1__+delay1@__lstm_group_1___recurrent_group"
-    is_sequence: false
   }
   memories {
     layer_name: "__lstm_group_1___state@__lstm_group_1___recurrent_group"
     link_name: "__lstm_group_1___state+delay1@__lstm_group_1___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__mixed_1__"
     link_name: "__mixed_1__@__lstm_group_1___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__lstm_group_1__@__lstm_group_1___recurrent_group"
     link_name: "__lstm_group_1__"
-    has_subseq: false
   }
-  target_inlinkid: -1
 }
 

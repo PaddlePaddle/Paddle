@@ -21,7 +21,8 @@ __all__ = [
     "chunk_evaluator", "sum_evaluator", "column_sum_evaluator",
     "value_printer_evaluator", "gradient_printer_evaluator",
     "maxid_printer_evaluator", "maxframe_printer_evaluator",
-    "seqtext_printer_evaluator", "classification_error_printer_evaluator"
+    "seqtext_printer_evaluator", "classification_error_printer_evaluator",
+    "detection_map_evaluator"
 ]
 
 
@@ -31,10 +32,11 @@ class EvaluatorAttribute(object):
     FOR_RANK = 1 << 2
     FOR_PRINT = 1 << 3
     FOR_UTILS = 1 << 4
+    FOR_DETECTION = 1 << 5
 
     KEYS = [
         "for_classification", "for_regression", "for_rank", "for_print",
-        "for_utils"
+        "for_utils", "for_detection"
     ]
 
     @staticmethod
@@ -57,22 +59,25 @@ def evaluator(*attrs):
     return impl
 
 
-def evaluator_base(
-        input,
-        type,
-        label=None,
-        weight=None,
-        name=None,
-        chunk_scheme=None,
-        num_chunk_types=None,
-        classification_threshold=None,
-        positive_label=None,
-        dict_file=None,
-        result_file=None,
-        num_results=None,
-        delimited=None,
-        top_k=None,
-        excluded_chunk_types=None, ):
+def evaluator_base(input,
+                   type,
+                   label=None,
+                   weight=None,
+                   name=None,
+                   chunk_scheme=None,
+                   num_chunk_types=None,
+                   classification_threshold=None,
+                   positive_label=None,
+                   dict_file=None,
+                   result_file=None,
+                   num_results=None,
+                   delimited=None,
+                   top_k=None,
+                   excluded_chunk_types=None,
+                   overlap_threshold=None,
+                   background_id=None,
+                   evaluate_difficult=None,
+                   ap_type=None):
     """
     Evaluator will evaluate the network status while training/testing.
 
@@ -107,6 +112,14 @@ def evaluator_base(
     :type weight: LayerOutput.
     :param top_k: number k in top-k error rate
     :type top_k: int
+    :param overlap_threshold: In detection tasks to filter detection results
+    :type overlap_threshold: float
+    :param background_id: Identifier of background class
+    :type background_id: int
+    :param evaluate_difficult: Whether to evaluate difficult objects
+    :type evaluate_difficult: bool
+    :param ap_type: How to calculate average persicion
+    :type ap_type: str
     """
     # inputs type assertions.
     assert classification_threshold is None or isinstance(
@@ -136,7 +149,61 @@ def evaluator_base(
         delimited=delimited,
         num_results=num_results,
         top_k=top_k,
-        excluded_chunk_types=excluded_chunk_types, )
+        excluded_chunk_types=excluded_chunk_types,
+        overlap_threshold=overlap_threshold,
+        background_id=background_id,
+        evaluate_difficult=evaluate_difficult,
+        ap_type=ap_type)
+
+
+@evaluator(EvaluatorAttribute.FOR_DETECTION)
+@wrap_name_default()
+def detection_map_evaluator(input,
+                            label,
+                            overlap_threshold=0.5,
+                            background_id=0,
+                            evaluate_difficult=False,
+                            ap_type="11point",
+                            name=None):
+    """
+    Detection mAP Evaluator. It will print mean Average Precision (mAP) for detection.
+
+    The detection mAP Evaluator based on the output of detection_output layer counts
+    the true positive and the false positive bbox and integral them to get the
+    mAP.
+
+    The simple usage is:
+
+    .. code-block:: python
+
+       eval =  detection_map_evaluator(input=det_output,label=lbl)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param label: Label layer.
+    :type label: LayerOutput
+    :param overlap_threshold: The bbox overlap threshold of a true positive.
+    :type overlap_threshold: float
+    :param background_id: The background class index.
+    :type background_id: int
+    :param evaluate_difficult: Whether evaluate a difficult ground truth.
+    :type evaluate_difficult: bool
+    """
+    if not isinstance(input, list):
+        input = [input]
+
+    if label:
+        input.append(label)
+
+    evaluator_base(
+        name=name,
+        type="detection_map",
+        input=input,
+        label=label,
+        overlap_threshold=overlap_threshold,
+        background_id=background_id,
+        evaluate_difficult=evaluate_difficult,
+        ap_type=ap_type)
 
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
@@ -231,8 +298,8 @@ def pnpair_evaluator(
         input,
         label,
         info,
-        name=None,
-        weight=None, ):
+        weight=None,
+        name=None, ):
     """
     Positive-negative pair rate Evaluator which adapts to rank task like
     learning to rank. This evaluator must contain at least three layers.
@@ -241,27 +308,31 @@ def pnpair_evaluator(
 
     .. code-block:: python
 
-       eval = pnpair_evaluator(input, info, label)
+       eval = pnpair_evaluator(input, label, info)
 
-    :param name: Evaluator name.
-    :type name: None|basestring
     :param input: Input Layer name. The output prediction of network.
     :type input: LayerOutput
     :param label: Label layer name.
     :type label: LayerOutput
-    :param info: Label layer name. (TODO, explaination)
+    :param info: Info layer name. (TODO, explaination)
     :type info: LayerOutput
     :param weight: Weight Layer name. It should be a matrix with size
                   [sample_num, 1]. (TODO, explaination)
     :type weight: LayerOutput
+    :param name: Evaluator name.
+    :type name: None|basestring
     """
+    if not isinstance(input, list):
+        input = [input]
+    if label:
+        input.append(label)
+    if info:
+        input.append(info)
     evaluator_base(
-        name=name,
-        type="pnpair",
         input=input,
-        label=label,
-        info=info,
-        weight=weight)
+        type="pnpair",
+        weight=weight,
+        name=name, )
 
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
@@ -347,38 +418,78 @@ def chunk_evaluator(
         excluded_chunk_types=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
-    sequence. It calculates the chunk detection F1 score.
+    sequence. It calculates precision, recall and F1 scores for the chunk detection.
 
-    A chunk is correctly detected if its beginning, end and type are correct.
-    Other chunk type is ignored.
+    To use chunk evaluator, several concepts need to be clarified firstly.
 
-    For each label in the label sequence, we have:
+    * **Chunk type** is the type of the whole chunk and a chunk consists of one or several words.  (For example in NER, ORG for organization name, PER for person name etc.)
 
-    .. code-block:: python
+    * **Tag type** indicates the position of a word in a chunk. (B for begin, I for inside, E for end, S for single)
+    We can name a label by combining tag type and chunk type. (ie. B-ORG for begining of an organization name)
 
-       tagType = label % numTagType
-       chunkType = label / numTagType
-       otherChunkType = numChunkTypes
+    The construction of label dictionary should obey the following rules:
 
-    The total number of different labels is numTagType*numChunkTypes+1.
-    We support 4 labelling scheme.
-    The tag type for each of the scheme is shown as follows:
+    - Use one of the listed labelling schemes. These schemes differ in ways indicating chunk boundry.
 
-    .. code-block:: python
+    .. code-block:: text
 
-       Scheme Begin Inside End   Single
-       plain  0     -      -     -
-       IOB    0     1      -     -
-       IOE    -     0      1     -
-       IOBES  0     1      2     3
+        Scheme    Description
+        plain    Use the same label for the whole chunk.
+        IOB      Two labels for chunk type X, B-X for chunk begining and I-X for chunk inside.
+        IOE      Two labels for chunk type X, E-X for chunk ending and I-X for chunk inside.
+        IOBES    Four labels for chunk type X, B-X for chunk begining, I-X for chunk inside, E-X for chunk end and S-X for single word chunk.
 
-    'plain' means the whole chunk must contain exactly the same chunk label.
+    To make it clear, let's illustrate by an NER example.
+    Assuming that there are three named entity types including ORG, PER and LOC which are called 'chunk type' here,
+    if 'IOB' scheme were used, the label set will be extended to a set including B-ORG, I-ORG, B-PER, I-PER, B-LOC, I-LOC and O,
+    in which B-ORG for begining of ORG and I-ORG for inside of ORG.
+    Prefixes which are called 'tag type' here are added to chunk types and there are two tag types including B and I.
+    Of course, the training data should be labeled accordingly.
+
+    - Mapping is done correctly by the listed equations and assigning protocol.
+
+    The following table are equations to extract tag type and chunk type from a label.
+
+    .. code-block:: text
+
+        tagType = label % numTagType
+        chunkType = label / numTagType
+        otherChunkType = numChunkTypes
+
+    The following table shows the mapping rule between tagType and tag type in each scheme.
+
+    .. code-block:: text
+
+        Scheme Begin Inside End   Single
+        plain  0     -      -     -
+        IOB    0     1      -     -
+        IOE    -     0      1     -
+        IOBES  0     1      2     3
+
+    Continue the NER example, and the label dict should look like this to satify above equations:
+
+    .. code-block:: text
+
+        B-ORG  0
+        I-ORG  1
+        B-PER  2
+        I-PER  3
+        B-LOC  4
+        I-LOC  5
+        O      6
+
+    In this example, chunkType has three values: 0 for ORG, 1 for PER, 2 for LOC, because the scheme is
+    "IOB" so tagType has two values: 0 for B and 1 for I.
+    Here we will use I-LOC to explain the above mapping rules in detail.
+    For I-LOC, the label id is 5, so we can get tagType=1 and chunkType=2, which means I-LOC is a part of NER chunk LOC
+    and the tag is I.
 
     The simple usage is:
 
     .. code-block:: python
 
        eval = chunk_evaluator(input, label, chunk_scheme, num_chunk_types)
+
 
     :param input: The input layers.
     :type input: LayerOutput

@@ -14,25 +14,14 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
+#include "CostLayer.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
 
-#include "AddtoLayer.h"
-#include "CRFLayer.h"
-#include "CosSimLayer.h"
-#include "CostLayer.h"
-#include "DataLayer.h"
-#include "ExpandConvLayer.h"
-#include "FullyConnectedLayer.h"
-#include "HierarchicalSigmoidLayer.h"
-#include "MaxLayer.h"
-#include "MixedLayer.h"
-#include "NormLayer.h"
-#include "PoolLayer.h"
-#include "TensorLayer.h"
-#include "TransLayer.h"
+#ifndef PADDLE_MOBILE_INFERENCE
 #include "ValidationLayer.h"
+#endif
 
 DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
@@ -41,7 +30,7 @@ namespace paddle {
 Layer::Layer(const LayerConfig& config, bool useGpu)
     : config_(config),
       useGpu_(useGpu),
-      deviceId_(-1),
+      deviceId_(CPU_DEVICE),
       needSequenceInfo_(true) {}
 
 bool Layer::init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
@@ -109,16 +98,20 @@ ClassRegistrar<Layer, LayerConfig> Layer::registrar_;
 LayerPtr Layer::create(const LayerConfig& config) {
   std::string type = config.type();
 
+  // NOTE: As following types have illegal character '-',
+  // they can not use REGISTER_LAYER to registrar.
+  // Besides, to fit with old training models,
+  // they can not use '_' instead.
   if (type == "multi-class-cross-entropy")
     return LayerPtr(new MultiClassCrossEntropy(config));
   else if (type == "rank-cost")
     return LayerPtr(new RankingCost(config));
+#ifndef PADDLE_MOBILE_INFERENCE
   else if (type == "auc-validation")
     return LayerPtr(new AucValidation(config));
   else if (type == "pnpair-validation")
     return LayerPtr(new PnpairValidation(config));
-  // NOTE: stop adding "if" statements here.
-  // Instead, use REGISTER_LAYER to add more layer types
+#endif
 
   return LayerPtr(registrar_.createByType(config.type(), config));
 }
@@ -191,6 +184,11 @@ void Layer::addOutputArgument(int deviceId) {
 void Layer::copyOutputToOtherDevice() {
   for (size_t i = 0; i != outputOtherDevice_.size(); i++) {
     SetDevice device(outputOtherDevice_[i].deviceId);
+    // If outputOtherDevice_[i].value is a CpuMatrix,
+    // the copyFrom is a synchronous interface.
+    // If outputOtherDevice_[i].value is a GpuMatrix, since subsequent
+    // calculations are all on HPPL_STREAM_DEFAULT,
+    // copyFrom can be an asynchronous interface.
     outputOtherDevice_[i].value->copyFrom(*getOutputValue(),
                                           HPPL_STREAM_DEFAULT);
     outputOtherDevice_[i].sequenceStartPositions =
@@ -354,12 +352,11 @@ void Layer::backwardActivation() {
   /* Do error clipping */
   if (config_.error_clipping_threshold() > 0.0f) {
     if (FLAGS_log_error_clipping) {
-      CpuVector outGradVec(0, nullptr);
-      outGradVec.subVecFrom(
-          output_.grad->getData(), 0, output_.grad->getElementCnt());
-      real maxAbsGrad = outGradVec.getAbsMax();
+      VectorPtr outGradVec = Vector::create(
+          output_.grad->getData(), output_.grad->getElementCnt(), useGpu_);
+      real maxAbsGrad = outGradVec->getAbsMax();
       if (maxAbsGrad > config_.error_clipping_threshold()) {
-        real avgAbsGrad = outGradVec.getAbsSum() / outGradVec.getSize();
+        real avgAbsGrad = outGradVec->getAbsSum() / outGradVec->getSize();
         LOG(INFO) << " layer=" << config_.name() << " need clipping,"
                   << " max error=" << maxAbsGrad << " avg error=" << avgAbsGrad;
       }

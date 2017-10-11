@@ -1,30 +1,28 @@
 language: cpp
 cache:
   directories:
-    - $HOME/third_party
     - $HOME/.ccache
     - $HOME/.cache/pip
+    - $TRAVIS_BUILD_DIR/build/third_party
 sudo: required
 dist: trusty
 os:
   - linux
 env:
-  - JOB=DOCS
-  - JOB=BUILD_AND_TEST
-  - JOB=PRE_COMMIT
+  - JOB=build_doc
+  - JOB=check_style
 addons:
   apt:
     packages:
       - gcc-4.8
       - g++-4.8
-      - gfortran-4.8
       - git
       - build-essential
       - python
       - python-pip
       - python2.7-dev
-      - python-numpy
       - python-wheel
+      - libboost-dev
       - curl
       - swig
       - graphviz
@@ -33,26 +31,16 @@ addons:
       - libtool
       - ccache
 before_install:
-  - |
-    if [ ${JOB} == "BUILD_AND_TEST" ]; then
-      local change_list=`git diff --name-only $TRAVIS_COMMIT_RANGE`
-      if [ $? -eq 0 ]; then  # if git diff return no zero, then rerun unit test.
-        if ! echo ${change_list} | grep -qvE '(\.md$)|(\.rst$)|(\.jpg$)|(\.png$)'
-        then
-          echo "Only markdown docs were updated, stopping build process."
-          exit
-        fi
-      fi
-    fi
-  - if [[ "$JOB" == "PRE_COMMIT" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
-  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python 
+  - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
+  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
   # protobuf version.
-  - pip install numpy wheel 'protobuf==3.1' sphinx recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit requests==2.9.2 LinkChecker
+  - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
+  - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit LinkChecker
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
-  - | 
-    timeout 2580 paddle/scripts/travis/main.sh  # 43min timeout
+  - |
+    timeout 2580 paddle/scripts/travis/${JOB}.sh # 43min timeout
     RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
 notifications:
   email:

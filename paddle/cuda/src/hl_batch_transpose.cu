@@ -12,17 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_batch_transpose.h"
 #include "hl_base.h"
+#include "hl_batch_transpose.h"
 
 const int TILE_DIM = 64;
 const int BLOCK_ROWS = 16;
 
 // No bank-conflict transpose for a batch of data.
-__global__ void batchTransposeNoBankConflicts(real* odata,
-                                              const real* idata,
-                                              int numSamples, int width,
-                                              int height) {
+__global__ void batchTransposeNoBankConflicts(
+    real* odata, const real* idata, int numSamples, int width, int height) {
   __shared__ float tile[TILE_DIM][TILE_DIM + 1];
 
   const int x = blockIdx.x * TILE_DIM + threadIdx.x;
@@ -50,12 +48,12 @@ __global__ void batchTransposeNoBankConflicts(real* odata,
           newX] = tile[threadIdx.x][j];
 }
 
-void batchTranspose(const real* input, real* output, int width, int height,
-                    int batchSize) {
+void batchTranspose(
+    const real* input, real* output, int width, int height, int batchSize) {
   dim3 dimBlock(TILE_DIM, BLOCK_ROWS, 1);
   dim3 dimGrid(DIVUP(width, TILE_DIM), DIVUP(height, TILE_DIM), batchSize);
-  batchTransposeNoBankConflicts<<<dimGrid, dimBlock, 0, STREAM_DEFAULT>>>
-      (output, input, batchSize, width, height);
+  batchTransposeNoBankConflicts<<<dimGrid, dimBlock, 0, STREAM_DEFAULT>>>(
+      output, input, batchSize, width, height);
 
   CHECK_SYNC("batchTranspose failed!");
 }

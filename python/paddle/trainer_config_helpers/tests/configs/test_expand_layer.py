@@ -9,4 +9,6 @@ outputs(
     expand_layer(
         input=din, expand_as=data_seq, expand_level=ExpandLevel.FROM_SEQUENCE),
     expand_layer(
-        input=din, expand_as=data_seq, expand_level=ExpandLevel.FROM_TIMESTEP))
+        input=din,
+        expand_as=data_seq,
+        expand_level=ExpandLevel.FROM_NO_SEQUENCE))

@@ -27,6 +27,14 @@ class SequenceType(object):
     SEQUENCE = 1
     SUB_SEQUENCE = 2
 
+    @classmethod
+    def tostring(cls, value):
+        for k in cls.__dict__:
+            if not k.startswith('__'):
+                if getattr(cls, k) == value:
+                    return cls.__name__ + '.' + k
+        return 'INVALID(' + str(value) + ')'
+
 
 # TODO(yuyang18): Add string data type here.
 class DataType(object):
@@ -34,6 +42,14 @@ class DataType(object):
     SparseNonValue = 1
     SparseValue = 2
     Index = 3
+
+    @classmethod
+    def tostring(cls, value):
+        for k in cls.__dict__:
+            if not k.startswith('__'):
+                if getattr(cls, k) == value:
+                    return cls.__name__ + '.' + k
+        return 'INVALID(' + str(value) + ')'
 
 
 class CacheType(object):
@@ -69,12 +85,39 @@ class InputType(object):
         self.seq_type = seq_type
         self.type = tp
 
+    def __repr__(self):
+        """
+        Return a human readable representation like 'InputType(dim=25921, 
+            seq_type=SequenceType.NO_SEQUENCE, type=DataType.Dense)'
+        """
+        repr_str = type(self).__name__
+        repr_str += '('
+        serialize_func_map = {
+            'dim': repr,
+            'seq_type': SequenceType.tostring,
+            'type': DataType.tostring
+        }
+        for idx, k in enumerate(self.__slots__):
+            if idx != 0:
+                repr_str += ', '
+            repr_str += (
+                k + '=' + serialize_func_map.get(k, repr)(getattr(self, k)))
+        repr_str += ')'
+        return repr_str
+
 
 def dense_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
     """
-    Dense Vector. It means the input feature is dense float vector. For example,
-    if the input is an image with 28*28 pixels, the input of Paddle neural
-    network should be a dense vector with dimension 784.
+    Dense Array. It means the input feature is dense array with float type.
+    For example, if the input is an image with 28*28 pixels, the input of
+    Paddle neural network could be a dense vector with dimension 784 or a
+    numpy array with shape (28, 28).
+
+    For the 2-D convolution operation, each sample in one mini-batch must have
+    the similarly size in PaddlePaddle now. But, it supports variable-dimension
+    feature across mini-batch. For the variable-dimension, the param dim is not
+    used. While the data reader must yield numpy array and the data feeder will
+    set the data shape correctly.
 
     :param dim: dimension of this vector.
     :type dim: int
@@ -134,6 +177,10 @@ dense_vector = dense_slot
 sparse_binary_vector = sparse_non_value_slot
 sparse_vector = sparse_value_slot
 integer_value = index_slot
+
+# dense_array can be used for variable-length input feature.
+# Each feature is not a vector, but a multi-dimensional array.
+dense_array = dense_slot
 
 
 def dense_vector_sequence(dim):
@@ -270,7 +317,7 @@ class CheckWrapper(object):
             assert isinstance(each, collections.Sequence)
             for d in each:
                 assert isinstance(d, float)
-            assert len(each, input_type.dim)
+            assert len(each) == input_type.dim
         elif input_type.type == DataType.Index:
             assert isinstance(each, int)
             assert each < input_type.dim
@@ -304,7 +351,7 @@ class CheckInputTypeWrapper(object):
     def __call__(self, obj, filename):
         for items in self.generator(obj, filename):
             try:
-                # dict type is required for input_types when item is dict type 
+                # dict type is required for input_types when item is dict type
                 assert (isinstance(items, dict) and \
                         not isinstance(self.input_types, dict))==False
                 yield items

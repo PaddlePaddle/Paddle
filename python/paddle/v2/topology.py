@@ -15,34 +15,12 @@
 import collections
 
 from paddle.proto.ModelConfig_pb2 import ModelConfig
-
+import paddle.trainer_config_helpers as conf_helps
 import layer as v2_layer
+import config_base
+import cPickle
 
 __all__ = ['Topology']
-
-
-def __flatten__(lis):
-    """
-    Given a list, possibly nested to any level, return it flattened.
-    """
-    new_lis = []
-    for item in lis:
-        if isinstance(item, collections.Sequence):
-            new_lis.extend(__flatten__(item))
-        else:
-            new_lis.append(item)
-    return new_lis
-
-
-def __bfs_travel__(callback, *layers):
-    layers = __flatten__(layers)
-    for each_layer in layers:
-        __break__ = callback(each_layer)
-        if __break__:
-            return
-        __layers__ = each_layer.__parent_layers__.values() + \
-                     each_layer.extra_parent()
-        __bfs_travel__(callback, *__layers__)
 
 
 class Topology(object):
@@ -54,7 +32,6 @@ class Topology(object):
     def __init__(self, layers, extra_layers=None):
         def __check__(layers):
             if not isinstance(layers, collections.Sequence):
-                __check_layer_type__(layers)
                 layers = [layers]
             for layer in layers:
                 __check_layer_type__(layer)
@@ -73,6 +50,18 @@ class Topology(object):
 
         assert isinstance(self.__model_config__, ModelConfig)
 
+    def use_sparse_updater(self):
+        """
+        check if any parameter require to use sparse_update
+        :return:
+        """
+        use_sparse = False
+        for parameter in self.__model_config__.parameters:
+            if parameter.sparse_update or parameter.sparse_remote_update:
+                use_sparse = True
+                break
+        return use_sparse
+
     def proto(self):
         return self.__model_config__
 
@@ -82,31 +71,18 @@ class Topology(object):
         :param name:
         :return:
         """
-        result_layer = [None]
-
-        def __impl__(l):
-            if l.name == name:
-                result_layer[0] = l
-                return True  # break
-            return False
-
-        __bfs_travel__(__impl__, *self.layers)
-        if result_layer[0] is None:
-            raise ValueError("No such layer %s" % name)
-        return result_layer[0]
+        return v2_layer.get_layer(name)
 
     def data_layers(self):
         """
         get all data layer
         :return:
         """
-        data_layers = dict()
-
-        def __impl__(l):
-            if isinstance(l, v2_layer.DataLayerV2):
-                data_layers[l.name] = l
-
-        __bfs_travel__(__impl__, *self.layers)
+        data_layers = {}
+        for layer in self.proto().layers:
+            l = v2_layer.get_layer(layer.name)
+            if l and l.layer_type == conf_helps.LayerType.DATA:
+                data_layers[layer.name] = l
         return data_layers
 
     def data_type(self):
@@ -115,10 +91,25 @@ class Topology(object):
         [('image', dense_vector(768)), ('label', integer_value(10))]
         """
         data_layers = self.data_layers()
-        return [(nm, data_layers[nm].type)
+
+        return [(nm, data_layers[nm].data_type)
                 for nm in self.proto().input_layer_names]
+
+    def get_layer_proto(self, name):
+        for layer in self.__model_config__.layers:
+            if layer.name == name:
+                return layer
+        return None
+
+    def serialize_for_inference(self, stream):
+        protobin = self.proto().SerializeToString()
+        data_type = self.data_type()
+        cPickle.dump({
+            'protobin': protobin,
+            'data_type': data_type
+        }, stream, cPickle.HIGHEST_PROTOCOL)
 
 
 def __check_layer_type__(layer):
-    if not isinstance(layer, v2_layer.LayerV2):
-        raise ValueError('layer should have type paddle.layer.Layer')
+    if not isinstance(layer, config_base.Layer):
+        raise ValueError('layer should have type paddle.v2.config_base.Layer')

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 
 #include "paddle/math/SparseRowMatrix.h"
+#include "paddle/parameter/ThreadLocalBuffer.h"
 #include "paddle/utils/Thread.h"
 
 DECLARE_int32(trainer_count);
@@ -98,7 +99,7 @@ void SgdThreadUpdater::threadTraverse(
     int tid,
     size_t numThreads,
     Parameter* para) {
-  VectorPtr* vecs = Parameter::getTlsTempBufs();
+  VectorPtr* vecs = parameter::getThreadLocalBuffer();
   if (para->isGradSparseUpdate()) {
     size_t height = para->getConfig().dims(0);
     size_t width = para->getConfig().dims(1);
@@ -214,7 +215,7 @@ void SgdThreadUpdater::threadUpdateSparse(int tid,
                                           Parameter* para) {
   int pid = para->getID();
   ParameterOptimizer* optimizer = optimizers_[pid].get();
-  VectorPtr* vecs = Parameter::getTlsTempBufs();
+  VectorPtr* vecs = parameter::getThreadLocalBuffer();
 
   size_t height = para->getConfig().dims(0);
   size_t width = para->getConfig().dims(1);
@@ -286,7 +287,7 @@ void SgdThreadUpdater::threadUpdateDense(int tid,
                                          Parameter* para) {
   int pid = para->getID();
   ParameterOptimizer* optimizer = optimizers_[pid].get();
-  VectorPtr* vecs = Parameter::getTlsTempBufs();
+  VectorPtr* vecs = parameter::getThreadLocalBuffer();
 
   auto interval = calcSplitArrayInterval(
       para->getSize(), (size_t)tid, numThreads, 8LU /*for avx*/);

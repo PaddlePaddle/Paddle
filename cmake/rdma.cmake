@@ -10,7 +10,7 @@ if(WITH_RDMA)
 
   function(generate_rdma_links)
     #redirect to current DIR to isolate the pollution from system runtime environment
-    #it can benifits unified control for different gcc environment. 
+    #it can benifits unified control for different gcc environment.
     #e.g, by default gcc48 did not refer /usr/lib64 which could contain low version
     #runtime libraries that will crash process while loading it. That redirect trick
     #can fix it.
@@ -19,7 +19,9 @@ if(WITH_RDMA)
       COMMAND ln -s -f /usr/lib64/libibverbs.so.1.0.0 librdma/libibverbs.so.1
       COMMAND ln -s -f /usr/lib64/libibverbs.so.1.0.0 librdma/libibverbs.so
       COMMAND ln -s -f /usr/lib64/librdmacm.so.1.0.0 librdma/librdmacm.so.1
-      COMMAND ln -s -f /usr/lib64/librdmacm.so.1.0.0 librdma/librdmacm.so 
+      COMMAND ln -s -f /usr/lib64/librdmacm.so.1.0.0 librdma/librdmacm.so
+      COMMAND ln -s -f /lib64/libnl.so.1.1.4 librdma/libnl.so.1
+      COMMAND ln -s -f /lib64/libnl.so.1.1.4 librdma/libnl.so
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   endfunction(generate_rdma_links)
@@ -44,7 +46,7 @@ if(WITH_RDMA)
       RDMA_INC_XIO AND
       RDMA_INC_EVENT AND
       RDMA_INC_NUMA AND
-      RDMA_LIB_SXISOCK AND 
+      RDMA_LIB_SXISOCK AND
       RDMA_LIB_XIO AND
       RDMA_LIB_EVENT AND
       RDMA_LIB_EVENT_CORE AND
@@ -53,19 +55,19 @@ if(WITH_RDMA)
       RDMA_LIB_NUMA
       )
 
-    set(RDMA_INC_DIR 
-      ${RDMA_INC_SXISOCK} 
+    set(RDMA_INC_DIR
+      ${RDMA_INC_SXISOCK}
       ${RDMA_INC_XIO}
       ${RDMA_INC_EVENT}
       ${RDMA_INC_NUMA})
-    set(RDMA_LIBS  
-      ${RDMA_LIB_SXISOCK} 
-      ${RDMA_LIB_XIO} 
-      ${RDMA_LIB_EVENT} 
-      ${RDMA_LIB_EVENT_CORE} 
-      ${RDMA_LIB_EVENT_EXTRA} 
-      ${RDMA_LIB_EVENT_PTHREADS} 
-      ${RDMA_LIB_NUMA} 
+    set(RDMA_LIBS
+      ${RDMA_LIB_SXISOCK}
+      ${RDMA_LIB_XIO}
+      ${RDMA_LIB_EVENT}
+      ${RDMA_LIB_EVENT_CORE}
+      ${RDMA_LIB_EVENT_EXTRA}
+      ${RDMA_LIB_EVENT_PTHREADS}
+      ${RDMA_LIB_NUMA}
       )
     set(RDMA_LD_FLAGS "-L./librdma -libverbs -lrdmacm -Xlinker -rpath ./librdma")
     include_directories("${RDMA_INC_DIR}")

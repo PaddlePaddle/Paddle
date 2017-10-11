@@ -8,7 +8,7 @@ paddle.init(use_gpu=False)
 x = paddle.layer.data(name='x', type=paddle.data_type.dense_vector(2))
 y_predict = paddle.layer.fc(input=x, size=1, act=paddle.activation.Linear())
 y = paddle.layer.data(name='y', type=paddle.data_type.dense_vector(1))
-cost = paddle.layer.mse_cost(input=y_predict, label=y)
+cost = paddle.layer.square_error_cost(input=y_predict, label=y)
 
 # create parameters
 parameters = paddle.parameters.create(cost)
@@ -31,7 +31,7 @@ def event_handler(event):
 # define training dataset reader
 def train_reader():
     train_x = np.array([[1, 1], [1, 2], [3, 4], [5, 2]])
-    train_y = np.array([-2, -3, -7, -7])
+    train_y = np.array([[-2], [-3], [-7], [-7]])
 
     def reader():
         for i in xrange(train_y.shape[0]):

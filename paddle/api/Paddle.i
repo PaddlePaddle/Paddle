@@ -179,6 +179,7 @@ namespace std {
 %newobject ParameterOptimizer::needSpecialTraversal;
 %newobject ParameterUpdater::createLocalUpdater;
 %newobject ParameterUpdater::createRemoteUpdater;
+%newobject ParameterUpdater::createNewRemoteUpdater;
 
 %feature("director") UpdateCallback;
 %feature("autodoc", 1); // To generate method stub, for code hint in ide
