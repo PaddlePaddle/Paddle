@@ -22,13 +22,14 @@ namespace framework {
 class SelectedRowsTester : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    Vector<int64_t> rows{0, 4, 7};
+    std::vector<int64_t> rows{0, 4, 7};
     int64_t height = 10;
     int64_t row_numel = 100;
     selected_rows_.reset(new SelectedRows(rows, height));
 
     Tensor& value = selected_rows_->value();
-    value.mutable_data<float>(make_ddim({3, row_numel}), place_);
+    value.mutable_data<float>(
+        make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
 
     ctx_.reset(new platform::CPUDeviceContext(place_));
     operators::math::SetConstant<platform::CPUPlace, float>(*ctx_, &value, 2.0);
@@ -36,7 +37,7 @@ class SelectedRowsTester : public ::testing::Test {
 
  protected:
   platform::CPUPlace place_;
-  std::unique_ptr<platform::CPUDeviceContext> ctx_;
+  std::unique_ptr<platform::CPUDeviceContext> ctx_{nullptr};
   std::unique_ptr<SelectedRows> selected_rows_{nullptr};
 };
 
@@ -54,12 +55,12 @@ TEST_F(SelectedRowsTester, CopyToTensor) {
 
   float* data = output.data<float>();
 
-  ASSERT_EQ(data[0 + 100 * 0], 2.0);
+  ASSERT_EQ(data[0 + 100 * 0], 2.0);  // row 0
   ASSERT_EQ(data[1 + 100 * 1], 0.0);
   ASSERT_EQ(data[5 + 100 * 3], 0.0);
-  ASSERT_EQ(data[3 + 100 * 4], 2.0);
+  ASSERT_EQ(data[3 + 100 * 4], 2.0);  // row 4
   ASSERT_EQ(data[8 + 100 * 5], 0.0);
-  ASSERT_EQ(data[7 + 100 * 7], 2.0);
+  ASSERT_EQ(data[7 + 100 * 7], 2.0);  // row 7
   ASSERT_EQ(data[6 + 100 * 9], 0.0);
 }
 
