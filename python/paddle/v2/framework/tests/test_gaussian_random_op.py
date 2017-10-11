@@ -14,7 +14,7 @@ class TestGaussianRandomOp(unittest.TestCase):
 
     def gaussian_random_test(self, place):
         scope = core.Scope()
-        scope.new_var('Out').get_tensor()
+        scope.get_or_create('Out').get_tensor()
 
         op = Operator(
             "gaussian_random",

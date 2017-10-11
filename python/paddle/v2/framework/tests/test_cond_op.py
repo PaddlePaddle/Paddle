@@ -39,7 +39,7 @@ class PySimpleCondTest(unittest.TestCase):
 
 
 def create_tensor(scope, name, shape, np_data):
-    tensor = scope.new_var(name).get_tensor()
+    tensor = scope.get_or_create(name).get_tensor()
     tensor.set_dims(shape)
     tensor.set(np_data, core.CPUPlace())
     return tensor
@@ -74,9 +74,9 @@ class TestCondOp(unittest.TestCase):
         create_tensor(self.scope, "X", [10, 1], x_np_data)
         cond_np_data = self.py_cond.cond.astype("int32")
         create_tensor(self.scope, "cond", [10, 1], cond_np_data)
-        self.scope.new_var("SubScopes")
-        self.scope.new_var("IndexTensors")
-        self.scope.new_var("Out")
+        self.scope.get_or_create("SubScopes")
+        self.scope.get_or_create("IndexTensors")
+        self.scope.get_or_create("Out")
 
     def create_cond_op(self):
         self.condop = CondOp(

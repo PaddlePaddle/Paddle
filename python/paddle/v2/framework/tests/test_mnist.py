@@ -31,7 +31,7 @@ uniq_id = atomic_id().next
 
 
 def data_layer(name, dims):
-    var = scope.new_var(name)
+    var = scope.get_or_create(name)
     tensor = var.get_tensor()
     tensor.set_dims(dims)  # 1 is batch size holder.
     return name
@@ -67,7 +67,7 @@ def sgd_optimizer(net, param_name, learning_rate=0.005):
 
 # should use operator and add these to the init_network
 def init_param(net, param_name, dims):
-    scope.new_var(param_name)
+    scope.get_or_create(param_name)
     op = Operator(
         "uniform_random", Out=param_name, dims=dims, min=-0.5, max=0.5, seed=10)
     op.infer_shape(scope)
@@ -104,7 +104,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
     sgd_optimizer(net=optimize_net, param_name=w_name, learning_rate=0.01)
 
     pre_activation = name + ".mul.out"
-    scope.new_var(pre_activation)
+    scope.get_or_create(pre_activation)
     mul_op = Operator("mul", X=input, Y=w_name, Out=pre_activation)
     net.append_op(mul_op)
 
@@ -115,7 +115,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
         sgd_optimizer(
             net=optimize_net, param_name=bias_name, learning_rate=0.001)
         bias_out = name + ".rowwise_add.out"
-        scope.new_var(bias_out)
+        scope.get_or_create(bias_out)
         rowwise_append_op = Operator(
             "rowwise_add", X=pre_activation, b=bias_name, Out=bias_out)
         net.append_op(rowwise_append_op)
@@ -123,7 +123,7 @@ def fc_layer(net, input, size, act="softmax", bias=True, param=None, name=None):
 
     activation_op = Operator(act, X=pre_activation, Y=name)
     net.append_op(activation_op)
-    scope.new_var(name)
+    scope.get_or_create(name)
     net.infer_shape(scope)
     return name
 
@@ -133,7 +133,7 @@ def cross_entropy_layer(net, input, label):
     cross_entropy_op = Operator(
         "cross_entropy", X=input, Label=label, Y=cost_name)
     net.append_op(cross_entropy_op)
-    scope.new_var(cost_name)
+    scope.get_or_create(cost_name)
     net.infer_shape(scope)
     return cost_name
 
@@ -141,10 +141,10 @@ def cross_entropy_layer(net, input, label):
 def create_backward_net(forward_net):
     net = core.Operator.backward(forward_net, set())
     for input in net.inputs()["all"]:
-        var = scope.new_var(input)
+        var = scope.get_or_create(input)
         var.get_tensor()
     for output in net.outputs()["all"]:
-        var = scope.new_var(output)
+        var = scope.get_or_create(output)
         var.get_tensor()
     return net
 
