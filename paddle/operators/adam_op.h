@@ -13,57 +13,68 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include <cmath>
-
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
-class AdamOpKernel : public framework::OpKernel {
+class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // TODO(tonyyang-svail): should be int, but here is float
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("param"));
-    auto g = EigenVector<T>::Flatten(*ctx.Input<Tensor>("grad"));
-    auto m1 = EigenVector<T>::Flatten(*ctx.Input<Tensor>("moment1"));
-    auto m2 = EigenVector<T>::Flatten(*ctx.Input<Tensor>("moment2"));
+    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
+    auto moment1_out_tensor = ctx.Output<framework::Tensor>("Moment1Out");
+    auto moment2_out_tensor = ctx.Output<framework::Tensor>("Moment2Out");
+    auto beta1_pow_out_tensor = ctx.Output<framework::Tensor>("Beta1PowOut");
+    auto beta2_pow_out_tensor = ctx.Output<framework::Tensor>("Beta2PowOut");
 
-    ctx.Output<Tensor>("param_out")->mutable_data<T>(ctx.GetPlace());
-    ctx.Output<Tensor>("moment1_out")->mutable_data<T>(ctx.GetPlace());
-    ctx.Output<Tensor>("moment2_out")->mutable_data<T>(ctx.GetPlace());
-    auto p_o = EigenVector<T>::Flatten(*ctx.Output<Tensor>("param_out"));
-    auto m1_o = EigenVector<T>::Flatten(*ctx.Output<Tensor>("moment1_out"));
-    auto m2_o = EigenVector<T>::Flatten(*ctx.Output<Tensor>("moment2_out"));
+    param_out_tensor->mutable_data<T>(ctx.GetPlace());
+    moment1_out_tensor->mutable_data<T>(ctx.GetPlace());
+    moment2_out_tensor->mutable_data<T>(ctx.GetPlace());
+    beta1_pow_out_tensor->mutable_data<T>(ctx.GetPlace());
+    beta2_pow_out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    int t = ctx.Attr<int>("time_step");
-    float lr = ctx.Attr<float>("learning_rate");
     float beta1 = ctx.Attr<float>("beta1");
     float beta2 = ctx.Attr<float>("beta2");
     float epsilon = ctx.Attr<float>("epsilon");
 
+    auto param = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Param"));
+    auto grad = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Grad"));
+    auto moment1 = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Moment1"));
+    auto moment2 = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Moment2"));
+    auto lr = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("LearningRate"));
+    auto beta1_pow = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Beta1Pow"));
+    auto beta2_pow = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Beta2Pow"));
+    auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
+    auto moment1_out = framework::EigenVector<T>::Flatten(*moment1_out_tensor);
+    auto moment2_out = framework::EigenVector<T>::Flatten(*moment2_out_tensor);
+    auto beta1_pow_out =
+        framework::EigenVector<T>::Flatten(*beta1_pow_out_tensor);
+    auto beta2_pow_out =
+        framework::EigenVector<T>::Flatten(*beta2_pow_out_tensor);
     auto place = ctx.GetEigenDevice<Place>();
-    m1_o.device(place) = beta1 * m1 + (1 - beta1) * g;
-    m2_o.device(place) = beta2 * m2 + (1 - beta2) * g * g;
 
-    float beta1_to_t = std::pow(beta1, t);
-    float beta2_to_t = std::pow(beta2, t);
-    auto m1_hat = m1_o / (1 - beta1_to_t);
-    auto m2_hat = m2_o / (1 - beta2_to_t);
-    p_o.device(place) = p - lr * m1_hat / (m2_hat.sqrt() + epsilon);
+    moment1_out.device(place) = beta1 * moment1 + (1 - beta1) * grad;
+    moment2_out.device(place) = beta2 * moment2 + (1 - beta2) * grad.square();
+    beta1_pow_out.device(place) = beta1_pow * beta1;
+    beta2_pow_out.device(place) = beta2_pow * beta2;
+    // All of these are tensors of 1 element
+    auto lr_t = lr * (1 - beta2_pow_out).sqrt() / (1 - beta1_pow_out);
+    // Eigen does not support automatic broadcast
+    // Get dimensions of moment vector to broadcast lr_t
+    Eigen::DSizes<int, 1> m_dsize(moment1_out_tensor->numel());
+    param_out.device(place) =
+        param -
+        lr_t.broadcast(m_dsize) *
+            (moment1_out / (moment2_out.sqrt() + epsilon));
   }
 };
 
