@@ -179,38 +179,104 @@ init_attr={
 
 `optimize_op_attrs` is not in the `VarDesc` message, but kept in the Python instance, as it will be used in the Python space when creating the optimize operator's `OpDesc`, and will be in the `OpDesc` message.
 
-## Layer Functions
+## Layer Function
 
-A layer is a Python function that creates some operators and variables.  Layers simplify the work of application programmers.
+A layer is a Python function that creates some operators and variables. Layers simplify the work of application programmers.
 
-### Data Layer
+Layer functions take `Variable` and configuration parameters as its input and return the output variable(s).
+
+For example, `FullyConnected` take one or more variable as its input. The input could be input data or another layer's output. There are many configuration options for a `FullyConnected` layer, such as layer size, activation, parameter names, initialization strategies of parameters, and so on. The `FullyConnected` layer will return an output variable.
+
+There are a lot of code that can be reused. Such as
+
+* Give the default value of configuration. e.g., default initialize strategy for parameters is uniform random with `min = -1.0`, `max = 1.0`. and default initialize strategy for bias is to fill zero.
+* Append the activation operator. 
+* Create a temporary variable. 
+* Create parameter.
+* Generate a unique name.
+* Add a bias.
+* ...
+
+There are three ways to reuse code in Python. They are
+
+1. Make several global functions.
+2. Create several decorators for layer function.
+3. Make layer classes as `functor`. The base class of layer has several member methods.
+
+Making several global functions is not appropriate since there are too many codes that can be reused and it is hard to organize and remember so many global functions. Making several decorators is not good either for the same reason.
+
+Making layer classes as `functor`, and giving a base class of all layer functor is the straightforward way for code reuse. The advantages are:
+
+1. The layer developer can figure out how many common functions they can use by just typing `self.` in an IDE.
+2. It is easy to understand and develop since inheritance is a common way to reuse code.
+3. It is transparent for end-users since we can wrap a functor class to a function.
+
+### Base class of Layer
 
 ```python
-def data_layer(name, type, column_name):
-    block = the_current_program.glolal_block()
-    var = block.create_global_var(
-            name=name,
-            shape=[None] + type.dims(),
-            dtype=type.dtype)
-    block.prepend_operator(block,
-                           type="Feed",
-                           inputs = None,
-                           outputs = [var],
-                           {column_name: column_name})
-    return var
+class Layer(object):
+    def __init__(self, **kwargs):  # accept any argument
+        self.kwargs = kwargs
+    
+    def __call__(self):
+        raise NotImplementedError("LayerBase is a ")
+    
+    def program(self):
+        # default program is the global program, `g_program`
+        return self.kwargs.get('program', g_program)
+    
+    def append_op(self, *args, **kwargs):
+        return self.program().current_block().append_op(*args, **kwargs)
+    
+    def create_tmp_variable(self):
+        return self.program().current_block().create_variable()
+    
+    def append_activation(self, input):
+        act_type = self.kwargs.get('act', None)
+        if act_type is None:
+            return input
+        
+        out = self.create_tmp_variable()
+        self.append_op(type=act_type, inputs={"X": [input]}, outputs={"Out": [out]})
+        return out
+    
+    # more common methods here
+    ... 
 ```
 
-The input to the feed operator is a special variable in the global scope, which is the output of [Python readers](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md).
+`LayerBase` just stores all layer arguments and contains many common methods for layers. Other layers can inherit `LayerBase` and implement `__call__` method.
 
-### FC Layer
+### Layer Classes
 
 ```python
-def fc_layer(input, size, ...):
-    block = program.current_block()
-    w = block.create_parameter(...)
-    b = block.create_parameter(...)
-    out = block.create_var()
-    op = block.append_operator("FC", X=input, W=w, b=b, out=out)
-    out.writer = op
-    return out
+class SomeLayer(Layer):
+    def __call__(self):
+        ...  # 
+        var_before_activation = ...
+        return self.append_activation(var_before_activation)
 ```
+
+Layer developers are free to use pre-defined methods that defined in `LayerBase`. Layer developers just need to overwrite the `__call__` method.
+
+### Export Functor Class as Function
+
+We can provide a decorator to wrap a functor class as a function. The code is as follows.
+
+```python
+def export(name):
+    def __wrapper__(cls):
+        def func(*args, **kwargs):
+            instance = cls(*args, **kwargs)
+            return instance()
+        globals()[name] = func
+    return __wrapper__
+```
+
+Layer developers just wrap the layer class as
+
+```python
+@export("some_layer")
+class SomeLayer(LayerBase):
+    ...
+```
+And then, end users can use `some_layer(...)` as a plain function.
