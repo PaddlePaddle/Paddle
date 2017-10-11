@@ -24,6 +24,34 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+class PoolOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override;
+};
+
+class PoolOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override;
+};
+
+class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  Pool2dOpMaker(framework::OpProto* proto,
+                framework::OpAttrChecker* op_checker);
+};
+
+class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  Pool3dOpMaker(framework::OpProto* proto,
+                framework::OpAttrChecker* op_checker);
+};
+
 template <typename Place, typename T>
 class PoolKernel : public framework::OpKernel<T> {
  public:
