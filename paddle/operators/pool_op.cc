@@ -35,7 +35,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
   PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
-                 "Pooling intput should be 4-D or 5-D");
+                 "Pooling intput should be 4-D or 5-D tensor.");
 
   if (ctx->Attrs().Get<bool>("globalPooling")) {
     ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
@@ -70,11 +70,11 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "X",
-      "The input tensor of pooling operator. "
+      "(Tensor) The input tensor of pooling operator. "
       "The format of input tensor is NCHW. Where N is batch size, C is the "
       "number of channels, H and W is the height and width of feature.");
   AddOutput("Out",
-            "The output tensor of pooling operator."
+            "(Tensor) The output tensor of pooling operator."
             "The format of output tensor is also NCHW."
             "Where N is batch size, C is "
             "the number of channels, H and W is the height and "
@@ -87,7 +87,7 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
 
   AddAttr<std::vector<int>>(
       "ksize",
-      "The pooling size(height, width) of pooling operator."
+      "The pooling window size(height, width) of pooling operator."
       "If globalPooling = true, ksize is ignored and need not be "
       "specified.");  // TODO(Chengduo): Add checker. (Currently,
                       // TypedAttrChecker don't support vector type.)
@@ -99,12 +99,12 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
       "If globalPooling = true, ksize is ignored and need not be specified.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
-                            "Strides(height, width) of pooling operator."
+                            "The strides(height, width) of pooling window."
                             "Default {1,1}.")
       .SetDefault({1, 1});  // TODO(Chengduo): Add checker. (Currently,
                             // TypedAttrChecker don't support vector type.)
   AddAttr<std::vector<int>>("paddings",
-                            "Paddings(height, width) of pooling operator."
+                            "The zero padding(height, width) size on both sides"
                             "Default {0,0}.")
       .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
                             // TypedAttrChecker don't support vector type.)
@@ -116,6 +116,17 @@ Input(X) and output(Out) are in NCHW format. Where N is batch size, C is the
 number of channels, H and W is the height and width of feature.
 Parameters(ksize, strides, paddings) are two elements.
 These two elements represent height and width, respectively.
+The input(X) size and output(Out) size may be different.
+
+Example:
+  Input:
+       X shape: (N, C, H_in, W_in)
+  Output:
+       Out shape: (N, C, H_out, W_out)
+       Mask shape: (N, C, H_out, W_out)
+  where
+       H_out = (H_in - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
+       W_out = (W_in - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
 )DOC");
 }
 
@@ -124,12 +135,12 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "X",
-      "The input tensor of pooling operator. "
+      "(Tensor) The input tensor of pooling operator. "
       "The format of input tensor is NCDHW. Where N is batch size, C is "
       "the number of channels, D, H and W is the depth, height and width of "
       "feature.");
   AddOutput("Out",
-            "The output tensor of pooling operator."
+            "(Tensor) The output tensor of pooling operator."
             "The format of output tensor is also NCDHW."
             "Where N is batch size, C is "
             "the number of channels, D, H and W is the depth, height and "
@@ -142,7 +153,7 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
 
   AddAttr<std::vector<int>>(
       "ksize",
-      "The pooling size(depth, height, width) of pooling operator."
+      "The pooling window size(depth, height, width) of pooling operator."
       "If globalPooling = true, ksize is ignored and need not be "
       "specified.");  // TODO(Chengduo): Add checker. (Currently,
                       // TypedAttrChecker don't support vector type.)
@@ -172,6 +183,18 @@ Input(X) and output(Out) are in NCDHW format. Where N is batch
 size, C is the number of channels, D, H and W is the depth, height and
 width of feature. Parameters(ksize, strides, paddings) are three elements.
 These three elements represent depth, height and width, respectively.
+The input(X) size and output(Out) size may be different.
+
+Example:
+  Input:
+       X shape: (N, C, D_in, H_in, W_in)
+  Output:
+       Out shape: (N, C, D_out, H_out, W_out)
+       Mask shape: (N, C, D_out, H_out, W_out)
+  where
+       D_out = (D_in - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
+       H_out = (H_in - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
+       W_out = (W_in - ksize[2] + 2 * paddings[2]) / strides[2] + 1;
 )DOC");
 }
 }  // namespace operators
