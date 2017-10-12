@@ -28,6 +28,8 @@ def relu(x):
 
 
 class TestGRUUnitOp(OpTest):
+    batch_size = 3
+    frame_size = 5
     activate = {
         GRUActivationType.identity: identity,
         GRUActivationType.sigmoid: sigmoid,
@@ -35,9 +37,9 @@ class TestGRUUnitOp(OpTest):
         GRUActivationType.relu: relu,
     }
 
-    def setUp(self):
-        batch_size = 3
-        frame_size = 5
+    def set_inputs(self):
+        batch_size = self.batch_size
+        frame_size = self.frame_size
         self.op_type = 'gru_unit'
         self.inputs = {
             'Input': np.random.uniform(
@@ -47,18 +49,21 @@ class TestGRUUnitOp(OpTest):
             'Weight': np.random.uniform(
                 -1. / math.sqrt(frame_size), 1. / math.sqrt(frame_size),
                 (frame_size, frame_size * 3)).astype('float32'),
-            'Bias': np.random.uniform(-0.1, 0.1,
-                                      (1, frame_size * 3)).astype('float32')
         }
         self.attrs = {
             'activation': GRUActivationType.tanh,
             'gate_activation': GRUActivationType.sigmoid
         }
+
+    def set_outputs(self):
         # GRU calculations
+        batch_size = self.batch_size
+        frame_size = self.frame_size
         x = self.inputs['Input']
         h_p = self.inputs['HiddenPrev']
         w = self.inputs['Weight']
-        b = self.inputs['Bias']
+        b = self.inputs['Bias'] if self.inputs.has_key('Bias') else np.zeros(
+            (1, frame_size * 3))
         g = x + np.tile(b, (batch_size, 1))
         w_u_r = w.flatten()[:frame_size * frame_size * 2].reshape(
             (frame_size, frame_size * 2))
@@ -73,11 +78,32 @@ class TestGRUUnitOp(OpTest):
                                                     g[:, frame_size * 2:])
         g = np.hstack((u_r, c))
         h = u * h_p + (1 - u) * c
-
         self.outputs = {'Gate': g, 'ResetHiddenPrev': r_h_p, 'Hidden': h}
+
+    def setUp(self):
+        self.set_inputs()
+        self.set_outputs()
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['Input', 'HiddenPrev', 'Weight'], ['Hidden'],
+            max_relative_error=0.007)
+
+
+class TestGRUUnitOpWithBias(TestGRUUnitOp):
+    def set_inputs(self):
+        batch_size = self.batch_size
+        frame_size = self.frame_size
+        super(TestGRUUnitOpWithBias, self).set_inputs()
+        self.inputs['Bias'] = np.random.uniform(
+            -0.1, 0.1, (1, frame_size * 3)).astype('float32')
+        self.attrs = {
+            'activation': GRUActivationType.identity,
+            'gate_activation': GRUActivationType.sigmoid
+        }
 
     def test_check_grad(self):
         self.check_grad(

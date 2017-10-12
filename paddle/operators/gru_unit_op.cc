@@ -31,8 +31,6 @@ class GRUUnitOp : public framework::OperatorWithKernel {
                    "Input(%s) of GRUUnitOp should not be null.", "HiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
                    "Input(%s) of GRUUnitOp should not be null.", "Weight");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(%s) of GRUUnitOp should not be null.", "Bias");
     PADDLE_ENFORCE(ctx->HasOutput("Gate"),
                    "Output(%s) of GRUUnitOp should not be null.", "Gate");
     PADDLE_ENFORCE(ctx->HasOutput("ResetHiddenPrev"),
@@ -43,14 +41,11 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
-    auto bias_dims = ctx->GetInputDim("Bias");
     int batch_size = input_dims[0];
     int input_size = input_dims[1];
     int frame_size = hidden_prev_dims[1];
     int weight_height = weight_dims[0];
     int weight_width = weight_dims[1];
-    int bias_height = bias_dims[0];
-    int bias_width = bias_dims[1];
     PADDLE_ENFORCE_EQ(
         input_size, frame_size * 3,
         "The input_size must be 3 times of frame_size in GRUUnitOp.");
@@ -60,10 +55,16 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width, frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    PADDLE_ENFORCE_EQ(bias_height, 1,
-                      "The shape of Bias must be [1, frame_size * 3].");
-    PADDLE_ENFORCE_EQ(bias_width, frame_size * 3,
-                      "The shape of Bias must be [1, frame_size * 3].");
+    auto bias = Input("Bias");
+    if (bias != framework::kEmptyVarName) {
+      auto bias_dims = ctx->GetInputDim("Bias");
+      int bias_height = bias_dims[0];
+      int bias_width = bias_dims[1];
+      PADDLE_ENFORCE_EQ(bias_height, 1,
+                        "The shape of Bias must be [1, frame_size * 3].");
+      PADDLE_ENFORCE_EQ(bias_width, frame_size * 3,
+                        "The shape of Bias must be [1, frame_size * 3].");
+    }
     ctx->SetOutputDim("Gate", {batch_size, frame_size * 3});
     ctx->SetOutputDim("ResetHiddenPrev", {batch_size, frame_size});
     ctx->SetOutputDim("Hidden", {batch_size, frame_size});
@@ -139,8 +140,6 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
                    "HiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
                    "Input(%s) of GRUUnitGradOp should not be null.", "Weight");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(%s) of GRUUnitGradOp should not be null.", "Bias");
     PADDLE_ENFORCE(ctx->HasInput("Gate"),
                    "Input(%s) of GRUUnitGradOp should not be null.", "Gate");
     PADDLE_ENFORCE(ctx->HasInput("ResetHiddenPrev"),
@@ -160,14 +159,11 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
-    auto bias_dims = ctx->GetInputDim("Bias");
     // int batch_size = input_dims[0];
     int input_size = input_dims[1];
     int frame_size = hidden_prev_dims[1];
     int weight_height = weight_dims[0];
     int weight_width = weight_dims[1];
-    int bias_height = bias_dims[0];
-    int bias_width = bias_dims[1];
     PADDLE_ENFORCE_EQ(
         input_size, frame_size * 3,
         "The input_size must be 3 times of frame_size in GRUUnitOp.");
@@ -177,10 +173,19 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width, frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    PADDLE_ENFORCE_EQ(bias_height, 1,
-                      "The shape of Bias must be [1, frame_size * 3].");
-    PADDLE_ENFORCE_EQ(bias_width, frame_size * 3,
-                      "The shape of Bias must be [1, frame_size * 3].");
+    auto bias = Input("Bias");
+    if (bias != framework::kEmptyVarName) {
+      auto bias_dims = ctx->GetInputDim("Bias");
+      int bias_height = bias_dims[0];
+      int bias_width = bias_dims[1];
+      PADDLE_ENFORCE_EQ(bias_height, 1,
+                        "The shape of Bias must be [1, frame_size * 3].");
+      PADDLE_ENFORCE_EQ(bias_width, frame_size * 3,
+                        "The shape of Bias must be [1, frame_size * 3].");
+      auto bias_grad_name = framework::GradVarName("Bias");
+      if (ctx->HasOutput(bias_grad_name))
+        ctx->SetOutputDim(bias_grad_name, bias_dims);
+    }
     auto input_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(input_grad_name))
       ctx->SetOutputDim(input_grad_name, input_dims);
@@ -190,9 +195,6 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     auto weight_grad_name = framework::GradVarName("Weight");
     if (ctx->HasOutput(weight_grad_name))
       ctx->SetOutputDim(weight_grad_name, weight_dims);
-    auto bias_grad_name = framework::GradVarName("Bias");
-    if (ctx->HasOutput(bias_grad_name))
-      ctx->SetOutputDim(bias_grad_name, bias_dims);
   }
 };
 

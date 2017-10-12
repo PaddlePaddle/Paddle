@@ -64,16 +64,20 @@ class GRUUnitKernel : public framework::OpKernel<T> {
 
     auto x = EigenMatrix<T>::From(*input);
     auto h_p = EigenMatrix<T>::From(*hidden_prev);
-    auto b = EigenMatrix<T>::From(*bias);
     auto g = EigenMatrix<T>::From(*gate);
     auto r_h_p = EigenMatrix<T>::From(*reset_hidden_prev);
     auto h = EigenMatrix<T>::From(*hidden);
     auto place = context.GetEigenDevice<Place>();
 
     // calculate unactivated gate outputs
-    g.device(place) = x +
-                      b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
-                          .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
+    if (bias) {
+      auto b = EigenMatrix<T>::From(*bias);
+      g.device(place) = x +
+                        b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
+                            .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
+    } else {
+      g.device(place) = x;
+    }
     const T* hidden_prev_data = hidden_prev->data<T>();
     const T* weight_data = weight->data<T>();
     T* gate_data = gate->data<T>();
@@ -145,7 +149,6 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     input_grad->mutable_data<T>(context.GetPlace());
     hidden_prev_grad->mutable_data<T>(context.GetPlace());
     weight_grad->mutable_data<T>(context.GetPlace());
-    bias_grad->mutable_data<T>(context.GetPlace());
     Tensor gate_grad;
     gate_grad.mutable_data<T>(input->dims(), context.GetPlace());
     Tensor reset_hidden_prev_grad;
@@ -168,7 +171,6 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     auto d_h = EigenMatrix<T>::From(*hidden_grad);
     auto d_x = EigenMatrix<T>::From(*input_grad);
     auto d_h_p = EigenMatrix<T>::From(*hidden_prev_grad);
-    auto d_b = EigenMatrix<T>::From(*bias_grad);
     auto d_g = EigenMatrix<T>::From(gate_grad);
     auto d_r_h_p = EigenMatrix<T>::From(reset_hidden_prev_grad);
     auto place = context.GetEigenDevice<Place>();
@@ -216,7 +218,11 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     // backward for input
     d_x.device(place) = d_g;
     // backward for bias
-    d_b.device(place) = d_g.sum(Eigen::array<int, 1>({{0}}));
+    if (bias_grad) {
+      bias_grad->mutable_data<T>(context.GetPlace());
+      auto d_b = EigenMatrix<T>::From(*bias_grad);
+      d_b.device(place) = d_g.sum(Eigen::array<int, 1>({{0}}));
+    }
   }
 };
 
