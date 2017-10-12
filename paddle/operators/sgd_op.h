@@ -41,5 +41,19 @@ class SGDOpKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename Place, typename T>
+class SGDOpSparseKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* param = ctx.Input<framework::Tensor>("Param");
+    auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+    auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
+
+    param_out->mutable_data<T>(ctx.GetPlace());
+
+    // TODO(qijun): implement computation between SelectedRows and Tensor
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

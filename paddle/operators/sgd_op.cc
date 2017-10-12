@@ -36,8 +36,17 @@ class SGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
-                      "Two input of SGD Op's dimension must be same.");
+    auto grad_var_type = ctx->GetVarType("Grad");
+    auto grad_dim = ctx->GetInputDim("Grad");
+    if (grad_var_type == VarDesc_VarType_LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(param_dim, grad_dim,
+                        "Two input of SGD Op's dimension must be same.");
+    } else if (grad_var_type == VarDesc_VarType_SELECTED_ROWS) {
+      PADDLE_ENFORCE_EQ(slice_ddim(param_dim, 1, arity(param_dim)), 
+        slice_ddim(grad_dim, 1, arity(grad_dim)),
+                      "Grad is a SelectRows, 
+                      dimension except the 1st must be same.");
+    }
     ctx->SetOutputDim("ParamOut", param_dim);
   }
 };
@@ -64,5 +73,6 @@ param_out = param - learning_rate * grad;
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
-REGISTER_OP_CPU_KERNEL(sgd,
-                       ops::SGDOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CPUPlace, float>
+             ops::SGDOpSparseKernel<paddle::platform::CPUPlace, float>);

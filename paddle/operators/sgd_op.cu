@@ -16,5 +16,6 @@
 #include "paddle/operators/sgd_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(sgd,
-                       ops::SGDOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::GPUPlace, float>
+             ops::SGDOpSparseKernel<paddle::platform::GPUPlace, float>);

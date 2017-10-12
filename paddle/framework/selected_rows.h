@@ -27,13 +27,25 @@ class SelectedRows {
     value_.reset(new Tensor());
   }
 
+  SelectedRows() {}
+
   platform::Place place() const { return value_->place(); }
 
   Tensor& value() const { return *value_; }
 
   int64_t height() const { return height_; }
 
+  void set_height(int64_t height) { height_ = height; }
+
   const std::vector<int64_t>& rows() const { return rows_; }
+
+  void set_rows(const std::vector<int64_t>& rows) { rows_ = rows; }
+
+  DDim GetCompleteDims() const {
+    std::vector<int64_t> dims = vectorize(value_->dims());
+    dims[0] = height_;
+    return make_ddim(dims);
+  }
 
  private:
   std::vector<int64_t> rows_;

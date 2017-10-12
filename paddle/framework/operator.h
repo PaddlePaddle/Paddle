@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -375,6 +376,21 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     SetInputsDim(name, {dim});
   }
 
+  VarDesc_VarType GetInputVarType(const std::string& name) const override {
+    std::vector<VarDesc_VarType> var_types = GetInputsVarType(name);
+    auto length = var_types.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Input(%s) should have 1 value, "
+                      "but it has %d now",
+                      name, length);
+    return var_types[0];
+  }
+
+  void SetInputVarType(const std::string& name,
+                       const VarDesc_VarType& var_type) override {
+    SetInputsVarType(name, {var_type});
+  }
+
   DDim GetOutputDim(const std::string& name) const override {
     std::vector<DDim> ddims = GetOutputsDim(name);
     auto length = ddims.size();
@@ -387,6 +403,21 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetOutputDim(const std::string& name, const DDim& dim) override {
     SetOutputsDim(name, {dim});
+  }
+
+  VarDesc_VarType GetOutputVarType(const std::string& name) const override {
+    std::vector<VarDesc_VarType> var_types = GetOutputsVarType(name);
+    auto length = var_types.size();
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Output(%s) should have 1 value, "
+                      "but it has %d now",
+                      name, length);
+    return var_types[0];
+  }
+
+  void SetOutputVarType(const std::string& name,
+                        const VarDesc_VarType& var_type) override {
+    SetOutputsVarType(name, {var_type});
   }
 
   AttrReader Attrs() const override { return AttrReader(op_.GetAttrMap()); }
@@ -408,6 +439,15 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetDim(const std::string& name, const DDim& dim) override {
     block_.Var(name)->SetShape(framework::vectorize(dim));
+  }
+
+  VarDesc_VarType GetVarType(const std::string& name) const override {
+    return block_.Var(name)->GetVarType();
+  }
+
+  void SetVarType(const std::string& name,
+                  const VarDesc_VarType& var_type) override {
+    block_.Var(name)->SetVarType(var_type);
   }
 
   const OpDescBind& op_;
@@ -465,12 +505,30 @@ class RuntimeInferShapeContext : public InferShapeContext {
     SetDim(op_.Input(name), dim);
   }
 
+  VarDesc_VarType GetInputVarType(const std::string& name) const override {
+    return GetVarType(op_.Input(name));
+  }
+
+  void SetInputVarType(const std::string& name,
+                       const VarDesc_VarType& var_type) override {
+    SetVarType(op_.Input(name), var_type);
+  }
+
   DDim GetOutputDim(const std::string& name) const override {
     return GetDim(op_.Output(name));
   }
 
   void SetOutputDim(const std::string& name, const DDim& dim) override {
     SetDim(op_.Output(name), dim);
+  }
+
+  VarDesc_VarType GetOutputVarType(const std::string& name) const override {
+    return GetVarType(op_.Input(name));
+  }
+
+  void SetOutputVarType(const std::string& name,
+                        const VarDesc_VarType& var_type) override {
+    SetVarType(op_.Output(name), var_type);
   }
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
@@ -486,28 +544,33 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
  private:
-  template <bool Allocate>
-  Tensor* GetTensor(const std::string& name) const {
-    Tensor* t = nullptr;
-    auto* var = scope_.FindVar(name);
-    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
-      if (Allocate) {
-        t = var->GetMutable<LoDTensor>();
-      } else {
-        PADDLE_THROW("Variable(%s) should be tensor", name);
-      }
-    } else {
-      t = GetTensorFromVar(scope_.FindVar(name));
-    }
-    return t;
-  }
-
   DDim GetDim(const std::string& name) const override {
-    return GetTensor<false>(name)->dims();
+    return GetTensorFromVar(scope_.FindVar(name))->dims();
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
-    GetTensor<true>(name)->Resize(dim);
+    GetTensorFromVar(scope_.FindVar(name))->Resize(dim);
+  }
+
+  VarDesc_VarType GetVarType(const std::string& name) const override {
+    auto* var = scope_.FindVar(name);
+    if (var->IsType<SelectedRows>()) {
+      return VarDesc_VarType_SELECTED_ROWS;
+    } else {
+      return VarDesc_VarType_LOD_TENSOR;
+    }
+  }
+
+  void SetVarType(const std::string& name,
+                  const VarDesc_VarType& var_type) override {
+    auto* var = scope_.FindVar(name);
+    if (var_type == VarDesc_VarType_LOD_TENSOR) {
+      var->GetMutable<LoDTensor>();
+    } else if (var_type == VarDesc_VarType_SELECTED_ROWS) {
+      var->GetMutable<SelectedRows>();
+    } else {
+      PADDLE_THROW("Variable(%s) should be lod_tensor or selected_rows", name);
+    }
   }
 
   const OperatorBase& op_;
@@ -539,16 +602,21 @@ class OperatorWithKernel : public OperatorBase {
   struct OpKernelKey {
     platform::Place place_;
     DataType data_type_;
+    VarDesc_VarType var_type_;
 
-    OpKernelKey(DataType data_type, platform::Place place)
-        : place_(place), data_type_(data_type) {}
+    OpKernelKey(DataType data_type, platform::Place place,
+                VarDesc_VarType var_type)
+        : place_(place), data_type_(data_type), var_type_(var_type) {}
 
-    OpKernelKey(DataType data_type, const platform::DeviceContext& dev_ctx)
-        : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
+    OpKernelKey(DataType data_type, const platform::DeviceContext& dev_ctx,
+                VarDesc_VarType var_type)
+        : place_(dev_ctx.GetPlace()),
+          data_type_(data_type),
+          var_type_(var_type) {}
 
     bool operator==(const OpKernelKey& o) const {
       return platform::places_are_same_class(place_, o.place_) &&
-             data_type_ == o.data_type_;
+             data_type_ == o.data_type_ && var_type_ == o.var_type_;
     }
   };
 
@@ -557,7 +625,9 @@ class OperatorWithKernel : public OperatorBase {
     size_t operator()(const OpKernelKey& key) const {
       int place = key.place_.which();
       int data_type = static_cast<int>(key.data_type_);
+      int var_type = static_cast<int>(key.var_type_);
       int pre_hash = data_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
+                     var_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
                      (place & ((1 << NUM_PLACE_TYPE_LIMIT_IN_BIT) - 1));
       return hash_(pre_hash);
     }
@@ -587,7 +657,8 @@ class OperatorWithKernel : public OperatorBase {
 
     // check if op[type] have kernel for kernel_key
     OpKernelMap& kernels = kernels_iter->second;
-    auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+    auto kernel_key =
+        OpKernelKey(IndicateDataType(ctx), dev_ctx, IndicateVarType(ctx));
     auto kernel_iter = kernels.find(kernel_key);
 
     if (kernel_iter == kernels.end()) {
@@ -629,6 +700,8 @@ class OperatorWithKernel : public OperatorBase {
             t = &var->Get<Tensor>();
           } else if (var->IsType<LoDTensor>()) {
             t = &var->Get<LoDTensor>();
+          } else if (var->IsType<SelectedRows>()) {
+            t = &var->Get<SelectedRows>().value();
           }
           if (t != nullptr) {
             int tmp = static_cast<int>(ToDataType(t->type()));
@@ -641,6 +714,27 @@ class OperatorWithKernel : public OperatorBase {
     }
     PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
     return static_cast<DataType>(data_type);
+  }
+
+  // indicate kernel VarType by input data.
+  virtual VarDesc_VarType IndicateVarType(const ExecutionContext& ctx) const {
+    auto& scope = ctx.scope();
+    VarDesc_VarType var_type = VarDesc_VarType_LOD_TENSOR;
+    for (auto& input : this->inputs_) {
+      if (var_type == VarDesc_VarType_SELECTED_ROWS) {
+        break;
+      }
+      for (auto& ipt_name : input.second) {
+        auto* var = scope.FindVar(ipt_name);
+        if (var != nullptr) {
+          if (var->IsType<SelectedRows>()) {
+            var_type = VarDesc_VarType_SELECTED_ROWS;
+            break;
+          }
+        }
+      }
+    }
+    return var_type;
   }
 };
 

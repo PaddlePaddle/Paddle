@@ -47,6 +47,10 @@ TEST_F(SelectedRowsTester, dims) {
   ASSERT_EQ(selected_rows_->value().dims(), make_ddim({3, 100}));
 }
 
+TEST_F(SelectedRowsTester, complete_dims) {
+  ASSERT_EQ(selected_rows_->GetCompleteDims(), make_ddim({10, 100}));
+}
+
 TEST_F(SelectedRowsTester, CopyToTensor) {
   Tensor output;
   platform::CPUPlace dst_place;

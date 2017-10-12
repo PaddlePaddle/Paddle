@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/framework.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -30,6 +31,35 @@ class InferShapeContext {
 
   virtual bool HasInputs(const std::string &name) const = 0;
   virtual bool HasOutputs(const std::string &name) const = 0;
+
+  virtual VarDesc_VarType GetInputVarType(const std::string &name) const = 0;
+  std::vector<VarDesc_VarType> GetInputsVarType(const std::string &name) const {
+    const std::vector<std::string> &names = Inputs(name);
+    return GetVarTypes(names);
+  }
+
+  virtual void SetInputVarType(const std::string &name,
+                               const VarDesc_VarType &var_type) = 0;
+  void SetInputsVarType(const std::string &name,
+                        const std::vector<VarDesc_VarType> &var_types) {
+    auto &names = Inputs(name);
+    SetVarTypes(names, var_types);
+  }
+
+  virtual VarDesc_VarType GetOutputVarType(const std::string &name) const = 0;
+  std::vector<VarDesc_VarType> GetOutputsVarType(
+      const std::string &name) const {
+    auto &names = Outputs(name);
+    return GetVarTypes(names);
+  }
+
+  virtual void SetOutputVarType(const std::string &name,
+                                const VarDesc_VarType &var_type) = 0;
+  void SetOutputsVarType(const std::string &name,
+                         const std::vector<VarDesc_VarType> &var_types) {
+    auto &names = Outputs(name);
+    SetVarTypes(names, var_types);
+  }
 
   virtual framework::DDim GetInputDim(const std::string &name) const = 0;
   std::vector<framework::DDim> GetInputsDim(const std::string &name) const {
@@ -65,7 +95,6 @@ class InferShapeContext {
 
  protected:
   virtual framework::DDim GetDim(const std::string &name) const = 0;
-  virtual void SetDim(const std::string &name, const framework::DDim &dim) = 0;
   std::vector<framework::DDim> GetDims(
       const std::vector<std::string> &names) const {
     std::vector<framework::DDim> ret;
@@ -75,12 +104,36 @@ class InferShapeContext {
         [this](const std::string &name) { return this->GetDim(name); });
     return ret;
   }
+
+  virtual void SetDim(const std::string &name, const framework::DDim &dim) = 0;
   void SetDims(const std::vector<std::string> &names,
                const std::vector<framework::DDim> &dims) {
     size_t length = names.size();
     PADDLE_ENFORCE_EQ(length, dims.size());
     for (size_t i = 0; i < length; ++i) {
       SetDim(names[i], dims[i]);
+    }
+  }
+
+  virtual VarDesc_VarType GetVarType(const std::string &name) const = 0;
+  std::vector<VarDesc_VarType> GetVarTypes(
+      const std::vector<std::string> &names) const {
+    std::vector<VarDesc_VarType> ret;
+    ret.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(ret),
+        [this](const std::string &name) { return this->GetVarType(name); });
+    return ret;
+  }
+
+  virtual void SetVarType(const std::string &name,
+                          const VarDesc_VarType &var_type) = 0;
+  void SetVarTypes(const std::vector<std::string> &names,
+                   const std::vector<VarDesc_VarType> &var_types) {
+    size_t length = names.size();
+    PADDLE_ENFORCE_EQ(length, var_types.size());
+    for (size_t i = 0; i < length; ++i) {
+      SetVarType(names[i], var_types[i]);
     }
   }
 };
