@@ -670,7 +670,7 @@ void GpuMatrix::leftMul(Matrix& a, real scaleAB, real scaleT) {
 }
 
 void GpuMatrix::selectRows(Matrix& table, IVector& ids) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   CHECK(dynamic_cast<GpuMatrix*>(&table));
   CHECK(table.useGpu());
   CHECK(ids.useGpu());
@@ -694,7 +694,7 @@ void GpuMatrix::selectRows(Matrix& table, IVector& ids) {
 }
 
 void GpuMatrix::addToRows(Matrix& table, IVector& ids) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   CHECK(dynamic_cast<GpuMatrix*>(&table));
   CHECK(table.useGpu());
   CHECK(ids.useGpu());
@@ -741,7 +741,7 @@ void GpuMatrix::rowMax(Matrix& max) {
 }
 
 void GpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   CHECK(maxIds.useGpu() && maxVal.useGpu()) << "Matrix type are not equal";
   size_t numSamples = getHeight();
   size_t beam = maxVal.getWidth();

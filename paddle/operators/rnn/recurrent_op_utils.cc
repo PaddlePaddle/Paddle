@@ -25,7 +25,7 @@ using LoDTensor = framework::LoDTensor;
 
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& inlinks,
-                   const size_t seq_len, bool infer_shape_mode) {
+                   const size_t seq_len) {
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
   for (size_t i = 0; i < inlinks.size(); ++i) {
     // global inputs
@@ -41,11 +41,9 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
           step_scopes[j]->NewVar(inlinks[i])->GetMutable<Tensor>();
-      if (!infer_shape_mode) {
-        // The input of operators of each step is Tensor here.
-        // Maybe need to modify Slice function.
-        *step_input = input->Slice<float>(j, j + 1);
-      }
+      // The input of operators of each step is Tensor here.
+      // Maybe need to modify Slice function.
+      *step_input = input->Slice<float>(j, j + 1);
       step_input->Resize(step_dims);
     }
   }
@@ -53,39 +51,35 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
 
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& outlinks,
-                   const size_t seq_len, bool infer_shape_mode) {
+                   const size_t seq_len, const platform::DeviceContext& ctx) {
   for (size_t i = 0; i < outlinks.size(); i++) {
-    auto output_var = step_scopes[0]->parent().FindVar(outlinks[i]);
+    auto* output_var = step_scopes[0]->parent().FindVar(outlinks[i]);
     PADDLE_ENFORCE_NOT_NULL(output_var, "output link [%s] is not in scope.",
                             outlinks[i]);
     LoDTensor* output = output_var->GetMutable<LoDTensor>();
 
-    if (infer_shape_mode) {
-      auto step_scope_var = step_scopes[0]->FindVar(outlinks[i]);
-      PADDLE_ENFORCE_NOT_NULL(step_scope_var, "%s not in scope", outlinks[i]);
-      f::DDim step_dims =
-          step_scope_var->template GetMutable<LoDTensor>()->dims();
-      std::vector<int64_t> dims_vec = vectorize(step_dims);
-      dims_vec.insert(dims_vec.begin(), seq_len);
-      output->Resize(f::make_ddim(dims_vec));
-    } else {
-      output->mutable_data<float>(platform::CPUPlace());
-      for (size_t j = 0; j < seq_len; j++) {
-        LoDTensor* step_output =
-            step_scopes[j]->FindVar(outlinks[i])->GetMutable<LoDTensor>();
-        // TODO(luotao02) data type and platform::DeviceContext() should set
-        // correctly
-        (output->Slice<float>(j, j + 1))
-            .CopyFrom<float>(*step_output, platform::CPUPlace());
-      }
+    auto* step_scope_var = step_scopes[0]->FindVar(outlinks[i]);
+    PADDLE_ENFORCE_NOT_NULL(step_scope_var, "%s not in scope", outlinks[i]);
+    f::DDim step_dims =
+        step_scope_var->template GetMutable<LoDTensor>()->dims();
+    std::vector<int64_t> dims_vec = vectorize(step_dims);
+    dims_vec.insert(dims_vec.begin(), seq_len);
+    output->Resize(f::make_ddim(dims_vec));
+    output->mutable_data<float>(platform::CPUPlace());
+    for (size_t j = 0; j < seq_len; j++) {
+      LoDTensor* step_output =
+          step_scopes[j]->FindVar(outlinks[i])->GetMutable<LoDTensor>();
+      // TODO(luotao02) data type and platform::DeviceContext() should set
+      // correctly
+      (output->Slice<float>(j, j + 1))
+          .CopyFrom<float>(*step_output, platform::CPUPlace(), ctx);
     }
   }
 }
 
 void LinkMemories(const std::vector<Scope*>& scopes,
                   const std::vector<rnn::MemoryAttr>& memories,
-                  const size_t step_id, const int offset,
-                  bool infer_shape_mode) {
+                  const size_t step_id, const int offset) {
   PADDLE_ENFORCE_LT(step_id, scopes.size(),
                     "step [%d] is out of range of step scopes' size [%d]",
                     step_id, scopes.size());
@@ -95,16 +89,13 @@ void LinkMemories(const std::vector<Scope*>& scopes,
       step_id + offset, scopes.size(),
       "offset [%d] is out of range, it must be less than (%d - %d)", offset,
       scopes.size(), step_id);
-  auto scope = scopes[step_id];
-  auto linked_scope = scopes[step_id + offset];
+  auto* scope = scopes[step_id];
+  auto* linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
-    auto mem = scope->FindVar(attr.pre_var)->GetMutable<LoDTensor>();
-    auto linked_mem = linked_scope->FindVar(attr.var)->GetMutable<LoDTensor>();
-    if (infer_shape_mode) {
-      mem->Resize(linked_mem->dims());
-    } else {
-      mem->ShareDataWith<float>(*linked_mem);
-    }
+    auto* mem = scope->FindVar(attr.pre_var)->GetMutable<LoDTensor>();
+    auto* linked_mem = linked_scope->FindVar(attr.var)->GetMutable<LoDTensor>();
+    mem->Resize(linked_mem->dims());
+    mem->ShareDataWith<float>(*linked_mem);
   }
 }
 
@@ -115,11 +106,11 @@ void InitArgument(const ArgumentName& name, Argument* arg,
   arg->inlinks = op.Inputs(name.inlinks);
   arg->outlinks = op.Outputs(name.outlinks);
 
-  auto boot_memories =
+  auto& boot_memories =
       is_grad ? op.Outputs(name.boot_memories) : op.Inputs(name.boot_memories);
   // attributes
-  auto memories = op.Attr<std::vector<std::string>>(name.memories);
-  auto pre_memories = op.Attr<std::vector<std::string>>(name.pre_memories);
+  auto& memories = op.Attr<std::vector<std::string>>(name.memories);
+  auto& pre_memories = op.Attr<std::vector<std::string>>(name.pre_memories);
 
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "the size of memories, boot_memories don't match:%d,%d",

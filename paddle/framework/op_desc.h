@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/type_defs.h"
 #include "paddle/framework/var_desc.h"
 
 namespace paddle {
@@ -26,6 +27,11 @@ class BlockDescBind;
 
 class OpDescBind {
  public:
+  OpDescBind() {}
+
+  OpDescBind(const std::string &type, const VariableNameMap &inputs,
+             const VariableNameMap &outputs, const AttributeMap &attrs);
+
   OpDesc *Proto();
 
   std::string Type() const { return op_desc_.type(); }
@@ -34,19 +40,17 @@ class OpDescBind {
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
-  std::vector<std::string> InputNames() const;
+  std::vector<std::string> InputArgumentNames() const;
 
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
 
   const std::vector<std::string> &Output(const std::string &name) const;
 
-  std::vector<std::string> OutputNames() const;
+  std::vector<std::string> OutputArgumentNames() const;
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
-
-  std::string DebugString() { return this->Proto()->DebugString(); }
 
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
@@ -60,49 +64,61 @@ class OpDescBind {
 
   void SetBlockAttr(const std::string &name, BlockDescBind &block);
 
-  // Only be used in C++
-  void SetAttrMap(const std::unordered_map<std::string, Attribute> &attr_map);
-
   Attribute GetAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
 
+  void Rename(const std::string &old_name, const std::string &new_name);
+
   // Only be used in C++
-  const std::unordered_map<std::string, Attribute> &GetAttrMap() const;
+  const AttributeMap &GetAttrMap() const;
 
- private:
-  struct SetAttrDescVisitor : public boost::static_visitor<void> {
-    explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
-    mutable OpDesc::Attr *attr_;
-    void operator()(int v) const { attr_->set_i(v); }
-    void operator()(float v) const { attr_->set_f(v); }
-    void operator()(const std::string &v) const { attr_->set_s(v); }
-    void operator()(bool b) const { attr_->set_b(b); }
+  // Only be used in C++
+  void SetAttrMap(const AttributeMap &attr_map);
 
-    void operator()(const std::vector<int> &v) const {
-      VectorToRepeated(v, attr_->mutable_ints());
-    }
-    void operator()(const std::vector<float> &v) const {
-      VectorToRepeated(v, attr_->mutable_floats());
-    }
-    void operator()(const std::vector<std::string> &v) const {
-      VectorToRepeated(v, attr_->mutable_strings());
-    }
-    void operator()(const std::vector<bool> &v) const {
-      VectorToRepeated(v, attr_->mutable_bools());
-    }
-    void operator()(BlockDesc *desc) const {
-      attr_->set_block_idx(desc->idx());
-    }
-    void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
-  };
+  std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
+  std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
+
+  void SetInputMap(const VariableNameMap &input) {
+    this->inputs_ = input;
+    this->need_update_ = true;
+  }
+
+  void SetOutputMap(const VariableNameMap &output) {
+    this->outputs_ = output;
+    this->need_update_ = true;
+  }
 
   void Sync();
 
+  const VariableNameMap &Inputs() const { return inputs_; }
+
+  const VariableNameMap &Outputs() const { return outputs_; }
+
+  AttributeMap *MutableAttrMap() {
+    this->need_update_ = true;
+    return &this->attrs_;
+  }
+
+  void CheckAttrs();
+
+  void InferShape(const BlockDescBind &block) const;
+
+ private:
+  template <typename MapType>
+  static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
+    std::vector<typename MapType::key_type> ret_val;
+    ret_val.reserve(map.size());
+    std::transform(
+        map.begin(), map.end(), std::back_inserter(ret_val),
+        [](const typename MapType::value_type &pair) { return pair.first; });
+    return ret_val;
+  }
+
   OpDesc op_desc_;
-  std::unordered_map<std::string, std::vector<std::string>> inputs_;
-  std::unordered_map<std::string, std::vector<std::string>> outputs_;
-  std::unordered_map<std::string, Attribute> attrs_;
+  VariableNameMap inputs_;
+  VariableNameMap outputs_;
+  AttributeMap attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

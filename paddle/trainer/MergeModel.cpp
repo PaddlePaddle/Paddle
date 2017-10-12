@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   initMain(argc, argv);
   initPython(argc, argv);
   string confFile = TrainerConfigHelper::getConfigNameFromPath(FLAGS_model_dir);
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   FLAGS_use_gpu = false;
 #endif
   auto config = std::make_shared<TrainerConfigHelper>(confFile);

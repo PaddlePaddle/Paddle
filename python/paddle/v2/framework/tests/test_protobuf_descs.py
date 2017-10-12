@@ -55,6 +55,12 @@ class TestOpDesc(unittest.TestCase):
         op.set_block_attr("block_attr", prog.block(0))
         self.assertEqual(0, op.get_block_attr("block_attr"))
 
+        mul_op = block.append_op()
+        mul_op.set_type("mul")
+        mul_op.check_attrs()
+        self.assertEqual(mul_op.attr("x_num_col_dims"), 1)
+        self.assertEqual(mul_op.attr("y_num_col_dims"), 1)
+
 
 class TestProgramDesc(unittest.TestCase):
     def test_instance(self):

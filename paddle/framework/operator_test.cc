@@ -113,7 +113,7 @@ class OpWithKernelTest : public OperatorWithKernel {
   using OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
   DataType IndicateDataType(const ExecutionContext& ctx) const override {
     return DataType::FP32;
   }

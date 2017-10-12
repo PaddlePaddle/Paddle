@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
@@ -34,7 +35,7 @@ static size_t UniqueIntegerGenerator() {
 }
 
 bool IsCompileGPU() {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   return false;
 #else
   return true;
@@ -78,7 +79,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
@@ -96,7 +97,7 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
             new (&instance) LoDTensor(lod);
 #else
              LoD new_lod;
@@ -107,7 +108,7 @@ PYBIND11_PLUGIN(core) {
           })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
              self.set_lod(lod);
 #else
              LoD new_lod;
@@ -117,7 +118,7 @@ PYBIND11_PLUGIN(core) {
 #endif
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
         return self.lod();
 #else
            auto lod = self.lod();
@@ -143,6 +144,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_int",
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
       .def("get_int", [](const Variable &var) -> int { return var.Get<int>(); })
+      .def("is_float", [](const Variable &var) { return var.IsType<float>(); })
+      .def("set_float",
+           [](Variable &var, float val) -> void {
+             *var.GetMutable<float>() = val;
+           })
+      .def("get_float",
+           [](const Variable &var) -> float { return var.Get<float>(); })
       .def("get_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
@@ -196,7 +204,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::GPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
                     PADDLE_THROW("GPUPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);
@@ -262,6 +270,56 @@ All parameter, weight, gradient are variables in Paddle.
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
+      });
+
+  py::class_<framework::TensorArray>(m, "TensorArray")
+      .def("__init__",
+           [](TensorArray &instance) { new (&instance) TensorArray(); })
+      .def("read",
+           [](TensorArray &self, size_t index) { return self.Read(index); })
+      .def("write", [](TensorArray &self, size_t index,
+                       LoDTensor &value) { self.Write(index, value); })
+      .def("write_shared",
+           [](TensorArray &self, size_t index, const LoDTensor &value) {
+             self.WriteShared(index, value);
+           })
+      .def("size", [](TensorArray &self) { return self.size(); })
+      .def("pack",
+           [](TensorArray &self, size_t level,
+              const std::vector<std::vector<size_t>> &meta_info,
+              const std::vector<std::vector<size_t>> &lod) {
+             std::vector<DySeqMeta> meta;
+             for (auto &info : meta_info) {
+               PADDLE_ENFORCE_EQ(info.size(), 3UL);
+               meta.emplace_back(info[0], info[1], info[2]);
+             }
+#ifndef PADDLE_WITH_CUDA
+             return self.Pack(level, meta, lod);
+#else
+             LoD new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return self.Pack(level, meta, new_lod);
+#endif
+           })
+      .def("unpack",
+           [](TensorArray &self, const LoDTensor &source, int level,
+              bool length_descend) {
+             auto metas = self.Unpack(source, level, length_descend);
+             std::vector<std::vector<size_t>> meta_info;
+             for (auto meta : metas) {
+               meta_info.emplace_back(
+                   std::vector<size_t>({meta.begin, meta.end, meta.ori_idx}));
+             }
+             return meta_info;
+           })
+      .def("stack", [](TensorArray &self) { return self.Stack(); })
+      .def("unstack",
+           [](TensorArray &self, const LoDTensor &source) {
+             return self.Unstack(source);
+           })
+      .def("unstack_shared", [](TensorArray &self, const LoDTensor &source) {
+        return self.UnstackShared(source);
       });
 
   // recurrent_op

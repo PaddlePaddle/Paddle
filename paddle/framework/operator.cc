@@ -22,14 +22,14 @@ namespace framework {
 template <>
 Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_.get_eigen_device<Eigen::DefaultDevice>();
+  return *device_context_.GetEigenDevice<platform::CPUPlace>();
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 template <>
 Eigen::GpuDevice&
 ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_.get_eigen_device<Eigen::GpuDevice>();
+  return *device_context_.GetEigenDevice<platform::GPUPlace>();
 }
 #endif
 
@@ -205,13 +205,13 @@ void OperatorBase::GenerateTemporaryNames() {
 }
 
 template <>
-const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const {
+const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
   return var == nullptr ? nullptr : GetTensorFromVar(var);
 }
 
 template <>
-const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
+const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
   auto names = op().Inputs(name);
   std::vector<const Tensor*> res;
@@ -225,13 +225,13 @@ const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
 }
 
 template <>
-Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const {
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto var = OutputVar(name);
   return var == nullptr ? nullptr : var->GetMutable<LoDTensor>();
 }
 
 template <>
-std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
   auto names = op().Outputs(name);
   std::vector<Tensor*> res;
@@ -243,6 +243,13 @@ std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
                                          : var->GetMutable<LoDTensor>();
                  });
   return res;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const OperatorWithKernel::OpKernelKey& kernel_key) {
+  os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
+     << "]";
+  return os;
 }
 
 }  // namespace framework
