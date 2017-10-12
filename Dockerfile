@@ -20,6 +20,9 @@ ENV HOME /root
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
 
+# remove linux-libc-dev=4.4.0-97.120 since it's causing "ImportError:
+#  /usr/local/lib/python2.7/dist-packages/py_paddle/_swig_paddle.so:
+#  cannot allocate memory in static TLS block"
 RUN apt-get update && \
     apt-get install -y \
     git python-pip python-dev openssh-server bison  \
@@ -30,6 +33,8 @@ RUN apt-get update && \
     liblapack-dev liblapacke-dev libboost-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools && \
+    apt-get remove linux-libc-dev -y && \
+    apt-get install linux-libc-dev=4.4.0-21.37 && \
     apt-get clean -y
 
 # Install Go and glide
