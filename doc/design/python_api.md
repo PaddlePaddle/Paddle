@@ -187,99 +187,97 @@ Layer functions take `Variable` and configuration parameters as its input and re
 
 For example, `FullyConnected` take one or more variable as its input. The input could be input data or another layer's output. There are many configuration options for a `FullyConnected` layer, such as layer size, activation, parameter names, initialization strategies of parameters, and so on. The `FullyConnected` layer will return an output variable.
 
+
+### Necessity for reusing code between layer functions
+
 There are a lot of code that can be reused. Such as
 
 * Give the default value of configuration. e.g., default initialize strategy for parameters is uniform random with `min = -1.0`, `max = 1.0`. and default initialize strategy for bias is to fill zero.
-* Append the activation operator. 
-* Create a temporary variable. 
+* Append the activation operator.
+* Create a temporary variable.
 * Create parameter.
 * Generate a unique name.
 * Add a bias.
 * ...
 
-There are three ways to reuse code in Python. They are
+A mechanism to reuse code between layer functions is necessary. It will be around [150 lines of code](https://github.com/PaddlePaddle/Paddle/pull/4724/files#diff-823b27e07e93914ada859232ae23f846R12) if we write a `FullyConnected` layer without any helper functions.
 
-1. Make several global functions.
-2. Create several decorators for layer function.
-3. Make layer classes as `functor`. The base class of layer has several member methods.
 
-Making several global functions is not appropriate since there are too many codes that can be reused and it is hard to organize and remember so many global functions. Making several decorators is not good either for the same reason.
 
-Making layer classes as `functor`, and giving a base class of all layer functor is the straightforward way for code reuse. The advantages are:
+### Comparision between global functions and helper class
 
-1. The layer developer can figure out how many common functions they can use by just typing `self.` in an IDE.
-2. It is easy to understand and develop since inheritance is a common way to reuse code.
-3. It is transparent for end-users since we can wrap a functor class to a function.
-
-### Base class of Layer
+The `FullyConnected` layer will be as follow when we provide global functions:
 
 ```python
-class Layer(object):
-    def __init__(self, **kwargs):  # accept any argument
-        self.kwargs = kwargs
-    
-    def __call__(self):
-        raise NotImplementedError("LayerBase is a ")
-    
-    def program(self):
-        # default program is the global program, `g_program`
-        return self.kwargs.get('program', g_program)
-    
-    def append_op(self, *args, **kwargs):
-        return self.program().current_block().append_op(*args, **kwargs)
-    
-    def create_tmp_variable(self):
-        return self.program().current_block().create_variable()
-    
-    def append_activation(self, input):
-        act_type = self.kwargs.get('act', None)
-        if act_type is None:
-            return input
-        
-        out = self.create_tmp_variable()
-        self.append_op(type=act_type, inputs={"X": [input]}, outputs={"Out": [out]})
-        return out
-    
-    # more common methods here
-    ... 
+def fc_layer(input, size, param_attr=None, bias_attr=None, act=None, name=None):
+  if name is None:
+    name = unique_name("fc")
+  input = multiple_input(input)
+  param_attr = default_param_attr(param_attr)
+  param_attr = multiple_param_attr(param_attr, len(input))
+
+  # mul
+  mul_results = []
+  for ipt, attr in zip(input, param_attr):
+    shape = ipt.shape[1:] + [size]
+    w = g_program.global_block().create_parameter(shape, ipt.dtype, name, attr)
+    tmp = create_tmp_var(name)
+    g_program.current_block().append_op("mul", {ipt, w}, {tmp})
+  mul_results.append(tmp)
+
+  # add sum
+  ...
+  # add bias
+  ...
+  # add activation
+  ...
+  return out
 ```
 
-`LayerBase` just stores all layer arguments and contains many common methods for layers. Other layers can inherit `LayerBase` and implement `__call__` method.
+We can provide many helpers functions for layer developers. However, there are several disadvantages for global helper functions:
 
-### Layer Classes
+1. We need a namespace for these methods, then layer developers can quickly figure out what method they can use.
+2. Global functions will force layer developers to pass its parameter time by time.
+
+So we provide a helper class, `LayerHelper`, to share code between layer functions. The `FullyConnected` Layer will be as follow.
 
 ```python
-class SomeLayer(Layer):
-    def __call__(self):
-        ...  # 
-        var_before_activation = ...
-        return self.append_activation(var_before_activation)
+def fc_layer(input, size, param_attr=None, bias_attr=None, act=None, name=None):
+  helper = LayerHelper(locals())  # pass all parameter to LayerHelper
+
+  mul_results = []
+  for ipt, param in helper.iter_multiple_input_and_param():
+    w = helper.create_parameter(shape=ipt.shape[1:] + [size], dtype = ipt.dtype)
+    tmp = helper.create_tmp_variable()
+    helper.append_op('mul', {ipt, w}, {tmp})
+    mul_results.append(tmp)
+
+  pre_bias = helper.add_sum(mul_results)
+  pre_activation = helper.add_bias(pre_bias)
+  return helper.add_activation(pre_activation)
 ```
 
-Layer developers are free to use pre-defined methods that defined in `LayerBase`. Layer developers just need to overwrite the `__call__` method.
+We not only use the fewer lines of code to write `fc_layer` but also make the code clearer to understand. At the same time, layer developers can figure out what function they can invoke by typing `helper.` in a python editor.
 
-### Export Functor Class as Function
 
-We can provide a decorator to wrap a functor class as a function. The code is as follows.
+### Implementation of layer helper
+
+We just keep all parameters of a layer function as a dictionary in layer helper as a private data member. Every method of layer helper will look up the dictionary after it is invoked. In that way, we can implement a layer helper for all layer functions even some layer does not contain some operator. For example, The `activation` is used by the FullyConnected layer or convolution layers, but a cross-entropy layer does not use it. The example code of `add_activation` are:
 
 ```python
-def export(name):
-    def __wrapper__(cls):
-        def func(*args, **kwargs):
-            instance = cls(*args, **kwargs)
-            return instance()
-        globals()[name] = func
-    return __wrapper__
-```
+class LayerHelper(object):
+  def __init__(self, **kwargs):  # kwargs is short for `keyword arguments`
+    self.kwargs = kwargs
 
-Layer developers just wrap the layer class as
+  def add_activation(self, input_var):
+    act = self.kwargs.get("act", None)  # default value is None
+    if act is None:  # do nothing if no act
+      return input_var
 
-```python
-@export("some_layer")
-class SomeLayer(LayerBase):
-    ...
+    tmp = self.create_tmp_var(self)
+    self.append_op(type=act, input=input_var, output=tmp)
+    return tmp
 ```
-And then, end users can use `some_layer(...)` as a plain function.
 
 ## Optimizer
 
