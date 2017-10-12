@@ -49,6 +49,18 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  LogSigmoidOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of LogSigmoid operator");
+    AddOutput("Y", "Output of LogSigmoid operator");
+    AddComment(
+        "Logsigmoid activation operator, logsigmoid = log (1 / (1 + exp(-x)))");
+  }
+};
+
 class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ExpOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -85,6 +97,23 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softshrink operator");
+    AddOutput("Y", "Output of Softshrink operator");
+    AddComment(
+        "Softshrink activation operator, "
+        "softshrink = x - lambda, if x > lambda;"
+        " x + lambda, if x < lambda; 0 otherwise");
+    AddAttr<AttrType>("lambda", "non-negative offset")
+        .SetDefault(static_cast<AttrType>(0.5f));
+  }
+};
+
 class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   TanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -105,6 +134,24 @@ class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of TanhShrink operator");
     AddOutput("Y", "Output of TanhShrink operator");
     AddComment("TanhShrink activation operator, tanhshrink(x) = x - tanh(x)");
+  }
+};
+
+template <typename AttrType>
+class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  HardShrinkOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of HardShrink operator");
+    AddOutput("Y", "Output of HardShrink operator");
+    AddComment(
+        "HardShrink activation operator, "
+        "hard_shrink(x) = x if x > lambda"
+        "hard_shrink(x) = x if x < -lambda"
+        "hard_shrink(x) = 0 otherwise");
+    AddAttr<AttrType>("threshold", "The value of threshold for HardShrink")
+        .SetDefault(static_cast<AttrType>(0.5));
   }
 };
 
@@ -159,6 +206,17 @@ class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftplusOpMaker(framework::OpProto *proto,
+                  framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softplus operator");
+    AddOutput("Y", "Output of Softplus operator");
+    AddComment("Softplus activation operator, softplus(x) = log(1 + exp(x))");
+  }
+};
+
 class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SoftsignOpMaker(framework::OpProto *proto,
@@ -198,6 +256,27 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
         "threshold), threshold)))");
     AddAttr<AttrType>("threshold", "The threshold value of SoftRelu")
         .SetDefault(static_cast<AttrType>(40));
+  }
+};
+
+template <typename AttrType>
+class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ELUOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X",
+             "(Tensor) The input of ELU operator, it shouldn't be empty. Input "
+             "is flattened and treated as a 1D array.");
+    AddOutput("Y",
+              "(Tensor) The output of ELU operator. It has the same shape as "
+              "the input.");
+    AddAttr<AttrType>(
+        "alpha", "(float, default 1.0) Alpha value in the elu formulation.")
+        .SetDefault(static_cast<AttrType>(1.));
+    AddComment(R"DOC(
+        ELU activation operator. It applies this element-wise computation on
+        the input: f(x) = max(0, x) + min(0, alpha * (exp(x) - 1)).
+        Check .. _Link: https://arxiv.org/abs/1511.07289 for more details.)DOC");
   }
 };
 
@@ -242,6 +321,23 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ThresholdedReluOpMaker(framework::OpProto *proto,
+                         framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of ThresholdedRelu operator");
+    AddOutput("Y", "Output of ThresholdedRelu operator");
+    AddComment(
+        "ThresholdedRelu activation operator, "
+        "thresholded_relu = x for x > threshold, "
+        "thresholded_relu = 0 otherwise.");
+    AddAttr<AttrType>("threshold", "The threshold location of activation")
+        .SetDefault(static_cast<AttrType>(1.0));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -249,6 +345,9 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(sigmoid, ops::ActivationOp, ops::SigmoidOpMaker, sigmoid_grad,
             ops::ActivationOpGrad);
+
+REGISTER_OP(logsigmoid, ops::ActivationOp, ops::LogSigmoidOpMaker,
+            logsigmoid_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
             ops::ActivationOpGrad);
@@ -261,6 +360,9 @@ REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
 
 REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
             tanh_shrink_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(softshrink, ops::ActivationOp, ops::SoftShrinkOpMaker<float>,
+            softshrink_grad, ops::ActivationOpGrad);
 
 REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
@@ -277,6 +379,9 @@ REGISTER_OP(log, ops::ActivationOp, ops::LogOpMaker, log_grad,
 REGISTER_OP(square, ops::ActivationOp, ops::SquareOpMaker, square_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(softplus, ops::ActivationOp, ops::SoftplusOpMaker, softplus_grad,
+            ops::ActivationOpGrad);
+
 REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
             ops::ActivationOpGrad);
 
@@ -289,6 +394,9 @@ REGISTER_OP(leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker<float>,
 REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker<float>,
             soft_relu_grad, ops::ActivationOpGrad);
 
+REGISTER_OP(elu, ops::ActivationOp, ops::ELUOpMaker<float>, elu_grad,
+            ops::ActivationOpGrad);
+
 REGISTER_OP(relu6, ops::ActivationOp, ops::Relu6OpMaker<float>, relu6_grad,
             ops::ActivationOpGrad);
 
@@ -296,6 +404,13 @@ REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(hard_shrink, ops::ActivationOp, ops::HardShrinkOpMaker<float>,
+            hard_shrink_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(thresholded_relu, ops::ActivationOp,
+            ops::ThresholdedReluOpMaker<float>, thresholded_relu_grad,
             ops::ActivationOpGrad);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \

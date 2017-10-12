@@ -89,7 +89,7 @@ void Copy<platform::GPUPlace, platform::GPUPlace>(platform::GPUPlace dst_place,
   platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToDevice);
 }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace memory
 }  // namespace paddle

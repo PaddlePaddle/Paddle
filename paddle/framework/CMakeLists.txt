@@ -19,7 +19,7 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto proto_desc)
@@ -41,6 +41,13 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
 
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
+
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward ${GLOB_OP_LIB})
+#if(WITH_GPU)
+#    nv_test(executor_test SRCS executor_test.cc DEPS executor)
+#else()
+#    cc_test(executor_test SRCS executor_test.cc DEPS executor)
+#endif()
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
 cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
