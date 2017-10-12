@@ -49,6 +49,8 @@ const TensorDesc &VarDescBind::tensor_desc() const {
       return desc_.selected_rows();
     case VarDesc::LOD_TENSOR:
       return desc_.lod_tensor().tensor();
+    default:
+      PADDLE_THROW("Unexpected branch.");
   }
 }
 
@@ -60,6 +62,8 @@ TensorDesc *VarDescBind::mutable_tensor_desc() {
       return desc_.mutable_selected_rows();
     case VarDesc::LOD_TENSOR:
       return desc_.mutable_lod_tensor()->mutable_tensor();
+    default:
+      PADDLE_THROW("Unexpected branch.");
   }
 }
 }  // namespace framework
