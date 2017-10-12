@@ -168,10 +168,11 @@ inline void Tensor::CopyFromVector(const std::vector<T>& src,
 template <typename T>
 inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   check_memory_size<T>();
-  PADDLE_ENFORCE_GE(begin_idx, 0, "Slice begin index is less than zero.");
-  PADDLE_ENFORCE_LE(end_idx, dims_[0], "Slice end index is out of bound.");
+  PADDLE_ENFORCE_GE(begin_idx, 0,
+                    "The start row index must be greater than 0.");
+  PADDLE_ENFORCE_LE(end_idx, dims_[0], "The end row index is out of bound.");
   PADDLE_ENFORCE_LT(begin_idx, end_idx,
-                    "Begin index must be less than end index.");
+                    "The start row index must be less than the end row index.");
 
   if (dims_[0] == 1) {
     return *this;

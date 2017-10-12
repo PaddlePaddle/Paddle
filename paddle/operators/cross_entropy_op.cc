@@ -49,7 +49,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Y");
   }
 
-  // Explicitly set data type of output of the cross_entropy operator
+  // Explicitly set that data type of the output of the cross_entropy operator
   // is determined by its input "X".
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {

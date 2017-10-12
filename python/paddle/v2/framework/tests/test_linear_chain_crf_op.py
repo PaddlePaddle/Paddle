@@ -61,13 +61,13 @@ class LinearChainCrfForward(object):
             s += alpha[-1, i] * self.b_exps[i]
         log_likelihood -= np.log(s)
 
-        # calculate the noninator part.
+        # calculate the nominator part.
         log_likelihood += (
             self.a[label[0]] + self.x[0, label[0]] + self.b[label[-1]])
         for k in range(1, seq_len):
             log_likelihood += (
                 self.x[k, label[k]] + self.w[label[k - 1], label[k]])
-        return log_likelihood
+        return -log_likelihood
 
     def crf_forward_compute(self):
         for i in range(self.seq_num):
@@ -102,7 +102,7 @@ class TestLinearChainCrfOp(OpTest):
         self.inputs = {
             "Emission": (emission, lod),
             "Transition": transition,
-            "label": (labels, lod)
+            "Label": (labels, lod)
         }
 
         crf = LinearChainCrfForward(lod[0], emission, transition, labels)
