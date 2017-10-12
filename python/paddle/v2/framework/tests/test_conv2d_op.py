@@ -77,8 +77,8 @@ class TestConv2dOp(OpTest):
             no_grad_set=set(['Input']))
 
     def init_test_case(self):
-        self.groups = 1
-        self.op_type = "conv2d"
+        # self.groups = 1
+        # self.op_type = "conv2d"
         self.pad = [0, 0]
         self.stride = [1, 1]
         self.dilations = [1, 1]
