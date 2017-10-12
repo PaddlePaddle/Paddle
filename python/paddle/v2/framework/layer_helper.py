@@ -28,9 +28,8 @@ class LayerHelper(object):
     def append_op(self, *args, **kwargs):
         return self.program.current_block().append_op(*args, **kwargs)
 
-    @property
-    def multiple_input(self):
-        inputs = self.kwargs.get('input', [])
+    def multiple_input(self, input_param_name='input'):
+        inputs = self.kwargs.get(input_param_name, [])
         type_error = TypeError(
             "Input of {0} layer should be Variable or sequence of Variable".
             format(self.layer_type))
@@ -44,9 +43,8 @@ class LayerHelper(object):
                     raise type_error
         return inputs
 
-    @property
-    def input(self):
-        inputs = self.multiple_input
+    def input(self, input_param_name='input'):
+        inputs = self.multiple_input(input_param_name)
         if len(inputs) != 1:
             raise "{0} layer only takes one input".format(self.layer_type)
         return inputs[0]
@@ -90,15 +88,14 @@ class LayerHelper(object):
 
         return param_attr
 
-    def iter_inputs_and_params(self):
-        inputs = self.multiple_input
+    def iter_inputs_and_params(self, input_param_name='input'):
+        inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
         for ipt, param_attr in itertools.izip(inputs, param_attrs):
             yield ipt, param_attr
 
-    @property
-    def input_dtype(self):
-        inputs = self.multiple_input
+    def input_dtype(self, input_param_name='input'):
+        inputs = self.multiple_input(input_param_name)
         dtype = None
         for each in inputs:
             if dtype is None:
