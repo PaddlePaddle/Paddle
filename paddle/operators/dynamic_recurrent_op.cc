@@ -29,7 +29,7 @@ namespace detail {
 inline void CreateVariables(Scope& scope,
                             const std::vector<std::string>& var_names) {
   for (const auto& name : var_names) {
-    scope.GetOrCreateVar(name);
+    scope.Var(name);
   }
 }
 
@@ -112,7 +112,7 @@ void DynamicRecurrentOp::WriteStepInputs() const {
       auto& step_scope = cache_.GetScope(step);
       Variable* var = step_scope.FindVar(item.first);
       if (var == nullptr) {
-        var = step_scope.GetOrCreateVar(item.first);
+        var = step_scope.Var(item.first);
       }
       var->GetMutable<LoDTensor>()->ShareDataWith<value_type>(tensor);
     }
@@ -125,7 +125,7 @@ void DynamicRecurrentOp::WriteStepOutputs() const {
     for (auto& item : step_outputs_) {
       auto* var = scope.FindVar(item.first);
       if (var == nullptr) {
-        var = scope.GetOrCreateVar(item.first);
+        var = scope.Var(item.first);
       }
       auto* tensor = var->GetMutable<LoDTensor>();
       item.second.WriteShared(step, *tensor);

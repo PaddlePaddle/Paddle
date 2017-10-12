@@ -134,7 +134,7 @@ void CondOp::PrepareDataForSubnet(
   for (int i = 0; i < BRANCH_NUM; ++i) {
     for (auto& output : (*sub_net_op_[i]).Outputs()) {
       for (auto& var_name : output.second) {
-        sub_scopes[i]->GetOrCreateVar(var_name);
+        sub_scopes[i]->Var(var_name);
       }
     }
   }

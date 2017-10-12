@@ -163,9 +163,9 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   py::class_<Scope>(m, "Scope", "")
-      .def("get_or_create",
+      .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
-             return self.GetOrCreateVar(name);
+             return self.Var(name);
            },
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)

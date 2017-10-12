@@ -93,7 +93,7 @@ class TestVarDesc(unittest.TestCase):
     def test_shape(self):
         program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
-        var = block.get_or_create('my_var')
+        var = block.var('my_var')
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
         res_shape = var.shape()
@@ -102,7 +102,7 @@ class TestVarDesc(unittest.TestCase):
     def test_data_type(self):
         program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
-        var = block.get_or_create('my_var')
+        var = block.var('my_var')
         var.set_data_type(core.DataType.INT32)
         self.assertEqual(core.DataType.INT32, var.data_type())
 
@@ -113,9 +113,9 @@ class TestBlockDesc(unittest.TestCase):
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
-        var1 = block.get_or_create("var1")
-        var2 = block.get_or_create("var2")
-        var3 = block.get_or_create("var3")
+        var1 = block.var("var1")
+        var2 = block.var("var2")
+        var3 = block.var("var3")
         all_vars = block.all_vars()
         self.assertEqual(set(all_vars), set([var1, var2, var3]))
         var2_re = block.var("var2")

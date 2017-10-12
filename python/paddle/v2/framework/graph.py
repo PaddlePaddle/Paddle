@@ -22,7 +22,7 @@ class Variable(object):
             self.desc = self.block.desc.var(name)
             is_new_var = False
         except core.EnforceNotMet:
-            self.desc = self.block.desc.get_or_create(name)
+            self.desc = self.block.desc.var(name)
             is_new_var = True
 
         if shape is not None:

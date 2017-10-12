@@ -36,7 +36,7 @@ void OpDescNewVar(const std::string& param_name,
 // create a LoD tensor in scope with specific dims
 LoDTensor* CreateVar(Scope& scope, std::string name, framework::DDim dims,
                      const platform::Place& place) {
-  auto* var = scope.GetOrCreateVar(name);
+  auto* var = scope.Var(name);
   auto* tensor = var->GetMutable<LoDTensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(place);
@@ -85,7 +85,7 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
 
   void CreateGlobalVariables() {
     platform::CPUPlace place;
-    scope.GetOrCreateVar("step_scopes");
+    scope.Var("step_scopes");
     CreateVar(scope, "boot_mem", framework::make_ddim({10, 20}), place);
     // auto* out0 =
     CreateVar(scope, "out0", framework::make_ddim({10, 20}), place);
