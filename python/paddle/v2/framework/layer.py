@@ -56,9 +56,14 @@ def fc_layer(input,
     if isinstance(param_attr, dict):
         param_attr = [param_attr]
 
+    param_type_error = TypeError(
+        "param attribute of fc should be a dict, or a sequence of dict")
     if not isinstance(param_attr, list) and not isinstance(param_attr, tuple):
-        raise TypeError(
-            "param attribute of fc should be a dict, or a sequence of dict")
+        raise param_type_error
+    else:
+        for each in param_attr:
+            if not isinstance(each, dict):
+                raise param_type_error
 
     if len(param_attr) == 1 and len(input) > 1:
         tmp = [None] * len(input)
@@ -101,7 +106,9 @@ def fc_layer(input,
             type="sum", inputs={"X": mul_results}, outputs={"Out": tmp})
         pre_bias = tmp
 
-    if bias_attr is None:
+    if isinstance(bias_attr, dict):
+        pass
+    elif bias_attr is None or bias_attr:
         bias_attr = {
             'name': None,
             'init_attr': {
