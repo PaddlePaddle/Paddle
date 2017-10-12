@@ -23,12 +23,18 @@ class BlockExpandOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("block"),
-                   "Input(block) of BlockExpandOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("padding"),
-                   "Input(padding) of BlockExpandOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("stride"),
-                   "Input(stride) of BlockExpandOp should not be null.");
+    using namespace framework;
+    PADDLE_ENFORCE(ctx->HasInput("input"),
+                   "Input of BlockExpandOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of BlockExpandOp op should not be null.");
+
+    auto in_dim = ctx->GetInputDim("input");
+    PADDLE_ENFORCE_EQ(in_dim.size(), 4, "Input format  must be NCHW.");
+    PADDLE_ENFORCE_GE(in_dim[0], 1, "Input batchsize must >= 1.");
+
+    ctx->ShareLoD("X", /*->*/ "Out");
+
     // ctx->SetOutputDim("Out", {1});
   }
 };
@@ -38,8 +44,26 @@ class BlockExpandOpMaker : public framework::OpProtoAndCheckerMaker {
   BlockExpandOpMaker(framework::OpProto* proto,
                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("block", "The input of block_expand op");
-    AddOutput("stride", "The output of block_expand op");
+    AddInput("input", "The input of block_expand op");
+    AddOutput("out", "The output of block_expand op");
+    AddAttr<int>("block_height",
+                 R"DOC(
+        )DOC");
+    AddAttr<int>("block_width",
+                 R"DOC(
+        )DOC");
+    AddAttr<int>("stride_height",
+                 R"DOC(
+        )DOC");
+    AddAttr<int>("stride_width",
+                 R"DOC(
+        )DOC");
+    AddAttr<int>("padding_height",
+                 R"DOC(
+        )DOC");
+    AddAttr<int>("padding_width",
+                 R"DOC(
+        )DOC");
     AddComment(R"DOC(
 Expand feature map to minibatch matrix.
 - matrix width is: blockH_ * blockW_ * channels_

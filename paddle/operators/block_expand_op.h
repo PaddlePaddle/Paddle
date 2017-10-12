@@ -25,34 +25,34 @@ namespace operators {
 template <typename Place, typename T>
 class BlockExpandKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     using namespace framework;
-    const Tensor* input = context.Input<Tensor>("input");
-    const Tensor* filter = context.Input<Tensor>("filter");
-    const Tensor* stride = context.Input<Tensor>("stride");
-    const Tensor* padding = context.Input<Tensor>("padding");
-    Tensor* out = context.Output<Tensor>("Out");
+    const Tensor* in = ctx.Input<Tensor>("input");
+    Tensor* out = ctx.Output<Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
-    auto input_dim = input->dims();
-    size_t N = input_dim[0];
-    size_t C = input_dim[1];
-    PADDLE_ENFORCE_GE(N, 1, "Input batchsize must >= 1.");
-    PADDLE_ENFORCE_EQ(input_dim.size(), 4, "Input format  must be NCHW.");
+    auto in_dim = in->dims();
+    int N = in_dim[0];
+    int C = in_dim[1];
 
-    size_t input_height = input_dim[2];
-    size_t input_height = input_dim[3];
+    int in_height = in_dim[2];
+    int in_width = in_dim[3];
 
-    size_t filter_height = filter[0];
-    size_t filter_width = filter[1];
+    int block_height = ctx.Attr<int>("block_height");
+    int block_width = ctx.Attr<int>("block_width");
+    int stride_height = ctx.Attr<int>("stride_height");
+    int stride_width = ctx.Attr<int>("stride_width");
+    int padding_height = ctx.Attr<int>("padding_height");
+    int padding_width = ctx.Attr<int>("padding_width");
 
-    size_t output_height = 1 +
-                           (input_height + 2 * padding_height - block_height() +
-                            stride_height - 1) /
-                               stride_height;
-
-    size_t output_width =
+    int output_height =
         1 +
-        (input_width + 2 * padding_width - block_width() + stride_width - 1) /
+        (in_height + 2 * padding_height - block_height + stride_height - 1) /
+            stride_height;
+
+    int output_width =
+        1 +
+        (in_width + 2 * padding_width - block_width + stride_width - 1) /
             stride_width;
 
     Tensor col;
