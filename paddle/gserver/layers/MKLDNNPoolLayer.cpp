@@ -142,14 +142,16 @@ void MKLDNNPoolLayer::resetOutValue(MKLDNNMatrixPtr& out) {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
     cpuOutVal_ = MKLDNNMatrix::create(cpuOut, outDims, format::nchw, engine_);
     if (cpuOutVal_->getPrimitiveDesc() != out->getPrimitiveDesc()) {
+      out = MKLDNNMatrix::create(nullptr, out->getPrimitiveDesc());
       cvtOutVal_ = MKLDNNMatrix::createReorder(out, cpuOutVal_);
       CHECK(cvtOutVal_) << "should not be emptry";
     } else {
-      // CPU output share the same data of MKLDNN output
-      cpuOut->setData(out->getData());
       cpuOutVal_ = out;
     }
+    output_.value = std::dynamic_pointer_cast<Matrix>(cpuOutVal_);
+    return;
   }
+  output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
 }
 
 void MKLDNNPoolLayer::resetFwdPD(std::shared_ptr<pool_fwd::primitive_desc>& pd,

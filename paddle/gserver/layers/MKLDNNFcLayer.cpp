@@ -180,10 +180,10 @@ void MKLDNNFcLayer::resetWgtBiasValue(MKLDNNMatrixPtr& wgt,
 void MKLDNNFcLayer::resetOutValue(MKLDNNMatrixPtr& out) {
   out = MKLDNNMatrix::create(output_.value, {bs_, oc_}, format::nc, engine_);
   if (!outputIsOnlyMKLDNN()) {
-    // fc cpu output value do not need create convert
-    // just share point
+    // fc cpu output value do not need create convert, just share data
     getOutput(CPU_DEVICE).value->setData(out->getData());
   }
+  output_.value = std::dynamic_pointer_cast<Matrix>(out);
 }
 
 void MKLDNNFcLayer::resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,

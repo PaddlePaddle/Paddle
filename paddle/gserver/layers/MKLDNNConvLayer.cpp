@@ -243,7 +243,7 @@ void MKLDNNConvLayer::resetFwdPipeline(
 
 void MKLDNNConvLayer::resetInValue(
     std::shared_ptr<conv_fwd::primitive_desc>& pd, MKLDNNMatrixPtr& in) {
-  const MatrixPtr& inMat = inputLayers_[0]->getOutput().value;
+  const MatrixPtr& inMat = inputLayers_[0]->getOutputValue();
   in = MKLDNNMatrix::create(inMat, pd->src_primitive_desc());
 
   // create buffer and reorder if input value do not match
@@ -308,15 +308,20 @@ void MKLDNNConvLayer::resetOutValue(
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
     memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
     cpuOutVal_ = MKLDNNMatrix::create(cpuOut, outDims, format::nchw, engine_);
-    if (cpuOutVal_->getPrimitiveDesc() != out->getPrimitiveDesc()) {
+    if (cpuOutVal_->getPrimitiveDesc() != pd->dst_primitive_desc()) {
+      out = MKLDNNMatrix::create(nullptr, pd->dst_primitive_desc());
       cvtOutVal_ = MKLDNNMatrix::createReorder(out, cpuOutVal_);
-      CHECK(cvtOutVal_) << "should not be emptry";
+      CHECK(cvtOutVal_) << "should not be empty";
     } else {
-      // CPU output share the same data of MKLDNN output
-      cpuOut->setData(out->getData());
       cpuOutVal_ = out;
     }
+    // when output is cpu device, change the mkldnn output value and make they
+    // share the same data. Then if next layer use inputlayer->getOuputValue()
+    // to achieve the input value, it will get the right data.
+    output_.value = std::dynamic_pointer_cast<Matrix>(cpuOutVal_);
+    return;
   }
+  output_.value = std::dynamic_pointer_cast<Matrix>(out);
 }
 
 void MKLDNNConvLayer::resetBwdWgtPD(
