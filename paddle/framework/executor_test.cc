@@ -25,6 +25,16 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 
+USE_OP(elementwise_add);
+USE_OP(gaussian_random);
+USE_OP(feed);
+USE_OP(fetch);
+USE_OP(mul);
+USE_OP(sum);
+USE_OP(squared_l2_distance);
+USE_OP(fill_constant);
+USE_OP(sgd);
+
 using namespace paddle::platform;
 using namespace paddle::framework;
 
@@ -49,6 +59,7 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
     op->SetOutput(kv.first, kv.second);
   }
   op->SetAttrMap(attrs);
+  op->CheckAttrs();
 }
 
 // Tensors in feed value variable will only be in CPUPlace
