@@ -76,13 +76,6 @@ void Prune(const ProgramDesc& input, ProgramDesc* output, int id) {
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
     if (op_desc.is_traget() || HasDependentVar(op_desc, dependent_vars)) {
-      // erase its output to the dependency graph
-      for (auto& var : op_desc.outputs()) {
-        for (auto& argu : var.arguments()) {
-          dependent_vars.erase(argu);
-        }
-      }
-
       // insert its input to the dependency graph
       for (auto& var : op_desc.inputs()) {
         for (auto& argu : var.arguments()) {
