@@ -42,11 +42,13 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward ${GLOB_OP_LIB})
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward)
+set(EXECUTOR_TEST_OP elementwise_add_op gaussian_random_op feed_op fetch_op
+    mul_op sum_op squared_l2_distance_op fill_constant_op sgd_op)
 if(WITH_GPU)
-    nv_test(executor_test SRCS executor_test.cc DEPS executor)
+    nv_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
 else()
-    cc_test(executor_test SRCS executor_test.cc DEPS executor)
+    cc_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
 endif()
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
