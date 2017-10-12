@@ -87,13 +87,31 @@ class Tensor {
   /**
    * @brief   Copy the content of external tensor to a new place.
    *
-   * @param[in] src   The external tensor.
-   * @param[in] ctx   The device context contains place where to store.
+   * @param[in] src        The external tensor.
+   * @param[in] dst_place  The dst place.
+   * @param[in] ctx        The device context contains device resources.
    *
    * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
    */
+  // TODO(qijun): https://github.com/PaddlePaddle/Paddle/issues/4647
+  // Remove `CopyFrom` and `CopyFromVector` from Tensor interface
+  // and make them global functions
   template <typename T>
-  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                       const platform::DeviceContext& ctx);
+
+  /**
+   * @brief   Copy the content of an external vector to a tensor.
+   *
+   * @param[in] src        The external tensor.
+   * @param[in] ctx        The device context contains device resources.
+   *
+   * * @note    CopyFromVector assumes that the tensor has been resized
+   *            before invoking.
+   */
+  template <typename T>
+  inline void CopyFromVector(const std::vector<T>& src,
+                             const platform::DeviceContext& ctx);
 
   /**
    * @brief   Return the slice of the tensor.

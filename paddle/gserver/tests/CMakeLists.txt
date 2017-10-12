@@ -1,15 +1,17 @@
 # gserver pacakge unittests
 
+if(NOT MOBILE_INFERENCE)
 ################### test_ProtoDataProvider ############
-add_unittest_without_exec(test_ProtoDataProvider
-    test_ProtoDataProvider.cpp)
+    add_unittest_without_exec(test_ProtoDataProvider
+        test_ProtoDataProvider.cpp)
 
-# test_ProtoDataProvider will mkdir as same name,
-# so if WORKING_DIRECTORY is default directory, then
-# mkdir will get error.
-add_test(NAME test_ProtoDataProvider
-    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
+    # test_ProtoDataProvider will mkdir as same name,
+    # so if WORKING_DIRECTORY is default directory, then
+    # mkdir will get error.
+    add_test(NAME test_ProtoDataProvider
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
+endif()
 
 ################# test_LayerGrad #######################
 add_unittest_without_exec(test_LayerGrad
@@ -98,9 +100,11 @@ add_unittest_without_exec(test_KmaxSeqScore
 add_test(NAME test_KmaxSeqScore
     COMMAND test_KmaxSeqScore)
 
+if(NOT MOBILE_INFERENCE)
 ################## test_Evaluator #######################
-add_unittest(test_Evaluator
-    test_Evaluator.cpp)
+    add_unittest(test_Evaluator
+        test_Evaluator.cpp)
+endif()
 
 ################ test_LinearChainCRF ####################
 add_simple_unittest(test_LinearChainCRF)
@@ -131,27 +135,31 @@ if(NOT WITH_DOUBLE)
         WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 endif()
 
+if(NOT MOBILE_INFERENCE)
 ############### test_RecurrentGradientMachine ###############
-# TODO(yuyang18): There is some bug in test_RecurrentGradientMachine
-# I will fix it.
-add_unittest_without_exec(test_RecurrentGradientMachine
-    test_RecurrentGradientMachine.cpp)
-add_test(NAME test_RecurrentGradientMachine
-    COMMAND .set_python_path.sh -d
-            ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
-            ${CMAKE_CURRENT_BINARY_DIR}/test_RecurrentGradientMachine
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
+  # TODO(yuyang18): There is some bug in test_RecurrentGradientMachine
+  # I will fix it.
+  add_unittest_without_exec(test_RecurrentGradientMachine
+      test_RecurrentGradientMachine.cpp)
+  add_test(NAME test_RecurrentGradientMachine
+      COMMAND .set_python_path.sh -d
+              ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
+              ${CMAKE_CURRENT_BINARY_DIR}/test_RecurrentGradientMachine
+      WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
+endif()
 
-add_unittest_without_exec(test_NetworkCompare
-    test_NetworkCompare.cpp)
-if(WITH_GPU)
-    add_test(NAME test_NetworkCompare
-        COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=true
-        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
-else()
-    add_test(NAME test_NetworkCompare
-        COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=false
-        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
+if(NOT MOBILE_INFERENCE)
+    add_unittest_without_exec(test_NetworkCompare
+        test_NetworkCompare.cpp)
+    if(WITH_GPU)
+        add_test(NAME test_NetworkCompare
+            COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=true
+            WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
+    else()
+        add_test(NAME test_NetworkCompare
+            COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=false
+            WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
+    endif()
 endif()
 
 

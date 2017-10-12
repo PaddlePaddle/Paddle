@@ -57,7 +57,6 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 class OperatorBase;
-class InferShapeContext;
 class ExecutionContext;
 
 extern const Tensor* GetTensorFromVar(const Variable* var);
@@ -143,9 +142,9 @@ class OperatorBase {
 // Macro for define a clone method.
 // If you are writing an kernel operator, `Clone` will be defined when you
 // register it. i.e. `Clone` method is not needed to define by yourself.
-#define DEFINE_OP_CLONE_METHOD(cls)                       \
-  std::unique_ptr<OperatorBase> Clone() const final {     \
-    return std::unique_ptr<OperatorBase>(new cls(*this)); \
+#define DEFINE_OP_CLONE_METHOD(cls)                                            \
+  std::unique_ptr<::paddle::framework::OperatorBase> Clone() const final {     \
+    return std::unique_ptr<::paddle::framework::OperatorBase>(new cls(*this)); \
   }
 
 // Macro for define a default constructor for Operator.
@@ -169,10 +168,11 @@ class NOP : public OperatorBase {
   }
 };
 
-class InferShapeContext {
+class ExecutionContext {
  public:
-  InferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
+  ExecutionContext(const OperatorBase& op, const Scope& scope,
+                   const platform::DeviceContext& device_context)
+      : op_(op), scope_(scope), device_context_(device_context) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -278,31 +278,6 @@ class InferShapeContext {
     out_tensor->set_lod(in_tensor.lod());
   }
 
- private:
-  const OperatorBase& op_;
-  const Scope& scope_;
-};
-
-template <>
-const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const;
-
-template <>
-const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
-    const std::string& name) const;
-
-template <>
-Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const;
-
-template <>
-std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
-    const std::string& name) const;
-
-class ExecutionContext : public InferShapeContext {
- public:
-  ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext& device_context)
-      : InferShapeContext(op, scope), device_context_(device_context) {}
-
   template <typename PlaceType,
             typename DeviceType = typename platform::EigenDeviceConverter<
                 PlaceType>::EigenDeviceType>
@@ -315,10 +290,26 @@ class ExecutionContext : public InferShapeContext {
   }
 
  private:
+  const OperatorBase& op_;
+  const Scope& scope_;
   const platform::DeviceContext& device_context_;
 };
 
-class CompileTimeInferShapeContext : public InferShapeContextBase {
+template <>
+const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+    const std::string& name) const;
+
+class CompileTimeInferShapeContext : public InferShapeContext {
  public:
   CompileTimeInferShapeContext(const OpDescBind& op, const BlockDescBind& block)
       : op_(op), block_(block) {}
@@ -414,7 +405,7 @@ class CompileTimeInferShapeContext : public InferShapeContextBase {
   const BlockDescBind& block_;
 };
 
-class RuntimeInferShapeContext : public InferShapeContextBase {
+class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
@@ -612,7 +603,7 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
 
-  virtual void InferShape(InferShapeContextBase* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const = 0;
 
  protected:
   // indicate kernel DataType by input data. Defaultly all input data must be

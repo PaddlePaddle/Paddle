@@ -52,8 +52,6 @@ class OpDescBind {
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
 
-  std::string DebugString() { return this->Proto()->DebugString(); }
-
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
   }
@@ -96,6 +94,15 @@ class OpDescBind {
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
+
+  AttributeMap *MutableAttrMap() {
+    this->need_update_ = true;
+    return &this->attrs_;
+  }
+
+  void CheckAttrs();
+
+  void InferShape(const BlockDescBind &block) const;
 
  private:
   template <typename MapType>
