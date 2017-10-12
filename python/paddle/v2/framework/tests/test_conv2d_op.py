@@ -36,7 +36,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 class TestConv2dOp(OpTest):
     def setUp(self):
         self.init_groups()
-        self.op_type = "conv2d"
+        self.init_optype()
         pad = [0, 0]
         stride = [1, 1]
         input_size = [2, 3, 5, 5]  # NCHW
@@ -45,14 +45,18 @@ class TestConv2dOp(OpTest):
         filter_size = [6, f_c, 3, 3]
 
         conv2d_param = {'stride': stride, 'pad': pad}
-
         input = np.random.random(input_size).astype("float32")
         filter = np.random.random(filter_size).astype("float32")
 
         output = conv2d_forward_naive(input, filter, self.groups, conv2d_param)
 
         self.inputs = {'Input': input, 'Filter': filter}
-        self.attrs = {'strides': stride, 'paddings': pad, 'groups': self.groups}
+        self.attrs = {
+            'strides': stride,
+            'paddings': pad,
+            'groups': self.groups,
+            'dilations': [1, 1]
+        }
         self.outputs = {'Output': output}
 
     def test_check_output(self):
@@ -79,8 +83,24 @@ class TestConv2dOp(OpTest):
     def init_groups(self):
         self.groups = 1
 
+    def init_optype(self):
+        self.op_type = "conv2d"
+
 
 class TestWithGroup(TestConv2dOp):
+    def init_groups(self):
+        self.groups = 3
+
+
+class TestCudnn2d(TestConv2dOp):
+    def init_optype(self):
+        self.op_type = "conv_cudnn"
+
+
+class TestCudnn2dWithGroup(TestConv2dOp):
+    def init_optype(self):
+        self.op_type = "conv_cudnn"
+
     def init_groups(self):
         self.groups = 3
 
