@@ -22,7 +22,7 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
                    "Input(Param) of DecayedAdagradOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
