@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/operators/sum_op.h"
 #include <vector>
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
@@ -21,51 +22,60 @@ class SumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(!ctx.MultiInputVar("X").empty(),
-                   "Input(X) of SumOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of SumOp should not be null.");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
+    auto x_dims = ctx->GetInputsDim("X");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of SumOp should not be null.");
 
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
-    int N = ins.size();
-
-    auto in_dim = ins[0]->dims();
-
+    size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
-    for (int i = 1; i < N; i++) {
-      auto dim = ins[i]->dims();
+
+    auto in_dim = x_dims[0];
+    for (size_t i = 1; i < N; i++) {
+      auto dim = x_dims[i];
       PADDLE_ENFORCE(in_dim == dim, "Input tensors must have same shape");
     }
-    out->Resize(in_dim);
+    ctx->SetOutputDim("Out", in_dim);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input tensors of sum operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of sum operator.");
     AddComment(R"DOC(
-            Sum the input tensors.
-        )DOC");
+Sum the input tensors.
+
+All the inputs can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD with the first input.
+)DOC");
   }
 };
 
-class SumGradOp : public framework::OperatorWithKernel {
+class SumGradMaker : public framework::GradOpDescMakerBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    auto outputs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
-    auto dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    for (auto output : outputs) {
-      output->Resize(dims);
-    }
+  std::vector<std::unique_ptr<framework::OpDescBind>> operator()()
+      const override {
+    auto x_grads = InputGrad("X");
+    std::vector<std::unique_ptr<framework::OpDescBind>> grad_ops;
+    grad_ops.reserve(x_grads.size());
+    auto og = OutputGrad("Out");
+    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
+                   [&og](const std::string& x_grad) {
+                     auto* grad_op = new framework::OpDescBind();
+                     grad_op->SetType("scale");
+                     grad_op->SetInput("X", og);
+                     grad_op->SetOutput("Out", {x_grad});
+                     grad_op->SetAttr("scale", 1.0f);
+                     return std::unique_ptr<framework::OpDescBind>(grad_op);
+                   });
+    return grad_ops;
   }
 };
 
@@ -73,7 +83,6 @@ class SumGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sum, ops::SumOp, ops::SumOpMaker, sum_grad, ops::SumGradOp);
+
+REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker);
 REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(sum_grad,
-                       ops::SumGradKernel<paddle::platform::CPUPlace, float>);

@@ -22,23 +22,23 @@ class SoftmaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of SoftmaxOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Y"),
-                            "Output(Y) of SoftmaxOp should not be null.");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of SoftmaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Y"),
+                   "Output(Y) of SoftmaxOp should not be null.");
 
-    PADDLE_ENFORCE(ctx.Input<Tensor>("X")->dims().size() == 2UL,
+    auto x_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE(x_dims.size() == 2UL,
                    "The input of softmax op must be a matrix.");
-    ctx.Output<framework::LoDTensor>("Y")->Resize(
-        ctx.Input<Tensor>("X")->dims());
+    ctx->SetOutputDim("Y", x_dims);
   }
 };
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  SoftmaxOpMaker(framework::OpProto* proto,
+                 framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input tensor of softmax. "
@@ -69,16 +69,15 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("Y"), "Input(Y) should be not null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Y")),
-                            "Input(Y@GRAD) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Y")->dims(),
-                      ctx.Input<Tensor>(framework::GradVarName("Y"))->dims(),
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input(Y@GRAD) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Y"),
+                      ctx->GetInputDim(framework::GradVarName("Y")),
                       "Input(Y) and its gradients should have a same shape.");
 
-    ctx.Output<framework::LoDTensor>(framework::GradVarName("X"))
-        ->Resize(ctx.Input<Tensor>("X")->dims());
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 

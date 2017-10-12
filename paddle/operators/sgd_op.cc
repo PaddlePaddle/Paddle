@@ -22,19 +22,23 @@ class SGDOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("param"),
-                            "Input(param) of SGDOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("grad"),
-                            "Input(grad) of SGDOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("param_out"),
-                            "Output(param_out) of SGDOp should not be null.");
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(Param) of SGDOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(Grad) of SGDOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of SGDOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of SGDOp should not be null.");
 
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("param")->dims(),
-                      ctx.Input<Tensor>("grad")->dims(),
+    auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "Learning rate should have 1 element");
+    auto param_dim = ctx->GetInputDim("Param");
+    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
                       "Two input of SGD Op's dimension must be same.");
-    ctx.Output<framework::LoDTensor>("param_out")
-        ->Resize(ctx.Input<Tensor>("param")->dims());
+    ctx->SetOutputDim("ParamOut", param_dim);
   }
 };
 
@@ -42,10 +46,10 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("param", "input parameter");
-    AddInput("grad", "input gradient");
-    AddOutput("param_out", "output parameter");
-    AddAttr<float>("learning_rate", "learning rate of sgd");
+    AddInput("Param", "Input parameter");
+    AddInput("LearningRate", "Learning rate of SGD");
+    AddInput("Grad", "Input gradient");
+    AddOutput("ParamOut", "output parameter");
     AddComment(R"DOC(
 
 Simplest sgd algorithm.

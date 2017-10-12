@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
 package paddle.framework;
 
 enum AttrType {
@@ -22,13 +23,10 @@ enum AttrType {
   INTS = 3;
   FLOATS = 4;
   STRINGS = 5;
-  INT_PAIRS = 6;
+  BOOLEAN = 6;
+  BOOLEANS = 7;
+  BLOCK = 8;
 }
-
-message IntPair {
-  required int32 first = 1;
-  required int32 second = 2;
-};
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
@@ -43,7 +41,9 @@ message OpDesc {
     repeated int32 ints = 6;
     repeated float floats = 7;
     repeated string strings = 8;
-    repeated IntPair int_pairs = 9;
+    optional bool b = 10;
+    repeated bool bools = 11;
+    optional int32 block_idx = 12;
   };
 
   message Var {
@@ -67,7 +67,6 @@ message OpProto {
 
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
-    optional bool not_in_gradient = 5 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -100,11 +99,24 @@ enum DataType {
 
 message LoDTensorDesc {
   required DataType data_type = 1;
-  repeated int32 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
+  repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   optional int32 lod_level = 3 [ default = 0 ];
 }
 
 message VarDesc {
   required string name = 1;
   optional LoDTensorDesc lod_tensor = 2;
+  optional bool persistable = 3 [ default = false ];
 }
+
+message BlockDesc {
+  required int32 idx = 1;
+  required int32 parent_idx = 2;
+  repeated VarDesc vars = 3;
+  repeated OpDesc ops = 4;
+}
+
+// Please refer to
+// https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
+// for more details.
+message ProgramDesc { repeated BlockDesc blocks = 1; }

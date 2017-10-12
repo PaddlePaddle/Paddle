@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/gpu_info.h"
@@ -27,20 +27,31 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
   virtual Place GetPlace() const = 0;
 
-  template <typename DeviceType>
-  DeviceType* get_eigen_device() const;
+  template <typename PlaceType,
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+  DeviceType* GetEigenDevice() const;
+
+  virtual void Wait() const {}
 };
 
 class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
-  virtual ~CPUDeviceContext() {}
 
   Eigen::DefaultDevice* eigen_device() const;
 
@@ -50,7 +61,12 @@ class CPUDeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+
 class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
@@ -59,7 +75,7 @@ class CUDADeviceContext : public DeviceContext {
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const;
+  void Wait() const override;
 
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;

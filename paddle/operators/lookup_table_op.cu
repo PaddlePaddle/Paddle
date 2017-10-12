@@ -61,7 +61,7 @@ __global__ void LookupTableGrad(T* table, const T* output, const int32_t* ids,
 }
 
 template <typename T>
-class LookupTableCUDAKernel : public framework::OpKernel {
+class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto table_t = context.Input<Tensor>("W");
@@ -77,12 +77,15 @@ class LookupTableCUDAKernel : public framework::OpKernel {
 
     dim3 threads(128, 8);
     dim3 grids(8, 1);
-    LookupTable<T, 128, 8, 8><<<grids, threads>>>(output, table, ids, N, K, D);
+    LookupTable<T, 128, 8, 8><<<
+        grids, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                               context.device_context())
+                               .stream()>>>(output, table, ids, N, K, D);
   }
 };
 
 template <typename T>
-class LookupTableGradCUDAKernel : public framework::OpKernel {
+class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto ids_t = context.Input<Tensor>("Ids");
@@ -102,8 +105,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel {
 
     dim3 threads(128, 8);
     dim3 grids(8, 1);
-    LookupTableGrad<T, 128, 8, 8><<<grids, threads>>>(d_table, d_output, ids, N,
-                                                      K, D);
+    LookupTableGrad<T, 128, 8, 8><<<
+        grids, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                               context.device_context())
+                               .stream()>>>(d_table, d_output, ids, N, K, D);
   }
 };
 

@@ -193,10 +193,10 @@ class TestOpDescCreationMethod(unittest.TestCase):
 
 class TestOpCreations(unittest.TestCase):
     def test_all(self):
-        add_op = op.Operator("add", X="a", Y="b", Out="z")
+        add_op = op.Operator("sum", X=["a", "b"], Out="z")
         self.assertIsNotNone(add_op)
         # Invoke C++ DebugString()
-        self.assertEqual('Op(add), inputs:{X[a], Y[b]}, outputs:{Out[z]}.',
+        self.assertEqual('Op(sum), inputs:{X[a, b]}, outputs:{Out[z]}.',
                          str(add_op))
 
 

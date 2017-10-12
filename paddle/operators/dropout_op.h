@@ -26,7 +26,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T, typename AttrType>
-class CPUDropoutKernel : public framework::OpKernel {
+class CPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
@@ -35,7 +35,7 @@ class CPUDropoutKernel : public framework::OpKernel {
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
 
-    if (context.Attr<int>("is_training") == 1) {
+    if (context.Attr<bool>("is_training")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       int seed = context.Attr<int>("seed");
@@ -62,11 +62,11 @@ class CPUDropoutKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class DropoutGradKernel : public framework::OpKernel {
+class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(context.Attr<int>("is_training"), 1,
-                      "GradOp is only callable when is_training is true");
+    PADDLE_ENFORCE(context.Attr<bool>("is_training"),
+                   "GradOp is only callable when is_training is true");
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));

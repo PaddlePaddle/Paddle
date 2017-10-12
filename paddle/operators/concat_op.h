@@ -16,46 +16,51 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ConcatKernel : public framework::OpKernel {
+class ConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
-    size_t n = ins.size();
-    size_t output_axis_dim = 0;
-    size_t before = 1, after = 1;
-    for (size_t i = 0; i < n; i++) {
-      output_axis_dim += ins[i]->dims()[axis];
-    }
-    auto& input_zero = ins[0];
-    for (int64_t i = 0; i < input_zero->dims().size(); i++) {
-      if (i == axis) {
-        continue;
-      }
-      if (i < axis) {
-        before *= input_zero->dims()[i];
-      } else {
-        after *= input_zero->dims()[i];
-      }
-    }
+    const size_t n = ins.size();
     size_t output_offset = 0;
+    out->mutable_data<T>(ctx.GetPlace());
+    auto out_stride = framework::stride(out->dims());
     for (size_t i = 0; i < n; i++) {
       auto& in = ins[i];
       auto axis_dim = in->dims()[axis];
-      for (size_t j = 0; j < before; j++) {
-        size_t len = axis_dim * after * sizeof(T);
-        const T* src = in->data<T>() + axis_dim * after * j;
-        T* out_data = out->mutable_data<T>(platform::CPUPlace());
-        T* dest = out_data + output_offset + output_axis_dim * after * j;
-        memcpy(dest, src, len);
-      }
-      output_offset += axis_dim * after;
+      auto in_stride = framework::stride(in->dims());
+      StridedMemcpy<T>(ctx.device_context(), in->data<T>(), in_stride,
+                       in->dims(), out_stride, out->data<T>() + output_offset);
+      output_offset += axis_dim * in_stride[axis];
+    }
+  }
+};
+
+template <typename Place, typename T>
+class ConcatGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    auto* in = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto outs = ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
+    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    const size_t n = outs.size();
+    size_t input_offset = 0;
+    auto in_stride = framework::stride(in->dims());
+    for (size_t i = 0; i < n; i++) {
+      auto& out = outs[i];
+      out->mutable_data<T>(ctx.GetPlace());
+      size_t axis_dim = out->dims()[axis];
+      auto out_stride = framework::stride(out->dims());
+      StridedMemcpy<T>(ctx.device_context(), in->data<T>() + input_offset,
+                       in_stride, out->dims(), out_stride, out->data<T>());
+      input_offset += axis_dim * in_stride[axis];
     }
   }
 };

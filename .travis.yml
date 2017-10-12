@@ -23,6 +23,11 @@ addons:
       - swig
   ssh_known_hosts: 52.76.173.135
 before_install:
+  - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
+  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
+  # protobuf version.
+  - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
+  - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit LinkChecker
   - |
     sudo pip install Sphinx==1.5.6 sphinx_rtd_theme==0.1.9 \
     recommonmark==0.4.0 numpy>=1.12 protobuf==3.1 nltk>=3.2.2 \
