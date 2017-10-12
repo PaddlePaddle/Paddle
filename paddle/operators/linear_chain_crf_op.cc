@@ -119,7 +119,48 @@ class LinearChainCrfOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Emission"),
+                   "Input(Emission) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Transition"),
+                   "Input(Transition) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+
+    PADDLE_ENFORCE(ctx->HasOutput("Alpha"),
+                   "Output(Alpha) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("LogLikelihood"),
+                   "Output(LogLikelihood) should be not null.");
+
+    auto emission_dims = ctx->GetInputDim("Emission");
+    auto transition_dims = ctx->GetInputDim("Transition");
+    auto label_dims = ctx->GetInputDim("Label");
+
+    PADDLE_ENFORCE_EQ(emission_dims.size(), 2UL,
+                      "The input Emission should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+                      "The input Transition should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(
+        transition_dims[0] + 2, transition_dims[1],
+        "An invalid dimension for the input Transition, which should "
+        "be a 2-D tensor with shape [D + 2 x D].");
+    PADDLE_ENFORCE_EQ(
+        emission_dims[1], transition_dims[1],
+        "The 2nd dimension of the input Emission and the input Transition "
+        "should be equal to the tag number.");
+    PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
+                   "The input Label should be a 2-D tensor "
+                   "with the 2nd dimensions fixed to 1.");
+
+    ctx->SetOutputDim("Alpha", emission_dims);
+    ctx->SetOutputDim("LogLikelihood", {emission_dims[0], 1});
+  }
+
+  // Explicitly set data type of output of the linear_chain_crf operator
+  // is determined by its input "Emission".
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("Emission")->type());
+  }
 };
 
 class LinearChainCrfGradOp : public framework::OperatorWithKernel {
