@@ -49,7 +49,7 @@ void Conv3DOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < paddings.size(); ++i) {
-    output_shape.push_back(OutputSizeConv3d(in_dims[i + 2], filter_dims[i],
+    output_shape.push_back(OutputSizeConv3d(in_dims[i + 2], filter_dims[i + 2],
                                             paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));

@@ -113,6 +113,8 @@ set(DEPS_OPS
     cross_entropy_op
     softmax_with_cross_entropy_op
     sum_op
+    pool_op
+    pool_with_index_op
     conv3d_op)
 
 
@@ -123,7 +125,8 @@ op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
 op_library(conv3d_op DEPS vol2col)
-
+op_library(pool_op DEPS pooling)
+op_library(pool_with_index_op DEPS pooling)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})

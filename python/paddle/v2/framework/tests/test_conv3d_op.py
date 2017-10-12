@@ -96,13 +96,40 @@ class TestConv3dOp(OpTest):
         self.op_type = "conv3d"
 
 
-class TestWithGroup(TestConv3dOp):
+class TestCase1(TestConv3dOp):
+    def init_test_case(self):
+        # self.groups = 1
+        # self.op_type = "conv3d"
+        self.pad = [1, 1, 1]
+        self.stride = [1, 1, 1]
+        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3, 3]
+
+    def init_group(self):
+        self.groups = 1
+
+    def init_op_type(self):
+        self.op_type = "conv3d"
+
+
+'''
+class TestWithGroup1(TestConv3dOp):
     def init_group(self):
         self.groups = 3
 
     def init_op_type(self):
         self.op_type = "conv3d"
 
+
+class TestWithGroup2(TestCase1):
+    def init_group(self):
+        self.groups = 3
+
+    def init_op_type(self):
+        self.op_type = "conv3d"
+'''
 
 if __name__ == '__main__':
     unittest.main()
