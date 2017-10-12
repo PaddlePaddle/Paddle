@@ -43,7 +43,7 @@ void Prune(const ProgramDesc& input, ProgramDesc& output, int id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 
-  auto& block = input.blocks(0);
+  auto& block = input.blocks(id);
   auto& ops = block.ops();
 
   bool expect_feed = true;
@@ -67,13 +67,6 @@ void Prune(const ProgramDesc& input, ProgramDesc& output, int id) {
     auto& op_desc = *op_iter;
 
     if (op_desc.is_target() || HasDependentVar(op_desc, dependent_vars)) {
-      // erase its output to the dependency graph
-      for (auto& var : op_desc.outputs()) {
-        for (auto& argu : var.arguments()) {
-          dependent_vars.erase(argu);
-        }
-      }
-
       // insert its input to the dependency graph
       for (auto& var : op_desc.inputs()) {
         for (auto& argu : var.arguments()) {
