@@ -119,7 +119,7 @@ class LinearChainCrfOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 };
 
 class LinearChainCrfGradOp : public framework::OperatorWithKernel {
@@ -127,7 +127,7 @@ class LinearChainCrfGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 };
 
 }  // namespace operators
