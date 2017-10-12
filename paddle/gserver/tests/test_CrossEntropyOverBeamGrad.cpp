@@ -18,7 +18,6 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/testing/TestUtil.h"
@@ -228,7 +227,7 @@ void genGroundTruth(vector<SingleBeamExpansion>& beamExpansions,
         curBeam.groundTruth[j] = *(start + n);
         curBeam.inBeam[j] = 1;
       } else {
-        CHECK_LE(curBeam.rowIdxInBeam[j] + 1,
+        CHECK_LE((size_t)curBeam.rowIdxInBeam[j] + 1,
                  curBeam.subSeqStartPos.size() - 1);
         int start = curBeam.subSeqStartPos[curBeam.rowIdxInBeam[j]];
         int end = curBeam.subSeqStartPos[curBeam.rowIdxInBeam[j] + 1];

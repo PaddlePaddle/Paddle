@@ -72,20 +72,32 @@ bool operator==(const LoD& a, const LoD& b) {
   return true;
 }
 
-void LoDTensor::SliceLevels(size_t level_begin, size_t level_end) {
+size_t LoDTensor::NumElements(size_t level, size_t idx) const {
+  PADDLE_ENFORCE_LT(level, NumLevels());
+  PADDLE_ENFORCE_LT(idx, NumElements(level));
+  // the last level of LoD, just return number of records in Tensor
+  if (level == NumLevels() - 1) {
+    return lod_[level][idx + 1] - lod_[level][idx];
+  }
+  // high level of LoD, and there is another lower level, return number of
+  // lower-level elements
+  auto tmp = SliceInLevel(lod_, level, idx, idx + 1);
+  PADDLE_ENFORCE_GE(tmp.size(), 2);
+  // there is a 0 as a placeholder stored in LoD, so the number of elements
+  // equals lod.size() - 1
+  return tmp[1].size() - 1;
+}
+
+void LoDTensor::ShrinkLevels(size_t level_begin, size_t level_end) {
   auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
   lod_ = new_lod;
 }
 
-void LoDTensor::SliceInLevel(size_t level, size_t elem_begin, size_t elem_end) {
-  PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                 NumLevels());
-  PADDLE_ENFORCE(elem_begin < NumElements(level),
-                 "element begin [%d] out of range [%d]", elem_begin,
-                 NumElements(level));
-  PADDLE_ENFORCE(elem_end < NumElements(level) + 1,
-                 "element end [%d] out of range [%d]", elem_end,
-                 NumElements(level));
+void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
+                              size_t elem_end) {
+  PADDLE_ENFORCE_LT(level, NumLevels());
+  PADDLE_ENFORCE_LT(elem_begin, NumElements(level));
+  PADDLE_ENFORCE_LT(elem_end, NumElements(level) + 1);
 
   auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
   lod_ = new_lod;

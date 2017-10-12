@@ -15,27 +15,39 @@
 #include "paddle/framework/backward.h"
 
 #include <gtest/gtest.h>
+#include "paddle/framework/block_desc.h"
+#include "paddle/framework/op_desc.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace framework {
 
-using OperatorBase = framework::OperatorBase;
-using OpProtoAndCheckerMaker = framework::OpProtoAndCheckerMaker;
-using OpProto = framework::OpProto;
-using OpAttrChecker = framework::OpAttrChecker;
-using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
 
 class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
  public:
   RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input X of Add").NotInGradient();
-    AddInput("b", "Bias of Add").NotInGradient();
-    AddOutput("Out", "Out of Add").NotInGradient();
+    AddInput("X", "Input X of Add");
+    AddInput("b", "Bias of Add");
+    AddOutput("Out", "Out of Add");
     AddComment("Add Op");
+  }
+};
+
+class RowWiseAddGradMaker : public SingleGradOpDescMaker {
+ public:
+  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<OpDescBind> Apply() const override {
+    auto grad_op = new OpDescBind();
+    grad_op->SetInput(GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(GradVarName("X"), InputGrad("X"));
+    grad_op->SetOutput(GradVarName("b"), InputGrad("b"));
+    grad_op->SetType("rowwise_add_grad");
+    return std::unique_ptr<OpDescBind>(grad_op);
   }
 };
 
@@ -46,6 +58,8 @@ class MulOpMaker : public OpProtoAndCheckerMaker {
     AddInput("X", "A");
     AddInput("Y", "B");
     AddOutput("Out", "Out");
+    AddAttr<int>("x_num_col_dims", "").SetDefault(1).EqualGreaterThan(1);
+    AddAttr<int>("y_num_col_dims", "").SetDefault(1).EqualGreaterThan(1);
     AddComment("Mul");
   }
 };
@@ -127,48 +141,52 @@ class FillZeroOpMaker : public OpProtoAndCheckerMaker {
  public:
   FillZeroOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Src", "x");
-    AddOutput("Dst", "out");
+    AddInput("X", "x");
+    AddOutput("Y", "out");
     AddComment("");
   }
 };
 
-class AddOpMaker : public OpProtoAndCheckerMaker {
+class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SumOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "x").AsDuplicable();
-    AddOutput("Out", "out");
+    AddInput("X", "the input tensors of sum operator.").AsDuplicable();
+    AddOutput("Out", "the output tensor of sum operator.");
     AddComment("");
   }
 };
+
+class MultInOutOpMaker : public OpProtoAndCheckerMaker {
+ public:
+  MultInOutOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "x");
+    AddInput("H", "h");
+    AddOutput("Y", "y");
+    AddOutput("Z", "z");
+    AddComment("");
+  }
+};
+
 }  // namespace framework
 }  // namespace paddle
 
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
 using EnforceNotMet = paddle::platform::EnforceNotMet;
-REGISTER_OP(rowwise_add, f::NOP, f::RowWiseAddOpMaker, rowwise_add_grad,
-            f::NOP);
+REGISTER_OPERATOR(rowwise_add, f::NOP, f::RowWiseAddOpMaker,
+                  f::RowWiseAddGradMaker);
+REGISTER_OPERATOR(rowwise_add_grad, f::NOP);
 REGISTER_OP(mul, f::NOP, f::MulOpMaker, mul_grad, f::NOP);
 REGISTER_OP(sigmoid, f::NOP, f::SigmoidOpMaker, sigmoid_grad, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(nograd, f::NOP, f::NoGradOpMaker);
 REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, f::NOP, f::FillZeroOpMaker);
-REGISTER_OP(add, f::NOP, f::AddOpMaker, add_grad, f::NOP);
+REGISTER_OP(sum, f::NOP, f::SumOpMaker, sum_grad, f::NOP);
 REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
 REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
             f::NOP);
-
-TEST(Backward, simple_op_grad) {
-  auto fwd = f::OpRegistry::CreateOp(
-      "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
-  ASSERT_NE(fwd, nullptr);
-  auto gop = f::OpRegistry::CreateGradOp(*fwd);
-  ASSERT_EQ(1UL, gop->Inputs().size());
-  ASSERT_EQ("rowwise_add_grad", gop->Type());
-  ASSERT_EQ(f::GradVarName("x"), gop->Output(f::GradVarName("X")));
-  ASSERT_EQ(f::GradVarName("b"), gop->Output(f::GradVarName("b")));
-}
+REGISTER_OP(mult_in_out, f::NOP, f::MultInOutOpMaker, mult_in_out_grad, f::NOP);
 
 TEST(Backward, simple_op_not_need_grad) {
   auto fwd = f::OpRegistry::CreateOp(
@@ -283,18 +301,7 @@ TEST(Backward, net_shared_weight) {
   ASSERT_TRUE(bwd->IsNetOp());
   auto bwd_net = static_cast<ops::NetOp *>(bwd.get());
   ASSERT_EQ(3UL, bwd_net->ops_.size());
-  ASSERT_EQ("add", bwd_net->ops_[2]->Type());
-}
-
-TEST(Backward, op_register_grad_not_for_network) {
-  auto fwd =
-      f::OpRegistry::CreateOp("fc", {{"X", {"x"}}, {"W", {"w"}}, {"b", {"b"}}},
-                              {{"mul_result", {"mul_out"}},
-                               {"add_result", {"add_out"}},
-                               {"Out", {"out1"}}},
-                              {{"temporary_index", std::vector<int>{0, 1}}});
-
-  ASSERT_THROW(f::OpRegistry::CreateGradOp(*fwd), EnforceNotMet);
+  ASSERT_EQ("sum", bwd_net->ops_[2]->Type());
 }
 
 TEST(Backward, op_all_input_are_not_need) {
@@ -325,10 +332,10 @@ TEST(Backward, op_part_of_output_are_not_need) {
 
   auto &fill_zero = *net->ops_[0];
   ASSERT_EQ("fill_zeros_like", fill_zero.Type());
-  ASSERT_EQ(1UL, fill_zero.Inputs("Src").size());
-  ASSERT_EQ("Z", fill_zero.Input("Src"));
-  ASSERT_EQ(1UL, fill_zero.Outputs("Dst").size());
-  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.Output("Dst"));
+  ASSERT_EQ(1UL, fill_zero.Inputs("X").size());
+  ASSERT_EQ("Z", fill_zero.Input("X"));
+  ASSERT_EQ(1UL, fill_zero.Outputs("Y").size());
+  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.Output("Y"));
 
   auto &d_many_out = *net->ops_[1];
   ASSERT_EQ("many_output_op_grad", d_many_out.Type());
@@ -398,4 +405,316 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
   EXPECT_EQ(bwd_net->ops_[1]->Outputs(all).size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[2]->Inputs(all).size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[2]->Outputs(all).size(), 0UL);
+}
+
+// =================================== //
+
+f::ProgramDesc *GetNewProgramDesc() {
+  auto *program_desc = new f::ProgramDesc();
+  auto *root_block = program_desc->add_blocks();
+  root_block->set_idx(0);
+  root_block->set_parent_idx(-1);
+  return program_desc;
+}
+
+TEST(Backward, simple_single_op) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op = block->AppendOp();
+  op->SetType("rowwise_add");
+  op->SetInput("X", {"x"});
+  op->SetInput("b", {"b"});
+  op->SetOutput("Out", {"out"});
+
+  AppendBackward(program, {});
+
+  ASSERT_EQ(block->AllOps().size(), 2UL);
+  f::OpDescBind *grad_op = block->AllOps()[1];
+  EXPECT_EQ(grad_op->Type(), "rowwise_add_grad");
+  ASSERT_EQ(grad_op->InputNames().size(), 1UL);
+  ASSERT_EQ(grad_op->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out")}));
+  EXPECT_EQ(grad_op->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("x")}));
+  EXPECT_EQ(grad_op->Output(f::GradVarName("b")),
+            std::vector<std::string>({f::GradVarName("b")}));
+}
+
+TEST(Backward, default_attribute) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op = block->AppendOp();
+  op->SetType("mul");
+  op->SetInput("X", {"x"});
+  op->SetInput("Y", {"y"});
+  op->SetOutput("Out", {"out"});
+
+  AppendBackward(program, {});
+
+  ASSERT_EQ(block->AllOps().size(), 2UL);
+  EXPECT_EQ(boost::get<int>(op->GetAttr("x_num_col_dims")), 1);
+  EXPECT_EQ(boost::get<int>(op->GetAttr("y_num_col_dims")), 1);
+
+  f::OpDescBind *grad_op = block->AllOps()[1];
+  ASSERT_EQ(grad_op->Type(), "mul_grad");
+  EXPECT_EQ(boost::get<int>(grad_op->GetAttr("x_num_col_dims")), 1);
+  EXPECT_EQ(boost::get<int>(grad_op->GetAttr("y_num_col_dims")), 1);
+}
+
+TEST(Backward, simple_mult_op) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op1 = block->AppendOp();
+  op1->SetType("rowwise_add");
+  op1->SetInput("X", {"x1"});
+  op1->SetInput("b", {"b1"});
+  op1->SetOutput("Out", {"out1"});
+
+  f::OpDescBind *op2 = block->AppendOp();
+  op2->SetType("mul");
+  op2->SetInput("X", {"out1"});
+  op2->SetInput("Y", {"y2"});
+  op2->SetOutput("Out", {"out2"});
+
+  f::OpDescBind *op3 = block->AppendOp();
+  op3->SetType("rowwise_add");
+  op3->SetInput("X", {"out2"});
+  op3->SetInput("b", {"b3"});
+  op3->SetOutput("Out", {"out3"});
+
+  AppendBackward(program, {});
+
+  ASSERT_EQ(block->AllOps().size(), 6UL);
+  f::OpDescBind *grad_op1 = block->AllOps()[5];
+  EXPECT_EQ(grad_op1->Type(), "rowwise_add_grad");
+  ASSERT_EQ(grad_op1->InputNames().size(), 1UL);
+  ASSERT_EQ(grad_op1->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op1->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out1")}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("x1")}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("b")),
+            std::vector<std::string>({f::GradVarName("b1")}));
+
+  f::OpDescBind *grad_op2 = block->AllOps()[4];
+  EXPECT_EQ(grad_op2->Type(), "mul_grad");
+  ASSERT_EQ(grad_op2->InputNames().size(), 4UL);
+  ASSERT_EQ(grad_op2->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op2->Input("X"), std::vector<std::string>({"out1"}));
+  EXPECT_EQ(grad_op2->Input("Y"), std::vector<std::string>({"y2"}));
+  EXPECT_EQ(grad_op2->Input("Out"), std::vector<std::string>({"out2"}));
+  EXPECT_EQ(grad_op2->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out2")}));
+  EXPECT_EQ(grad_op2->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("out1")}));
+  EXPECT_EQ(grad_op2->Output(f::GradVarName("Y")),
+            std::vector<std::string>({f::GradVarName("y2")}));
+
+  f::OpDescBind *grad_op3 = block->AllOps()[3];
+  EXPECT_EQ(grad_op3->Type(), "rowwise_add_grad");
+  ASSERT_EQ(grad_op3->InputNames().size(), 1UL);
+  ASSERT_EQ(grad_op3->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op3->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out3")}));
+  EXPECT_EQ(grad_op3->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("out2")}));
+  EXPECT_EQ(grad_op3->Output(f::GradVarName("b")),
+            std::vector<std::string>({f::GradVarName("b3")}));
+}
+
+TEST(Backward, intermedia_var_no_grad) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op1 = block->AppendOp();
+  op1->SetType("rowwise_add");
+  op1->SetInput("X", {"x1"});
+  op1->SetInput("b", {"b1"});
+  op1->SetOutput("Out", {"out1"});
+
+  f::OpDescBind *op2 = block->AppendOp();
+  op2->SetType("mul");
+  op2->SetInput("X", {"x2"});
+  op2->SetInput("Y", {"y2"});
+  op2->SetOutput("Out", {"out2"});
+
+  f::OpDescBind *op3 = block->AppendOp();
+  op3->SetType("rowwise_add");
+  op3->SetInput("X", {"out2"});
+  op3->SetInput("b", {"b3"});
+  op3->SetOutput("Out", {"out3"});
+
+  f::OpDescBind *op4 = block->AppendOp();
+  op4->SetType("mul");
+  op4->SetInput("X", {"out1"});
+  op4->SetInput("Y", {"out3"});
+  op4->SetOutput("Out", {"out4"});
+
+  AppendBackward(program, {"out3"});
+
+  ASSERT_EQ(block->AllOps().size(), 6UL);
+  f::OpDescBind *grad_op1 = block->AllOps()[5];
+  EXPECT_EQ(grad_op1->Type(), "rowwise_add_grad");
+  ASSERT_EQ(grad_op1->InputNames().size(), 1UL);
+  ASSERT_EQ(grad_op1->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op1->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out1")}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("x1")}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("b")),
+            std::vector<std::string>({f::GradVarName("b1")}));
+
+  f::OpDescBind *grad_op4 = block->AllOps()[4];
+  EXPECT_EQ(grad_op4->Type(), "mul_grad");
+  ASSERT_EQ(grad_op4->InputNames().size(), 4UL);
+  ASSERT_EQ(grad_op4->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op4->Input("X"), std::vector<std::string>({"out1"}));
+  EXPECT_EQ(grad_op4->Input("Y"), std::vector<std::string>({"out3"}));
+  EXPECT_EQ(grad_op4->Input("Out"), std::vector<std::string>({"out4"}));
+  EXPECT_EQ(grad_op4->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out4")}));
+  EXPECT_EQ(grad_op4->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("out1")}));
+  EXPECT_EQ(grad_op4->Output(f::GradVarName("Y")),
+            std::vector<std::string>({f::kEmptyVarName}));
+}
+
+TEST(Backward, var_no_grad) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op1 = block->AppendOp();
+  op1->SetType("mult_in_out");
+  op1->SetInput("X", {"x1"});
+  op1->SetInput("H", {"h1"});
+  op1->SetOutput("Y", {"y1"});
+  op1->SetOutput("Z", {"z1"});
+
+  f::OpDescBind *op2 = block->AppendOp();
+  op2->SetType("mult_in_out");
+  op2->SetInput("X", {"y1"});
+  op2->SetInput("H", {"z1"});
+  op2->SetOutput("Y", {"y2"});
+  op2->SetOutput("Z", {"z2"});
+
+  AppendBackward(program, {"z1"});
+
+  ASSERT_EQ(block->AllOps().size(), 5UL);
+  f::OpDescBind *grad_op2 = block->AllOps()[2];
+  ASSERT_EQ(grad_op2->Type(), "mult_in_out_grad");
+  ASSERT_EQ(grad_op2->InputNames().size(), 6UL);
+  ASSERT_EQ(grad_op2->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op2->Input("X"), std::vector<std::string>({"y1"}));
+  EXPECT_EQ(grad_op2->Input("H"), std::vector<std::string>({"z1"}));
+  EXPECT_EQ(grad_op2->Input("Y"), std::vector<std::string>({"y2"}));
+  EXPECT_EQ(grad_op2->Input("Z"), std::vector<std::string>({"z2"}));
+  EXPECT_EQ(grad_op2->Input(f::GradVarName("Y")),
+            std::vector<std::string>({f::GradVarName("y2")}));
+  EXPECT_EQ(grad_op2->Input(f::GradVarName("Z")),
+            std::vector<std::string>({f::GradVarName("z2")}));
+  EXPECT_EQ(grad_op2->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("y1")}));
+  EXPECT_EQ(grad_op2->Output(f::GradVarName("H")),
+            std::vector<std::string>({f::kEmptyVarName}));
+
+  f::OpDescBind *fill_zero_op = block->AllOps()[3];
+  ASSERT_EQ(fill_zero_op->Type(), "fill_zeros_like");
+  ASSERT_EQ(fill_zero_op->InputNames().size(), 1UL);
+  ASSERT_EQ(fill_zero_op->OutputNames().size(), 1UL);
+  EXPECT_EQ(fill_zero_op->Input("X"), std::vector<std::string>({"z1"}));
+  EXPECT_EQ(fill_zero_op->Output("Y"),
+            std::vector<std::string>({std::string("z1") + f::kZeroVarSuffix}));
+
+  f::OpDescBind *grad_op1 = block->AllOps()[4];
+  ASSERT_EQ(grad_op1->Type(), "mult_in_out_grad");
+  ASSERT_EQ(grad_op1->InputNames().size(), 6UL);
+  ASSERT_EQ(grad_op1->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op1->Input("X"), std::vector<std::string>({"x1"}));
+  EXPECT_EQ(grad_op1->Input("H"), std::vector<std::string>({"h1"}));
+  EXPECT_EQ(grad_op1->Input("Y"), std::vector<std::string>({"y1"}));
+  EXPECT_EQ(grad_op1->Input("Z"), std::vector<std::string>({"z1"}));
+  EXPECT_EQ(grad_op1->Input(f::GradVarName("Y")),
+            std::vector<std::string>({f::GradVarName("y1")}));
+  EXPECT_EQ(grad_op1->Input(f::GradVarName("Z")),
+            std::vector<std::string>({std::string("z1") + f::kZeroVarSuffix}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("x1")}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("H")),
+            std::vector<std::string>({f::GradVarName("h1")}));
+}
+
+TEST(Backward, shared_var) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op1 = block->AppendOp();
+  op1->SetType("rowwise_add");
+  op1->SetInput("X", {"x1"});
+  op1->SetInput("b", {"b1"});
+  op1->SetOutput("Out", {"out1"});
+
+  f::OpDescBind *op2 = block->AppendOp();
+  op2->SetType("mul");
+  op2->SetInput("X", {"out1"});
+  op2->SetInput("Y", {"y2"});
+  op2->SetOutput("Out", {"out2"});
+
+  f::OpDescBind *op3 = block->AppendOp();
+  op3->SetType("rowwise_add");
+  op3->SetInput("X", {"out1"});
+  op3->SetInput("b", {"b3"});
+  op3->SetOutput("Out", {"out3"});
+
+  AppendBackward(program, {});
+
+  ASSERT_EQ(block->AllOps().size(), 7UL);
+  f::OpDescBind *grad_op3 = block->AllOps()[3];
+  ASSERT_EQ(grad_op3->Type(), "rowwise_add_grad");
+  ASSERT_EQ(grad_op3->InputNames().size(), 1UL);
+  ASSERT_EQ(grad_op3->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op3->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out3")}));
+  EXPECT_EQ(grad_op3->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("out1") + "@RENAME@0"}));
+  EXPECT_EQ(grad_op3->Output(f::GradVarName("b")),
+            std::vector<std::string>({f::GradVarName("b3")}));
+
+  f::OpDescBind *grad_op4 = block->AllOps()[4];
+  ASSERT_EQ(grad_op4->Type(), "mul_grad");
+  ASSERT_EQ(grad_op4->InputNames().size(), 4UL);
+  ASSERT_EQ(grad_op4->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op4->Input("X"), std::vector<std::string>({"out1"}));
+  EXPECT_EQ(grad_op4->Input("Y"), std::vector<std::string>({"y2"}));
+  EXPECT_EQ(grad_op4->Input("Out"), std::vector<std::string>({"out2"}));
+  EXPECT_EQ(grad_op4->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out2")}));
+  EXPECT_EQ(grad_op4->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("out1") + "@RENAME@1"}));
+  EXPECT_EQ(grad_op4->Output(f::GradVarName("Y")),
+            std::vector<std::string>({f::GradVarName("y2")}));
+
+  f::OpDescBind *sum_op = block->AllOps()[5];
+  ASSERT_EQ(sum_op->Type(), "sum");
+  ASSERT_EQ(sum_op->InputNames().size(), 1UL);
+  ASSERT_EQ(sum_op->OutputNames().size(), 1UL);
+  EXPECT_EQ(sum_op->Input("X"),
+            std::vector<std::string>({f::GradVarName("out1") + "@RENAME@0",
+                                      f::GradVarName("out1") + "@RENAME@1"}));
+  EXPECT_EQ(sum_op->Output("Out"),
+            std::vector<std::string>({f::GradVarName("out1")}));
+
+  f::OpDescBind *grad_op1 = block->AllOps()[6];
+  ASSERT_EQ(grad_op1->Type(), "rowwise_add_grad");
+  ASSERT_EQ(grad_op1->InputNames().size(), 1UL);
+  ASSERT_EQ(grad_op1->OutputNames().size(), 2UL);
+  EXPECT_EQ(grad_op1->Input(f::GradVarName("Out")),
+            std::vector<std::string>({f::GradVarName("out1")}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("X")),
+            std::vector<std::string>({f::GradVarName("x1")}));
+  EXPECT_EQ(grad_op1->Output(f::GradVarName("b")),
+            std::vector<std::string>({f::GradVarName("b1")}));
 }

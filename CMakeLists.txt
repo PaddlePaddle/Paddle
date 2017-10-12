@@ -27,7 +27,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
     find_package(Boost QUIET)
 endif()
 
@@ -64,27 +64,37 @@ if(NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif()
 
-if(ANDROID)
-    if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
-        message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
-    elseif(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
-        # TODO: support glog for Android api 16 ~ 19 in the future
-        message(WARNING "Using the unofficial git repository <https://github.com/Xreki/glog.git> instead")
+if(ANDROID OR IOS)
+    if(ANDROID)
+        if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
+            message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
+        elseif(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
+            # TODO: support glog for Android api 16 ~ 19 in the future
+            message(WARNING "Using the unofficial git repository <https://github.com/Xreki/glog.git> instead")
+        endif()
     endif()
 
     set(WITH_GPU OFF CACHE STRING
-        "Disable GPU when cross-compiling for Android" FORCE)
+        "Disable GPU when cross-compiling for Android and iOS" FORCE)
     set(WITH_AVX OFF CACHE STRING
-        "Disable AVX when cross-compiling for Android" FORCE)
+        "Disable AVX when cross-compiling for Android and iOS" FORCE)
     set(WITH_PYTHON OFF CACHE STRING
-        "Disable PYTHON when cross-compiling for Android" FORCE)
+        "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
     set(WITH_RDMA OFF CACHE STRING
-        "Disable RDMA when cross-compiling for Android" FORCE)
+        "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLDNN OFF CACHE STRING
-        "Disable MKLDNN when cross-compiling for Android" FORCE)
+        "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLML OFF CACHE STRING
-        "Disable MKLML package when cross-compiling for Android" FORCE)
-endif(ANDROID)
+        "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
+
+    # Compile PaddlePaddle mobile inference library
+    if (NOT WITH_C_API)
+        set(WITH_C_API ON CACHE STRING
+            "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
+    endif()
+    set(MOBILE_INFERENCE ON)
+    add_definitions(-DPADDLE_MOBILE_INFERENCE)
+endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
@@ -158,9 +168,11 @@ endif(USE_NNPACK)
 
 add_subdirectory(proto)
 
-# "add_subdirectory(go)" should be placed after the following loine,
-# because it depends on paddle/optimizer.
-add_subdirectory(paddle/optimizer)
+if(NOT MOBILE_INFERENCE)
+    # "add_subdirectory(go)" should be placed after the following loine,
+    # because it depends on paddle/optimizer.
+    add_subdirectory(paddle/optimizer)
+endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.

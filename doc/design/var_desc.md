@@ -1,7 +1,7 @@
 ## Background
 PaddlePaddle divides the description of neural network computation graph into two stages: compile time and runtime.
 
-PaddlePaddle use proto message to describe compile time graph for
+PaddlePaddle use proto message to describe compile time graph because
 
 1. Computation graph should be able to be saved to a file.
 1. In distributed training, the graph will be serialized and send to multiple workers.

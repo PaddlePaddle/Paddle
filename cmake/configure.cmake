@@ -24,6 +24,10 @@ if(WITH_DOUBLE)
     add_definitions(-DPADDLE_TYPE_DOUBLE)
 endif(WITH_DOUBLE)
 
+if(WITH_TESTING)
+    add_definitions(-DPADDLE_WITH_TESTING)
+endif(WITH_TESTING)
+
 if(NOT WITH_TIMER)
     add_definitions(-DPADDLE_DISABLE_TIMER)
 endif(NOT WITH_TIMER)
@@ -49,11 +53,12 @@ if(NOT WITH_GOLANG)
 endif(NOT WITH_GOLANG)
 
 if(NOT WITH_GPU)
-    add_definitions(-DPADDLE_ONLY_CPU)
     add_definitions(-DHPPL_STUB_FUNC)
 
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
+    add_definitions(-DPADDLE_WITH_CUDA)
+
     FIND_PACKAGE(CUDA REQUIRED)
 
     if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)

@@ -28,7 +28,7 @@ bool MKLDNNConvLayer::init(const LayerMap& layerMap,
   if (!MKLDNNLayer::init(layerMap, parameterMap)) {
     return false;
   }
-  CHECK_EQ(inputLayers_.size(), 1) << "Only support one input layer yet";
+  CHECK_EQ(inputLayers_.size(), 1UL) << "Only support one input layer yet";
   CHECK_EQ(inputLayers_.size(), parameters_.size());
   CHECK(config_.shared_biases()) << "Only support shared biases yet";
 
@@ -64,7 +64,7 @@ bool MKLDNNConvLayer::init(const LayerMap& layerMap,
 
   // create biases
   if (biasParameter_.get() != NULL) {
-    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_));
+    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_, 0));
   }
   return true;
 }
@@ -251,22 +251,31 @@ void MKLDNNConvLayer::resetInValue(
   // create buffer and reorder if input value do not match
   cpuInVal_ = nullptr;
   cvtInVal_ = nullptr;
-  if (inputIsOnlyMKLDNN()) {
-    MKLDNNMatrixPtr dnnIn = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
-    CHECK(dnnIn) << "Input should be MKLDNNMatrix";
-    if (dnnIn->getPrimitiveDesc() != in->getPrimitiveDesc()) {
-      CHECK_EQ(dnnIn->getFormat(), format::nc);
+
+  MKLDNNMatrixPtr dnnIn = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
+  CHECK_EQ(inputIsOnlyMKLDNN(), dnnIn != nullptr);
+  if (dnnIn != nullptr && dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc()) {
+    in = dnnIn;
+    return;
+  }
+  if (dnnIn) {
+    if (dnnIn->getFormat() == format::nc) {
       CHECK(ih_ == 1 && iw_ == 1) << "when input is nc format";
       // create a new one with nchw format and same data
       memory::dims inDims = memory::dims{bs_, ic_, 1, 1};
       dnnIn = MKLDNNMatrix::create(inMat, inDims, format::nchw, engine_);
-      CHECK(dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc());
     }
-    in = dnnIn;
+    if (dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc()) {
+      in = dnnIn;
+      return;
+    }
+    cpuInVal_ = dnnIn;
+    in = MKLDNNMatrix::create(nullptr, pd->src_primitive_desc());
+    cvtInVal_ = MKLDNNMatrix::createReorder(cpuInVal_, in);
+    CHECK(cvtInVal_) << "should not be emptry";
   } else {
-    const MatrixPtr& cpuIn = getInputValue(0, CPU_DEVICE);
     memory::dims inDims = memory::dims{bs_, ic_, ih_, iw_};
-    cpuInVal_ = MKLDNNMatrix::create(cpuIn, inDims, format::nchw, engine_);
+    cpuInVal_ = MKLDNNMatrix::create(inMat, inDims, format::nchw, engine_);
     if (cpuInVal_->getPrimitiveDesc() != in->getPrimitiveDesc()) {
       // create new mkldnn matrix
       in = MKLDNNMatrix::create(nullptr, pd->src_primitive_desc());
@@ -294,12 +303,9 @@ void MKLDNNConvLayer::resetOutValue(
     std::shared_ptr<conv_fwd::primitive_desc>& pd, MKLDNNMatrixPtr& out) {
   out = MKLDNNMatrix::create(output_.value, pd->dst_primitive_desc());
 
-  // change original output value from cpu matrix to mkldnn matrix
-  output_.value = std::dynamic_pointer_cast<Matrix>(out);
-
   // create reorder if output value has cpu device and pd do not match
   cpuOutVal_ = nullptr;
-  cpuOutVal_ = nullptr;
+  cvtOutVal_ = nullptr;
   if (!outputIsOnlyMKLDNN()) {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
     memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
@@ -452,13 +458,14 @@ void MKLDNNConvLayer::resetOutGrad(
   cvtOutGrad_ = nullptr;
   if (!outputIsOnlyMKLDNN()) {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
+    outMat->setData(cpuOut->getData());
     // same PrimitiveDesc with cpuInVal_
     CHECK(cpuOutVal_);
     cpuOutGrad_ = MKLDNNMatrix::create(cpuOut, cpuOutVal_->getPrimitiveDesc());
     if (cpuOutGrad_->getPrimitiveDesc() == out->getPrimitiveDesc()) {
-      outMat->setData(cpuOut->getData());
       out = cpuOutGrad_;
     } else {
+      out = MKLDNNMatrix::create(nullptr, wgtPD->diff_dst_primitive_desc());
       cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
       CHECK(cvtOutGrad_);
     }
@@ -537,7 +544,7 @@ void MKLDNNConvLayer::resetWgtValBwdData(
   } else {
     wgtValBwdData_ = wgtVal_;
   }
-  VLOG(MKLDNN_FMTS) << "weight value format for backward data"
+  VLOG(MKLDNN_FMTS) << "weight value format for backward data: "
                     << wgtValBwdData_->getFormat();
 }
 

@@ -172,7 +172,7 @@ void GpuVectorT<T>::isEqualTo(const VectorT<T>& b, const T& value) {
 
 template <class T>
 void GpuVectorT<T>::selectFrom(const VectorT<T>& src, const VectorT<int>& ids) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   hl_vector_select_from<T>(this->getData(),
                            this->getSize(),
                            src.getData(),
@@ -850,7 +850,7 @@ CpuGpuVectorT<T>::CpuGpuVectorT(CpuGpuVectorT<T>& src,
                                 size_t size)
     : sync_(nullptr) {
   CHECK_LE(offset + size, static_cast<size_t>(src.getSize()));
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   SyncedFlag* flag = src.getSync();
   if (*flag == DATA_AT_CPU) {
     src.copyToGpu();  // will set synchronous data between CPU and GPU
@@ -861,7 +861,7 @@ CpuGpuVectorT<T>::CpuGpuVectorT(CpuGpuVectorT<T>& src,
   auto cMemHandle = (src.getVector(false))->getMemoryHandle();
   cpuVectorT_ = std::make_shared<CpuVectorT<T>>(
       size, std::dynamic_pointer_cast<CpuMemoryHandle>(cMemHandle), offset);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   auto gMemHandle = (src.getVector(true))->getMemoryHandle();
   gpuVectorT_ = std::make_shared<GpuVectorT<T>>(
       size, std::dynamic_pointer_cast<GpuMemoryHandle>(gMemHandle), offset);
