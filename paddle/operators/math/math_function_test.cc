@@ -17,17 +17,18 @@ TEST(math_function, notrans_mul_trans) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place);
-  input2_gpu.CopyFrom<float>(input1, *gpu_place);
+  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
+  input2_gpu.CopyFrom<float>(input1, *gpu_place, context);
 
   out_gpu.mutable_data<float>({2, 2}, *gpu_place);
 
   paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
       context, input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
 
-  out.CopyFrom<float>(out_gpu, *cpu_place);
+  out.CopyFrom<float>(out_gpu, *cpu_place, context);
 
   float* out_ptr = out.data<float>();
+  context.Wait();
   EXPECT_EQ(out_ptr[0], 5);
   EXPECT_EQ(out_ptr[1], 14);
   EXPECT_EQ(out_ptr[2], 14);
@@ -50,17 +51,18 @@ TEST(math_function, trans_mul_notrans) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place);
-  input2_gpu.CopyFrom<float>(input1, *gpu_place);
+  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
+  input2_gpu.CopyFrom<float>(input1, *gpu_place, context);
 
   out_gpu.mutable_data<float>({3, 3}, *gpu_place);
 
   paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
       context, input1_gpu, true, input2_gpu, false, 1, &out_gpu, 0);
 
-  out.CopyFrom<float>(out_gpu, *cpu_place);
+  out.CopyFrom<float>(out_gpu, *cpu_place, context);
 
   float* out_ptr = out.data<float>();
+  context.Wait();
   EXPECT_EQ(out_ptr[0], 9);
   EXPECT_EQ(out_ptr[1], 12);
   EXPECT_EQ(out_ptr[2], 15);
@@ -98,9 +100,9 @@ TEST(math_function, gemm_notrans_cublas) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place);
-  input2_gpu.CopyFrom<float>(input2, *gpu_place);
-  input3_gpu.CopyFrom<float>(input3, *gpu_place);
+  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
+  input2_gpu.CopyFrom<float>(input2, *gpu_place, context);
+  input3_gpu.CopyFrom<float>(input3, *gpu_place, context);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(*gpu_place);
@@ -108,7 +110,7 @@ TEST(math_function, gemm_notrans_cublas) {
   paddle::operators::math::gemm<paddle::platform::GPUPlace, float>(
       context, false, false, m, n, k, 1, a, 3, b + 1, 4, 1, c + 1, 4);
 
-  input3.CopyFrom<float>(input3_gpu, *cpu_place);
+  input3.CopyFrom<float>(input3_gpu, *cpu_place, context);
 
   // numpy code:
   // a = np.arange(6).reshape(2, 3)
@@ -116,6 +118,7 @@ TEST(math_function, gemm_notrans_cublas) {
   // c = np.arange(8).reshape(2, 4)[:, 1:]
   // out = np.arange(8).reshape(2, 4)
   // out[:, 1:] = np.dot(a, b) + c
+  context.Wait();
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);
   EXPECT_EQ(input3_ptr[2], 28);
@@ -152,9 +155,9 @@ TEST(math_function, gemm_trans_cublas) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place);
-  input2_gpu.CopyFrom<float>(input2, *gpu_place);
-  input3_gpu.CopyFrom<float>(input3, *gpu_place);
+  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
+  input2_gpu.CopyFrom<float>(input2, *gpu_place, context);
+  input3_gpu.CopyFrom<float>(input3, *gpu_place, context);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(*gpu_place);
@@ -162,7 +165,8 @@ TEST(math_function, gemm_trans_cublas) {
   paddle::operators::math::gemm<paddle::platform::GPUPlace, float>(
       context, false, true, m, n, k, 1, a, 3, b + 3, 3, 1, c + 1, 4);
 
-  input3.CopyFrom<float>(input3_gpu, *cpu_place);
+  input3.CopyFrom<float>(input3_gpu, *cpu_place, context);
+  context.Wait();
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);

@@ -280,3 +280,7 @@ class SomeLayer(LayerBase):
     ...
 ```
 And then, end users can use `some_layer(...)` as a plain function.
+
+## Optimizer
+
+[Optimizer Design Doc](./optimizer.md)

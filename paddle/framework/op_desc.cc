@@ -100,6 +100,12 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
+void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
+  BlockDesc *desc = block.RawPtr();
+  this->attrs_[name] = desc;
+  need_update_ = true;
+}
+
 void OpDescBind::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
@@ -209,6 +215,15 @@ static InferShapeFuncMap &InferShapeFuncs() {
     }
   }
   return *g_map;
+}
+
+void OpDescBind::CheckAttrs() {
+  PADDLE_ENFORCE(!Type().empty(),
+                 "CheckAttr() can not be called before type is setted.");
+  const auto *checker = OpInfoMap::Instance().Get(Type()).Checker();
+  PADDLE_ENFORCE_NOT_NULL(checker, "Operator \"%s\" has no registered checker.",
+                          Type());
+  checker->Check(attrs_);
 }
 
 void OpDescBind::InferShape(const BlockDescBind &block) const {
