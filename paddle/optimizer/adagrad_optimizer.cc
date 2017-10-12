@@ -13,7 +13,7 @@ void AdagradOptimizer::Update(const Tensor* gradient) {
   const Tensor& grad = *gradient;
   for (size_t i = 0; i < param.size(); ++i) {
     accum_g[i] += grad[i] * grad[i];
-    param[i] += learning_rate * grad[i] / std::sqrt(accum_g[i] + epsilon_) +
+    param[i] -= learning_rate * grad[i] / std::sqrt(accum_g[i] + epsilon_) +
                 learning_rate * decay_ * param[i];
   }
 }
