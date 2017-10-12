@@ -14,8 +14,6 @@
 
 #include "paddle/framework/lod_tensor.h"
 
-#include <glog/logging.h>
-
 namespace paddle {
 namespace framework {
 

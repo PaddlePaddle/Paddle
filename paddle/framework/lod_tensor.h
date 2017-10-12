@@ -21,7 +21,6 @@
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #endif
 
-#include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"

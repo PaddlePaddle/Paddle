@@ -16,7 +16,6 @@
 
 #include "paddle/framework/tensor_array.h"
 
-#include <glog/logging.h>
 #include <algorithm>
 #include <limits>
 

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
-#include "glog/logging.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/operator.h"

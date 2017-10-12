@@ -16,6 +16,7 @@
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/assert.h"
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 __global__ void test(size_t* a, int size) {
