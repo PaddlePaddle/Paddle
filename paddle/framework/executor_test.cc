@@ -59,6 +59,7 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
     op->SetOutput(kv.first, kv.second);
   }
   op->SetAttrMap(attrs);
+  op->CheckAttrs();
 }
 
 // Tensors in feed value variable will only be in CPUPlace

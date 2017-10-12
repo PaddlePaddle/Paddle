@@ -91,9 +91,5 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
   return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
-void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.RawPtr();
-  this->attrs_[name] = desc;
-}
 }  // namespace framework
 }  // namespace paddle

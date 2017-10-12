@@ -100,6 +100,12 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
+void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
+  BlockDesc *desc = block.RawPtr();
+  this->attrs_[name] = desc;
+  need_update_ = true;
+}
+
 void OpDescBind::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
