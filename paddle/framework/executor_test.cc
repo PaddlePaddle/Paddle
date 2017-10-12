@@ -38,16 +38,6 @@ USE_OP(sgd);
 using namespace paddle::platform;
 using namespace paddle::framework;
 
-USE_OP(elementwise_add);
-USE_OP(gaussian_random);
-USE_OP(feed);
-USE_OP(fetch);
-USE_OP(mul);
-USE_OP(sum);
-USE_OP(squared_l2_distance);
-USE_OP(fill_constant);
-USE_OP(sgd);
-
 void AddOp(const std::string& type, const VariableNameMap& inputs,
            const VariableNameMap& outputs, AttributeMap attrs,
            paddle::framework::BlockDescBind* block) {
