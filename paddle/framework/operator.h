@@ -403,7 +403,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.Var(name)->Shape());
+    return framework::make_ddim(block_.Var(name)->GetShape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {

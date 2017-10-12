@@ -13,32 +13,67 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/var_desc.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-void VarDescBind::SetShape(const std::vector<int64_t> &dims) {
-  VectorToRepeated(dims, desc_.mutable_lod_tensor()->mutable_dims());
+void VarDescBind::SetVarType(const VarDesc_VarType& var_type) {
+  desc_.set_type(var_type);
+  var_type_ = var_type;
+}
+
+VarDesc_VarType VarDescBind::GetVarType() const { return var_type_; }
+
+void VarDescBind::SetShape(const std::vector<int64_t>& dims) {
+  if (var_type_ == VarDesc_VarType_LOD_TENSOR) {
+    VectorToRepeated(
+        dims, desc_.mutable_lod_tensor()->mutable_tensor()->mutable_dims());
+  } else if (var_type_ == VarDesc_VarType_SELECTED_ROWS) {
+    VectorToRepeated(dims, desc_.mutable_selected_rows()->mutable_dims());
+  }
+}
+
+std::vector<int64_t> VarDescBind::GetShape() const {
+  if (var_type_ == VarDesc_VarType_LOD_TENSOR) {
+    return RepeatedToVector(desc_.lod_tensor().tensor().dims());
+  } else if (var_type_ == VarDesc_VarType_SELECTED_ROWS) {
+    return RepeatedToVector(desc_.selected_rows().dims());
+  } else {
+    PADDLE_THROW("Unsupported Variable Type");
+  }
 }
 
 void VarDescBind::SetDataType(DataType data_type) {
-  desc_.mutable_lod_tensor()->set_data_type(data_type);
-}
-
-std::vector<int64_t> VarDescBind::Shape() const {
-  return RepeatedToVector(desc_.lod_tensor().dims());
+  if (var_type_ == VarDesc_VarType_LOD_TENSOR) {
+    desc_.mutable_lod_tensor()->mutable_tensor()->set_data_type(data_type);
+  } else if (var_type_ == VarDesc_VarType_SELECTED_ROWS) {
+    desc_.mutable_selected_rows()->set_data_type(data_type);
+  }
 }
 
 DataType VarDescBind::GetDataType() const {
-  return desc_.lod_tensor().data_type();
+  if (var_type_ == VarDesc_VarType_LOD_TENSOR) {
+    return desc_.lod_tensor().tensor().data_type();
+  } else if (var_type_ == VarDesc_VarType_SELECTED_ROWS) {
+    return desc_.selected_rows().data_type();
+  } else {
+    PADDLE_THROW("Unsupported Variable Type");
+  }
 }
 
 void VarDescBind::SetLoDLevel(int32_t lod_level) {
-  desc_.mutable_lod_tensor()->set_lod_level(lod_level);
+  if (var_type_ == VarDesc_VarType_LOD_TENSOR) {
+    desc_.mutable_lod_tensor()->set_lod_level(lod_level);
+  }
 }
 
 int32_t VarDescBind::GetLodLevel() const {
-  return desc_.lod_tensor().lod_level();
+  if (var_type_ == VarDesc_VarType_LOD_TENSOR) {
+    return desc_.lod_tensor().lod_level();
+  } else {
+    PADDLE_THROW("Can't get lod_level info from non lod type Variable");
+  }
 }
 }  // namespace framework
 }  // namespace paddle

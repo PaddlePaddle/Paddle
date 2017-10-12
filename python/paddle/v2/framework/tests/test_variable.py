@@ -22,6 +22,7 @@ class TestVariable(unittest.TestCase):
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
         self.assertEqual(core.DataType.FP64, w.data_type)
+        self.assertEqual(core.VarType.LodTensor, w.type)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)
@@ -34,6 +35,16 @@ class TestVariable(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           lambda: b.create_var(name="fc.w", shape=(24, 100)))
+
+        sr = b.create_var(
+            dtype="float32",
+            type=core.VarType.SelectedRows,
+            shape=[784, 100],
+            name="embedding.w")
+        self.assertEqual(core.DataType.FP32, sr.data_type)
+        self.assertEqual(core.VarType.SelectedRows, sr.type)
+        self.assertEqual((784, 100), sr.shape)
+        self.assertEqual("embedding.w", sr.name)
 
 
 if __name__ == '__main__':

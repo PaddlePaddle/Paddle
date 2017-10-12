@@ -58,11 +58,15 @@ class VarDescBind {
 
   std::string Name() const { return desc_.name(); }
 
+  void SetVarType(const VarDesc_VarType &var_type);
+
+  VarDesc_VarType GetVarType() const;
+
   void SetShape(const std::vector<int64_t> &dims);
 
-  void SetDataType(DataType data_type);
+  std::vector<int64_t> GetShape() const;
 
-  std::vector<int64_t> Shape() const;
+  void SetDataType(DataType data_type);
 
   DataType GetDataType() const;
 
@@ -72,6 +76,7 @@ class VarDescBind {
 
  private:
   VarDesc desc_;
+  VarDesc_VarType var_type_;
 };
 }  // namespace framework
 }  // namespace paddle

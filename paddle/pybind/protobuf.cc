@@ -162,6 +162,10 @@ void BindVarDsec(py::module &m) {
       .value("FP32", DataType::FP32)
       .value("FP64", DataType::FP64);
 
+  py::enum_<VarDesc_VarType>(m, "VarType", "")
+      .value("LodTensor", VarDesc_VarType::VarDesc_VarType_LOD_TENSOR)
+      .value("SelectedRows", VarDesc_VarType::VarDesc_VarType_SELECTED_ROWS);
+
   py::class_<VarDescBind>(m, "VarDesc", "")
       .def("name",
            [](const VarDescBind &self) {
@@ -169,12 +173,14 @@ void BindVarDsec(py::module &m) {
              return name;
            },
            py::return_value_policy::reference)
+      .def("set_var_type", &VarDescBind::SetVarType)
+      .def("var_type", &VarDescBind::GetVarType)
       .def("set_shape", &VarDescBind::SetShape)
+      .def("shape", &VarDescBind::GetShape, py::return_value_policy::reference)
       .def("set_data_type", &VarDescBind::SetDataType)
-      .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
       .def("data_type", &VarDescBind::GetDataType)
-      .def("lod_level", &VarDescBind::GetLodLevel)
-      .def("set_lod_level", &VarDescBind::SetLoDLevel);
+      .def("set_lod_level", &VarDescBind::SetLoDLevel)
+      .def("lod_level", &VarDescBind::GetLodLevel);
 }
 
 void BindOpDesc(py::module &m) {

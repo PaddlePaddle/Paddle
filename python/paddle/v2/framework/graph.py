@@ -10,6 +10,7 @@ class Variable(object):
     def __init__(self,
                  block,
                  name=None,
+                 type=core.VarType.LodTensor,
                  shape=None,
                  dtype=None,
                  lod_level=None,
@@ -24,6 +25,8 @@ class Variable(object):
         except core.EnforceNotMet:
             self.desc = self.block.desc.new_var(name)
             is_new_var = True
+
+        self.desc.set_var_type(type)
 
         if shape is not None:
             if is_new_var:
@@ -66,6 +69,10 @@ class Variable(object):
     @property
     def name(self):
         return self.desc.name()
+
+    @property
+    def type(self):
+        return self.desc.var_type()
 
     @property
     def shape(self):
