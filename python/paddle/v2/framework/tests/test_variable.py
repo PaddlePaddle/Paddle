@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.framework.graph import Variable, g_program
+from paddle.v2.framework.framework import Variable, g_program
 import paddle.v2.framework.core as core
 import numpy as np
 
