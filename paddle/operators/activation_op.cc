@@ -321,6 +321,23 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ThresholdedReluOpMaker(framework::OpProto *proto,
+                         framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of ThresholdedRelu operator");
+    AddOutput("Y", "Output of ThresholdedRelu operator");
+    AddComment(
+        "ThresholdedRelu activation operator, "
+        "thresholded_relu = x for x > threshold, "
+        "thresholded_relu = 0 otherwise.");
+    AddAttr<AttrType>("threshold", "The threshold location of activation")
+        .SetDefault(static_cast<AttrType>(1.0));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -391,6 +408,10 @@ REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
 
 REGISTER_OP(hard_shrink, ops::ActivationOp, ops::HardShrinkOpMaker<float>,
             hard_shrink_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(thresholded_relu, ops::ActivationOp,
+            ops::ThresholdedReluOpMaker<float>, thresholded_relu_grad,
+            ops::ActivationOpGrad);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_CPU_KERNEL(                                                      \
