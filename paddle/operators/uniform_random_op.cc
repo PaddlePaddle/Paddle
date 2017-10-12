@@ -54,7 +54,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
-    auto dims = Attr<std::vector<int>>("dims");
+    auto& dims = ctx->Attrs().Get<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());
     for (auto dim : dims) {
