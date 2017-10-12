@@ -34,6 +34,7 @@ inline std::vector<T> RepeatedToVector(
 template <typename T, typename RepeatedField>
 inline void VectorToRepeated(const std::vector<T> &vec,
                              RepeatedField *repeated_field) {
+  repeated_field->Clear();
   repeated_field->Reserve(vec.size());
   for (const auto &elem : vec) {
     *repeated_field->Add() = elem;
@@ -44,6 +45,7 @@ inline void VectorToRepeated(const std::vector<T> &vec,
 template <typename RepeatedField>
 inline void VectorToRepeated(const std::vector<bool> &vec,
                              RepeatedField *repeated_field) {
+  repeated_field->Clear();
   repeated_field->Reserve(vec.size());
   for (auto elem : vec) {
     *repeated_field->Add() = elem;
