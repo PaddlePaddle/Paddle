@@ -65,6 +65,11 @@ protected:
   MKLDNNMatrixPtr biasVal_;
   MKLDNNMatrixPtr biasGrad_;
 
+  // merge grad primitive
+  std::shared_ptr<mkldnn::primitive> mergeGrad_;
+  // tmp input argument to save input grad, only used to merge grad
+  Argument tmpInArg_;
+
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
@@ -99,6 +104,7 @@ public:
     if (!Layer::init(layerMap, parameterMap)) {
       return false;
     }
+    setOutputMap();
     checkCPUOutputsNumber();
 
     stream_.reset(new MKLDNNStream());
@@ -118,6 +124,7 @@ public:
         VLOG(MKLDNN_BASE) << getName() << " reset mkldnn forward";
         // reset when input total sizes changed, not only the batchsize
         inputElemenCnt_ = elemenCnt;
+        pipelineFwd_.clear();
         reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
         resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
         if (outVal_) {
@@ -144,6 +151,7 @@ public:
   void backward(const UpdateCallback& callback) override {
     if (needResetBwd_) {
       VLOG(MKLDNN_BASE) << getName() << " reset mkldnn backward";
+      pipelineBwd_.clear();
       resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
       needResetBwd_ = false;
     }
@@ -248,6 +256,58 @@ protected:
   }
 
   /**
+   * reset the output grad matrix from primitive desc.
+   * and reset the merge grad primitive if needed.
+   * note: when this layer have serval output,
+   *       do not support mixing with cpu device,
+   *       because can not get memory desc from cpu device.
+   */
+  virtual void resetOutGrad(MKLDNNMatrixPtr& out,
+                            mkldnn::memory::primitive_desc pd) {
+    CHECK(outputIsOnlyMKLDNN()) << "only support mixed with other device yet";
+    mergeGrad_ = nullptr;
+    out = MKLDNNMatrix::create(output_.grad, pd);
+    if (outputMap_.size() <= 1) {
+      return;
+    }
+    std::vector<double> scales;
+    std::vector<mkldnn::memory::primitive_desc> srcPDs;
+    std::vector<mkldnn::primitive::at> srcs;
+    for (auto it = outputMap_.begin(); it != outputMap_.end(); ++it) {
+      MKLDNNMatrixPtr src =
+          std::dynamic_pointer_cast<MKLDNNMatrix>(it->second->grad);
+      CHECK(src) << "should be MKLDNNMatrix";
+      auto srcDims = src->getDims();
+      auto dstDims = out->getDims();
+      CHECK_EQ(srcDims.size(), dstDims.size());
+      for (size_t i = 0; i < srcDims.size(); ++i) {
+        CHECK_EQ(srcDims[i], dstDims[i]);
+      }
+      srcPDs.push_back(src->getPrimitiveDesc());
+      srcs.push_back(*src);
+      scales.push_back(1.0);
+    }
+    auto sumPD = mkldnn::sum::primitive_desc(pd.desc(), scales, srcPDs);
+    mergeGrad_.reset(new mkldnn::sum(sumPD, srcs, *out));
+    pipelineBwd_.insert(pipelineBwd_.begin(), *mergeGrad_);
+  }
+
+  /**
+   * reset input grad from primitive desc.
+   * this function is avaiable for input is only mkldnn
+   * or input do not care cpu device
+   */
+  virtual void resetInGrad(MKLDNNMatrixPtr& in,
+                           mkldnn::memory::primitive_desc pd) {
+    LayerPtr& input = inputLayers_[0];
+    const MatrixPtr& grad =
+        input->getOutputMapSize() > 1 ? nullptr : input->getOutput().grad;
+    in = MKLDNNMatrix::create(grad, pd);
+    auto arg = input->getOutput(this->getName());
+    arg.grad = std::dynamic_pointer_cast<Matrix>(in);
+  }
+
+  /**
    * print info about sizes
    */
   virtual void printSizeInfo() {
@@ -331,6 +391,16 @@ private:
           << "Cannot find bias parameter " << name << " for layer "
           << getName();
       parameter->setDevice(id);
+    }
+  }
+
+  /**
+   * Set output map of prev layers.
+   */
+  void setOutputMap() {
+    outputMap_.clear();
+    for (size_t i = 0; i < inputLayers_.size(); ++i) {
+      inputLayers_[i]->setOutput(getName(), &tmpInArg_);
     }
   }
 
