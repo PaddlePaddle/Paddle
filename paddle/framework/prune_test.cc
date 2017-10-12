@@ -54,8 +54,6 @@ class TwoOneOpMaker : public OpProtoAndCheckerMaker {
 
 namespace f = paddle::framework;
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(one_one, f::NOP, f::OneOneOpMaker);
-REGISTER_OP_WITHOUT_GRADIENT(two_one, f::NOP, f::TwoOneOpMaker);
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,
