@@ -76,6 +76,17 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
                            const std::vector<DySeqMeta>& meta, const LoD& lod,
                            size_t level);
 
+std::vector<size_t> GenDyBatchIndice(const DySeqMetaBatch& meta, int batch_id) {
+  // collect indice need to copy to the batch
+  std::vector<size_t> indice;
+  for (const auto& seq : meta) {
+    size_t id = seq.begin + batch_id;
+    if (id >= seq.end) break;
+    indice.push_back(id);
+  }
+  return indice;
+}
+
 }  // namespace detail
 
 const LoDTensor& TensorArray::Read(size_t index) const {
@@ -113,8 +124,8 @@ LoDTensor TensorArray::Pack(size_t level, const std::vector<DySeqMeta>& meta,
   return detail::PackDynamicBatch(values_, meta, lod, level);
 }
 
-std::vector<DySeqMeta> TensorArray::Unpack(const LoDTensor& source, int level,
-                                           bool length_desend) {
+DySeqMetaBatch TensorArray::Unpack(const LoDTensor& source, int level,
+                                   bool length_desend) {
   detail::DynamicBatchUnpacker unpacker(source, level,
                                         length_desend /*descend*/);
 
@@ -129,6 +140,7 @@ std::vector<DySeqMeta> TensorArray::Unpack(const LoDTensor& source, int level,
     Write(batch_id, unpacker.GetBatch(batch_id));
   }
 
+  PADDLE_ENFORCE(!unpacker.meta.empty());
   return unpacker.meta;
 }
 
@@ -218,13 +230,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   PADDLE_ENFORCE(!meta.empty(), "should build meta first");
   LoDTensor result;
 
-  // collect indice need to copy to the batch
-  std::vector<size_t> indice;
-  for (const auto& seq : meta) {
-    size_t id = seq.begin + index;
-    if (id >= seq.end) break;
-    indice.push_back(id);
-  }
+  auto indice = detail::GenDyBatchIndice(meta, index);
   PADDLE_ENFORCE(!indice.empty(), "invalid batch at %d", index);
 
   // copy the indice of records in LoDTensor
@@ -237,7 +243,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   for (size_t i = 0; i < indice.size(); i++) {
     auto index = indice[i];
     auto target = result.Slice<value_type>(i, i + 1);
-    auto source_ = source->Slice<value_type>(index, index + 1);
+    auto slice = source->Slice<value_type>(index, index + 1);
 
     target.CopyFrom<value_type>(source_, platform::CPUPlace(),
                                 platform::CPUDeviceContext());

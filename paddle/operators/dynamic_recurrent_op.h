@@ -27,27 +27,18 @@
 namespace paddle {
 namespace operators {
 
-class DynamicRecurrentOp : public framework::OperatorBase {
+class RNNAlgorithm {
  public:
-  static const rnn::ArgumentName kArgName;
+  enum ComputeMode { kForward = 0, kBackward = 1 };
+  static const std::array<rnn::ArgumentName, 2> kArgNames;
   using value_type = float;
 
-  DynamicRecurrentOp(const std::string& type,
-                     const framework::VariableNameMap& inputs,
-                     const framework::VariableNameMap& outputs,
-                     const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
-  DynamicRecurrentOp(const DynamicRecurrentOp& o)
-      : framework::OperatorBase(
-            static_cast<const framework::OperatorBase&>(o)) {
-    // TODO(yuyang18): Implement copy ctor well.
-    PADDLE_THROW("Not implemented");
-  }
-
-  void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override;
-
+  /*
+   * different `Run` method for forward and backward.
+   */
+  template <ComputeMode _>
+  void Run(const framework::Scope& scope, framework::OperatorBase& op,
+           const platform::DeviceContext& dev_ctx) const;
   /*
    * Split the inputs(LoDTensors) to segments for each time step.
    */
@@ -78,18 +69,60 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   void InitStates() const;
 
   /*
+   * Create state variables for each time step.
+   */
+  void CreateState(const rnn::MemoryAttr& memory, size_t step) const;
+
+  /*
+   * Link pre-state variable in current scope to the state variable in the
+   * previous time step (scope) by reference.
+   */
+  void LinkState(const rnn::MemoryAttr& memory, size_t step) const;
+
+  /*
+   * Link the pre-state of the first time step to the `boot-state` in parent's
+   * scope.
+   */
+  void LinkBootState(const rnn::MemoryAttr& memory) const;
+
+  /*
+   * Copy the gradient from `pre-state` in the first step-scope to the
+   * `boot-state` in parent's scope.
+   */
+  void ExportBootStateGradient(const rnn::MemoryAttr& memory) const;
+
+  /*
+   * Calculate time steps.
+   */
+  void RunSteps() const;
+
+  /*
    * Concatenate outputs in each time step and generate a LoDTensor.
    */
   void ConcatOutputs() const;
 
+  void SetComputeMode(ComputeMode mode) const { mode_ = mode; }
+  bool IsForward() const { return mode_ == ComputeMode::kForward; }
+  bool IsBackward() const { return mode_ == ComputeMode::kBackward; }
+
   /*
    * set a stepnet that is created according to a RecurrentOp's stepnet.
    */
-  void SetStepNet(std::unique_ptr<OperatorBase> net) {
+  void SetStepNet(std::unique_ptr<framework::OperatorBase> net) {
     PADDLE_ENFORCE_NOT_NULL(net);
     stepnet_ = std::move(net);
   }
-  const OperatorBase& GetStepNet() const { return *stepnet_; }
+  const framework::OperatorBase& GetStepNet() const { return *stepnet_; }
+
+  const framework::TensorArray& state(const std::string& name) const {
+    return states_[name];
+  }
+  const framework::TensorArray& step_input(const std::string& name) const {
+    return step_inputs_[name];
+  }
+  const framework::TensorArray& step_output(const std::string& name) const {
+    return step_outputs_[name];
+  }
 
  protected:
   struct ArgCache {
@@ -97,20 +130,25 @@ class DynamicRecurrentOp : public framework::OperatorBase {
     std::vector<framework::Scope*>* scopes;
     std::map<std::string, framework::Variable*> inlinks;
     std::map<std::string, framework::Variable*> outlinks;
+    platform::DeviceContext const* dev_ctx;
 
     size_t num_steps{0};
 
-    void Init(const rnn::ArgumentName& name, const OperatorBase& op,
-              const framework::Scope& scope, rnn::Argument* arg);
+    void Init(const rnn::ArgumentName& name, const framework::OperatorBase& op,
+              const framework::Scope& scope,
+              platform::DeviceContext const* dev_ctx, rnn::Argument* arg);
 
     framework::Scope& GetScope(size_t index) {
       PADDLE_ENFORCE_LT(index, num_steps);
       return *scopes->at(index);
     }
 
+    framework::LoDTensor* GetTensor(const framework::Scope& scope,
+                                    const std::string& name);
+
    private:
-    void InitArgument(const rnn::ArgumentName& name, const OperatorBase& op,
-                      rnn::Argument* arg);
+    void InitArgument(const rnn::ArgumentName& name,
+                      const framework::OperatorBase& op, rnn::Argument* arg);
     void CacheScopes(const framework::Scope& scope, const rnn::Argument& arg);
     void CacheInlinks(const framework::Scope& scope,
                       const std::vector<std::string>& names);
@@ -121,25 +159,45 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   };
 
  private:
-  std::unique_ptr<OperatorBase> stepnet_;
-  mutable framework::TensorArray states_;
+  std::unique_ptr<framework::OperatorBase> stepnet_;
+  mutable std::map<std::string, framework::TensorArray> states_;
   mutable std::map<std::string, framework::TensorArray> step_inputs_;
   mutable std::map<std::string, framework::TensorArray> step_outputs_;
   mutable std::map<std::string, std::vector<framework::DySeqMeta>>
       dy_seq_metas_;
   mutable rnn::Argument arg_;
   mutable ArgCache cache_;
+  mutable ComputeMode mode_{ComputeMode::kForward};
 
-#ifdef PADDLE_WITH_TESTING
-  friend class DynamicRecurrentOpTestHelper;
-  FRIEND_TEST(DynamicRecurrentOpTestHelper, SplitInputs);
-  FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateCache);
-  FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateScopes);
-  FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepInputs);
-  FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepOutputs);
-  FRIEND_TEST(DynamicRecurrentOpTestHelper, InitStates);
-  FRIEND_TEST(DynamicRecurrentOpTestHelper, ConcatOutputs);
-#endif
+  // #ifdef PADDLE_WITH_TESTING
+  //   friend class DynamicRecurrentOpTestHelper;
+  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, SplitInputs);
+  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateCache);
+  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateScopes);
+  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepInputs);
+  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepOutputs);
+  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, InitStates);
+  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, ConcatOutputs);
+  // #endif
+};
+
+class DynamicRecurrentOp : public framework::OperatorBase {
+ public:
+  DynamicRecurrentOp(const std::string& type,
+                     const framework::VariableNameMap& inputs,
+                     const framework::VariableNameMap& outputs,
+                     const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  DynamicRecurrentOp(const DynamicRecurrentOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    // TODO(yuyang18): Implement copy ctor well.
+    PADDLE_THROW("Not implemented");
+  }
+
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
 };
 
 class DynamicRecurrentGradientOp : public framework::OperatorBase {
@@ -153,6 +211,41 @@ class DynamicRecurrentGradientOp : public framework::OperatorBase {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
 };
+
+// Implementation for forward propagation.
+template <>
+void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kForward>(
+    const framework::Scope& scope, framework::OperatorBase& op,
+    const platform::DeviceContext& dev_ctx) const {
+  SetComputeMode(ComputeMode::kForward);
+  cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
+  SplitInputs();
+  CreateScopes();
+  WriteStepInputs();
+  InitStates();
+  WriteStepOutputs();
+  RunSteps();
+  ConcatOutputs();
+}
+
+// Implementation for backward propagation.
+template <>
+void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
+    const framework::Scope& scope, framework::OperatorBase& op,
+    const platform::DeviceContext& dev_ctx) const {
+  SetComputeMode(ComputeMode::kBackward);
+  cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
+  SplitInputs();
+  WriteStepInputs();
+  InitStates();
+  WriteStepOutputs();
+  RunSteps();
+  // copy boot-states' gradients back.
+  for (const auto& memory : arg_.memories) {
+    ExportBootStateGradient(memory);
+  }
+  ConcatOutputs();
+}
 
 }  // namespace operators
 }  // namespace paddle
