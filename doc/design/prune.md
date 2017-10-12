@@ -3,7 +3,7 @@
 ## Motivation
 
 We want to support running inference, training and checkpointing in one `ProgramDesc`. We implement 
-`void Prune(const ProgramDesc* input, ProgramDesc* output)` function, which takes a `ProgramDesc`
+`void Prune(const ProgramDesc* input, ProgramDesc* output, int id)` function, which takes a `ProgramDesc`
 and generate a pruned `ProgramDesc`.
 
 ## Challenge
@@ -65,8 +65,8 @@ bool HasDependentVar(const OpDesc& op_desc, const std::set<string>& dependent_va
 Then the whole algorithm can be implemented as the following
 
 ```c++
-void Prune(const ProgramDesc* input, ProgramDesc* output) {
-  auto& block = input.blocks(0);
+void Prune(const ProgramDesc& input, ProgramDesc* output, int id) {
+  auto& block = input.blocks(id);
   auto& ops = block.ops();
 
   std::set<std::string> dependent_vars;
@@ -100,10 +100,14 @@ void Prune(const ProgramDesc* input, ProgramDesc* output) {
   // we reverse the should_run vector
   std::reverse(should_run.begin(), should_run.end());
   
+  output = input;
+  auto* op_field = output.mutable_blocks(id)->mutable_ops();
+  op_field->Clear();
+  
   // add pruned ops to output
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
-      output->AppendOp(input->block[0].ops(i));
+      *op_field->Add() = input.blocks(id).ops(i);
     }
   }
 }
