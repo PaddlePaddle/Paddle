@@ -43,12 +43,12 @@ ExternalProject_Add(
                     -DWITH_GFLAGS=ON
                     -Dgflags_DIR=${GFLAGS_INSTALL_DIR}/lib/cmake/gflags
                     -DBUILD_TESTING=OFF
-                    -DCMAKE_BUILD_TYPE=Release
+                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GLOG_INSTALL_DIR}
                      -DCMAKE_INSTALL_LIBDIR:PATH=${GLOG_INSTALL_DIR}/lib
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                     -DCMAKE_BUILD_TYPE:STRING=Release
+                     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 
 ADD_LIBRARY(glog STATIC IMPORTED GLOBAL)
