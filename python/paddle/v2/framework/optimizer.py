@@ -34,8 +34,12 @@ class Optimizer(object):
         """
 
         assert isinstance(loss, graph.Variable)
+        # TODO(qiao) append_backward should support target.
         loss.block.program.append_backward(set())
-        parameters = loss.block.program.parameters
+        if parameter_list is not None:
+            parameters = parameter_list
+        else:
+            parameters = loss.block.program.parameters
         params_and_grads = []
         for param in parameters:
             grad = grad_var_name(param)
@@ -72,3 +76,40 @@ class Optimizer(object):
         params_grads = self.create_backward_pass(loss, parameter_list)
         optimize_ops = self.create_optimization_pass(params_grads, loss)
         return optimize_ops
+
+
+class SGDOptimizer(Optimizer):
+    """ Simple SGD optimizer without any state.
+    """
+
+    def __init__(self, learning_rate):
+        assert learning_rate is not None
+        super(Optimizer, self).__init__()
+        self.type = "sgd"
+        self._learning_rate = learning_rate
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, graph.Block)
+        lr_shape = [1]
+        # create a var for learning_rate
+        lr = block.create_var(dtype="float32", shape=lr_shape, lod_level=0)
+
+        # create an op to init the learning_rate
+        init_op = block.append_op(
+            type="fill_constant",
+            outputs={"Out": lr.name},
+            attrs={"shape": lr_shape,
+                   "value": self._learning_rate})
+
+        # create the optimize op
+        sgd_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param", param_and_grad[0], "Grad", param_and_grad[1],
+                "LearningRate", lr.name()
+            },
+            outputs={"Out", param_and_grad[0]},
+            attrs={"shape": [1],
+                   "value": self._learning_rate})
+
+        return sgd_op
