@@ -97,8 +97,10 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
 template <typename T>
 struct OpInfoFiller<T, kGradOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->grad_op_maker_ = [](const OpDescBind& fwd_op) {
-      T maker(fwd_op);
+    info->grad_op_maker_ = [](
+        const OpDescBind& fwd_op,
+        const std::unordered_set<std::string>& no_grad_set) {
+      T maker(fwd_op, no_grad_set);
       return maker();
     };
   }

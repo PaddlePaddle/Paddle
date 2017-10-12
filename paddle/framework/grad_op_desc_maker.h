@@ -13,6 +13,8 @@
    limitations under the License. */
 
 #pragma once
+#include <string>
+#include <unordered_set>
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/operator.h"
 
@@ -21,27 +23,49 @@ namespace framework {
 
 class GradOpDescMakerBase {
  public:
-  explicit GradOpDescMakerBase(const OpDescBind& fwd_op) : fwd_op_(fwd_op) {}
+  explicit GradOpDescMakerBase(
+      const OpDescBind& fwd_op,
+      const std::unordered_set<std::string>& no_grad_set)
+      : fwd_op_(fwd_op), no_grad_set_(no_grad_set) {}
 
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
 
  protected:
-  static std::vector<std::string> ToGradNames(
-      const std::vector<std::string>& var_names) {
+  std::vector<std::string> ToGradNames(
+      const std::vector<std::string>& var_names,
+      bool drop_empty_grad = true) const {
     std::vector<std::string> ret_val;
     ret_val.reserve(var_names.size());
-    std::transform(var_names.begin(), var_names.end(),
-                   std::back_inserter(ret_val), GradVarName);
-    return ret_val;
+    std::transform(
+        var_names.begin(), var_names.end(), std::back_inserter(ret_val),
+        [this](const std::string& fwd_var_name) -> std::string {
+          auto g_name = GradVarName(fwd_var_name);
+          if (this->no_grad_set_.find(g_name) != this->no_grad_set_.end()) {
+            return kEmptyVarName;
+          } else {
+            return g_name;
+          }
+        });
+    if (!drop_empty_grad) {
+      return ret_val;
+    }
+    std::vector<std::string> dropped_ret_val;
+    dropped_ret_val.reserve(ret_val.size());
+    std::copy_if(ret_val.begin(), ret_val.end(),
+                 std::back_inserter(dropped_ret_val),
+                 [](const std::string& str) { return str != kEmptyVarName; });
+    return dropped_ret_val;
   }
 
-  std::vector<std::string> InputGrad(const std::string& name) const {
-    return ToGradNames(fwd_op_.Input(name));
+  std::vector<std::string> InputGrad(const std::string& name,
+                                     bool drop_empty_grad = true) const {
+    return ToGradNames(fwd_op_.Input(name), drop_empty_grad);
   }
 
-  std::vector<std::string> OutputGrad(const std::string& name) const {
-    return ToGradNames(fwd_op_.Output(name));
+  std::vector<std::string> OutputGrad(const std::string& name,
+                                      bool drop_empty_grad = true) const {
+    return ToGradNames(fwd_op_.Output(name), drop_empty_grad);
   }
 
   std::vector<std::string> InputNames() const {
@@ -75,6 +99,7 @@ class GradOpDescMakerBase {
 
  private:
   const OpDescBind& fwd_op_;
+  const std::unordered_set<std::string>& no_grad_set_;
 };
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {
