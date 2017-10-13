@@ -435,12 +435,13 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
             2UL       /* external input number */
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
-                + 2U /* internal variable number*/);
+                + 2UL /* internal variable number*/
+            );
   EXPECT_EQ(grad_fc.Outputs(all).size(),
             2UL       /* input number of mul*/
-                + 2UL /* input number of rowwise_add
-                       */
-                + 1UL /* input number of sigmod */);
+                + 2UL /* input number of rowwise_add*/
+                + 1UL /* input number of sigmod */
+                - 1UL /* out2 is not needed*/);
   EXPECT_EQ(bwd_net->ops_[1]->Inputs(all).size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[1]->Outputs(all).size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[2]->Inputs(all).size(), 0UL);
@@ -620,8 +621,7 @@ TEST(Backward, intermedia_var_no_grad) {
             std::vector<std::string>({f::GradVarName("out4")}));
   EXPECT_EQ(grad_op4->Output(f::GradVarName("X")),
             std::vector<std::string>({f::GradVarName("out1")}));
-  EXPECT_EQ(grad_op4->Output(f::GradVarName("Y")),
-            std::vector<std::string>({f::kEmptyVarName}));
+  EXPECT_EQ(grad_op4->Output(f::GradVarName("Y")), std::vector<std::string>());
 }
 
 TEST(Backward, var_no_grad) {
@@ -659,8 +659,7 @@ TEST(Backward, var_no_grad) {
             std::vector<std::string>({f::GradVarName("z2")}));
   EXPECT_EQ(grad_op2->Output(f::GradVarName("X")),
             std::vector<std::string>({f::GradVarName("y1")}));
-  EXPECT_EQ(grad_op2->Output(f::GradVarName("H")),
-            std::vector<std::string>({f::kEmptyVarName}));
+  EXPECT_EQ(grad_op2->Output(f::GradVarName("H")), std::vector<std::string>());
 
   f::OpDescBind *fill_zero_op = block->AllOps()[3];
   ASSERT_EQ(fill_zero_op->Type(), "fill_zeros_like");

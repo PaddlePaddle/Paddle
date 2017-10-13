@@ -305,11 +305,6 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
         pending_fill_zeros_ops.push_back(std::move(fill_zeros_op));
       }
     }
-    for (const std::string& out_name : desc->OutputArgumentNames()) {
-      if (no_grad_vars.count(out_name)) {
-        desc->Rename(out_name, kEmptyVarName);
-      }
-    }
   }
 
   for (auto& p : pending_fill_zeros_ops) {

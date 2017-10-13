@@ -32,10 +32,10 @@ class GradOpDescMakerBase {
   virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
 
  protected:
-  std::vector<std::string> ToGradNames(
-      const std::vector<std::string>& var_names,
-      bool drop_empty_grad = true) const {
+  std::vector<std::string> InputGrad(const std::string& name,
+                                     bool drop_empty_grad = true) const {
     std::vector<std::string> ret_val;
+    auto var_names = this->Input(name);
     ret_val.reserve(var_names.size());
     std::transform(
         var_names.begin(), var_names.end(), std::back_inserter(ret_val),
@@ -58,14 +58,13 @@ class GradOpDescMakerBase {
     return dropped_ret_val;
   }
 
-  std::vector<std::string> InputGrad(const std::string& name,
-                                     bool drop_empty_grad = true) const {
-    return ToGradNames(fwd_op_.Input(name), drop_empty_grad);
-  }
-
-  std::vector<std::string> OutputGrad(const std::string& name,
-                                      bool drop_empty_grad = true) const {
-    return ToGradNames(fwd_op_.Output(name), drop_empty_grad);
+  std::vector<std::string> OutputGrad(const std::string& name) const {
+    std::vector<std::string> ret_val;
+    auto onames = this->Output(name);
+    ret_val.reserve(onames.size());
+    std::transform(onames.begin(), onames.end(), std::back_inserter(ret_val),
+                   GradVarName);
+    return ret_val;
   }
 
   std::vector<std::string> InputNames() const {
