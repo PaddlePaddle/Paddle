@@ -52,7 +52,7 @@ inline void ReorderBootState(const DySeqMetaBatch& metas,
     auto slice = tensor->Slice<T>(seq_id, seq_id + 1);
     auto boot_slice =
         boot_state.Slice<T>(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
-    // slice.CopyFrom<typename T>(boot_slice, dst_place);
+    // TODO(superjom) pass in device context as an argument
     slice.template CopyFrom<T>(boot_slice, dst_place,
                                platform::CPUDeviceContext());
   }
@@ -105,6 +105,7 @@ void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
   for (const auto& memory : arg_.memories) {
     ExportBootStateGradient(memory);
   }
+
   ConcatOutputs();
 }
 
@@ -258,7 +259,8 @@ void RNNAlgorithm::LinkState(const rnn::MemoryAttr& memory, size_t step) const {
   auto& scope = cache_.GetScope(step);
   auto& state_pre = *cache_.GetTensor(scope, memory.pre_var);
 
-  // process the first state's boot-state(the 0-step in forward mode or the last
+  // process the first state's boot-state(the 0-step in forward mode or the
+  // last
   // step in backward mode)
   // Only forward mode need to link the boot-state to the `pre-state` in first
   // time step. In backward mode, need to copy the gradient of `pre-state` in

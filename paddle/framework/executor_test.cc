@@ -46,6 +46,7 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
   for (auto kv : outputs) {
     for (auto v : kv.second) {
       auto var = block->NewVar(v);
+      var->SetType(VarDesc::LOD_TENSOR);
       var->SetDataType(paddle::framework::DataType::FP32);
     }
   }
@@ -317,7 +318,6 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
     }
   }
 }
-#endif
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
@@ -327,3 +327,5 @@ int main(int argc, char** argv) {
   FLAGS_fraction_of_gpu_memory_to_use = 0.25;
   return RUN_ALL_TESTS();
 }
+
+#endif

@@ -56,7 +56,6 @@ class DynamicRecurrentOpTest(unittest.TestCase):
         print 'output', np.array(output).shape
 
     def create_global_variables(self):
-
         x = np.random.normal(size=(self.lod_py[0][-1],
                                    self.input_dim)).astype("float32")
         W = np.random.normal(size=(self.input_dim,
@@ -69,11 +68,8 @@ class DynamicRecurrentOpTest(unittest.TestCase):
         x_tensor = create_tensor(self.scope, "x",
                                  [self.num_sents, self.input_dim], x)
         x_tensor.set_lod(self.lod_py)
-
         create_tensor(self.scope, "W", [self.input_dim, self.input_dim], W)
-
         create_tensor(self.scope, "U", [self.input_dim, self.input_dim], U)
-
         create_tensor(self.scope, "h_boot", [self.num_sents, self.input_dim],
                       h_boot)
         self.scope.new_var("step_scopes")
