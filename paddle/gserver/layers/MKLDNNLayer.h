@@ -67,8 +67,14 @@ protected:
 
   // merge grad primitive
   std::shared_ptr<mkldnn::primitive> mergeGrad_;
+  std::vector<mkldnn::primitive> pipelineMergeGrad_;
   // tmp input argument to save input grad, only used to merge grad
   Argument tmpInArg_;
+  // since mkldnn sum do not support different formats:
+  // can refer to https://github.com/01org/mkl-dnn/issues/134
+  // so need create reorder manually and save tmp MKLDNNMatrix
+  MKLDNNMatrixPtr tmpOutGrad_;
+  std::shared_ptr<mkldnn::primitive> tmpCvt_;
 
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
@@ -148,8 +154,16 @@ public:
     if (needResetBwd_) {
       VLOG(MKLDNN_BASE) << getName() << " reset mkldnn backward";
       pipelineBwd_.clear();
+      pipelineMergeGrad_.clear();
+      mergeGrad_ = nullptr;
       resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
       needResetBwd_ = false;
+    }
+
+    // merge grad must before backward activation
+    if (mergeGrad_) {
+      REGISTER_TIMER_INFO("MergeBpGrad", getName().c_str());
+      stream_->submit(pipelineMergeGrad_);
     }
     {
       REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
@@ -262,6 +276,7 @@ protected:
                             mkldnn::memory::primitive_desc pd) {
     CHECK(outputIsOnlyMKLDNN()) << "do not support mixed with other device yet";
     mergeGrad_ = nullptr;
+    pipelineMergeGrad_.clear();
     out = MKLDNNMatrix::create(output_.grad, pd);
     if (outputMap_.size() <= 1) {
       return;
@@ -272,6 +287,7 @@ protected:
     for (auto it = outputMap_.begin(); it != outputMap_.end(); ++it) {
       MKLDNNMatrixPtr src =
           std::dynamic_pointer_cast<MKLDNNMatrix>(it->second->grad);
+      VLOG(MKLDNN_BASE) << getName() << " has output grad " << it->first;
       CHECK(src) << "should be MKLDNNMatrix";
       auto srcDims = src->getDims();
       auto dstDims = out->getDims();
@@ -283,9 +299,26 @@ protected:
       srcs.push_back(*src);
       scales.push_back(1.0);
     }
-    auto sumPD = mkldnn::sum::primitive_desc(pd.desc(), scales, srcPDs);
-    mergeGrad_.reset(new mkldnn::sum(sumPD, srcs, *out));
-    pipelineBwd_.insert(pipelineBwd_.begin(), *mergeGrad_);
+
+    // TODO(TJ): remove me when mkldnn sum support different formats
+    for (size_t i = 1; i < srcPDs.size(); ++i) {
+      CHECK(srcPDs[0] == srcPDs[i]);
+    }
+    tmpOutGrad_ = nullptr;
+    tmpCvt_ = nullptr;
+    if (out->getPrimitiveDesc() != srcPDs[0]) {
+      tmpOutGrad_ = MKLDNNMatrix::create(nullptr, srcPDs[0]);
+      tmpCvt_ = MKLDNNMatrix::createReorder(tmpOutGrad_, out);
+      CHECK(tmpCvt_);
+      pipelineMergeGrad_.push_back(*tmpCvt_);
+    } else {
+      tmpOutGrad_ = out;
+    }
+
+    auto sumPD = mkldnn::sum::primitive_desc(
+        tmpOutGrad_->getMemoryDesc(), scales, srcPDs);
+    mergeGrad_.reset(new mkldnn::sum(sumPD, srcs, *tmpOutGrad_));
+    pipelineMergeGrad_.insert(pipelineMergeGrad_.begin(), *mergeGrad_);
   }
 
   /**
@@ -299,7 +332,7 @@ protected:
     const MatrixPtr& grad =
         input->getOutputMapSize() > 1 ? nullptr : input->getOutput().grad;
     in = MKLDNNMatrix::create(grad, pd);
-    auto arg = input->getOutput(this->getName());
+    Argument& arg = input->getOutput(this->getName());
     arg.grad = std::dynamic_pointer_cast<Matrix>(in);
   }
 

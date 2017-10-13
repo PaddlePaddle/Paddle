@@ -48,6 +48,13 @@ if(WITH_MKLDNN)
               --config_file_b=trainer/tests/sample_trainer_config_simple_net.conf --use_mkldnn_b=False
               --use_gpu=False
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
+  add_test(NAME test_CompareMKLDNNandCPU_Banches
+    COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
+          ${CMAKE_CURRENT_BINARY_DIR}/test_CompareMKLDNNandCPU
+              --config_file_a=trainer/tests/sample_trainer_config_branch_net.conf --use_mkldnn_a=True
+              --config_file_b=trainer/tests/sample_trainer_config_branch_net.conf --use_mkldnn_b=False
+              --use_gpu=False
+      WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endif()
 
 ############### test_CompareTwoOpts ###################
