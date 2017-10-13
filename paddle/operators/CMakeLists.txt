@@ -84,8 +84,9 @@ function(op_library TARGET)
     endif()
 
     # pybind USE_NO_KERNEL_OP
+    # operators may reuse code from
     file(READ ${TARGET}.cc TARGET_CONTENT)
-    string(REGEX MATCH "OperatorWithKernel" regex_result "${TARGET_CONTENT}")
+    string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
     if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
         file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
