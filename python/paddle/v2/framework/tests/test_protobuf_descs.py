@@ -53,7 +53,7 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(8, len(op.attr_names()))
 
         op.set_block_attr("block_attr", prog.block(0))
-        self.assertEqual(0, op.get_block_attr("block_attr"))
+        self.assertEqual(0, op.block_attr("block_attr"))
 
         mul_op = block.append_op()
         mul_op.set_type("mul")

@@ -451,6 +451,7 @@ TEST(Backward, default_attribute) {
   op->SetInput("X", {"x"});
   op->SetInput("Y", {"y"});
   op->SetOutput("Out", {"out"});
+  op->CheckAttrs();
 
   AppendBackward(program, {});
 
