@@ -28,14 +28,15 @@ namespace paddle {
 namespace framework {
 
 static inline std::unique_ptr<OperatorBase> CreateGradOp(
-    const OperatorBase& op) {
+    const OperatorBase& op,
+    const std::unordered_set<std::string>& no_grad_set) {
   OpDescBind op_desc;
   op_desc.SetInputMap(op.Inputs());
   op_desc.SetOutputMap(op.Outputs());
   op_desc.SetType(op.Type());
   op_desc.SetAttrMap(op.Attrs());
   auto& info = OpInfoMap::Instance().Get(op.Type());
-  auto grad_descs = info.GradOpMaker()(op_desc);
+  auto grad_descs = info.GradOpMaker()(op_desc, no_grad_set);
   std::vector<std::unique_ptr<OperatorBase>> grad_ops;
   grad_ops.reserve(grad_descs.size());
   std::transform(grad_descs.begin(), grad_descs.end(),
@@ -172,30 +173,14 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                               std::to_string(i));
         net->ops_[op_offset]->Rename(name, dup_outputs.back());
       }
-      // collect all the offset to append `add` op for each alias
-      //
-      // one variable is shared between multiple operators.
-      // insert add operator one by one, then add it to output
-      for (size_t output_idx = 0; output_idx < dup_outputs.size() - 1;
-           ++output_idx) {
-        auto insert_add_x = dup_outputs[output_idx];
-        auto insert_add_y = dup_outputs[output_idx + 1];
-        auto insert_add_out = name + "@SHARED@" + std::to_string(output_idx);
-        // first add op inserted
-        if (output_idx == dup_outputs.size() - 2) {
-          insert_add_out = name;
-        }
-        if (output_idx != 0) {
-          insert_add_y = name + "@SHARED@" + std::to_string(output_idx - 1);
-        }
-        insert_position.push_back(
-            {dup_op.back(),
-             OpRegistry::CreateOp("sum", {{"X", {insert_add_x, insert_add_y}}},
-                                  {{"Out", {insert_add_out}}}, {})});
-      }
+      // collect all the offset for each alias,
+      // insert a sum operator to add all aliases to output
+      insert_position.push_back(
+          {dup_op.back(), OpRegistry::CreateOp("sum", {{"X", dup_outputs}},
+                                               {{"Out", {name}}}, {})});
     }
 
-    // make sure the inserted `add` ops follow the BFS order.
+    // make sure the inserted `sum` ops follow the BFS order.
     insert_position.sort(
         [](const Pos& l, const Pos& r) { return l.first > r.first; });
 
@@ -203,7 +188,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       net->InsertOp(pos.first + 1, std::move(pos.second));
     }
   } else {
-    std::unique_ptr<OperatorBase> grad_op(CreateGradOp(forwardOp));
+    std::unique_ptr<OperatorBase> grad_op(
+        CreateGradOp(forwardOp, no_grad_names));
 
     ForEachVarName(grad_op->Inputs(), [&no_grad_names, &net, &grad_op](
                                           const std::string& grad_input) {
@@ -288,7 +274,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
     const std::unique_ptr<OpDescBind>& op_desc,
     std::unordered_set<std::string>& no_grad_vars) {
   std::vector<std::unique_ptr<OpDescBind>> grad_op_descs;
-  // All input gradients of forwarding operator do not need to calculat.
+  // All input gradients of forwarding operator do not need to calculate.
   const std::vector<std::string>& inputs = op_desc->InputArgumentNames();
   if (AllGradInSet(inputs, no_grad_vars)) {
     return grad_op_descs;  // empty vector
@@ -302,7 +288,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
     return grad_op_descs;  // empty vector
   }
 
-  grad_op_descs = OpRegistry::CreateGradOpDescs(op_desc.get());
+  grad_op_descs = OpInfoMap::Instance()
+                      .Get(op_desc->Type())
+                      .GradOpMaker()(*op_desc, no_grad_vars);
 
   std::list<std::unique_ptr<OpDescBind>> pending_fill_zeros_ops;
   for (auto& desc : grad_op_descs) {
@@ -315,11 +303,6 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
         std::unique_ptr<OpDescBind> fill_zeros_op(new OpDescBind(
             "fill_zeros_like", {{"X", {prefix}}}, {{"Y", {new_name}}}, {}));
         pending_fill_zeros_ops.push_back(std::move(fill_zeros_op));
-      }
-    }
-    for (const std::string& out_name : desc->OutputArgumentNames()) {
-      if (no_grad_vars.count(out_name)) {
-        desc->Rename(out_name, kEmptyVarName);
       }
     }
   }

@@ -199,6 +199,39 @@ struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// tanhshrink(x) = x - tanh(x)
+// where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
+template <typename T>
+struct HardShrinkFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    auto temp1 = (x < (threshold * -1)).template cast<T>().eval();
+    auto temp2 = (x > threshold).template cast<T>().eval();
+    y.device(d) = x * (temp1 + temp2);
+  }
+};
+
+template <typename T>
+struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    auto temp1 = (x < (threshold * -1)).template cast<T>().eval();
+    auto temp2 = (x > threshold).template cast<T>().eval();
+    dx.device(d) = dy * (temp1 + temp2).template cast<T>();
+  }
+};
+
 // softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < lambda; 0
 // otherwise
 template <typename T>
@@ -351,8 +384,6 @@ template <typename T>
 struct Relu6Functor : public BaseActivationFunctor<T> {
   float threshold;
 
-  // NOTE: Explicit hides the `BaseActivationFunctor<T>::GetAttrs`
-  // not polymorphism for speed.
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
@@ -373,6 +404,33 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Y y, dY dy, dX dx) const {
     dx.device(d) =
         dy * ((x > static_cast<T>(0)) * (x < threshold)).template cast<T>();
+  }
+};
+
+// softplus(x) = log(1 + exp(x))
+// When x is a very large positive number, exp(x) may explode to inf,
+// Using trick below for numerical stability
+// https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/
+// Then: softplus(x) = max(x, 0) + log(exp(-max(x, 0)) + exp(x - max(x, 0)))
+template <typename T>
+struct SoftplusFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) {
+    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
+    y.device(d) = temp + (((-temp).exp() + (x - temp).exp()).log());
+  }
+};
+
+// d(softplus(x))/dx = exp(x) / (1 + exp(x))
+// For numerical stability:
+// d(softplus(x))/dx = exp(x - max(x, 0)) / (exp(-max(x, 0)) +
+// exp(x - max(x, 0)))
+template <typename T>
+struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) {
+    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
+    dx.device(d) = dy * ((x - temp).exp() / ((-temp).exp() + (x - temp).exp()));
   }
 };
 
@@ -532,27 +590,89 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = (x > static_cast<T>(threshold)).template cast<T>() * x;
+  }
+};
+
+template <typename T>
+struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) = dy * (x > static_cast<T>(threshold)).template cast<T>();
+  }
+};
+
+template <typename T>
+struct HardSigmoidFunctor : public BaseActivationFunctor<T> {
+  float slope;
+  float offset;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    auto temp = x * static_cast<T>(slope) + static_cast<T>(offset);
+    y.device(d) = temp.cwiseMax(static_cast<T>(0)).cwiseMin(static_cast<T>(1));
+  }
+};
+
+template <typename T>
+struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
+  float slope;
+  float offset;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) =
+        dy *
+        ((y > static_cast<T>(0)) * (y < static_cast<T>(1))).template cast<T>() *
+        static_cast<T>(slope);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_KERNEL_FUNCTOR(__macro)                          \
-  __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);           \
-  __macro(logsigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
-  __macro(exp, ExpFunctor, ExpGradFunctor);                       \
-  __macro(relu, ReluFunctor, ReluGradFunctor);                    \
-  __macro(tanh, TanhFunctor, TanhGradFunctor);                    \
-  __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \
-  __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                    \
-  __macro(abs, AbsFunctor, AbsGradFunctor);                       \
-  __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
-  __macro(log, LogFunctor, LogGradFunctor);                       \
-  __macro(square, SquareFunctor, SquareGradFunctor);              \
-  __macro(brelu, BReluFunctor, BReluGradFunctor);                 \
-  __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);       \
-  __macro(pow, PowFunctor, PowGradFunctor);                       \
-  __macro(stanh, STanhFunctor, STanhGradFunctor);                 \
-  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);        \
-  __macro(relu6, Relu6Functor, Relu6GradFunctor);                 \
-  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);    \
-  __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
-  __macro(elu, ELUFunctor, ELUGradFunctor)
+#define FOR_EACH_KERNEL_FUNCTOR(__macro)                             \
+  __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
+  __macro(logsigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);     \
+  __macro(exp, ExpFunctor, ExpGradFunctor);                          \
+  __macro(relu, ReluFunctor, ReluGradFunctor);                       \
+  __macro(tanh, TanhFunctor, TanhGradFunctor);                       \
+  __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
+  __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \
+  __macro(abs, AbsFunctor, AbsGradFunctor);                          \
+  __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
+  __macro(log, LogFunctor, LogGradFunctor);                          \
+  __macro(square, SquareFunctor, SquareGradFunctor);                 \
+  __macro(brelu, BReluFunctor, BReluGradFunctor);                    \
+  __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);          \
+  __macro(pow, PowFunctor, PowGradFunctor);                          \
+  __macro(stanh, STanhFunctor, STanhGradFunctor);                    \
+  __macro(softplus, SoftplusFunctor, SoftplusGradFunctor);           \
+  __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);           \
+  __macro(relu6, Relu6Functor, Relu6GradFunctor);                    \
+  __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);       \
+  __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor);    \
+  __macro(elu, ELUFunctor, ELUGradFunctor);                          \
+  __macro(hard_shrink, HardShrinkFunctor, HardShrinkGradFunctor);    \
+  __macro(hard_sigmoid, HardSigmoidFunctor, HardSigmoidGradFunctor); \
+  __macro(thresholded_relu, ThresholdedReluFunctor, ThresholdedReluGradFunctor);

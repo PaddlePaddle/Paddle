@@ -115,8 +115,9 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker, multiplex_grad,
-            ops::MultiplexGradOp);
+REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<false>);
+REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
     multiplex, ops::MultiplexCPUKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(

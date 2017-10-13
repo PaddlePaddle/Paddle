@@ -214,3 +214,7 @@ def fc_layer(input, size, ...):
     out.writer = op
     return out
 ```
+
+## Optimizer
+
+[Optimizer Design Doc](./optimizer.md)
