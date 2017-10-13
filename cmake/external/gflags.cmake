@@ -36,6 +36,7 @@ ExternalProject_Add(
     # change this back to the official Github repo once my PR is
     # merged.
     GIT_REPOSITORY  "https://github.com/wangkuiyi/gflags.git"
+    GIT_TAG         986964c07427ecb9cdb5bd73f73ebbd40e54dadb
     PREFIX          ${GFLAGS_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
