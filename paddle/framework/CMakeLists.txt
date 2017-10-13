@@ -53,3 +53,6 @@ endif()
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
 cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
+
+cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
+cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
