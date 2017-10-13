@@ -35,7 +35,8 @@ class BlockDescBind {
  public:
   friend std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       ProgramDescBind &program_desc, int block_idx,
-      std::unordered_set<std::string> &no_grad_vars);
+      std::unordered_set<std::string> *no_grad_vars,
+      std::unordered_map<std::string, std::string> *grad_to_var);
 
   friend void AppendBackward(
       ProgramDescBind &program_desc,
