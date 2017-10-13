@@ -51,8 +51,9 @@ inline void ReorderBootState(const DySeqMetaBatch& metas,
     auto slice = tensor->Slice<T>(seq_id, seq_id + 1);
     auto boot_slice =
         boot_state.Slice<T>(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
-    // slice.CopyFrom<typename T>(boot_slice, dst_place);
-    slice.template CopyFrom<T>(boot_slice, dst_place);
+    // TODO(superjom) pass in device context as an argument
+    slice.template CopyFrom<T>(boot_slice, dst_place,
+                               platform::CPUDeviceContext());
   }
 }
 
