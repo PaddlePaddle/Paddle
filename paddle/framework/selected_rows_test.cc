@@ -23,8 +23,8 @@ class SelectedRowsTester : public ::testing::Test {
     int64_t row_numel = 100;
     selected_rows_.reset(new SelectedRows(rows, height));
 
-    Tensor& value = selected_rows_->value();
-    value.mutable_data<float>(
+    Tensor* value = selected_rows_->mutable_value();
+    value->mutable_data<float>(
         make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
   }
 

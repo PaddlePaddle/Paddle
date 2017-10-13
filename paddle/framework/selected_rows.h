@@ -26,7 +26,9 @@ class SelectedRows {
 
   platform::Place place() const { return value_->place(); }
 
-  Tensor& value() const { return *value_; }
+  const Tensor& value() const { return *value_; }
+
+  Tensor* mutable_value() { return value_.get(); }
 
   int64_t height() const { return height_; }
 
