@@ -29,7 +29,7 @@ extern std::unique_ptr<OperatorBase> Backward(
 
 // TODO(jiayi): Add target as parameter and generate backward op
 // according to target.
-void AppendBackward(ProgramDescBind& program_desc,
+void AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
                     const std::unordered_set<std::string>& no_grad_vars);
 
 }  // namespace framework

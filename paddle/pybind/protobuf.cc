@@ -118,9 +118,9 @@ void BindProgramDesc(py::module &m) {
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("append_backward",
-           [](ProgramDescBind &program_desc,
+           [](ProgramDescBind &program_desc, const VarDescBind &target,
               const std::unordered_set<std::string> &no_grad_vars) {
-             AppendBackward(program_desc, no_grad_vars);
+             AppendBackward(program_desc, target, no_grad_vars);
            })
       .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
       .def("num_blocks", &ProgramDescBind::Size);
