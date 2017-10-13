@@ -106,6 +106,7 @@ function(op_library TARGET)
 endfunction()
 
 add_subdirectory(math)
+add_subdirectory(nccl)
 
 set(DEPS_OPS
     recurrent_op
