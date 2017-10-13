@@ -31,6 +31,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS gflags
     GIT_REPOSITORY  "https://github.com/google/glog.git"
+    GIT_TAG         v0.3.5
     PREFIX          ${GLOG_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
