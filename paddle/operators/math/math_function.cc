@@ -134,17 +134,6 @@ void matmul<platform::CPUPlace, double>(
 
 template struct SetConstant<platform::CPUPlace, float>;
 
-namespace detail {
-size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
-  for (size_t i = 0; i < rows.size(); i++) {
-    if (rows[i] == value) {
-      return i;
-    }
-  }
-  return 0;
-}
-}  // namespace detail
-
 template <typename T>
 struct SelectedRowsAdd<platform::CPUPlace, T> {
   void operator()(const platform::DeviceContext& context,

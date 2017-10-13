@@ -1,5 +1,4 @@
 #include "paddle/operators/math/math_function.h"
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 #ifdef PADDLE_WITH_CUDA
