@@ -315,7 +315,7 @@ void MKLDNNConvLayer::resetOutValue(
     } else {
       cpuOutVal_ = out;
     }
-    // when output is cpu device, change the mkldnn output value and make they
+    // when output is cpu device, change the mkldnn output value and make them
     // share the same data. Then if next layer use inputlayer->getOuputValue()
     // to achieve the input value, it will get the right data.
     output_.value = std::dynamic_pointer_cast<Matrix>(cpuOutVal_);
