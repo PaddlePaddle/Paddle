@@ -46,9 +46,9 @@ class GradOpDescMakerBase {
                      auto g_name = GradVarName(fwd_var_name);
                      if (no_grad_set_.count(g_name)) {
                        (*this->grad_name_map_)[g_name] = fwd_var_name;
-                       return g_name;
-                     } else {
                        return kEmptyVarName;
+                     } else {
+                       return g_name;
                      }
                    });
     if (!drop_empty_grad) {
