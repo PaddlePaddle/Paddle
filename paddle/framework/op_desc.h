@@ -104,6 +104,8 @@ class OpDescBind {
 
   void InferShape(const BlockDescBind &block) const;
 
+  void InferVarType(BlockDescBind *block) const;
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {

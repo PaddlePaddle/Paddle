@@ -53,3 +53,6 @@ endif()
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
 cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
+
+cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
+        proto_desc)

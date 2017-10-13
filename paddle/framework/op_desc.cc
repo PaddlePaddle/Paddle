@@ -236,5 +236,19 @@ void OpDescBind::InferShape(const BlockDescBind &block) const {
   it->second(&ctx);
 }
 
+void OpDescBind::InferVarType(BlockDescBind *block) const {
+  auto &info = OpInfoMap::Instance().Get(this->Type());
+  if (info.infer_var_type_) {
+    info.infer_var_type_(*this, block);
+  } else {
+    // all output type is LoDTensor by default
+    for (auto &out_pair : this->outputs_) {
+      for (auto &out_var_name : out_pair.second) {
+        block->Var(out_var_name)->SetType(VarDesc::LOD_TENSOR);
+      }
+    }
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
