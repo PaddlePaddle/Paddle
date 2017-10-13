@@ -338,6 +338,37 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  HardSigmoidOpMaker(framework::OpProto *proto,
+                     framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of HardSigmoid operator");
+    AddOutput("Y", "Output of HardSigmoid operator");
+    AddComment(R"DOC(
+Hard Sigmoid activation operator.
+
+Segment-wise linear approximation of sigmoid[1].
+This is much faster than sigmoid.
+
+hard_sigmoid = max(0, min(1, slope * x + shift))
+
+The default slope and shift are set from [1].
+It is recommended to use the defaults for this activation.
+
+References:
+  [1] Noisy Activation Functions
+      (https://arxiv.org/abs/1603.00391)
+
+    )DOC");
+    AddAttr<AttrType>("slope", "Slope for linear approximation of sigmoid")
+        .SetDefault(static_cast<AttrType>(0.2));
+    AddAttr<AttrType>("offset", "Offset for linear approximation of sigmoid")
+        .SetDefault(static_cast<AttrType>(0.5));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -412,6 +443,9 @@ REGISTER_OP(hard_shrink, ops::ActivationOp, ops::HardShrinkOpMaker<float>,
 REGISTER_OP(thresholded_relu, ops::ActivationOp,
             ops::ThresholdedReluOpMaker<float>, thresholded_relu_grad,
             ops::ActivationOpGrad);
+
+REGISTER_OP(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker<float>,
+            hard_sigmoid_grad, ops::ActivationOpGrad);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_CPU_KERNEL(                                                      \
