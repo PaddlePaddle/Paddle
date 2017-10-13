@@ -353,7 +353,6 @@ class Parameter(Variable):
             if each < 0:
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
-
         Variable.__init__(self, block, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
         self.init_attr = kwargs.get('initialize_attr', {
@@ -366,7 +365,7 @@ class Parameter(Variable):
         self._append_initialize_ops_()
 
     def _append_initialize_ops_(self):
-        attr = copy.deepcopy(self.init_attr)
+        attr = self.init_attr
         op_type = attr.pop('type', None)
         block = self.block
         assert isinstance(block, Block)

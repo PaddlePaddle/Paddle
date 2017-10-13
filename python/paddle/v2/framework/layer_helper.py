@@ -23,7 +23,11 @@ class LayerHelper(object):
 
     @property
     def program(self):
-        return self.kwargs.get('program', g_program)
+        prog = self.kwargs.get('program', None)
+        if prog is None:
+            return g_program
+        else:
+            return prog
 
     def append_op(self, *args, **kwargs):
         return self.program.current_block().append_op(*args, **kwargs)
@@ -51,24 +55,27 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        return self.kwargs.get('param_attr', {
+        default = {
             'name': None,
             'init_attr': {
                 'type': 'uniform_random',
                 'min': -1.0,
                 'max': 1.0
             }
-        })
+        }
+        actual = self.kwargs.get('param_attr', None)
+        return actual if actual is not None else default
 
-    def bias_attr(self, size):
+    def bias_attr(self, size, dtype):
         bias_attr = self.kwargs.get('bias_attr', False)
-        if bias_attr is None:
+        if bias_attr is None or bias_attr:
             bias_attr = {
                 'name': None,
                 'init_attr': {
-                    'type': 'fill',
+                    'type': 'fill_constant',
                     'value': 0.0,
-                    'shape': [size]
+                    'shape': [size],
+                    'dataType': dtype
                 }
             }
         return bias_attr
@@ -80,12 +87,11 @@ class LayerHelper(object):
 
         if len(param_attr) != 1 and len(param_attr) != length:
             raise ValueError("parameter number mismatch")
-        elif len(param_attr) == 1:
+        elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
             for i in xrange(length):
-                tmp[i] = copy.deepcopy(param_attr)
+                tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
-
         return param_attr
 
     def iter_inputs_and_params(self, input_param_name='input'):
@@ -102,6 +108,7 @@ class LayerHelper(object):
                 dtype = each.data_type
             elif dtype != each.data_type:
                 raise ValueError("Data Type mismatch")
+        return dtype
 
     def create_parameter(self, attr, shape, dtype, suffix='w'):
         if attr['name'] is None:
@@ -120,11 +127,12 @@ class LayerHelper(object):
         return self.program.global_block().create_var(*args, **kwargs)
 
     def append_bias_op(self, input_var):
-        bias_attr = self.bias_attr(self.kwargs['size'])
+        bias_attr = self.bias_attr(
+            self.kwargs['size'], dtype=input_var.data_type)
         if not bias_attr:
             return input_var
         b = self.create_parameter(
-            bias_attr,
+            attr=bias_attr,
             shape=[self.kwargs['size']],
             dtype=input_var.data_type,
             suffix='b')

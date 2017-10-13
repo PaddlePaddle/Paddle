@@ -11,16 +11,17 @@ def fc_layer(input,
              num_flatten_dims=1,
              program=None):
     # create helper
-    helper = LayerHelper(locals())
+    helper = LayerHelper('fc', **locals())
 
-    dtype = helper.input_dtype
+    dtype = helper.input_dtype()
 
     # mul
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
-        param_shape = input_shape[num_flatten_dims:] + [size]
-        w = helper.create_parameter(param_attr, param_shape, dtype)
+        param_shape = list(input_shape[num_flatten_dims:]) + [size]
+        w = helper.create_parameter(
+            attr=param_attr, shape=param_shape, dtype=dtype)
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
@@ -34,7 +35,7 @@ def fc_layer(input,
 
     # sum
     if len(mul_results) == 1:
-        pre_bias = mul_results
+        pre_bias = mul_results[0]
     else:
         pre_bias = helper.create_tmp_variable(dtype)
         helper.append_op(
@@ -50,19 +51,19 @@ def data_layer(name,
                data_type='float32',
                type=core.VarDesc.VarType.LOD_TENSOR,
                program=None):
-    helper = LayerHelper(locals())
+    helper = LayerHelper('data', **locals())
     shape = [-1] + shape  # append batch size as -1
     return helper.create_global_variable(
         name=name, shape=shape, dtype=data_type, type=type)
 
 
 def cross_entropy(input, label, program=None, **kwargs):
-    helper = LayerHelper(locals())
+    helper = LayerHelper('cross_entropy', **locals())
     out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
         type='cross_entropy',
         inputs={'X': [input],
                 'Label': [label]},
-        outputs={'Out': [out]},
+        outputs={'Y': [out]},
         attrs=kwargs)
     return out

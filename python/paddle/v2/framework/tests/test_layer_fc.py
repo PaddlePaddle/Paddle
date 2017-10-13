@@ -13,7 +13,8 @@ class TestFCLayer(unittest.TestCase):
             label=data_layer(
                 name='label', shape=[1], data_type='int32'))
         self.assertIsNotNone(cost)
+        print str(cost.block.program)
 
 
-if __name__ != '__main__':
+if __name__ == '__main__':
     unittest.main()
