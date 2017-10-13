@@ -36,8 +36,8 @@ using OpCreator = std::function<OperatorBase*(
     const std::string& /*type*/, const VariableNameMap& /*inputs*/,
     const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
-using GradOpMakerFN =
-    std::function<std::vector<std::unique_ptr<OpDescBind>>(const OpDescBind&)>;
+using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDescBind>>(
+    const OpDescBind&, const std::unordered_set<std::string>& /*no_grad_set*/)>;
 
 }  // namespace framework
 }  // namespace paddle

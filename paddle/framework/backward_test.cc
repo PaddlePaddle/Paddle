@@ -169,6 +169,45 @@ class MultInOutOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
+class MinusGradOpDescMaker : public GradOpDescMakerBase {
+ public:
+  using GradOpDescMakerBase::GradOpDescMakerBase;
+
+  std::vector<std::unique_ptr<OpDescBind>> operator()() const override {
+    std::vector<std::unique_ptr<OpDescBind>> retv;
+    auto x_g = InputGrad("X");
+    if (!x_g.empty()) {
+      auto *op_desc = new OpDescBind();
+      op_desc->SetType("scale");
+      op_desc->SetInput("X", OutputGrad("Out"));
+      op_desc->SetOutput("Out", x_g);
+      op_desc->SetAttr("scale", 1.0f);
+      retv.emplace_back(op_desc);
+    }
+
+    auto y_g = InputGrad("Y");
+    if (!y_g.empty()) {
+      auto *op_desc = new OpDescBind();
+      op_desc->SetType("scale");
+      op_desc->SetInput("X", OutputGrad("Out"));
+      op_desc->SetOutput("Out", y_g);
+      op_desc->SetAttr("scale", -1.0f);
+      retv.emplace_back(op_desc);
+    }
+    return retv;
+  }
+};
+
+class MinusOpMaker : public OpProtoAndCheckerMaker {
+ public:
+  MinusOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "");
+    AddInput("Y", "");
+    AddOutput("Out", "");
+    AddComment("minus for unittest");
+  }
+};
 }  // namespace framework
 }  // namespace paddle
 
@@ -187,6 +226,7 @@ REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
 REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
             f::NOP);
 REGISTER_OP(mult_in_out, f::NOP, f::MultInOutOpMaker, mult_in_out_grad, f::NOP);
+REGISTER_OPERATOR(minus, f::NOP, f::MinusOpMaker, f::MinusGradOpDescMaker);
 
 TEST(Backward, simple_op_not_need_grad) {
   auto fwd = f::OpRegistry::CreateOp(
@@ -395,12 +435,13 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
             2UL       /* external input number */
                 + 1UL /* external output number*/
                 + 1UL /* number of gradient of external output*/
-                + 2U /* internal variable number*/);
+                + 2UL /* internal variable number*/
+            );
   EXPECT_EQ(grad_fc.Outputs(all).size(),
             2UL       /* input number of mul*/
-                + 2UL /* input number of rowwise_add
-                       */
-                + 1UL /* input number of sigmod */);
+                + 2UL /* input number of rowwise_add*/
+                + 1UL /* input number of sigmod */
+                - 1UL /* out2 is not needed*/);
   EXPECT_EQ(bwd_net->ops_[1]->Inputs(all).size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[1]->Outputs(all).size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[2]->Inputs(all).size(), 0UL);
@@ -580,8 +621,7 @@ TEST(Backward, intermedia_var_no_grad) {
             std::vector<std::string>({f::GradVarName("out4")}));
   EXPECT_EQ(grad_op4->Output(f::GradVarName("X")),
             std::vector<std::string>({f::GradVarName("out1")}));
-  EXPECT_EQ(grad_op4->Output(f::GradVarName("Y")),
-            std::vector<std::string>({f::kEmptyVarName}));
+  EXPECT_EQ(grad_op4->Output(f::GradVarName("Y")), std::vector<std::string>());
 }
 
 TEST(Backward, var_no_grad) {
@@ -619,8 +659,7 @@ TEST(Backward, var_no_grad) {
             std::vector<std::string>({f::GradVarName("z2")}));
   EXPECT_EQ(grad_op2->Output(f::GradVarName("X")),
             std::vector<std::string>({f::GradVarName("y1")}));
-  EXPECT_EQ(grad_op2->Output(f::GradVarName("H")),
-            std::vector<std::string>({f::kEmptyVarName}));
+  EXPECT_EQ(grad_op2->Output(f::GradVarName("H")), std::vector<std::string>());
 
   f::OpDescBind *fill_zero_op = block->AllOps()[3];
   ASSERT_EQ(fill_zero_op->Type(), "fill_zeros_like");
@@ -718,4 +757,19 @@ TEST(Backward, shared_var) {
             std::vector<std::string>({f::GradVarName("x1")}));
   EXPECT_EQ(grad_op1->Output(f::GradVarName("b")),
             std::vector<std::string>({f::GradVarName("b1")}));
+}
+
+TEST(Backward, half_backward) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  auto *op1 = block->AppendOp();
+  op1->SetType("minus");
+  op1->SetInput("X", {"a"});
+  op1->SetInput("Y", {"b"});
+  op1->SetOutput("Out", {"out"});
+
+  AppendBackward(program, {"b"});
+  auto ops = block->AllOps();
+  ASSERT_EQ(2UL, ops.size());
 }
