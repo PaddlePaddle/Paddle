@@ -73,6 +73,13 @@ class Variable(object):
         self.block.vars[name] = self
         self.op = None
 
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.VarDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
+
     @property
     def name(self):
         return self.desc.name()
@@ -211,6 +218,13 @@ class Operator(object):
         self.desc.check_attrs()
         self.desc.infer_shape(self.block.desc)
 
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.OpDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
+
     @property
     def type(self):
         return self.desc.type()
@@ -252,6 +266,13 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.BlockDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def parent_idx(self):
@@ -296,6 +317,13 @@ class Program(object):
         self.desc = core.ProgramDesc.instance()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     def global_block(self):
         return self.blocks[0]

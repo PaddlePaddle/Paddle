@@ -64,9 +64,9 @@ class BlockDescBind {
 
   std::vector<OpDescBind *> AllOps() const;
 
-  void Sync();
+  void Flush();
 
-  BlockDesc *RawPtr() { return desc_; }
+  BlockDesc *Proto();
 
  private:
   ProgramDescBind *prog_;  // not_own
