@@ -317,7 +317,6 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
     }
   }
 }
-#endif
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
@@ -327,3 +326,5 @@ int main(int argc, char** argv) {
   FLAGS_fraction_of_gpu_memory_to_use = 0.25;
   return RUN_ALL_TESTS();
 }
+
+#endif
