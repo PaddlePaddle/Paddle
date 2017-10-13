@@ -169,6 +169,45 @@ class MultInOutOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
+class MinusGradOpDescMaker : public GradOpDescMakerBase {
+ public:
+  using GradOpDescMakerBase::GradOpDescMakerBase;
+
+  std::vector<std::unique_ptr<OpDescBind>> operator()() const override {
+    std::vector<std::unique_ptr<OpDescBind>> retv;
+    auto x_g = InputGrad("X");
+    if (!x_g.empty()) {
+      auto *op_desc = new OpDescBind();
+      op_desc->SetType("scale");
+      op_desc->SetInput("X", OutputGrad("Out"));
+      op_desc->SetOutput("Out", x_g);
+      op_desc->SetAttr("scale", 1.0f);
+      retv.emplace_back(op_desc);
+    }
+
+    auto y_g = InputGrad("Y");
+    if (!y_g.empty()) {
+      auto *op_desc = new OpDescBind();
+      op_desc->SetType("scale");
+      op_desc->SetInput("X", OutputGrad("Out"));
+      op_desc->SetOutput("Out", y_g);
+      op_desc->SetAttr("scale", -1.0f);
+      retv.emplace_back(op_desc);
+    }
+    return retv;
+  }
+};
+
+class MinusOpMaker : public OpProtoAndCheckerMaker {
+ public:
+  MinusOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "");
+    AddInput("Y", "");
+    AddOutput("Out", "");
+    AddComment("minus for unittest");
+  }
+};
 }  // namespace framework
 }  // namespace paddle
 
@@ -187,6 +226,7 @@ REGISTER_OP_WITHOUT_GRADIENT(fc, f::FcOp, f::FcOpMaker);
 REGISTER_OP(many_output_op, f::NOP, f::ManyOutputOpMaker, many_output_op_grad,
             f::NOP);
 REGISTER_OP(mult_in_out, f::NOP, f::MultInOutOpMaker, mult_in_out_grad, f::NOP);
+REGISTER_OPERATOR(minus, f::NOP, f::MinusOpMaker, f::MinusGradOpDescMaker);
 
 TEST(Backward, simple_op_not_need_grad) {
   auto fwd = f::OpRegistry::CreateOp(
@@ -718,4 +758,19 @@ TEST(Backward, shared_var) {
             std::vector<std::string>({f::GradVarName("x1")}));
   EXPECT_EQ(grad_op1->Output(f::GradVarName("b")),
             std::vector<std::string>({f::GradVarName("b1")}));
+}
+
+TEST(Backward, half_backward) {
+  f::ProgramDesc *program_desc = GetNewProgramDesc();
+  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::BlockDescBind *block = program.Block(0);
+  auto *op1 = block->AppendOp();
+  op1->SetType("minus");
+  op1->SetInput("X", {"a"});
+  op1->SetInput("Y", {"b"});
+  op1->SetOutput("Out", {"out"});
+
+  AppendBackward(program, {"b"});
+  auto ops = block->AllOps();
+  ASSERT_EQ(2UL, ops.size());
 }
