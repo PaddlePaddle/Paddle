@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/math_function.h"
-#include <set>
 
 namespace paddle {
 namespace operators {
