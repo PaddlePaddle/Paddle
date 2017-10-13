@@ -354,6 +354,7 @@ This is much faster than sigmoid.
 
 hard_sigmoid = max(0, min(1, slope * x + shift))
 
+The slope should be positive. The offset can be both positive or negative.
 The default slope and shift are set from [1].
 It is recommended to use the defaults for this activation.
 
