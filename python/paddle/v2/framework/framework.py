@@ -146,7 +146,8 @@ class OpProtoHolder(object):
             self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):
-        assert type in self.op_proto_map, "Operator \"%s\" has not been registered." % type
+        if type not in self.op_proto_map:
+            raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
 
 

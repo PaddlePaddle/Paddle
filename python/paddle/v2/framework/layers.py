@@ -1,13 +1,15 @@
 from paddle.v2.framework.layer_helper import LayerHelper
+import paddle.v2.framework.core as core
 
 
 def fc_layer(input,
              size,
              param_attr=None,
-             bias_attr=False,
+             bias_attr=True,
              name=None,
              act=None,
-             num_flatten_dims=1):
+             num_flatten_dims=1,
+             program=None):
     # create helper
     helper = LayerHelper(locals())
 
@@ -41,3 +43,26 @@ def fc_layer(input,
     pre_activation = helper.append_bias_op(pre_bias)
     # add activation
     return helper.append_activation(pre_activation)
+
+
+def data_layer(name,
+               shape,
+               data_type='float32',
+               type=core.VarDesc.VarType.LOD_TENSOR,
+               program=None):
+    helper = LayerHelper(locals())
+    shape = [-1] + shape  # append batch size as -1
+    return helper.create_global_variable(
+        name=name, shape=shape, dtype=data_type, type=type)
+
+
+def cross_entropy(input, label, program=None, **kwargs):
+    helper = LayerHelper(locals())
+    out = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='cross_entropy',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Out': [out]},
+        attrs=kwargs)
+    return out

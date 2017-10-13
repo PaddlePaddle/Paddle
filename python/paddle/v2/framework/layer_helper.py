@@ -1,4 +1,4 @@
-from paddle.v2.framework.graph import Variable, g_program
+from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program
 import paddle.v2.framework.core as core
 import copy
 import itertools
@@ -116,6 +116,9 @@ class LayerHelper(object):
         return self.program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])), dtype=dtype)
 
+    def create_global_variable(self, *args, **kwargs):
+        return self.program.global_block().create_var(*args, **kwargs)
+
     def append_bias_op(self, input_var):
         bias_attr = self.bias_attr(self.kwargs['size'])
         if not bias_attr:
@@ -137,7 +140,8 @@ class LayerHelper(object):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
-
+        if isinstance(act, basestring):
+            act = {'type': act}
         tmp = self.create_tmp_variable(dtype=input_var.data_type)
         act_type = act.pop('type')
         self.append_op(
