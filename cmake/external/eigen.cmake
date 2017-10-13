@@ -8,7 +8,7 @@ ExternalProject_Add(
     extern_eigen3
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  "https://github.com/RLovelett/eigen.git"
-    GIT_TAG         "master"
+    GIT_TAG         4e79cb69b9425f5f8c3a84be4350d4ab75b5fd9d
     PREFIX          ${EIGEN_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
