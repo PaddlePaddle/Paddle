@@ -48,7 +48,6 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
     for (auto v : kv.second) {
       if (!block->HasVar(v)) {
         auto var = block->NewVar(v);
-        var->SetType(VarDesc::LOD_TENSOR);
         var->SetDataType(paddle::framework::DataType::FP32);
       }
     }

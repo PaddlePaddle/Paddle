@@ -411,14 +411,14 @@ void AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
     auto& op = forward_op_descs.at(index);
     for (auto& input : op->Inputs()) {
       for (auto& real_input : input.second) {
-        if (!root_block->HasVar(real_input)) {
+        if (real_input != kEmptyVarName && !root_block->HasVar(real_input)) {
           root_block->NewVar(real_input);
         }
       }
     }
     for (auto& output : op->Outputs()) {
       for (auto& real_output : output.second) {
-        if (!root_block->HasVar(real_output)) {
+        if (real_output != kEmptyVarName && !root_block->HasVar(real_output)) {
           root_block->NewVar(real_output);
         }
       }
