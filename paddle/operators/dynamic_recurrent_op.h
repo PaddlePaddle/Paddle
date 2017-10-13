@@ -200,7 +200,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
 
-  RNNAlgorithm rnn;
+  mutable RNNAlgorithm rnn;
 };
 
 class DynamicRecurrentGradientOp : public framework::OperatorBase {
@@ -220,8 +220,7 @@ class DynamicRecurrentGradientOp : public framework::OperatorBase {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
 
- private:
-  RNNAlgorithm rnn;
+  mutable RNNAlgorithm rnn;
 };
 
 }  // namespace operators

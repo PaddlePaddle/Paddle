@@ -260,8 +260,7 @@ void RNNAlgorithm::LinkState(const rnn::MemoryAttr& memory, size_t step) const {
   auto& state_pre = *cache_.GetTensor(scope, memory.pre_var);
 
   // process the first state's boot-state(the 0-step in forward mode or the
-  // last
-  // step in backward mode)
+  // last step in backward mode)
   // Only forward mode need to link the boot-state to the `pre-state` in first
   // time step. In backward mode, need to copy the gradient of `pre-state` in
   // first time step to the gradient of `boot-state`.
