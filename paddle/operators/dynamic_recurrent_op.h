@@ -78,6 +78,17 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   void InitStates() const;
 
   /*
+   * Create state variables for each time step.
+   */
+  void CreateState(const rnn::MemoryAttr& memory, size_t step) const;
+
+  /*
+   * Link pre-state variable in current scope to the state variable in the
+   * previous time step (scope).
+   */
+  void LinkState(const rnn::MemoryAttr& memory, size_t step) const;
+
+  /*
    * Concatenate outputs in each time step and generate a LoDTensor.
    */
   void ConcatOutputs() const;
@@ -90,6 +101,16 @@ class DynamicRecurrentOp : public framework::OperatorBase {
     stepnet_ = std::move(net);
   }
   const OperatorBase& GetStepNet() const { return *stepnet_; }
+
+  const framework::TensorArray& state(const std::string& name) const {
+    return states_[name];
+  }
+  const framework::TensorArray& step_input(const std::string& name) const {
+    return step_inputs_[name];
+  }
+  const framework::TensorArray& step_output(const std::string& name) const {
+    return step_outputs_[name];
+  }
 
  protected:
   struct ArgCache {
@@ -108,6 +129,9 @@ class DynamicRecurrentOp : public framework::OperatorBase {
       return *scopes->at(index);
     }
 
+    framework::LoDTensor* GetTensor(const framework::Scope& scope,
+                                    const std::string& name);
+
    private:
     void InitArgument(const rnn::ArgumentName& name, const OperatorBase& op,
                       rnn::Argument* arg);
@@ -122,7 +146,7 @@ class DynamicRecurrentOp : public framework::OperatorBase {
 
  private:
   std::unique_ptr<OperatorBase> stepnet_;
-  mutable framework::TensorArray states_;
+  mutable std::map<std::string, framework::TensorArray> states_;
   mutable std::map<std::string, framework::TensorArray> step_inputs_;
   mutable std::map<std::string, framework::TensorArray> step_outputs_;
   mutable std::map<std::string, std::vector<framework::DySeqMeta>>

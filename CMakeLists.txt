@@ -105,6 +105,12 @@ if (WITH_C_API AND WITH_PYTHON)
     "different Python interpreter from compiling.")
 endif()
 
+if(MOBILE_INFERENCE)
+    set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
+else()
+    set(THIRD_PARTY_BUILD_TYPE Release)
+endif()
+
 ########################################################################################
 
 include(external/mklml)     # download mklml package
