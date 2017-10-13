@@ -11,6 +11,7 @@
 
 #include <random>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/run_once_op.h"
 
 namespace paddle {
 namespace operators {
@@ -38,9 +39,9 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
   }
 };
 
-class GaussianRandomOp : public framework::OperatorWithKernel {
+class GaussianRandomOp : public RunOnceOp {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  using RunOnceOp::RunOnceOp;
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
@@ -63,11 +64,11 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   }
 };
 
-class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
+class GaussianRandomOpMaker : public RunOnceOpInfoMaker {
  public:
   GaussianRandomOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+      : RunOnceOpInfoMaker(proto, op_checker) {
     AddOutput("Out", "output matrix of random op");
     AddComment(R"DOC(
 GaussianRandom operator.

@@ -12,7 +12,7 @@
 #include <random>
 #include <type_traits>
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/run_once_op.h"
 
 namespace paddle {
 namespace operators {
@@ -42,9 +42,9 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
   }
 };
 
-class UniformRandomOp : public framework::OperatorWithKernel {
+class UniformRandomOp : public RunOnceOp {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  using RunOnceOp::RunOnceOp;
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
@@ -69,11 +69,11 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   }
 };
 
-class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
+class UniformRandomOpMaker : public RunOnceOpInfoMaker {
  public:
   UniformRandomOpMaker(framework::OpProto* proto,
                        framework::OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+      : RunOnceOpInfoMaker(proto, op_checker) {
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(Uniform random operator.
 Used to initialize tensor with uniform random generator.

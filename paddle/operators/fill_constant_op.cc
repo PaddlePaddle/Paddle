@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/fill_constant_op.h"
+#include "paddle/operators/run_once_op.h"
 
 namespace paddle {
 namespace operators {
 
-class FillConstantOp : public framework::OperatorWithKernel {
+class FillConstantOp : public RunOnceOp {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  using RunOnceOp::RunOnceOp;
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
@@ -39,11 +40,11 @@ class FillConstantOp : public framework::OperatorWithKernel {
   }
 };
 
-class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
+class FillConstantOpMaker : public RunOnceOpInfoMaker {
  public:
   FillConstantOpMaker(framework::OpProto *proto,
                       framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+      : RunOnceOpInfoMaker(proto, op_checker) {
     AddAttr<int>("dataType",
                  "(int, default 5 (FP32)) "
                  "Output data type")

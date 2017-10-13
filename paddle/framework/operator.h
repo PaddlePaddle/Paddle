@@ -572,7 +572,7 @@ class OperatorWithKernel : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const final {
+           const platform::DeviceContext& dev_ctx) const override {
     RuntimeInferShapeContext infer_shape_ctx(*this, scope);
     this->InferShape(&infer_shape_ctx);
 
