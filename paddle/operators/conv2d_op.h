@@ -24,6 +24,38 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+// Base convolution operator definations for other conv
+// like operators to reuse the implementation.
+inline int OutputSize(int input_size, int filter_size, int padding,
+                      int stride) {
+  int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
+  return output_size;
+}
+
+// Define Op classes in .h file so that other conv
+// operator implementations can reuse the code.
+class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  Conv2DOpMaker(framework::OpProto* proto,
+                framework::OpAttrChecker* op_checker);
+};
+
+class Conv2DOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override;
+};
+
+class Conv2DOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override;
+};
+
 template <typename Place, typename T>
 class GemmConv2DKernel : public framework::OpKernel<T> {
  public:
@@ -74,7 +106,6 @@ class GemmConv2DKernel : public framework::OpKernel<T> {
 
     framework::DDim output_matrix_shape = {output_channels,
                                            output_height * output_width};
-
     // convolution operator: im2col + gemm
     int in_step = input_channels / groups;
     int out_step = output_channels / groups;
