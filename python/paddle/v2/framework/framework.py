@@ -10,6 +10,7 @@ __all__ = ['Block', 'Variable', 'Program', 'Operator']
 class Variable(object):
     def __init__(self,
                  block,
+                 type=core.VarDesc.VarType.LOD_TENSOR,
                  name=None,
                  shape=None,
                  dtype=None,
@@ -25,6 +26,14 @@ class Variable(object):
         except core.EnforceNotMet:
             self.desc = self.block.desc.new_var(name)
             is_new_var = True
+
+        if is_new_var:
+            self.desc.set_type(type)
+        elif self.desc.type() != type:
+            raise ValueError("Variable {0} has been created before. The "
+                             "previous type is {1}; the new type is {2}. They"
+                             " are not matched".format(self.name,
+                                                       self.desc.type(), type))
 
         if shape is not None:
             if is_new_var:
