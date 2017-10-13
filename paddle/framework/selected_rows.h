@@ -22,7 +22,7 @@ class SelectedRows {
     value_.reset(new Tensor());
   }
 
-  SelectedRows() {}
+  SelectedRows() { value_.reset(new Tensor()); }
 
   platform::Place place() const { return value_->place(); }
 
