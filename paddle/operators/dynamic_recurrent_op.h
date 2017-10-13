@@ -37,7 +37,7 @@ class RNNAlgorithm {
    * different `Run` method for forward and backward.
    */
   template <ComputeMode _>
-  void Run(const framework::Scope& scope, framework::OperatorBase& op,
+  void Run(const framework::Scope& scope, const framework::OperatorBase& op,
            const platform::DeviceContext& dev_ctx) const;
   /*
    * Split the inputs(LoDTensors) to segments for each time step.
@@ -169,16 +169,18 @@ class RNNAlgorithm {
   mutable ArgCache cache_;
   mutable ComputeMode mode_{ComputeMode::kForward};
 
-  // #ifdef PADDLE_WITH_TESTING
-  //   friend class DynamicRecurrentOpTestHelper;
-  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, SplitInputs);
-  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateCache);
-  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, CreateScopes);
-  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepInputs);
-  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, WriteStepOutputs);
-  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, InitStates);
-  //   FRIEND_TEST(DynamicRecurrentOpTestHelper, ConcatOutputs);
-  // #endif
+#ifdef PADDLE_WITH_TESTING
+  // test forward
+  friend class RNNAlgorithmTestHelper;
+  FRIEND_TEST(RNNAlgorithmTestHelper, SplitInputs);
+  FRIEND_TEST(RNNAlgorithmTestHelper, CreateCache);
+  FRIEND_TEST(RNNAlgorithmTestHelper, CreateScopes);
+  FRIEND_TEST(RNNAlgorithmTestHelper, WriteStepInputs);
+  FRIEND_TEST(RNNAlgorithmTestHelper, WriteStepOutputs);
+  FRIEND_TEST(RNNAlgorithmTestHelper, InitStates);
+  FRIEND_TEST(RNNAlgorithmTestHelper, ConcatOutputs);
+// TODO(superjom) test backward
+#endif
 };
 
 class DynamicRecurrentOp : public framework::OperatorBase {
@@ -192,12 +194,13 @@ class DynamicRecurrentOp : public framework::OperatorBase {
   DynamicRecurrentOp(const DynamicRecurrentOp& o)
       : framework::OperatorBase(
             static_cast<const framework::OperatorBase&>(o)) {
-    // TODO(yuyang18): Implement copy ctor well.
     PADDLE_THROW("Not implemented");
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+           const platform::DeviceContext& dev_ctx) const override;
+
+  RNNAlgorithm rnn;
 };
 
 class DynamicRecurrentGradientOp : public framework::OperatorBase {
@@ -208,44 +211,18 @@ class DynamicRecurrentGradientOp : public framework::OperatorBase {
                              const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
+  DynamicRecurrentGradientOp(const DynamicRecurrentGradientOp& o)
+      : framework::OperatorBase(
+            static_cast<const framework::OperatorBase&>(o)) {
+    PADDLE_THROW("Not implemented");
+  }
+
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
+
+ private:
+  RNNAlgorithm rnn;
 };
-
-// Implementation for forward propagation.
-template <>
-void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kForward>(
-    const framework::Scope& scope, framework::OperatorBase& op,
-    const platform::DeviceContext& dev_ctx) const {
-  SetComputeMode(ComputeMode::kForward);
-  cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
-  SplitInputs();
-  CreateScopes();
-  WriteStepInputs();
-  InitStates();
-  WriteStepOutputs();
-  RunSteps();
-  ConcatOutputs();
-}
-
-// Implementation for backward propagation.
-template <>
-void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
-    const framework::Scope& scope, framework::OperatorBase& op,
-    const platform::DeviceContext& dev_ctx) const {
-  SetComputeMode(ComputeMode::kBackward);
-  cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
-  SplitInputs();
-  WriteStepInputs();
-  InitStates();
-  WriteStepOutputs();
-  RunSteps();
-  // copy boot-states' gradients back.
-  for (const auto& memory : arg_.memories) {
-    ExportBootStateGradient(memory);
-  }
-  ConcatOutputs();
-}
 
 }  // namespace operators
 }  // namespace paddle

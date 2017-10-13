@@ -73,6 +73,41 @@ inline void RestoreBootState(const DySeqMetaBatch& metas,
 
 }  // namespace detail
 
+// Implementation for forward propagation.
+template <>
+void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kForward>(
+    const framework::Scope& scope, const framework::OperatorBase& op,
+    const platform::DeviceContext& dev_ctx) const {
+  SetComputeMode(ComputeMode::kForward);
+  cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
+  SplitInputs();
+  CreateScopes();
+  WriteStepInputs();
+  InitStates();
+  WriteStepOutputs();
+  RunSteps();
+  ConcatOutputs();
+}
+
+// Implementation for backward propagation.
+template <>
+void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
+    const framework::Scope& scope, const framework::OperatorBase& op,
+    const platform::DeviceContext& dev_ctx) const {
+  SetComputeMode(ComputeMode::kBackward);
+  cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
+  SplitInputs();
+  WriteStepInputs();
+  InitStates();
+  WriteStepOutputs();
+  RunSteps();
+  // copy boot-states' gradients back.
+  for (const auto& memory : arg_.memories) {
+    ExportBootStateGradient(memory);
+  }
+  ConcatOutputs();
+}
+
 void RNNAlgorithm::SplitInputs() const {
   // TODO(superjom) make level a config
   // TODO(superjom) check all the inputs has the same LoD
@@ -334,8 +369,17 @@ const std::array<rnn::ArgumentName, 2> RNNAlgorithm::kArgNames{
                       "inlinks@GRAD", "memories", "pre_memories",
                       "boot_memories@GRAD"}};
 
+void DynamicRecurrentOp::Run(const framework::Scope& scope,
+                             const platform::DeviceContext& dev_ctx) const {
+  rnn.Run<RNNAlgorithm::ComputeMode::kForward>(
+      scope, *dynamic_cast<const OperatorBase*>(this), dev_ctx);
+}
+
 void DynamicRecurrentGradientOp::Run(
-    const Scope& scope, const platform::DeviceContext& dev_ctx) const {}
+    const Scope& scope, const platform::DeviceContext& dev_ctx) const {
+  rnn.Run<RNNAlgorithm::ComputeMode::kBackward>(
+      scope, *dynamic_cast<const OperatorBase*>(this), dev_ctx);
+}
 
 class DynamicRecurrentOpProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
@@ -368,6 +412,7 @@ class DynamicRecurrentOpProtoAndCheckerMaker
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(
-    dynamic_recurrent, paddle::operators::DynamicRecurrentOp,
-    paddle::operators::DynamicRecurrentOpProtoAndCheckerMaker);
+REGISTER_OP(dynamic_recurrent, paddle::operators::DynamicRecurrentOp,
+            paddle::operators::DynamicRecurrentOpProtoAndCheckerMaker,
+            dynamic_recurrent_grad,
+            paddle::operators::DynamicRecurrentGradientOp);

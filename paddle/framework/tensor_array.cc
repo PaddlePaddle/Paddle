@@ -245,7 +245,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
     auto target = result.Slice<value_type>(i, i + 1);
     auto slice = source->Slice<value_type>(index, index + 1);
 
-    target.CopyFrom<value_type>(source_, platform::CPUPlace(),
+    target.CopyFrom<value_type>(slice, platform::CPUPlace(),
                                 platform::CPUDeviceContext());
   }
 
