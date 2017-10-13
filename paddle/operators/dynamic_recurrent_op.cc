@@ -77,7 +77,7 @@ inline void RestoreBootState(const DySeqMetaBatch& metas,
 template <>
 void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kForward>(
     const framework::Scope& scope, const framework::OperatorBase& op,
-    const platform::DeviceContext& dev_ctx) const {
+    const platform::DeviceContext& dev_ctx) {
   SetComputeMode(ComputeMode::kForward);
   cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
   SplitInputs();
@@ -93,7 +93,7 @@ void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kForward>(
 template <>
 void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
     const framework::Scope& scope, const framework::OperatorBase& op,
-    const platform::DeviceContext& dev_ctx) const {
+    const platform::DeviceContext& dev_ctx) {
   SetComputeMode(ComputeMode::kBackward);
   cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
   SplitInputs();
@@ -109,7 +109,7 @@ void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
   ConcatOutputs();
 }
 
-void RNNAlgorithm::SplitInputs() const {
+void RNNAlgorithm::SplitInputs() {
   // TODO(superjom) make level a config
   // TODO(superjom) check all the inputs has the same LoD
   int level = 0;
@@ -130,7 +130,7 @@ void RNNAlgorithm::SplitInputs() const {
   }
 }
 
-void RNNAlgorithm::WriteStepInputs() const {
+void RNNAlgorithm::WriteStepInputs() {
   for (const auto& item : cache_.inlinks) {
     auto ta_it = step_inputs_.find(item.first);
     PADDLE_ENFORCE(ta_it != step_inputs_.end(),
@@ -148,7 +148,7 @@ void RNNAlgorithm::WriteStepInputs() const {
   }
 }
 
-void RNNAlgorithm::WriteStepOutputs() const {
+void RNNAlgorithm::WriteStepOutputs() {
   // initialize step outputs
   for (const auto& item : cache_.outlinks) {
     step_outputs_.emplace(item.first, TensorArray());
@@ -156,7 +156,7 @@ void RNNAlgorithm::WriteStepOutputs() const {
   PADDLE_ENFORCE_GT(step_outputs_.size(), 0UL);
 }
 
-void RNNAlgorithm::CreateScopes() const {
+void RNNAlgorithm::CreateScopes() {
   PADDLE_ENFORCE_GT(cache_.num_steps, 0);
   // resize scopes
   size_t num_scopes_need_create = cache_.num_steps - cache_.scopes->size();
@@ -191,7 +191,7 @@ void RNNAlgorithm::CreateScopes() const {
   }
 }
 
-void RNNAlgorithm::ConcatOutputs() const {
+void RNNAlgorithm::ConcatOutputs() {
   // TODO(superjom) transform this to a config
   int level = 0;
   for (size_t step = 0; step < cache_.num_steps; step++) {
@@ -215,7 +215,7 @@ void RNNAlgorithm::ConcatOutputs() const {
   }
 }
 
-void RNNAlgorithm::RunSteps() const {
+void RNNAlgorithm::RunSteps() {
   if (IsBackward()) {
     // call stepnet in all the time steps reversely
     for (int step = cache_.num_steps - 1; step >= 0; step--) {
@@ -230,7 +230,7 @@ void RNNAlgorithm::RunSteps() const {
   }
 }
 
-void RNNAlgorithm::InitStates() const {
+void RNNAlgorithm::InitStates() {
   for (size_t step = 0; step < cache_.num_steps; step++) {
     for (const auto& memory : arg_.memories) {
       CreateState(memory, step);
@@ -239,8 +239,7 @@ void RNNAlgorithm::InitStates() const {
   }
 }
 
-void RNNAlgorithm::CreateState(const rnn::MemoryAttr& memory,
-                               size_t step) const {
+void RNNAlgorithm::CreateState(const rnn::MemoryAttr& memory, size_t step) {
   auto& scope = cache_.GetScope(step);
   auto& state = *cache_.GetTensor(scope, memory.var);
   auto& boot_state = *cache_.GetTensor(*cache_.scope, memory.boot_var);
@@ -255,7 +254,7 @@ void RNNAlgorithm::CreateState(const rnn::MemoryAttr& memory,
   states_[memory.var].WriteShared(step, state);
 }
 
-void RNNAlgorithm::LinkState(const rnn::MemoryAttr& memory, size_t step) const {
+void RNNAlgorithm::LinkState(const rnn::MemoryAttr& memory, size_t step) {
   auto& scope = cache_.GetScope(step);
   auto& state_pre = *cache_.GetTensor(scope, memory.pre_var);
 
@@ -276,7 +275,7 @@ void RNNAlgorithm::LinkState(const rnn::MemoryAttr& memory, size_t step) const {
   }
 }
 
-void RNNAlgorithm::LinkBootState(const rnn::MemoryAttr& memory) const {
+void RNNAlgorithm::LinkBootState(const rnn::MemoryAttr& memory) {
   // all the step_inputs' metas should be the same, just randomly select one
   // and get the dyseq meta.
   const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];
@@ -291,8 +290,7 @@ void RNNAlgorithm::LinkBootState(const rnn::MemoryAttr& memory) const {
                                        pre_state->place());
 }
 
-void RNNAlgorithm::ExportBootStateGradient(
-    const rnn::MemoryAttr& memory) const {
+void RNNAlgorithm::ExportBootStateGradient(const rnn::MemoryAttr& memory) {
   // all the step_inputs' metas should be the same, just randomly select one
   // and get the dyseq meta.
   const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];

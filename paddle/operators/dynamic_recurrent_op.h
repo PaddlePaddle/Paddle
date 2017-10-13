@@ -38,27 +38,27 @@ class RNNAlgorithm {
    */
   template <ComputeMode _>
   void Run(const framework::Scope& scope, const framework::OperatorBase& op,
-           const platform::DeviceContext& dev_ctx) const;
+           const platform::DeviceContext& dev_ctx);
   /*
    * Split the inputs(LoDTensors) to segments for each time step.
    */
-  void SplitInputs() const;
+  void SplitInputs();
 
   /*
    * Create step-scopes to store temporary outputs in each time steps.
    */
-  void CreateScopes() const;
+  void CreateScopes();
 
   /*
    * Link TensorArray steps to the corresponding variables located in
    * step-scopes.
    */
-  void WriteStepInputs() const;
+  void WriteStepInputs();
 
   /*
    * Write output of each step to the corresponding TensorArray.
    */
-  void WriteStepOutputs() const;
+  void WriteStepOutputs();
 
   /*
    * Initialize the states, each state will have a corresponding pre-state,
@@ -66,42 +66,42 @@ class RNNAlgorithm {
    * pre-state in the first time step will be initialized with an zero tensor or
    * a tensor in parent scope if is provided.
    */
-  void InitStates() const;
+  void InitStates();
 
   /*
    * Create state variables for each time step.
    */
-  void CreateState(const rnn::MemoryAttr& memory, size_t step) const;
+  void CreateState(const rnn::MemoryAttr& memory, size_t step);
 
   /*
    * Link pre-state variable in current scope to the state variable in the
    * previous time step (scope) by reference.
    */
-  void LinkState(const rnn::MemoryAttr& memory, size_t step) const;
+  void LinkState(const rnn::MemoryAttr& memory, size_t step);
 
   /*
    * Link the pre-state of the first time step to the `boot-state` in parent's
    * scope.
    */
-  void LinkBootState(const rnn::MemoryAttr& memory) const;
+  void LinkBootState(const rnn::MemoryAttr& memory);
 
   /*
    * Copy the gradient from `pre-state` in the first step-scope to the
    * `boot-state` in parent's scope.
    */
-  void ExportBootStateGradient(const rnn::MemoryAttr& memory) const;
+  void ExportBootStateGradient(const rnn::MemoryAttr& memory);
 
   /*
    * Calculate time steps.
    */
-  void RunSteps() const;
+  void RunSteps();
 
   /*
    * Concatenate outputs in each time step and generate a LoDTensor.
    */
-  void ConcatOutputs() const;
+  void ConcatOutputs();
 
-  void SetComputeMode(ComputeMode mode) const { mode_ = mode; }
+  void SetComputeMode(ComputeMode mode) { mode_ = mode; }
   bool IsForward() const { return mode_ == ComputeMode::kForward; }
   bool IsBackward() const { return mode_ == ComputeMode::kBackward; }
 
@@ -115,13 +115,19 @@ class RNNAlgorithm {
   const framework::OperatorBase& GetStepNet() const { return *stepnet_; }
 
   const framework::TensorArray& state(const std::string& name) const {
-    return states_[name];
+    auto it = states_.find(name);
+    PADDLE_ENFORCE(it != states_.end());
+    return it->second;
   }
   const framework::TensorArray& step_input(const std::string& name) const {
-    return step_inputs_[name];
+    auto it = step_inputs_.find(name);
+    PADDLE_ENFORCE(it != step_inputs_.end());
+    return it->second;
   }
   const framework::TensorArray& step_output(const std::string& name) const {
-    return step_outputs_[name];
+    auto it = step_outputs_.find(name);
+    PADDLE_ENFORCE(it != step_outputs_.end());
+    return it->second;
   }
 
  protected:
@@ -160,14 +166,13 @@ class RNNAlgorithm {
 
  private:
   std::unique_ptr<framework::OperatorBase> stepnet_;
-  mutable std::map<std::string, framework::TensorArray> states_;
-  mutable std::map<std::string, framework::TensorArray> step_inputs_;
-  mutable std::map<std::string, framework::TensorArray> step_outputs_;
-  mutable std::map<std::string, std::vector<framework::DySeqMeta>>
-      dy_seq_metas_;
-  mutable rnn::Argument arg_;
-  mutable ArgCache cache_;
-  mutable ComputeMode mode_{ComputeMode::kForward};
+  std::map<std::string, framework::TensorArray> states_;
+  std::map<std::string, framework::TensorArray> step_inputs_;
+  std::map<std::string, framework::TensorArray> step_outputs_;
+  std::map<std::string, std::vector<framework::DySeqMeta>> dy_seq_metas_;
+  rnn::Argument arg_;
+  ArgCache cache_;
+  ComputeMode mode_{ComputeMode::kForward};
 
 #ifdef PADDLE_WITH_TESTING
   // test forward
