@@ -45,9 +45,9 @@ class GradOpDescMakerBase {
                    [this](const std::string& fwd_var_name) -> std::string {
                      auto g_name = GradVarName(fwd_var_name);
                      if (no_grad_set_.count(g_name)) {
-                       (*this->grad_name_map_)[g_name] = fwd_var_name;
                        return kEmptyVarName;
                      } else {
+                       (*this->grad_name_map_)[g_name] = fwd_var_name;
                        return g_name;
                      }
                    });
