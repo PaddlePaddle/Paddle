@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/math_function.h"
+#include <set>
 
 namespace paddle {
 namespace operators {
@@ -129,6 +130,65 @@ void matmul<platform::CPUPlace, double>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
+
+template struct SetConstant<platform::CPUPlace, float>;
+
+namespace detail {
+size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
+  for (size_t i = 0; i < rows.size(); i++) {
+    if (rows[i] == value) {
+      return i;
+    }
+  }
+  return 0;
+}
+}  // namespace detail
+
+template <typename T>
+struct SelectedRowsAdd<platform::CPUPlace, T> {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::SelectedRows& input1,
+                  const framework::SelectedRows& input2,
+                  framework::SelectedRows* output) {
+    auto in1_height = input1.height();
+    PADDLE_ENFORCE_EQ(in1_height, input2.height());
+    PADDLE_ENFORCE_EQ(in1_height, output->height());
+
+    auto& in1_rows = input1.rows();
+    auto& in2_rows = input2.rows();
+    auto& out_rows = output->rows();
+
+    auto* out_value = output->mutable_value();
+    auto& in1_value = input1.value();
+    auto& in2_value = input2.value();
+
+    auto in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(in1_row_numel, in2_value.numel() / in2_rows.size());
+    PADDLE_ENFORCE_EQ(in1_row_numel, out_value->numel() / out_rows.size());
+
+    SetConstant<platform::CPUPlace, T> functor;
+    functor(context, out_value, 0.0);
+    auto* out_data = out_value->data<T>();
+
+    auto* in1_data = in1_value.data<T>();
+    for (size_t i = 0; i < in1_rows.size(); i++) {
+      auto row = detail::FindPos(out_rows, in1_rows[i]);
+      for (size_t j = 0; j < in1_row_numel; j++) {
+        out_data[row * in1_row_numel + j] += in1_data[i * in1_row_numel + j];
+      }
+    }
+
+    auto* in2_data = in2_value.data<T>();
+    for (size_t i = 0; i < in2_rows.size(); i++) {
+      auto row = detail::FindPos(out_rows, in2_rows[i]);
+      for (size_t j = 0; j < in1_row_numel; j++) {
+        out_data[row * in1_row_numel + j] += in2_data[i * in1_row_numel + j];
+      }
+    }
+  }
+};
+
+template struct SelectedRowsAdd<platform::CPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators

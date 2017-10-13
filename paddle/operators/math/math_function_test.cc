@@ -1,4 +1,5 @@
 #include "paddle/operators/math/math_function.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -253,18 +254,69 @@ TEST(math_function, zero) {
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUPlace, float>(
-      context, &tensor, 0);
+  paddle::operators::math::SetConstant<paddle::platform::CPUPlace, float>
+      functor;
+  functor(context, &tensor, 0);
   EXPECT_EQ(t[0], 0);
   EXPECT_EQ(t[1], 0);
   EXPECT_EQ(t[2], 0);
   EXPECT_EQ(t[3], 0);
 
-  paddle::operators::math::SetConstant<paddle::platform::CPUPlace, float>(
-      context, &tensor, 1);
+  functor(context, &tensor, 1);
 
   EXPECT_EQ(t[0], 1);
   EXPECT_EQ(t[1], 1);
   EXPECT_EQ(t[2], 1);
   EXPECT_EQ(t[3], 1);
+}
+
+TEST(math_function, selected_rows_add) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  using namespace paddle::operators::math;
+
+  CPUPlace cpu_place;
+  CPUDeviceContext ctx(cpu_place);
+  SetConstant<CPUPlace, float> functor;
+  int64_t height = 10;
+  int64_t row_numel = 10;
+
+  std::vector<int64_t> rows1{0, 4, 7};
+  std::unique_ptr<SelectedRows> selected_rows1{new SelectedRows(rows1, height)};
+  auto* in1_value = selected_rows1->mutable_value();
+  in1_value->mutable_data<float>(
+      make_ddim({static_cast<int64_t>(rows1.size()), row_numel}), cpu_place);
+  functor(ctx, in1_value, 2.0);
+
+  std::vector<int64_t> rows2{0, 5, 7, 9};
+  std::unique_ptr<SelectedRows> selected_rows2{new SelectedRows(rows2, height)};
+  auto* in2_value = selected_rows2->mutable_value();
+  in2_value->mutable_data<float>(
+      make_ddim({static_cast<int64_t>(rows2.size()), row_numel}), cpu_place);
+  functor(ctx, in2_value, 1.0);
+
+  std::unique_ptr<SelectedRows> output{new SelectedRows()};
+  output->set_height(height);
+  std::vector<int64_t> out_rows = {0, 4, 5, 7, 9};
+  output->set_rows(out_rows);
+
+  auto* out_value = output->mutable_value();
+  out_value->mutable_data<float>(make_ddim({5, 10}), cpu_place);
+
+  SelectedRowsAdd<CPUPlace, float> add_functor;
+  add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
+
+  auto* data = output->value().data<float>();
+  // out_rows[0] = 0
+  EXPECT_EQ(data[0 * row_numel + 0], 3.0);
+  EXPECT_EQ(data[0 * row_numel + 8], 3.0);
+  // out_rows[1] = 4
+  EXPECT_EQ(data[1 * row_numel + 1], 2.0);
+  // out_rows[2] = 5
+  EXPECT_EQ(data[2 * row_numel + 6], 1.0);
+  // out_rows[3] = 7
+  EXPECT_EQ(data[3 * row_numel + 3], 3.0);
+  EXPECT_EQ(data[3 * row_numel + 8], 3.0);
+  // out_rows[4] = 9
+  EXPECT_EQ(data[4 * row_numel + 4], 1.0);
 }
