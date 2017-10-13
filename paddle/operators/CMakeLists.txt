@@ -84,7 +84,7 @@ function(op_library TARGET)
     endif()
 
     # pybind USE_NO_KERNEL_OP
-    # operators may reuse code from
+    # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
