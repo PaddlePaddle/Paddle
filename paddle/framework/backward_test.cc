@@ -715,13 +715,8 @@ TEST(Backward, shared_var) {
   op3->SetInput("b", {"b3"});
   op3->SetOutput("Out", {"out3"});
 
-  auto target = f::VarDescBind("none");
+  auto target = f::VarDescBind("out3");
   AppendBackward(program, target, {});
-
-  std::cout << "xxxxxxx" << std::endl;
-  for (auto &op : block->AllOps()) {
-    std::cout << op->Type() << std::endl;
-  }
 
   ASSERT_EQ(block->AllOps().size(), 8UL);
   f::OpDescBind *grad_op3 = block->AllOps()[4];
@@ -781,7 +776,8 @@ TEST(Backward, half_backward) {
   op1->SetInput("Y", {"b"});
   op1->SetOutput("Out", {"out"});
 
-  AppendBackward(program, {"b"});
+  auto target = f::VarDescBind("out");
+  AppendBackward(program, target, {"b"});
   auto ops = block->AllOps();
-  ASSERT_EQ(2UL, ops.size());
+  ASSERT_EQ(3UL, ops.size());
 }

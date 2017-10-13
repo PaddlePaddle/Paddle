@@ -322,14 +322,6 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
   size_t grad_desc_idx = 0;
   std::vector<std::unique_ptr<OpDescBind>> backward_descs;
 
-  // insert fill one op for target
-  std::unique_ptr<OpDescBind> fill_one_op(new OpDescBind(
-      "fill_constant", {}, {{"Out", {GradVarName(target.Name())}}},
-      {{"shape", std::vector<int>{1}},
-       {"value", static_cast<float>(1.0)},
-       {"dataType", framework::DataType::FP32}}));
-  backward_descs.push_back(std::move(fill_one_op));
-
   for (auto it = op_descs.rbegin(); it != op_descs.rend(); ++it) {
     std::vector<std::unique_ptr<OpDescBind>> op_grads =
         MakeOpGrad(*it, no_grad_vars);
@@ -384,6 +376,14 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     backward_descs.insert(backward_descs.begin() + p.first + 1,
                           std::move(p.second));
   }
+
+  // insert fill one op for target
+  std::unique_ptr<OpDescBind> fill_one_op(new OpDescBind(
+      "fill_constant", {}, {{"Out", {GradVarName(target.Name())}}},
+      {{"shape", std::vector<int>{1}},
+       {"value", static_cast<float>(1.0)},
+       {"dataType", framework::DataType::FP32}}));
+  backward_descs.insert(backward_descs.begin(), std::move(fill_one_op));
   return backward_descs;
 }
 
