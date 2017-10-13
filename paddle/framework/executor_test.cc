@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/backward.h"
@@ -59,6 +60,7 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
     op->SetOutput(kv.first, kv.second);
   }
   op->SetAttrMap(attrs);
+  op->CheckAttrs();
 }
 
 // Tensors in feed value variable will only be in CPUPlace
@@ -316,3 +318,12 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
   }
 }
 #endif
+
+DECLARE_double(fraction_of_gpu_memory_to_use);
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  // Use less GPU memory for unittest.
+  FLAGS_fraction_of_gpu_memory_to_use = 0.25;
+  return RUN_ALL_TESTS();
+}

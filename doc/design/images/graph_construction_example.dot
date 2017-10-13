@@ -33,7 +33,6 @@ digraph ImageClassificationGraph {
 
         cost -> MSE_Grad [color=red];
         d_cost -> MSE_Grad [color=red];
-        x -> MSE_Grad [color=red];
         l -> MSE_Grad [color=red];
         y -> MSE_Grad -> d_y [color=red];
 
