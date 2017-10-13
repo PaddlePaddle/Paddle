@@ -26,10 +26,8 @@ class GradOpDescMakerBase {
   explicit GradOpDescMakerBase(
       const OpDescBind& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
-      std::unordered_map<std::string, std::string>* grad_name_map)
-      : fwd_op_(fwd_op),
-        no_grad_set_(no_grad_set),
-        grad_name_map_(grad_name_map) {}
+      std::unordered_map<std::string, std::string>* grad_to_var)
+      : fwd_op_(fwd_op), no_grad_set_(no_grad_set), grad_to_var_(grad_to_var) {}
 
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
@@ -47,7 +45,7 @@ class GradOpDescMakerBase {
                      if (no_grad_set_.count(g_name)) {
                        return kEmptyVarName;
                      } else {
-                       (*this->grad_name_map_)[g_name] = fwd_var_name;
+                       (*this->grad_to_var_)[g_name] = fwd_var_name;
                        return g_name;
                      }
                    });
@@ -103,7 +101,7 @@ class GradOpDescMakerBase {
  private:
   const OpDescBind& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
-  std::unordered_map<std::string, std::string>* grad_name_map_;
+  std::unordered_map<std::string, std::string>* grad_to_var_;
 };
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {
