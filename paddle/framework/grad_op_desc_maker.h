@@ -115,6 +115,7 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
   virtual std::unique_ptr<OpDescBind> Apply() const = 0;
 };
 
+template <bool DropEmptyIG = true>
 class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
  public:
   using SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -126,7 +127,8 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
-      grad->SetOutput(GradVarName(input_param), this->InputGrad(input_param));
+      grad->SetOutput(GradVarName(input_param),
+                      this->InputGrad(input_param, DropEmptyIG));
     }
 
     for (auto& output_param : this->OutputNames()) {
