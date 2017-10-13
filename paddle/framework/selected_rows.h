@@ -45,6 +45,9 @@ class SelectedRows {
   }
 
  private:
+  // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
+  // SelectedRows are simplely concated when adding together. Until a
+  // SelectedRows add a Tensor, will the duplicate rows be handled.
   std::vector<int64_t> rows_;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
