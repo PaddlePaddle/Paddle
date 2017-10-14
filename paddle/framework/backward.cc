@@ -283,18 +283,19 @@ static void CreateGradVarInBlock(
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
                      if (block_desc->HasVar(grad_var_name)) {
-                       return;
+                       return false;
                      }
                      block_desc->NewVar(grad_var_name);
                      auto it = param_name_map.find(grad_var_name);
                      if (it == param_name_map.end()) {
-                       return;
+                       return false;
                      }
                      auto param_var_name = it->second;
                      auto& grad_record = (*grad_var_record)[param_var_name];
                      grad_record.name_ = grad_var_name;
                      grad_record.block_idx_ = block_desc->ID();
                      grad_record.op_idx_ = static_cast<int>(op_index);
+                     return false; /* not break */
                    });
   }
 }
@@ -456,6 +457,7 @@ AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
     CreateGradVarInBlock(&retv, program_desc.Block(block_index), 0,
                          grad_to_var);
   }
+  return retv;
 }
 
 }  // namespace framework
