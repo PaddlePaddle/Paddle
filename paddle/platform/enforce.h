@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
+#include "paddle/platform/dynload/nccl.h"
 
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -170,6 +171,17 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     err = "CUBLAS: license error, ";
   }
   throw std::runtime_error(err + string::Sprintf(args...));
+}
+
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    ncclResult_t stat, const Args&... args) {
+  if (stat == ncclSuccess) {
+    return;
+  } else {
+    throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
+                             string::Sprintf(args...));
+  }
 }
 
 #endif  // PADDLE_ONLY_CPU
