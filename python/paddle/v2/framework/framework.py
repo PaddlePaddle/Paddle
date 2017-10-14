@@ -21,7 +21,7 @@ class Variable(object):
         if name is None:
             name = Variable._unique_var_name_()
         try:
-            self.desc = self.block.desc.var(name)
+            self.desc = self.block.desc.find_var(name)
             is_new_var = False
         except core.EnforceNotMet:
             self.desc = self.block.desc.var(name)

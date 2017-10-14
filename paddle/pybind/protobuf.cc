@@ -151,10 +151,10 @@ void BindBlockDesc(py::module &m) {
              return self.Var(name);
            },
            py::return_value_policy::reference)
-      .def("var",
+      .def("find_var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
-             return self.Var(name);
+             return self.FindVar(name);
            },
            py::return_value_policy::reference)
       .def("all_vars", &BlockDescBind::AllVars,

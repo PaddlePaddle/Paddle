@@ -122,7 +122,7 @@ class TestBlockDesc(unittest.TestCase):
         var3 = block.var("var3")
         all_vars = block.all_vars()
         self.assertEqual(set(all_vars), set([var1, var2, var3]))
-        var2_re = block.var("var2")
+        var2_re = block.find_var("var2")
         self.assertEqual(var2_re, var2)
 
     def test_add_op(self):
