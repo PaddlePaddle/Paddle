@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.framework.graph import Variable, g_program
+from paddle.v2.framework.framework import Variable, g_program
 import paddle.v2.framework.core as core
 
 
@@ -34,6 +34,8 @@ class TestOperator(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": [mul_out]},
             attrs={"x_num_col_dims": 1})
+
+        self.assertNotEqual(str(mul_op), "")
         self.assertEqual(mul_op.type, "mul")
         self.assertEqual(mul_op.input_names, ["X", "Y"])
         self.assertEqual(mul_op.input("X"), ["mul.x"])

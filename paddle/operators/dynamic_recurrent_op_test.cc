@@ -87,7 +87,6 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
     platform::CPUPlace place;
     scope.NewVar("step_scopes");
     CreateVar(scope, "boot_mem", framework::make_ddim({10, 20}), place);
-    // auto* out0 =
     CreateVar(scope, "out0", framework::make_ddim({10, 20}), place);
     auto* in0 = CreateVar(scope, "in0", framework::make_ddim({10, 8}), place);
     // 10 instanes with 4 sentences, length is 4, 3, 2, 1 respectively.

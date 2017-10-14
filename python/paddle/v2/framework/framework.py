@@ -10,6 +10,7 @@ __all__ = ['Block', 'Variable', 'Program', 'Operator']
 class Variable(object):
     def __init__(self,
                  block,
+                 type=core.VarDesc.VarType.LOD_TENSOR,
                  name=None,
                  shape=None,
                  dtype=None,
@@ -25,6 +26,14 @@ class Variable(object):
         except core.EnforceNotMet:
             self.desc = self.block.desc.new_var(name)
             is_new_var = True
+
+        if is_new_var:
+            self.desc.set_type(type)
+        elif self.desc.type() != type:
+            raise ValueError("Variable {0} has been created before. The "
+                             "previous type is {1}; the new type is {2}. They"
+                             " are not matched".format(self.name,
+                                                       self.desc.type(), type))
 
         if shape is not None:
             if is_new_var:
@@ -63,6 +72,13 @@ class Variable(object):
                                                       lod_level))
         self.block.vars[name] = self
         self.op = None
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.VarDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def name(self):
@@ -201,6 +217,13 @@ class Operator(object):
         self.desc.check_attrs()
         self.desc.infer_shape(self.block.desc)
 
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.OpDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
+
     @property
     def type(self):
         return self.desc.type()
@@ -242,6 +265,13 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.BlockDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def parent_idx(self):
@@ -289,6 +319,13 @@ class Program(object):
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
         self.parameters = []  # parameter name list stored in the global scope
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     def global_block(self):
         return self.blocks[0]
