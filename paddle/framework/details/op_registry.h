@@ -99,8 +99,9 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     info->grad_op_maker_ = [](
         const OpDescBind& fwd_op,
-        const std::unordered_set<std::string>& no_grad_set) {
-      T maker(fwd_op, no_grad_set);
+        const std::unordered_set<std::string>& no_grad_set,
+        std::unordered_map<std::string, std::string>* grad_to_var) {
+      T maker(fwd_op, no_grad_set, grad_to_var);
       return maker();
     };
   }
