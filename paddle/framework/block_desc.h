@@ -51,7 +51,7 @@ class BlockDescBind {
 
   VarDescBind *Var(const std::string &name_bytes);
 
-  VarDescBind *Var(const std::string &name_bytes) const;
+  VarDescBind *FindVar(const std::string &name_bytes) const;
 
   bool HasVar(const std::string &var_name) const;
 

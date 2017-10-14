@@ -27,7 +27,7 @@ VarDescBind *BlockDescBind::Var(const std::string &name) {
   return var;
 }
 
-VarDescBind *BlockDescBind::Var(const std::string &name) const {
+VarDescBind *BlockDescBind::FindVar(const std::string &name) const {
   auto it = vars_.find(name);
   PADDLE_ENFORCE(it != vars_.end(),
                  "Can not find variable %s in current block.", name);
