@@ -11,13 +11,14 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/tensor.h"
+#include "paddle/platform/cpu_gpu_vector.h"
 
 namespace paddle {
 namespace framework {
 
 class SelectedRows {
  public:
-  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
+  SelectedRows(const platform::CPUGPUVector& rows, const int64_t& height)
       : rows_(rows), height_(height) {
     value_.reset(new Tensor());
   }
@@ -45,7 +46,7 @@ class SelectedRows {
   }
 
  private:
-  std::vector<int64_t> rows_;
+  platform::CPUGPUVector<int64_t> rows_;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
 };

@@ -15,28 +15,15 @@
 #pragma once
 
 #include <memory>
-#ifdef PADDLE_WITH_CUDA
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <thrust/system/cuda/experimental/pinned_allocator.h>
-#endif
 
 #include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/platform/cpu_gpu_vector.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
-
-#ifndef PADDLE_WITH_CUDA
-template <typename T>
-using Vector = std::vector<T>;
-#else
-template <typename T>
-using Vector = thrust::host_vector<
-    T, thrust::system::cuda::experimental::pinned_allocator<T>>;
-#endif
 
 /*
  * 3-level LoD stores
@@ -50,7 +37,7 @@ using Vector = thrust::host_vector<
  * from 0
  * - each sequence's begin and end(no-inclusive) is level[id, id+1]
  */
-using LoD = std::vector<Vector<size_t>>;
+using LoD = std::vector<platform::CPUGPUVector<size_t>>;
 
 LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
 

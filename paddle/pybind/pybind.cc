@@ -98,6 +98,7 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
+// TODO(yuyang18): Use cpu_gpu_vector.h
 #ifndef PADDLE_WITH_CUDA
             new (&instance) LoDTensor(lod);
 #else
@@ -109,6 +110,7 @@ PYBIND11_PLUGIN(core) {
           })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
+// TODO(yuyang18): Use cpu_gpu_vector.h
 #ifndef PADDLE_WITH_CUDA
              self.set_lod(lod);
 #else
