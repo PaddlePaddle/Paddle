@@ -1,4 +1,5 @@
 import paddle.v2.framework.core as core
+import paddle.v2.framework.proto.framework_pb2 as framework_pb2
 import collections
 import numpy as np
 import copy
@@ -9,6 +10,7 @@ __all__ = ['Block', 'Variable', 'Program', 'Operator']
 class Variable(object):
     def __init__(self,
                  block,
+                 type=core.VarDesc.VarType.LOD_TENSOR,
                  name=None,
                  shape=None,
                  dtype=None,
@@ -24,6 +26,14 @@ class Variable(object):
         except core.EnforceNotMet:
             self.desc = self.block.desc.new_var(name)
             is_new_var = True
+
+        if is_new_var:
+            self.desc.set_type(type)
+        elif self.desc.type() != type:
+            raise ValueError("Variable {0} has been created before. The "
+                             "previous type is {1}; the new type is {2}. They"
+                             " are not matched".format(self.name,
+                                                       self.desc.type(), type))
 
         if shape is not None:
             if is_new_var:
@@ -62,6 +72,13 @@ class Variable(object):
                                                       lod_level))
         self.block.vars[name] = self
         self.op = None
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.VarDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def name(self):
@@ -106,6 +123,40 @@ class Variable(object):
             raise ValueError("Not supported numpy dtype " + str(dtype))
 
 
+def get_all_op_protos():
+    """
+    Get all registered op proto from PaddlePaddle C++ end.
+    :return: A list of registered OpProto.
+    """
+    protostrs = core.get_all_op_protos()
+    ret_values = []
+    for pbstr in protostrs:
+        op_proto = framework_pb2.OpProto.FromString(str(pbstr))
+        ret_values.append(op_proto)
+    return ret_values
+
+
+class OpProtoHolder(object):
+    @classmethod
+    def instance(cls):
+        if not hasattr(cls, '_instance'):
+            cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        assert not hasattr(
+            self.__class__,
+            '_instance'), 'Please use `instance()` to get OpProtoHolder opject!'
+        op_protos = get_all_op_protos()
+        self.op_proto_map = {}
+        for proto in op_protos:
+            self.op_proto_map[proto.type] = proto
+
+    def get_op_proto(self, type):
+        assert type in self.op_proto_map, "Operator \"%s\" has not been registered." % type
+        return self.op_proto_map[type]
+
+
 class Operator(object):
     def __init__(self,
                  block,
@@ -116,20 +167,96 @@ class Operator(object):
                  attrs=None):
         self.block = block
         self.desc = desc
-        if type is not None:
-            # TODO.
-            pass
-        if inputs is not None:
-            # TODO
-            pass
-        if outputs is not None:
-            # TODO
-            pass
-        if attrs is not None:
-            # TODO
-            pass
+        if len(self.desc.type()) != 0:
+            return
+        if type is None:
+            raise ValueError(
+                "`type` to initilized an Operator can not be None.")
+        self.desc.set_type(type)
+        proto = OpProtoHolder.instance().get_op_proto(type)
 
-            # TODO: Getters
+        if inputs is not None:
+            for in_proto in proto.inputs:
+                in_argus = inputs[in_proto.name]
+                if not isinstance(in_argus, list):
+                    in_argus = [in_argus]
+                if not in_proto.duplicable and len(in_argus) > 1:
+                    raise ValueError(
+                        "Input %s expects only one input, but %d are given." %
+                        (in_proto.name, len(in_argus)))
+                in_argu_names = []
+                for argu in in_argus:
+                    in_argu_names.append(argu.name)
+                self.desc.set_input(in_proto.name, in_argu_names)
+
+        if outputs is not None:
+            for out_proto in proto.outputs:
+                out_argus = outputs[out_proto.name]
+                if not isinstance(out_argus, list):
+                    out_argus = [out_argus]
+                if not out_proto.duplicable and len(out_argus) > 1:
+                    raise ValueError(
+                        "Output %s expects only one output, but %d are given." %
+                        (out_proto.name, len(out_argus)))
+                out_argu_names = []
+                for argu in out_argus:
+                    out_argu_names.append(argu.name)
+                    argu.op = self
+                self.desc.set_output(out_proto.name, out_argu_names)
+
+        if attrs is not None:
+            for attr in proto.attrs:
+                attr_name = attr.name
+                if not attr_name in attrs:
+                    continue
+                if not isinstance(attrs[attr_name], Block):
+                    self.desc.set_attr(attr_name, attrs[attr_name])
+                else:
+                    self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+
+        self.desc.check_attrs()
+        self.desc.infer_shape(self.block.desc)
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.OpDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
+
+    @property
+    def type(self):
+        return self.desc.type()
+
+    def input(self, name):
+        return self.desc.input(name)
+
+    @property
+    def input_names(self):
+        return self.desc.input_names()
+
+    def output(self, name):
+        return self.desc.output(name)
+
+    @property
+    def output_names(self):
+        return self.desc.output_names()
+
+    def has_attr(self, name):
+        return self.desc.has_attr(name)
+
+    def attr_type(self, name):
+        return self.desc.attr_type(name)
+
+    @property
+    def attr_names(self):
+        return self.desc.attr_names()
+
+    def attr(self, name):
+        return self.desc.attr(name)
+
+    def block_attr(self, name):
+        return self.desc.block_attr(name)
 
 
 class Block(object):
@@ -138,6 +265,13 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.BlockDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def parent_idx(self):
@@ -182,6 +316,13 @@ class Program(object):
         self.desc = core.ProgramDesc.instance()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     def global_block(self):
         return self.blocks[0]

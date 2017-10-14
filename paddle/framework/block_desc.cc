@@ -66,7 +66,7 @@ std::vector<OpDescBind *> BlockDescBind::AllOps() const {
   return res;
 }
 
-void BlockDescBind::Sync() {
+void BlockDescBind::Flush() {
   if (need_update_) {
     auto &op_field = *this->desc_->mutable_ops();
     op_field.Clear();
@@ -91,9 +91,10 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
   return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
-void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.RawPtr();
-  this->attrs_[name] = desc;
+BlockDesc *BlockDescBind::Proto() {
+  Flush();
+  return desc_;
 }
+
 }  // namespace framework
 }  // namespace paddle
