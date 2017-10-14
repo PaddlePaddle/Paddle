@@ -73,6 +73,13 @@ class Variable(object):
         self.block.vars[name] = self
         self.op = None
 
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.VarDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
+
     @property
     def name(self):
         return self.desc.name()
@@ -169,6 +176,18 @@ class Operator(object):
         proto = OpProtoHolder.instance().get_op_proto(type)
 
         if inputs is not None:
+            given = set()
+            need = set()
+            for n in inputs:
+                given.add(n)
+            for m in proto.inputs:
+                need.add(m.name)
+            if not given == need:
+                raise ValueError(
+                    "Incorrect setting for input(s) of operator \"%s\". Need: [%s] Given: [%s]"
+                    % (type, ", ".join(str(e) for e in need), ", ".join(
+                        str(e) for e in given)))
+
             for in_proto in proto.inputs:
                 in_argus = inputs[in_proto.name]
                 if not isinstance(in_argus, list):
@@ -183,6 +202,18 @@ class Operator(object):
                 self.desc.set_input(in_proto.name, in_argu_names)
 
         if outputs is not None:
+            given = set()
+            need = set()
+            for n in outputs:
+                given.add(n)
+            for m in proto.outputs:
+                need.add(m.name)
+            if not given == need:
+                raise ValueError(
+                    "Incorrect setting for output(s) of operator \"%s\". Need: [%s] Given: [%s]"
+                    % (type, ", ".join(str(e) for e in need), ", ".join(
+                        str(e) for e in given)))
+
             for out_proto in proto.outputs:
                 out_argus = outputs[out_proto.name]
                 if not isinstance(out_argus, list):
@@ -209,6 +240,13 @@ class Operator(object):
 
         self.desc.check_attrs()
         self.desc.infer_shape(self.block.desc)
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.OpDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def type(self):
@@ -251,6 +289,13 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.BlockDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def parent_idx(self):
@@ -295,6 +340,13 @@ class Program(object):
         self.desc = core.ProgramDesc.instance()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     def global_block(self):
         return self.blocks[0]
