@@ -401,21 +401,19 @@ void AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
                       {"value", static_cast<float>(1.0)},
                       {"dataType", framework::DataType::FP32}}));
   all_ops.push_back(std::move(fill_one_op));
-  size_t forward_end_index = all_ops.size();
+  size_t forward_op_num = all_ops.size();
   auto backward_op_descs =
       MakeBlockBackward(program_desc, root_block_idx, no_grad_var_names);
   for (auto& ptr : backward_op_descs) {
     all_ops.push_back(std::move(ptr));
   }
   root_block->NewVar(fill_one_op_out);
+
+  // create grad_var for all blocks in this program
   for (size_t block_index = 0; block_index < program_desc.Size();
        ++block_index) {
-    size_t backward_start_index = 0;
-    if (block_index == root_block_idx) {
-      backward_start_index = forward_end_index;
-    } else {
-      backward_start_index = 0;
-    }
+    size_t backward_start_index =
+        block_index == root_block_idx ? forward_op_num : 0;
     auto* current_block = program_desc.Block(block_index);
     for (size_t op_index = backward_start_index;
          op_index < current_block->ops_.size(); ++op_index) {
