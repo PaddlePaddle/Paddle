@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/math_function.h"
+#include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -191,7 +192,7 @@ struct SelectedRowsAdd<platform::GPUPlace, T> {
     auto in2_place = input2.place();
     PADDLE_ENFORCE(platform::is_gpu_place(in2_place));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(out_place))
+    PADDLE_ENFORCE(platform::is_gpu_place(out_place));
 
     memory::Copy(
         boost::get<platform::GPUPlace>(out_place), out_data,
@@ -211,22 +212,26 @@ struct SelectedRowsAdd<platform::GPUPlace, T> {
 template struct SelectedRowsAdd<platform::GPUPlace, float>;
 
 namespace {
-template <int block_size, typename T>
-__global__ void SelectedRowsAddTensorKernel(T* selected_rows, int64_t* rows,
-                                            T* tensor_in, T* tensor_out,
-                                            const int64_t row_numel) {
-  const ty = blockIdx.y;
+template <typename T>
+__global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
+                                            const int64_t* rows,
+                                            T* tensor_out,
+                                            int64_t row_numel,
+                                            int block_size) {
+  const int ty = blockIdx.y;
   int tid = threadIdx.x;
 
   selected_rows += ty * row_numel;
-  tensor_in += rows[ty] * row_numel;
   tensor_out += rows[ty] * row_numel;
 
   for (int index = tid; index < row_numel; index += block_size) {
-    tensor_out[index] = tensor_in[index] + selected_rows[index];
+    // Since index in rows of SelectedRows can be duplicate, we can not use
+    // tensor_out[index] += selected_rows[index]; Instead, we have to use
+    // AtomicAdd to avoid concurrent write error.
+    paddle::platform::CudaAtomicAdd(&tensor_out[index], selected_rows[index]);
   }
 }
-}
+}  // namespace
 
 template <typename T>
 struct SelectedRowsAddTensor<platform::GPUPlace, T> {
@@ -250,13 +255,22 @@ struct SelectedRowsAddTensor<platform::GPUPlace, T> {
     auto* in2_data = input2.data<T>();
     auto* out_data = output->data<T>();
 
-    const int block_size = 256;
+    SetConstant<platform::GPUPlace, T> functor;
+    functor(context, output, 0.0);
+
+    int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(1, in1_height);
-    SelectedRowsAddTensorKernel<block_size, T><<<
+    SelectedRowsAddTensorKernel<T><<<
         grid, threads, 0,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-        in1_data, in1_rows.data(), in2_data, out_data, in1_row_numel);
+        reinterpret_cast<const platform::CUDADeviceContext&>(context).stream()
+        >>>(in1_data, in1_rows.data(),
+            out_data, in1_row_numel, block_size);
+
+    auto out_eigen = framework::EigenVector<T>::Flatten(*output);
+    auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
+    out_eigen.device(*context.GetEigenDevice<platform::GPUPlace>()) =
+        out_eigen + in2_eigen;
   }
 };
 
