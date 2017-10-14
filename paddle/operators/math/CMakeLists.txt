@@ -1,6 +1,6 @@
 if(WITH_GPU)
     nv_library(math_function SRCS math_function.cc math_function.cu im2col.cc im2col.cu DEPS cblas device_context operator)
-    nv_test(math_function_test SRCS math_function_test.cc DEPS math_function tensor)
+    nv_test(math_function_gpu_test SRCS math_function_test.cu DEPS math_function tensor)
     nv_library(softmax SRCS softmax.cc softmax.cu DEPS operator)
     nv_library(cross_entropy SRCS cross_entropy.cc cross_entropy.cu DEPS operator)
     nv_library(pooling SRCS pooling.cc pooling.cu DEPS device_context)

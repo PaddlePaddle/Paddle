@@ -162,15 +162,24 @@ struct SelectedRowsAdd<platform::CPUPlace, T> {
     PADDLE_ENFORCE_EQ(in1_row_numel, in2_value.numel() / in2_rows.size());
     PADDLE_ENFORCE_EQ(in1_row_numel, out_value->numel() / out_rows.size());
 
-    auto* out_data = out_value->data<T>();
+    auto in1_place = input1.place();
+    PADDLE_ENFORCE(platform::is_cpu_place(in1_place));
+    auto in2_place = input2.place();
+    PADDLE_ENFORCE(platform::is_cpu_place(in2_place));
+    auto out_place = context.GetPlace();
+    PADDLE_ENFORCE(platform::is_cpu_place(out_place));
 
+    auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    memory::Copy(platform::CPUPlace(), out_data, platform::CPUPlace(), in1_data,
+    memory::Copy(boost::get<platform::CPUPlace>(out_place), out_data,
+                 boost::get<platform::CPUPlace>(in1_place), in1_data,
                  in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(platform::CPUPlace(), out_data + in1_value.numel(),
-                 platform::CPUPlace(), in2_data, in2_value.numel() * sizeof(T));
+    memory::Copy(boost::get<platform::CPUPlace>(out_place),
+                 out_data + in1_value.numel(),
+                 boost::get<platform::CPUPlace>(in2_place), in2_data,
+                 in2_value.numel() * sizeof(T));
   }
 };
 
