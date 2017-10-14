@@ -39,7 +39,7 @@ class BlockDescBind {
       std::unordered_map<std::string, std::string> *grad_to_var);
 
   friend void AppendBackward(
-      ProgramDescBind &program_desc,
+      ProgramDescBind &program_desc, const VarDescBind &target,
       const std::unordered_set<std::string> &no_grad_vars);
 
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
