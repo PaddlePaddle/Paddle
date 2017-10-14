@@ -24,10 +24,12 @@ class RunOnceOp : public framework::OperatorWithKernel {
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
-    if (Attr<bool>("run_once") && !has_run_) {
-      framework::OperatorWithKernel::Run(scope, dev_ctx);
-      has_run_ = true;
+    bool run_once = Attr<bool>("run_once");
+    if (run_once && has_run_) {
+      return;
     }
+    framework::OperatorWithKernel::Run(scope, dev_ctx);
+    has_run_ = true;
   }
 
  private:
