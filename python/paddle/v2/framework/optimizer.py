@@ -1,4 +1,4 @@
-import paddle.v2.framework.graph as graph
+import paddle.v2.framework.framework as framework
 
 __all__ = ['SGDOptimizer']
 
@@ -36,13 +36,13 @@ class Optimizer(object):
           list of (parameters, gradients) pair.
         """
 
-        assert isinstance(loss, graph.Variable)
+        assert isinstance(loss, framework.Variable)
         # TODO(qiao) append_backward should support target.
-        loss.block.program.append_backward(loss, no_grad_set or set())
+        loss.block.framework.append_backward(loss, no_grad_set or set())
         if parameter_list is not None:
             parameters = parameter_list
         else:
-            parameters = loss.block.program.parameters
+            parameters = loss.block.framework.parameters
         params_and_grads = []
         for param in parameters:
             grad = grad_var_name(param)
@@ -93,7 +93,7 @@ class SGDOptimizer(Optimizer):
         self._learning_rate = learning_rate
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, graph.Block)
+        assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a var for learning_rate
         lr = block.create_var(dtype="float32", shape=lr_shape, lod_level=0)

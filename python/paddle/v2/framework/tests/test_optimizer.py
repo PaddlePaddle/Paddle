@@ -1,12 +1,12 @@
 import unittest
 
-import paddle.v2.framework.graph as graph
+import paddle.v2.framework.framework as framework
 import paddle.v2.framework.optimizer as optimizer
 
 
 class TestOptimizer(unittest.TestCase):
     def test_sgd_optimizer(self):
-        program = graph.g_program
+        program = framework.g_program
         block = program.global_block()
         mul_x = block.create_var(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
