@@ -32,7 +32,7 @@ OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
 }
 
 OpDesc *OpDescBind::Proto() {
-  Sync();
+  Flush();
   return &op_desc_;
 }
 
@@ -101,7 +101,7 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
 }
 
 void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.RawPtr();
+  BlockDesc *desc = block.Proto();
   this->attrs_[name] = desc;
   need_update_ = true;
 }
@@ -165,7 +165,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
-void OpDescBind::Sync() {
+void OpDescBind::Flush() {
   if (need_update_) {
     this->op_desc_.mutable_inputs()->Clear();
     for (auto &ipt : inputs_) {

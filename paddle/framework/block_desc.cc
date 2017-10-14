@@ -66,7 +66,7 @@ std::vector<OpDescBind *> BlockDescBind::AllOps() const {
   return res;
 }
 
-void BlockDescBind::Sync() {
+void BlockDescBind::Flush() {
   if (need_update_) {
     auto &op_field = *this->desc_->mutable_ops();
     op_field.Clear();
@@ -89,6 +89,11 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
     return nullptr;
   }
   return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
+}
+
+BlockDesc *BlockDescBind::Proto() {
+  Flush();
+  return desc_;
 }
 
 }  // namespace framework
