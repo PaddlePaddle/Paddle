@@ -273,6 +273,21 @@ static bool AllGradInSet(const std::vector<std::string>& names,
   return true;
 }
 
+static void CreateGradVarInBlock(BlockDescBind* block_desc,
+                                 size_t grad_op_start_index) {
+  auto ops = block_desc->AllOps();
+  for (size_t op_index = grad_op_start_index; op_index < ops.size();
+       ++op_index) {
+    for (const auto& output : ops[op_index]->Outputs()) {
+      for (const auto& real_output : output.second) {
+        if (!block_desc->HasVar(real_output)) {
+          block_desc->NewVar(real_output);
+        }
+      }
+    }
+  }
+}
+
 std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
     const std::unique_ptr<OpDescBind>& op_desc,
     std::unordered_set<std::string>* no_grad_vars,
@@ -335,7 +350,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       PADDLE_ENFORCE_EQ(
           op_grads.size(), static_cast<size_t>(1),
           "rnn_op's gradient process should contain only one op.");
-      int step_block_idx = (*it)->GetBlockAttr("stop_block");
+      int step_block_idx = (*it)->GetBlockAttr("step_block");
       auto backward_block_op_descs = MakeBlockBackward(
           program_desc, step_block_idx, no_grad_vars, grad_to_var);
       BlockDescBind* backward_block = program_desc.AppendBlock(*cur_block);
@@ -407,6 +422,7 @@ void AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
                       {"dataType", framework::DataType::FP32}}));
   all_ops.push_back(std::move(fill_one_op));
   size_t forward_op_num = all_ops.size();
+  size_t forward_block_num = program_desc.Size();
   std::unordered_map<std::string, std::string> grad_to_var;
   auto backward_op_descs = MakeBlockBackward(program_desc, root_block_idx,
                                              &no_grad_var_names, &grad_to_var);
@@ -416,21 +432,10 @@ void AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
   root_block->NewVar(fill_one_op_out);
 
   // create grad_var for all blocks in this program
-  for (size_t block_index = 0; block_index < program_desc.Size();
-       ++block_index) {
-    size_t backward_start_index =
-        block_index == root_block_idx ? forward_op_num : 0;
-    auto* current_block = program_desc.Block(block_index);
-    for (size_t op_index = backward_start_index;
-         op_index < current_block->ops_.size(); ++op_index) {
-      for (const auto& output : current_block->ops_[op_index]->Outputs()) {
-        for (const auto& real_output : output.second) {
-          if (!current_block->HasVar(real_output)) {
-            current_block->NewVar(real_output);
-          }
-        }
-      }
-    }
+  CreateGradVarInBlock(root_block, forward_op_num);
+  for (size_t block_index = forward_block_num;
+       block_index < program_desc.Size(); ++block_index) {
+    CreateGradVarInBlock(program_desc.Block(block_index), 0);
   }
 }
 
