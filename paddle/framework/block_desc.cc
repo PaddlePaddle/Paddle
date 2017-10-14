@@ -22,7 +22,7 @@ VarDescBind *BlockDescBind::Var(const std::string &name) {
   need_update_ = true;
   auto it = vars_.find(name);
   if (it != vars_.end()) {
-    return it->secon.get();
+    return it->second.get();
   }
   auto *var = new VarDescBind(name);
   vars_[name].reset(var);
