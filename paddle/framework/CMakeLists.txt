@@ -19,10 +19,10 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim op_info)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
-cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto proto_desc)
+cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope proto_desc)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
@@ -53,3 +53,6 @@ endif()
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
 cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
+
+cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
+cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
