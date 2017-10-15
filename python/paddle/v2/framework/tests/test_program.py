@@ -69,7 +69,6 @@ class TestProgram(unittest.TestCase):
 
         for op in block.all_ops():
             actual_ops.append(op.type())
-        print(actual_ops)
         self.assertEqual(actual_ops, expect_ops)
 
 
