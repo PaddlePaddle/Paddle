@@ -36,11 +36,12 @@ struct GradVarInfo {
   int op_idx_;
 };
 
-// TODO(jiayi): Add target as parameter and generate backward op
-// according to target.
-std::unordered_map<std::string /*fwd_var_name*/, GradVarInfo /*grad_var_info*/>
-AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
-               const std::unordered_set<std::string>& no_grad_vars);
+using ParamGradInfoMap = std::unordered_map<std::string /*fwd_var_name*/,
+                                            GradVarInfo /*grad_var_info*/>;
+
+ParamGradInfoMap AppendBackward(
+    ProgramDescBind& program_desc, const VarDescBind& target,
+    const std::unordered_set<std::string>& no_grad_vars);
 
 }  // namespace framework
 }  // namespace paddle
