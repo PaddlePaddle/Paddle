@@ -71,25 +71,25 @@ class RNNAlgorithm {
   /*
    * Create state variables for each time step.
    */
-  void CreateState(const rnn::MemoryAttr& memory, size_t step);
+  void CreateState(const rnn::StateAttr& state, size_t step);
 
   /*
    * Link pre-state variable in current scope to the state variable in the
    * previous time step (scope) by reference.
    */
-  void LinkState(const rnn::MemoryAttr& memory, size_t step);
+  void LinkState(const rnn::StateAttr& state, size_t step);
 
   /*
    * Link the pre-state of the first time step to the `boot-state` in parent's
    * scope.
    */
-  void LinkBootState(const rnn::MemoryAttr& memory);
+  void LinkInitialState(const rnn::StateAttr &state);
 
   /*
    * Copy the gradient from `pre-state` in the first step-scope to the
    * `boot-state` in parent's scope.
    */
-  void ExportBootStateGradient(const rnn::MemoryAttr& memory);
+  void ExportInitialStateGradient(const rnn::StateAttr &state);
 
   /*
    * Calculate time steps.
@@ -106,13 +106,13 @@ class RNNAlgorithm {
   bool IsBackward() const { return mode_ == ComputeMode::kBackward; }
 
   /*
-   * set a stepnet that is created according to a RecurrentOp's stepnet.
+   * set a step unit that is created according to a RecurrentOp's step unit.
    */
-  void SetStepNet(std::unique_ptr<framework::OperatorBase> net) {
-    PADDLE_ENFORCE_NOT_NULL(net);
-    stepnet_ = std::move(net);
+  void SetStepUnit(std::unique_ptr<framework::OperatorBase> step_unit) {
+    PADDLE_ENFORCE_NOT_NULL(step_unit);
+    step_unit_ = std::move(step_unit);
   }
-  const framework::OperatorBase& GetStepNet() const { return *stepnet_; }
+  const framework::OperatorBase& GetStepUnit() const { return *step_unit_; }
 
   const framework::TensorArray& state(const std::string& name) const {
     auto it = states_.find(name);
@@ -134,8 +134,8 @@ class RNNAlgorithm {
   struct ArgCache {
     framework::Scope const* scope;
     std::vector<framework::Scope*>* scopes;
-    std::map<std::string, framework::Variable*> inlinks;
-    std::map<std::string, framework::Variable*> outlinks;
+    std::map<std::string, framework::Variable*> inputs;
+    std::map<std::string, framework::Variable*> outputs;
     platform::DeviceContext const* dev_ctx;
 
     size_t num_steps{0};
@@ -165,7 +165,7 @@ class RNNAlgorithm {
   };
 
  private:
-  std::unique_ptr<framework::OperatorBase> stepnet_;
+  std::unique_ptr<framework::OperatorBase> step_unit_;
   std::map<std::string, framework::TensorArray> states_;
   std::map<std::string, framework::TensorArray> step_inputs_;
   std::map<std::string, framework::TensorArray> step_outputs_;

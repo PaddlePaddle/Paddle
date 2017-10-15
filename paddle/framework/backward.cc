@@ -239,10 +239,10 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       auto rnn_grad_op =
           static_cast<operators::DynamicRecurrentGradientOp*>(grad_op.get());
       const auto& stepnet_op =
-          *static_cast<const OperatorBase*>(&rnnop.rnn.GetStepNet());
+          *static_cast<const OperatorBase*>(&rnnop.rnn.GetStepUnit());
       // create stepnet's gradient op
-      rnn_grad_op->rnn.SetStepNet(
-          BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
+      rnn_grad_op->rnn.SetStepUnit(
+              BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
     }
 
     if (net->ops_.empty()) {  // Current no aux op is added to network

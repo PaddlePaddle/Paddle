@@ -63,20 +63,20 @@ class RNNAlgorithmTestHelper : public ::testing::Test {
     op_desc.set_type("dynamic_recurrent");
 
     OpDescNewVar(argname.inlinks, {"in0"}, op_desc.add_inputs());
-    OpDescNewVar(argname.boot_memories, {"boot_mem"}, op_desc.add_inputs());
+    OpDescNewVar(argname.initial_states, {"boot_mem"}, op_desc.add_inputs());
     OpDescNewVar(argname.step_scopes, {"step_scopes"}, op_desc.add_outputs());
     OpDescNewVar(argname.outlinks, {"out0"}, op_desc.add_outputs());
 
-    // set pre-memories
+    // set pre-states
     auto pre_memories = op_desc.mutable_attrs()->Add();
-    pre_memories->set_name(argname.pre_memories);
+    pre_memories->set_name(argname.ex_states);
     pre_memories->set_type(paddle::framework::AttrType::STRINGS);
     auto pre_memories_item = pre_memories->add_strings();
     *pre_memories_item = "mem@pre";
 
-    // set memories
+    // set states
     auto memories = op_desc.mutable_attrs()->Add();
-    memories->set_name(argname.memories);
+    memories->set_name(argname.states);
     memories->set_type(paddle::framework::AttrType::STRINGS);
     auto memories_item = memories->add_strings();
     *memories_item = "mem";
@@ -121,9 +121,9 @@ class RNNAlgorithmTestHelper : public ::testing::Test {
     std::unique_ptr<framework::OperatorBase> stepnet{new NetOp};
     dynamic_cast<NetOp*>(stepnet.get())
         ->AppendOp(std::unique_ptr<TestOp>(new TestOp(
-            "test", {{"inlinks", {"in0"}}, {"boot_memories", {"boot_mem"}}},
-            {{"outlinks", {"out0"}}, {"step_scopes", {"step_scopes"}}}, {})));
-    dop->SetStepNet(std::move(stepnet));
+            "test", {{"inputs", {"in0"}}, {"initial_states", {"boot_mem"}}},
+            {{"outputs", {"out0"}}, {"step_scopes", {"step_scopes"}}}, {})));
+    dop->SetStepUnit(std::move(stepnet));
   }
 
  protected:

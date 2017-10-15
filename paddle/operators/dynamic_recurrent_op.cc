@@ -45,9 +45,9 @@ inline void CreateVariables(Scope& scope,
  * variable's content.
  */
 template <typename T>
-inline void ReorderBootState(const DySeqMetaBatch& metas,
-                             const LoDTensor& boot_state, LoDTensor* tensor,
-                             const platform::Place& dst_place) {
+inline void ReorderInitialState(const DySeqMetaBatch& metas,
+                                const LoDTensor& boot_state, LoDTensor* tensor,
+                                const platform::Place& dst_place) {
   for (size_t seq_id = 0; seq_id < metas.size(); seq_id++) {
     auto slice = tensor->Slice<T>(seq_id, seq_id + 1);
     auto boot_slice =
@@ -59,9 +59,9 @@ inline void ReorderBootState(const DySeqMetaBatch& metas,
 }
 
 template <typename T>
-inline void RestoreBootState(const DySeqMetaBatch& metas,
-                             const LoDTensor& tensor, LoDTensor* boot_state,
-                             const platform::Place& dst_place) {
+inline void RestoreInitialState(const DySeqMetaBatch& metas,
+                                const LoDTensor& tensor, LoDTensor* boot_state,
+                                const platform::Place& dst_place) {
   for (size_t seq_id = 0; seq_id < metas.size(); seq_id++) {
     auto slice = tensor.Slice<T>(seq_id, seq_id + 1);
     auto boot_slice =
@@ -102,8 +102,8 @@ void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
   WriteStepOutputs();
   RunSteps();
   // copy boot-states' gradients back.
-  for (const auto& memory : arg_.memories) {
-    ExportBootStateGradient(memory);
+  for (const auto& state : arg_.states) {
+    ExportInitialStateGradient(state);
   }
 
   ConcatOutputs();
@@ -113,7 +113,7 @@ void RNNAlgorithm::SplitInputs() {
   // TODO(superjom) make level a config
   // TODO(superjom) check all the inputs has the same LoD
   int level = 0;
-  for (const auto& item : cache_.inlinks) {
+  for (const auto& item : cache_.inputs) {
     const auto& var = item.second;
     const auto& tensor = var->Get<LoDTensor>();
     TensorArray& ta = step_inputs_[item.first];
@@ -131,7 +131,7 @@ void RNNAlgorithm::SplitInputs() {
 }
 
 void RNNAlgorithm::WriteStepInputs() {
-  for (const auto& item : cache_.inlinks) {
+  for (const auto& item : cache_.inputs) {
     auto ta_it = step_inputs_.find(item.first);
     PADDLE_ENFORCE(ta_it != step_inputs_.end(),
                    "step_inputs_ not compatible with memory set");
@@ -150,7 +150,7 @@ void RNNAlgorithm::WriteStepInputs() {
 
 void RNNAlgorithm::WriteStepOutputs() {
   // initialize step outputs
-  for (const auto& item : cache_.outlinks) {
+  for (const auto& item : cache_.outputs) {
     step_outputs_.emplace(item.first, TensorArray());
   }
   PADDLE_ENFORCE_GT(step_outputs_.size(), 0UL);
@@ -165,19 +165,19 @@ void RNNAlgorithm::CreateScopes() {
   }
 
   // init temporary inputs
-  PADDLE_ENFORCE_NOT_NULL(stepnet_, "stepnet should be set first");
-  std::vector<std::string> memories;
-  std::vector<std::string> pre_memories;
-  std::vector<std::string> stepnet_outputs;
-  std::transform(arg_.memories.begin(), arg_.memories.end(),
-                 std::back_inserter(memories),
-                 [](const rnn::MemoryAttr& m) { return m.var; });
-  std::transform(arg_.memories.begin(), arg_.memories.end(),
-                 std::back_inserter(pre_memories),
-                 [](const rnn::MemoryAttr& m) { return m.pre_var; });
-  for (const auto& item : stepnet_->Outputs()) {
+  PADDLE_ENFORCE_NOT_NULL(step_unit_, "stepnet should be set first");
+  std::vector<std::string> states;
+  std::vector<std::string> ex_states;
+  std::vector<std::string> step_unit_outputs;
+  std::transform(arg_.states.begin(), arg_.states.end(),
+                 std::back_inserter(states),
+                 [](const rnn::StateAttr& m) { return m.var; });
+  std::transform(arg_.states.begin(), arg_.states.end(),
+                 std::back_inserter(ex_states),
+                 [](const rnn::StateAttr& m) { return m.pre_var; });
+  for (const auto& item : step_unit_->Outputs()) {
     for (const auto& var : item.second) {
-      stepnet_outputs.push_back(var);
+      step_unit_outputs.push_back(var);
     }
   }
 
@@ -185,9 +185,9 @@ void RNNAlgorithm::CreateScopes() {
     auto& scope = cache_.GetScope(step);
     detail::CreateVariables(scope, arg_.inlinks);
     detail::CreateVariables(scope, arg_.outlinks);
-    detail::CreateVariables(scope, memories);
-    detail::CreateVariables(scope, pre_memories);
-    detail::CreateVariables(scope, stepnet_outputs);
+    detail::CreateVariables(scope, states);
+    detail::CreateVariables(scope, ex_states);
+    detail::CreateVariables(scope, step_unit_outputs);
   }
 }
 
@@ -204,13 +204,13 @@ void RNNAlgorithm::ConcatOutputs() {
       item.second.WriteShared(step, *tensor);
     }
   }
-  // the inlinks' lods should be the same, so randomly get one lod.
+  // the inputs' lods should be the same, so randomly get one lod.
   const auto& some_lod =
       cache_.scope->FindVar(arg_.inlinks.front())->Get<LoDTensor>().lod();
   const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];
   for (auto& item : step_outputs_) {
     auto tensor = item.second.Pack(level, some_meta, some_lod);
-    auto* output = cache_.outlinks[item.first]->GetMutable<LoDTensor>();
+    auto* output = cache_.outputs[item.first]->GetMutable<LoDTensor>();
     const_cast<LoDTensor*>(output)->ShareDataWith<value_type>(tensor);
   }
 }
@@ -220,29 +220,29 @@ void RNNAlgorithm::RunSteps() {
     // call stepnet in all the time steps reversely
     for (int step = cache_.num_steps - 1; step >= 0; step--) {
       auto& step_scope = cache_.GetScope(step);
-      stepnet_->Run(step_scope, *cache_.dev_ctx);
+      step_unit_->Run(step_scope, *cache_.dev_ctx);
     }
   } else {
     for (size_t step = 0; step < cache_.num_steps; step++) {
       auto& step_scope = cache_.GetScope(step);
-      stepnet_->Run(step_scope, *cache_.dev_ctx);
+      step_unit_->Run(step_scope, *cache_.dev_ctx);
     }
   }
 }
 
 void RNNAlgorithm::InitStates() {
   for (size_t step = 0; step < cache_.num_steps; step++) {
-    for (const auto& memory : arg_.memories) {
-      CreateState(memory, step);
-      LinkState(memory, step);
+    for (const auto& state : arg_.states) {
+      CreateState(state, step);
+      LinkState(state, step);
     }
   }
 }
 
-void RNNAlgorithm::CreateState(const rnn::MemoryAttr& memory, size_t step) {
+void RNNAlgorithm::CreateState(const rnn::StateAttr& state_attr, size_t step) {
   auto& scope = cache_.GetScope(step);
-  auto& state = *cache_.GetTensor(scope, memory.var);
-  auto& boot_state = *cache_.GetTensor(*cache_.scope, memory.boot_var);
+  auto& state = *cache_.GetTensor(scope, state_attr.var);
+  auto& boot_state = *cache_.GetTensor(*cache_.scope, state_attr.boot_var);
 
   size_t num_instances =
       step_inputs_[arg_.inlinks.front()].Read(step).dims()[0];
@@ -251,12 +251,12 @@ void RNNAlgorithm::CreateState(const rnn::MemoryAttr& memory, size_t step) {
 
   state.Resize(dims);
   state.mutable_data<value_type>(platform::CPUPlace());
-  states_[memory.var].WriteShared(step, state);
+  states_[state_attr.var].WriteShared(step, state);
 }
 
-void RNNAlgorithm::LinkState(const rnn::MemoryAttr& memory, size_t step) {
+void RNNAlgorithm::LinkState(const rnn::StateAttr& state, size_t step) {
   auto& scope = cache_.GetScope(step);
-  auto& state_pre = *cache_.GetTensor(scope, memory.pre_var);
+  auto& state_pre = *cache_.GetTensor(scope, state.pre_var);
 
   // process the first state's boot-state(the 0-step in forward mode or the
   // last step in backward mode)
@@ -264,43 +264,43 @@ void RNNAlgorithm::LinkState(const rnn::MemoryAttr& memory, size_t step) {
   // time step. In backward mode, need to copy the gradient of `pre-state` in
   // first time step to the gradient of `boot-state`.
   if (step == 0 && IsForward()) {
-    LinkBootState(memory);
+    LinkInitialState(state);
   } else {
     size_t num_instances =
         step_inputs_[arg_.inlinks.front()].Read(step).dims()[0];
-    auto* pre_state = cache_.GetTensor(cache_.GetScope(step - 1), memory.var);
+    auto* pre_state = cache_.GetTensor(cache_.GetScope(step - 1), state.var);
     // shink and share from previous state
     auto shrinked_pre_state = pre_state->Slice<value_type>(0, num_instances);
     state_pre.ShareDataWith<value_type>(shrinked_pre_state);
   }
 }
 
-void RNNAlgorithm::LinkBootState(const rnn::MemoryAttr& memory) {
+void RNNAlgorithm::LinkInitialState(const rnn::StateAttr& state) {
   // all the step_inputs' metas should be the same, just randomly select one
   // and get the dyseq meta.
   const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];
   auto& scope = cache_.GetScope(0);
-  auto& state_pre = *cache_.GetTensor(scope, memory.pre_var);
-  auto* pre_state = cache_.GetTensor(*cache_.scope, memory.boot_var);
+  auto& state_pre = *cache_.GetTensor(scope, state.pre_var);
+  auto* pre_state = cache_.GetTensor(*cache_.scope, state.boot_var);
   pre_state->mutable_data<float>(platform::CPUPlace());
-  // allocate memory
+  // allocate state
   state_pre.Resize(pre_state->dims());
   state_pre.mutable_data<value_type>(platform::CPUPlace());
-  detail::ReorderBootState<value_type>(some_meta, *pre_state, &state_pre,
-                                       pre_state->place());
+  detail::ReorderInitialState<value_type>(some_meta, *pre_state, &state_pre,
+                                          pre_state->place());
 }
 
-void RNNAlgorithm::ExportBootStateGradient(const rnn::MemoryAttr& memory) {
+void RNNAlgorithm::ExportInitialStateGradient(const rnn::StateAttr& state) {
   // all the step_inputs' metas should be the same, just randomly select one
   // and get the dyseq meta.
   const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];
   auto& scope = cache_.GetScope(0);
 
-  auto& state_pre = *cache_.GetTensor(scope, memory.pre_var);
-  auto& pre_state = *cache_.GetTensor(*cache_.scope, memory.boot_var);
+  auto& state_pre = *cache_.GetTensor(scope, state.pre_var);
+  auto& pre_state = *cache_.GetTensor(*cache_.scope, state.boot_var);
   pre_state.Resize(state_pre.dims());
-  detail::RestoreBootState<value_type>(some_meta, state_pre, &pre_state,
-                                       pre_state.place());
+  detail::RestoreInitialState<value_type>(some_meta, state_pre, &pre_state,
+                                          pre_state.place());
 }
 
 void RNNAlgorithm::ArgCache::Init(const rnn::ArgumentName& name,
@@ -336,7 +336,7 @@ void RNNAlgorithm::ArgCache::CacheInlinks(
     const Scope& scope, const std::vector<std::string>& names) {
   for (auto name : names) {
     auto* var = GetVariable(scope, name);
-    inlinks[name] = var;
+    inputs[name] = var;
   }
 }
 
@@ -344,7 +344,7 @@ void RNNAlgorithm::ArgCache::CacheOutlinks(
     const Scope& scope, const std::vector<std::string>& names) {
   for (auto name : names) {
     auto* var = GetVariable(scope, name);
-    outlinks[name] = var;
+    outputs[name] = var;
   }
 }
 
@@ -362,11 +362,11 @@ LoDTensor* RNNAlgorithm::ArgCache::GetTensor(const framework::Scope& scope,
 }
 
 const std::array<rnn::ArgumentName, 2> RNNAlgorithm::kArgNames{
-    rnn::ArgumentName{"step_net", "step_scopes", "inlinks", "outlinks",
-                      "memories", "pre_memories", "boot_memories"},
-    rnn::ArgumentName{"step_net", "step_scopes@GRAD", "outlinks@GRAD",
-                      "inlinks@GRAD", "memories", "pre_memories",
-                      "boot_memories@GRAD"}};
+    rnn::ArgumentName{"step_net", "step_scopes", "inputs", "outputs", "states",
+                      "ex-state", "initial_states"},
+    rnn::ArgumentName{"step_net", "step_scopes@GRAD", "outputs@GRAD",
+                      "inputs@GRAD", "states", "initial_states",
+                      "initial_states@GRAD"}};
 
 void DynamicRecurrentOp::Run(const framework::Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
@@ -392,7 +392,7 @@ class DynamicRecurrentOpProtoAndCheckerMaker
     AddInput(name.inlinks,
              "the inputs that need to be segmented for each step.")
         .AsDuplicable();
-    AddInput(name.boot_memories, "variables to initialize memories.")
+    AddInput(name.initial_states, "variables to initialize states.")
         .AsDuplicable();
 
     AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
@@ -400,9 +400,8 @@ class DynamicRecurrentOpProtoAndCheckerMaker
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.pre_memories,
-                                      "names of pre-memories");
-    AddAttr<std::vector<std::string>>(name.memories, "names of memories");
+    AddAttr<std::vector<std::string>>(name.ex_states, "names of ex-states");
+    AddAttr<std::vector<std::string>>(name.states, "names of states");
 
     AddComment("This is a RNN operator for varience-length sequences.");
   }
