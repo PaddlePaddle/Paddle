@@ -280,12 +280,21 @@ static void CreateGradVarInBlock(
   auto ops = block_desc->AllOps();
   for (size_t op_index = grad_op_start_index; op_index < ops.size();
        ++op_index) {
+    // <<<<<<< HEAD
+    //     for (const auto& output : ops[op_index]->Outputs()) {
+    //       for (const auto& real_output : output.second) {
+    //         if (!block_desc->HasVar(real_output)) {
+    //           block_desc->Var(real_output);
+    //         }
+    //       }
+    //     }
+    // =======
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
                      if (block_desc->HasVar(grad_var_name)) {
                        return false;
                      }
-                     block_desc->NewVar(grad_var_name);
+                     block_desc->Var(grad_var_name);
                      auto it = param_name_map.find(grad_var_name);
                      if (it == param_name_map.end()) {
                        return false;
@@ -297,6 +306,7 @@ static void CreateGradVarInBlock(
                      grad_record.op_idx_ = static_cast<int>(op_index);
                      return false; /* not break */
                    });
+    // >>>>>>> origin/develop
   }
 }
 
@@ -448,7 +458,7 @@ AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
   for (auto& ptr : backward_op_descs) {
     all_ops.push_back(std::move(ptr));
   }
-  root_block->NewVar(fill_one_op_out);
+  root_block->Var(fill_one_op_out);
 
   // create grad_var for all blocks in this program
   CreateGradVarInBlock(&retv, root_block, forward_op_num, grad_to_var);

@@ -51,7 +51,7 @@ class TestProgram(unittest.TestCase):
         sum_op_desc.set_input("Y", ["b1"])
         sum_op_desc.set_output("Out", ["out2"])
 
-        target = block.new_var("out2")
+        target = block.var("out2")
 
         expect_ops = [
             "mul", "elementwise_add", "fill_constant", "elementwise_add_grad",
