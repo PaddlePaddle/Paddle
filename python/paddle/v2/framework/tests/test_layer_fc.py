@@ -1,4 +1,4 @@
-from paddle.v2.framework.layers import fc_layer, data_layer, cross_entropy
+from paddle.v2.framework.layers import fc_layer, data_layer, cross_entropy, mean
 import unittest
 
 
@@ -12,7 +12,8 @@ class TestFCLayer(unittest.TestCase):
             input=inference,
             label=data_layer(
                 name='label', shape=[1], data_type='int32'))
-        self.assertIsNotNone(cost)
+        avg_cost = mean(x=cost)
+        self.assertIsNotNone(avg_cost)
         print str(cost.block.program)
 
 

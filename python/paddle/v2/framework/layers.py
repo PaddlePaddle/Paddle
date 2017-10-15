@@ -1,5 +1,9 @@
 from paddle.v2.framework.layer_helper import LayerHelper
 import paddle.v2.framework.core as core
+from paddle.v2.framework.framework import OpProtoHolder, Variable
+import re
+
+__all__ = ['fc_layer', 'data_layer', 'cross_entropy']
 
 
 def fc_layer(input,
@@ -55,6 +59,58 @@ def data_layer(name,
     shape = [-1] + shape  # append batch size as -1
     return helper.create_global_variable(
         name=name, shape=shape, dtype=data_type, type=type)
+
+
+def _convert_(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def _create_op_func_(op_type):
+    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
+    if len(op_proto.outputs) != 1:
+        raise ValueError(
+            "Only one output operator can be automatically generated")
+
+    if op_proto.outputs[0].duplicable:
+        raise ValueError(
+            "Only not duplicable op can be automatically generated")
+
+    o_name = op_proto.outputs[0].name
+
+    def func(**kwargs):
+        helper = LayerHelper(op_type, **locals())
+        inputs = dict()
+        dtype = None
+        for ipt in op_proto.inputs:
+            name = _convert_(ipt.name)
+            val = kwargs.pop(name, [])
+            if not isinstance(val, list) and not isinstance(val, tuple):
+                val = [val]
+            for each in val:
+                if not isinstance(each, Variable):
+                    raise ValueError("input of {0} must be variable".format(
+                        op_type))
+
+                if dtype is None:
+                    dtype = each.data_type
+                elif dtype != each.data_type:
+                    raise ValueError(
+                        "operator {0} must input same dtype".format(op_type))
+            inputs[ipt.name] = val
+
+        out = helper.create_tmp_variable(dtype=dtype)
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs={o_name: [out]}, attrs=kwargs)
+        return out
+
+    func.__name__ = op_type
+    globals()[op_type] = func
+    global __all__
+    __all__.append(op_type)
+
+
+_create_op_func_('mean')
 
 
 def cross_entropy(input, label, program=None, **kwargs):
