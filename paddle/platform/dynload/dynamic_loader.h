@@ -58,6 +58,14 @@ void GetWarpCTCDsoHandle(void** dso_handle);
  */
 void GetLapackDsoHandle(void** dso_handle);
 
+/**
+ * @brief    load the DSO of NVIDIA nccl
+ *
+ * @param    **dso_handle   dso handler
+ *
+ */
+void GetNcclDsoHandle(void** dso_handle);
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
