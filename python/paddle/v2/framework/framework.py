@@ -331,8 +331,35 @@ class Block(object):
 
     def sync_with_cpp(self):
         for var in self.desc.all_vars():
-            if not self.has_var(var.name):
-                self.create_var(name=var.name, desc=var, type=var.type)
+            if not self.has_var(var.name()):
+                self.create_var(name=var.name(), desc=var, type=var.type())
+        ops_in_cpp = self.desc.all_ops()
+        first_op_in_python = self.ops[0].desc
+        last_op_in_python = self.ops[len(self.ops) - 1].desc
+        start_index = None
+        end_index = None
+        for index in range(len(ops_in_cpp)):
+            if first_op_in_python == ops_in_cpp[index]:
+                start_index = index
+            if last_op_in_python == ops_in_cpp[index]:
+                end_index = index
+        assert start_index is not None
+        assert end_index is not None
+        assert start_index < end_index
+
+        # sync ops append to the head of cpp_ops
+        for index in range((start_index - 1 - 1), -1, -1):
+            op_desc = ops_in_cpp[index]
+            op = Operator(self, op_desc)
+            self.ops.appendleft(op)
+
+        # sync ops append to the end of cpp_ops
+        for index in range((end_index + 1), len(ops_in_cpp)):
+            op_desc = ops_in_cpp[index]
+            op = Operator(self, op_desc)
+            self.ops.append(op)
+
+        assert len(self.ops) == len(ops_in_cpp)
 
 
 class Program(object):
