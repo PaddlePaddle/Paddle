@@ -157,16 +157,16 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDescBind::PrependOp,
            py::return_value_policy::reference)
-      .def("new_var",
-           [](BlockDescBind &self, py::bytes byte_name) {
-             std::string name = byte_name;
-             return self.NewVar(name);
-           },
-           py::return_value_policy::reference)
       .def("var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.Var(name);
+           },
+           py::return_value_policy::reference)
+      .def("find_var",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.FindVar(name);
            },
            py::return_value_policy::reference)
       .def("all_vars", &BlockDescBind::AllVars,
