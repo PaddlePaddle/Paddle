@@ -362,10 +362,10 @@ LoDTensor* RNNAlgorithm::ArgCache::GetTensor(const framework::Scope& scope,
 }
 
 const std::array<rnn::ArgumentName, 2> RNNAlgorithm::kArgNames{
-    rnn::ArgumentName{"step_net", "step_scopes", "inputs", "outputs", "states",
-                      "ex-state", "initial_states"},
-    rnn::ArgumentName{"step_net", "step_scopes@GRAD", "outputs@GRAD",
-                      "inputs@GRAD", "states", "initial_states",
+    rnn::ArgumentName{"step_unit", "step_scopes", "inputs", "outputs", "states",
+                      "ex_states", "initial_states"},
+    rnn::ArgumentName{"step_unit", "step_scopes@GRAD", "outputs@GRAD",
+                      "inputs@GRAD", "states", "ex_states",
                       "initial_states@GRAD"}};
 
 void DynamicRecurrentOp::Run(const framework::Scope& scope,
@@ -400,7 +400,7 @@ class DynamicRecurrentOpProtoAndCheckerMaker
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.ex_states, "names of ex-states");
+    AddAttr<std::vector<std::string>>(name.ex_states, "names of ex_states");
     AddAttr<std::vector<std::string>>(name.states, "names of states");
 
     AddComment("This is a RNN operator for varience-length sequences.");

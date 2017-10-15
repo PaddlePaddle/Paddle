@@ -40,7 +40,7 @@ class DynamicRecurrentOpTest(unittest.TestCase):
         - U
     vars:
         - x
-    memories:
+    states:
         - h
     outputs:
        - h
@@ -55,16 +55,16 @@ class DynamicRecurrentOpTest(unittest.TestCase):
         self.create_step_net()
         ctx = core.DeviceContext.create(core.CPUPlace())
         self.rnnop.run(self.scope, ctx)
-        state = self.rnnop.get_state("h@mem")
+        state = self.rnnop.get_state("h@state")
         print 'state size: ', state.size()
 
         step_inputs = self.rnnop.get_step_input("x")
         print "x size ", step_inputs.size()
         for i in range(step_inputs.size()):
             print "x %d" % i, np.array(step_inputs.read(i).get_dims())
-        step_outputs = self.rnnop.get_step_output('h@mem')
+        step_outputs = self.rnnop.get_step_output('h@state')
         print 'step_outputs.size ', step_outputs.size()
-        output = self.scope.find_var("h@mem").get_tensor()
+        output = self.scope.find_var("h@state").get_tensor()
         print 'output', np.array(output).shape
 
     def create_global_variables(self):
@@ -77,33 +77,33 @@ class DynamicRecurrentOpTest(unittest.TestCase):
         create_tensor(self.scope, "h_boot", [num_sents, input_dim],
                       self.py.h_boot)
         self.scope.var("step_scopes")
-        self.scope.var("h@mem")
+        self.scope.var("h@state")
 
     def create_rnn_op(self):
         # create RNNOp
         self.rnnop = DynamicRecurrentOp(
             # inputs
-            inlinks=["x"],
-            boot_memories=["h_boot"],
-            step_net="stepnet",
+            inputs=["x"],
+            initial_states=["h_boot"],
+            step_net="step_unit",
             # outputs
-            outlinks=["h@mem"],
+            outputs=["h@state"],
             step_scopes="step_scopes",
             # attributes
-            pre_memories=["h@pre"],
-            memories=["h@mem"])
+            ex_states=["h@pre"],
+            states=["h@state"])
 
     def create_step_net(self):
-        stepnet = core.Net.create()
+        step_unit = core.Net.create()
         x_fc_op = Operator("mul", X="x", Y="W", Out="Wx")
         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
         sum_op = Operator("sum", X=["Wx", "Uh"], Out="sum")
-        sig_op = Operator("sigmoid", X="sum", Y="h@mem")
+        sig_op = Operator("sigmoid", X="sum", Y="h@state")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
-            stepnet.append_op(op)
-        stepnet.complete_add_op(True)
-        self.rnnop.set_stepnet(stepnet)
+            step_unit.append_op(op)
+        step_unit.complete_add_op(True)
+        self.rnnop.set_step_unit(step_unit)
 
     def test_forward(self):
         print 'test recurrent op forward'
@@ -118,31 +118,31 @@ class RecurrentGradientOpTest(unittest.TestCase):
         # create RNNOp
         self.forward_op = DynamicRecurrentOp(
             # inputs
-            inlinks=["x"],
-            boot_memories=["h_boot"],
-            step_net="stepnet",
+            inputs=["x"],
+            initial_states=["h_boot"],
+            step_net="step_unit",
             # outputs
-            outlinks=["h@mem"],
+            outputs=["h@state"],
             step_scopes="step_scopes",
             # attributes
-            pre_memories=["h@pre"],
-            memories=["h@mem"])
+            ex_states=["h@pre"],
+            states=["h@state"])
 
     def create_gradient_op(self):
         a = set()
         backward_op = core.DynamicRecurrentOp.backward(self.forward_op, a)
 
     def create_step_net(self):
-        stepnet = core.Net.create()
+        step_unit = core.Net.create()
         x_fc_op = Operator("mul", X="x", Y="W", Out="Wx")
         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
         sum_op = Operator("sum", X=["Wx", "Uh"], Out="sum")
-        sig_op = Operator("sigmoid", X="sum", Y="h@mem")
+        sig_op = Operator("sigmoid", X="sum", Y="h@state")
 
         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
-            stepnet.append_op(op)
-        stepnet.complete_add_op(True)
-        self.forward_op.set_stepnet(stepnet)
+            step_unit.append_op(op)
+        step_unit.complete_add_op(True)
+        self.forward_op.set_step_unit(step_unit)
 
     def create_global_variables(self):
         # create inlink
@@ -154,7 +154,7 @@ class RecurrentGradientOpTest(unittest.TestCase):
         create_tensor(self.scope, "h_boot", [num_sents, input_dim],
                       self.py.h_boot)
         self.scope.var("step_scopes")
-        self.scope.var("h@mem")
+        self.scope.var("h@state")
 
     def test_grad(self):
         self.scope = core.Scope()

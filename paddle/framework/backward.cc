@@ -230,7 +230,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
           *static_cast<const OperatorBase*>(&rnnop.stepnet());
       // create stepnet's gradient op
       rnn_grad_op->set_stepnet(
-          BackwardRecursive(stepnet_op, no_grad_names, uniq_id));
+          BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
     } else if (forwardOp.Type() == "dynamic_recurrent") {
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
       // or this will result in infinite loop.
@@ -242,7 +242,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
           *static_cast<const OperatorBase*>(&rnnop.rnn.GetStepUnit());
       // create stepnet's gradient op
       rnn_grad_op->rnn.SetStepUnit(
-              BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
+          BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
     }
 
     if (net->ops_.empty()) {  // Current no aux op is added to network

@@ -87,7 +87,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
 }
 
 void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
-  for (auto& attr : arg_->memories) {
+  for (auto& attr : arg_->states) {
     auto* pre_mem = step_scope->Var(attr.pre_var)->GetMutable<LoDTensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists", attr.var,
