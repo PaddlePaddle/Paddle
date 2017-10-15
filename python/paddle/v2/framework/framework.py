@@ -309,8 +309,6 @@ class Block(object):
         return Variable(self, *args, **kwargs)
 
     def has_var(self, name):
-        """only means the var with name is in the Python Block.
-        """
         return name in self.vars
 
     def create_parameter(self, *args, **kwargs):
@@ -363,6 +361,8 @@ class Block(object):
             self.ops.append(op)
 
         assert len(self.ops) == len(ops_in_cpp)
+        for index in range(len(self.ops)):
+            assert self.ops[index].desc == ops_in_cpp[index]
 
 
 class Program(object):
