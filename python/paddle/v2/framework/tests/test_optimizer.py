@@ -8,7 +8,7 @@ class TestOptimizer(unittest.TestCase):
     def test_sgd_optimizer(self):
         program = framework.g_program
         block = program.global_block()
-        mul_x = block.create_var(
+        mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
@@ -18,7 +18,7 @@ class TestOptimizer(unittest.TestCase):
             type="mul",
             inputs={"X": mul_x,
                     "Y": mul_y},
-            outputs={"Out": [mul_out]},
+            outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
         opts = sgd_optimizer.minimize(mul_out)

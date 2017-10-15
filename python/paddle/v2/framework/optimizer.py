@@ -35,7 +35,6 @@ class Optimizer(object):
         Returns:
           list of (parameters, gradients) pair.
         """
-
         assert isinstance(loss, framework.Variable)
         loss.block.program.append_backward(loss, no_grad_set or set())
         if parameter_list is not None:
@@ -45,7 +44,7 @@ class Optimizer(object):
         params_and_grads = []
         for param in parameters:
             grad = grad_var_name(param)
-            if loss.block.has_var(grad):
+            if loss.block.desc.has_var(grad):
                 params_and_grads.append((param, grad))
             else:
                 params_and_grads.append((param, None))
@@ -63,7 +62,7 @@ class Optimizer(object):
         """
         optimize_ops = []
         for param_and_grad in parameters_and_grads:
-            if param_and_grad[2] is not None:
+            if param_and_grad[1] is not None:
                 optimize_op = self._append_optimize_op(loss.block,
                                                        param_and_grad)
                 optimize_ops.append(optimize_op)
