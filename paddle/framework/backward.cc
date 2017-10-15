@@ -281,15 +281,6 @@ static void CreateGradVarInBlock(
   auto ops = block_desc->AllOps();
   for (size_t op_index = grad_op_start_index; op_index < ops.size();
        ++op_index) {
-    // <<<<<<< HEAD
-    //     for (const auto& output : ops[op_index]->Outputs()) {
-    //       for (const auto& real_output : output.second) {
-    //         if (!block_desc->HasVar(real_output)) {
-    //           block_desc->Var(real_output);
-    //         }
-    //       }
-    //     }
-    // =======
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
                      if (block_desc->HasVar(grad_var_name)) {
@@ -307,7 +298,6 @@ static void CreateGradVarInBlock(
                      grad_record.op_idx_ = static_cast<int>(op_index);
                      return false; /* not break */
                    });
-    // >>>>>>> origin/develop
   }
 }
 

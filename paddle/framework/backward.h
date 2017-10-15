@@ -31,6 +31,15 @@ extern std::unique_ptr<OperatorBase> Backward(
     const std::unordered_set<std::string>& no_grad_vars);
 
 struct GradVarInfo {
+  GradVarInfo() {}
+  GradVarInfo(const std::string& name, int block_idx, int op_idx)
+      : name_(name), block_idx_(block_idx), op_idx_(op_idx) {}
+
+  bool operator==(const GradVarInfo& b) const {
+    return name_ == b.name_ && block_idx_ == b.block_idx_ &&
+           op_idx_ == b.op_idx_;
+  }
+
   std::string name_;
   int block_idx_;
   int op_idx_;
