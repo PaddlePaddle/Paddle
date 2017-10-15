@@ -412,9 +412,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
   return backward_descs;
 }
 
-std::unordered_map<std::string /*fwd_var_name*/, GradVarInfo /*grad_var_info*/>
-AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
-               const std::unordered_set<std::string>& no_grad_vars) {
+ParamGradInfoMap AppendBackward(
+    ProgramDescBind& program_desc, const VarDescBind& target,
+    const std::unordered_set<std::string>& no_grad_vars) {
   std::unordered_set<std::string> no_grad_var_names;
   no_grad_var_names.reserve(no_grad_vars.size() + 1);
   no_grad_var_names.insert(std::string(kEmptyVarName) + kGradVarSuffix);

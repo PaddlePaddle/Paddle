@@ -57,8 +57,16 @@ class TestProgram(unittest.TestCase):
             "mul", "elementwise_add", "fill_constant", "elementwise_add_grad",
             "mul_grad"
         ]
+
+        def grad_name(name):
+            return name + "@GRAD"
+
         actual_ops = []
-        prog.append_backward(target, set())
+        param_to_grad = prog.append_backward(target, set())
+        for var_name in ("x1", "y1", "out1", "b1"):
+            self.assertEqual(param_to_grad[var_name][0], grad_name(var_name))
+            self.assertEqual(param_to_grad[var_name][1], 0)
+
         for op in block.all_ops():
             actual_ops.append(op.type())
         print(actual_ops)
