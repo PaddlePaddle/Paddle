@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/pybind/protobuf.h"
 
 #include "paddle/framework/backward.h"
+#include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
@@ -389,6 +390,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_falsenet",
            [](operators::CondOp &self, const operators::NetOp &net) -> void {
              self.set_falsenet(net.Clone());
+           });
+
+  py::class_<framework::Executor>(m, "Executor")
+      .def(py::init<std::vector<platform::Place> &>())
+      .def("run",
+           [](Executor &self, const ProgramDesc &program_desc, int block_id) {
+             framework::Scope &global_scope = GetGlobalScope();
+             self.Run(program_desc, &global_scope, block_id);
            });
 
   m.def("unique_integer", UniqueIntegerGenerator);
