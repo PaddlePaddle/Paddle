@@ -330,9 +330,12 @@ class Block(object):
         return op
 
     def sync_with_cpp(self):
+        # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
                 self.create_var(name=var.name(), desc=var, type=var.type())
+
+        # sync operators from cpp
         ops_in_cpp = self.desc.all_ops()
         first_op_in_python = self.ops[0].desc
         last_op_in_python = self.ops[len(self.ops) - 1].desc
@@ -345,7 +348,7 @@ class Block(object):
                 end_index = index
         assert start_index is not None
         assert end_index is not None
-        assert start_index < end_index
+        assert start_index <= end_index
 
         # sync ops append to the head of cpp_ops
         for index in range((start_index - 1 - 1), -1, -1):
@@ -393,8 +396,9 @@ class Program(object):
 
     def append_backward(self, target, no_grad_set):
         assert isinstance(target, Variable)
-        self.desc.append_backward(target.desc, no_grad_set)
+        param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
         self.sync_with_cpp()
+        return param_to_grad_info
 
     def create_block(self):
         new_block_idx = len(self.blocks)
