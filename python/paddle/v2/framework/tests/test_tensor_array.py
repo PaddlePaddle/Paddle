@@ -13,7 +13,7 @@ class TestTensorArray(unittest.TestCase):
 
         # create a LoDTensor
         self.scope = core.Scope()
-        var = self.scope.new_var("test_tensor")
+        var = self.scope.var("test_tensor")
         self.place = core.CPUPlace()
         tensor = var.get_tensor()
         tensor.set_dims([self.batch_size, self.dim])
@@ -51,7 +51,7 @@ class TestTensorArray(unittest.TestCase):
         self.ta.unstack(self.tensor)
 
         # create a tensor with shape of [1, self.dim]
-        var = self.scope.new_var("hell")
+        var = self.scope.var("hell")
         tensor = var.get_tensor()
         tensor.set_dims([1, self.dim])
         tensor.alloc_float(self.place)
@@ -71,7 +71,7 @@ class TestTensorArray(unittest.TestCase):
         self.ta.unstack(self.tensor)
 
         # create a tensor with shape of [1, self.dim]
-        var = self.scope.new_var("hell")
+        var = self.scope.var("hell")
         tensor = var.get_tensor()
         tensor.set_dims([1, self.dim])
         tensor.alloc_float(self.place)

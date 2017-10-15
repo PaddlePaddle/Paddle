@@ -14,7 +14,10 @@
 
 #pragma once
 
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
+
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
 
@@ -27,10 +30,18 @@ extern std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
 
-// TODO(jiayi): Add target as parameter and generate backward op
-// according to target.
-void AppendBackward(ProgramDescBind& program_desc, const VarDescBind& target,
-                    const std::unordered_set<std::string>& no_grad_vars);
+struct GradVarInfo {
+  std::string name_;
+  int block_idx_;
+  int op_idx_;
+};
+
+using ParamGradInfoMap = std::unordered_map<std::string /*fwd_var_name*/,
+                                            GradVarInfo /*grad_var_info*/>;
+
+ParamGradInfoMap AppendBackward(
+    ProgramDescBind& program_desc, const VarDescBind& target,
+    const std::unordered_set<std::string>& no_grad_vars);
 
 }  // namespace framework
 }  // namespace paddle

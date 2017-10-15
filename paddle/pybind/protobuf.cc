@@ -120,7 +120,19 @@ void BindProgramDesc(py::module &m) {
       .def("append_backward",
            [](ProgramDescBind &program_desc, const VarDescBind &target,
               const std::unordered_set<std::string> &no_grad_vars) {
-             AppendBackward(program_desc, target, no_grad_vars);
+             ParamGradInfoMap param_grad_map =
+                 AppendBackward(program_desc, target, no_grad_vars);
+             std::unordered_map<
+                 std::string, std::tuple<std::string /* grad_var_name */,
+                                         int /* block_idx */, int /* op_idx */>>
+                 retv;
+             for (auto it = param_grad_map.begin(); it != param_grad_map.end();
+                  ++it) {
+               const auto &grad_info = it->second;
+               retv[it->first] = std::make_tuple(
+                   grad_info.name_, grad_info.block_idx_, grad_info.op_idx_);
+             }
+             return retv;
            })
       .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
       .def("num_blocks", &ProgramDescBind::Size)
@@ -145,16 +157,16 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDescBind::PrependOp,
            py::return_value_policy::reference)
-      .def("new_var",
-           [](BlockDescBind &self, py::bytes byte_name) {
-             std::string name = byte_name;
-             return self.NewVar(name);
-           },
-           py::return_value_policy::reference)
       .def("var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.Var(name);
+           },
+           py::return_value_policy::reference)
+      .def("find_var",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.FindVar(name);
            },
            py::return_value_policy::reference)
       .def("all_vars", &BlockDescBind::AllVars,

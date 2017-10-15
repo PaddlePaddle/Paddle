@@ -33,15 +33,6 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
-  friend std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
-      ProgramDescBind &program_desc, int block_idx,
-      std::unordered_set<std::string> *no_grad_vars,
-      std::unordered_map<std::string, std::string> *grad_to_var);
-
-  friend void AppendBackward(
-      ProgramDescBind &program_desc, const VarDescBind &target,
-      const std::unordered_set<std::string> &no_grad_vars);
-
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
 
@@ -49,9 +40,9 @@ class BlockDescBind {
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
-  VarDescBind *NewVar(const std::string &name_bytes);
+  VarDescBind *Var(const std::string &name_bytes);
 
-  VarDescBind *Var(const std::string &name_bytes) const;
+  VarDescBind *FindVar(const std::string &name_bytes) const;
 
   bool HasVar(const std::string &var_name) const;
 
@@ -69,7 +60,9 @@ class BlockDescBind {
 
   BlockDesc *Proto();
 
- private:
+  // FIXME(yuyang18): backward will access private data of BlockDesc.
+  // Mark it public temporary. We can fix it later.
+ public:
   ProgramDescBind *prog_;  // not_own
   BlockDesc *desc_;        // not_own
   bool need_update_;
