@@ -12,7 +12,7 @@ weight_dim = 15
 
 
 def create_tensor(scope, name, shape, np_data):
-    tensor = scope.new_var(name).get_tensor()
+    tensor = scope.var(name).get_tensor()
     tensor.set_dims(shape)
     tensor.set(np_data, core.CPUPlace())
     return tensor
@@ -76,8 +76,8 @@ class DynamicRecurrentOpTest(unittest.TestCase):
         create_tensor(self.scope, "U", [input_dim, input_dim], self.py.U)
         create_tensor(self.scope, "h_boot", [num_sents, input_dim],
                       self.py.h_boot)
-        self.scope.new_var("step_scopes")
-        self.scope.new_var("h@mem")
+        self.scope.var("step_scopes")
+        self.scope.var("h@mem")
 
     def create_rnn_op(self):
         # create RNNOp
@@ -153,8 +153,8 @@ class RecurrentGradientOpTest(unittest.TestCase):
         create_tensor(self.scope, "U", [input_dim, input_dim], self.py.U)
         create_tensor(self.scope, "h_boot", [num_sents, input_dim],
                       self.py.h_boot)
-        self.scope.new_var("step_scopes")
-        self.scope.new_var("h@mem")
+        self.scope.var("step_scopes")
+        self.scope.var("h@mem")
 
     def test_grad(self):
         self.scope = core.Scope()

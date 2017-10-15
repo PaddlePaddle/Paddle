@@ -31,7 +31,7 @@ namespace detail {
 inline void CreateVariables(Scope& scope,
                             const std::vector<std::string>& var_names) {
   for (const auto& name : var_names) {
-    scope.NewVar(name);
+    scope.Var(name);
   }
 }
 
@@ -141,7 +141,7 @@ void RNNAlgorithm::WriteStepInputs() {
       auto& step_scope = cache_.GetScope(step);
       Variable* var = step_scope.FindVar(item.first);
       if (var == nullptr) {
-        var = step_scope.NewVar(item.first);
+        var = step_scope.Var(item.first);
       }
       var->GetMutable<LoDTensor>()->ShareDataWith<value_type>(tensor);
     }
