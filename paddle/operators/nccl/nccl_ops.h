@@ -54,14 +54,15 @@ class NCCLAllReduceKernel : public framework::OpKernel {
     comm->streams_[idx] = stream;
 
     for (size_t i = 0; i < ins.size(); ++i) {
-      NCCL_CHECK(ncclAllReduce(ins[i]->data<T>(), outs[i]->mutable_data<T>(),
-                               outs[i]->numel() * sizeof(T),
-                               NCCLTypeWrapper<T>::type, op_type,
-                               &comm->comms_[idx], comm->streams_[idx]));
-      NCCL_CHECK(cudaEventRecord(comm->events_[idx], *comms_->streams_[idx]));
+      PADDLE_ENFORCE(
+          ncclAllReduce(ins[i]->data<T>(), outs[i]->mutable_data<T>(),
+                        outs[i]->numel() * sizeof(T), NCCLTypeWrapper<T>::type,
+                        op_type, &comm->comms_[idx], comm->streams_[idx]));
+      PADDLE_ENFORCE(
+          cudaEventRecord(comm->events_[idx], *comms_->streams_[idx]));
 
       // wait finish
-      NCCL_CHECK(
+      PADDLE_ENFORCE(
           cudaStreamWaitEvent(comm->streams_[idx], comm->events_[idx], 0));
     }
 

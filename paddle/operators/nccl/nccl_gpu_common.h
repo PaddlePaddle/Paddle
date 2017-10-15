@@ -1,5 +1,4 @@
 #pragma once
-#include <nccl.h>
 
 #include <algorithm>
 #include <condition_variable>
@@ -10,16 +9,10 @@
 #include <vector>
 
 #include "paddle/platform/device_context.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
-
-#define NCCL_CHECK(condition)                                             \
-  do {                                                                    \
-    ncclResult_t ret = (condition);                                       \
-    PADDLE_ENFORCE(ret == ncclSuccess, "Error invoking NCCL: ", __FILE__, \
-                   __LINE__, ncclGetErrorString(ret));                    \
-  } while (0)
 
 class WaitGroup {
  public:
@@ -101,7 +94,7 @@ class NCCLManager {
   ~NCCLManager();
 
   // for each card only have one communicator
-  Communicator* GetCommunicator(const std::vector<int>& gpus) const;
+  Communicator* GetCommunicator(const std::vector<int>& gpus);
 
  private:
   // // the gpu id list available. Note that only support
@@ -109,7 +102,8 @@ class NCCLManager {
   // std::vector<int> _gpu_worlds;
 
   // communicator list
-  std::unordered_map<std::string /* key*/, Communicator*> comm_table;
+  std::unordered_map<std::string /* key*/, std::unique_ptr<Communicator>>
+      comm_table;
 };
 
 }  // namespace operators

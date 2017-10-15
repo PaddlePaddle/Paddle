@@ -29,6 +29,8 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif
 
+#include <glog/logging.h>
+
 #ifdef PADDLE_WITH_CUDA
 
 #include "paddle/platform/dynload/cublas.h"

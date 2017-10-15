@@ -30,13 +30,13 @@ extern void* nccl_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                    \
   struct DynLoad__##__name {                                      \
     template <typename... Args>                                   \
-    ncclResult_t operator()(Args... args) {                       \
-      typedef ncclResult_t (*ncclFunc)(Args...);                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) {  \
+      using nccl_func = decltype(__name(args...)) (*)(Args...);   \
       std::call_once(nccl_dso_flag,                               \
                      paddle::platform::dynload::GetNcclDsoHandle, \
                      &nccl_dso_handle);                           \
       void* p_##__name = dlsym(nccl_dso_handle, #__name);         \
-      return reinterpret_cast<ncclFunc>(p_##__name)(args...);     \
+      return reinterpret_cast<nccl_func>(p_##__name)(args...);    \
     }                                                             \
   };                                                              \
   extern DynLoad__##__name __name
@@ -65,7 +65,7 @@ extern void* nccl_dso_handle;
   __macro(ncclReduce);                  \
   __macro(ncclGetErrorString);
 
-NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP);
+NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 
 }  // namespace dynload
 }  // namespace platform
