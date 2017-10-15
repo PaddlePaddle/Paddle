@@ -14,7 +14,7 @@ class TestUniformRandomOp(unittest.TestCase):
 
     def uniform_random_test(self, place):
         scope = core.Scope()
-        scope.new_var('X').get_tensor()
+        scope.var('X').get_tensor()
 
         op = Operator(
             "uniform_random",

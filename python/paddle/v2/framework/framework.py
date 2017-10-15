@@ -20,11 +20,11 @@ class Variable(object):
 
         if name is None:
             name = Variable._unique_var_name_()
-        try:
+        is_new_var = False
+        self.desc = self.block.desc.find_var(name)
+
+        if self.desc is None:
             self.desc = self.block.desc.var(name)
-            is_new_var = False
-        except core.EnforceNotMet:
-            self.desc = self.block.desc.new_var(name)
             is_new_var = True
 
         if is_new_var:
@@ -177,6 +177,18 @@ class Operator(object):
         proto = OpProtoHolder.instance().get_op_proto(type)
 
         if inputs is not None:
+            given = set()
+            need = set()
+            for n in inputs:
+                given.add(n)
+            for m in proto.inputs:
+                need.add(m.name)
+            if not given == need:
+                raise ValueError(
+                    "Incorrect setting for input(s) of operator \"%s\". Need: [%s] Given: [%s]"
+                    % (type, ", ".join(str(e) for e in need), ", ".join(
+                        str(e) for e in given)))
+
             for in_proto in proto.inputs:
                 in_argus = inputs[in_proto.name]
                 if not isinstance(in_argus, list):
@@ -191,6 +203,18 @@ class Operator(object):
                 self.desc.set_input(in_proto.name, in_argu_names)
 
         if outputs is not None:
+            given = set()
+            need = set()
+            for n in outputs:
+                given.add(n)
+            for m in proto.outputs:
+                need.add(m.name)
+            if not given == need:
+                raise ValueError(
+                    "Incorrect setting for output(s) of operator \"%s\". Need: [%s] Given: [%s]"
+                    % (type, ", ".join(str(e) for e in need), ", ".join(
+                        str(e) for e in given)))
+
             for out_proto in proto.outputs:
                 out_argus = outputs[out_proto.name]
                 if not isinstance(out_argus, list):
