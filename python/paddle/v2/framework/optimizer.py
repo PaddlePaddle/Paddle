@@ -3,10 +3,6 @@ import paddle.v2.framework.framework as framework
 __all__ = ['SGDOptimizer']
 
 
-def grad_var_name(name):
-    return name + "@GRAD"
-
-
 class Optimizer(object):
     """Optimizer Base class.
 
@@ -36,18 +32,27 @@ class Optimizer(object):
           list of (parameters, gradients) pair.
         """
         assert isinstance(loss, framework.Variable)
-        loss.block.program.append_backward(loss, no_grad_set or set())
+        param_grad_map = loss.block.program.append_backward(loss, no_grad_set or
+                                                            set())
         if parameter_list is not None:
             parameters = parameter_list
         else:
             parameters = loss.block.program.parameters
         params_and_grads = []
         for param in parameters:
-            grad = grad_var_name(param)
-            if loss.block.desc.has_var(grad):
-                params_and_grads.append((param, grad))
+            if param not in param_grad_map:
+                raise Exception("param %s is not in map" % param)
+            grad_info = param_grad_map[param]
+            grad_block = loss.block.program.block(grad_info[1])
+            if not grad_block.has_var(grad_info[0]):
+                raise Exception("grad block[%d] did not have grad var %s" %
+                                grad_info[1], grad_info[0])
+            param_var = loss.block.var(param)
+            grad_var = grad_block.var(grad_info[0])
+            if loss.block.has_var(grad_info[0]):
+                params_and_grads.append((param_var, grad_var))
             else:
-                params_and_grads.append((param, None))
+                params_and_grads.append((param_var, None))
         return params_and_grads
 
     def create_optimization_pass(self, parameters_and_grads, loss):
@@ -99,7 +104,7 @@ class SGDOptimizer(Optimizer):
         # create an op to init the learning_rate
         init_op = block.append_op(
             type="fill_constant",
-            outputs={"Out": lr.name},
+            outputs={"Out": lr},
             attrs={"shape": lr_shape,
                    "value": self._learning_rate})
 
@@ -107,10 +112,11 @@ class SGDOptimizer(Optimizer):
         sgd_op = block.append_op(
             type=self.type,
             inputs={
-                "Param", param_and_grad[0], "Grad", param_and_grad[1],
-                "LearningRate", lr.name()
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": lr
             },
-            outputs={"Out", param_and_grad[0]},
+            outputs={"ParamOut": param_and_grad[0]},
             attrs={"shape": [1],
                    "value": self._learning_rate})
 
