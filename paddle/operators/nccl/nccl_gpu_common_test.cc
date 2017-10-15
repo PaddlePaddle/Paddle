@@ -6,9 +6,12 @@
 #include <thread>
 #include <vector>
 
+namespace paddle {
+namespace platform {
+
 TEST(WaitGroup, wait) {
   WaitGroup wg;
-  auto run_thread = [](int idx) {
+  auto run_thread = [&wg](int idx) {
     wg.Add(1);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     wg.Done();
@@ -20,4 +23,11 @@ TEST(WaitGroup, wait) {
     ths.emplace_back(std::thread(run_thread, i));
   }
   wg.Wait();
+
+  for (int i = 0; i < TNUM; ++i) {
+    ths[i].join();
+  }
 }
+
+}  // namespace platform
+}  // namespace paddle
