@@ -53,7 +53,7 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(8, len(op.attr_names()))
 
         op.set_block_attr("block_attr", prog.block(0))
-        self.assertEqual(0, op.get_block_attr("block_attr"))
+        self.assertEqual(0, op.block_attr("block_attr"))
 
         mul_op = block.append_op()
         mul_op.set_type("mul")
@@ -94,17 +94,21 @@ class TestVarDesc(unittest.TestCase):
         program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
         var = block.new_var('my_var')
+        var.set_type(core.VarDesc.VarType.SELECTED_ROWS)
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
         res_shape = var.shape()
         self.assertEqual(src_shape, res_shape)
+        self.assertEqual(core.VarDesc.VarType.SELECTED_ROWS, var.type())
 
     def test_data_type(self):
         program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
         var = block.new_var('my_var')
+        var.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var.set_data_type(core.DataType.INT32)
         self.assertEqual(core.DataType.INT32, var.data_type())
+        self.assertEqual(core.VarDesc.VarType.LOD_TENSOR, var.type())
 
 
 class TestBlockDesc(unittest.TestCase):

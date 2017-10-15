@@ -1,7 +1,7 @@
 import unittest
 
 import paddle.v2.framework.core as core
-from paddle.v2.framework.graph import g_program
+from paddle.v2.framework.framework import g_program
 
 
 class TestProgram(unittest.TestCase):
@@ -51,11 +51,14 @@ class TestProgram(unittest.TestCase):
         sum_op_desc.set_input("Y", ["b1"])
         sum_op_desc.set_output("Out", ["out2"])
 
+        target = block.new_var("out2")
+
         expect_ops = [
-            "mul", "elementwise_add", "elementwise_add_grad", "mul_grad"
+            "mul", "elementwise_add", "fill_constant", "elementwise_add_grad",
+            "mul_grad"
         ]
         actual_ops = []
-        prog.append_backward(set())
+        prog.append_backward(target, set())
         for op in block.all_ops():
             actual_ops.append(op.type())
         print(actual_ops)
