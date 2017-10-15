@@ -20,9 +20,8 @@ class TestOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": [mul_out]},
             attrs={"x_num_col_dims": 1})
-        loss = block.create_var("loss")
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
-        opts = sgd_optimizer.minimize(loss)
+        opts = sgd_optimizer.minimize(mul_out)
         print(opts)
 
 

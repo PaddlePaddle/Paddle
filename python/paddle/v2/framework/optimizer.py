@@ -37,12 +37,11 @@ class Optimizer(object):
         """
 
         assert isinstance(loss, framework.Variable)
-        # TODO(qiao) append_backward should support target.
-        loss.block.framework.append_backward(loss, no_grad_set or set())
+        loss.block.program.append_backward(loss, no_grad_set or set())
         if parameter_list is not None:
             parameters = parameter_list
         else:
-            parameters = loss.block.framework.parameters
+            parameters = loss.block.program.parameters
         params_and_grads = []
         for param in parameters:
             grad = grad_var_name(param)

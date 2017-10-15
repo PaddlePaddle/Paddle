@@ -365,8 +365,8 @@ class Program(object):
         return self.current_block()
 
     def append_backward(self, target, no_grad_set):
-        # TODO(qiao) Add Target to append_backward
-        self.desc.append_backward(no_grad_set)
+        assert isinstance(target, Variable)
+        self.desc.append_backward(target.desc, no_grad_set)
 
     def rollback(self):
         self.current_block_idx = self.current_block().parent_idx
