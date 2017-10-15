@@ -34,7 +34,7 @@ class FeedOp : public framework::OperatorWithKernel {
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("dataType"));
+    return static_cast<framework::DataType>(Attr<int>("data_type"));
   }
 };
 
@@ -42,7 +42,7 @@ class FeedOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   FeedOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("dataType", "output data type")
+    AddAttr<int>("data_type", "output data type")
         .SetDefault(framework::DataType::FP32);
     AddAttr<int>("col", "The col in global feed variable").SetDefault(0);
     AddAttr<std::vector<int>>("dims", "The dimension of feed tensor.");

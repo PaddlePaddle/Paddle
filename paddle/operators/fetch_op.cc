@@ -28,7 +28,7 @@ class FetchOp : public framework::OperatorWithKernel {
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("dataType"));
+    return static_cast<framework::DataType>(Attr<int>("data_type"));
   }
 };
 
@@ -36,7 +36,7 @@ class FetchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   FetchOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("dataType", "output data type")
+    AddAttr<int>("data_type", "output data type")
         .SetDefault(framework::DataType::FP32);
     AddAttr<int>("col", "The col in global fetch variable").SetDefault(0);
     AddInput("Input", "The output of fetch op.");
