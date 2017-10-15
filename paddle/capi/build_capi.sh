@@ -19,7 +19,7 @@ cmake .. \
       -DWITH_AVX=${WITH_AVX:-ON} \
       -DWITH_C_API=${WITH_C_API:-ON} \
       -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
-      -DWITH_MKLML=${WITH_MKLML:-OFF}
+      -DWITH_MKLML=${WITH_MKLML:-ON}
 
 make -j `nproc`
 make DESTDIR="./output" install
