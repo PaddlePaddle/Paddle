@@ -20,10 +20,10 @@ class Variable(object):
 
         if name is None:
             name = Variable._unique_var_name_()
-        try:
-            self.desc = self.block.desc.find_var(name)
-            is_new_var = False
-        except core.EnforceNotMet:
+        is_new_var = False
+        self.desc = self.block.desc.find_var(name)
+
+        if self.desc is None:
             self.desc = self.block.desc.var(name)
             is_new_var = True
 
