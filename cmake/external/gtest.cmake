@@ -56,11 +56,11 @@ IF(WITH_TESTING)
                         -DBUILD_GMOCK=ON
                         -Dgtest_disable_pthreads=ON
                         -Dgtest_force_shared_crt=ON
-                        -DCMAKE_BUILD_TYPE=Release
+                        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                         ${EXTERNAL_OPTIONAL_ARGS}
         CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}
                          -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                         -DCMAKE_BUILD_TYPE:STRING=Release
+                         -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
     )
 
     ADD_LIBRARY(gtest STATIC IMPORTED GLOBAL)

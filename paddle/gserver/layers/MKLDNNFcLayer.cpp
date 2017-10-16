@@ -180,10 +180,10 @@ void MKLDNNFcLayer::resetWgtBiasValue(MKLDNNMatrixPtr& wgt,
 void MKLDNNFcLayer::resetOutValue(MKLDNNMatrixPtr& out) {
   out = MKLDNNMatrix::create(output_.value, {bs_, oc_}, format::nc, engine_);
   if (!outputIsOnlyMKLDNN()) {
-    // fc cpu output value do not need create convert
-    // just share point
+    // fc cpu output value do not need create convert, just share data
     getOutput(CPU_DEVICE).value->setData(out->getData());
   }
+  output_.value = std::dynamic_pointer_cast<Matrix>(out);
 }
 
 void MKLDNNFcLayer::resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,
@@ -214,8 +214,6 @@ void MKLDNNFcLayer::resetFwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  pipeline.clear();
-
   if (bias) {
     fwd_.reset(new fc_fwd(*pd, *in, *wgt, *bias, *out));
   } else {
@@ -237,19 +235,14 @@ void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
 }
 
 void MKLDNNFcLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
-  // TODO(TJ): merge outgrad
-  int device = outputIsOnlyMKLDNN() ? MKLDNN_DEVICE : CPU_DEVICE;
-  output_.grad->setData(getOutput(device).grad->getData());
-  // for MKLDNN device:
-  // can not directly cast outputgrad to mkldnnmatrix,
-  // since each layer can not write the inputgrad to mkldnn inputgrad.
-  // So just create from matrix with outputvalue format.
-  // for CPU device:
-  // fc do not need to convert from cpu device since output is always nc format
-  // only need create from cpu device
   CHECK(outVal_);
-  out =
-      MKLDNNMatrix::create(getOutput(device).grad, outVal_->getPrimitiveDesc());
+  if (outputIsOnlyMKLDNN()) {
+    MKLDNNLayer::resetOutGrad(out, outVal_->getPrimitiveDesc());
+  } else {
+    const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
+    output_.grad->setData(cpuOut->getData());
+    out = MKLDNNMatrix::create(cpuOut, outVal_->getPrimitiveDesc());
+  }
 }
 
 void MKLDNNFcLayer::resetWgtBiasGrad(MKLDNNMatrixPtr& wgt,
@@ -267,13 +260,11 @@ void MKLDNNFcLayer::resetWgtBiasGrad(MKLDNNMatrixPtr& wgt,
 
 void MKLDNNFcLayer::resetInGrad(MKLDNNMatrixPtr& in) {
   in = nullptr;
-  const MatrixPtr& inGrad = inputLayers_[0]->getOutput().grad;
-  if (inGrad == nullptr) {
+  if (inputLayers_[0]->getOutput().grad == nullptr) {
     return;
   }
-  // TODO(TJ): use outputMaps_ ways to get the inGrad_ when merge outgrad done
   CHECK(inVal_);
-  in = MKLDNNMatrix::create(inGrad, inVal_->getPrimitiveDesc());
+  MKLDNNLayer::resetInGrad(in, inVal_->getPrimitiveDesc());
 }
 
 void MKLDNNFcLayer::resetBwdWgtPD(
@@ -314,7 +305,6 @@ void MKLDNNFcLayer::resetBwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  pipeline.clear();
   CHECK(inVal_);
   if (bias) {
     bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVal_, *out, *wgt, *bias));
