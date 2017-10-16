@@ -155,6 +155,8 @@ void matmul<platform::GPUPlace, double>(
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
+template struct SetConstant<platform::GPUPlace, float>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
