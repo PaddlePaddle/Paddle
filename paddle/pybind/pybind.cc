@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
@@ -137,6 +138,22 @@ PYBIND11_PLUGIN(core) {
            return new_lod;
 #endif
       });
+
+  py::class_<SelectedRows>(m, "SelectedRows")
+      .def("__init__",
+           [](SelectedRows &instance) { new (&instance) SelectedRows(); })
+      .def("__init__",
+           [](SelectedRows &instance, const std::vector<int64_t> rows,
+              const int64_t &height) {
+             new (&instance) SelectedRows(rows, height);
+           })
+      .def("get_tensor",
+           [](SelectedRows &self) { return self.mutable_value(); },
+           py::return_value_policy::reference)
+      .def("set_height", &SelectedRows::set_height)
+      .def("height", &SelectedRows::height)
+      .def("set_rows", &SelectedRows::set_rows)
+      .def("rows", &SelectedRows::rows, py::return_value_policy::reference);
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
