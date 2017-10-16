@@ -174,7 +174,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
-      .def("drop_kids", &Scope::DropKids);
+      .def("drop_kids", &Scope::DropKids)
+      .def_static("global_scope", &GetGlobalScope);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
