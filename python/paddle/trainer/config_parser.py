@@ -559,6 +559,9 @@ class IdentityOffsetProjection(Projection):
                                                        **xargs)
         self.proj_conf.offset = offset
 
+    def calc_output_size(self, input_layer_config):
+        return 0  # depends on the outside MixedLayer
+
     def calc_parameter_size(self, input_size, output_size):
         return 0
 
