@@ -53,7 +53,6 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 #include <cmath>
 
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
@@ -94,23 +93,6 @@ struct SetConstant {
     t.device(*context.GetEigenDevice<Place>()) =
         t.constant(static_cast<T>(num));
   }
-};
-
-// SelectedRows + SelectedRows will simplely concat value and rows.
-// The real computation happens in dealing with LoDTensor.
-template <typename Place, typename T>
-struct SelectedRowsAdd {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const framework::SelectedRows& input2,
-                  framework::SelectedRows* output);
-};
-
-template <typename Place, typename T>
-struct SelectedRowsAddTensor {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const framework::Tensor& input2, framework::Tensor* output);
 };
 
 }  // namespace math
