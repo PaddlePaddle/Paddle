@@ -140,6 +140,11 @@ struct ExtractAttribute {
 };
 
 // special handle bool
+// FIXME(yuyang18): Currently we cast bool into int in python binding. It is
+// hard to change the logic there. In another way, we should correct handle
+// if the user set `some_flag=1`.
+//
+// FIX ME anytime if there is a better solution.
 template <>
 struct ExtractAttribute<bool> {
   explicit ExtractAttribute(const std::string& attr_name)
