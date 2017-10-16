@@ -153,7 +153,17 @@ PYBIND11_PLUGIN(core) {
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
       .def("set_rows", &SelectedRows::set_rows)
-      .def("rows", &SelectedRows::rows, py::return_value_policy::reference);
+      .def("rows", [](SelectedRows &self) {
+#ifndef PADDLE_WITH_CUDA
+        return self.rows();
+#else
+         auto rows = self.rows();
+         std::vector<int64_t> new_rows;
+         new_rows.reserve(rows.size());
+         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
+         return new_rows;
+#endif
+      });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
