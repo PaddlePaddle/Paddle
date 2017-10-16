@@ -130,6 +130,8 @@ void matmul<platform::CPUPlace, double>(
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
+template struct SetConstant<platform::CPUPlace, float>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
