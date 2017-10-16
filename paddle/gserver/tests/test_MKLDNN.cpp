@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+#include <paddle/utils/PythonUtil.h>
 #include <string>
 #include <vector>
 #include "MKLDNNTester.h"
@@ -40,13 +41,13 @@ DECLARE_bool(use_mkldnn);
 struct testFcDesc {
   int bs;
   int ic;
-  int oc;
   int ih, iw;  // oh == ow == 1
+  int oc;
 };
 
 static void getMKLDNNFcConfig(TestConfig& cfg, const testFcDesc& pm) {
   cfg.layerConfig.set_type("mkldnn_fc");
-  cfg.layerConfig.set_active_type("sigmoid");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.set_size(pm.oc);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
@@ -247,13 +248,23 @@ TEST(MKLDNNActivation, Activations) {
   }
 }
 
-// TODO(TJ): add branch test
+TEST(MKLDNNLayer, branches) {
+  std::vector<std::string> cases = {"conv_conv_concat",
+                                    "conv_conv_concat_32c",
+                                    "conv_conv_addto",
+                                    "conv_conv_addto_32c"};
+  for (auto name : cases) {
+    std::string config = "./gserver/tests/mkldnn_branches_" + name + ".conf";
+    MKLDNNTester::runBranchesTest(config);
+  }
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   FLAGS_use_gpu = false;
   FLAGS_use_mkldnn = true;
   initMain(argc, argv);
+  initPython(argc, argv);
   FLAGS_thread_local_rand_use_global_seed = true;
   srand(1);
   return RUN_ALL_TESTS();
