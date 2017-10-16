@@ -28,14 +28,17 @@ limitations under the License. */
 
 USE_OP(elementwise_add);
 USE_OP(gaussian_random);
-USE_OP(feed);
-USE_OP(fetch);
+USE_NO_KERNEL_OP(feed);
+USE_NO_KERNEL_OP(fetch);
 USE_OP(mul);
 USE_OP(sum);
 USE_OP(squared_l2_distance);
 USE_OP(fill_constant);
 USE_OP(mean);
 USE_OP(sgd);
+
+constexpr auto kFeedValueName = "feed_value";
+constexpr auto kFetchValueName = "fetch_value";
 
 using namespace paddle::platform;
 using namespace paddle::framework;
@@ -46,10 +49,16 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
+      // <<<<<<< HEAD
+      //       auto var = block->Var(v);
+      //       var->SetType(VarDesc::LOD_TENSOR);
+      //       var->SetDataType(paddle::framework::DataType::FP32);
+      // =======
       if (!block->HasVar(v)) {
-        auto var = block->NewVar(v);
+        auto var = block->Var(v);
         var->SetDataType(paddle::framework::DataType::FP32);
       }
+      // >>>>>>> origin/develop
     }
   }
 
@@ -71,9 +80,9 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
 template <typename T>
 void SetFeedVariable(const std::vector<std::vector<T>>& inputs,
                      const std::vector<std::vector<int64_t>>& dims) {
-  Variable* g_feed_value = GetGlobalScope().FindVar("feed_value");
+  Variable* g_feed_value = GetGlobalScope().FindVar(kFeedValueName);
   auto& feed_inputs =
-      *(g_feed_value->GetMutable<std::vector<paddle::framework::Tensor>>());
+      *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
   size_t size = inputs.size();
   feed_inputs.resize(size);
   for (size_t i = 0; i < size; i++) {
@@ -86,9 +95,9 @@ void SetFeedVariable(const std::vector<std::vector<T>>& inputs,
 // So we can memcpy the data from fetch_value to vector<T>
 template <typename T>
 std::vector<std::vector<T>> GetFetchVariable() {
-  Variable* g_fetch_value = GetGlobalScope().FindVar("fetch_value");
+  Variable* g_fetch_value = GetGlobalScope().FindVar(kFetchValueName);
   auto& fetch_outputs =
-      *(g_fetch_value->GetMutable<std::vector<paddle::framework::Tensor>>());
+      *(g_fetch_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
 
   size_t size = fetch_outputs.size();
   std::vector<std::vector<T>> result;
@@ -120,8 +129,10 @@ class ExecutorTesterRandom : public ::testing::Test {
           {{"dims", std::vector<int>{input_dim, embed_dim}}}, init_root_block);
     AddOp("gaussian_random", {}, {{"Out", {"w2"}}},
           {{"dims", std::vector<int>{embed_dim, input_dim}}}, init_root_block);
-    AddOp("fetch", {{"Input", {"w1"}}}, {}, {{"col", 0}}, init_root_block);
-    AddOp("fetch", {{"Input", {"w2"}}}, {}, {{"col", 1}}, init_root_block);
+    AddOp("fetch", {{"Input", {"w1"}}}, {{"Out", {kFetchValueName}}},
+          {{"col", 0}}, init_root_block);
+    AddOp("fetch", {{"Input", {"w2"}}}, {{"Out", {kFetchValueName}}},
+          {{"col", 1}}, init_root_block);
 
     // flush
     init_program.Proto();
@@ -137,7 +148,7 @@ class ExecutorTesterRandom : public ::testing::Test {
     // feed data
     inputs_.push_back({1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
     dims_.push_back({batch_size, input_dim});
-    AddOp("feed", {}, {{"Out", {"a"}}},
+    AddOp("feed", {{"Input", {kFeedValueName}}}, {{"Out", {"a"}}},
           {{"dims", std::vector<int>{batch_size, input_dim}}, {"col", 0}},
           root_block);
 
@@ -169,9 +180,12 @@ class ExecutorTesterRandom : public ::testing::Test {
                   {"Grad", {"w2@GRAD"}}},
           {{"ParamOut", {"w2"}}}, {}, root_block);
 
-    AddOp("fetch", {{"Input", {"w1"}}}, {}, {{"col", 0}}, root_block);
-    AddOp("fetch", {{"Input", {"w2"}}}, {}, {{"col", 1}}, root_block);
-    AddOp("fetch", {{"Input", {"l2_distance"}}}, {}, {{"col", 0}}, root_block);
+    AddOp("fetch", {{"Input", {"w1"}}}, {{"Out", {kFetchValueName}}},
+          {{"col", 0}}, root_block);
+    AddOp("fetch", {{"Input", {"w2"}}}, {{"Out", {kFetchValueName}}},
+          {{"col", 1}}, root_block);
+    AddOp("fetch", {{"Input", {"l2_distance"}}}, {{"Out", {kFetchValueName}}},
+          {{"col", 0}}, root_block);
 
     // flush
     program.Proto();
@@ -198,12 +212,14 @@ class ExecutorTesterFeedAndFetch : public ::testing::Test {
 
     std::vector<int> dim{6};
 
-    AddOp("feed", {}, {{"Out", {"a"}}}, {{"dims", dim}, {"col", 0}},
-          root_block);
-    AddOp("feed", {}, {{"Out", {"b"}}}, {{"dims", dim}, {"col", 1}},
-          root_block);
-    AddOp("fetch", {{"Input", {"a"}}}, {}, {{"col", 0}}, root_block);
-    AddOp("fetch", {{"Input", {"b"}}}, {}, {{"col", 1}}, root_block);
+    AddOp("feed", {{"Input", {kFeedValueName}}}, {{"Out", {"a"}}},
+          {{"dims", dim}, {"col", 0}}, root_block);
+    AddOp("feed", {{"Input", {kFeedValueName}}}, {{"Out", {"b"}}},
+          {{"dims", dim}, {"col", 1}}, root_block);
+    AddOp("fetch", {{"Input", {"a"}}}, {{"Out", {kFetchValueName}}},
+          {{"col", 0}}, root_block);
+    AddOp("fetch", {{"Input", {"b"}}}, {{"Out", {kFetchValueName}}},
+          {{"col", 1}}, root_block);
 
     // flush
     program.Proto();
@@ -235,7 +251,6 @@ TEST_F(ExecutorTesterRandom, CPU) {
   paddle::memory::Used(cpu_place);
 
   std::unique_ptr<Executor> executor(new Executor(places));
-
   executor->Run(init_pdesc_, &GetGlobalScope(), 0);
   SetFeedVariable<float>(inputs_, dims_);
   executor->Run(pdesc_, &GetGlobalScope(), 0);
@@ -245,7 +260,7 @@ TEST_F(ExecutorTesterRandom, CPU) {
 TEST_F(ExecutorTesterFeedAndFetch, CPU) {
   std::vector<Place> places;
   CPUPlace cpu_place;
-  places.push_back(cpu_place);
+  places.emplace_back(cpu_place);
 
   // We have a global Scope and BuddyAllocator, and we must ensure
   // global BuddyAllocator is initialized before global Scope. Thus,
@@ -259,11 +274,11 @@ TEST_F(ExecutorTesterFeedAndFetch, CPU) {
     SetFeedVariable<float>(inputs_, dims_);
     executor->Run(pdesc_, &GetGlobalScope(), 0);
     std::vector<std::vector<float>> result = GetFetchVariable<float>();
-    PADDLE_ENFORCE_EQ(result.size(), inputs_.size());
+    ASSERT_EQ(result.size(), inputs_.size());
     for (size_t i = 0; i < result.size(); ++i) {
-      PADDLE_ENFORCE_EQ(result[i].size(), inputs_[i].size());
+      ASSERT_EQ(result[i].size(), inputs_[i].size());
       for (size_t j = 0; j < result[i].size(); ++j) {
-        PADDLE_ENFORCE_EQ(result[i][j], inputs_[i][j]);
+        ASSERT_EQ(result[i][j], inputs_[i][j]);
       }
     }
   }

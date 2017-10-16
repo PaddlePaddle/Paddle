@@ -1,59 +1,57 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
 
-#include "paddle/operators/feed_op.h"
+#include "paddle/framework/feed_fetch_type.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace operators {
-
-class FeedOp : public framework::OperatorWithKernel {
+class FeedOp : public framework::OperatorBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  FeedOp(const std::string &type, const framework::VariableNameMap &inputs,
+         const framework::VariableNameMap &outputs,
+         const framework::AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+  void Run(const framework::Scope &scope,
+           const platform::DeviceContext &dev_ctx) const override {
+    auto feed_var_name = Input("Input");
+    auto *feed_var = scope.FindVar(feed_var_name);
+    PADDLE_ENFORCE(feed_var != nullptr,
+                   "Cannot find feed_var in scope, feed_var_name is %s",
+                   feed_var_name);
 
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output should be not null.");
-    auto& shape = ctx->Attrs().Get<std::vector<int>>("dims");
-    std::vector<int64_t> shape_int64(shape.size(), 0);
-    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
-                   [](int a) { return static_cast<int64_t>(a); });
-    ctx->SetOutputDim("Out", framework::make_ddim(shape_int64));
-    // TODO(qijun): need to handle LodTensor later
-  }
+    auto out_name = this->Output("Out");
+    auto *out_var = scope.FindVar(out_name);
+    PADDLE_ENFORCE(out_var != nullptr,
+                   "Cannot find out_var in scope, out_var_name is %s",
+                   out_name);
 
-  framework::DataType IndicateDataType(
-      const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("data_type"));
-  }
-};
+    auto col = Attr<int>("col");
 
-class FeedOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  FeedOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("data_type", "output data type")
-        .SetDefault(framework::DataType::FP32);
-    AddAttr<int>("col", "The col in global feed variable").SetDefault(0);
-    AddAttr<std::vector<int>>("dims", "The dimension of feed tensor.");
-    AddOutput("Out", "The output of feed op.");
-    AddComment(R"DOC(Feed data from global feed variable)DOC");
+    auto &feed_list = feed_var->Get<framework::FeedFetchList>();
+    auto &feed_item = feed_list.at(static_cast<size_t>(col));
+    auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
+    out_item->CopyFromTensor(feed_item, dev_ctx.GetPlace(), dev_ctx);
+    out_item->set_lod(feed_item.lod());
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(feed, ops::FeedOp, ops::FeedOpMaker);
-REGISTER_OP_CPU_KERNEL(feed, ops::FeedKernel<float>);
+// We do not need to register OpInfoMaker,
+// since feed operator will not be used by end users directly
+REGISTER_OPERATOR(feed, paddle::operators::FeedOp,
+                  paddle::framework::EmptyGradOpMaker);

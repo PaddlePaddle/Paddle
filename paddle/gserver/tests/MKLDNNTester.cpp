@@ -124,8 +124,8 @@ void MKLDNNTester::randomTopDiffs() {
 void MKLDNNTester::checkForward() {
   VLOG(MKLDNN_ALL) << "Check Forward";
   printTopDatas();
-  double delta = compareMatrix(dnnLayer_->getOutput(CPU_DEVICE).value,
-                               refLayer_->getOutputValue());
+  double delta =
+      compareMatrix(dnnLayer_->getOutputValue(), refLayer_->getOutputValue());
   EXPECT_LE(fabs(delta), eps_);
 }
 
