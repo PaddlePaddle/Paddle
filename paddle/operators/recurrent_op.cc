@@ -46,7 +46,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
 }
 
 void RecurrentAlgorithm::CreateScopes(const Scope& scope,
@@ -70,14 +70,14 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
         // the weight are located in parent scope
         for (auto& var_name : input.second) {
           if (!step_scope.FindVar(var_name)) {
-            step_scope.NewVar(var_name)->GetMutable<LoDTensor>();
+            step_scope.Var(var_name)->GetMutable<LoDTensor>();
           }
         }
       }
       // create stepnet's outputs
       for (const auto& output : (*stepnet_)->Outputs()) {
         for (auto& var_name : output.second) {
-          step_scope.NewVar(var_name);
+          step_scope.Var(var_name);
         }
       }
       step_scopes->emplace_back(&step_scope);
@@ -87,7 +87,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
 
 void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
   for (auto& attr : arg_->memories) {
-    auto* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<LoDTensor>();
+    auto* pre_mem = step_scope->Var(attr.pre_var)->GetMutable<LoDTensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists", attr.var,
                    attr.boot_var);
@@ -151,12 +151,12 @@ void RecurrentGradientAlgorithm::Run(
   auto& step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
-    if (step_id != seq_len - 1) {
+    if (static_cast<size_t>(step_id) != seq_len - 1) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
   LinkBootMemoryGradients(step_scopes[0]);
 }
 
@@ -167,9 +167,9 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
                    "memory variable [%s] does not exists", attr.var);
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "boot variable [%s] does not exists", attr.boot_var);
-    auto* mem_grad = step_scope->NewVar(attr.var)->GetMutable<LoDTensor>();
+    auto* mem_grad = step_scope->Var(attr.var)->GetMutable<LoDTensor>();
     auto* boot_mem_grad =
-        step_scope->NewVar(attr.boot_var)->GetMutable<LoDTensor>();
+        step_scope->Var(attr.boot_var)->GetMutable<LoDTensor>();
     boot_mem_grad->Resize(mem_grad->dims());
     boot_mem_grad->ShareDataWith<float>(*mem_grad);
   }

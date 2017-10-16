@@ -3,70 +3,56 @@ import numpy as np
 from op_test import OpTest
 
 
+def conv2d_forward_naive(input, filter, group, conv_param):
+    in_n, in_c, in_h, in_w = input.shape
+    out_c, f_c, f_h, f_w = filter.shape
+    assert f_c * group == in_c
+    assert np.mod(out_c, group) == 0
+    sub_out_c = out_c / group
+
+    stride, pad = conv_param['stride'], conv_param['pad']
+    out_h = 1 + (in_h + 2 * pad[0] - f_h) / stride[0]
+    out_w = 1 + (in_w + 2 * pad[1] - f_w) / stride[1]
+    out = np.zeros((in_n, out_c, out_h, out_w))
+
+    input_pad = np.pad(input, ((0, ), (0, ), (pad[0], ), (pad[1], )),
+                       mode='constant',
+                       constant_values=0)
+    for i in range(out_h):
+        for j in range(out_w):
+            for g in range(group):
+                input_pad_masked = \
+                    input_pad[:, g * f_c:(g + 1) * f_c,
+                    i * stride[0]:i * stride[0] + f_h,
+                    j * stride[1]:j * stride[1] + f_w]
+
+                f_sub = filter[g * sub_out_c:(g + 1) * sub_out_c, :, :, :]
+                for k in range(sub_out_c):
+                    out[:, g * sub_out_c + k, i, j] = \
+                        np.sum(input_pad_masked * f_sub[k, :, :, :],
+                               axis=(1, 2, 3))
+
+    return out
+
+
 class TestConv2dOp(OpTest):
     def setUp(self):
-        self.init_groups()
-        self.op_type = "conv2d"
-        batch_size = 2
-        input_channels = 3
-        input_height = 5
-        input_width = 5
-        output_channels = 6
-        filter_height = 3
-        filter_width = 3
-        stride = 1
-        padding = 0
-        output_height = (input_height - filter_height + 2 * padding
-                         ) / stride + 1
-        output_width = (input_width - filter_width + 2 * padding) / stride + 1
-        input = np.random.random((batch_size, input_channels, input_height,
-                                  input_width)).astype("float32")
+        self.init_op_type()
+        self.init_group()
+        self.init_test_case()
 
-        filter = np.random.random(
-            (output_channels, input_channels / self.groups, filter_height,
-             filter_width)).astype("float32")
-        output = np.ndarray(
-            (batch_size, output_channels, output_height, output_width))
+        conv2d_param = {'stride': self.stride, 'pad': self.pad}
+        input = np.random.random(self.input_size).astype("float32")
+        filter = np.random.random(self.filter_size).astype("float32")
+        output = conv2d_forward_naive(input, filter, self.groups, conv2d_param)
 
         self.inputs = {'Input': input, 'Filter': filter}
         self.attrs = {
-            'strides': [1, 1],
-            'paddings': [0, 0],
-            'groups': self.groups
+            'strides': self.stride,
+            'paddings': self.pad,
+            'groups': self.groups,
+            'dilations': self.dilations
         }
-
-        output_group_channels = output_channels / self.groups
-        input_group_channels = input_channels / self.groups
-        for batchid in xrange(batch_size):
-            for group in xrange(self.groups):
-                for outchannelid in range(group * output_group_channels,
-                                          (group + 1) * output_group_channels):
-                    for rowid in xrange(output_height):
-                        for colid in xrange(output_width):
-                            start_h = (rowid * stride) - padding
-                            start_w = (colid * stride) - padding
-                            output_value = 0.0
-                            for inchannelid in range(
-                                    group * input_group_channels,
-                                (group + 1) * input_group_channels):
-                                for frowid in xrange(filter_height):
-                                    for fcolid in xrange(filter_width):
-                                        input_value = 0.0
-                                        inrowid = start_h + frowid
-                                        incolid = start_w + fcolid
-                                        if ((inrowid >= 0 and
-                                             inrowid < input_height) and
-                                            (incolid >= 0 and
-                                             incolid < input_width)):
-                                            input_value = input[batchid][
-                                                inchannelid][inrowid][incolid]
-                                        filter_value = filter[outchannelid][
-                                            inchannelid % input_group_channels][
-                                                frowid][fcolid]
-                                        output_value += input_value * filter_value
-                            output[batchid][outchannelid][rowid][
-                                colid] = output_value
-
         self.outputs = {'Output': output}
 
     def test_check_output(self):
@@ -90,13 +76,46 @@ class TestConv2dOp(OpTest):
             max_relative_error=0.05,
             no_grad_set=set(['Input']))
 
-    def init_groups(self):
+    def init_test_case(self):
+        # self.groups = 1
+        # self.op_type = "conv2d"
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
+    def init_group(self):
         self.groups = 1
+
+    def init_op_type(self):
+        self.op_type = "conv2d"
 
 
 class TestWithGroup(TestConv2dOp):
-    def init_groups(self):
+    def init_group(self):
         self.groups = 3
+
+    def init_op_type(self):
+        self.op_type = "conv2d"
+
+
+class TestCudnn(TestConv2dOp):
+    def init_group(self):
+        self.groups = 1
+
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+class TestCudnnWithGroup(TestConv2dOp):
+    def init_group(self):
+        self.groups = 3
+
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
 
 
 if __name__ == '__main__':
