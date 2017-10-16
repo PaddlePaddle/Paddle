@@ -91,9 +91,9 @@
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 if(NOT APPLE AND NOT ANDROID)
-    find_package(Threads REQUIRED)
-    link_libraries(${CMAKE_THREAD_LIBS_INIT})
-    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl -lrt")
+  find_package(Threads REQUIRED)
+  link_libraries(${CMAKE_THREAD_LIBS_INIT})
+  set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl -lrt")
 endif(NOT APPLE AND NOT ANDROID)
 
 function(merge_static_libs TARGET_NAME)
@@ -180,12 +180,13 @@ function(cc_library TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   if (cc_library_SRCS)
-    if (cc_library_SHARED OR cc_library_shared) # build *.so
+    if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
     else()
       add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
     endif()
-    if (cc_library_DEPS)
+    if(cc_library_DEPS)
+      list(REMOVE_DUPLICATES cc_library_DEPS)
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
@@ -226,6 +227,9 @@ function(cc_test TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    if(cc_test_DEPS)
+      list(REMOVE_DUPLICATES cc_test_DEPS)
+    endif()
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
@@ -240,12 +244,13 @@ function(nv_library TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     if(nv_library_SRCS)
-      if (nv_library_SHARED OR nv_library_shared) # build *.so
+      if(nv_library_SHARED OR nv_library_shared) # build *.so
         cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
       else()
-          cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+        cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
       endif()
-      if (nv_library_DEPS)
+      if(nv_library_DEPS)
+        list(REMOVE_DUPLICATES nv_library_DEPS)
         add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
         target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
       endif()
@@ -268,7 +273,7 @@ function(nv_library TARGET_NAME)
 endfunction(nv_library)
 
 function(nv_binary TARGET_NAME)
-  if (WITH_GPU)
+  if(WITH_GPU)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
@@ -282,11 +287,14 @@ function(nv_binary TARGET_NAME)
 endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
-  if (WITH_GPU AND WITH_TESTING)
+  if(WITH_GPU AND WITH_TESTING)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    if(nv_test_DEPS)
+      list(REMOVE_DUPLICATES nv_test_DEPS)
+    endif()
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
@@ -402,10 +410,10 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${SRCS})
   set(${HDRS})
 
-  if (MOBILE_INFERENCE)
-      set(EXTRA_FLAG "lite:")  
+  if(MOBILE_INFERENCE)
+    set(EXTRA_FLAG "lite:")
   else()
-      set(EXTRA_FLAG "") 
+    set(EXTRA_FLAG "")
   endif()
 
   foreach(FIL ${ARGN})
@@ -420,14 +428,13 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
     add_custom_command(
       OUTPUT "${_protobuf_protoc_src}"
              "${_protobuf_protoc_hdr}"
-
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
-      -I${CMAKE_CURRENT_SOURCE_DIR}
-      --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+              -I${CMAKE_CURRENT_SOURCE_DIR}
+              --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
       DEPENDS ${ABS_FIL} protoc
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
-      VERBATIM )
+      VERBATIM)
   endforeach()
 
   set_source_files_properties(${${SRCS}} ${${HDRS}} PROPERTIES GENERATED TRUE)
