@@ -53,7 +53,7 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(8, len(op.attr_names()))
 
         op.set_block_attr("block_attr", prog.block(0))
-        self.assertEqual(0, op.get_block_attr("block_attr"))
+        self.assertEqual(0, op.block_attr("block_attr"))
 
         mul_op = block.append_op()
         mul_op.set_type("mul")
@@ -93,18 +93,22 @@ class TestVarDesc(unittest.TestCase):
     def test_shape(self):
         program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
-        var = block.new_var('my_var')
+        var = block.var('my_var')
+        var.set_type(core.VarDesc.VarType.SELECTED_ROWS)
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
         res_shape = var.shape()
         self.assertEqual(src_shape, res_shape)
+        self.assertEqual(core.VarDesc.VarType.SELECTED_ROWS, var.type())
 
     def test_data_type(self):
         program_desc = core.ProgramDesc.__create_program_desc__()
         block = program_desc.block(0)
-        var = block.new_var('my_var')
+        var = block.var('my_var')
+        var.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var.set_data_type(core.DataType.INT32)
         self.assertEqual(core.DataType.INT32, var.data_type())
+        self.assertEqual(core.VarDesc.VarType.LOD_TENSOR, var.type())
 
 
 class TestBlockDesc(unittest.TestCase):
@@ -113,12 +117,12 @@ class TestBlockDesc(unittest.TestCase):
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
-        var1 = block.new_var("var1")
-        var2 = block.new_var("var2")
-        var3 = block.new_var("var3")
+        var1 = block.var("var1")
+        var2 = block.var("var2")
+        var3 = block.var("var3")
         all_vars = block.all_vars()
         self.assertEqual(set(all_vars), set([var1, var2, var3]))
-        var2_re = block.var("var2")
+        var2_re = block.find_var("var2")
         self.assertEqual(var2_re, var2)
 
     def test_add_op(self):

@@ -3,15 +3,17 @@
 
 ## The Problem Posed
 
-In our current operator registration mechanism, for each operator, the programmer should register a *gradient operator creator* function, which takes a C++ operator instance, and returns the corresponding gradient instance.
+Currently, for each C++ operator class definition, there registers a *gradient operator creator* function, which takes a C++ operator instance and returns the corresponding gradient operator instance.
 
-However, as we decided to separate the *compilation* and *execution* of DL models, we need to reshape the creator to take a protobuf `OpDesc` message, and returns a corresponding message.
+However, we noticed two problems with the current deisgn:
 
-More than that, the new registration mechanism need to support the fact that an operators' gradient computation might be a composition of operators.
+1. As we decided to separate the *compilation* and *execution* phases, we need to change the creator to take an `OpDesc` protobuf message in a `ProgramDesc` and inserts corresponding `OpDesc` messages into the `ProgramDesc` message.
 
-## Current Implementation
+1. Some operator's gradient computation requires more than one gradient operators.  For example, the gradient of *minus* consists of two operators -- an identity operaotr and a scale operator.  So we need to make the registration mechanism to support the mapping from an operator to a set of operators for gradient computation.
 
-OpInfos store in a association map which key is the operator type. The `grad_op_type` indicate associated gradient operator type. Operator can create gradient operator by `OpInfo::creator_` of gradient. The pseudo code is
+## The Current Implementation
+
+The C++ class `OpInfos` store in a association map which key is the operator type. The `grad_op_type` indicate associated gradient operator type. Operator can create gradient operator by `OpInfo::creator_` of gradient. The pseudo code is
 
 ```cpp
 struct OpInfo {

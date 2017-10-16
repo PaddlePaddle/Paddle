@@ -66,7 +66,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
 
   // Instantiate all the vars in the global scope
   for (auto& var : block.vars()) {
-    scope->NewVar(var.name());
+    scope->Var(var.name());
   }
 
   Scope& local_scope = scope->NewScope();
@@ -78,7 +78,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
       for (auto& var : block.ops(i).outputs()) {
         for (auto& argu : var.arguments()) {
           if (local_scope.FindVar(argu) == nullptr) {
-            local_scope.NewVar(argu);
+            local_scope.Var(argu);
           }
         }
       }

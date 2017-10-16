@@ -40,7 +40,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     f::DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
-          step_scopes[j]->NewVar(inlinks[i])->GetMutable<Tensor>();
+          step_scopes[j]->Var(inlinks[i])->GetMutable<Tensor>();
       // The input of operators of each step is Tensor here.
       // Maybe need to modify Slice function.
       *step_input = input->Slice<float>(j, j + 1);
