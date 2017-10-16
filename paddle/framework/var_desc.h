@@ -54,7 +54,10 @@ inline void VectorToRepeated(const std::vector<bool> &vec,
 
 class VarDescBind {
  public:
-  explicit VarDescBind(const std::string &name) { desc_.set_name(name); }
+  explicit VarDescBind(const std::string &name) {
+    desc_.set_name(name);
+    desc_.set_type(VarDesc::LOD_TENSOR);
+  }
 
   VarDesc *Proto() { return &desc_; }
 
@@ -72,7 +75,14 @@ class VarDescBind {
 
   int32_t GetLodLevel() const;
 
+  VarDesc::VarType GetType() const { return desc_.type(); }
+
+  void SetType(VarDesc::VarType type) { desc_.set_type(type); }
+
  private:
+  const TensorDesc &tensor_desc() const;
+  TensorDesc *mutable_tensor_desc();
+
   VarDesc desc_;
 };
 }  // namespace framework

@@ -31,7 +31,7 @@ Scope& Scope::NewScope() const {
   return *kids_.back();
 }
 
-Variable* Scope::NewVar(const std::string& name) {
+Variable* Scope::Var(const std::string& name) {
   auto iter = vars_.find(name);
   if (iter != vars_.end()) {
     return iter->second;
@@ -42,8 +42,8 @@ Variable* Scope::NewVar(const std::string& name) {
   return v;
 }
 
-Variable* Scope::NewVar() {
-  return NewVar(string::Sprintf("%p.%d", this, vars_.size()));
+Variable* Scope::Var() {
+  return Var(string::Sprintf("%p.%d", this, vars_.size()));
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
@@ -71,8 +71,8 @@ framework::Scope& GetGlobalScope() {
   static std::unique_ptr<framework::Scope> g_scope{nullptr};
   std::call_once(feed_variable_flag, [&]() {
     g_scope.reset(new framework::Scope());
-    g_scope->NewVar("feed_value");
-    g_scope->NewVar("fetch_value");
+    g_scope->Var("feed_value");
+    g_scope->Var("fetch_value");
   });
   return *(g_scope.get());
 }
