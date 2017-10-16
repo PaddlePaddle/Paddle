@@ -3679,6 +3679,12 @@ def gru_step_naive_layer(input,
     if size is None:
         size = input.size / 3
 
+    if bias_attr and bias_attr.attr.get("parameter_name", None) is not None:
+        raise ValueError("You should not specify the field `name` in bias_attr."
+                         " Otherwise, the three biases, which correponding to "
+                         " the two gates and the mixed layer for computing Wx+b"
+                         ", will share the same parameter matrix unexpectedly.")
+
     def __gate__(gate_name, offset):
         with mixed_layer(
                 name=name + "_" + gate_name,
