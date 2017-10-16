@@ -30,10 +30,24 @@ chmod 400 ubuntu.pem
 
 ssh-add ubuntu.pem
 
-mkdir -p $TRAVIS_BUILD_DIR/build_docs_versioned/develop
-mv $TRAVIS_BUILD_DIR/build_docs/* $TRAVIS_BUILD_DIR/build_docs_versioned/develop/
+mkdir -p $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH
+mv $TRAVIS_BUILD_DIR/build_docs/* $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
 
-rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/ ubuntu@52.76.173.135:/var/content/documentation/
+# pull PaddlePaddle.org app and strip
+# https://github.com/PaddlePaddle/PaddlePaddle.org/archive/master.zip
+curl -LOk https://github.com/PaddlePaddle/PaddlePaddle.org/archive/master.zip
+unzip master.zip
+cd PaddlePaddle.org-master/
+cd portal/
+
+sudo pip install -r requirements.txt
+mkdir ./tmp
+python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp
+
+rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/ ubuntu@52.76.173.135:/var/content_staging/docs
+
+rm -rf PaddlePaddle.org-master/
+rm -rf master.zip
 
 chmod 644 ubuntu.pem
 rm ubuntu.pem
