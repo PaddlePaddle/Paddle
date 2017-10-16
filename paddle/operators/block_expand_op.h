@@ -18,9 +18,25 @@
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/img2col.h"
 
 namespace paddle {
 namespace operators {
+
+inline void get_blockexpand_output_shape(int imgHeight, int imgWidth,
+                                         int blockHeight, int blockWidth,
+                                         int strideHeight, int strideWidth,
+                                         int paddingHeight, int paddingWidth,
+                                         int& outputHeight, int& outputWidth) {
+  outputHeight =
+      1 +
+      (imgHeight + 2 * paddingHeight - blockHeight + strideHeight - 1) /
+          strideHeight;
+
+  outputWidth = 1 +
+                (imgWidth + 2 * paddingWidth - blockWidth + strideWidth - 1) /
+                    strideWidth;
+}
 
 template <typename Place, typename T>
 class BlockExpandKernel : public framework::OpKernel<T> {
@@ -34,39 +50,30 @@ class BlockExpandKernel : public framework::OpKernel<T> {
     auto in_dim = in->dims();
     int N = in_dim[0];
     int C = in_dim[1];
+    int imgHeight = in_dim[2];
+    int imgWidth = in_dim[3];
 
-    int in_height = in_dim[2];
-    int in_width = in_dim[3];
+    int blockHeight = ctx.Attr<int>("blockHeight");
+    int blockWidth = ctx.Attr<int>("blockWidth");
+    int strideHeight = ctx.Attr<int>("strideHeight");
+    int strideWidth = ctx.Attr<int>("strideWidth");
+    int paddingHeight = ctx.Attr<int>("paddingHeight");
+    int paddingWidth = ctx.Attr<int>("paddingWidth");
 
-    int block_height = ctx.Attr<int>("block_height");
-    int block_width = ctx.Attr<int>("block_width");
-    int stride_height = ctx.Attr<int>("stride_height");
-    int stride_width = ctx.Attr<int>("stride_width");
-    int padding_height = ctx.Attr<int>("padding_height");
-    int padding_width = ctx.Attr<int>("padding_width");
+    int outputHeight = 0;
+    int outputWidth = 0;
 
-    int output_height =
-        1 +
-        (in_height + 2 * padding_height - block_height + stride_height - 1) /
-            stride_height;
+    get_blockexpand_output_shape(imgHeight, imgWidth, blockHeight, blockWidth,
+                                 strideHeight, strideWidth, paddingHeight,
+                                 paddingWidth, outputHeight, outputWidth);
 
-    int output_width =
-        1 +
-        (in_width + 2 * padding_width - block_width + stride_width - 1) /
-            stride_width;
-
-    Tensor col;
-    if (clo_format = KCFO) {
-      col.Resize(
-          {N, C, filter_height, filter_width, output_height, output_width});
-    } else {
-      col.Resize(
-          {N, output_height, output_width, C, filter_height, filter_width});
-    }
-
-    for (size_t i = 0; i < N; i++) {
-      Im2ColFunctor<col_format, place, T>(ctx, one_img, col, stride[0],
-                                          stride[1], padding[0], padding[1]);
+    for (int i = 0; i < N; i++) {
+      Tensor src = in->Slice<T>(i, i + 1).Resize(C, imgHeight, imgWidth);
+      Tensor dst = out->Slice<T>(i, i + 1).Resize(outputHeight, outputWidth, C,
+                                                  blockHeight, blockWidth);
+      math::Im2ColFunctor<kOCF, ctx->GetPlace(), T>(ctx, src, dst, strideHeight,
+                                                    strideWidth, paddingHeight,
+                                                    paddingWidth);
     }
   }
 };
@@ -75,13 +82,7 @@ template <typename Place, typename T>
 class BlockExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
-    /*
-  int x_num_col_dims = ctx.template Attr<int>("x_num_col_dims");
-  int y_num_col_dims = ctx.template Attr<int>("y_num_col_dims");
-  const Tensor* x = ctx.Input<Tensor>("X");
-  const Tensor* y = ctx.Input<Tensor>("Y");
-  */
+    using namespace framework;
   }
 };
 
