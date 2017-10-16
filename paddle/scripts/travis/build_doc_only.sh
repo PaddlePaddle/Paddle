@@ -49,7 +49,9 @@ chmod 400 ubuntu.pem
 ssh-add ubuntu.pem
 
 
-rsync -r PaddlePaddle.org-master/portal/tmp/$TRAVIS_BRANCH ubuntu@52.76.173.135:/var/content_staging/docs/$TRAVIS_BRANCH/documentation
+#rsync -r PaddlePaddle.org-master/portal/tmp/$TRAVIS_BRANCH ubuntu@52.76.173.135:/var/content_staging/docs/$TRAVIS_BRANCH/documentation
+
+rsync -a --rsync-path="mkdir -p /var/content_staging/docs/$TRAVIS_BRANCH/documentation && rsync" PaddlePaddle.org-master/portal/tmp/$TRAVIS_BRANCH ubuntu@52.76.173.135:/var/content_staging/docs/$TRAVIS_BRANCH/documentation
 
 rm -rf PaddlePaddle.org-master/
 rm -rf master.zip
