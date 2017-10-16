@@ -225,8 +225,6 @@ void MKLDNNConvLayer::resetFwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  pipeline.clear();
-
   if (cvtInVal_) {
     pipeline.push_back(*cvtInVal_);
   }
@@ -245,7 +243,7 @@ void MKLDNNConvLayer::resetFwdPipeline(
 
 void MKLDNNConvLayer::resetInValue(
     std::shared_ptr<conv_fwd::primitive_desc>& pd, MKLDNNMatrixPtr& in) {
-  const MatrixPtr& inMat = inputLayers_[0]->getOutput().value;
+  const MatrixPtr& inMat = inputLayers_[0]->getOutputValue();
   in = MKLDNNMatrix::create(inMat, pd->src_primitive_desc());
 
   // create buffer and reorder if input value do not match
@@ -310,15 +308,20 @@ void MKLDNNConvLayer::resetOutValue(
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
     memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
     cpuOutVal_ = MKLDNNMatrix::create(cpuOut, outDims, format::nchw, engine_);
-    if (cpuOutVal_->getPrimitiveDesc() != out->getPrimitiveDesc()) {
+    if (cpuOutVal_->getPrimitiveDesc() != pd->dst_primitive_desc()) {
+      out = MKLDNNMatrix::create(nullptr, pd->dst_primitive_desc());
       cvtOutVal_ = MKLDNNMatrix::createReorder(out, cpuOutVal_);
-      CHECK(cvtOutVal_) << "should not be emptry";
+      CHECK(cvtOutVal_) << "should not be empty";
     } else {
-      // CPU output share the same data of MKLDNN output
-      cpuOut->setData(out->getData());
       cpuOutVal_ = out;
     }
+    // when output is cpu device, change the mkldnn output value and make them
+    // share the same data. Then if next layer use inputlayer->getOuputValue()
+    // to achieve the input value, it will get the right data.
+    output_.value = std::dynamic_pointer_cast<Matrix>(cpuOutVal_);
+    return;
   }
+  output_.value = std::dynamic_pointer_cast<Matrix>(out);
 }
 
 void MKLDNNConvLayer::resetBwdWgtPD(
@@ -412,8 +415,6 @@ void MKLDNNConvLayer::resetBwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  pipeline.clear();
-
   if (cvtOutGrad_) {
     pipeline.push_back(*cvtOutGrad_);
   }
@@ -446,28 +447,27 @@ void MKLDNNConvLayer::resetBwdPipeline(
 
 void MKLDNNConvLayer::resetOutGrad(
     std::shared_ptr<conv_bwdWgt::primitive_desc>& wgtPD, MKLDNNMatrixPtr& out) {
-  const MatrixPtr& outMat = output_.grad;
-  out = MKLDNNMatrix::create(outMat, wgtPD->diff_dst_primitive_desc());
-  CHECK(outVal_ != nullptr &&
-        out->getPrimitiveDesc() == outVal_->getPrimitiveDesc())
-      << "primitive desc of out grad and value should be equal";
-
-  // TODO(TJ): merge outgrad
-  // create reorder if has output grad does not match
   cpuOutGrad_ = nullptr;
   cvtOutGrad_ = nullptr;
-  if (!outputIsOnlyMKLDNN()) {
+  CHECK(outVal_ != nullptr &&
+        outVal_->getPrimitiveDesc() == wgtPD->diff_dst_primitive_desc())
+      << "primitive desc of out grad and value should be equal";
+  if (outputIsOnlyMKLDNN()) {
+    MKLDNNLayer::resetOutGrad(out, outVal_->getPrimitiveDesc());
+  } else {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
-    outMat->setData(cpuOut->getData());
     // same PrimitiveDesc with cpuInVal_
     CHECK(cpuOutVal_);
     cpuOutGrad_ = MKLDNNMatrix::create(cpuOut, cpuOutVal_->getPrimitiveDesc());
-    if (cpuOutGrad_->getPrimitiveDesc() == out->getPrimitiveDesc()) {
-      out = cpuOutGrad_;
-    } else {
-      out = MKLDNNMatrix::create(nullptr, wgtPD->diff_dst_primitive_desc());
+    // create reorder if primitive desc does not match
+    if (cpuOutGrad_->getPrimitiveDesc() != outVal_->getPrimitiveDesc()) {
+      out = MKLDNNMatrix::create(output_.grad, outVal_->getPrimitiveDesc());
       cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
       CHECK(cvtOutGrad_);
+    } else {
+      // share the same data of CPU output
+      output_.grad->setData(cpuOut->getData());
+      out = cpuOutGrad_;
     }
   }
 }
@@ -496,32 +496,30 @@ void MKLDNNConvLayer::resetWgtBiasGrad(
 void MKLDNNConvLayer::resetInGrad(
     std::shared_ptr<conv_bwdData::primitive_desc>& dataPD,
     MKLDNNMatrixPtr& in) {
+  in = nullptr;
+  cpuInGrad_ = nullptr;
+  cvtInGrad_ = nullptr;
   if (dataPD == nullptr) {
     return;
   }
 
-  // TODO(TJ): use outputMaps_ ways to get the inGrad_ when merge outgrad done
-  in = MKLDNNMatrix::create(inputLayers_[0]->getOutput().grad,
-                            dataPD->diff_src_primitive_desc());
-  CHECK(nullptr != inVal_ &&
-        in->getPrimitiveDesc() == inVal_->getPrimitiveDesc())
-      << "primitive desc of input grad and value should be equal";
-
-  // create reorder if has output grad does not match
-  cpuInGrad_ = nullptr;
-  cvtInGrad_ = nullptr;
-  if (!inputIsOnlyMKLDNN()) {
+  if (inputIsOnlyMKLDNN()) {
+    MKLDNNLayer::resetInGrad(in, dataPD->diff_src_primitive_desc());
+    CHECK(nullptr != inVal_ &&
+          in->getPrimitiveDesc() == inVal_->getPrimitiveDesc())
+        << "primitive desc of input grad and value should be equal";
+  } else {
     const MatrixPtr& cpuIn = getInputGrad(0, CPU_DEVICE);
     // same PrimitiveDesc with cpuInVal_
     CHECK(cpuInVal_);
     cpuInGrad_ = MKLDNNMatrix::create(cpuIn, cpuInVal_->getPrimitiveDesc());
-    if (cpuInGrad_->getPrimitiveDesc() != in->getPrimitiveDesc()) {
-      const MatrixPtr& dnnIn = getInputGrad(0, MKLDNN_DEVICE);
-      in = MKLDNNMatrix::create(dnnIn, in->getPrimitiveDesc());
+    in = cpuInGrad_;
+    // create reorder if PrimitiveDesc does not match
+    if (cpuInGrad_->getPrimitiveDesc() != dataPD->diff_src_primitive_desc()) {
+      in = MKLDNNMatrix::create(getInputGrad(0, MKLDNN_DEVICE),
+                                dataPD->diff_src_primitive_desc());
       cvtInGrad_ = MKLDNNMatrix::createReorder(in, cpuInGrad_);
       CHECK(cvtInGrad_);
-    } else {
-      in = cpuInGrad_;
     }
   }
 }

@@ -363,5 +363,54 @@ class TestSoftsign(OpTest):
         self.check_grad(['X'], 'Y', max_relative_error=0.007)
 
 
+class TestThresholdedRelu(OpTest):
+    def setUp(self):
+        self.op_type = "thresholded_relu"
+        threshold = 0.25
+        self.relative_error = 0.005
+        X = np.random.uniform(-1, 1, [11, 17]).astype("float32")
+
+        # Same reason as TestAbs
+        X[np.abs(X - threshold) < self.relative_error] = threshold + 0.2
+
+        self.inputs = {'X': X}
+        self.attrs = {'threshold': threshold}
+        self.outputs = {'Y': (X > threshold) * X}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=self.relative_error)
+
+
+class TestHardSigmoid(OpTest):
+    def setUp(self):
+        self.op_type = "hard_sigmoid"
+        self.relative_error = 0.002
+
+        X = np.random.uniform(-5, 5, [2, 2]).astype("float32")
+        slope = 0.2
+        offset = 0.5
+        lower_threshold = -offset / slope
+        upper_threshold = (1 - offset) / slope
+
+        self.inputs = {'X': X}
+        # Same reason as TestAbs
+        X[np.abs(X - lower_threshold) < self.relative_error] = \
+            lower_threshold + 0.2
+        X[np.abs(X - upper_threshold) < self.relative_error] = \
+            upper_threshold - 0.2
+
+        temp = X * slope + offset
+        self.outputs = {'Y': np.maximum(0.0, np.minimum(1.0, temp))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.002)
+
+
 if __name__ == "__main__":
     unittest.main()

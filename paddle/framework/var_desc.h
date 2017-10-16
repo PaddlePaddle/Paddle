@@ -34,6 +34,7 @@ inline std::vector<T> RepeatedToVector(
 template <typename T, typename RepeatedField>
 inline void VectorToRepeated(const std::vector<T> &vec,
                              RepeatedField *repeated_field) {
+  repeated_field->Clear();
   repeated_field->Reserve(vec.size());
   for (const auto &elem : vec) {
     *repeated_field->Add() = elem;
@@ -44,6 +45,7 @@ inline void VectorToRepeated(const std::vector<T> &vec,
 template <typename RepeatedField>
 inline void VectorToRepeated(const std::vector<bool> &vec,
                              RepeatedField *repeated_field) {
+  repeated_field->Clear();
   repeated_field->Reserve(vec.size());
   for (auto elem : vec) {
     *repeated_field->Add() = elem;
@@ -52,7 +54,10 @@ inline void VectorToRepeated(const std::vector<bool> &vec,
 
 class VarDescBind {
  public:
-  explicit VarDescBind(const std::string &name) { desc_.set_name(name); }
+  explicit VarDescBind(const std::string &name) {
+    desc_.set_name(name);
+    desc_.set_type(VarDesc::LOD_TENSOR);
+  }
 
   VarDesc *Proto() { return &desc_; }
 
@@ -70,7 +75,14 @@ class VarDescBind {
 
   int32_t GetLodLevel() const;
 
+  VarDesc::VarType GetType() const { return desc_.type(); }
+
+  void SetType(VarDesc::VarType type) { desc_.set_type(type); }
+
  private:
+  const TensorDesc &tensor_desc() const;
+  TensorDesc *mutable_tensor_desc();
+
   VarDesc desc_;
 };
 }  // namespace framework

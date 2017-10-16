@@ -35,7 +35,8 @@ class FetchKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(tensors->size(), static_cast<size_t>(col));
     (*tensors)[col].Resize(input->dims());
     (*tensors)[col].mutable_data<T>(platform::CPUPlace());
-    (*tensors)[col].CopyFrom<T>(*input, platform::CPUPlace());
+    (*tensors)[col].CopyFrom<T>(*input, platform::CPUPlace(),
+                                ctx.device_context());
     // TODO(qijun): need to handle LodTensor later
   }
 };

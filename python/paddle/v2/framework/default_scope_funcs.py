@@ -5,7 +5,7 @@ Default scope function.
 thread-local stack of Scope. Top of that stack is current scope, the bottom 
 of that stack is all scopes' parent. 
 
-Invoking `new_var/find_var`  can `new/find` variable in current scope. 
+Invoking `var/find_var`  can `new/find` variable in current scope. 
 Invoking `enter_local_scope/leave_local_scope` can create or destroy local 
 scope. 
 
@@ -19,7 +19,7 @@ import threading
 __tl_scope__ = threading.local()
 
 __all__ = [
-    'get_cur_scope', 'enter_local_scope', 'leave_local_scope', 'new_var',
+    'get_cur_scope', 'enter_local_scope', 'leave_local_scope', 'var',
     'find_var', 'scoped_function'
 ]
 
@@ -54,11 +54,11 @@ def leave_local_scope():
     get_cur_scope().drop_kids()
 
 
-def new_var(name):
+def var(name):
     """
     create variable in current scope.
     """
-    return get_cur_scope().new_var(name)
+    return get_cur_scope().var(name)
 
 
 def find_var(name):
