@@ -33,7 +33,10 @@ bool FactorizationMachineLayer::init(const LayerMap& layerMap,
   /* initialize the latentVectors_ */
   CHECK_EQ(inputLayers_.size(), 1UL);
   size_t height = inputLayers_[0]->getSize();
-  latentVectors_.reset(new Weight(height, factorSize_, parameters_[0]));
+  latentVectors_ =
+      std::unique_ptr<Weight>(new Weight(height, factorSize_, parameters_[0]));
+
+  v2_ = latentVectors_->getW()->clone(0, 0, useGpu_);
 
   return true;
 }
@@ -41,13 +44,27 @@ bool FactorizationMachineLayer::init(const LayerMap& layerMap,
 void FactorizationMachineLayer::forward(PassType passType) {
   Layer::forward(passType);
 
-  auto input = getInput(0);
+  const MatrixPtr& inputV = getInputValue(0);
 
-  int batchSize = input.getBatchSize();
-  int size = getSize();
+  size_t batchSize = inputV->getHeight();
+  size_t size = getSize();
   reserveOutput(batchSize, size);
 
   MatrixPtr outV = getOutputValue();
+
+  Matrix::resizeOrCreate(tmpMul_, batchSize, factorSize_, false, useGpu_);
+  Matrix::resizeOrCreate(tmpOut_, batchSize, factorSize_, false, useGpu_);
+
+  REGISTER_TIMER_INFO("FwMulTimer", getName().c_str());
+  tmpMul_->mul(*inputV, *latentVectors_->getW());
+  tmpOut_->pow2(*tmpMul_, 2);
+  outV->sumRows(*tmpOut_, 0.5, 0);
+
+  x2_ = inputV->clone(0, 0, useGpu_);
+  x2_->pow2(*inputV, 2);
+  v2_->pow2(*latentVectors_->getW(), 2);
+  tmpOut_->mul(*x2_, *v2_);
+  outV->sumRows(*tmpOut_, -0.5, 1.0);
 
   /* activation */ {
     REGISTER_TIMER_INFO("FwAtvTimer", getName().c_str());
@@ -59,6 +76,43 @@ void FactorizationMachineLayer::backward(const UpdateCallback& callback) {
   /* Do derivation */ {
     REGISTER_TIMER_INFO("BpAvtTimer", getName().c_str());
     backwardActivation();
+  }
+
+  const MatrixPtr& inputV = getInputValue(0);
+  const MatrixPtr& oGrad = getOutputGrad();
+
+  MatrixPtr tmpSum =
+      Matrix::create(1, latentVectors_->getW()->getHeight(), false, useGpu_);
+  MatrixPtr tmpSum_T = Matrix::create(tmpSum->getRowBuf(0),
+                                      latentVectors_->getW()->getHeight(),
+                                      1,
+                                      false,
+                                      useGpu_);
+
+  /* Calculate the gradients of the latentVectors_ matrix */
+  if (latentVectors_->getWGrad()) {
+    MatrixPtr tmpIn = inputV->clone(0, 0, useGpu_);
+    tmpIn->rowScale(0, *inputV, *oGrad);
+
+    latentVectors_->getWGrad()->mul(*tmpIn->getTranspose(), *tmpMul_, 1, 1);
+
+    tmpIn->rowScale(0, *x2_, *oGrad);
+    tmpSum->sumCols(*tmpIn, -1, 0);
+    latentVectors_->getWGrad()->addRowScale(
+        0, *latentVectors_->getW(), *tmpSum_T);
+
+    /* Increasing the number of gradient */
+    latentVectors_->getParameterPtr()->incUpdate(callback);
+  }
+
+  /* Calculate the input layers gradient */
+  MatrixPtr inGrad = getInputGrad(0);
+  if (inGrad != NULL) {
+    MatrixPtr latentVectors_T = latentVectors_->getW()->getTranspose();
+    inGrad->mul(*tmpMul_, *latentVectors_T, 1, 1);
+    tmpSum_T->sumRows(*v2_, -1, 0);
+    inGrad->addColScale(0, *inputV, *tmpSum);
+    inGrad->rowScale(0, *inGrad, *oGrad);
   }
 }
 

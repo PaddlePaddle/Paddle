@@ -40,9 +40,21 @@ namespace paddle {
 class FactorizationMachineLayer : public Layer {
 protected:
   /// The latent vectors, shape: (size, factorSize_)
+  /// Each row of the latentVectors_ matrix is the latent vector
+  /// corresponding to one input feature dimension
   std::unique_ptr<Weight> latentVectors_;
   /// The hyperparameter that defines the dimensionality of the factorization
   size_t factorSize_;
+
+private:
+  /// The result of input matrix * letent vector matrix that will be used in
+  /// both forward and backward step
+  MatrixPtr tmpMul_;
+  MatrixPtr tmpOut_;
+  /// Store the square values of the letent vectors matrix
+  MatrixPtr v2_;
+  /// Store the square values of input matrix
+  MatrixPtr x2_;
 
 public:
   explicit FactorizationMachineLayer(const LayerConfig& config)
