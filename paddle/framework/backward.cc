@@ -281,12 +281,16 @@ static void CreateGradVarInBlock(
   auto ops = block_desc->AllOps();
   for (size_t op_index = grad_op_start_index; op_index < ops.size();
        ++op_index) {
+    bool need_infer_shape = false;
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
                      if (block_desc->HasVar(grad_var_name)) {
                        return false;
                      }
-                     block_desc->Var(grad_var_name);
+                     need_infer_shape = true;
+                     auto var = block_desc->Var(grad_var_name);
+                     // FIXME(qiao) infer the datatype
+                     var->SetDataType(framework::DataType::FP32);
                      auto it = param_name_map.find(grad_var_name);
                      if (it == param_name_map.end()) {
                        return false;
@@ -298,6 +302,9 @@ static void CreateGradVarInBlock(
                      grad_record.op_idx_ = static_cast<int>(op_index);
                      return false; /* not break */
                    });
+    if (need_infer_shape) {
+      ops[op_index]->InferShape(*block_desc);
+    }
   }
 }
 
@@ -449,7 +456,10 @@ ParamGradInfoMap AppendBackward(
   for (auto& ptr : backward_op_descs) {
     all_ops.push_back(std::move(ptr));
   }
-  root_block->Var(fill_one_op_out);
+  auto var = root_block->Var(fill_one_op_out);
+  // FIXME(qiao) infer the data type
+  var->SetDataType(framework::DataType::FP32);
+  var->SetShape(target.Shape());
 
   // create grad_var for all blocks in this program
   CreateGradVarInBlock(forward_op_num, grad_to_var, root_block, &retv);
