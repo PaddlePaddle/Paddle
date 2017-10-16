@@ -22,7 +22,9 @@ class TestOptimizer(unittest.TestCase):
             attrs={"x_num_col_dims": 1})
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
         opts = sgd_optimizer.minimize(mul_out)
-        print(opts)
+        self.assertEqual(len(opts), 1)
+        sgd_op = opts[0]
+        self.assertEqual(sgd_op.type, "sgd")
 
 
 if __name__ == '__main__':

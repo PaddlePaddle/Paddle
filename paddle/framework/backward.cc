@@ -435,10 +435,16 @@ ParamGradInfoMap AppendBackward(
   auto& all_ops = root_block->ops_;
 
   // insert fill one op for target
+  // TODO(qiao) add some check to the target.
   std::string fill_one_op_out = GradVarName(target.Name());
+  std::vector<int64_t> target_shape_desc = target.Shape();
+  std::vector<int> target_shape;
+  std::transform(target_shape_desc.begin(), target_shape_desc.end(),
+                 std::back_inserter(target_shape),
+                 [](int64_t dim) { return static_cast<int>(dim); });
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
-                     {{"shape", std::vector<int>{1}},
+                     {{"shape", target_shape},
                       {"value", static_cast<float>(1.0)},
                       {"dataType", framework::DataType::FP32}}));
   all_ops.push_back(std::move(fill_one_op));
