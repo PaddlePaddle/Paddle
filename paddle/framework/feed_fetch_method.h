@@ -37,9 +37,9 @@ void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
 }
 
 LoDTensor& GetFetchVariable(const std::string& var_name, size_t index) {
-  // If var_name Variable is not found in GlobalScope, a new variable will
-  // be created.
-  Variable* g_fetch_value = GetGlobalScope().Var(var_name);
+  // Since we want to fetch LodTensor from a variable, the variable must
+  // be created alreadly.
+  Variable* g_fetch_value = GetGlobalScope().FindVar(var_name);
   auto& fetch_outputs =
       *(g_fetch_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
   PADDLE_ENFORCE_LT(index, fetch_outputs.size());

@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pybind/pybind.h"
+#include "paddle/pybind/protobuf.h"
+
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
@@ -25,7 +26,7 @@ limitations under the License. */
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/exception.h"
-#include "paddle/pybind/protobuf.h"
+#include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 
