@@ -91,7 +91,8 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
                               .stream()>>>(dx_data, dy_data, x_data, label_data,
                                            batch_size, class_num);
     } else {
-      math::SetConstant<platform::GPUPlace, T>(ctx.device_context(), dx, 0);
+      math::SetConstant<platform::GPUPlace, T> functor;
+      functor(ctx.device_context(), dx, 0);
       auto* label_data = label->data<int>();
       grid = (batch_size + block - 1) / block;
       CrossEntropyGradientKernel<T><<<

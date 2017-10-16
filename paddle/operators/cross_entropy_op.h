@@ -70,7 +70,8 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
       const T* x_data = x->data<T>();
       const int* label_data = label->data<int>();
 
-      math::SetConstant<platform::CPUPlace, T>(ctx.device_context(), dx, 0);
+      math::SetConstant<platform::CPUPlace, T> functor;
+      functor(ctx.device_context(), dx, 0);
 
       for (int i = 0; i < batch_size; ++i) {
         PADDLE_ASSERT(label_data[i] >= 0 || label_data[i] < class_num);
