@@ -51,7 +51,7 @@ else()
     cc_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
 endif()
 
-cc_library(prune SRCS prune.cc)
+cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
