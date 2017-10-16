@@ -89,7 +89,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
     // Since index in rows of SelectedRows can be duplicate, we can not use
     // tensor_out[index] += selected_rows[index]; Instead, we have to use
     // AtomicAdd to avoid concurrent write error.
-    paddle::platform::CudaAtomicAdd(&tensor_out[index], selected_rows[index]);
+    paddle::platform::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
   }
 }
 }  // namespace
@@ -121,7 +121,7 @@ struct SelectedRowsAddTensor<platform::GPUPlace, T> {
 
     int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid(1, in1_height);
+    dim3 grid(1, in1_rows.size());
     SelectedRowsAddTensorKernel<
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
