@@ -18,10 +18,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/variable.h"
 #include "paddle/platform/macros.h"
-#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
