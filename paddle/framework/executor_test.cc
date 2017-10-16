@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/backward.h"
@@ -33,6 +34,7 @@ USE_OP(mul);
 USE_OP(sum);
 USE_OP(squared_l2_distance);
 USE_OP(fill_constant);
+USE_OP(mean);
 USE_OP(sgd);
 
 using namespace paddle::platform;
@@ -44,8 +46,16 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
-      auto var = block->NewVar(v);
-      var->SetDataType(paddle::framework::DataType::FP32);
+      // <<<<<<< HEAD
+      //       auto var = block->Var(v);
+      //       var->SetType(VarDesc::LOD_TENSOR);
+      //       var->SetDataType(paddle::framework::DataType::FP32);
+      // =======
+      if (!block->HasVar(v)) {
+        auto var = block->Var(v);
+        var->SetDataType(paddle::framework::DataType::FP32);
+      }
+      // >>>>>>> origin/develop
     }
   }
 
@@ -59,6 +69,7 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
     op->SetOutput(kv.first, kv.second);
   }
   op->SetAttrMap(attrs);
+  op->CheckAttrs();
 }
 
 // Tensors in feed value variable will only be in CPUPlace
@@ -144,12 +155,12 @@ class ExecutorTesterRandom : public ::testing::Test {
     AddOp("squared_l2_distance", {{"X", {"a"}}, {"Y", {"a_out"}}},
           {{"Out", {"l2_distance"}}, {"sub_result", {"l2_distance_sub"}}}, {},
           root_block);
+    AddOp("mean", {{"X", {"l2_distance"}}}, {{"Out", {"mean_out"}}}, {},
+          root_block);
 
     // backward
-    AddOp("fill_constant", {}, {{"Out", {"l2_distance@GRAD"}}},
-          {{"shape", std::vector<int>{batch_size, 1}}, {"value", float(1.0)}},
-          root_block);
-    AppendBackward(program, {});
+    auto target = VarDescBind("mean_out");
+    AppendBackward(program, target, {});
 
     // update
     AddOp("fill_constant", {}, {{"Out", {"learning_rate"}}},
@@ -315,4 +326,14 @@ TEST_F(ExecutorTesterFeedAndFetch, GPU) {
     }
   }
 }
+
+DECLARE_double(fraction_of_gpu_memory_to_use);
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  // Use less GPU memory for unittest.
+  FLAGS_fraction_of_gpu_memory_to_use = 0.25;
+  return RUN_ALL_TESTS();
+}
+
 #endif

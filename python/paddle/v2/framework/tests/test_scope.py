@@ -18,7 +18,7 @@ class TestScope(unittest.TestCase):
     def test_create_var_get_var(self):
         paddle_c = paddle.v2.framework.core
         scope = paddle_c.Scope()
-        var_a = scope.new_var("var_a")
+        var_a = scope.var("var_a")
         self.assertIsNotNone(var_a)
         self.assertIsNotNone(scope.find_var('var_a'))
         scope2 = scope.new_scope()
@@ -27,7 +27,7 @@ class TestScope(unittest.TestCase):
     def test_var_get_int(self):
         paddle_c = paddle.v2.framework.core
         scope = paddle_c.Scope()
-        var = scope.new_var("test_int")
+        var = scope.var("test_int")
         var.set_int(10)
         self.assertTrue(var.is_int())
         self.assertEqual(10, var.get_int())
