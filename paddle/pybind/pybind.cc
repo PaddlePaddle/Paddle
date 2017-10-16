@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pybind/protobuf.h"
-
+#include "paddle/pybind/pybind.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
+#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/exception.h"
-#include "paddle/pybind/pybind.h"
+#include "paddle/pybind/protobuf.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 
@@ -403,12 +403,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);
-  m.def("set_feed_variable", SetFeedVariable<float>);
-  // m.def("set_feed_variable", SetFeedVariable<double>);
-  // m.def("set_feed_variable", SetFeedVariable<int>);
-  m.def("get_fetch_variable", GetFetchVariable<float>);
-  // m.def("get_fetch_variable", GetFetchVariable<double>);
-  // m.def("get_fetch_variable", GetFetchVariable<int>);
+  m.def("set_feed_variable_float", framework::SetFeedVariable<float>);
+  m.def("set_feed_variable_double", framework::SetFeedVariable<double>);
+  m.def("set_feed_variable_int", framework::SetFeedVariable<int>);
+  m.def("get_fetch_variable", framework::GetFetchVariable);
 
   BindProgramDesc(m);
   BindBlockDesc(m);
