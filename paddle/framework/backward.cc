@@ -456,16 +456,22 @@ ParamGradInfoMap AppendBackward(
   auto backward_op_descs = MakeBlockBackward(program_desc, root_block_idx,
                                              &no_grad_var_names, &grad_to_var);
 
-  std::unordered_map<std::string, GradVarInfo> retv;
-
-  // Create Variable
   for (auto& ptr : backward_op_descs) {
     all_ops.push_back(std::move(ptr));
   }
+  // Create Variable
+
+  // Create target gradient variable
+  std::unordered_map<std::string, GradVarInfo> retv;
+
   auto var = root_block->Var(fill_one_op_out);
   // FIXME(qiao) infer the data type
   var->SetDataType(framework::DataType::FP32);
   var->SetShape(target.Shape());
+  auto& target_grad = retv[target.Name()];
+  target_grad.name_ = fill_one_op_out;
+  target_grad.block_idx_ = root_block_idx;
+  target_grad.op_idx_ = static_cast<int>(forward_op_num);
 
   // create grad_var for all blocks in this program
   CreateGradVarInBlock(forward_op_num, grad_to_var, root_block, &retv);
