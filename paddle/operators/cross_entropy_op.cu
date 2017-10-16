@@ -56,7 +56,7 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     math::CrossEntropyFunctor<platform::GPUPlace, T>()(
-        ctx.device_context(), y, x, label, ctx.Attr<bool>("softLabel"));
+        ctx.device_context(), y, x, label, ctx.Attr<bool>("soft_label"));
   }
 };
 
@@ -83,7 +83,7 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (batch_size * class_num + block - 1) / block;
 
-    if (ctx.Attr<bool>("softLabel")) {
+    if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
       SoftCrossEntropyGradientKernel<T><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
