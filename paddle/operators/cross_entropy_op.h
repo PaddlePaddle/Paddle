@@ -38,7 +38,7 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     math::CrossEntropyFunctor<platform::CPUPlace, T>()(
-        ctx.device_context(), y, x, labels, ctx.Attr<bool>("softLabel"));
+        ctx.device_context(), y, x, labels, ctx.Attr<bool>("soft_label"));
   }
 };
 
@@ -55,7 +55,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
     T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
     int class_num = x->dims()[1];
-    if (ctx.Attr<bool>("softLabel")) {
+    if (ctx.Attr<bool>("soft_label")) {
       auto x_mat = EigenMatrix<T>::From(*x);
       auto dy_mat = EigenMatrix<T>::From(*dy);
       auto lbl_mat = EigenMatrix<T>::From(*label);

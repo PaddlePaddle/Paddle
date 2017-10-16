@@ -433,7 +433,7 @@ ParamGradInfoMap AppendBackward(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
                      {{"shape", std::vector<int>{1}},
                       {"value", static_cast<float>(1.0)},
-                      {"dataType", framework::DataType::FP32}}));
+                      {"data_type", framework::DataType::FP32}}));
   all_ops.push_back(std::move(fill_one_op));
   size_t forward_op_num = all_ops.size();
   size_t forward_block_num = program_desc.Size();

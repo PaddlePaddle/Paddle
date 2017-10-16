@@ -46,7 +46,7 @@ class SoftmaxWithCrossEntropyOpMaker
               "(Tensor, default: Tensor<float>), A 2-D tensor. The cross "
               "entropy loss with shape [N x 1].");
     AddAttr<bool>(
-        "softLabel",
+        "soft_label",
         "(bool, default: false), A flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
@@ -100,13 +100,13 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       "The labels should be a 2-D tensor.");
 
-    if (ctx->Attrs().Get<bool>("softLabel")) {
+    if (ctx->Attrs().Get<bool>("soft_label")) {
       PADDLE_ENFORCE_EQ(logits_dims[1], labels_dims[1],
-                        "If Attr(softLabel) == true, the 2nd dimension of "
+                        "If Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(labels_dims[1], 1UL,
-                        "If Attr(softLabel) == false, the 2nd dimension of "
+                        "If Attr(soft_label) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
@@ -142,13 +142,13 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       "The labels should be a 2-D tensor.");
 
-    if (ctx->Attrs().Get<bool>("softLabel")) {
+    if (ctx->Attrs().Get<bool>("soft_label")) {
       PADDLE_ENFORCE_EQ(softmax_dims[1], labels_dims[1],
-                        "When Attr(softLabel) == true, the 2nd dimension of "
+                        "When Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(labels_dims[1], 1UL,
-                        "When Attr(softLabel) == false, the 2nd dimension of "
+                        "When Attr(soft_label) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
