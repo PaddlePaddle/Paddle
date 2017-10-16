@@ -79,7 +79,7 @@ def _create_op_func_(op_type):
     o_name = op_proto.outputs[0].name
 
     def func(**kwargs):
-        helper = LayerHelper(op_type, **locals())
+        helper = LayerHelper(op_type, **kwargs)
         inputs = dict()
         dtype = None
         for ipt in op_proto.inputs:
@@ -113,8 +113,8 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 
 
-def cross_entropy(input, label, program=None, **kwargs):
-    helper = LayerHelper('cross_entropy', **locals())
+def cross_entropy(input, label, **kwargs):
+    helper = LayerHelper('cross_entropy', **kwargs)
     out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
         type='cross_entropy',
@@ -123,3 +123,21 @@ def cross_entropy(input, label, program=None, **kwargs):
         outputs={'Y': [out]},
         attrs=kwargs)
     return out
+
+
+def square_error_cost(input, label, **kwargs):
+    helper = LayerHelper('square_error_cost', **kwargs)
+    minus_out = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='elementwise_sub',
+        inputs={'X': [input],
+                'Y': [label]},
+        outputs={'Out': [minus_out]})
+
+    square_out = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='pow',
+        inputs={'X': [minus_out]},
+        outputs={'Y': [square_out]},
+        attrs={'factor': 2.0})
+    return square_out

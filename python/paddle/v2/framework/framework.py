@@ -335,10 +335,10 @@ class Program(object):
             cls._instance = cls()
         return cls._instance
 
-    def __init__(self):
-        assert not hasattr(self.__class__,
-                           '_instance'), 'Do not call constructor directly!'
-        self.desc = core.ProgramDesc.instance()
+    def __init__(self, desc=None):
+        if desc is None:
+            desc = core.ProgramDesc.instance()
+        self.desc = desc
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
 
