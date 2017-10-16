@@ -24,3 +24,5 @@ import:
   vcs: git
 - package: github.com/satori/go.uuid
   version: v1.1.0
+- package: github.com/alecthomas/gometalinter
+  version: v1.2.1

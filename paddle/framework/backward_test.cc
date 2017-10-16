@@ -470,7 +470,7 @@ TEST(Backward, simple_single_op) {
   op->SetOutput("Out", {"out"});
 
   auto target = f::VarDescBind("out");
-  AppendBackward(program, target, {});
+  auto var_to_grad = AppendBackward(program, target, {});
 
   ASSERT_EQ(block->AllOps().size(), 3UL);
   f::OpDescBind *fill_op = block->AllOps()[1];
@@ -486,6 +486,13 @@ TEST(Backward, simple_single_op) {
             std::vector<std::string>({f::GradVarName("x")}));
   EXPECT_EQ(grad_op->Output(f::GradVarName("b")),
             std::vector<std::string>({f::GradVarName("b")}));
+
+  EXPECT_EQ(var_to_grad.size(), 2UL);
+  EXPECT_EQ(var_to_grad.at("b"), f::GradVarInfo(f::GradVarName("b"), 0, 2));
+  EXPECT_EQ(var_to_grad.at("x"), f::GradVarInfo(f::GradVarName("x"), 0, 2));
+
+  EXPECT_TRUE(block->HasVar(f::GradVarName("b")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("x")));
 }
 
 TEST(Backward, default_attribute) {
@@ -539,7 +546,7 @@ TEST(Backward, simple_mult_op) {
 
   auto target = f::VarDescBind("out3");
   size_t forward_len = block->AllOps().size();
-  AppendBackward(program, target, {});
+  auto var_to_grad = AppendBackward(program, target, {});
 
   ASSERT_EQ(block->AllOps().size(), 6UL + 1);
   f::OpDescBind *fill_op = block->AllOps()[forward_len];
@@ -580,6 +587,23 @@ TEST(Backward, simple_mult_op) {
             std::vector<std::string>({f::GradVarName("out2")}));
   EXPECT_EQ(grad_op3->Output(f::GradVarName("b")),
             std::vector<std::string>({f::GradVarName("b3")}));
+
+  EXPECT_EQ(var_to_grad.size(), 6UL);
+  EXPECT_EQ(var_to_grad.at("x1"), f::GradVarInfo(f::GradVarName("x1"), 0, 6));
+  EXPECT_EQ(var_to_grad.at("b1"), f::GradVarInfo(f::GradVarName("b1"), 0, 6));
+  EXPECT_EQ(var_to_grad.at("out1"),
+            f::GradVarInfo(f::GradVarName("out1"), 0, 5));
+  EXPECT_EQ(var_to_grad.at("y2"), f::GradVarInfo(f::GradVarName("y2"), 0, 5));
+  EXPECT_EQ(var_to_grad.at("out2"),
+            f::GradVarInfo(f::GradVarName("out2"), 0, 4));
+  EXPECT_EQ(var_to_grad.at("b3"), f::GradVarInfo(f::GradVarName("b3"), 0, 4));
+
+  EXPECT_TRUE(block->HasVar(f::GradVarName("x1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("b1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("out1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("y2")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("out2")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("b3")));
 }
 
 TEST(Backward, intermedia_var_no_grad) {
@@ -612,7 +636,7 @@ TEST(Backward, intermedia_var_no_grad) {
 
   auto target = f::VarDescBind("out4");
   size_t forward_len = block->AllOps().size();
-  AppendBackward(program, target, {"out3"});
+  auto var_to_grad = AppendBackward(program, target, {"out3"});
 
   ASSERT_EQ(block->AllOps().size(), 7UL);
   f::OpDescBind *fill_op = block->AllOps()[forward_len];
@@ -641,6 +665,16 @@ TEST(Backward, intermedia_var_no_grad) {
   EXPECT_EQ(grad_op4->Output(f::GradVarName("X")),
             std::vector<std::string>({f::GradVarName("out1")}));
   EXPECT_EQ(grad_op4->Output(f::GradVarName("Y")), std::vector<std::string>());
+
+  EXPECT_EQ(var_to_grad.size(), 3UL);
+  EXPECT_EQ(var_to_grad.at("x1"), f::GradVarInfo(f::GradVarName("x1"), 0, 6));
+  EXPECT_EQ(var_to_grad.at("b1"), f::GradVarInfo(f::GradVarName("b1"), 0, 6));
+  EXPECT_EQ(var_to_grad.at("out1"),
+            f::GradVarInfo(f::GradVarName("out1"), 0, 5));
+
+  EXPECT_TRUE(block->HasVar(f::GradVarName("x1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("b1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("out1")));
 }
 
 TEST(Backward, var_no_grad) {
@@ -663,7 +697,7 @@ TEST(Backward, var_no_grad) {
 
   auto target = f::VarDescBind("z2");
   size_t forward_len = block->AllOps().size();
-  AppendBackward(program, target, {"z1"});
+  auto var_to_grad = AppendBackward(program, target, {"z1"});
 
   ASSERT_EQ(block->AllOps().size(), 6UL);
   f::OpDescBind *fill_op = block->AllOps()[forward_len];
@@ -709,6 +743,15 @@ TEST(Backward, var_no_grad) {
             std::vector<std::string>({f::GradVarName("x1")}));
   EXPECT_EQ(grad_op1->Output(f::GradVarName("H")),
             std::vector<std::string>({f::GradVarName("h1")}));
+
+  EXPECT_EQ(var_to_grad.size(), 3UL);
+  EXPECT_EQ(var_to_grad.at("y1"), f::GradVarInfo(f::GradVarName("y1"), 0, 3));
+  EXPECT_EQ(var_to_grad.at("x1"), f::GradVarInfo(f::GradVarName("x1"), 0, 5));
+  EXPECT_EQ(var_to_grad.at("h1"), f::GradVarInfo(f::GradVarName("h1"), 0, 5));
+
+  EXPECT_TRUE(block->HasVar(f::GradVarName("y1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("x1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("h1")));
 }
 
 TEST(Backward, shared_var) {
@@ -735,7 +778,7 @@ TEST(Backward, shared_var) {
 
   auto target = f::VarDescBind("out3");
   size_t forward_len = block->AllOps().size();
-  AppendBackward(program, target, {});
+  auto var_to_grad = AppendBackward(program, target, {});
 
   ASSERT_EQ(block->AllOps().size(), 8UL);
   f::OpDescBind *fill_op = block->AllOps()[forward_len];
@@ -786,6 +829,20 @@ TEST(Backward, shared_var) {
             std::vector<std::string>({f::GradVarName("x1")}));
   EXPECT_EQ(grad_op1->Output(f::GradVarName("b")),
             std::vector<std::string>({f::GradVarName("b1")}));
+
+  EXPECT_EQ(var_to_grad.size(), 5UL);
+  EXPECT_EQ(var_to_grad.at("b3"), f::GradVarInfo(f::GradVarName("b3"), 0, 4));
+  EXPECT_EQ(var_to_grad.at("y2"), f::GradVarInfo(f::GradVarName("y2"), 0, 5));
+  EXPECT_EQ(var_to_grad.at("out1"),
+            f::GradVarInfo(f::GradVarName("out1"), 0, 6));
+  EXPECT_EQ(var_to_grad.at("x1"), f::GradVarInfo(f::GradVarName("x1"), 0, 7));
+  EXPECT_EQ(var_to_grad.at("b1"), f::GradVarInfo(f::GradVarName("b1"), 0, 7));
+
+  EXPECT_TRUE(block->HasVar(f::GradVarName("b3")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("y2")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("out1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("x1")));
+  EXPECT_TRUE(block->HasVar(f::GradVarName("b1")));
 }
 
 TEST(Backward, half_backward) {
@@ -800,9 +857,13 @@ TEST(Backward, half_backward) {
 
   auto target = f::VarDescBind("out");
   size_t forward_len = block->AllOps().size();
-  AppendBackward(program, target, {"b"});
+  auto var_to_grad = AppendBackward(program, target, {"b"});
   f::OpDescBind *fill_op = block->AllOps()[forward_len];
   EXPECT_EQ(fill_op->Type(), "fill_constant");
   auto ops = block->AllOps();
   ASSERT_EQ(3UL, ops.size());
+
+  EXPECT_EQ(var_to_grad.size(), 1UL);
+  EXPECT_EQ(var_to_grad.at("a"),
+            f::GradVarInfo(f::GradVarName("a"), 0, forward_len + 1));
 }
