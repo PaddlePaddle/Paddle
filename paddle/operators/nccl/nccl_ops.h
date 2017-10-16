@@ -1,3 +1,14 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+   http://www.apache.org/licenses/LICENSE-2.0
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #pragma once
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/nccl/nccl_gpu_common.h"
@@ -14,11 +25,13 @@ class NCCLTypeWrapper;
 
 template <>
 class NCCLTypeWrapper<float> {
+ public:
   static const ncclDataType_t type = ncclFloat;
 };
 
 template <>
 class NCCLTypeWrapper<double> {
+ public:
   static const ncclDataType_t type = ncclDouble;
 };
 
@@ -49,10 +62,10 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto* comm = m->GetCommunicator(gpus);
     comm->wg_.Add(1);
 
-    auto* stream = &dev_ctx.stream();
+    auto stream = dev_ctx.stream();
 
     // device id
-    int gid = ctx.GetPlace().GetDeviceId();
+    int gid = static_cast<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = gid % gpus.size();
     comm->streams_[idx] = stream;
 
@@ -60,9 +73,8 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(
           ncclAllReduce(ins[i]->data<T>(), outs[i]->mutable_data<T>(),
                         outs[i]->numel() * sizeof(T), NCCLTypeWrapper<T>::type,
-                        op_type, &comm->comms_[idx], comm->streams_[idx]));
-      PADDLE_ENFORCE(
-          cudaEventRecord(comm->events_[idx], *comms_->streams_[idx]));
+                        op_type, comm->comms_[idx], comm->streams_[idx]));
+      PADDLE_ENFORCE(cudaEventRecord(comm->events_[idx], comm->streams_[idx]));
 
       // wait finish
       PADDLE_ENFORCE(
@@ -71,8 +83,9 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
 
     comm->wg_.Done();
 
-    wg.Wait();
+    comm->wg_.Wait();
   }
 };
-}
-}
+
+}  // namespace operators
+}  // namespace paddle

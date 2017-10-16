@@ -65,20 +65,10 @@ class WaitGroup {
   std::condition_variable cv_;
 };
 
-// class NCCLContext : public DeviceContext {
-// public:
-//   explicit NCCLContext(GPUPlace place);
-//   virtual ~NCCLContext();
-
-// private:
-//   std::vector<int> gpu_ids_;
-//   std::vector<cudaStream_t> streams_;
-// };
-
 // TODO(dzh) : make resources managed unified with framework
 struct Communicator {
   std::vector<ncclComm_t> comms_;
-  std::vector<cudaStream_t*> streams_;
+  std::vector<cudaStream_t> streams_;
   std::vector<cudaEvent_t> events_;
   std::vector<int> gpus_;
   WaitGroup wg_;

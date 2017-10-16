@@ -18,7 +18,7 @@ NCCLManager::~NCCLManager() {
       int idx = gid % gpus_.size();
       // wait finish
       PADDLE_ENFORCE(
-          cudaStreamWaitEvent(*comm->streams_[idx], comm->events_[idx], 0));
+          cudaStreamWaitEvent(comm->streams_[idx], comm->events_[idx], 0));
 
       PADDLE_ENFORCE(cudaEventDestroy(comm->events_[idx]));
 
