@@ -18,8 +18,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/variable.h"
 #include "paddle/platform/macros.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -74,6 +76,66 @@ class Scope {
 };
 
 framework::Scope& GetGlobalScope();
+
+// template <typename T>
+// void SetFeedVariable(const std::vector<T>& input, const Lod& lod,
+//   const std::vector<int64_t>& dims,
+//   const std::string& var_name, size_t index) {
+//   Variable* g_feed_value = GetGlobalScope().Var("var_name");
+//   // feed variable holds vector<LodTensor>
+//   auto& feed_inputs =
+//       *(g_feed_value->GetMutable<
+// std::vector<paddle::framework::LoDTensor>>());
+//   if (index >= feed_inputs.size()) {
+//     feed_inputs.resize(index);
+//   }
+//   // copy tensor
+//   T* dst = feed_inputs[index].mutable_data<T>(make_ddim(dims),
+//     platform::CPUPlace());
+//   memcpy(dst, inputs[i].data(), inputs[i].size() * sizeof(T));
+//   // copy lod
+//   feed_inputs[index].set_lod(lod);
+// }
+
+template <typename T>
+void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
+                     size_t index) {
+  std::cout << "into SetFeedVariable" << std::endl;
+  std::cout << var_name << std::endl;
+  std::cout << index << std::endl;
+  Variable* g_feed_value = GetGlobalScope().Var(var_name);
+  auto& feed_inputs =
+      *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
+  if (index >= feed_inputs.size()) {
+    feed_inputs.resize(index + 1);
+  }
+  // shared data with input tensor
+  feed_inputs[index].ShareDataWith<T>(input);
+  // set lod
+  feed_inputs[index].set_lod(input.lod());
+}
+
+// template <typename T>
+// std::vector<T> GetFetchVariable(const std::string& var_name, size_t index) {
+//   Variable* g_fetch_value = GetGlobalScope().Var(var_name);
+//   auto& fetch_outputs =
+//       *(g_fetch_value->GetMutable<
+// std::vector<paddle::framework::LoDTensor>>());
+//   std::vector<T> result;
+//   result.resize(fetch_outputs[index].numel());
+//   memcpy(result.data(), fetch_outputs[i].data<T>(),
+//            fetch_outputs[i].numel() * sizeof(T));
+// }
+
+template <typename T>
+LoDTensor& GetFetchVariable(const std::string& var_name, size_t index) {
+  Variable* g_fetch_value = GetGlobalScope().Var(var_name);
+  auto& fetch_outputs =
+      *(g_fetch_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
+  std::cout << "into GetFetchVariable" << std::endl;
+  PADDLE_ENFORCE_LT(index, fetch_outputs.size());
+  return fetch_outputs[index];
+}
 
 }  // namespace framework
 }  // namespace paddle

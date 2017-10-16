@@ -394,6 +394,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);
+  m.def("set_feed_variable", SetFeedVariable<float>);
+  // m.def("set_feed_variable", SetFeedVariable<double>);
+  // m.def("set_feed_variable", SetFeedVariable<int>);
+  m.def("get_fetch_variable", GetFetchVariable<float>);
+  // m.def("get_fetch_variable", GetFetchVariable<double>);
+  // m.def("get_fetch_variable", GetFetchVariable<int>);
 
   BindProgramDesc(m);
   BindBlockDesc(m);
