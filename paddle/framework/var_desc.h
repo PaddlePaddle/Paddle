@@ -54,7 +54,10 @@ inline void VectorToRepeated(const std::vector<bool> &vec,
 
 class VarDescBind {
  public:
-  explicit VarDescBind(const std::string &name) { desc_.set_name(name); }
+  explicit VarDescBind(const std::string &name) {
+    desc_.set_name(name);
+    desc_.set_type(VarDesc::LOD_TENSOR);
+  }
 
   VarDesc *Proto() { return &desc_; }
 
