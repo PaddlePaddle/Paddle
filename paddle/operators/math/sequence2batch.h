@@ -17,6 +17,19 @@ namespace operators {
 namespace math {
 
 template <typename Place, typename T>
+class CopyMatrixRowsFunctor {
+ public:
+  // If is_src_index is true,
+  // copy the indexed rows of input src to the output dst.
+  // If is_src_index is false,
+  // copy the input src to the indexed rows of output dst.
+  // The indexed rows are based on the input index.
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& src, const size_t* index,
+                  framework::Tensor& dst, const bool is_src_index);
+};
+
+template <typename Place, typename T>
 class LoDTensor2BatchFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
@@ -97,8 +110,11 @@ class LoDTensor2BatchFunctor {
       }
       batch_starts[n + 1] = batch_id;
     }
+
+    CopyMatrixRowsFunctor<Place, T> to_batch;
+    to_batch(context, lod_tensor, batch, true);
   }
-}
+};
 
 template <typename Place, typename T>
 class Batch2LoDTensor2Functor {
@@ -107,6 +123,7 @@ class Batch2LoDTensor2Functor {
                   const framework::LoDTensor& batch,
                   framework::LoDTensor& lod_tensor,
                   const bool is_reverse) const;
+};
 
 }  // namespace math
 }  // namespace operators

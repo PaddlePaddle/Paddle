@@ -1,18 +1,18 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
-#include "paddle/operators/lstm_unit_op.h"
+#include "paddle/operators/lstm_op.h"
 
 namespace paddle {
 namespace operators {
@@ -44,8 +44,36 @@ class LSTMOp : public framework::OperatorWithKernel {
                      "should be the same.");
     }
 
+    int frame_size = x_dims[1];
+    auto w_dims = ctx->GetInputDim("Weight");
+    PADDLE_ENFORCE_EQ(w_dims.size(), 2,
+                      "The rank of Input(Weight) should be 2.");
+    PADDLE_ENFORCE_EQ(w_dims[0], frame_size,
+                      "The first dimension of Input(Weight) "
+                      "should be %d.",
+                      frame_size);
+    PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
+                      "The second dimension of Input(Weight) "
+                      "should be 4 * %d.",
+                      frame_size);
+    auto b_dims = ctx->GetInputDim("Bias");
+    PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
+    PADDLE_ENFORCE_EQ(b_dims[0], 1,
+                      "The first dimension of Input(Bias) should be 1.");
+    if (ctx->Attrs().Get<bool>("use_peepholes")) {
+      PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
+                        "The second dimension of Input(Bias) should be "
+                        "7 * %d if enable peepholes connection",
+                        frame_size);
+    } else {
+      PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
+                        "The second dimension of Input(Bias) should be "
+                        "4 * %d if diable peepholes connection",
+                        frame_size);
+    }
     ctx->SetOutputDim("Hidden", x_dims);
     ctx->SetOutputDim("Cell", x_dims);
+    ctx->SetOutputDim("Hidden", x_dims);
     ctx->ShareLoD("Input", "Hidden");
     ctx->ShareLoD("Input", "Cell");
   }
@@ -82,6 +110,8 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "2. `use_peepholes = True` "
              " - The shape is (1 x 7*D). "
              " - Bias = {b_i, b_f, b_c, b_o, W_ic, W_fc, W_oc}.");
+    AddOutput("Batch", "(LoDTensor) save the reorganized input as batch info. ")
+        .AsIntermediate();
     AddOutput("Hidden",
               "(LoDTensor) the hidden state lod tensor of LSTM operator. "
               "The shape and lod is the same with the `Input`.");
@@ -91,6 +121,10 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_peepholes",
                   "(bool, defalut: True) "
                   "whether to enable diagonal/peephole connections.")
+        .SetDefault(true);
+    AddAttr<bool>("is_reverse",
+                  "(bool, defalut: False) "
+                  "whether to compute reversed LSTM.")
         .SetDefault(true);
     AddAttr<std::string>(
         "gate_activation",

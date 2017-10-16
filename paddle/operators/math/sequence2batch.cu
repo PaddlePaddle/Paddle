@@ -18,6 +18,53 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
+__global__ void CopyMatrixRowsKernel(const T* src, T* dst, const int* index,
+                                     int height, int width,
+                                     const bool is_src_index) {
+  int idx = threadIdx.x;
+  int idy = threadIdx.y;
+  int id = blockIdx.x + idy * GridDimX;
+  while (id < height) {
+    int src_idx = is_src_index ? index[id] : id;
+    int dst_idx = is_src_index ? id : index[id];
+    T* src_data = src + src_idx * width;
+    T* dst_data = dst + dst_idx * width;
+    for (int i = idx; i < width; i += BlockDimX) {
+      dst_data[i] = src_data[i];
+    }
+    id += BlockDimY * GridDimX;
+  }
+}
+
+template <typename T>
+class CopyMatrixRowsFunctor<platform::GPUPlace, T> {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& src, const size_t* index,
+                  framework::Tensor& dst, bool is_src_index) {
+    auto src_dims = src.dims();
+    auto dst_dims = dst.dims();
+    PADDLE_ENFORCE(src_dims.size(), 2, "The src must be matrix with rank 2.");
+    PADDLE_ENFORCE(dst_dims.size(), 2, "The dst must be matrix with rank 2.");
+    PADDLE_ENFORCE_EQ(src_dims[1], dst_dims[1],
+                      "The width of src and dst must be same.");
+    auto height = dst_dims[0];
+    auto width = dst_dims[1];
+    auto* src_data = src.data<T>();
+    auto* dst_data = dst.data<T>();
+
+    dim3 threads(128, 8);
+    dim3 grid(8, 1);
+    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(context);
+    CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
+        src_data, dst_data, index, height, width);
+  }
+};
+
+template class CopyMatrixRowsFunctor<platform::GPUPlace, float>;
+template class CopyMatrixRowsFunctor<platform::GPUPlace, double>;
+
 template class LoDTensor2BatchFunctor<platform::GPUPlace, float>;
 template class Batch2LoDTensor2Functor<platform::GPUPlace, float>;
 
