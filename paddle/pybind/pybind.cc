@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
+#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
@@ -135,6 +137,32 @@ PYBIND11_PLUGIN(core) {
                  return v;
                });
            return new_lod;
+#endif
+      });
+
+  py::class_<SelectedRows>(m, "SelectedRows")
+      .def("__init__",
+           [](SelectedRows &instance) { new (&instance) SelectedRows(); })
+      .def("__init__",
+           [](SelectedRows &instance, const std::vector<int64_t> rows,
+              const int64_t &height) {
+             new (&instance) SelectedRows(rows, height);
+           })
+      .def("get_tensor",
+           [](SelectedRows &self) { return self.mutable_value(); },
+           py::return_value_policy::reference)
+      .def("set_height", &SelectedRows::set_height)
+      .def("height", &SelectedRows::height)
+      .def("set_rows", &SelectedRows::set_rows)
+      .def("rows", [](SelectedRows &self) {
+#ifndef PADDLE_WITH_CUDA
+        return self.rows();
+#else
+         auto rows = self.rows();
+         std::vector<int64_t> new_rows;
+         new_rows.reserve(rows.size());
+         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
+         return new_rows;
 #endif
       });
 
@@ -404,6 +432,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);
+  m.def("set_feed_variable_float", framework::SetFeedVariable<float>);
+  m.def("set_feed_variable_double", framework::SetFeedVariable<double>);
+  m.def("set_feed_variable_int", framework::SetFeedVariable<int>);
+  m.def("get_fetch_variable", framework::GetFetchVariable);
 
   BindProgramDesc(m);
   BindBlockDesc(m);
