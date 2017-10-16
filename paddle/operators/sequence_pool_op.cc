@@ -36,9 +36,10 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
   SequencePoolOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "A LoDTensor, the variable-length input of SequencePoolOp");
+    AddInput("X", "(LoDTensor), the variable-length input of SequencePoolOp");
     AddOutput("Out",
-              "A LoDTensor, the variable-length output of SequencePoolOp.");
+              "(Tensor), output of SequencePoolOp, which does not contain LoD "
+              "infomation.");
     AddAttr<int>(
         "strategy",
         "(int, default AVERAGE) the pooling strategy of SequencePoolOp.")
@@ -53,7 +54,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     Besides, for the sake of simplicity, we assume M=1 and N=1,
     and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-    Thus, Out is a [3,1,1] LoDTensor, but Out->lod() is nullptr.
+    Thus, Out is a [3,1,1] Tensor without LoD infomation.
     And for different strategy, the value of Out is as follows:
 
     - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2

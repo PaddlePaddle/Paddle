@@ -109,8 +109,8 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     int64_t w = in->numel() / dims[0];
 
     in_g->mutable_data<T>(context.GetPlace());
-    if (strategy > 2) {
-      // set X@Grad be zero at first when strategy is LAST/FIRST/MAX
+    if (strategy == LAST || strategy == FIRST) {
+      // set X@Grad be zero at first when strategy is LAST/FIRST
       math::SetConstant<Place, T>(context.device_context(), in_g, 0);
     }
     auto place = context.GetEigenDevice<Place>();
