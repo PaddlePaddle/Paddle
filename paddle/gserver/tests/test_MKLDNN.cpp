@@ -46,6 +46,7 @@ struct testFcDesc {
 
 static void getMKLDNNFcConfig(TestConfig& cfg, const testFcDesc& pm) {
   cfg.layerConfig.set_type("mkldnn_fc");
+  cfg.layerConfig.set_active_type("sigmoid");
   cfg.layerConfig.set_size(pm.oc);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
@@ -86,6 +87,7 @@ struct testConvDesc {
 
 static void getMKLDNNConvConfig(TestConfig& cfg, const testConvDesc& pm) {
   cfg.layerConfig.set_type("mkldnn_conv");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.set_num_filters(pm.oc);
   cfg.layerConfig.set_size(pm.oc * pm.oh * pm.ow);
   cfg.layerConfig.set_shared_biases(true);
@@ -158,6 +160,7 @@ struct testPoolDesc {
 
 static void getMKLDNNPoolConfig(TestConfig& cfg, const testPoolDesc& pm) {
   cfg.layerConfig.set_type("mkldnn_pool");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.set_size(pm.ic * pm.oh * pm.ow);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
