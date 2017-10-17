@@ -46,7 +46,7 @@ bool IsTarget(const OpDesc& op_desc) {
   return false;
 }
 
-void Prune(const ProgramDesc& input, ProgramDesc& output, int block_id) {
+void prune_impl(const ProgramDesc& input, ProgramDesc& output, int block_id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 
@@ -99,8 +99,10 @@ void Prune(const ProgramDesc& input, ProgramDesc& output, int block_id) {
       *op_field->Add() = input.blocks(block_id).ops(i);
     }
   }
+}
 
-  // return should_run;
+void Prune(const ProgramDesc& input, ProgramDesc& output) {
+  prune_impl(input, output, 0);
 }
 
 }  // namespace framework
