@@ -83,13 +83,6 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
     endif()
 
-    # save_restore_op contains several operators
-    if ("${TARGET}" STREQUAL "save_restore_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(save);\n")
-    endif()
-
     # pybind USE_NO_KERNEL_OP
     # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
     file(READ ${TARGET}.cc TARGET_CONTENT)
