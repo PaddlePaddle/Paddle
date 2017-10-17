@@ -88,6 +88,9 @@ int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
 
+#if !defined(__arm__) && !defined(__aarch64__)
+  // TODO(liuyiqun) : implement the iOS version
   feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
+#endif
   return RUN_ALL_TESTS();
 }

@@ -9,7 +9,6 @@ function(target_circle_link_libraries TARGET_NAME)
     if(APPLE)
         set(LIBS)
         set(inArchive OFF)
-        set(libsInArgn)
 
         foreach(arg ${ARGN})
             if(${arg} STREQUAL "ARCHIVE_START")
@@ -21,7 +20,6 @@ function(target_circle_link_libraries TARGET_NAME)
                     list(APPEND LIBS "-Wl,-force_load")
                 endif()
                 list(APPEND LIBS ${arg})
-                list(APPEND libsInArgn ${arg})
             endif()
         endforeach()
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
@@ -29,11 +27,7 @@ function(target_circle_link_libraries TARGET_NAME)
                 list(APPEND LIBS "-undefined dynamic_lookup")
             endif()
         endif()
-        list(REVERSE libsInArgn)
-        target_link_libraries(${TARGET_NAME}
-            ${LIBS}
-            ${libsInArgn})
-
+        target_link_libraries(${TARGET_NAME} ${LIBS})
     else()  # LINUX
         set(LIBS)
 

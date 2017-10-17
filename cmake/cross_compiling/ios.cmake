@@ -247,7 +247,8 @@ endif()
 
 set(IOS_COMPILER_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} ${XCODE_IOS_BITCODE_FLAGS}")
 
-# Hidden visibilty is required for cxx on iOS 
+# Hidden visibilty is required for c++ on iOS.
+# Remove -fvisibility=hidden because warp-ctc failed with it.
 set(CMAKE_C_FLAGS "${IOS_COMPILER_FLAGS} ${CMAKE_C_FLAGS}" CACHE STRING "C flags")
 set(CMAKE_CXX_FLAGS "${IOS_COMPILER_FLAGS} -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}" CACHE STRING "CXX flags")
 
@@ -266,10 +267,10 @@ if(IOS_USE_VECLIB_FOR_BLAS)
 
   if(VECLIB_FOUND)
     if(VECLIB_INC_DIR MATCHES "^/System/Library/Frameworks/vecLib.framework.*")
-      set(IOS_LINK_FLAGS ${IOS_LINK_FLAGS} -lcblas "-framework vecLib")
+      set(IOS_LINK_FLAGS "${IOS_LINK_FLAGS} -framework vecLib")
       message(STATUS "Found standalone vecLib.framework")
     else()
-      set(IOS_LINK_FLAGS ${IOS_LINK_FLAGS} -lcblas "-framework Accelerate")
+      set(IOS_LINK_FLAGS "${IOS_LINK_FLAGS} -framework Accelerate")
       message(STATUS "Found vecLib as part of Accelerate.framework")
     endif()
 
@@ -278,6 +279,7 @@ endif()
 
 set(CMAKE_C_LINK_FLAGS "${IOS_LINK_FLAGS} ${CMAKE_C_LINK_FLAGS}")
 set(CMAKE_CXX_LINK_FLAGS "${IOS_LINK_FLAGS} ${CMAKE_CXX_LINK_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${IOS_LINK_FLAGS} ${CMAKE_EXE_LINKER_FLAGS}")
 
 set(CMAKE_PLATFORM_HAS_INSTALLNAME 1)
 if(NOT IOS_ENABLE_BITCODE)

@@ -20,6 +20,7 @@ limitations under the License. */
 #if (defined(__APPLE__) || defined(__OSX__)) && !defined(__arm__) && \
     !defined(__aarch64__)
 
+// TODO(liuyiqun): implement the iOS version
 int fegetexcept(void);
 int feenableexcept(unsigned int excepts);
 int fedisableexcept(unsigned int excepts);
