@@ -61,7 +61,7 @@ param_out = param - learning_rate * grad;
 
 template <typename T>
 struct SparseSGDFunctor<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& ctx,
+  void operator()(const platform::DeviceContext& context,
                   const framework::SelectedRows& input,
                   const framework::Tensor& learning_rate,
                   framework::Tensor* output) {

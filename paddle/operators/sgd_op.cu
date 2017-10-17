@@ -34,15 +34,15 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
   for (int index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    paddle::platform::CudaAtomicSub(tensor_out + index,
-                                    learning_rate[0] * selected_rows[index]);
+    paddle::platform::CudaAtomicAdd(
+        tensor_out + index, -1.0 * learning_rate[0] * selected_rows[index]);
   }
 }
 }  // namespace
 
 template <typename T>
 struct SparseSGDFunctor<platform::GPUPlace, T> {
-  void operator()(const platform::DeviceContext& ctx,
+  void operator()(const platform::DeviceContext& context,
                   const framework::SelectedRows& input,
                   const framework::Tensor& learning_rate,
                   framework::Tensor* output) {

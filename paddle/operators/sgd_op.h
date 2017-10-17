@@ -22,7 +22,7 @@ namespace operators {
 
 template <typename Place, typename T>
 struct SparseSGDFunctor {
-  void operator()(const platform::DeviceContext& ctx,
+  void operator()(const platform::DeviceContext& context,
                   const framework::SelectedRows& input,
                   const framework::Tensor& learning_rate,
                   framework::Tensor* output);
