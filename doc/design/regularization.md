@@ -6,17 +6,17 @@ A central problem in machine learning is how to design an algorithm that will pe
 ### Parameter Norm Penalties
 Most common regularization approaches in deep learning are based on limiting the capacity of the models by adding a parameter norm penalty to the objective function `J`. This is given as follows:
 
-<img src="http://bit.ly/2zt9OJY" align="center"/><br/>
+<img src="./images/loss_equation.png" align="center"/><br/>
 
 The parameter `alpha` is a hyperparameter that weights the relative contribution of the norm penalty term, `omega`, relative to the standard objective function `J`.
 
 The most commonly used norm penalties are the L2 norm penalty and the L1 norm penalty. These are given as follows:
 
 ##### L2 Regularization:
-<img src="http://bit.ly/2yo9Rcp" align="center"/><br/>
+<img src="./images/l2_regularization.png" align="center"/><br/>
 
 ##### L1 Regularization
-<img src="http://bit.ly/2zu4shg" align="center"/><br/>
+<img src="./images/l1_regularization.png" align="center"/><br/>
 
 A much more detailed mathematical background of reguilarization can be found [here](http://www.deeplearningbook.org/contents/regularization.html).
 
