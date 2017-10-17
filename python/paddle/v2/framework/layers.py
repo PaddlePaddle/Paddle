@@ -24,6 +24,10 @@ def fc_layer(input,
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
         param_shape = list(input_shape[num_flatten_dims:]) + [size]
+
+        #import pdb
+        # pdb.set_trace()
+
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype)
         tmp = helper.create_tmp_variable(dtype)

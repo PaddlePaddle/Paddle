@@ -38,8 +38,6 @@ class TestBook(unittest.TestCase):
         self.assertIsNotNone(avg_cost)
         print str(program)
 
-
-class TestBook(unittest.TestCase):
     def test_simple_conv2d(self):
         pd = core.ProgramDesc.__create_program_desc__()
         program = Program(desc=pd)

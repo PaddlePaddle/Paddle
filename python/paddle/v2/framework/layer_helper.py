@@ -66,7 +66,7 @@ class LayerHelper(object):
         actual = self.kwargs.get('param_attr', None)
         return actual if actual is not None else default
 
-    def bias_attr(self, size, dtype):
+    def bias_attr(self, shape, dtype):
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
             bias_attr = {
@@ -74,7 +74,7 @@ class LayerHelper(object):
                 'init_attr': {
                     'type': 'fill_constant',
                     'value': 0.0,
-                    'shape': [size],
+                    'shape': shape,
                     'dataType': dtype
                 }
             }
@@ -127,10 +127,11 @@ class LayerHelper(object):
         return self.program.global_block().create_var(*args, **kwargs)
 
     def append_bias_op(self, input_var):
-        size = input_var.shape[1:]
+        size = list(input_var.shape[1:])
         bias_attr = self.bias_attr(size, dtype=input_var.data_type)
         if not bias_attr:
             return input_var
+
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.data_type, suffix='b')
         tmp = self.create_tmp_variable(dtype=input_var.data_type)
