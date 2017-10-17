@@ -39,6 +39,13 @@ bool HasDependentVar(const OpDesc& op_desc,
   return false;
 }
 
+bool IsTarget(const OpDesc& op_desc) {
+  if (op_desc.has_is_target()) {
+    return op_desc.is_target();
+  }
+  return false;
+}
+
 void Prune(const ProgramDesc& input, ProgramDesc& output, int block_id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
@@ -66,7 +73,7 @@ void Prune(const ProgramDesc& input, ProgramDesc& output, int block_id) {
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
 
-    if (op_desc.is_target() || HasDependentVar(op_desc, dependent_vars)) {
+    if (IsTarget(op_desc) || HasDependentVar(op_desc, dependent_vars)) {
       // insert its input to the dependency graph
       for (auto& var : op_desc.inputs()) {
         for (auto& argu : var.arguments()) {
