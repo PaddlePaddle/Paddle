@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-TRAVIS_BRANCH="develop"
+#TRAVIS_BRANCH="develop"
 rm CMakeLists.txt
 mv CMakeLists.doc.txt CMakeLists.txt
 
@@ -36,6 +36,8 @@ echo "moved!!!"
 # copy generated content for debug purpose
 #rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ ubuntu@52.76.173.135:/tmp
 
+#TRAVIS_BUILD_DIR='/Users/ludaming/Baidu_USA_DamingLu/'
+
 # pull PaddlePaddle.org app and strip
 # https://github.com/PaddlePaddle/PaddlePaddle.org/archive/master.zip
 curl -LOk https://github.com/PaddlePaddle/PaddlePaddle.org/archive/master.zip
@@ -43,15 +45,33 @@ unzip master.zip
 cd PaddlePaddle.org-master/
 cd portal/
 
+echo "sudo pip"
 sudo pip install -r requirements.txt
+
+if [ -d ./tmp ]
+then
+    rm -rf ./tmp
+fi
 mkdir ./tmp
+
+echo "show compiled doc"
+pwd $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
+ls -alt $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
+
+echo "TRAVIS_BRANCH"
+echo $TRAVIS_BRANCH
+
 python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp documentation
+#python manage.py deploy_documentation /Users/ludaming/Baidu_USA_DamingLu/build_docs_versioned/develop $TRAVIS_BRANCH ./tmp documentation
 
+echo "test sync >>>"
 rsync -r ./tmp ubuntu@52.76.173.135:/tmp
+echo "test sync <<<"
 
-echo "stripped!!!"
-ls ./tmp
+echo "stripped!!!>>>"
+ls -alt ./tmp
 cd ../..
+echo "stripped!!!<<<"
 
 rsync -r PaddlePaddle.org-master/portal/tmp/ ubuntu@52.76.173.135:/var/content_staging/docs
 #rsync -a --rsync-path="mkdir -p /var/content_staging/docs/$TRAVIS_BRANCH/documentation && rsync" PaddlePaddle.org-master/portal/tmp/$TRAVIS_BRANCH ubuntu@52.76.173.135:/var/content_staging/docs/$TRAVIS_BRANCH/documentation
