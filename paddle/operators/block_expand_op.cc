@@ -23,6 +23,7 @@ class BlockExpandOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
+    printf("op infershape\n");
     using namespace framework;
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input of BlockExpandOp should not be null.");
@@ -33,6 +34,7 @@ class BlockExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(in_dim.size(), 4, "Input format  must be NCHW.");
     PADDLE_ENFORCE_GE(in_dim[0], 1, "Input batchsize must >= 1.");
 
+    printf("op infershape2\n");
     int block_height = ctx->Attrs().Get<int>("blockHeight");
     int block_width = ctx->Attrs().Get<int>("blockWidth");
     int stride_height = ctx->Attrs().Get<int>("strideHeight");
@@ -42,8 +44,8 @@ class BlockExpandOp : public framework::OperatorWithKernel {
 
     int N = in_dim[0];
     int C = in_dim[1];
-    int img_height = in_dim[3];
-    int img_width = in_dim[4];
+    int img_height = in_dim[2];
+    int img_width = in_dim[3];
 
     int output_height = 0;
     int output_width = 0;
@@ -58,6 +60,8 @@ class BlockExpandOp : public framework::OperatorWithKernel {
     // reshape into [seqLength, stepSize], where seqLength is equal
     // output_height * output_width, stepSize is equal
     // input_channels * blockHeight * blockWidth
+    printf("N:%d, o_h:%d o_w:%d C:%d b_h:%d b_w:%d\n", N, output_height,
+           output_width, C, block_height, block_width);
     ctx->SetOutputDim(
         "Out", {N, output_height, output_width, C, block_height, block_width});
 
@@ -77,6 +81,7 @@ class BlockExpandOpMaker : public framework::OpProtoAndCheckerMaker {
     H: height
     W: width
 )DOC");
+    printf("opmakeer\n");
     AddOutput("Out", "(LodTensor)The output data of block_expand op,");
     AddAttr<int>("blockHeight", "(int)height of block.");
     AddAttr<int>("blockWidth", "(int)width of block.");

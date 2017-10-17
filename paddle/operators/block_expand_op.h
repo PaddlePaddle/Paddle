@@ -44,7 +44,7 @@ class BlockExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using namespace framework;
-    const Tensor* in = ctx.Input<Tensor>("input");
+    const Tensor* in = ctx.Input<Tensor>("X");
     Tensor* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -68,7 +68,11 @@ class BlockExpandKernel : public framework::OpKernel<T> {
         img_height, img_width, block_height, block_width, stride_height,
         stride_width, padding_height, padding_width, outputHeight, outputWidth);
 
+    printf("N:%d, o_h:%d o_w:%d C:%d b_h:%d b_w:%d\n", N, outputHeight,
+           outputWidth, C, block_height, block_width);
+
     for (int i = 0; i < N; i++) {
+      printf("i:%d\n", i);
       Tensor src = in->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
       Tensor dst = out->Slice<T>(i, i + 1).Resize(
           {outputHeight, outputWidth, C, block_height, block_width});
@@ -108,6 +112,9 @@ class BlockExpandGradKernel : public framework::OpKernel<T> {
     get_blockexpand_output_shape(
         img_height, img_width, block_height, block_width, stride_height,
         stride_width, padding_height, padding_width, outputHeight, outputWidth);
+
+    printf("N:%d, o_h:%d o_w:%d C:%d b_h:%d b_w:%d\n", N, outputHeight,
+           outputWidth, C, block_height, block_width);
 
     for (int i = 0; i < N; i++) {
       Tensor dst =
