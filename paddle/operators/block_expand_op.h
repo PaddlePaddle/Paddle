@@ -68,11 +68,7 @@ class BlockExpandKernel : public framework::OpKernel<T> {
         img_height, img_width, block_height, block_width, stride_height,
         stride_width, padding_height, padding_width, outputHeight, outputWidth);
 
-    printf("N:%d, o_h:%d o_w:%d C:%d b_h:%d b_w:%d\n", N, outputHeight,
-           outputWidth, C, block_height, block_width);
-
     for (int i = 0; i < N; i++) {
-      printf("i:%d\n", i);
       Tensor src = in->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
       Tensor dst = out->Slice<T>(i, i + 1).Resize(
           {outputHeight, outputWidth, C, block_height, block_width});
@@ -89,9 +85,12 @@ class BlockExpandGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using namespace framework;
     auto* in = ctx.Input<Tensor>("X");
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* out_grad = ctx.Output<Tensor>(GradVarName("Out"));
-    out_grad->mutable_data<T>(ctx.GetPlace());
+    auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_x = ctx.Output<Tensor>(GradVarName("X"));
+    d_x->mutable_data<T>(ctx.GetPlace());
+
+    auto x_v = framework::EigenVector<T>::Flatten(*d_x);
+    x_v.device(ctx.GetEigenDevice<Place>()) = x_v.constant(0.0);
 
     auto in_dim = in->dims();
     int N = in_dim[0];
@@ -113,16 +112,12 @@ class BlockExpandGradKernel : public framework::OpKernel<T> {
         img_height, img_width, block_height, block_width, stride_height,
         stride_width, padding_height, padding_width, outputHeight, outputWidth);
 
-    printf("N:%d, o_h:%d o_w:%d C:%d b_h:%d b_w:%d\n", N, outputHeight,
-           outputWidth, C, block_height, block_width);
-
     for (int i = 0; i < N; i++) {
-      Tensor dst =
-          out_grad->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
-      Tensor src = out->Slice<T>(i, i + 1).Resize(
+      Tensor dst = d_x->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
+      Tensor src = d_out->Slice<T>(i, i + 1).Resize(
           {outputHeight, outputWidth, C, block_height, block_width});
-      math::Im2ColFunctor<math::ColFormat::kOCF, Place, T> f;
-      f(ctx.device_context(), src, dst, stride_height, stride_width,
+      math::Col2ImFunctor<math::ColFormat::kOCF, Place, T> f;
+      f(ctx.device_context(), dst, src, stride_height, stride_width,
         padding_height, padding_width);
     }
   }

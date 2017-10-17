@@ -113,16 +113,30 @@ def col2img(attrs, col, img):
                                 col[col_row_idx][col_col_idx][channel][filter_row_idx][filter_col_idx]
 
 
-class TestBlockExpandMulOp(OpTest):
+class TestBlockExpandOp(OpTest):
+    def get_input_data(self, C, H, W):
+        x = np.random.uniform(0.1, 1, [C, H, W]).astype("float32")
+        for c in range(0, C):
+            for h in range(0, H):
+                for w in range(0, W):
+                    #x[c][h][w] = c * H * W + h *W + w
+                    x[c][h][w] = 0.2 + 0.01 * (c * H * W + h * W + w)
+        return x
+
     def setUp(self):
-        x = np.random.uniform(0.1, 1, [3, 9, 9]).astype("float32")
+        C = 3
+        H = 4
+        W = 4
+        x = self.get_input_data(C, H, W)
+        #print x
+
         attrs = {
-            'blockHeight': 3,
-            'blockWidth': 3,
-            'strideHeight': 2,
-            'strideWidth': 2,
-            'paddingHeight': 3,
-            'paddingWidth': 3,
+            'blockHeight': 2,
+            'blockWidth': 2,
+            'strideHeight': 1,
+            'strideWidth': 1,
+            'paddingHeight': 1,
+            'paddingWidth': 1,
         }
 
         outputHeight, outputWidth = get_output_shape(attrs, x)
@@ -131,7 +145,7 @@ class TestBlockExpandMulOp(OpTest):
                      attrs['blockHeight'], attrs['blockWidth']]).astype("float32")
 
         self.op_type = "block_expand"
-        self.inputs = {'X': x.reshape(1, 3, 9, 9)}
+        self.inputs = {'X': x.reshape(1, C, H, W)}
         self.attrs = attrs
 
         im2col(attrs, x, out)
@@ -139,16 +153,14 @@ class TestBlockExpandMulOp(OpTest):
             'Out':out.reshape(1, outputHeight, outputWidth, x.shape[0], \
                      attrs['blockHeight'], attrs['blockWidth'])
             }
-        #print out
 
+    """
     def test_check_output(self):
         self.check_output()
-        print 1
+    """
 
-    """
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
-    """
+        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
 if __name__ == '__main__':
