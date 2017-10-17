@@ -37,7 +37,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
     auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
     auto* grad_var = ctx.InputVar("Grad");
-    if (grad_var->IsType<framework::Tensor>()) {
+    // Actually, all tensors are LoDTensor except SelectedRows.
+    if (grad_var->IsType<framework::LoDTensor>()) {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
 

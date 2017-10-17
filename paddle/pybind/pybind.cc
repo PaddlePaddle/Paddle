@@ -186,6 +186,11 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_selected_rows",
+           [](Variable &self) -> SelectedRows * {
+             return self.GetMutable<SelectedRows>();
+           },
+           py::return_value_policy::reference)
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
