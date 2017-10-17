@@ -135,7 +135,7 @@ public:
   const std::string& getName() const { return subModelName_; }
 
   /// some finish work, like convert the weight format of MKLDNNLayers
-  void finish() override;
+  void finish();
 
 protected:
   /**
