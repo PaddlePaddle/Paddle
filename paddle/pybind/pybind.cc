@@ -110,6 +110,7 @@ PYBIND11_PLUGIN(core) {
              new (&instance) LoDTensor(new_lod);
 #endif
           })
+      .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
 #ifndef PADDLE_WITH_CUDA
