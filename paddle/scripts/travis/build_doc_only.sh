@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-
+TRAVIS_BRANCH="develop"
 rm CMakeLists.txt
 mv CMakeLists.doc.txt CMakeLists.txt
 
@@ -22,9 +22,18 @@ mkdir -p $TRAVIS_BUILD_DIR/build_docs/cn
 mv doc/en/* $TRAVIS_BUILD_DIR/build_docs/en/
 mv doc/cn/* $TRAVIS_BUILD_DIR/build_docs/cn/
 
+# deploy to remote server
+openssl aes-256-cbc -d -a -in $TRAVIS_BUILD_DIR/paddle/scripts/travis/ubuntu.pem.enc -out ubuntu.pem -k $DEC_PASSWD
+
+eval "$(ssh-agent -s)"
+chmod 400 ubuntu.pem
+
+ssh-add ubuntu.pem
 
 mkdir -p $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH
 mv $TRAVIS_BUILD_DIR/build_docs/* $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
+
+rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ ubuntu@52.76.173.135:/tmp
 
 echo "moved: $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/"
 ls $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
@@ -49,13 +58,7 @@ ls ./tmp/$TRAVIS_BRANCH/
 
 cd ../..
 
-# deploy to remote server
-openssl aes-256-cbc -d -a -in $TRAVIS_BUILD_DIR/paddle/scripts/travis/ubuntu.pem.enc -out ubuntu.pem -k $DEC_PASSWD
 
-eval "$(ssh-agent -s)"
-chmod 400 ubuntu.pem
-
-ssh-add ubuntu.pem
 
 rsync -r PaddlePaddle.org-master/portal/tmp/ ubuntu@52.76.173.135:/var/content_staging/docs
 #rsync -a --rsync-path="mkdir -p /var/content_staging/docs/$TRAVIS_BRANCH/documentation && rsync" PaddlePaddle.org-master/portal/tmp/$TRAVIS_BRANCH ubuntu@52.76.173.135:/var/content_staging/docs/$TRAVIS_BRANCH/documentation
