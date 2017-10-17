@@ -1,4 +1,4 @@
-from paddle.v2.framework.layers import fc_layer, data_layer, cross_entropy, mean, square_error_cost
+from paddle.v2.framework.layers import fc_layer, data_layer, cross_entropy, mean, square_error_cost, conv2d_layer
 from paddle.v2.framework.framework import Program, g_program
 import paddle.v2.framework.core as core
 import unittest
@@ -36,6 +36,18 @@ class TestBook(unittest.TestCase):
         cost = cross_entropy(input=predict, label=label, program=program)
         avg_cost = mean(x=cost, program=program)
         self.assertIsNotNone(avg_cost)
+        print str(program)
+
+
+class TestBook(unittest.TestCase):
+    def test_simple_conv2d(self):
+        pd = core.ProgramDesc.__create_program_desc__()
+        program = Program(desc=pd)
+        images = data_layer(
+            name='pixel', shape=[3, 48, 48], data_type='int32', program=program)
+        conv2d_layer(
+            input=images, num_filters=3, filter_size=[4, 4], program=program)
+
         print str(program)
 
 

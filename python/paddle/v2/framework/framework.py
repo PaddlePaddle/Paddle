@@ -232,7 +232,7 @@ class Operator(object):
         if attrs is not None:
             for attr in proto.attrs:
                 attr_name = attr.name
-                if not attr_name in attrs:
+                if (not attr_name in attrs) or (attrs[attr_name] is None):
                     continue
                 if not isinstance(attrs[attr_name], Block):
                     self.desc.set_attr(attr_name, attrs[attr_name])
