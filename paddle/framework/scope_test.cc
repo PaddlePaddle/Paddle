@@ -23,8 +23,8 @@ TEST(Scope, VarsShadowing) {
   Scope& ss1 = s.NewScope();
   Scope& ss2 = s.NewScope();
 
-  Variable* v0 = s.NewVar("a");
-  Variable* v1 = ss1.NewVar("a");
+  Variable* v0 = s.Var("a");
+  Variable* v1 = ss1.Var("a");
 
   EXPECT_NE(v0, v1);
 
@@ -40,7 +40,7 @@ TEST(Scope, FindVar) {
   EXPECT_EQ(nullptr, s.FindVar("a"));
   EXPECT_EQ(nullptr, ss.FindVar("a"));
 
-  ss.NewVar("a");
+  ss.Var("a");
 
   EXPECT_EQ(nullptr, s.FindVar("a"));
   EXPECT_NE(nullptr, ss.FindVar("a"));
@@ -49,7 +49,7 @@ TEST(Scope, FindVar) {
 TEST(Scope, FindScope) {
   Scope s;
   Scope& ss = s.NewScope();
-  Variable* v = s.NewVar("a");
+  Variable* v = s.Var("a");
 
   EXPECT_EQ(&s, s.FindScope(v));
   EXPECT_EQ(&s, ss.FindScope(v));

@@ -53,7 +53,7 @@ template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
           cudaStream_t stream);
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace memory
 }  // namespace paddle

@@ -34,6 +34,13 @@ struct DySeqMeta {
   size_t ori_idx;
 };
 
+using DySeqMetaBatch = std::vector<DySeqMeta>;
+
+/*
+ * Extract the indices of instances.
+ */
+std::vector<size_t> GenDyBatchIndice(const DySeqMetaBatch &metas, int batch_id);
+
 /*
  * TensorArray is a C-array-like array of tensors, it is meant to be used with
  * dynamic iteration primitives such as while_loop. It is used to segment inputs
@@ -69,7 +76,7 @@ class TensorArray {
    * Recover the original LoD-arranged LoDTensor with the `values`, `level` and
    * `indice_map`.
    */
-  LoDTensor Pack(size_t level, const std::vector<DySeqMeta> &meta,
+  LoDTensor Pack(size_t level, const DySeqMetaBatch &meta,
                  const LoD &lod) const;
 
   /*
@@ -77,8 +84,7 @@ class TensorArray {
    * `values`, if set `desend`, will sort by length in descending order else in
    * ascending order.
    */
-  std::vector<DySeqMeta> Unpack(const LoDTensor &source, int level,
-                                bool length_desend);
+  DySeqMetaBatch Unpack(const LoDTensor &source, int level, bool length_desend);
 
   /*
    * Pack the values into a tensor with rank one higher than each tensor in
@@ -87,12 +93,12 @@ class TensorArray {
   LoDTensor Stack() const;
 
   /*
-   * Unpacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors.
+   * Unstacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors.
    */
   void Unstack(const LoDTensor &source) const;
 
   /*
-   * Unpacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors,
+   * Unstacks the given division of a rank-`R` tensor into rank-`(R-1)` tensors,
    * with memory of tensors shared.
    */
   void UnstackShared(const LoDTensor &source) const;

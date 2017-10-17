@@ -40,7 +40,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     f::DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
-          step_scopes[j]->NewVar(inlinks[i])->GetMutable<Tensor>();
+          step_scopes[j]->Var(inlinks[i])->GetMutable<Tensor>();
       // The input of operators of each step is Tensor here.
       // Maybe need to modify Slice function.
       *step_input = input->Slice<float>(j, j + 1);
@@ -51,7 +51,7 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
 
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& outlinks,
-                   const size_t seq_len) {
+                   const size_t seq_len, const platform::DeviceContext& ctx) {
   for (size_t i = 0; i < outlinks.size(); i++) {
     auto* output_var = step_scopes[0]->parent().FindVar(outlinks[i]);
     PADDLE_ENFORCE_NOT_NULL(output_var, "output link [%s] is not in scope.",
@@ -72,7 +72,7 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
       // TODO(luotao02) data type and platform::DeviceContext() should set
       // correctly
       (output->Slice<float>(j, j + 1))
-          .CopyFrom<float>(*step_output, platform::CPUPlace());
+          .CopyFrom<float>(*step_output, platform::CPUPlace(), ctx);
     }
   }
 }
