@@ -79,20 +79,7 @@ class OpRegistry {
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
-  static std::vector<std::unique_ptr<OpDescBind>> CreateGradOpDescs(
-      OpDescBind* op_desc);
-
   static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
-};
-
-template <typename OpType, typename ProtoMakerType, typename GradOpType>
-class OpRegistrar : public Registrar {
- public:
-  explicit OpRegistrar(const char* op_type) { OpRegistrar(op_type, ""); }
-  OpRegistrar(const char* op_type, const char* grad_op_type) {
-    OpRegistry::RegisterOp<OpType, ProtoMakerType, GradOpType>(op_type,
-                                                               grad_op_type);
-  }
 };
 
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
@@ -160,17 +147,18 @@ class OpKernelRegistrar : public Registrar {
 /**
  * Macro to register Operator.
  */
-#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type,           \
-                    grad_op_class)                                             \
-  REGISTER_OPERATOR(grad_op_type, grad_op_class);                              \
-  class _GradOpDescMaker_##grad_op_type##_                                     \
-      : public ::paddle::framework::DefaultGradOpDescMaker {                   \
-    using ::paddle::framework::DefaultGradOpDescMaker::DefaultGradOpDescMaker; \
-                                                                               \
-   protected:                                                                  \
-    virtual std::string GradOpType() const { return #grad_op_type; }           \
-  };                                                                           \
-  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_,     \
+#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type,       \
+                    grad_op_class)                                         \
+  REGISTER_OPERATOR(grad_op_type, grad_op_class);                          \
+  class _GradOpDescMaker_##grad_op_type##_                                 \
+      : public ::paddle::framework::DefaultGradOpDescMaker<true> {         \
+    using ::paddle::framework::DefaultGradOpDescMaker<                     \
+        true>::DefaultGradOpDescMaker;                                     \
+                                                                           \
+   protected:                                                              \
+    virtual std::string GradOpType() const { return #grad_op_type; }       \
+  };                                                                       \
+  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_, \
                     op_maker_class);
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \

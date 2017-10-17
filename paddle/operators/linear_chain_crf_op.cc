@@ -120,7 +120,6 @@ class LinearChainCrfOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Emission"),
                    "Input(Emission) should be not null.");
@@ -165,6 +164,7 @@ class LinearChainCrfOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("LogLikelihood", {emission_dims[0], 1});
   }
 
+ protected:
   // Explicitly set that the data type of output of the linear_chain_crf
   // operator is determined by its input "Emission".
   framework::DataType IndicateDataType(
@@ -208,9 +208,9 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
     transition_exps.mutable_data<T>(transition_weights->dims(),
                                     platform::CPUPlace());
 
-    auto* alpha = ctx.Output<Tensor>("Alpha");
+    auto* alpha = ctx.Output<LoDTensor>("Alpha");
     alpha->mutable_data<T>(ctx.GetPlace());
-    auto* ll = ctx.Output<Tensor>("LogLikelihood");
+    auto* ll = ctx.Output<LoDTensor>("LogLikelihood");
     // resize the output tensor to the correct dimension.
     ll->Resize({static_cast<int>(seq_num), 1});
     T* log_likelihood = ll->mutable_data<T>(ctx.GetPlace());
@@ -324,7 +324,6 @@ class LinearChainCrfGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
 };
 
