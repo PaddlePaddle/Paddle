@@ -33,10 +33,8 @@ ssh-add ubuntu.pem
 mkdir -p $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH
 mv $TRAVIS_BUILD_DIR/build_docs/* $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
 
-rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ ubuntu@52.76.173.135:/tmp
-
-echo "moved: $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/"
-ls $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
+# copy generated content for debug purpose
+#rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ ubuntu@52.76.173.135:/tmp
 
 # pull PaddlePaddle.org app and strip
 # https://github.com/PaddlePaddle/PaddlePaddle.org/archive/master.zip
@@ -46,19 +44,10 @@ cd PaddlePaddle.org-master/
 cd portal/
 
 sudo pip install -r requirements.txt
-mkdir ./tmp/
-mkdir ./tmp/$TRAVIS_BRANCH/
-python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp
-
-echo './tmp/'
-ls ./tmp/
-
-echo "./tmp/$TRAVIS_BRANCH/"
-ls ./tmp/$TRAVIS_BRANCH/
+mkdir ./tmp
+python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp documentation
 
 cd ../..
-
-
 
 rsync -r PaddlePaddle.org-master/portal/tmp/ ubuntu@52.76.173.135:/var/content_staging/docs
 #rsync -a --rsync-path="mkdir -p /var/content_staging/docs/$TRAVIS_BRANCH/documentation && rsync" PaddlePaddle.org-master/portal/tmp/$TRAVIS_BRANCH ubuntu@52.76.173.135:/var/content_staging/docs/$TRAVIS_BRANCH/documentation
