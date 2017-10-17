@@ -86,11 +86,14 @@ void matmul(const platform::DeviceContext& context,
             framework::Tensor* matrix_out, T beta);
 
 template <typename Place, typename T>
-void SetConstant(const platform::DeviceContext& context,
-                 framework::Tensor* tensor, T num) {
-  auto t = framework::EigenVector<T>::Flatten(*tensor);
-  t.device(*context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(num));
-}
+struct SetConstant {
+  void operator()(const platform::DeviceContext& context,
+                  framework::Tensor* tensor, T num) {
+    auto t = framework::EigenVector<T>::Flatten(*tensor);
+    t.device(*context.GetEigenDevice<Place>()) =
+        t.constant(static_cast<T>(num));
+  }
+};
 
 }  // namespace math
 }  // namespace operators

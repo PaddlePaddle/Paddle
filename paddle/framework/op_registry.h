@@ -82,16 +82,6 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
 };
 
-template <typename OpType, typename ProtoMakerType, typename GradOpType>
-class OpRegistrar : public Registrar {
- public:
-  explicit OpRegistrar(const char* op_type) { OpRegistrar(op_type, ""); }
-  OpRegistrar(const char* op_type, const char* grad_op_type) {
-    OpRegistry::RegisterOp<OpType, ProtoMakerType, GradOpType>(op_type,
-                                                               grad_op_type);
-  }
-};
-
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor;
 

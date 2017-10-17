@@ -153,7 +153,8 @@ class OpProtoHolder(object):
             self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):
-        assert type in self.op_proto_map, "Operator \"%s\" has not been registered." % type
+        if type not in self.op_proto_map:
+            raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
 
 
@@ -381,10 +382,10 @@ class Program(object):
             cls._instance = cls()
         return cls._instance
 
-    def __init__(self):
-        assert not hasattr(self.__class__,
-                           '_instance'), 'Do not call constructor directly!'
-        self.desc = core.ProgramDesc.instance()
+    def __init__(self, desc=None):
+        if desc is None:
+            desc = core.ProgramDesc.instance()
+        self.desc = desc
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
         self.parameters = []  # parameter name list stored in the global scope
@@ -442,7 +443,6 @@ class Parameter(Variable):
             if each < 0:
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
-
         Variable.__init__(self, block, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
         self.init_attr = kwargs.get('initialize_attr', {
@@ -455,7 +455,7 @@ class Parameter(Variable):
         self._append_initialize_ops_()
 
     def _append_initialize_ops_(self):
-        attr = copy.deepcopy(self.init_attr)
+        attr = self.init_attr
         op_type = attr.pop('type', None)
         block = self.block
         assert isinstance(block, Block)
