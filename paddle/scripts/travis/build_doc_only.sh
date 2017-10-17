@@ -65,7 +65,7 @@ python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TR
 #python manage.py deploy_documentation /Users/ludaming/Baidu_USA_DamingLu/build_docs_versioned/develop $TRAVIS_BRANCH ./tmp documentation
 
 echo "test sync >>>"
-ls -alt
+ls -alt ./stripped_doc
 rsync -r ./stripped_doc ubuntu@52.76.173.135:/tmp
 echo "test sync <<<"
 
