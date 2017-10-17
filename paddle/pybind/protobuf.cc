@@ -229,7 +229,8 @@ void BindVarDsec(py::module &m) {
 
   py::enum_<VarDesc::VarType>(var_desc, "VarType", "")
       .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
-      .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS);
+      .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS)
+      .value("FEED_FETCH_LIST", VarDesc::FEED_FETCH_LIST);
 }
 
 void BindOpDesc(py::module &m) {
