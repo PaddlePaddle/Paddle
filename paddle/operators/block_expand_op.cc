@@ -109,7 +109,18 @@ class BlockExpandGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    using namespace framework;
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output of BlockExpandOp op should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+
+    auto in_dim = ctx->GetInputDim("X");
+
+    ctx->SetOutputDim(GradVarName("Out"), in_dim);
+  }
 };
 
 }  // namespace operators
@@ -117,7 +128,7 @@ class BlockExpandGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(block_expand, ops::BlockExpandOp, ops::BlockExpandOpMaker,
-            block_expand_grad, ops::BlockExpandOpGrad);
+            block_expand_grad, ops::BlockExpandGradOp);
 REGISTER_OP_CPU_KERNEL(
     block_expand, ops::BlockExpandKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(

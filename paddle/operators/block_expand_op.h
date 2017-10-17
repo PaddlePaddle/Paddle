@@ -69,12 +69,12 @@ class BlockExpandKernel : public framework::OpKernel<T> {
         stride_width, padding_height, padding_width, outputHeight, outputWidth);
 
     for (int i = 0; i < N; i++) {
-      Tensor src = in->Slice<T>(i, i + 1).Resize(C, img_height, img_width);
-      Tensor dst = out->Slice<T>(i, i + 1).Resize(outputHeight, outputWidth, C,
-                                                  block_height, block_width);
-      math::Im2ColFunctor<math::ColFormat::kOCF, Place, T>(
-          ctx, src, dst, stride_height, stride_width, padding_height,
-          padding_width);
+      Tensor src = in->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
+      Tensor dst = out->Slice<T>(i, i + 1).Resize(
+          {outputHeight, outputWidth, C, block_height, block_width});
+      math::Im2ColFunctor<math::ColFormat::kOCF, Place, T> f;
+      f(ctx.device_context(), src, dst, stride_height, stride_width,
+        padding_height, padding_width);
     }
   }
 };
@@ -84,6 +84,40 @@ class BlockExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using namespace framework;
+    auto* in = ctx.Input<Tensor>("X");
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* out_grad = ctx.Output<Tensor>(GradVarName("Out"));
+    out_grad->mutable_data<T>(ctx.GetPlace());
+
+    auto in_dim = in->dims();
+    int N = in_dim[0];
+    int C = in_dim[1];
+    int img_height = in_dim[2];
+    int img_width = in_dim[3];
+
+    int block_height = ctx.Attr<int>("blockHeight");
+    int block_width = ctx.Attr<int>("blockWidth");
+    int stride_height = ctx.Attr<int>("strideHeight");
+    int stride_width = ctx.Attr<int>("strideWidth");
+    int padding_height = ctx.Attr<int>("paddingHeight");
+    int padding_width = ctx.Attr<int>("paddingWidth");
+
+    int outputHeight = 0;
+    int outputWidth = 0;
+
+    get_blockexpand_output_shape(
+        img_height, img_width, block_height, block_width, stride_height,
+        stride_width, padding_height, padding_width, outputHeight, outputWidth);
+
+    for (int i = 0; i < N; i++) {
+      Tensor dst =
+          out_grad->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
+      Tensor src = out->Slice<T>(i, i + 1).Resize(
+          {outputHeight, outputWidth, C, block_height, block_width});
+      math::Im2ColFunctor<math::ColFormat::kOCF, Place, T> f;
+      f(ctx.device_context(), src, dst, stride_height, stride_width,
+        padding_height, padding_width);
+    }
   }
 };
 
