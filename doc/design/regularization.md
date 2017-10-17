@@ -67,7 +67,16 @@ These ops can be like any other ops with their own CPU/GPU implementations eithe
 
 The idea of building ops for regularization is in sync with the refactored Paddle philosophy of using operators to represent any computation unit. The way these ops will be added to the computation graph, will be decided by the [layer functions](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md#layer-function) in Python API. 
 
+### Computation Graph
 
+Below is an example of a really simple feed forward neural network.
+
+<img src="./images/feed_forward.png" align="center"/><br/>
+
+The Python API will modify this computation graph to add regularization operators. The modified computation graph will look as follows:
+
+<img src="./images/feed_forward_regularized.png" align="center"/><br/>
+   
 ### Python API implementation for Regularization
 
 Using the low level ops, `L2_regularization_op` and `L1_regularization_op`, any user can add regularization to their computation graphs. However, this will require a lot of lines of code and we should design Python APIs that support regularization. An example of such an API can be seen in [Keras](https://keras.io/regularizers/). As per the PaddlePaddle [Python API design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md), the layer functions are responsible for creating operators, operator parameters and variables. Since regularization is a property of parameters, it makes sense to create these in the layer functions. 
