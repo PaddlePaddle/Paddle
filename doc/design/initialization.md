@@ -46,4 +46,3 @@ message PruneInfo {
 
 - Pros:
   - Extendible
-
