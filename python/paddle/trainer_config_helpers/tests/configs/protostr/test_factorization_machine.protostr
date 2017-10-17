@@ -22,7 +22,7 @@ parameters {
   initial_mean: 0.0
   initial_std: 0.03125
   dims: 1024
-  dims: 1
+  dims: 10
   initial_strategy: 0
   initial_smart: true
 }

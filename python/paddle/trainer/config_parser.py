@@ -3794,7 +3794,7 @@ class FactorizationMachineLayer(LayerBase):
         self.config.factor_size = factor_size
         input_layer = self.get_input_layer(0)
         psize = input_layer.size * factor_size
-        dims = [input_layer.size, 1]
+        dims = [input_layer.size, factor_size]
         self.create_input_parameter(0, psize, dims)
 
 
