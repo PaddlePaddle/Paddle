@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/math_function.h"
+#include "paddle/operators/math/matmul.h"
 #include "paddle/operators/transpose_op.h"
 
 namespace paddle {
