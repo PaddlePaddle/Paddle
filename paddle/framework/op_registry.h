@@ -45,18 +45,15 @@ class Registrar {
 
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
-  explicit OperatorRegistrar(const char* op_type) : op_type(op_type) {
+  explicit OperatorRegistrar(const char* op_type) {
     PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
+    OpInfo info;
     details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
     OpInfoMap::Instance().Insert(op_type, info);
   }
-
-  const char* op_type;
-
-  OpInfo info;
 };
 
 class OpRegistry {
