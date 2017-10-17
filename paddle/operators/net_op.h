@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_registry.h"
 

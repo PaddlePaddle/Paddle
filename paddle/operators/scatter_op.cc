@@ -22,8 +22,7 @@ class ScatterOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ref"),
                    "Input(Ref) of ScatterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Index"),
@@ -49,6 +48,7 @@ class ScatterOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ref_dims);
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
@@ -59,13 +59,13 @@ class ScatterGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Updates"),
                       ctx->GetInputDim("Updates"));
     ctx->SetOutputDim(framework::GradVarName("Ref"), ctx->GetInputDim("Ref"));
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
@@ -97,8 +97,5 @@ Out[Index] = Ref[Index] + Updates
 namespace ops = paddle::operators;
 REGISTER_OP(scatter, ops::ScatterOp, ops::ScatterOpMaker, scatter_grad,
             ops::ScatterGradOp);
-REGISTER_OP_CPU_KERNEL(scatter,
-                       ops::ScatterOpKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    scatter_grad,
-    ops::ScatterGradientOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

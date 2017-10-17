@@ -46,15 +46,14 @@ class UniformRandomOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of UniformRandomOp should not be null.");
 
     PADDLE_ENFORCE(
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
-    auto dims = Attr<std::vector<int>>("dims");
+    auto& dims = ctx->Attrs().Get<std::vector<int>>("dims");
     std::vector<int64_t> temp;
     temp.reserve(dims.size());
     for (auto dim : dims) {
@@ -63,6 +62,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return static_cast<framework::DataType>(Attr<int>("data_type"));

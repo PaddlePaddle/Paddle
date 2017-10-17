@@ -18,20 +18,27 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-VarDescBind *BlockDescBind::NewVar(const std::string &name) {
+VarDescBind *BlockDescBind::Var(const std::string &name) {
   need_update_ = true;
   auto it = vars_.find(name);
-  PADDLE_ENFORCE(it == vars_.end(), "Duplicated variable %s", name);
-  auto var = new VarDescBind(name);
+  if (it != vars_.end()) {
+    return it->second.get();
+  }
+  auto *var = new VarDescBind(name);
   vars_[name].reset(var);
   return var;
 }
 
-VarDescBind *BlockDescBind::Var(const std::string &name) const {
+VarDescBind *BlockDescBind::FindVar(const std::string &name) const {
   auto it = vars_.find(name);
-  PADDLE_ENFORCE(it != vars_.end(),
-                 "Can not find variable %s in current block.", name);
+  if (it == vars_.end()) {
+    return nullptr;
+  }
   return it->second.get();
+}
+
+bool BlockDescBind::HasVar(const std::string &name) const {
+  return vars_.find(name) != vars_.end();
 }
 
 std::vector<VarDescBind *> BlockDescBind::AllVars() const {
@@ -62,13 +69,19 @@ std::vector<OpDescBind *> BlockDescBind::AllOps() const {
   return res;
 }
 
-void BlockDescBind::Sync() {
+void BlockDescBind::Flush() {
   if (need_update_) {
     auto &op_field = *this->desc_->mutable_ops();
     op_field.Clear();
     op_field.Reserve(static_cast<int>(ops_.size()));
     for (auto &op_desc : ops_) {
       op_field.AddAllocated(op_desc->Proto());
+    }
+    auto &var_field = *this->desc_->mutable_vars();
+    var_field.Clear();
+    var_field.Reserve(static_cast<int>(vars_.size()));
+    for (auto &var_desc : vars_) {
+      var_field.AddAllocated(var_desc.second->Proto());
     }
     need_update_ = false;
   }
@@ -81,9 +94,10 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
   return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
-void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.RawPtr();
-  this->attrs_[name] = desc;
+BlockDesc *BlockDescBind::Proto() {
+  Flush();
+  return desc_;
 }
+
 }  // namespace framework
 }  // namespace paddle

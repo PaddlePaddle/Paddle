@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <deque>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/var_desc.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -34,16 +36,15 @@ class BlockDescBind {
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
 
-  BlockDescBind(const BlockDescBind &o) = delete;
-  BlockDescBind &operator=(const BlockDescBind &o) = delete;
-
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
-  VarDescBind *NewVar(const std::string &name_bytes);
+  VarDescBind *Var(const std::string &name_bytes);
 
-  VarDescBind *Var(const std::string &name_bytes) const;
+  VarDescBind *FindVar(const std::string &name_bytes) const;
+
+  bool HasVar(const std::string &var_name) const;
 
   std::vector<VarDescBind *> AllVars() const;
 
@@ -55,17 +56,21 @@ class BlockDescBind {
 
   std::vector<OpDescBind *> AllOps() const;
 
-  void Sync();
+  void Flush();
 
-  BlockDesc *RawPtr() { return desc_; }
+  BlockDesc *Proto();
 
- private:
+  // FIXME(yuyang18): backward will access private data of BlockDesc.
+  // Mark it public temporary. We can fix it later.
+ public:
   ProgramDescBind *prog_;  // not_own
   BlockDesc *desc_;        // not_own
   bool need_update_;
 
   std::deque<std::unique_ptr<OpDescBind>> ops_;
   std::unordered_map<std::string, std::unique_ptr<VarDescBind>> vars_;
+
+  DISABLE_COPY_AND_ASSIGN(BlockDescBind);
 };
 }  // namespace framework
 }  // namespace paddle

@@ -26,11 +26,11 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
 namespace paddle {
 namespace platform {
 
-int GetDeviceCount() {
+int GetCUDADeviceCount() {
   int count;
   PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
-      "cudaGetDeviceCount failed in paddle::platform::GetDeviceCount");
+      "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
   return count;
 }
 
@@ -43,6 +43,8 @@ int GetCurrentDeviceId() {
 }
 
 void SetDeviceId(int id) {
+  // TODO(qijun): find a better way to cache the cuda device count
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }

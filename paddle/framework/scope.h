@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/framework/variable.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -38,21 +39,16 @@ class Scope {
   Scope() {}
   ~Scope();
 
-  // Disable Copy, Assign, Move.
-  Scope(const Scope& other) = delete;
-  Scope& operator=(const Scope& other) = delete;
-  Scope(Scope&& other) = delete;
-
   /// Create a sub-scope. Returns a reference other than a pointer so
   /// to prevent from manual deletion.
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
   /// Create a variable with given name if it doesn't exist.
-  Variable* NewVar(const std::string& name);
+  Variable* Var(const std::string& name);
 
   /// Create a variable with a scope-unique name.
-  Variable* NewVar();
+  Variable* Var();
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
@@ -73,7 +69,11 @@ class Scope {
   std::unordered_map<std::string, Variable*> vars_;
   mutable std::list<Scope*> kids_;
   Scope const* parent_{nullptr};
+
+  DISABLE_COPY_AND_ASSIGN(Scope);
 };
+
+framework::Scope& GetGlobalScope();
 
 }  // namespace framework
 }  // namespace paddle

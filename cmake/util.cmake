@@ -73,25 +73,43 @@ function(link_paddle_exe TARGET_NAME)
         generate_rdma_links()
     endif()
 
-    target_circle_link_libraries(${TARGET_NAME}
-        ARCHIVE_START
-        paddle_gserver
-        paddle_function
-        ARCHIVE_END
-        paddle_pserver
-        paddle_trainer_lib
-        paddle_network
-        paddle_math
-        paddle_utils
-        paddle_parameter
-        paddle_proto
-        paddle_cuda
-        paddle_optimizer
-        ${EXTERNAL_LIBS}
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${CMAKE_DL_LIBS}
-        ${RDMA_LD_FLAGS}
-        ${RDMA_LIBS})
+    if(MOBILE_INFERENCE)
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_gserver
+            paddle_function
+            ARCHIVE_END
+            paddle_math
+            paddle_utils
+            paddle_parameter
+            paddle_proto
+            paddle_cuda
+            ${EXTERNAL_LIBS}
+            ${CMAKE_THREAD_LIBS_INIT}
+            ${CMAKE_DL_LIBS}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    else()
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_gserver
+            paddle_function
+            ARCHIVE_END
+            paddle_pserver
+            paddle_trainer_lib
+            paddle_network
+            paddle_math
+            paddle_utils
+            paddle_parameter
+            paddle_proto
+            paddle_cuda
+            paddle_optimizer
+            ${EXTERNAL_LIBS}
+            ${CMAKE_THREAD_LIBS_INIT}
+            ${CMAKE_DL_LIBS}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    endif()
 
     if(ANDROID)
         target_link_libraries(${TARGET_NAME} log)

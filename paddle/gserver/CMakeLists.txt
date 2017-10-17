@@ -60,6 +60,36 @@ if(NOT WITH_PYTHON)
             dataproviders/PyDataProvider.h)
 endif()
 
+if(MOBILE_INFERENCE)
+    # Remove evaluators
+    list(REMOVE_ITEM GSERVER_SOURCES
+         layers/ValidationLayer.cpp
+         evaluators/Evaluator.cpp
+         evaluators/DetectionMAPEvaluator.cpp
+         evaluators/CTCErrorEvaluator.cpp
+         evaluators/ChunkEvaluator.cpp)
+
+    # Remove dataproviders
+    list(REMOVE_ITEM GSERVER_SOURCES
+         dataproviders/DataProvider.cpp
+         dataproviders/MultiDataProvider.cpp
+         dataproviders/ProtoDataProvider.cpp
+         dataproviders/PyDataProvider2.cpp
+         dataproviders/PyDataProvider.cpp)
+
+    # Remove useless gradientmachines
+    list(REMOVE_ITEM GSERVER_SOURCES
+         gradientmachines/MultiNetwork.cpp
+         gradientmachines/RecurrentGradientMachine.cpp
+         gradientmachines/ParallelNeuralNetwork.cpp
+         gradientmachines/GradientMachineMode.cpp
+         gradientmachines/MultiGradientMachine.cpp)
+
+    # Remove useless layers
+    list(REMOVE_ITEM GSERVER_SOURCES
+    	 layers/RecurrentLayerGroup.cpp)
+endif()
+
 if(WITH_GPU)
     cuda_add_library(paddle_gserver ${GSERVER_SOURCES})
 else()

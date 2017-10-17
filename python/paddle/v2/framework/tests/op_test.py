@@ -14,7 +14,7 @@ def create_op(scope, op_type, inputs, outputs, attrs):
     kwargs = dict()
 
     def __create_var__(name, var_name):
-        scope.new_var(var_name)
+        scope.var(var_name)
         kwargs[name].append(var_name)
 
     for in_name, in_dup in Operator.get_op_inputs(op_type):
@@ -46,12 +46,17 @@ def create_op(scope, op_type, inputs, outputs, attrs):
 
 def set_input(scope, op, inputs, place):
     def __set_input__(var_name, var):
-        tensor = scope.find_var(var_name).get_tensor()
-        if isinstance(var, tuple):
-            tensor.set_lod(var[1])
-            var = var[0]
-        tensor.set_dims(var.shape)
-        tensor.set(var, place)
+        if isinstance(var, tuple) or isinstance(var, np.ndarray):
+            tensor = scope.find_var(var_name).get_tensor()
+            if isinstance(var, tuple):
+                tensor.set_lod(var[1])
+                var = var[0]
+            tensor.set_dims(var.shape)
+            tensor.set(var, place)
+        elif isinstance(var, float):
+            scope.find_var(var_name).set_float(var)
+        elif isinstance(var, int):
+            scope.find_var(var_name).set_int(var)
 
     for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:
@@ -66,7 +71,7 @@ def set_input(scope, op, inputs, place):
 def set_output_grad(scope, op, outputs, place):
     def __set_tensor__(name):
         out_tensor = scope.find_var(name).get_tensor()
-        grad_tensor = scope.new_var(grad_var_name(name)).get_tensor()
+        grad_tensor = scope.var(grad_var_name(name)).get_tensor()
         out_dtype = out_tensor.dtype()
         if out_dtype == core.DataType.FP64:
             data = np.ones(out_tensor.shape(), dtype=np.float64)
@@ -164,10 +169,10 @@ def get_numeric_gradient(scope,
 def get_backward_op(scope, op, no_grad_set):
     backward_op = core.Operator.backward(op, no_grad_set)
     for input in backward_op.input_vars():
-        var = scope.new_var(input)
+        var = scope.var(input)
         var.get_tensor()
     for output in backward_op.output_vars():
-        var = scope.new_var(output)
+        var = scope.var(output)
         var.get_tensor()
     return backward_op
 
