@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 template <typename Place, typename T, typename AttrType = T>
-class ScaleKernel : public framework::OpKernel {
+class ScaleKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {
     auto* tensor = context.Output<framework::Tensor>("Out");

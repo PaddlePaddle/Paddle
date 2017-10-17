@@ -14,7 +14,7 @@ class TestUniformRandomOp(unittest.TestCase):
 
     def uniform_random_test(self, place):
         scope = core.Scope()
-        scope.new_var('X').get_tensor()
+        scope.var('X').get_tensor()
 
         op = Operator(
             "uniform_random",
@@ -24,7 +24,6 @@ class TestUniformRandomOp(unittest.TestCase):
             max=10.0,
             seed=10)
 
-        op.infer_shape(scope)
         ctx = core.DeviceContext.create(place)
         op.run(scope, ctx)
         tensor = numpy.array(scope.find_var('X').get_tensor())

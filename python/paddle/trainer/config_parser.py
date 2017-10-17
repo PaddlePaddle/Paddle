@@ -559,6 +559,9 @@ class IdentityOffsetProjection(Projection):
                                                        **xargs)
         self.proj_conf.offset = offset
 
+    def calc_output_size(self, input_layer_config):
+        return 0  # depends on the outside MixedLayer
+
     def calc_parameter_size(self, input_size, output_size):
         return 0
 
@@ -1566,7 +1569,7 @@ class LayerBase(object):
         self.config = g_config.model_config.layers.add()
         assert isinstance(self.config, LayerConfig)
         use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
-        mkldnn_acts = ['relu', 'tanh']
+        mkldnn_acts = ['relu', 'tanh', 'softmax']
         if use_mkldnn and active_type in mkldnn_acts:
             active_type = "mkldnn_" + active_type
         self.config.name = name

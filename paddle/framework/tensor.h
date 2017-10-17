@@ -29,20 +29,10 @@ limitations under the License. */
 
 namespace paddle {
 
-namespace pybind {
-namespace details {
-template <bool less, size_t i, typename... args>
-struct CastToPyBufferImpl;
-}
-}  // namespace pybind
-
 namespace framework {
 
 class Tensor {
  public:
-  template <bool less, size_t i, typename... args>
-  friend struct pybind::details::CastToPyBufferImpl;
-
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
 
@@ -97,13 +87,47 @@ class Tensor {
   /**
    * @brief   Copy the content of external tensor to a new place.
    *
-   * @param[in] src   The external tensor.
-   * @param[in] ctx   The device context contains place where to store.
+   * @param[in] src        The external tensor.
+   * @param[in] dst_place  The dst place.
+   * @param[in] ctx        The device context contains device resources.
    *
    * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
    */
+  // TODO(qijun): https://github.com/PaddlePaddle/Paddle/issues/4647
+  // Remove `CopyFrom` and `CopyFromVector` from Tensor interface
+  // and make them global functions
   template <typename T>
-  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                       const platform::DeviceContext& ctx);
+
+  // FIXME(yuyang18): CopyFrom should without template T, use the replace
+  // `CopyFrom` with `CopyFromTensor`
+  inline void CopyFromTensor(const Tensor& src,
+                             const platform::Place& dst_place,
+                             const platform::DeviceContext& ctx) {
+    // NOLINTNEXTLINES_8 cpplint.py will recognize below lines as functions.
+    // That is a bug of cpplint.py. Just ignore lint these lines.
+    if (src.type() == std::type_index(typeid(double))) {
+      CopyFrom<double>(src, dst_place, ctx);
+    } else if (src.type() == std::type_index(typeid(float))) {
+      CopyFrom<float>(src, dst_place, ctx);
+    } else if (src.type() == std::type_index(typeid(int))) {
+      CopyFrom<int>(src, dst_place, ctx);
+    }
+  }
+
+  /**
+   * @brief   Copy the content of an external vector to a tensor.
+   *
+   * @param[in] src        The external tensor.
+   * @param[in] ctx        The device context contains device resources.
+   *
+   * * @note    CopyFromVector assumes that the tensor has been resized
+   *            before invoking.
+   */
+  template <typename T>
+  inline void CopyFromVector(const std::vector<T>& src,
+                             const platform::DeviceContext& ctx);
 
   /**
    * @brief   Return the slice of the tensor.
@@ -118,6 +142,8 @@ class Tensor {
     PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get place() must contains holder");
     return holder_->place();
   }
+
+  std::type_index type() const { return holder_->type(); }
 
  private:
   template <typename T>

@@ -23,20 +23,22 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class MultiplexCPUKernel : public framework::OpKernel {
+class MultiplexCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto ids = ctx.Input<framework::Tensor>("Ids");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto rows = ins[1]->dims()[0];
-    auto cols = ins[1]->dims()[1];
-    auto* index = ins[0]->data<T>();
+    auto rows = ins[0]->dims()[0];
+    auto cols = ins[0]->numel() / rows;
+    auto index = ids->data<int32_t>();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      int k = (int)index[i] + 1;
+      int32_t k = index[i];
+      PADDLE_ENFORCE_GE(k, 0, "index must be nonnegative.");
       PADDLE_ENFORCE_LT(static_cast<size_t>(k), ins.size(),
                         "index exceeds the number of candidate tensors.");
       memory::Copy(place, out->data<T>() + i * cols, place,
@@ -46,14 +48,15 @@ class MultiplexCPUKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MultiplexGradCPUKernel : public framework::OpKernel {
+class MultiplexGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* ids = ctx.Input<framework::Tensor>("Ids");
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto d_ins =
         ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
-    for (size_t i = 1; i < d_ins.size(); i++) {
+    for (size_t i = 0; i < d_ins.size(); i++) {
       if (d_ins[i]) {
         d_ins[i]->mutable_data<T>(ctx.GetPlace());
         auto t = framework::EigenVector<T>::Flatten(*d_ins[i]);
@@ -61,12 +64,12 @@ class MultiplexGradCPUKernel : public framework::OpKernel {
       }
     }
 
-    auto rows = ins[1]->dims()[0];
-    auto cols = ins[1]->dims()[1];
-    auto* index = ins[0]->data<T>();
+    auto rows = ins[0]->dims()[0];
+    auto cols = ins[0]->numel() / rows;
+    auto* index = ids->data<int32_t>();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      int k = (int)index[i] + 1;
+      size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {
         memory::Copy(place, d_ins[k]->data<T>() + i * cols, place,
                      d_out->data<T>() + i * cols, cols * sizeof(T));
