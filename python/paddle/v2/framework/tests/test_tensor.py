@@ -6,7 +6,7 @@ import numpy
 class TestTensor(unittest.TestCase):
     def test_int_tensor(self):
         scope = core.Scope()
-        var = scope.new_var("test_tensor")
+        var = scope.var("test_tensor")
         place = core.CPUPlace()
 
         tensor = var.get_tensor()
@@ -25,7 +25,7 @@ class TestTensor(unittest.TestCase):
 
     def test_float_tensor(self):
         scope = core.Scope()
-        var = scope.new_var("test_tensor")
+        var = scope.var("test_tensor")
         place = core.CPUPlace()
 
         tensor = var.get_tensor()
@@ -46,7 +46,7 @@ class TestTensor(unittest.TestCase):
     def test_int_lod_tensor(self):
         place = core.CPUPlace()
         scope = core.Scope()
-        var_lod = scope.new_var("test_lod_tensor")
+        var_lod = scope.var("test_lod_tensor")
         lod_tensor = var_lod.get_tensor()
 
         lod_tensor.set_dims([4, 4, 6])
@@ -68,7 +68,7 @@ class TestTensor(unittest.TestCase):
     def test_float_lod_tensor(self):
         place = core.CPUPlace()
         scope = core.Scope()
-        var_lod = scope.new_var("test_lod_tensor")
+        var_lod = scope.var("test_lod_tensor")
 
         lod_tensor = var_lod.get_tensor()
         lod_tensor.set_dims([5, 2, 3, 4])

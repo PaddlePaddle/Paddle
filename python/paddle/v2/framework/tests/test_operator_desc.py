@@ -16,7 +16,7 @@ class TestOperator(unittest.TestCase):
         try:
             block.append_op(type="no_such_op")
             self.assertFail()
-        except AssertionError as a_err:
+        except ValueError as a_err:
             self.assertEqual(a_err.message,
                              "Operator \"no_such_op\" has not been registered.")
 
@@ -34,6 +34,8 @@ class TestOperator(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": [mul_out]},
             attrs={"x_num_col_dims": 1})
+
+        self.assertNotEqual(str(mul_op), "")
         self.assertEqual(mul_op.type, "mul")
         self.assertEqual(mul_op.input_names, ["X", "Y"])
         self.assertEqual(mul_op.input("X"), ["mul.x"])

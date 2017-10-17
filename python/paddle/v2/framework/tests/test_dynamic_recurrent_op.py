@@ -6,7 +6,7 @@ import numpy as np
 
 
 def create_tensor(scope, name, shape, np_data):
-    tensor = scope.new_var(name).get_tensor()
+    tensor = scope.var(name).get_tensor()
     tensor.set_dims(shape)
     tensor.set(np_data, core.CPUPlace())
     return tensor
@@ -72,8 +72,8 @@ class DynamicRecurrentOpTest(unittest.TestCase):
         create_tensor(self.scope, "U", [self.input_dim, self.input_dim], U)
         create_tensor(self.scope, "h_boot", [self.num_sents, self.input_dim],
                       h_boot)
-        self.scope.new_var("step_scopes")
-        self.scope.new_var("h@mem")
+        self.scope.var("step_scopes")
+        self.scope.var("h@mem")
 
     def create_rnn_op(self):
         # create RNNOp

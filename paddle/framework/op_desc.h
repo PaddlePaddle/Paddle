@@ -89,8 +89,6 @@ class OpDescBind {
     this->need_update_ = true;
   }
 
-  void Sync();
-
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
@@ -103,6 +101,10 @@ class OpDescBind {
   void CheckAttrs();
 
   void InferShape(const BlockDescBind &block) const;
+
+  void InferVarType(BlockDescBind *block) const;
+
+  void Flush();
 
  private:
   template <typename MapType>

@@ -20,11 +20,11 @@ class Variable(object):
 
         if name is None:
             name = Variable._unique_var_name_()
-        try:
+        is_new_var = False
+        self.desc = self.block.desc.find_var(name)
+
+        if self.desc is None:
             self.desc = self.block.desc.var(name)
-            is_new_var = False
-        except core.EnforceNotMet:
-            self.desc = self.block.desc.new_var(name)
             is_new_var = True
 
         if is_new_var:
@@ -72,6 +72,13 @@ class Variable(object):
                                                       lod_level))
         self.block.vars[name] = self
         self.op = None
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.VarDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def name(self):
@@ -146,7 +153,8 @@ class OpProtoHolder(object):
             self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):
-        assert type in self.op_proto_map, "Operator \"%s\" has not been registered." % type
+        if type not in self.op_proto_map:
+            raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
 
 
@@ -169,6 +177,18 @@ class Operator(object):
         proto = OpProtoHolder.instance().get_op_proto(type)
 
         if inputs is not None:
+            given = set()
+            need = set()
+            for n in inputs:
+                given.add(n)
+            for m in proto.inputs:
+                need.add(m.name)
+            if not given == need:
+                raise ValueError(
+                    "Incorrect setting for input(s) of operator \"%s\". Need: [%s] Given: [%s]"
+                    % (type, ", ".join(str(e) for e in need), ", ".join(
+                        str(e) for e in given)))
+
             for in_proto in proto.inputs:
                 in_argus = inputs[in_proto.name]
                 if not isinstance(in_argus, list):
@@ -183,6 +203,18 @@ class Operator(object):
                 self.desc.set_input(in_proto.name, in_argu_names)
 
         if outputs is not None:
+            given = set()
+            need = set()
+            for n in outputs:
+                given.add(n)
+            for m in proto.outputs:
+                need.add(m.name)
+            if not given == need:
+                raise ValueError(
+                    "Incorrect setting for output(s) of operator \"%s\". Need: [%s] Given: [%s]"
+                    % (type, ", ".join(str(e) for e in need), ", ".join(
+                        str(e) for e in given)))
+
             for out_proto in proto.outputs:
                 out_argus = outputs[out_proto.name]
                 if not isinstance(out_argus, list):
@@ -209,6 +241,13 @@ class Operator(object):
 
         self.desc.check_attrs()
         self.desc.infer_shape(self.block.desc)
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.OpDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     @property
     def type(self):
@@ -252,6 +291,13 @@ class Block(object):
         self.ops = collections.deque()  # operator list
         self.program = program
 
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.BlockDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
+
     @property
     def parent_idx(self):
         return self.desc.parent
@@ -262,6 +308,9 @@ class Block(object):
 
     def create_var(self, *args, **kwargs):
         return Variable(self, *args, **kwargs)
+
+    def has_var(self, name):
+        return name in self.vars
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
@@ -279,6 +328,43 @@ class Block(object):
         self.ops.appendleft(op)
         return op
 
+    def sync_with_cpp(self):
+        # sync variables from cpp
+        for var in self.desc.all_vars():
+            if not self.has_var(var.name()):
+                self.create_var(name=var.name(), desc=var, type=var.type())
+
+        # sync operators from cpp
+        ops_in_cpp = self.desc.all_ops()
+        first_op_in_python = self.ops[0].desc
+        last_op_in_python = self.ops[len(self.ops) - 1].desc
+        start_index = None
+        end_index = None
+        for index in range(len(ops_in_cpp)):
+            if first_op_in_python == ops_in_cpp[index]:
+                start_index = index
+            if last_op_in_python == ops_in_cpp[index]:
+                end_index = index
+        assert start_index is not None
+        assert end_index is not None
+        assert start_index <= end_index
+
+        # sync ops append to the head of cpp_ops
+        for index in range((start_index - 1 - 1), -1, -1):
+            op_desc = ops_in_cpp[index]
+            op = Operator(self, op_desc)
+            self.ops.appendleft(op)
+
+        # sync ops append to the end of cpp_ops
+        for index in range((end_index + 1), len(ops_in_cpp)):
+            op_desc = ops_in_cpp[index]
+            op = Operator(self, op_desc)
+            self.ops.append(op)
+
+        assert len(self.ops) == len(ops_in_cpp)
+        for index in range(len(self.ops)):
+            assert self.ops[index].desc == ops_in_cpp[index]
+
 
 class Program(object):
     @classmethod
@@ -289,18 +375,31 @@ class Program(object):
             cls._instance = cls()
         return cls._instance
 
-    def __init__(self):
-        assert not hasattr(self.__class__,
-                           '_instance'), 'Do not call constructor directly!'
-        self.desc = core.ProgramDesc.instance()
+    def __init__(self, desc=None):
+        if desc is None:
+            desc = core.ProgramDesc.instance()
+        self.desc = desc
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
+
+    def __str__(self):
+        protostr = self.desc.serialize_to_string()
+        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+        return proto.__str__()
+
+    __repr__ = __str__
 
     def global_block(self):
         return self.blocks[0]
 
     def current_block(self):
         return self.blocks[self.current_block_idx]
+
+    def append_backward(self, target, no_grad_set):
+        assert isinstance(target, Variable)
+        param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
+        self.sync_with_cpp()
+        return param_to_grad_info
 
     def create_block(self):
         new_block_idx = len(self.blocks)
@@ -311,6 +410,12 @@ class Program(object):
 
     def rollback(self):
         self.current_block_idx = self.current_block().parent_idx
+
+    def sync_with_cpp(self):
+        for block_idx in range(len(self.blocks), self.desc.num_blocks()):
+            self.blocks.append(Block(self, block_idx))
+        for block in self.blocks:
+            block.sync_with_cpp()
 
 
 class Parameter(Variable):
@@ -324,7 +429,6 @@ class Parameter(Variable):
             if each < 0:
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
-
         Variable.__init__(self, block, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
         self.init_attr = kwargs.get('initialize_attr', {
@@ -337,7 +441,7 @@ class Parameter(Variable):
         self._append_initialize_ops_()
 
     def _append_initialize_ops_(self):
-        attr = copy.deepcopy(self.init_attr)
+        attr = self.init_attr
         op_type = attr.pop('type', None)
         block = self.block
         assert isinstance(block, Block)

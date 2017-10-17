@@ -1,6 +1,7 @@
 import unittest
 
 import paddle.v2.framework.core as core
+from paddle.v2.framework.framework import Program
 from paddle.v2.framework.framework import g_program
 
 
@@ -33,7 +34,7 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-    def test_append_backward(self):
+    def test_desc_append_backward(self):
         prog = core.ProgramDesc.__create_program_desc__()
         self.assertIsNotNone(prog)
         block = prog.block(0)
@@ -51,15 +52,43 @@ class TestProgram(unittest.TestCase):
         sum_op_desc.set_input("Y", ["b1"])
         sum_op_desc.set_output("Out", ["out2"])
 
+        target = block.var("out2")
+
         expect_ops = [
-            "mul", "elementwise_add", "elementwise_add_grad", "mul_grad"
+            "mul", "elementwise_add", "fill_constant", "elementwise_add_grad",
+            "mul_grad"
         ]
+
+        def grad_name(name):
+            return name + "@GRAD"
+
         actual_ops = []
-        prog.append_backward(set())
+        param_to_grad = prog.append_backward(target, set())
+        for var_name in ("x1", "y1", "out1", "b1"):
+            self.assertEqual(param_to_grad[var_name][0], grad_name(var_name))
+            self.assertEqual(param_to_grad[var_name][1], 0)
+
         for op in block.all_ops():
             actual_ops.append(op.type())
-        print(actual_ops)
         self.assertEqual(actual_ops, expect_ops)
+
+    def test_append_backward(self):
+        prog = Program.instance()
+        block = prog.global_block()
+
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        mul_op = block.append_op(
+            type="mul",
+            inputs={"X": [mul_x],
+                    "Y": mul_y},
+            outputs={"Out": [mul_out]},
+            attrs={"x_num_col_dims": 1})
+        param_to_grad = prog.append_backward(mul_out, set())
 
 
 if __name__ == '__main__':

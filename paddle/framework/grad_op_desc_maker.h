@@ -25,8 +25,9 @@ class GradOpDescMakerBase {
  public:
   explicit GradOpDescMakerBase(
       const OpDescBind& fwd_op,
-      const std::unordered_set<std::string>& no_grad_set)
-      : fwd_op_(fwd_op), no_grad_set_(no_grad_set) {}
+      const std::unordered_set<std::string>& no_grad_set,
+      std::unordered_map<std::string, std::string>* grad_to_var)
+      : fwd_op_(fwd_op), no_grad_set_(no_grad_set), grad_to_var_(grad_to_var) {}
 
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
@@ -37,12 +38,17 @@ class GradOpDescMakerBase {
     std::vector<std::string> ret_val;
     auto var_names = this->Input(name);
     ret_val.reserve(var_names.size());
-    std::transform(
-        var_names.begin(), var_names.end(), std::back_inserter(ret_val),
-        [this](const std::string& fwd_var_name) -> std::string {
-          auto g_name = GradVarName(fwd_var_name);
-          return no_grad_set_.count(g_name) == 0 ? g_name : kEmptyVarName;
-        });
+    std::transform(var_names.begin(), var_names.end(),
+                   std::back_inserter(ret_val),
+                   [this](const std::string& fwd_var_name) -> std::string {
+                     auto g_name = GradVarName(fwd_var_name);
+                     if (no_grad_set_.count(g_name)) {
+                       return kEmptyVarName;
+                     } else {
+                       (*this->grad_to_var_)[g_name] = fwd_var_name;
+                       return g_name;
+                     }
+                   });
     if (!drop_empty_grad) {
       return ret_val;
     }
@@ -95,6 +101,7 @@ class GradOpDescMakerBase {
  private:
   const OpDescBind& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
+  std::unordered_map<std::string, std::string>* grad_to_var_;
 };
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {
@@ -139,6 +146,14 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 
   virtual std::string GradOpType() const {
     return this->ForwardOpType() + "_grad";
+  }
+};
+
+class EmptyGradOpMaker : public GradOpDescMakerBase {
+ public:
+  using GradOpDescMakerBase::GradOpDescMakerBase;
+  std::vector<std::unique_ptr<OpDescBind>> operator()() const override {
+    return {};
   }
 };
 
