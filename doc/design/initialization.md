@@ -6,19 +6,20 @@ PaddlePaddle needs a way to init parameters.
 
 ## Challenge
 
-1. Init operator should be run once and only one; otherwise, every iteration would clear the parameters.
-1. Init operator should not be run during training.
+Initialization operators must run once and only one; otherwise, every iteration would clear the parameters.
 
-## Solution
+## Proposals
 
-### Solution 1: Two seperate `ProgramDesc`.
+### Proposal 1: Two seperate `ProgramDesc`.
+
+The initialization part of the program in a `ProgramDesc` message, and the rest part in another.
 
 - Pros:
-  - Simple and straight forward
+  - Simple and straight forward.
 - Cons:
-  - Two seperate `ProgramDesc` doesn't match one-program-desc design
+  - Two seperate `ProgramDesc` doesn't match one-program-desc design.
 
-### Solution 2: Add run_once attribute for initialization related operators.
+### Proposal 2: Add `run_once` attribute for initialization related operators.
 
 PR link: https://github.com/PaddlePaddle/Paddle/pull/4802/files
 
@@ -27,7 +28,7 @@ PR link: https://github.com/PaddlePaddle/Paddle/pull/4802/files
 - Cons:
   - Not compatible with current executor design. Because executor creates Op instances on the fly at `Executor::Run()`.
 
-### Solution 3: Remove Init operator during Prune
+### Proposal 3: Remove Init operator during Prune
 
 Use regular expression to filter out init operators.
 
