@@ -16,24 +16,23 @@ class TestSeqAvgPool(OpTest):
     def set_data(self):
         self.op_type = 'sequence_pool'
         # one level, batch size is 4
-        x = np.random.uniform(0.1, 1, [11, 2]).astype('float32')
+        x = np.random.uniform(0.1, 1, [11, 23]).astype('float32')
         lod = [[0, 4, 5, 8, 11]]
         self.inputs = {'X': (x, lod)}
 
-        out = np.zeros((4, 2)).astype('float32')
+        out = np.zeros((4, 23)).astype('float32')
         self.outputs = {'Out': out}
+        return x, lod, out
 
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.AVERAGE}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = x[lod[0][i]:lod[0][i + 1], :]
             out[i] = sub_x.mean(axis=0)
 
     def setUp(self):
-        self.set_data()
-        self.compute()
+        x, lod, out = self.set_data()
+        self.compute(x, lod, out)
 
     def test_check_output(self):
         self.check_output()
@@ -52,41 +51,34 @@ class TestSeqAvgPool2D(TestSeqAvgPool):
 
         out = np.zeros((4, 3, 17)).astype('float32')
         self.outputs = {'Out': out}
+        return x, lod, out
 
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.AVERAGE}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
             out[i] = np.reshape(sub_x.mean(axis=0), (3, 17))
 
 
 class TestSeqSumPool(TestSeqAvgPool):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.SUM}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = x[lod[0][i]:lod[0][i + 1], :]
             out[i] = sub_x.sum(axis=0)
 
 
 class TestSeqSumPool2D(TestSeqAvgPool2D):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.SUM}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
             out[i] = np.reshape(sub_x.sum(axis=0), (3, 17))
 
 
 class TestSeqSqrtPool(TestSeqAvgPool):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.SQRT}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = x[lod[0][i]:lod[0][i + 1], :]
             len = lod[0][i + 1] - lod[0][i]
@@ -94,10 +86,8 @@ class TestSeqSqrtPool(TestSeqAvgPool):
 
 
 class TestSeqSqrtPool2D(TestSeqAvgPool2D):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.SQRT}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
             len = lod[0][i + 1] - lod[0][i]
@@ -108,20 +98,16 @@ class TestSeqSqrtPool2D(TestSeqAvgPool2D):
 
 
 class TestSeqMaxPool(TestSeqAvgPool):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.MAX}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = x[lod[0][i]:lod[0][i + 1], :]
             out[i] = np.amax(sub_x, axis=0)
 
 
 class TestSeqMaxPool2D(TestSeqAvgPool2D):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.MAX}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
             out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 17))
@@ -132,40 +118,32 @@ class TestSeqMaxPool2D(TestSeqAvgPool2D):
 
 
 class TestSeqLastPool(TestSeqAvgPool):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.LAST}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = x[lod[0][i]:lod[0][i + 1], :]
             out[i] = sub_x[-1, :]
 
 
 class TestSeqLastPool2D(TestSeqAvgPool2D):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.LAST}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
             out[i] = np.reshape(sub_x[-1, :], (3, 17))
 
 
 class TestSeqFirstPool(TestSeqAvgPool):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.FIRST}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = x[lod[0][i]:lod[0][i + 1], :]
             out[i] = sub_x[0, :]
 
 
 class TestSeqFirstPool2D(TestSeqAvgPool2D):
-    def compute(self):
+    def compute(self, x, lod, out):
         self.attrs = {'strategy': SeqPoolType.FIRST}
-        x, lod = self.inputs['X']
-        out = self.outputs['Out']
         for i in range(4):
             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
             out[i] = np.reshape(sub_x[0, :], (3, 17))
