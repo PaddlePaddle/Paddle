@@ -68,10 +68,10 @@ TEST(InferVarType, sum_op) {
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
 
-  prog.Block(0)->NewVar("test_a")->SetType(VarDesc::SELECTED_ROWS);
-  prog.Block(0)->NewVar("test_b")->SetType(VarDesc::SELECTED_ROWS);
-  prog.Block(0)->NewVar("test_c")->SetType(VarDesc::SELECTED_ROWS);
-  prog.Block(0)->NewVar("test_out");
+  prog.Block(0)->Var("test_a")->SetType(VarDesc::SELECTED_ROWS);
+  prog.Block(0)->Var("test_b")->SetType(VarDesc::SELECTED_ROWS);
+  prog.Block(0)->Var("test_c")->SetType(VarDesc::SELECTED_ROWS);
+  prog.Block(0)->Var("test_out");
 
   op->InferVarType(prog.Block(0));
 
@@ -89,10 +89,10 @@ TEST(InferVarType, sum_op_without_infer_var_type) {
   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
   op->SetOutput("Out", {"test2_out"});
 
-  prog.Block(0)->NewVar("test2_a")->SetType(VarDesc::SELECTED_ROWS);
-  prog.Block(0)->NewVar("test2_b")->SetType(VarDesc::SELECTED_ROWS);
-  prog.Block(0)->NewVar("test2_c")->SetType(VarDesc::SELECTED_ROWS);
-  prog.Block(0)->NewVar("test2_out");
+  prog.Block(0)->Var("test2_a")->SetType(VarDesc::SELECTED_ROWS);
+  prog.Block(0)->Var("test2_b")->SetType(VarDesc::SELECTED_ROWS);
+  prog.Block(0)->Var("test2_c")->SetType(VarDesc::SELECTED_ROWS);
+  prog.Block(0)->Var("test2_out");
 
   op->InferVarType(prog.Block(0));
 
