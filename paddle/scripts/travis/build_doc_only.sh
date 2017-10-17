@@ -48,11 +48,11 @@ cd portal/
 echo "sudo pip"
 sudo pip install -r requirements.txt
 
-if [ -d ./tmp ]
+if [ -d ./stripped_doc ]
 then
-    rm -rf ./tmp
+    rm -rf ./stripped_doc
 fi
-mkdir ./tmp
+mkdir ./stripped_doc
 
 echo "show compiled doc"
 pwd $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
@@ -61,20 +61,20 @@ ls -alt $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH
 echo "TRAVIS_BRANCH"
 echo $TRAVIS_BRANCH
 
-python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH $TRAVIS_BRANCH ./tmp documentation
+python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH $TRAVIS_BRANCH ./stripped_doc documentation
 #python manage.py deploy_documentation /Users/ludaming/Baidu_USA_DamingLu/build_docs_versioned/develop $TRAVIS_BRANCH ./tmp documentation
 
 echo "test sync >>>"
-rsync -r ./tmp ubuntu@52.76.173.135:/tmp
+ls -alt
+rsync -r ./stripped_doc ubuntu@52.76.173.135:/tmp
 echo "test sync <<<"
 
 echo "stripped!!!>>>"
-ls -alt ./tmp
+ls -alt ./stripped_doc
 cd ../..
 echo "stripped!!!<<<"
 
-rsync -r PaddlePaddle.org-master/portal/tmp/ ubuntu@52.76.173.135:/var/content_staging/docs
-#rsync -a --rsync-path="mkdir -p /var/content_staging/docs/$TRAVIS_BRANCH/documentation && rsync" PaddlePaddle.org-master/portal/tmp/$TRAVIS_BRANCH ubuntu@52.76.173.135:/var/content_staging/docs/$TRAVIS_BRANCH/documentation
+rsync -r PaddlePaddle.org-master/portal/stripped_doc/ ubuntu@52.76.173.135:/var/content_staging/docs
 
 rm -rf PaddlePaddle.org-master/
 rm -rf master.zip
