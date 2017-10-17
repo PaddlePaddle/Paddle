@@ -27,14 +27,12 @@ def get_output_shape(attrs, x):
     return outputHeight, outputWidth
 
 
-"""
-im: {CHW}
-col:
-    {outputHeight, outputWidth, inputChannels, filterHeight, filterWidth}
-"""
-
-
 def im2col(attrs, im, col):
+    """
+    im: {CHW}
+    col:
+        {outputHeight, outputWidth, inputChannels, filterHeight, filterWidth}
+    """
     input_channels = im.shape[0]
     inputHeight = im.shape[1]
     inputWidth = im.shape[2]
@@ -74,14 +72,12 @@ def im2col(attrs, im, col):
                                     im_row_offset][im_col_offset]
 
 
-"""
-img: {CHW}
-col:
-    {outputHeight, outputWidth, inputChannels, filterHeight, filterWidth}
-"""
-
-
 def col2img(attrs, col, img):
+    """
+    img: {CHW}
+    col:
+        {outputHeight, outputWidth, inputChannels, filterHeight, filterWidth}
+    """
     input_channels = im.shape[0]
     inputHeight = im.shape[1]
     inputWidth = im.shape[2]
@@ -154,13 +150,11 @@ class TestBlockExpandOp(OpTest):
                      attrs['blockHeight'], attrs['blockWidth'])
             }
 
-    """
     def test_check_output(self):
         self.check_output()
-    """
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':
