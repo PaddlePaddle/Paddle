@@ -8,7 +8,7 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
 
-cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece)
+cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece nccl)
 cc_test(environment_test SRCS environment_test.cc DEPS stringpiece)
 
 IF(WITH_GPU)

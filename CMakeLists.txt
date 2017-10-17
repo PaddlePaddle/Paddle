@@ -49,6 +49,7 @@ option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
 option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
+option(WITH_NCCL        "Compile PaddlePaddle with NCCL library"        OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
@@ -127,6 +128,7 @@ include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)    # download pybind11
+include(external/nccl)      # download nccl1 
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
