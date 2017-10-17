@@ -2373,7 +2373,6 @@ void testFactorizationMachineLayer(InputType type, bool useGpu) {
 TEST(Layer, FactorizationMachineLayer) {
   testFactorizationMachineLayer(INPUT_DATA, false);
   testFactorizationMachineLayer(INPUT_DATA, true);
-  testFactorizationMachineLayer(INPUT_SPARSE_FLOAT_VALUE_DATA, false);
 }
 
 int main(int argc, char** argv) {
