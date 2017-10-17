@@ -30,20 +30,24 @@ class LinearChainCrfOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override;
 
  protected:
-  T ForwardOneSequence(const platform::DeviceContext& ctx,
-                       const Tensor& emission, Tensor& emission_row_max,
-                       Tensor& emission_exps, const Tensor& trans_weights,
-                       Tensor& trans_weight_exps, const Tensor& label,
-                       Tensor& a) const;
-
- private:
-  T NormalizeL1(T* x, size_t len) const;
+  T ForwardOneSequence(const Tensor* emission, const Tensor* emission_row_max,
+                       const Tensor* emission_exps, const Tensor* trans_weights,
+                       const Tensor* trans_weight_exps, const Tensor* label,
+                       Tensor* alpha) const;
 };
 
 template <typename Place, typename T>
 class LinearChainCrfGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
+
+ protected:
+  void BackwardOneSequence(const platform::DeviceContext& ctx,
+                           const Tensor* emission_exps,
+                           const Tensor* transition_exps, const Tensor* alpha,
+                           const Tensor* label, Tensor* beta,
+                           Tensor* transition_grad,
+                           Tensor* emission_grad) const;
 };
 
 }  // namespace operators
