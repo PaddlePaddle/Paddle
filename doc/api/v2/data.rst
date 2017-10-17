@@ -10,12 +10,6 @@ DataTypes
     :members:
     :noindex:
 
-DataFeeder
-==========
-
-..  automodule:: paddle.v2.data_feeder
-    :members:
-    :noindex:
 
 Reader
 ======

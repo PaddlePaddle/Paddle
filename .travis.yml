@@ -1,16 +1,12 @@
 language: cpp
 cache:
   directories:
-    - $HOME/.ccache
     - $HOME/.cache/pip
     - $TRAVIS_BUILD_DIR/build/third_party
 sudo: required
 dist: trusty
 os:
   - linux
-env:
-  - JOB=build_doc
-  - JOB=check_style
 addons:
   apt:
     packages:
@@ -25,11 +21,7 @@ addons:
       - libboost-dev
       - curl
       - swig
-      - graphviz
-      - clang-format-3.8
-      - automake
-      - libtool
-      - ccache
+  ssh_known_hosts: 52.76.173.135
 before_install:
   - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
   # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
@@ -37,11 +29,11 @@ before_install:
   - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
   - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit LinkChecker
   - |
-    function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+    sudo pip install Sphinx==1.5.6 sphinx_rtd_theme==0.1.9 \
+    recommonmark==0.4.0 numpy>=1.12 protobuf==3.1 nltk>=3.2.2 \
+    rarfile scipy>=0.19.0 Pillow
 script:
-  - |
-    timeout 2580 paddle/scripts/travis/${JOB}.sh # 43min timeout
-    RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
+  - paddle/scripts/travis/build_doc_only.sh
 notifications:
   email:
     on_success: change
