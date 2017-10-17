@@ -281,12 +281,16 @@ static void CreateGradVarInBlock(
   auto ops = block_desc->AllOps();
   for (size_t op_index = grad_op_start_index; op_index < ops.size();
        ++op_index) {
+    bool need_infer_shape = false;
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
                      if (block_desc->HasVar(grad_var_name)) {
                        return false;
                      }
-                     block_desc->Var(grad_var_name);
+                     need_infer_shape = true;
+                     auto var = block_desc->Var(grad_var_name);
+                     // FIXME(qiao) infer the datatype
+                     var->SetDataType(framework::DataType::FP32);
                      auto it = param_name_map.find(grad_var_name);
                      if (it == param_name_map.end()) {
                        return false;
@@ -298,6 +302,9 @@ static void CreateGradVarInBlock(
                      grad_record.op_idx_ = static_cast<int>(op_index);
                      return false; /* not break */
                    });
+    if (need_infer_shape) {
+      ops[op_index]->InferShape(*block_desc);
+    }
   }
 }
 
@@ -428,10 +435,16 @@ ParamGradInfoMap AppendBackward(
   auto& all_ops = root_block->ops_;
 
   // insert fill one op for target
+  // TODO(qiao) add some check to the target.
   std::string fill_one_op_out = GradVarName(target.Name());
+  std::vector<int64_t> target_shape_desc = target.Shape();
+  std::vector<int> target_shape;
+  std::transform(target_shape_desc.begin(), target_shape_desc.end(),
+                 std::back_inserter(target_shape),
+                 [](int64_t dim) { return static_cast<int>(dim); });
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
-                     {{"shape", std::vector<int>{1}},
+                     {{"shape", target_shape},
                       {"value", static_cast<float>(1.0)},
                       {"data_type", framework::DataType::FP32}}));
   all_ops.push_back(std::move(fill_one_op));
@@ -443,13 +456,22 @@ ParamGradInfoMap AppendBackward(
   auto backward_op_descs = MakeBlockBackward(program_desc, root_block_idx,
                                              &no_grad_var_names, &grad_to_var);
 
-  std::unordered_map<std::string, GradVarInfo> retv;
-
-  // Create Variable
   for (auto& ptr : backward_op_descs) {
     all_ops.push_back(std::move(ptr));
   }
-  root_block->Var(fill_one_op_out);
+  // Create Variable
+
+  // Create target gradient variable
+  std::unordered_map<std::string, GradVarInfo> retv;
+
+  auto var = root_block->Var(fill_one_op_out);
+  // FIXME(qiao) infer the data type
+  var->SetDataType(framework::DataType::FP32);
+  var->SetShape(target.Shape());
+  auto& target_grad = retv[target.Name()];
+  target_grad.name_ = fill_one_op_out;
+  target_grad.block_idx_ = root_block_idx;
+  target_grad.op_idx_ = static_cast<int>(forward_op_num);
 
   // create grad_var for all blocks in this program
   CreateGradVarInBlock(forward_op_num, grad_to_var, root_block, &retv);

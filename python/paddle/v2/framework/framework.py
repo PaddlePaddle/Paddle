@@ -306,6 +306,14 @@ class Block(object):
     def idx(self):
         return self.desc.id
 
+    def var(self, name):
+        if name not in self.vars:
+            raise ValueError("var %s not in this block" % name)
+        return self.vars[name]
+
+    def all_parameters(self):
+        return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
+
     def create_var(self, *args, **kwargs):
         return Variable(self, *args, **kwargs)
 
@@ -314,7 +322,8 @@ class Block(object):
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
-        return Parameter(global_block, *args, **kwargs)
+        param = Parameter(global_block, *args, **kwargs)
+        return param
 
     def append_op(self, *args, **kwargs):
         op_desc = self.desc.append_op()
@@ -392,10 +401,16 @@ class Program(object):
     def global_block(self):
         return self.blocks[0]
 
+    def block(self, index):
+        return self.blocks[index]
+
     def current_block(self):
         return self.blocks[self.current_block_idx]
 
     def append_backward(self, target, no_grad_set):
+        """
+        return map(param_name -> (grad_name, block_index, op_index))
+        """
         assert isinstance(target, Variable)
         param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
         self.sync_with_cpp()
