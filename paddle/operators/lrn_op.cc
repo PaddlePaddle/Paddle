@@ -46,35 +46,35 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
   LRNOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", R"DOC(
- Input of lrn op.It must be a 4 rank tenor with NCHW format.
+ (Tensor)Input of lrn op.It must be a 4 rank tenor with NCHW format.
  )DOC");
 
-    AddOutput("Out", "The output of lrn op");
+    AddOutput("Out", "(Tensor)The output of lrn op");
     AddOutput("mid_out", R"Doc(
-Middle result of lrn op.It's computed in forward process 
+(Tensor)Middle result of lrn op.It's computed in forward process 
 and also used in backward process.
     )Doc");
 
     AddAttr<int>("n", R"DOC(
-n is “adjacent” kernel maps at the same spatial position.
+(int, default 5)n is “adjacent” kernel maps at the same spatial position.
         )DOC")
         .SetDefault(5)
         .GreaterThan(0);
 
     AddAttr<float>("k", R"DOC(
-k is the bias.
+(float, default 2.0)k is the bias.
         )DOC")
         .SetDefault(2.0)
         .GreaterThan(0.0);
 
     AddAttr<float>("alpha", R"DOC(
-alpha is the scale number.
+(float, default 0.0001)alpha is the scale number.
         )DOC")
         .SetDefault(0.0001)
         .GreaterThan(0.0);
 
     AddAttr<float>("beta", R"DOC(
-beta is the power number.
+(float, default 0.75)beta is the power number.
         )DOC")
         .SetDefault(0.75)
         .GreaterThan(0.0);
