@@ -27,7 +27,6 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "X(Input) of Pooling should not be null.");
@@ -72,7 +71,6 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Mask"), "Input(Mask) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
