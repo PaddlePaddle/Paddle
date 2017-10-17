@@ -185,9 +185,6 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 	1. Call maker class to complete `proto` and `checker`
 	2. Using the completed `proto` and `checker`, it will add a new key-value pair to the `OpInfoMap`
 
-
-4. Invoke the `USE` macro in which the Op is used to make sure that it is linked.
-
 ---
 # Backward Module (1/2)
 ### Create Backward Operator
