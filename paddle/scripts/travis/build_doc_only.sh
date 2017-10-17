@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-#TRAVIS_BRANCH="develop"
+TRAVIS_BRANCH="develop"
 rm CMakeLists.txt
 mv CMakeLists.doc.txt CMakeLists.txt
 
@@ -55,7 +55,7 @@ fi
 mkdir ./stripped_doc
 
 echo "show compiled doc"
-pwd $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
+#pwd $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
 ls -alt $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH
 
 echo "TRAVIS_BRANCH"
