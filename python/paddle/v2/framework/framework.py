@@ -153,7 +153,8 @@ class OpProtoHolder(object):
             self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):
-        assert type in self.op_proto_map, "Operator \"%s\" has not been registered." % type
+        if type not in self.op_proto_map:
+            raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
 
 
@@ -305,6 +306,14 @@ class Block(object):
     def idx(self):
         return self.desc.id
 
+    def var(self, name):
+        if name not in self.vars:
+            raise ValueError("var %s not in this block" % name)
+        return self.vars[name]
+
+    def all_parameters(self):
+        return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
+
     def create_var(self, *args, **kwargs):
         return Variable(self, *args, **kwargs)
 
@@ -313,7 +322,8 @@ class Block(object):
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
-        return Parameter(global_block, *args, **kwargs)
+        param = Parameter(global_block, *args, **kwargs)
+        return param
 
     def append_op(self, *args, **kwargs):
         op_desc = self.desc.append_op()
@@ -374,10 +384,10 @@ class Program(object):
             cls._instance = cls()
         return cls._instance
 
-    def __init__(self):
-        assert not hasattr(self.__class__,
-                           '_instance'), 'Do not call constructor directly!'
-        self.desc = core.ProgramDesc.instance()
+    def __init__(self, desc=None):
+        if desc is None:
+            desc = core.ProgramDesc.instance()
+        self.desc = desc
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
 
@@ -391,10 +401,16 @@ class Program(object):
     def global_block(self):
         return self.blocks[0]
 
+    def block(self, index):
+        return self.blocks[index]
+
     def current_block(self):
         return self.blocks[self.current_block_idx]
 
     def append_backward(self, target, no_grad_set):
+        """
+        return map(param_name -> (grad_name, block_index, op_index))
+        """
         assert isinstance(target, Variable)
         param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
         self.sync_with_cpp()
@@ -428,7 +444,6 @@ class Parameter(Variable):
             if each < 0:
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
-
         Variable.__init__(self, block, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
         self.init_attr = kwargs.get('initialize_attr', {
@@ -441,7 +456,7 @@ class Parameter(Variable):
         self._append_initialize_ops_()
 
     def _append_initialize_ops_(self):
-        attr = copy.deepcopy(self.init_attr)
+        attr = self.init_attr
         op_type = attr.pop('type', None)
         block = self.block
         assert isinstance(block, Block)

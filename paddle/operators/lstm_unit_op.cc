@@ -21,7 +21,6 @@ class LstmUnitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("C_prev"),
@@ -76,7 +75,6 @@ class LstmUnitGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("C")),
                    "Input(C@GRAD) should not be null");
