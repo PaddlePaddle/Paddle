@@ -136,16 +136,34 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "The second input of MatMul op");
     AddOutput("Out", "The output of MatMul op");
     AddAttr<bool>("transpose_X",
-                  R"DOC(If true, use the transpose of X.
+                  R"DOC(If true, use the transpose of `X`.
         )DOC")
         .SetDefault(false);
     AddAttr<bool>("transpose_Y",
-                  R"DOC(If true, use the transpose of Y.
+                  R"DOC(If true, use the transpose of `Y`.
         )DOC")
         .SetDefault(false);
     AddComment(R"DOC(
-The MatMul operator is used to perform (batched) matrix multiplication for
-input tensors X and Y. The behavior is similar to the `numpy.matmul` function.
+The MatMul operator is used to perform (batched) matrix multiplication
+over the last two dimensions of the input tensors `X` and `Y`.
+
+If a transpose flag is specified, the last two dimensions of the
+tensor are transposed. If the tensor is rank-1 of shape [D], then
+for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
+in transposed form, whereas for `Y` it is the opposite: It is treated
+as [D, 1] in nontransposed form and as [1, D] in transposed form.
+
+Examples without transpose:
+- X: [K], Y: [K] => Out: [1]
+- X: [K], Y: [K, N] => Out: [N]
+- X: [B, M, K], Y: [K] => Out: [B, M]
+- X: [M, K], Y: [B, K, N] => Out: [B, M, N]
+- X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
+
+The behavior is designed to be similar to the `numpy.matmul` function.
+The differences are:
+- Currently only rank 1 to rank 3 input tensors are supported.
+- We add `transpose_X` and `transpose_Y` flags.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD with input `X`.
