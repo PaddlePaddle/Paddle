@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/platform/macros.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -28,28 +29,28 @@ typedef enum {
   HL_ACTIVATION_END
 } activation_mode_t;
 
-template <T>
-struct lstm_value {
-  real *gateValue;
-  real *prevStateValue;
-  real *stateValue;
-  real *stateActiveValue;
-  real *outputValue;
-  real *checkIg;
-  real *checkFg;
-  real *checkOg;
+template <class T>
+struct LstmMetaValue {
+  T *gateValue;
+  T *prevStateValue;
+  T *stateValue;
+  T *stateActiveValue;
+  T *outputValue;
+  T *checkIg;
+  T *checkFg;
+  T *checkOg;
 };
 
-template <T>
-struct lstm_grad {
-  real *gateGrad;
-  real *prevStateGrad;
-  real *stateGrad;
-  real *stateActiveGrad;
-  real *outputGrad;
-  real *checkIgGrad;
-  real *checkFgGrad;
-  real *checkOgGrad;
+template <class T>
+struct LstmMetaGrad {
+  T *gateGrad;
+  T *prevStateGrad;
+  T *stateGrad;
+  T *stateActiveGrad;
+  T *outputGrad;
+  T *checkIgGrad;
+  T *checkFgGrad;
+  T *checkOgGrad;
 };
 
 activation_mode_t ActiveType(const std::string &type) {
@@ -69,7 +70,8 @@ activation_mode_t ActiveType(const std::string &type) {
 template <typename Place, typename T>
 class LstmUnitFunctor {
  public:
-  static void compute(lstm_value value, int frame_size, int batch_size,
+  static void compute(const platform::DeviceContext &context,
+                      LstmMetaValue<T> value, int frame_size, int batch_size,
                       std::string gate_act, std::string cell_act,
                       std::string cand_act);
 };
@@ -77,8 +79,9 @@ class LstmUnitFunctor {
 template <typename Place, typename T>
 class LstmUnitGradFunctor {
  public:
-  static void compute(lstm_value value, lstm_grad grad, int frame_size,
-                      int batch_size, std::string gate_act,
+  static void compute(const platform::DeviceContext &context,
+                      LstmMetaValue<T> value, LstmMetaGrad<T> grad,
+                      int frame_size, int batch_size, std::string gate_act,
                       std::string cell_act, std::string cand_act);
 };
 

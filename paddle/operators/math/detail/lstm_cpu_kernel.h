@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <type_traits>
+#include "paddle/operators/math/detail/hl_activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 
 namespace paddle {
@@ -23,7 +25,8 @@ namespace detail {
 #ifndef __NVCC__
 
 template <class T, class Op>
-void naive_lstm_forward_one_sequence(Op op, lstm_value value, int frameSize,
+void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
+                                     int frameSize,
                                      activation_mode_t active_node,
                                      activation_mode_t active_gate,
                                      activation_mode_t active_state) {
@@ -57,9 +60,10 @@ void naive_lstm_forward_one_sequence(Op op, lstm_value value, int frameSize,
       rPrevState = value.prevStateValue[i];
     }
 
+    hppl::cpu::ForwardAct<T> act;
     op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-       rOut, rCheckI, rCheckF, rCheckO, hppl::cpu::forward[active_node],
-       hppl::cpu::forward[active_gate], hppl::cpu::forward[active_state]);
+       rOut, rCheckI, rCheckF, rCheckO, act(active_node), act(active_gate),
+       act(active_state));
 
     valueIn[i] = rValueIn;
     valueIg[i] = rValueIg;
@@ -72,8 +76,8 @@ void naive_lstm_forward_one_sequence(Op op, lstm_value value, int frameSize,
 }
 
 template <class T, class Op>
-void naive_lstm_backward_one_sequence(Op op, lstm_value value, lstm_grad grad,
-                                      int frameSize,
+void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
+                                      LstmMetaGrad<T> grad, int frameSize,
                                       activation_mode_t active_node,
                                       activation_mode_t active_gate,
                                       activation_mode_t active_state) {
@@ -123,11 +127,11 @@ void naive_lstm_backward_one_sequence(Op op, lstm_value value, lstm_grad grad,
       rPrevState = value.prevStateValue[i];
     }
 
+    hppl::cpu::BackwardAct<T> act;
     op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg,
        rGradOg, rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv,
        rOutputGrad, rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad,
-       rCheckOGrad, hppl::cpu::backward[active_node],
-       hppl::cpu::backward[active_gate], hppl::cpu::backward[active_state]);
+       rCheckOGrad, act(active_node), act(active_gate), act(active_state));
 
     gradIn[i] = rGradIn;
     gradIg[i] = rGradIg;
@@ -144,8 +148,8 @@ void naive_lstm_backward_one_sequence(Op op, lstm_value value, lstm_grad grad,
   }
 }
 
-template <class Op>
-void avx_lstm_forward_one_sequence(Op op, lstm_value value, int frameSize,
+template <class T, class Op>
+void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value, int frameSize,
                                    activation_mode_t active_node,
                                    activation_mode_t active_gate,
                                    activation_mode_t active_state) {
@@ -195,9 +199,9 @@ void avx_lstm_forward_one_sequence(Op op, lstm_value value, int frameSize,
 #endif
 }
 
-template <class Op>
-void avx_lstm_backward_one_sequence(Op op, lstm_value value, lstm_grad grad,
-                                    int frameSize,
+template <class T, class Op>
+void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
+                                    LstmMetaGrad<T> grad, int frameSize,
                                     activation_mode_t active_node,
                                     activation_mode_t active_gate,
                                     activation_mode_t active_state) {
@@ -271,13 +275,13 @@ void avx_lstm_backward_one_sequence(Op op, lstm_value value, lstm_grad grad,
 }
 
 template <class T, class Op>
-void cpu_lstm_forward(Op op, lstm_value value, int frameSize,
+void cpu_lstm_forward(Op op, LstmMetaValue<T> value, int frameSize,
                       activation_mode_t active_node,
                       activation_mode_t active_gate,
                       activation_mode_t active_state) {
-  if (Op::avx && !(frameSize & (8 - 1)) && (sizeof(T) == 4)) {
-    avx_lstm_forward_one_sequence(op, value, frameSize, active_node,
-                                  active_gate, active_state);
+  if (Op::avx && !(frameSize & (8 - 1)) && (std::is_same<T, float>::value)) {
+    avx_lstm_forward_one_sequence<T>(op, value, frameSize, active_node,
+                                     active_gate, active_state);
   } else {
     naive_lstm_forward_one_sequence<T>(op, value, frameSize, active_node,
                                        active_gate, active_state);
@@ -285,13 +289,13 @@ void cpu_lstm_forward(Op op, lstm_value value, int frameSize,
 }
 
 template <class T, class Op>
-void cpu_lstm_backward(Op op, lstm_value value, lstm_grad grad, int frameSize,
-                       activation_mode_t active_node,
+void cpu_lstm_backward(Op op, LstmMetaValue<T> value, LstmMetaGrad<T> grad,
+                       int frameSize, activation_mode_t active_node,
                        activation_mode_t active_gate,
                        activation_mode_t active_state) {
-  if (Op::avx && !(frameSize & (8 - 1)) && (sizeof(T) == 4)) {
-    avx_lstm_backward_one_sequence(op, value, grad, frameSize, active_node,
-                                   active_gate, active_state);
+  if (Op::avx && !(frameSize & (8 - 1)) && (std::is_same<T, float>::value)) {
+    avx_lstm_backward_one_sequence<T>(op, value, grad, frameSize, active_node,
+                                      active_gate, active_state);
   } else {
     naive_lstm_backward_one_sequence<T>(op, value, grad, frameSize, active_node,
                                         active_gate, active_state);

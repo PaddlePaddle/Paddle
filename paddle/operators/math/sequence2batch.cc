@@ -22,12 +22,14 @@ template <typename T>
 class CopyMatrixRowsFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& src, const size_t* index,
-                  framework::Tensor& dst, bool is_src_index) {
+                  const framework::LoDTensor& src, const size_t* index,
+                  framework::LoDTensor& dst, bool is_src_index) {
     auto src_dims = src.dims();
     auto dst_dims = dst.dims();
-    PADDLE_ENFORCE(src_dims.size(), 2, "The src must be matrix with rank 2.");
-    PADDLE_ENFORCE(dst_dims.size(), 2, "The dst must be matrix with rank 2.");
+    PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,
+                      "The src must be matrix with rank 2.");
+    PADDLE_ENFORCE_EQ(dst_dims.size(), 2UL,
+                      "The dst must be matrix with rank 2.");
     PADDLE_ENFORCE_EQ(src_dims[1], dst_dims[1],
                       "The width of src and dst must be same.");
     auto height = dst_dims[0];
@@ -50,7 +52,9 @@ template class CopyMatrixRowsFunctor<platform::CPUPlace, float>;
 template class CopyMatrixRowsFunctor<platform::CPUPlace, double>;
 
 template class LoDTensor2BatchFunctor<platform::CPUPlace, float>;
-template class Batch2LoDTensor2Functor<platform::CPUPlace, float>;
+template class LoDTensor2BatchFunctor<platform::CPUPlace, double>;
+template class Batch2LoDTensorFunctor<platform::CPUPlace, float>;
+template class Batch2LoDTensorFunctor<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

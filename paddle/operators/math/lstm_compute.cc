@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "LstmCompute.h"
+#include "paddle/operators/math/lstm_compute.h"
 #include "paddle/operators/math/detail/lstm_cpu_kernel.h"
 #include "paddle/operators/math/detail/lstm_kernel.h"
 
@@ -22,19 +22,20 @@ namespace math {
 
 template <class T>
 struct LstmUnitFunctor<platform::CPUPlace, T> {
-  static void compute(lstm_value value, int frame_size, int batch_size,
+  static void compute(const platform::DeviceContext& context,
+                      LstmMetaValue<T> value, int frame_size, int batch_size,
                       std::string gate_act, std::string cell_act,
                       std::string cand_act) {
     for (int b = 0; b < batch_size; b++) {
-      detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frameSize,
+      detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frame_size,
                                ActiveType(cand_act), ActiveType(gate_act),
                                ActiveType(cell_act));
-      value.gateValue += frameSize * 4;
-      value.stateValue += frameSize;
-      value.stateActiveValue += frameSize;
-      value.outputValue += frameSize;
+      value.gateValue += frame_size * 4;
+      value.stateValue += frame_size;
+      value.stateActiveValue += frame_size;
+      value.outputValue += frame_size;
       if (value.prevStateValue) {
-        value.prevStateValue += frameSize;
+        value.prevStateValue += frame_size;
       }
     }
   }
@@ -42,31 +43,36 @@ struct LstmUnitFunctor<platform::CPUPlace, T> {
 
 template <class T>
 struct LstmUnitGradFunctor<platform::CPUPlace, T> {
-  static void compute(lstm_value value, lstm_grad grad, int frame_size,
-                      int batch_size, std::string gate_act,
+  static void compute(const platform::DeviceContext& context,
+                      LstmMetaValue<T> value, LstmMetaGrad<T> grad,
+                      int frame_size, int batch_size, std::string gate_act,
                       std::string cell_act, std::string cand_act) {
-    for (int b = 0; b < batchSize; b++) {
+    for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_backward(detail::backward::lstm<T>(), value, grad,
-                                frameSize, ActiveType(cand_act),
+                                frame_size, ActiveType(cand_act),
                                 ActiveType(gate_act), ActiveType(cell_act));
 
-      value.gateValue += frameSize * 4;
-      value.stateValue += frameSize;
-      value.stateActiveValue += frameSize;
-      value.outputValue += frameSize;
+      value.gateValue += frame_size * 4;
+      value.stateValue += frame_size;
+      value.stateActiveValue += frame_size;
+      value.outputValue += frame_size;
       if (value.prevStateValue) {
-        value.prevStateValue += frameSize;
+        value.prevStateValue += frame_size;
       }
 
-      grad.gateGrad += frameSize * 4;
-      grad.stateGrad += frameSize;
-      grad.stateActiveGrad += frameSize;
-      grad.outputGrad += frameSize;
+      grad.gateGrad += frame_size * 4;
+      grad.stateGrad += frame_size;
+      grad.stateActiveGrad += frame_size;
+      grad.outputGrad += frame_size;
       if (grad.prevStateGrad) {
-        grad.prevStateGrad += frameSize;
+        grad.prevStateGrad += frame_size;
       }
     }
-  };
+  }
+};
+
+template class LstmUnitFunctor<platform::CPUPlace, float>;
+template class LstmUnitGradFunctor<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -46,9 +46,9 @@ cc_library(executor SRCS executor.cc DEPS op_registry device_context scope frame
 set(EXECUTOR_TEST_OP elementwise_add_op gaussian_random_op feed_op fetch_op
     mul_op sum_op squared_l2_distance_op fill_constant_op sgd_op mean_op)
 if(WITH_GPU)
-    nv_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
+    # nv_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
 else()
-    cc_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
+    # cc_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
 endif()
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
