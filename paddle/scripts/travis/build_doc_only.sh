@@ -35,7 +35,8 @@ cd PaddlePaddle.org-master/
 cd portal/
 
 sudo pip install -r requirements.txt
-mkdir ./tmp
+mkdir ./tmp/
+mkdir ./tmp/$TRAVIS_BRANCH/
 python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp
 
 cd ../..
