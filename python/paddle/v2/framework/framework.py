@@ -308,8 +308,11 @@ class Block(object):
 
     def var(self, name):
         if name not in self.vars:
-            raise Exception("var %s not in this block" % name)
+            raise ValueError("var %s not in this block" % name)
         return self.vars[name]
+
+    def all_parameters(self):
+        return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
 
     def create_var(self, *args, **kwargs):
         return Variable(self, *args, **kwargs)
@@ -320,7 +323,6 @@ class Block(object):
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
-        self.program.parameters.append(param.name)
         return param
 
     def append_op(self, *args, **kwargs):
@@ -388,7 +390,6 @@ class Program(object):
         self.desc = desc
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
-        self.parameters = []  # parameter name list stored in the global scope
 
     def __str__(self):
         protostr = self.desc.serialize_to_string()

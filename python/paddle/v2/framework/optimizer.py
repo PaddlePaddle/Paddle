@@ -37,7 +37,8 @@ class Optimizer(object):
         if parameter_list is not None:
             parameters = parameter_list
         else:
-            parameters = loss.block.program.parameters
+            params = loss.block.program.global_block().all_parameters()
+            parameters = [param.name for param in params]
         params_and_grads = []
         for param in parameters:
             if param not in param_grad_map:
