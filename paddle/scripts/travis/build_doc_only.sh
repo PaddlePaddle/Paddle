@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-TRAVIS_BRANCH="develop"
 
 rm CMakeLists.txt
 mv CMakeLists.doc.txt CMakeLists.txt
@@ -27,6 +26,8 @@ mv doc/cn/* $TRAVIS_BUILD_DIR/build_docs/cn/
 mkdir -p $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH
 mv $TRAVIS_BUILD_DIR/build_docs/* $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
 
+echo "moved: $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/"
+ls $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
 
 # pull PaddlePaddle.org app and strip
 # https://github.com/PaddlePaddle/PaddlePaddle.org/archive/master.zip
@@ -39,6 +40,12 @@ sudo pip install -r requirements.txt
 mkdir ./tmp/
 mkdir ./tmp/$TRAVIS_BRANCH/
 python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp
+
+echo './tmp/'
+ls ./tmp/
+
+echo "./tmp/$TRAVIS_BRANCH/"
+ls ./tmp/$TRAVIS_BRANCH/
 
 cd ../..
 
