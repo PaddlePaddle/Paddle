@@ -43,16 +43,11 @@ cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
 
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward)
-set(EXECUTOR_TEST_OP elementwise_add_op gaussian_random_op feed_op fetch_op
-    mul_op sum_op squared_l2_distance_op fill_constant_op sgd_op mean_op)
-if(WITH_GPU)
-    nv_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
-else()
-    cc_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
-endif()
 
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
 cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
 
+cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
+        proto_desc)
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
