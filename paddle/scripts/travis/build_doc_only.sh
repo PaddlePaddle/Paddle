@@ -24,7 +24,7 @@ mv doc/cn/* $TRAVIS_BUILD_DIR/build_docs/cn/
 
 # deploy to remote server
 openssl aes-256-cbc -d -a -in $TRAVIS_BUILD_DIR/paddle/scripts/travis/ubuntu.pem.enc -out ubuntu.pem -k $DEC_PASSWD
-
+echo "here!!!"
 eval "$(ssh-agent -s)"
 chmod 400 ubuntu.pem
 
@@ -32,7 +32,7 @@ ssh-add ubuntu.pem
 
 mkdir -p $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH
 mv $TRAVIS_BUILD_DIR/build_docs/* $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/
-
+echo "moved!!!"
 # copy generated content for debug purpose
 #rsync -r $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ ubuntu@52.76.173.135:/tmp
 
@@ -47,6 +47,8 @@ sudo pip install -r requirements.txt
 mkdir ./tmp
 python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp documentation
 
+echo "stripped!!!"
+ls ./tmp
 cd ../..
 
 rsync -r PaddlePaddle.org-master/portal/tmp/ ubuntu@52.76.173.135:/var/content_staging/docs
@@ -57,3 +59,4 @@ rm -rf master.zip
 
 chmod 644 ubuntu.pem
 rm ubuntu.pem
+echo "finished!!!"
