@@ -21,7 +21,6 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequenceSoftmaxOp should not be null.");
@@ -66,7 +65,6 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Out"),
                    "Input(Out) of SequenceSoftmaxGradOp should not be null.");
