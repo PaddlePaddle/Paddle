@@ -11,8 +11,7 @@ ARG ANDROID_API
 ENV ANDROID_ABI=${ANDROID_ABI:-"armeabi-v7a"}
 ENV ANDROID_API=${ANDROID_API:-21}
 
-ENV HOME=/root \
-    ANDROID_NDK_HOME=/opt/android-ndk-linux \
+ENV ANDROID_NDK_HOME=/opt/android-ndk-linux \
     ANDROID_TOOLCHAINS_DIR=/opt/toolchains
 
 RUN apt-get update && \
@@ -50,5 +49,8 @@ RUN mkdir -p ${ANDROID_TOOLCHAINS_DIR} && \
     unzip -q android-ndk-r14b-linux-x86_64.zip && \
     mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
     rm -rf /opt/android-ndk-tmp
+
+COPY ./paddle/scripts/docker/build_android_toolchain.sh /opt/
+RUN chmod +x /opt/build_android_toolchain.sh && /opt/build_android_toolchain.sh
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build_android.sh"]
