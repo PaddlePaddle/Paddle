@@ -248,14 +248,17 @@ TEST(MKLDNNActivation, Activations) {
   }
 }
 
+DECLARE_string(config_args);
 TEST(MKLDNNLayer, branches) {
-  std::vector<std::string> cases = {"conv_conv_concat",
-                                    "conv_conv_concat_32c",
-                                    "conv_conv_addto",
-                                    "conv_conv_addto_32c"};
+  std::vector<std::string> cases = {"conv"};
   for (auto name : cases) {
     std::string config = "./gserver/tests/mkldnn_branches_" + name + ".conf";
-    MKLDNNTester::runBranchesTest(config);
+    for (auto channels : {2, 32}) {
+      std::ostringstream oss;
+      oss << "channels=" << channels;
+      FLAGS_config_args = oss.str();
+      MKLDNNTester::runBranchesTest(config);
+    }
   }
 }
 
