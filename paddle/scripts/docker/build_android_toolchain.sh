@@ -25,4 +25,3 @@ ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh \
       --arch=$ANDROID_ARCH \
       --platform=android-$ANDROID_API \
       --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
-
