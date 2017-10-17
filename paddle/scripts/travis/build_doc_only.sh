@@ -47,6 +47,8 @@ sudo pip install -r requirements.txt
 mkdir ./tmp
 python manage.py deploy_documentation $TRAVIS_BUILD_DIR/build_docs_versioned/$TRAVIS_BRANCH/ $TRAVIS_BRANCH ./tmp documentation
 
+rsync -r ./tmp ubuntu@52.76.173.135:/tmp
+
 echo "stripped!!!"
 ls ./tmp
 cd ../..
