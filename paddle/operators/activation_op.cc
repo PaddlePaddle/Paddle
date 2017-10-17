@@ -21,7 +21,6 @@ class ActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Y");
@@ -32,7 +31,6 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Y"));
   }
@@ -206,6 +204,17 @@ class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SoftplusOpMaker(framework::OpProto *proto,
+                  framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Softplus operator");
+    AddOutput("Y", "Output of Softplus operator");
+    AddComment("Softplus activation operator, softplus(x) = log(1 + exp(x))");
+  }
+};
+
 class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SoftsignOpMaker(framework::OpProto *proto,
@@ -310,6 +319,55 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename AttrType>
+class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ThresholdedReluOpMaker(framework::OpProto *proto,
+                         framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of ThresholdedRelu operator");
+    AddOutput("Y", "Output of ThresholdedRelu operator");
+    AddComment(
+        "ThresholdedRelu activation operator, "
+        "thresholded_relu = x for x > threshold, "
+        "thresholded_relu = 0 otherwise.");
+    AddAttr<AttrType>("threshold", "The threshold location of activation")
+        .SetDefault(static_cast<AttrType>(1.0));
+  }
+};
+
+template <typename AttrType>
+class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  HardSigmoidOpMaker(framework::OpProto *proto,
+                     framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of HardSigmoid operator");
+    AddOutput("Y", "Output of HardSigmoid operator");
+    AddComment(R"DOC(
+Hard Sigmoid activation operator.
+
+Segment-wise linear approximation of sigmoid[1].
+This is much faster than sigmoid.
+
+hard_sigmoid = max(0, min(1, slope * x + shift))
+
+The slope should be positive. The offset can be either positive or negative.
+The default slope and shift are set from [1].
+It is recommended to use the defaults for this activation.
+
+References:
+  [1] Noisy Activation Functions
+      (https://arxiv.org/abs/1603.00391)
+
+    )DOC");
+    AddAttr<AttrType>("slope", "Slope for linear approximation of sigmoid")
+        .SetDefault(static_cast<AttrType>(0.2));
+    AddAttr<AttrType>("offset", "Offset for linear approximation of sigmoid")
+        .SetDefault(static_cast<AttrType>(0.5));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -351,6 +409,9 @@ REGISTER_OP(log, ops::ActivationOp, ops::LogOpMaker, log_grad,
 REGISTER_OP(square, ops::ActivationOp, ops::SquareOpMaker, square_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(softplus, ops::ActivationOp, ops::SoftplusOpMaker, softplus_grad,
+            ops::ActivationOpGrad);
+
 REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
             ops::ActivationOpGrad);
 
@@ -377,6 +438,13 @@ REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
 
 REGISTER_OP(hard_shrink, ops::ActivationOp, ops::HardShrinkOpMaker<float>,
             hard_shrink_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(thresholded_relu, ops::ActivationOp,
+            ops::ThresholdedReluOpMaker<float>, thresholded_relu_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker<float>,
+            hard_sigmoid_grad, ops::ActivationOpGrad);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
   REGISTER_OP_CPU_KERNEL(                                                      \

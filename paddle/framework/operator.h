@@ -289,6 +289,15 @@ class ExecutionContext {
     return device_context_;
   }
 
+#ifdef PADDLE_WITH_CUDA
+  const platform::CUDADeviceContext& cuda_device_context() const {
+    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    auto cuda_ctx =
+        reinterpret_cast<const platform::CUDADeviceContext*>(&device_context_);
+    return *cuda_ctx;
+  }
+#endif
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
@@ -394,11 +403,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.Var(name)->Shape());
+    return framework::make_ddim(block_.FindVar(name)->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
-    block_.Var(name)->SetShape(framework::vectorize(dim));
+    block_.FindVar(name)->SetShape(framework::vectorize(dim));
   }
 
   const OpDescBind& op_;
