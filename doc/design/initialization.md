@@ -6,7 +6,7 @@ PaddlePaddle needs a way to init parameters.
 
 ## Challenge
 
-1. Init operator should be run once during initialization.
+1. Init operator should be run once and only one; otherwise, every iteration would clear the parameters.
 1. Init operator should not be run during training.
 
 ## Solution
