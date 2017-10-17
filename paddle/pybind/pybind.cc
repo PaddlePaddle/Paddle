@@ -252,6 +252,17 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
+  py::class_<platform::Place>(m, "Place")
+      .def(py::init<>())
+      .def("set_place",
+           [](platform::Place &self, const platform::CPUPlace &cpu_place) {
+             self = cpu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::GPUPlace &gpu_place) {
+             self = gpu_place;
+           });
+
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
                   [](py::bytes protobin) {
@@ -425,14 +436,15 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
       .def("run",
-           [](Executor &self, const ProgramDesc &program_desc, int block_id) {
+           [](Executor &self, ProgramDescBind *program_bind, int block_id) {
              framework::Scope &global_scope = GetGlobalScope();
-             self.Run(program_desc, &global_scope, block_id);
+             self.Run(*program_bind->Proto(), &global_scope, block_id);
            });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);
+  //! FIXME: it is no need to `set_xxx_float/double/int`
   m.def("set_feed_variable_float", framework::SetFeedVariable<float>);
   m.def("set_feed_variable_double", framework::SetFeedVariable<double>);
   m.def("set_feed_variable_int", framework::SetFeedVariable<int>);

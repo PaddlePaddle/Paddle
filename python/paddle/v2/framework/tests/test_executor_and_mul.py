@@ -1,6 +1,7 @@
 import unittest
 from paddle.v2.framework.layers import mul, data_layer
 import paddle.v2.framework.core as core
+from paddle.v2.framework.executor import Executor
 import numpy
 
 
@@ -15,14 +16,17 @@ class TestExecutor(unittest.TestCase):
         out = mul(x=a, y=b)
         place = core.CPUPlace()
         a_np = numpy.random.random((100, 784)).astype('float32')
-        input_tensor = core.LoDTensor()
-        input_tensor.set(a_np, place)
-        core.set_feed_variable_float(input_tensor, "feed", 0)
+        tensor_a = core.LoDTensor()
+        tensor_a.set(a_np, place)
         b_np = numpy.random.random((784, 100)).astype('float32')
-        input_tensor = core.LoDTensor()
-        input_tensor.set(b_np, place)
-        core.set_feed_variable_float(input_tensor, 'feed', 1)
+        tensor_b = core.LoDTensor()
+        tensor_b.set(b_np, place)
         # del input_tensor
+        exe = Executor(place)
+        exe.run(out.op.block,
+                feed={'a': tensor_a,
+                      'b': tensor_b},
+                fetch_list=[out])
 
 
 if __name__ == '__main__':

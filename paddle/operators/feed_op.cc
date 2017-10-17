@@ -48,10 +48,23 @@ class FeedOp : public framework::OperatorBase {
   }
 };
 
+class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  FeedOpInfoMaker(framework::OpProto *proto,
+                  framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("Input", "");
+    AddOutput("Out", "");
+    AddComment("");
+    AddAttr<int>("col", "");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 // We do not need to register OpInfoMaker,
 // since feed operator will not be used by end users directly
 REGISTER_OPERATOR(feed, paddle::operators::FeedOp,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  paddle::operators::FeedOpInfoMaker);
