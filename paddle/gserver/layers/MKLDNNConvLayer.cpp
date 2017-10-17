@@ -313,6 +313,7 @@ void MKLDNNConvLayer::resetOutValue(
       cvtOutVal_ = MKLDNNMatrix::createReorder(out, cpuOutVal_);
       CHECK(cvtOutVal_) << "should not be empty";
     } else {
+      cpuOut->setData(output_.value->getData());
       cpuOutVal_ = out;
     }
     // when output is cpu device, change the mkldnn output value and make them
@@ -456,17 +457,18 @@ void MKLDNNConvLayer::resetOutGrad(
     MKLDNNLayer::resetOutGrad(out, outVal_->getPrimitiveDesc());
   } else {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
+    // always share the same grad data of CPU output
+    // then the activation can get the right grad from output_.grad
+    output_.grad->setData(cpuOut->getData());
     // same PrimitiveDesc with cpuInVal_
     CHECK(cpuOutVal_);
     cpuOutGrad_ = MKLDNNMatrix::create(cpuOut, cpuOutVal_->getPrimitiveDesc());
     // create reorder if primitive desc does not match
     if (cpuOutGrad_->getPrimitiveDesc() != outVal_->getPrimitiveDesc()) {
-      out = MKLDNNMatrix::create(output_.grad, outVal_->getPrimitiveDesc());
+      out = MKLDNNMatrix::create(nullptr, outVal_->getPrimitiveDesc());
       cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
       CHECK(cvtOutGrad_);
     } else {
-      // share the same data of CPU output
-      output_.grad->setData(cpuOut->getData());
       out = cpuOutGrad_;
     }
   }

@@ -21,7 +21,6 @@ class SGDOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
                    "Input(Param) of SGDOp should not be null.");

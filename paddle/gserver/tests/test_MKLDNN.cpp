@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+#include <paddle/utils/PythonUtil.h>
 #include <string>
 #include <vector>
 #include "MKLDNNTester.h"
@@ -40,12 +41,13 @@ DECLARE_bool(use_mkldnn);
 struct testFcDesc {
   int bs;
   int ic;
-  int oc;
   int ih, iw;  // oh == ow == 1
+  int oc;
 };
 
 static void getMKLDNNFcConfig(TestConfig& cfg, const testFcDesc& pm) {
   cfg.layerConfig.set_type("mkldnn_fc");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.set_size(pm.oc);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
@@ -86,6 +88,7 @@ struct testConvDesc {
 
 static void getMKLDNNConvConfig(TestConfig& cfg, const testConvDesc& pm) {
   cfg.layerConfig.set_type("mkldnn_conv");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.set_num_filters(pm.oc);
   cfg.layerConfig.set_size(pm.oc * pm.oh * pm.ow);
   cfg.layerConfig.set_shared_biases(true);
@@ -158,6 +161,7 @@ struct testPoolDesc {
 
 static void getMKLDNNPoolConfig(TestConfig& cfg, const testPoolDesc& pm) {
   cfg.layerConfig.set_type("mkldnn_pool");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.set_size(pm.ic * pm.oh * pm.ow);
   cfg.inputDefs.push_back(
       {INPUT_DATA,
@@ -244,13 +248,26 @@ TEST(MKLDNNActivation, Activations) {
   }
 }
 
-// TODO(TJ): add branch test
+DECLARE_string(config_args);
+TEST(MKLDNNLayer, branches) {
+  std::vector<std::string> cases = {"conv"};
+  for (auto name : cases) {
+    std::string config = "./gserver/tests/mkldnn_branches_" + name + ".conf";
+    for (auto channels : {2, 32}) {
+      std::ostringstream oss;
+      oss << "channels=" << channels;
+      FLAGS_config_args = oss.str();
+      MKLDNNTester::runBranchesTest(config);
+    }
+  }
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   FLAGS_use_gpu = false;
   FLAGS_use_mkldnn = true;
   initMain(argc, argv);
+  initPython(argc, argv);
   FLAGS_thread_local_rand_use_global_seed = true;
   srand(1);
   return RUN_ALL_TESTS();
