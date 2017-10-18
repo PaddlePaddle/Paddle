@@ -116,7 +116,8 @@ set(DEPS_OPS
     sum_op
     pool_op
     pool_with_index_op
-    lstm_op)
+    lstm_op
+    gru_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -128,6 +129,7 @@ op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
+op_library(gru_op DEPS sequence2batch gru_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
