@@ -51,8 +51,11 @@ class RNNAlgorithmTestHelper : public ::testing::Test {
     CreateGlobalVariables();
 
     auto op_desc = CreateOpDesc();
-    op = paddle::framework::OpRegistry::CreateOp(op_desc);
+            op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
     dop = &(dynamic_cast<DynamicRecurrentOp*>(op.get())->rnn);
+    op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+    dop = dynamic_cast<DynamicRecurrentOp*>(op.get());
+>>>>>>> a204fefe16814d9ef5fcad4071daf79207d5dc36
     InitCacheManually();
     InitStepNet();
   }
