@@ -26,7 +26,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T, typename AttrType>
-class CPUDropoutKernel : public framework::OpKernel {
+class CPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
@@ -62,7 +62,7 @@ class CPUDropoutKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class DropoutGradKernel : public framework::OpKernel {
+class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(context.Attr<bool>("is_training"),

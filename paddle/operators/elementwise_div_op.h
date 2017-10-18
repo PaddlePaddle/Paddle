@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/operators/elementwise_op.h"
+#include "paddle/operators/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class ElementwiseDivKernel : public framework::OpKernel {
+class ElementwiseDivKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseCompute<EigenDivFunctor, Place, T>(ctx);
@@ -103,7 +103,7 @@ struct ElementwiseDivBroadCast2GradFunctor {
 };
 
 template <typename Place, typename T>
-class ElementwiseDivGradKernel : public framework::OpKernel {
+class ElementwiseDivGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<Place, T, ElementwiseDivGradFunctor<T>,

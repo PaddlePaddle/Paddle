@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/elementwise_mul_op.h"
+#include "paddle/operators/elementwise_op.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +36,9 @@ REGISTER_OP(elementwise_mul, ops::ElementwiseOp, ops::ElementwiseMulOpMaker,
             elementwise_mul_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
-    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, double>);

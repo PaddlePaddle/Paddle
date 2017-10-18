@@ -14,7 +14,7 @@ class TestGaussianRandomOp(unittest.TestCase):
 
     def gaussian_random_test(self, place):
         scope = core.Scope()
-        scope.new_var('Out').get_tensor()
+        scope.var('Out').get_tensor()
 
         op = Operator(
             "gaussian_random",
@@ -24,7 +24,6 @@ class TestGaussianRandomOp(unittest.TestCase):
             std=1.,
             seed=10)
 
-        op.infer_shape(scope)
         context = core.DeviceContext.create(place)
         op.run(scope, context)
         tensor = numpy.array(scope.find_var('Out').get_tensor())

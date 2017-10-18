@@ -30,7 +30,7 @@ namespace string {
 // its syntax is simple as it doesn't own/manage the string, it is
 // cheap to construct Pieces and pass them around.
 class Piece {
-public:
+ public:
   static const size_t npos = static_cast<size_t>(-1);
 
   // We provide non-explicit singleton constructors so users can
@@ -57,7 +57,7 @@ public:
   // Return a string that contains the copy of the referenced data.
   std::string ToString() const { return std::string(data_, size_); }
 
-private:
+ private:
   const char* data_;
   size_t size_;
 

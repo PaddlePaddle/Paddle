@@ -44,11 +44,6 @@ class OpProtoAndCheckerMaker {
       var_->set_intermediate(true);
       return *this;
     }
-
-    VariableBuilder& NotInGradient() {
-      var_->set_not_in_gradient(true);
-      return *this;
-    }
   };
 
   VariableBuilder AddInput(const std::string& name, const std::string& comment);

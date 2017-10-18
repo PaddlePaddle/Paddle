@@ -52,6 +52,7 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 
 #include <cmath>
 
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
@@ -62,7 +63,7 @@ namespace math {
 
 // Support continuous memory now
 // If transA = N, and transB = N
-// Then matrixA: M * K, matrixB: K * N matrixC : M * N
+// Then matrixA: M * K, matrixB: K * N, matrixC : M * N
 // For more detailed info, please refer to
 // http://www.netlib.org/lapack/explore-html/d4/de2/sgemm_8f.html
 template <typename Place, typename T>
@@ -83,6 +84,24 @@ void matmul(const platform::DeviceContext& context,
             const framework::Tensor& matrix_a, bool trans_a,
             const framework::Tensor& matrix_b, bool trans_b, T alpha,
             framework::Tensor* matrix_out, T beta);
+
+// Batched gemm
+template <typename Place, typename T>
+void batched_gemm(const platform::DeviceContext& context,
+                  const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
+                  const int M, const int N, const int K, const T alpha,
+                  const T* A, const T* B, const T beta, T* C,
+                  const int batchCount, const int strideA, const int strideB);
+
+template <typename Place, typename T>
+struct SetConstant {
+  void operator()(const platform::DeviceContext& context,
+                  framework::Tensor* tensor, T num) {
+    auto t = framework::EigenVector<T>::Flatten(*tensor);
+    t.device(*context.GetEigenDevice<Place>()) =
+        t.constant(static_cast<T>(num));
+  }
+};
 
 }  // namespace math
 }  // namespace operators

@@ -5,12 +5,12 @@
 Both deep learning systems and programming languages help users describe computation procedures.  These systems use various representations of computation:
 
 - Caffe, Torch, and Paddle: sequences of layers.
-- TensorFlow, Caffe2, Mxnet: graphs of operators.
+- TensorFlow, Caffe2, Mxnet: graph of operators.
 - PaddlePaddle: nested blocks, like C++ and Java programs.
 
 ## Block in Programming Languages and Deep Learning
 
-In programming languages, a block is a pair of curly braces that includes local variables definitions and a sequence of instructions, or operators.
+In programming languages, a block is a pair of curly braces that includes local variables definitions and a sequence of instructions or operators.
 
 Blocks work with control flow structures like `if`, `else`, and `for`, which have equivalents in deep learning:
 
@@ -24,14 +24,14 @@ A key difference is that a C++ program describes a one pass computation, whereas
 
 ## Stack Frames and the Scope Hierarchy
 
-The existence of the backward makes the execution of a block of traditional programs and PaddlePaddle different to each other:
+The existence of the backward pass makes the execution of a block of PaddlePaddle different from traditional programs:
 
-| programming languages | PaddlePaddle                  |
-|-----------------------|-------------------------------|
-| stack                 | scope hierarchy               |
-| stack frame           | scope                         |
-| push at entering block| push at entering block        |
-| pop at leaving block  | destroy at minibatch completes|
+| programming languages | PaddlePaddle                    |
+|-----------------------|---------------------------------|
+| stack                 | scope hierarchy                 |
+| stack frame           | scope                           |
+| push at entering block| push at entering block          |
+| pop at leaving block  | destroy when minibatch completes|
 
 1. In traditional programs:
 
@@ -42,9 +42,9 @@ The existence of the backward makes the execution of a block of traditional prog
 1. In PaddlePaddle
 
    - When the execution enters a block, PaddlePaddle adds a new scope, where it realizes variables.
-   - PaddlePaddle doesn't pop a scope after the execution of the block because variables therein are to be used by the backward pass.  So it has a stack forest known as a *scope hierarchy*.
+   - PaddlePaddle doesn't pop a scope after the execution of the block because variables therein are used by the backward pass.  So it has a stack forest known as a *scope hierarchy*.
    - The height of the highest tree is the maximum depth of nested blocks.
-   - After the process of a minibatch, PaddlePaddle destroys the scope hierarchy.
+   - After the processing of a minibatch, PaddlePaddle destroys the scope hierarchy.
 
 ## Use Blocks in C++ and PaddlePaddle Programs
 
@@ -55,17 +55,23 @@ Let us consolidate the discussion by presenting some examples.
 The following C++ programs shows how blocks are used with the `if-else` structure:
 
 ```c++
+namespace pd = paddle;
+
 int x = 10;
-int y = 20;
-int out;
+int y = 1;
+int z = 10;
 bool cond = false;
+int o1, o2;
 if (cond) {
   int z = x + y;
-  out = softmax(z);
+  o1 = z;
+  o2 = pd::layer::softmax(z);
 } else {
-  int z = fc(x);
-  out = z;
+  int d = pd::layer::fc(z);
+  o1 = d;
+  o2 = d+1;
 }
+
 ```
 
 An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator](./if_else_op.md) is as follows:
@@ -73,57 +79,55 @@ An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator
 ```python
 import paddle as pd
 
-x = var(10)
-y = var(20)
-cond = var(false)
-ie = pd.create_ifelseop(inputs=[x], output_num=1)
+x = minibatch([10, 20, 30]) # shape=[None, 1]
+y = var(1) # shape=[1], value=1
+z = minibatch([10, 20, 30]) # shape=[None, 1]
+cond = larger_than(x, 15) # [false, true, true]
+
+ie = pd.ifelse()
 with ie.true_block():
-    x = ie.inputs(true, 0)
-    z = operator.add(x, y)
-    ie.set_output(true, 0, operator.softmax(z))
+    d = pd.layer.add_scalar(x, y)
+    ie.output(d, pd.layer.softmax(d))
 with ie.false_block():
-    x = ie.inputs(false, 0)
-    z = layer.fc(x)
-    ie.set_output(true, 0, operator.softmax(z))
-out = b(cond)
+    d = pd.layer.fc(z)
+    ie.output(d, d+1)
+o1, o2 = ie(cond)
 ```
 
-In both examples, the left branch computes `softmax(x+y)` and the right branch computes `fc(x)`.
+In both examples, the left branch computes `x+y` and `softmax(x+y)`, the right branch computes `fc(x)` and `x+1` .
 
-A difference is that variables in the C++ program contain scalar values, whereas those in the PaddlePaddle programs are mini-batches of instances.  The `ie.input(true, 0)` invocation returns instances in the 0-th input, `x`, that corresponds to true values in `cond` as the local variable `x`, where `ie.input(false, 0)` returns instances corresponding to false values.
+The difference is that variables in the C++ program contain scalar values, whereas those in the PaddlePaddle programs are mini-batches of instances.
+
 
 ### Blocks with `for` and `RNNOp`
 
-The following RNN model from the [RNN design doc](./rnn.md)
+The following RNN model in PaddlePaddle from the [RNN design doc](./rnn.md) :
 
 ```python
-x = sequence([10, 20, 30])
-m = var(0)
-W = tensor()
-U = tensor()
+x = sequence([10, 20, 30]) # shape=[None, 1]
+m = var(0) # shape=[1]
+W = var(0.314, param=true) # shape=[1]
+U = var(0.375, param=true) # shape=[1]
 
-rnn = create_rnn(inputs=[input])
-with rnn.stepnet() as net:
-  x = net.set_inputs(0)
-  h = net.add_memory(init=m)
-  fc_out = pd.matmul(W, x)
-  hidden_out = pd.matmul(U, h.pre(n=1))
-  sum = pd.add_two(fc_out, hidden_out)
-  act = pd.sigmoid(sum)
-  h.update(act)                       # update memory with act
-  net.set_outputs(0, act, hidden_out) # two outputs
-
+rnn = pd.rnn()
+with rnn.step():
+  h = rnn.memory(init = m)
+  h_prev = rnn.previous_memory(h)
+  a = layer.fc(W, x)
+  b = layer.fc(U, h_prev)  
+  s = pd.add(a, b)
+  act = pd.sigmoid(s)
+  rnn.update_memory(h, act)
+  rnn.output(a, b)
 o1, o2 = rnn()
-print o1, o2
 ```
-
 has its equivalent C++ program as follows
 
 ```c++
 int* x = {10, 20, 30};
-int m = 0;
-int W = some_value();
-int U = some_other_value();
+int* m = {0};
+int* W = {0.314};
+int* U = {0.375};
 
 int mem[sizeof(x) / sizeof(x[0]) + 1];
 int o1[sizeof(x) / sizeof(x[0]) + 1];
@@ -131,25 +135,21 @@ int o2[sizeof(x) / sizeof(x[0]) + 1];
 for (int i = 1; i <= sizeof(x)/sizeof(x[0]); ++i) {
   int x = x[i-1];
   if (i == 1) mem[0] = m;
-  int fc_out = W * x;
-  int hidden_out = Y * mem[i-1];
-  int sum = fc_out + hidden_out;
+  int a = W * x;
+  int b = Y * mem[i-1];
+  int s = fc_out + hidden_out;
   int act = sigmoid(sum);
   mem[i] = act;
   o1[i] = act;
   o2[i] = hidden_out;
 }
-
-print_array(o1);
-print_array(o2);
 ```
-
 
 ## Compilation and Execution
 
-Like TensorFlow programs, a PaddlePaddle program is written in Python.  The first part describes a neural network as a protobuf message, and the rest part executes the message for training or inference.
+Like TensorFlow, a PaddlePaddle program is written in Python. The first part describes a neural network as a protobuf message, and the rest executes the message for training or inference.
 
-The generation of this protobuf message is like what a compiler generates a binary executable file.  The execution of the message that the OS executes the binary file.
+The generation of this protobuf message is similar to how a compiler generates a binary executable file. The execution of the message is similar to how the OS executes the binary file.
 
 ## The "Binary Executable File Format"
 
@@ -186,8 +186,8 @@ Also, the RNN operator in above example is serialized into a protobuf message of
 
 ```
 OpDesc {
-  inputs = {0} // the index of x
-  outputs = {5, 3} // indices of act and hidden_out
+  inputs = {0} // the index of x in vars of BlockDesc above
+  outputs = {5, 3} // indices of act and hidden_out in vars of BlockDesc above
   attrs {
     "memories" : {1} // the index of h
     "step_net" : <above step net>
@@ -203,32 +203,32 @@ This `OpDesc` value is in the `ops` field of the `BlockDesc` value representing 
 During the generation of the Protobuf message, the Block should store VarDesc (the Protobuf message which describes Variable) and OpDesc (the Protobuf message which describes Operator).
 
 VarDesc in a block should have its name scope to avoid local variables affect parent block's name scope.
-Child block's name scopes should inherit the parent's so that OpDesc in child block can reference a VarDesc that stored in parent block. For example
+Child block's name scopes should inherit the parent's so that OpDesc in child block can reference a VarDesc that stored in parent block. For example:
 
 ```python
-a = pd.Varaible(shape=[20, 20])
+a = pd.Variable(shape=[20, 20])
 b = pd.fc(a, params=["fc.w", "fc.b"])
 
 rnn = pd.create_rnn()
-with rnn.stepnet() as net:
-    x = net.set_inputs(a)
+with rnn.stepnet():
+    x = a.as_step_input()
     # reuse fc's parameter
     fc_without_b = pd.get_variable("fc.w")
-    net.set_outputs(fc_without_b)
+    rnn.output(fc_without_b)
 
 out = rnn()
 ```
-the method `pd.get_variable` can help retrieve a Variable by a name, a Variable may store in a parent block, but might be retrieved in a child block, so block should have a variable scope that supports inheritance.
+The method `pd.get_variable` can help retrieve a Variable by the name. The Variable may be stored in a parent block, but might be retrieved in a child block, so block should have a variable scope that supports inheritance.
 
 In compiler design, the symbol table is a data structure created and maintained by compilers to store information about the occurrence of various entities such as variable names, function names, classes, etc.
 
 To store the definition of variables and operators, we define a C++ class `SymbolTable`, like the one used in compilers.
 
-`SymbolTable` can do the following stuff:
+`SymbolTable` can do the following:
 
 - store the definitions (some names and attributes) of variables and operators,
-- to verify if a variable was declared,
-- to make it possible to implement type checking (offer Protobuf message pointers to `InferShape` handlers).
+- verify if a variable was declared,
+- make it possible to implement type checking (offer Protobuf message pointers to `InferShape` handlers).
 
 
 ```c++
@@ -240,19 +240,18 @@ class SymbolTable {
 
   OpDesc* NewOp(const string& name="");
 
-  // TODO determine whether name is generated by python or C++
-  // currently assume that a unique name will be generated by C++ if the
-  // argument name left default.
-  VarDesc* NewVar(const string& name="");
+  // TODO determine whether name is generated by python or C++.
+  // Currently assume that a unique name will be generated by C++ if the
+  // argument name is left default.
+  VarDesc* Var(const string& name="");
 
-  // find a VarDesc by name, if recursive true, find parent's SymbolTable
+  // find a VarDesc by name, if recursive is true, find parent's SymbolTable
   // recursively.
   // this interface is introduced to support InferShape, find protobuf messages
   // of variables and operators, pass pointers into InferShape.
-  // operator
   //
   // NOTE maybe some C++ classes such as VarDescBuilder and OpDescBuilder should
-  // be proposed and embedded into pybind to enable python operate on C++ pointers.
+  // be proposed and embedded into pybind to enable python operation on C++ pointers.
   VarDesc* FindVar(const string& name, bool recursive=true);
 
   OpDesc* FindOp(const string& name);
@@ -270,7 +269,7 @@ class SymbolTable {
 After all the description of variables and operators is added into SymbolTable,
 the block has enough information to run.
 
-The `Block` class takes a `BlockDesc` as input, and provide `Run` and `InferShape` functions.
+The `Block` class takes a `BlockDesc` as input, and provides `Run` and `InferShape` functions.
 
 
 ```c++
@@ -302,7 +301,7 @@ public:
   void CreateVariables(const framework::Scope& scope);
   void CreateOperators();
 
-  // some other necessary interfaces of NetOp are list below
+  // some other necessary interfaces of NetOp are listed below
   // ...
 
 private:
@@ -316,15 +315,14 @@ private:
 Block inherits from OperatorBase, which has a Run method.
 Block's Run method will run its operators sequentially.
 
-There is another important interface called `Eval`, which take some arguments called targets, and generate a minimal graph which takes targets as the end points and creates a new Block,
-after `Run`, `Eval` will get the latest value and return the targets.
+There is another important interface called `Eval`, which takes some arguments called targets and generates a minimal graph which treats targets as the end points and creates a new Block. After `Run`, `Eval` will get the latest value and return the targets.
 
 The definition of Eval is as follows:
 
 ```c++
 // clean a block description by targets using the corresponding dependency graph.
 // return a new BlockDesc with minimal number of operators.
-// NOTE not return a Block but the block's description so that this can be distributed
+// NOTE: The return type is not a Block but the block's description so that this can be distributed
 // to a cluster.
 BlockDesc Prune(const BlockDesc& desc, vector<string> targets);
 

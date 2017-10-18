@@ -26,7 +26,7 @@ FILE(GLOB PY_PADDLE_PYTHON_FILES ${PADDLE_SOURCE_DIR}/paddle/py_paddle/*.py)
 SET_SOURCE_FILES_PROPERTIES(Paddle.i PROPERTIES CPLUSPLUS ON)
 
 SET(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality -Wno-missing-field-initializers -Wno-self-assign")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality -Wno-missing-field-initializers -Wno-self-assign -ftls-model=global-dynamic")
 
 SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_parameter

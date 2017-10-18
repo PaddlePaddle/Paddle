@@ -18,7 +18,6 @@ limitations under the License. */
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/math/MathUtils.h"
-#include "paddle/trainer/Trainer.h"
 #include "paddle/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
@@ -117,7 +116,7 @@ MatrixPtr doOneConvTest(size_t imgSize,
 }
 
 TEST(Layer, convParaUnified) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   MatrixPtr input, resultCpu, resultGpu;
 
   /// TEST1 for conv ///
