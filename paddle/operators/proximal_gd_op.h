@@ -34,8 +34,8 @@ class ProximalGDOpKernel : public framework::OpKernel<T> {
 
     auto grad = ctx.Input<Tensor>("Grad");
 
-    float l1 = ctx.Attr<float>("l1");
-    float l2 = ctx.Attr<float>("l2");
+    auto l1 = static_cast<T>(ctx.Attr<float>("l1"));
+    auto l2 = static_cast<T>(ctx.Attr<float>("l2"));
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
     auto g = EigenVector<T>::Flatten(*grad);

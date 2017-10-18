@@ -52,23 +52,23 @@ class ProximalGDOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
-             "Input parameter value that has to be updated");
+             "Input parameter value that has to be updated.");
     AddInput("Grad",
              "(Tensor, default Tensor<float>) "
-             "Input gradient of the parameter");
+             "Input gradient of the parameter.");
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
-             "The learning rate should be a tensor of size 1");
+             "The learning rate should be a tensor of size 1.");
 
-    AddOutput("ParamOut", "(Tensor) Output updated parameter value");
+    AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
 
     AddAttr<float>("l1",
                    "(float, default 0.0) "
-                   "L1 regularization strength")
+                   "L1 regularization strength.")
         .SetDefault(0.0f);
     AddAttr<float>("l2",
                    "(float, default 0.0)"
-                   "L2 regularization strength")
+                   "L2 regularization strength.")
         .SetDefault(0.0f);
     AddComment(R"DOC(
 
