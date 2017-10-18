@@ -70,9 +70,15 @@ class BlockDescBind {
 
   OpDescBind *AppendOp();
 
+  void AppendAllocatedOp(std::unique_ptr<OpDescBind> &op_desc);
+
   OpDescBind *PrependOp();
 
   std::vector<OpDescBind *> AllOps() const;
+
+  int OpSize() const { return ops_.size(); }
+
+  OpDescBind *Op(int idx) const { return ops_.at(idx).get(); }
 
   void Flush();
 
@@ -88,9 +94,7 @@ class BlockDescBind {
   void ClearPBOps();
   void ClearPBVars();
 
-  // FIXME(yuyang18): backward will access private data of BlockDesc.
-  // Mark it public temporary. We can fix it later.
- public:
+ private:
   ProgramDescBind *prog_;  // not_own
   BlockDesc *desc_;        // not_own
   bool need_update_;

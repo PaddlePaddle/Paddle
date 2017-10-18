@@ -19,11 +19,11 @@ namespace paddle {
 namespace framework {
 
 VarDescBind *BlockDescBind::Var(const std::string &name) {
-  need_update_ = true;
   auto it = vars_.find(name);
   if (it != vars_.end()) {
     return it->second.get();
   }
+  need_update_ = true;
   auto *var = new VarDescBind(name);
   vars_[name].reset(var);
   return var;
@@ -55,6 +55,12 @@ OpDescBind *BlockDescBind::AppendOp() {
   return ops_.back().get();
 }
 
+void BlockDescBind::AppendAllocatedOp(std::unique_ptr<OpDescBind> &op_desc) {
+  need_update_ = true;
+  ops_.emplace_back(std::move(op_desc));
+  return;
+}
+
 OpDescBind *BlockDescBind::PrependOp() {
   need_update_ = true;
   ops_.emplace_front(new OpDescBind());
@@ -70,6 +76,10 @@ std::vector<OpDescBind *> BlockDescBind::AllOps() const {
 }
 
 void BlockDescBind::Flush() {
+  for (auto &op_desc : ops_) {
+    op_desc->Flush();
+  }
+
   if (need_update_) {
     auto &op_field = *this->desc_->mutable_ops();
     this->ClearPBOps();
