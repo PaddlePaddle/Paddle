@@ -71,7 +71,8 @@ int getBlockIdx(const OpDesc& op_desc) {
 
 std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
                                         const OpDesc& op_desc) {
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(
+      op_desc, const_cast<ProgramDesc*>(&pdesc));
 
   if (op_desc.type() == "recurrent") {
     int block_idx = getBlockIdx(op_desc);
