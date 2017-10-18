@@ -110,7 +110,7 @@ Vector<size_t> repeat_lod(Vector<size_t> data, Vector<size_t> starts,
   size_t p = 0, start = 0, end = 0;
   if (is_first == true) {
     for (size_t i = 0; i < times.size(); ++i) {
-      result.push_back(data.back() + times[i] * (data[i + 1] - data[i]));
+      result.push_back(result.back() + times[i] * (data[i + 1] - data[i]));
     }
   } else {
     for (size_t i = 0; i < times.size(); ++i) {

@@ -62,9 +62,8 @@ class TestSeqExpand(OpTest):
     def test_check_output(self):
         self.check_output()
 
-
-#    def test_check_grad(self):
-#        self.check_grad(["X"], "Out")
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
 
 
 class TestSeqExpandCase1(TestSeqExpand):

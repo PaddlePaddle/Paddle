@@ -16,6 +16,7 @@
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memcpy.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace operators {
@@ -93,9 +94,29 @@ template <typename Place, typename T>
 class SeqExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    d_x->mutable_data<T>(context.GetPlace());
+    auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* x = context.Input<LoDTensor>("X");
+    auto* out = context.Input<LoDTensor>("Out");
+    auto out_lod = out->lod();
+    d_x->set_lod(x->lod());
+    const T* d_out_data = d_out->data<T>();
+    auto d_out_dims = d_out->dims();
+    T* d_x_data = d_x->mutable_data<T>(context.GetPlace());
+    size_t element_len = framework::product(d_out_dims) / d_out_dims[0];
+    for (size_t i = 0; i < out->NumElements(); ++i) {
+      size_t ele_count = out_lod[0][i + 1] - out_lod[0][i];
+      size_t repeat = out->NumElements(0, i);
+      Eigen::TensorMap<Eigen::Tensor<const T, 2>> d_out_t(
+          d_out_data, static_cast<int>(repeat),
+          static_cast<int>((ele_count * element_len) / repeat));
+      Eigen::TensorMap<Eigen::Tensor<T, 1>> d_x_t(
+          d_x_data, static_cast<int>((ele_count * element_len) / repeat));
+      auto place = context.GetEigenDevice<Place>();
+      d_x_t.device(place) = d_out_t.sum(Eigen::array<int, 1>({0}));
+      d_out_data += (ele_count * element_len);
+      d_x_data += ((ele_count * element_len) / repeat);
+    }
   }
 };
 
