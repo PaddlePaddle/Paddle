@@ -49,6 +49,16 @@ class TestBook(unittest.TestCase):
 
         # print str(program)
 
+    def test_simple_conv2d(self):
+        pd = core.ProgramDesc.__create_program_desc__()
+        program = Program(desc=pd)
+        images = data_layer(
+            name='pixel', shape=[3, 48, 48], data_type='int32', program=program)
+        conv2d_layer(
+            input=images, num_filters=3, filter_size=[4, 4], program=program)
+
+        print str(program)
+
 
 if __name__ == '__main__':
     unittest.main()
