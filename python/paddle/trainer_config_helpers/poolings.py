@@ -15,8 +15,8 @@
 """
 
 __all__ = [
-    "BasePoolingType", "MaxPooling", "AvgPooling", "CudnnMaxPooling",
-    "CudnnAvgPooling", "SumPooling", "SquareRootNPooling"
+    "BasePoolingType", "MaxPooling", "AvgPooling", "MaxWithMaskPooling",
+    "CudnnMaxPooling", "CudnnAvgPooling", "SumPooling", "SquareRootNPooling"
 ]
 
 
@@ -53,6 +53,19 @@ class MaxPooling(BasePoolingType):
     def __init__(self, output_max_index=None):
         BasePoolingType.__init__(self, "max")
         self.output_max_index = output_max_index
+
+
+class MaxWithMaskPooling(BasePoolingType):
+    """
+    MaxWithMask pooling.
+
+    Not only return the very large values for each dimension in sequence or time steps,
+    but also the location indices of found maxinum values.
+
+    """
+
+    def __init__(self):
+        BasePoolingType.__init__(self, "max-pool-with-mask")
 
 
 class CudnnMaxPooling(BasePoolingType):

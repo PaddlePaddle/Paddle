@@ -1250,9 +1250,9 @@ def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
 def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in [
-        'max-projection', 'avg-projection', 'cudnn-max-pool', 'cudnn-avg-pool'
-    ], "pool-type %s is not in "
-                  "['max-projection', 'avg-projection', "
+        'max-projection', 'avg-projection', 'max-pool-with-mask', 'cudnn-max-pool', 'cudnn-avg-pool'
+    ], "pool-type %s is not in " \
+              "['max-projection', 'avg-projection', 'max-pool-with-mask'," \
                   "'cudnn-max-pool', 'cudnn-avg-pool']" % pool.pool_type)
 
     pool_conf.channels = pool.channels

@@ -20,7 +20,7 @@ from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
     ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
-from .poolings import MaxPooling, AvgPooling, BasePoolingType, \
+from .poolings import MaxPooling, AvgPooling, MaxWithMaskPooling, BasePoolingType, \
     CudnnAvgPooling, CudnnMaxPooling
 from .attrs import *
 from .default_decorators import *
@@ -2652,9 +2652,9 @@ def img_pool_layer(input,
     elif isinstance(pool_type, AvgPooling):
         pool_type.name = 'avg'
 
-    assert type(pool_type) in [AvgPooling, MaxPooling, CudnnAvgPooling,
+    assert type(pool_type) in [AvgPooling, MaxPooling, MaxWithMaskPooling, CudnnAvgPooling,
                                CudnnMaxPooling], \
-        "only (Cudnn)AvgPooling, (Cudnn)MaxPooling are supported"
+        "only (Cudnn)AvgPooling, (Cudnn)MaxPooling MaxWithMaskPooling are supported"
 
     type_name = pool_type.name + '-projection' \
         if (
