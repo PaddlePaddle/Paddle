@@ -29,17 +29,13 @@ def repeat_array(array, starts, times):
 
 class TestSeqExpand(OpTest):
     def set_data(self):
-        self.op_type = 'seq_expand'
-        x = np.random.uniform(0.1, 1, [3, 2, 2]).astype('float32')
-        y = np.zeros((6, 2, 2)).astype('float32')
-        y_lod = [[0, 2, 3, 6]]
-        self.inputs = {'X': (x, None), 'Y': (y, y_lod)}
+        x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
+        self.inputs = {'X': x_data}
         self.repeat = 2
 
     def compute(self):
-        x_data, x_lod = self.inputs['X']
-        print "x_data: %s" % x_data
-        print "x_lod: %s" % x_lod
+        x = self.inputs['X']
+        x_data, x_lod = x if type(x) == tuple else (x, None)
         if not x_lod:
             x_lod = [[i for i in range(1 + x_data.shape[0])]]
         else:
@@ -47,28 +43,16 @@ class TestSeqExpand(OpTest):
         if self.repeat:
             self.attrs = {'repeat': self.repeat}
             repeats = (len(x_lod[0]) - 1) * [self.repeat]
-            # get out shape
-            # out_shape = np.copy(x_data.shape)
-            # out_shape[0] = out_shape[0] * self.repeat
         else:
             y_data, y_lod = self.inputs['Y']
-            print "y_lod: %s" % y_lod
-            #print "y_lod: %s" % y_lod
-            # get repeats
             repeats = [((y_lod[0][i + 1] - y_lod[0][i]) /
                         (x_lod[0][i + 1] - x_lod[0][i]))
                        for i in range(len(y_lod[0]) - 1)]
-            # get out shape
-            # out_shape = y_data.shape
-        # get out lod
-
         out_lod = [repeat(x_lod[0], x_lod[0], repeats, True)] + [
             repeat(lod, x_lod[0], repeats, False) for lod in x_lod[1:]
         ]
-        # copy data
         out = repeat_array(x_data.tolist(), x_lod[0], repeats)
-        self.outputs = {'Out': (out, out_lod)}
-        print "outputs: %s" % self.outputs
+        self.outputs = {'Out': out}
 
     def setUp(self):
         self.op_type = 'seq_expand'
@@ -94,7 +78,7 @@ class TestSeqExpandCase1(TestSeqExpand):
 class TestSeqExpandCase2(TestSeqExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
-        self.inputs = {'X': (x_data, None)}
+        self.inputs = {'X': x_data}
         self.repeat = 2
 
 
@@ -103,7 +87,7 @@ class TestSeqExpandCase3(TestSeqExpand):
         x_data = np.random.uniform(0.1, 1, [3, 1]).astype('float32')
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float32')
         y_lod = [[0, 1, 4, 8]]
-        self.inputs = {'X': (x_data, None), 'Y': (y_data, y_lod)}
+        self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
         self.repeat = None
 
 

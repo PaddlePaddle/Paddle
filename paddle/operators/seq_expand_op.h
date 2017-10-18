@@ -22,54 +22,6 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 
-template <typename T>
-using vector = framework::Vector<T>;
-
-vector<size_t> repeat_lod(vector<size_t> data, vector<size_t> starts,
-                          vector<size_t> times, bool is_first) {
-  vector<size_t> result;
-  result.push_back(data[0]);
-  size_t p = 0, start = 0, end = 0;
-  if (is_first == true) {
-    for (size_t i = 0; i < times.size(); ++i) {
-      result.push_back(data.back() + times[i] * (data[i + 1] - data[i]));
-    }
-  } else {
-    for (size_t i = 0; i < times.size(); ++i) {
-      while (starts[i] != data[p] && p < data.size()) {
-        ++p;
-      }
-      start = p;
-      while (starts[i + 1] != data[p] && p < data.size()) {
-        ++p;
-      }
-      end = p + 1;
-      for (size_t j = 0; j < times[i]; ++j) {
-        for (size_t index = start; index < end - 1; ++index) {
-          result.push_back(result.back() + data[index + 1] - data[index]);
-        }
-      }
-    }
-  }
-  return result;
-}
-
-template <typename Place, typename T>
-void repeat_data(const T* src, T* dst, size_t size, vector<size_t> starts,
-                 vector<size_t> times, Place place) {
-  const T* src_p = src;
-  T* dst_p = dst;
-  size_t count = 0;
-  for (size_t i = 0; i < times.size(); ++i) {
-    count = size * (starts[i + 1] - starts[i]);
-    for (size_t j = 0; j < times[i]; ++j) {
-      memory::Copy(place, dst_p, place, src_p, sizeof(T) * count);
-      dst_p += count;
-    }
-    src_p += count;
-  }
-}
-
 template <typename Place, typename T>
 class SeqExpandKernel : public framework::OpKernel<T> {
  public:
@@ -81,7 +33,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     auto x_lod = x->lod();
 
     if (x_lod.size() == 0) {
-      vector<size_t> level;
+      framework::Vector<size_t> level;
       for (int i = 0; i < x->dims()[0] + 1; ++i) {
         level.push_back(i);
       }
@@ -91,7 +43,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     }
 
     size_t repeat = static_cast<size_t>(context.Attr<int>("repeat"));
-    vector<size_t> repeats;
+    framework::Vector<size_t> repeats;
     if (repeat != 0) {
       for (int i = 0; i < x_lod[0].size() - 1; ++i) {
         repeats.push_back(repeat);
@@ -107,21 +59,32 @@ class SeqExpandKernel : public framework::OpKernel<T> {
         repeats.push_back((y_lod[0][i + 1] - y_lod[0][i]) /
                           (x_lod[0][i + 1] - x_lod[0][i]));
       }
-      out->Resize(x_dims);
+      out->Resize(y->dims());
     }
 
     framework::LoD out_lod;
-    auto level0 = repeat_lod(x_lod[0], x_lod[0], repeats, true);
+    auto level0 = framework::repeat_lod(x_lod[0], x_lod[0], repeats, true);
     out_lod.push_back(level0);
     for (int i = 1; i < x_lod.size(); ++i) {
-      out_lod.push_back(repeat_lod(x_lod[i], x_lod[0], repeats, false));
+      out_lod.push_back(
+          framework::repeat_lod(x_lod[i], x_lod[0], repeats, false));
     }
 
     size_t element_len = framework::product(x_dims) / x_dims[0];
     T* out_data = out->mutable_data<T>(context.GetPlace());
+
+    // copy data
     Place place = boost::get<Place>(context.GetPlace());
-    repeat_data<Place, T>(x_data, out_data, element_len, x_lod[0], repeats,
-                          place);
+    size_t count = 0;
+    for (size_t i = 0; i < repeats.size(); ++i) {
+      count = element_len * (x_lod[0][i + 1] - x_lod[0][i]);
+      for (size_t j = 0; j < repeats[i]; ++j) {
+        memory::Copy(place, out_data, place, x_data, sizeof(T) * count);
+        out_data += count;
+      }
+      x_data += count;
+    }
+
     out->set_lod(out_lod);
   }
 };
@@ -130,9 +93,9 @@ template <typename Place, typename T>
 class SeqExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    // auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    // d_x->mutable_data<T>(context.GetPlace());
+    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+    d_x->mutable_data<T>(context.GetPlace());
   }
 };
 

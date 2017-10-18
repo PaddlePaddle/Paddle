@@ -103,5 +103,34 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   lod_ = new_lod;
 }
 
+Vector<size_t> repeat_lod(Vector<size_t> data, Vector<size_t> starts,
+                          Vector<size_t> times, bool is_first) {
+  Vector<size_t> result;
+  result.push_back(data[0]);
+  size_t p = 0, start = 0, end = 0;
+  if (is_first == true) {
+    for (size_t i = 0; i < times.size(); ++i) {
+      result.push_back(data.back() + times[i] * (data[i + 1] - data[i]));
+    }
+  } else {
+    for (size_t i = 0; i < times.size(); ++i) {
+      while (starts[i] != data[p] && p < data.size()) {
+        ++p;
+      }
+      start = p;
+      while (starts[i + 1] != data[p] && p < data.size()) {
+        ++p;
+      }
+      end = p + 1;
+      for (size_t j = 0; j < times[i]; ++j) {
+        for (size_t index = start; index < end - 1; ++index) {
+          result.push_back(result.back() + data[index + 1] - data[index]);
+        }
+      }
+    }
+  }
+  return result;
+}
+
 }  // namespace framework
 }  // namespace paddle
