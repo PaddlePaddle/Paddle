@@ -16,18 +16,21 @@ class Executor(object):
         self.executor = core.Executor(act_places)
 
     def run(self,
-            block,
+            program,
             feed,
             fetch_list,
             feed_var_name='feed',
             fetch_var_name='fetch'):
-        if isinstance(block, Program):
-            block = block.global_block()
-        if not isinstance(block, Block):
-            raise TypeError("Block should be a block or program")
+        if not isinstance(program, Program):
+            raise TypeError()
 
-        global_block = block.program.global_block()
+        program = program.clone()
+        global_block = program.global_block()
         assert isinstance(global_block, Block)
+        # global_block.create_var(
+        #     name=feed_var_name,
+        #     type=
+        # )
 
         for i, name in enumerate(feed):
             global_block.prepend_op(

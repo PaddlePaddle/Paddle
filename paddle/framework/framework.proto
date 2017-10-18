@@ -111,7 +111,8 @@ message VarDesc {
   enum VarType {
     LOD_TENSOR = 1;
     SELECTED_ROWS = 2;
-    FEED_FETCH_LIST = 3;
+    FEED_MINIBATCH = 3;
+    FETCH_LIST = 4;
   }
   required string name = 1;
   required VarType type = 2;
