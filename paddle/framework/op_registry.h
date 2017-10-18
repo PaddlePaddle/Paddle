@@ -167,6 +167,11 @@ class OpKernelRegistrar : public Registrar {
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
+#ifdef WITH_FPGA
+#define REGISTER_OP_FPGA_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, FPGA, ::paddle::platform::FPGAPlace, __VA_ARGS__)
+#endif
+
 /**
  * Macro to mark what Operator and Kernel
  * we will use and tell the compiler to

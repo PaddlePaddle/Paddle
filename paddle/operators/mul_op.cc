@@ -14,6 +14,10 @@
 
 #include "paddle/operators/mul_op.h"
 
+#ifdef PADDLE_WITH_FPGA
+#include "polaris.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -127,6 +131,41 @@ class MulOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+template <typename Place, typename T>
+class MulFPGAKernel : public framework::OpKernel {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* x = context.Input<Tensor>("X");
+    const Tensor* y = context.Input<Tensor>("Y");
+    Tensor* z = context.Output<Tensor>("Out");
+    const Tensor x_matrix =
+        x->dims().size() > 2
+            ? framework::ReshapeToMatrix<T>(
+                  *x, context.template Attr<int>("x_num_col_dims"))
+            : *x;
+    const Tensor y_matrix =
+        y->dims().size() > 2
+            ? framework::ReshapeToMatrix<T>(
+                  *y, context.template Attr<int>("y_num_col_dims"))
+            : *y;
+
+    PolarisContext* ctxt = const_cast<platform::FPGADeviceContext&>(
+        reinterpret_cast<const platform::FPGADeviceContext&>(
+        context.device_context())).polaris_context();
+    PolarisStatus ret = polaris_gemm(ctxt, POLARIS_NO_TRANS, POLARIS_NO_TRANS,
+        x->dims()[0], y->dims()[1], x->dims()[1], 1,
+        x->data<float>(), POLARIS_FP32, 1,
+        y->data<float>(), POLARIS_FP32, 1,
+        0,
+        z->data<float>(), POLARIS_FP32, 1,
+        NULL, POLARIS_NO_ACTIVATION);
+    if (ret != POLARIS_OK) {
+        printf("gemm error.\n");
+    }
+  }
+};
+
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -135,3 +174,6 @@ REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mul_grad,
                        ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+#ifdef PADDLE_WITH_FPGA
+REGISTER_OP_FPGA_KERNEL(mul, ops::MulFPGAKernel<paddle::platform::FPGAPlace, float>);
+#endif
