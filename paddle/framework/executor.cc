@@ -56,6 +56,21 @@ Executor::~Executor() {
   }
 }
 
+std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
+                                        const OpDesc& op_desc) {
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+
+  if (op_desc.type() == "recurrent") {
+    auto& block = pdesc.blocks(op_desc.attrs().block_idx());
+    std::vector<std::unique_ptr<OperatorBase>> step_nets;
+    for (auto& my_op_desc : block.ops()) {
+      step_nets.push_back(create_op(pdesc, my_op_desc));
+    }
+  }
+
+  return op;
+}
+
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
@@ -75,7 +90,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   }
 
   for (auto& op_desc : block.ops()) {
-    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    LOG(INFO) << op_desc.type();
+    auto op = create_op(pdesc, op_desc);
     op->Run(local_scope, *device);
   }
 
