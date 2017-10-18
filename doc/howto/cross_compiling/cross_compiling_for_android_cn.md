@@ -23,26 +23,16 @@ Android的Docker开发镜像向用户提供两个可配置的参数：
 | Argument        | Optional Values         | Default |
 |-----------------|-------------------------|---------|
 |`ANDROID_ABI`    |`armeabi-v7a, arm64-v8a` | `armeabi-v7a` |
-|`ANDROID_API`    |`armeabi-v7a(>15), arm64-v8a(>20)` | `21` |
+|`ANDROID_API`    |`>= 21` | `21` |
 
 - 编译`armeabi-v7a`，`Android API 21`的PaddlePaddle库
 ```bash
 $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" username/paddle-android:dev
 ```
-或
-```bash
-$ docker run -it --rm -v $PWD:/paddle username/paddle-android:dev
-```
-
-如需编译Android API低于21的Paddle库，请参考本文档的**准备交叉编译环境**章节。
 
 - 编译`arm64-v8a`，`Android API 21`的PaddlePaddle库
 ```bash
 $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=arm64-v8a" -e "ANDROID_API=21" username/paddle-android:dev
-```
-或
-```bash
-$ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=arm64-v8a" username/paddle-android:dev
 ```
 
 执行上述`docker run`命令时，容器默认执行[paddle/scripts/docker/build_android.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh)脚本。该脚本中记录了交叉编译Android版PaddlePaddle库常用的CMake配置，并且会根据`ANDROID_ABI`和`ANDROID_API`自动构建独立工具链、进行编译和安装。由于arm64架构要求Android API不小于21。因此当`ANDROID_ABI=arm64-v8a`，`ANDROID_API<21`时，Docker容器中将默认使用`Android API 21`的编译工具链。用户可以参考下文**配置交叉编译参数**章节，根据个人的需求修改定制Docker容器所执行的脚本。编译安装结束之后，PaddlePaddle的C-API库将被安装到`$PWD/install_android`目录，所依赖的第三方库同时也被安装到`$PWD/install_android/third_party`目录。
@@ -70,8 +60,6 @@ your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain
 
 此命令将在`your/path/to/arm_standalone_toolchain`目录生成一套独立编译工具链，面向架构为32位ARM架构，支持的最小的Android API级别为21，支持编译器`arm-linux-androideabi-gcc (GCC) 4.9`和`clang 3.8`。
 
-注意：**PaddlePaddle要求使用的编译工具链所支持的Andoid API级别不小于16**。但由于PaddlePaddle所依赖的第三方库`glog`不支持低于21的Android API，所以在编译Android API低于21的Paddle C-API库时，需要将[cmake/external/glog.cmake](https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/external/glog.cmake#L33)中的`GIT_REPOSITORY`临时修改为`https://github.com/Xreki/glog.git`。
-
 - 构建`arm64-v8a`、 `Android API 21`的独立工具链：
 ```bash
 your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
@@ -80,7 +68,7 @@ your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain
 
 此命令将在`your/path/to/arm64_standalone_toolchain`目录生成一套独立编译工具链，面向架构为64位ARM64架构，支持的最小Android API级别为21，支持编译器`arm-linux-androideabi-gcc (GCC) 4.9`和`clang 3.8`。
 
-注意：**arm64架构要求Android API不小于21**。
+注意：**PaddlePaddle要求使用的编译工具链所支持的Android API级别不小于21**。
 
 ### 配置交叉编译参数
 
