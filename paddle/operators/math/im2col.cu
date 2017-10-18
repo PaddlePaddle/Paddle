@@ -240,12 +240,8 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& im, framework::Tensor& col,
-                  int stride, int pad, int row_begin, int row_end) {
-    int stride_height = stride;
-    int stride_width = 0;
-    int padding_height = pad;
-    int padding_width = 0;
-
+                  int stride_height, int stride_width, int up_pad,
+                  int down_pad) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -253,6 +249,19 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     int input_width = im.dims()[2];
     int filter_height = col.dims()[3];
     int filter_width = col.dims()[4];
+
+    int row_begin, row_end;
+    int padding_height = std::max(up_pad, down_pad);
+    int padding_width = 0;
+    if (up_pad >= down_pad) {
+      row_begin = 0;
+    } else {
+      row_begin = down_pad - up_pad;
+    }
+    row_end = row_begin + ((input_height + up_pad + down_pad - filter_height) /
+                               stride_height +
+                           1);
+
     int output_height = row_end - row_begin;  // col.dims()[0];
     int output_width = col.dims()[1];
 
@@ -295,7 +304,6 @@ __global__ void col2imOCF(T* im_data, const T* col_data, int input_channels,
                           int row_end) {
   int swid = blockIdx.x;
   int shid = blockIdx.y;
-  //  if (shid < row_begin || shid > row_end) return;
   for (int channelid = threadIdx.z; channelid < input_channels;
        channelid += blockDim.z) {
     for (int idy = threadIdx.y; idy < filter_height; idy += blockDim.y) {
@@ -331,12 +339,8 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                     platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context, framework::Tensor& im,
-                  const framework::Tensor& col, int stride, int pad,
-                  int row_begin, int row_end) {
-    int stride_height = stride;
-    int stride_width = 0;
-    int padding_height = pad;
-    int padding_width = 0;
+                  const framework::Tensor& col, int stride_height,
+                  int stride_width, int up_pad, int down_pad) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -344,6 +348,19 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
     int input_width = im.dims()[2];
     int filter_height = col.dims()[3];
     int filter_width = col.dims()[4];
+
+    int row_begin, row_end;
+    int padding_height = std::max(up_pad, down_pad);
+    int padding_width = 0;
+    if (up_pad >= down_pad) {
+      row_begin = 0;
+    } else {
+      row_begin = down_pad - up_pad;
+    }
+    row_end = row_begin + ((input_height + up_pad + down_pad - filter_height) /
+                               stride_height +
+                           1);
+
     int output_height = row_end - row_begin;  // col.dims()[0];
     int output_width = col.dims()[1];
 

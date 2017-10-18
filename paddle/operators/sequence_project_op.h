@@ -87,24 +87,9 @@ class SequenceProjectKernel : public framework::OpKernel<T> {
            sequence_width});  // input_channels, input_height, input_width
       in_t.Resize(framework::make_ddim(input_shape));
       for (int j = 0; j < context_length; ++j) {
-        int pad;
-        int row_start;
-
-        if (up_pad != 0) {
-          pad = up_pad;
-          row_start = 0;
-        } else if (down_pad != 0) {
-          pad = down_pad;
-          row_start = down_pad;
-        } else {
-          pad = 0;
-          row_start = 0;
-        }
-
         im2col_ocf(context.device_context(), in_t, out_t,
-                   /*stride*/ context_stride, /*pad*/ pad,
-                   /*row_start*/ row_start,
-                   /*row_end*/ row_start + sequence_height);
+                   /*stride_height*/ context_stride, /*stride_width*/ 0, up_pad,
+                   down_pad);
         if (padding_trainable) {
           // add up trainable data
           out_t.Resize(framework::make_ddim(
@@ -229,23 +214,9 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
         out_g_t.Resize(framework::make_ddim(
             {sequence_height, 1, 1, context_length, sequence_width}));
 
-        int pad;
-        int row_start;
-
-        if (up_pad != 0) {
-          pad = up_pad;
-          row_start = 0;
-        } else if (down_pad != 0) {
-          pad = down_pad;
-          row_start = down_pad;
-        } else {
-          pad = 0;
-          row_start = 0;
-        }
         col2im_ocf(context.device_context(), in_g_t, out_g_t,
-                   /*stride*/ context_stride, /*pad*/ pad,
-                   /*row_start*/ row_start,
-                   /*row_end*/ row_start + sequence_height);
+                   /*stride_height*/ context_stride, /*stride_width*/ 0, up_pad,
+                   down_pad);
 
         // out_g_t back to orign size
       }
