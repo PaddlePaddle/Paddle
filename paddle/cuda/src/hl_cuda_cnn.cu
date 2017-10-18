@@ -31,7 +31,9 @@ __global__ void KeMaxPoolForward(const int nthreads,
                                  const int offsetH,
                                  const int offsetW,
                                  real* tgtData,
-                                 const int tgtStride) {
+                                 const int tgtStride,
+                                 real* maskData,
+                                 bool withMask) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int pw = index % pooledW;
@@ -45,16 +47,22 @@ __global__ void KeMaxPoolForward(const int nthreads,
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
     real maxval = -FLT_MAX;
+    int max_index = -1;
     inputData += (frameNum * channels + c) * height * width;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        if (maxval < inputData[h * width + w])
+        if (maxval < inputData[h * width + w]) {
           maxval = inputData[h * width + w];
+          max_index = h * width + w;
+        }
       }
     }
     int tgtIndex =
         index % (pooledW * pooledH * channels) + frameNum * tgtStride;
     tgtData[tgtIndex] = maxval;
+    if (withMask) {
+      maskData[tgtIndex] = max_index;
+    }
   }
 }
 
@@ -92,7 +100,51 @@ void hl_maxpool_forward(const int frameCnt,
                                                          paddingH,
                                                          paddingW,
                                                          tgtData,
-                                                         tgtStride);
+                                                         tgtStride,
+                                                         NULL,
+                                                         false);
+  CHECK_SYNC("hl_maxpool_forward failed");
+}
+
+void hl_maxpool_forward(const int frameCnt,
+                        const real* inputData,
+                        const int channels,
+                        const int height,
+                        const int width,
+                        const int pooledH,
+                        const int pooledW,
+                        const int sizeX,
+                        const int sizeY,
+                        const int strideH,
+                        const int strideW,
+                        const int paddingH,
+                        const int paddingW,
+                        real* tgtData,
+                        const int tgtStride,
+                        real* maskData,
+                        bool withMask) {
+  int num_kernels = pooledH * pooledW * channels * frameCnt;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+  dim3 threads(1024, 1);
+  dim3 grid(blocks, 1);
+
+  KeMaxPoolForward<<<grid, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                         inputData,
+                                                         channels,
+                                                         height,
+                                                         width,
+                                                         pooledH,
+                                                         pooledW,
+                                                         sizeX,
+                                                         sizeY,
+                                                         strideH,
+                                                         strideW,
+                                                         paddingH,
+                                                         paddingW,
+                                                         tgtData,
+                                                         tgtStride,
+                                                         maskData,
+                                                         withMask);
   CHECK_SYNC("hl_maxpool_forward failed");
 }
 
