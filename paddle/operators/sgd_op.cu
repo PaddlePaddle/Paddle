@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 namespace {
-template <typename T>
+template <typename T, int block_size>
 __global__ void SparseSGDFunctorKernel(const T* selected_rows,
                                        const int64_t* rows,
                                        const T* learning_rate, T* tensor_out,
@@ -59,14 +59,14 @@ struct SparseSGDFunctor<platform::GPUPlace, T> {
     auto* in_data = in_value.data<T>();
     auto* out_data = output->data<T>();
 
-    int block_size = 256;
+    const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(1, in_rows.size());
-    SparseSGDFunctorKernel<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(in_data, in_rows.data(), learning_rate.data<T>(),
-                              out_data, in_row_numel, block_size);
+    SparseSGDFunctorKernel<T, block_size><<<
+        grid, threads, 0,
+        reinterpret_cast<const platform::CUDADeviceContext&>(context)
+            .stream()>>>(in_data, in_rows.data(), learning_rate.data<T>(),
+                         out_data, in_row_numel);
   }
 };
 

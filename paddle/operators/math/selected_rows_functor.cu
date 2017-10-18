@@ -75,7 +75,7 @@ struct SelectedRowsAdd<platform::GPUPlace, T> {
 template struct SelectedRowsAdd<platform::GPUPlace, float>;
 
 namespace {
-template <typename T>
+template <typename T, int block_size>
 __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
                                             const int64_t* rows, T* tensor_out,
                                             int64_t row_numel, int block_size) {
@@ -119,14 +119,13 @@ struct SelectedRowsAddTensor<platform::GPUPlace, T> {
     SetConstant<platform::GPUPlace, T> functor;
     functor(context, output, 0.0);
 
-    int block_size = 256;
+    const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(1, in1_rows.size());
-    SelectedRowsAddTensorKernel<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(in1_data, in1_rows.data(), out_data,
-                              in1_row_numel, block_size);
+    SelectedRowsAddTensorKernel<T, block_size><<<
+        grid, threads, 0,
+        reinterpret_cast<const platform::CUDADeviceContext&>(context)
+            .stream()>>>(in1_data, in1_rows.data(), out_data, in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);

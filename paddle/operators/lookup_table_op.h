@@ -15,12 +15,15 @@
 #pragma once
 
 #include "paddle/framework/eigen.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/selected_rows.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using SelectedRows = framework::SelectedRows;
 
 template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
@@ -47,25 +50,34 @@ template <typename T>
 class LookupTableGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto d_table_t = context.Output<Tensor>(framework::GradVarName("W"));
+    auto* ids = context.Input<Tensor>("Ids");
+    auto* d_output = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
-    int N = d_table_t->dims()[0];
-    int D = d_table_t->dims()[1];
-    auto ids = ids_t->data<int32_t>();
-    const T* d_output = d_output_t->data<T>();
-    T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
+    auto* ids_data = ids->data<int32_t>();
+    auto ids_dim = ids->dims();
+    framework::Vector<int64_t> new_rows;
+    new_rows.reserve(ids_dim[0]);
+    for (int64_t i = 0; i < ids_dim[0]; i++) {
+      // TODO(qijun): Support int64_t input data type.
+      new_rows.push_back(static_cast<int64_t>(ids_data[i]));
+    }
+    d_table->set_rows(new_rows);
 
-    auto t = framework::EigenVector<T>::Flatten(*d_table_t);
-    t.device(context.GetEigenDevice<platform::CPUPlace>()) =
-        t.constant(static_cast<T>(0));
+    auto* d_table_value = d_table->mutable_value();
+    d_table_value->mutable_data<T>(context.GetPlace());
 
-    for (int64_t i = 0; i < ids_t->numel(); ++i) {
-      PADDLE_ENFORCE_LT(ids[i], N);
-      PADDLE_ENFORCE_GE(ids[i], 0);
+    int N = d_table->height();
+    int D = d_output->dims()[1];
+
+    auto* d_output_data = d_output->data<T>();
+    auto* d_table_data = d_table_value->data<T>();
+
+    for (int64_t i = 0; i < ids->numel(); ++i) {
+      PADDLE_ENFORCE_LT(ids_data[i], N);
+      PADDLE_ENFORCE_GE(ids_data[i], 0);
       for (int j = 0; j < D; ++j) {
-        d_table[ids[i] * D + j] += d_output[i * D + j];
+        d_table_data[ids_data[i] * D + j] = d_output_data[i * D + j];
       }
     }
   }

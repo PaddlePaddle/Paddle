@@ -84,31 +84,58 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
+template <int block_size>
+__global__ void CastMemcpyKernel(const int32_t* input, int64_t* output,
+                                 int length) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < length;
+       i += blockDim.x * gridDim.x) {
+    output[i] = static_cast<int64_t>(input[i]);
+  }
+}
+
 template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto d_table_t = context.Output<Tensor>(framework::GradVarName("W"));
+    auto* ids = context.Input<Tensor>("Ids");
+    auto* d_output = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_table =
+        context.Output<framework::SelectedRows>(framework::GradVarName("W"));
 
-    int N = d_table_t->dims()[0];
-    int D = d_table_t->dims()[1];
-    int K = ids_t->numel();
-    const int32_t* ids = ids_t->data<int32_t>();
-    const T* d_output = d_output_t->data<T>();
-    T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
+    auto* ids_data = ids->data<int32_t>();
+    auto ids_dim = ids->dims();
+    Vector<int64_t> new_rows;
+    new_rows.resize(ids_dim[0]);
+    dim3 cast_threads(256, 1) dim3 cast_grids(ids_dim[0] / 256 + 1, 1);
+
+    CastMemcpyKernel<
+        256><<<cast_grids, cast_threads, 0,
+               reinterpret_cast<const platform::CUDADeviceContext&>(
+                   context.device_context())
+                   .stream()>>>(ids_data, new_rows.data(), ids_dim[0]);
+    d_table->set_rows(new_rows);
+
+    int N = d_table->height();
+    int D = d_output->dims()[1];
+    int K = ids->numel();
+    const int32_t* ids_data = ids->data<int32_t>();
+
+    framework::Tensor* d_table_value = d_table->mutable_value();
+    d_table_value->mutable_data<T>(context.GetPlace());
 
     auto t = framework::EigenVector<T>::Flatten(*d_table_t);
     t.device(context.GetEigenDevice<platform::GPUPlace>()) =
         t.constant(static_cast<T>(0));
 
+    auto* d_output_data = d_output->data<T>();
+    auto* d_table_data = d_table_value.data<T>();
     dim3 threads(128, 8);
     dim3 grids(8, 1);
     LookupTableGrad<T, 128, 8, 8><<<
         grids, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                context.device_context())
-                               .stream()>>>(d_table, d_output, ids, N, K, D);
+                               .stream()>>>(d_table_data, d_output_data,
+                                            ids_data, N, K, D);
   }
 };
 

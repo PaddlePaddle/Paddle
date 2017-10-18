@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/lookup_table_op.h"
+#include "paddle/framework/var_type_inference.h"
 
 namespace paddle {
 namespace operators {
@@ -70,8 +71,20 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    auto ids_dims = ctx->GetInputDim("Ids");
     auto table_dims = ctx->GetInputDim("W");
-    ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+    if (dynamic_cast<framework::CompileTimeInferShapeContext*>(ctx)) {
+      ctx->SetOutputDim(framework::GradVarName("W"),
+                        {ids_dims[0], table_dims[1]});
+    } else if (dynamic_cast<framework::RuntimeInferShapeContext*>(ctx)) {
+      auto* d_table_var =
+          dynamic_cast<framework::RuntimeInferShapeContext*>(ctx)->OutputVar(
+              framework::GradVarName("W"));
+      auto* sr = d_table_var->GetMutable<framework::SelectedRows>();
+      sr->set_height(table_dims[0]);
+      framework::Tensor* sr_value = sr->mutable_value();
+      sr_value->Resize({ids_dims[0], table_dims[1]});
+    }
   }
 
  protected:
@@ -81,12 +94,22 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDescBind& op_desc,
+                  framework::BlockDescBind* block) const override {
+    auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
+    block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
-            lookup_table_grad, ops::LookupTableOpGrad);
+REGISTER_OPERATOR(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker);
+REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
+                  ops::LookupTableOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>);
