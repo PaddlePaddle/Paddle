@@ -344,7 +344,10 @@ class Block(object):
                 self.create_var(name=var.name(), desc=var, type=var.type())
 
         # sync operators from cpp
-        ops_in_cpp = self.desc.all_ops()
+        ops_in_cpp = []
+        for op_idx in range(0, self.desc.op_size()):
+            ops_in_cpp.append(self.desc.op(op_idx))
+
         first_op_in_python = self.ops[0].desc
         last_op_in_python = self.ops[len(self.ops) - 1].desc
         start_index = None
