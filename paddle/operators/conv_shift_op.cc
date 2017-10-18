@@ -27,7 +27,6 @@ class ConvShiftOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
@@ -54,7 +53,6 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");

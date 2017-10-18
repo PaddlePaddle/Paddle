@@ -82,5 +82,70 @@ class TestSeqSumPool2D(TestSeqAvgPool2D):
             out[i] = np.reshape(sub_x.sum(axis=0), (3, 17))
 
 
+class TestSeqSqrtPool(TestSeqAvgPool):
+    def compute(self):
+        self.attrs = {'strategy': SeqPoolType.SQRT}
+        x, lod = self.inputs['X']
+        out = self.outputs['Out']
+        for i in range(4):
+            sub_x = x[lod[0][i]:lod[0][i + 1], :]
+            len = lod[0][i + 1] - lod[0][i]
+            out[i] = sub_x.sum(axis=0) / np.sqrt(len)
+
+
+class TestSeqSqrtPool2D(TestSeqAvgPool2D):
+    def compute(self):
+        self.attrs = {'strategy': SeqPoolType.SQRT}
+        x, lod = self.inputs['X']
+        out = self.outputs['Out']
+        for i in range(4):
+            sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
+            len = lod[0][i + 1] - lod[0][i]
+            out[i] = np.reshape(sub_x.sum(axis=0) / np.sqrt(len), (3, 17))
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", max_relative_error=0.06)
+
+
+class TestSeqLastPool(TestSeqAvgPool):
+    def compute(self):
+        self.attrs = {'strategy': SeqPoolType.LAST}
+        x, lod = self.inputs['X']
+        out = self.outputs['Out']
+        for i in range(4):
+            sub_x = x[lod[0][i]:lod[0][i + 1], :]
+            out[i] = sub_x[-1, :]
+
+
+class TestSeqLastPool2D(TestSeqAvgPool2D):
+    def compute(self):
+        self.attrs = {'strategy': SeqPoolType.LAST}
+        x, lod = self.inputs['X']
+        out = self.outputs['Out']
+        for i in range(4):
+            sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
+            out[i] = np.reshape(sub_x[-1, :], (3, 17))
+
+
+class TestSeqFirstPool(TestSeqAvgPool):
+    def compute(self):
+        self.attrs = {'strategy': SeqPoolType.FIRST}
+        x, lod = self.inputs['X']
+        out = self.outputs['Out']
+        for i in range(4):
+            sub_x = x[lod[0][i]:lod[0][i + 1], :]
+            out[i] = sub_x[0, :]
+
+
+class TestSeqFirstPool2D(TestSeqAvgPool2D):
+    def compute(self):
+        self.attrs = {'strategy': SeqPoolType.FIRST}
+        x, lod = self.inputs['X']
+        out = self.outputs['Out']
+        for i in range(4):
+            sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
+            out[i] = np.reshape(sub_x[0, :], (3, 17))
+
+
 if __name__ == '__main__':
     unittest.main()

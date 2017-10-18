@@ -45,7 +45,7 @@ BlockDescBind *ProgramDescBind::AppendBlock(const BlockDescBind &parent) {
 
 ProgramDesc *ProgramDescBind::Proto() {
   for (auto &block : blocks_) {
-    block->Sync();
+    block->Flush();
   }
   return prog_;
 }

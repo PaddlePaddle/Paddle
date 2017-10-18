@@ -23,7 +23,6 @@ class MultiplexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) shouldn't be null.");
     PADDLE_ENFORCE(!ctx->Inputs("X").empty(),
@@ -51,6 +50,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", in_dim);
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
@@ -89,7 +89,6 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null.");
     PADDLE_ENFORCE(!ctx->Outputs(framework::GradVarName("X")).empty(),
@@ -105,6 +104,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
@@ -115,8 +115,9 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker, multiplex_grad,
-            ops::MultiplexGradOp);
+REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<false>);
+REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
     multiplex, ops::MultiplexCPUKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
