@@ -64,6 +64,14 @@ inline T* Tensor::mutable_data(platform::Place place) {
     if (platform::is_cpu_place(place)) {
       holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size));
+    } else if (platform::is_fpga_place(place)) {
+#ifdef PADDLE_WITH_FPGA
+      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+    }
+#else
+      holder_.reset(new PlaceholderImpl<T, platform::FPGAPlace>(
+          boost::get<platform::FPGAPlace>(place), size));
+#endif
     } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_ONLY_CPU
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
@@ -103,6 +111,20 @@ inline void Tensor::CopyFrom(const Tensor& src,
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
+#ifdef PADDLE_WITH_FPGA
+  else if (platform::is_fpga_place(src_place) && platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+                 boost::get<platform::FPGAPlace>(src_place), src_ptr, size);
+  }
+  else if (platform::is_cpu_place(src_place) && platform::is_fpga_place(dst_place)) {
+    memory::Copy(boost::get<platform::FPGAPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+  }
+  else if (platform::is_fpga_place(src_place) && platform::is_fpga_place(dst_place)) {
+    memory::Copy(boost::get<platform::FPGAPlace>(dst_place), dst_ptr,
+                 boost::get<platform::FPGAPlace>(src_place), src_ptr, size);
+  }
+#endif
 #ifndef PADDLE_ONLY_CPU
   else if (platform::is_gpu_place(src_place) &&
            platform::is_cpu_place(dst_place)) {

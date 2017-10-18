@@ -70,6 +70,10 @@ PYBIND11_PLUGIN(core) {
              self.mutable_data<float>(place);
            })
       .def("alloc_float",
+           [](Tensor &self, paddle::platform::FPGAPlace &place) {
+             self.mutable_data<float>(place);
+           })
+      .def("alloc_float",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
@@ -78,11 +82,19 @@ PYBIND11_PLUGIN(core) {
              self.mutable_data<int>(place);
            })
       .def("alloc_int",
+           [](Tensor &self, paddle::platform::FPGAPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("alloc_int",
            [](Tensor &self, paddle::platform::GPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
+#ifdef PADDLE_WITH_FPGA
+      .def("set", PyFPGATensorSetFromArray<float>)
+      .def("set", PyFPGATensorSetFromArray<int>)
+#endif
 #ifndef PADDLE_ONLY_CPU
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
@@ -203,6 +215,15 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CPUDeviceContext();
                   })
       .def_static("create",
+                  [](paddle::platform::FPGAPlace& place)
+                      -> paddle::platform::DeviceContext* {
+#ifdef PADDLE_WITH_FPGA
+                    PADDLE_THROW("FPGAPlace is not supported in current device.");
+#else
+                    return new paddle::platform::FPGADeviceContext(place);
+#endif
+                  })
+      .def_static("create",
                   [](paddle::platform::GPUPlace& place)
                       -> paddle::platform::DeviceContext* {
 #ifdef PADDLE_ONLY_CPU
@@ -216,6 +237,10 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::GPUPlace>(m, "GPUPlace")
       .def(py::init<int>())
       .def("__str__", string::to_string<const platform::GPUPlace &>);
+
+  py::class_<platform::FPGAPlace>(m, "FPGAPlace")
+      .def(py::init<int>())
+      .def("__str__", string::to_string<const platform::FPGAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
       .def(py::init<>())

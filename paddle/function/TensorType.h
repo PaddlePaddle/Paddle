@@ -28,7 +28,8 @@ enum ValueType {
 enum DeviceType {
   DEVICE_TYPE_UNSPECIFIED = 0,
   DEVICE_TYPE_CPU = 1,
-  DEVICE_TYPE_GPU = 2
+  DEVICE_TYPE_GPU = 2,
+  DEVICE_TYPE_FPGA = 3
 };
 
 enum SparseDataType { T_NO_VALUE = 0, T_FLOAT_VALUE = 1 };

@@ -58,6 +58,8 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       framework::Tensor dst_tensor;
       if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
         dst_tensor.CopyFrom<CUR_TYPE>(tensor, platform::CPUPlace());
+      } else if (paddle::platform::is_fpga_place(tensor.holder_->place())) {
+        dst_tensor.CopyFrom<CUR_TYPE>(tensor, platform::CPUPlace());
       } else if (paddle::platform::is_cpu_place(tensor.holder_->place())) {
         dst_tensor = tensor;
       }
@@ -95,6 +97,27 @@ void PyCPUTensorSetFromArray(
   auto *dst = self.mutable_data<T>(place);
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
+
+#ifdef PADDLE_WITH_FPGA
+template <typename T>
+void PyFPGATensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<T, py::array::c_style | py::array::forcecast> array,
+    paddle::platform::FPGAPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back((int)array.shape()[i]);
+  }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<T>(place);
+  PolarisContext* ctxt = polaris_create_context(place.device);
+  polaris_memcpy(ctxt, POLARIS_HOST_TO_DEVICE,
+        dst, array.data(), sizeof(T) * array.size());
+  polaris_destroy_context(ctxt);
+}
+#endif
 
 #ifndef PADDLE_ONLY_CPU
 template <typename T>
