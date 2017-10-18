@@ -176,8 +176,6 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("all_vars", &BlockDescBind::AllVars,
            py::return_value_policy::reference)
-      // .def("all_ops", &BlockDescBind::AllOps,
-      //     py::return_value_policy::reference)
       .def("op_size", &BlockDescBind::OpSize)
       .def("op", &BlockDescBind::Op, py::return_value_policy::reference)
       .def("serialize_to_string", [](BlockDescBind &block_desc) -> py::bytes {

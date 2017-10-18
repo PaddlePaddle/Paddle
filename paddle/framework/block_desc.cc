@@ -55,10 +55,9 @@ OpDescBind *BlockDescBind::AppendOp() {
   return ops_.back().get();
 }
 
-void BlockDescBind::AppendAllocatedOp(std::unique_ptr<OpDescBind> &op_desc) {
+void BlockDescBind::AppendAllocatedOp(std::unique_ptr<OpDescBind> &&op_desc) {
   need_update_ = true;
   ops_.emplace_back(std::move(op_desc));
-  return;
 }
 
 OpDescBind *BlockDescBind::PrependOp() {

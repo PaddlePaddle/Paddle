@@ -374,7 +374,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
           program_desc, step_block_idx, no_grad_vars, grad_to_var);
       BlockDescBind* backward_block = program_desc.AppendBlock(*cur_block);
       for (auto& ptr : backward_block_op_descs) {
-        backward_block->AppendAllocatedOp(ptr);
+        backward_block->AppendAllocatedOp(std::move(ptr));
       }
       op_grads[0]->SetBlockAttr("step_block", *backward_block);
     }
@@ -445,7 +445,7 @@ ParamGradInfoMap AppendBackward(
                      {{"shape", target_shape},
                       {"value", static_cast<float>(1.0)},
                       {"data_type", framework::DataType::FP32}}));
-  root_block->AppendAllocatedOp(fill_one_op);
+  root_block->AppendAllocatedOp(std::move(fill_one_op));
   size_t forward_op_num = root_block->OpSize();
   size_t forward_block_num = program_desc.Size();
 
@@ -455,7 +455,7 @@ ParamGradInfoMap AppendBackward(
                                              &no_grad_var_names, &grad_to_var);
 
   for (auto& ptr : backward_op_descs) {
-    root_block->AppendAllocatedOp(ptr);
+    root_block->AppendAllocatedOp(std::move(ptr));
   }
   // Create Variable
 

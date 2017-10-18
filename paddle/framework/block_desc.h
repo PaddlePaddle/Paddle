@@ -57,15 +57,15 @@ class BlockDescBind {
 
   OpDescBind *AppendOp();
 
-  void AppendAllocatedOp(std::unique_ptr<OpDescBind> &op_desc);
+  void AppendAllocatedOp(std::unique_ptr<OpDescBind> &&op_desc);
 
   OpDescBind *PrependOp();
 
   std::vector<OpDescBind *> AllOps() const;
 
-  int OpSize() const { return ops_.size(); }
+  size_t OpSize() const { return ops_.size(); }
 
-  OpDescBind *Op(int idx) const { return ops_.at(idx).get(); }
+  OpDescBind *Op(int idx) { return ops_.at(idx).get(); }
 
   void Flush();
 
