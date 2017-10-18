@@ -38,24 +38,23 @@ class SequenceProjectOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(
           ctx->HasInput("PaddingData"),
           "Output(PaddingData) of SequenceProjectOp should not be null.");
-      framework::DDim padding_dim = ctx->GetOutputDim("PaddingData");
+      framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
       int down_pad = std::max(0, context_start + context_length - 1);
       int total_pad = up_pad + down_pad;
       int input_width = static_cast<int>(in_dims[1]);
-
-      PADDLE_ENFORCE(padding_dim.size() == 2,
-                     "Input(PaddingData) should be 2-D tensor.");
-      PADDLE_ENFORCE(
-          padding_dim[0] == total_pad && padding_dim[1] == input_width,
-          "Input(PaddingData)'s shape is not consistent with 'context_start' "
-          "and 'context_length'.");
 
       if (context_start == 0 && context_length == 1) {
         PADDLE_THROW(
             "if context_start == 0 && context_length == 1, padding_trainable "
             "should be false.");
       }
+      PADDLE_ENFORCE(padding_dim.size() == 2,
+                     "Input(PaddingData) should be 2-D tensor.");
+      PADDLE_ENFORCE(
+          padding_dim[0] == total_pad && padding_dim[1] == input_width,
+          "Input(PaddingData)'s shape is not consistent with 'context_start' "
+          "and 'context_length'.");
     }
 
     in_dims[1] = in_dims[1] * context_length;
@@ -74,9 +73,11 @@ class SequenceProjectGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
 
     if (ctx->Attrs().Get<bool>("padding_trainable")) {
-      PADDLE_ENFORCE(
-          ctx->HasOutput("PaddingData"),
-          "Output(PaddingData) of SequenceProjectOp should not be null.");
+      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("PaddingData")),
+                     "Output(PaddingData@GRAD) of SequenceProjectGradOp should "
+                     "not be null.");
+      auto padding_dims = ctx->GetInputDim("PaddingData");
+      ctx->SetOutputDim(framework::GradVarName("PaddingData"), padding_dims);
     }
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -93,8 +94,8 @@ class SequenceProjectOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Out",
         "A float LoDTensor, the variable-length output of SequenceProjectOp.");
-    AddOutput("PaddingData",
-              "A float LoDTensor, the padding data of SequenceProjectOp.");
+    AddInput("PaddingData",  // PaddingData can be a float tensor
+             "A float LoDTensor, the padding data of SequenceProjectOp.");
 
     AddAttr<bool>("padding_trainable",
                   "(bool, default false) the padding data of SequenceProjectOp "
@@ -110,7 +111,8 @@ class SequenceProjectOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("context_stride",
                  "(int, default 1) the xx of SequenceProjectOp.")
         .SetDefault(1)
-        .GreaterThan(0);
+        .GreaterThan(
+            0);  // Currently, sequence_project_op only support context_stride=1
 
     AddComment(R"DOC(
     SequenceProjectOp projects features of context_length time-steps of each instance.
