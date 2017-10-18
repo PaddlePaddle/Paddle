@@ -1,6 +1,8 @@
 *.DS_Store
 build/
 build_doc/
+build_android/
+install_android/
 *.user
 
 .vscode
