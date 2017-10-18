@@ -60,13 +60,13 @@ std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
                                         const OpDesc& op_desc) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
-  if (op_desc.type() == "recurrent") {
-    auto& block = pdesc.blocks(op_desc.attrs().block_idx());
-    std::vector<std::unique_ptr<OperatorBase>> step_nets;
-    for (auto& my_op_desc : block.ops()) {
-      step_nets.push_back(create_op(pdesc, my_op_desc));
-    }
-  }
+  // if (op_desc.type() == "recurrent") {
+  //   auto& block = pdesc.blocks(op_desc.attrs().block_idx());
+  //   std::vector<std::unique_ptr<OperatorBase>> step_nets;
+  //   for (auto& my_op_desc : block.ops()) {
+  //     step_nets.push_back(create_op(pdesc, my_op_desc));
+  //   }
+  // }
 
   return op;
 }
@@ -83,6 +83,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
 
   for (auto& var : block.vars()) {
     if (var.persistable()) {
+      LOG(INFO) << "Create " << var.name();
       scope->Var(var.name());
     } else {
       local_scope.Var(var.name());

@@ -36,6 +36,8 @@ USE_OP(squared_l2_distance);
 USE_OP(fill_constant);
 USE_OP(mean);
 USE_OP(sgd);
+USE_OP(relu);
+USE_NO_KERNEL_OP(recurrent);
 
 constexpr auto kFeedValueName = "feed_value";
 constexpr auto kFetchValueName = "fetch_value";
@@ -46,17 +48,6 @@ using namespace paddle::framework;
 void AddOp(const std::string& type, const VariableNameMap& inputs,
            const VariableNameMap& outputs, AttributeMap attrs,
            paddle::framework::BlockDescBind* block) {
-  // insert output
-  for (auto kv : outputs) {
-    for (auto v : kv.second) {
-      if (!block->HasVar(v)) {
-        auto var = block->Var(v);
-        var->SetDataType(paddle::framework::DataType::FP32);
-      }
-    }
-  }
-
-  // insert op
   auto op = block->AppendOp();
   op->SetType(type);
   for (auto& kv : inputs) {
@@ -129,14 +120,11 @@ class ExecutorTesterRandom : public ::testing::Test {
           {{"dims", std::vector<int>{input_dim, embed_dim}}}, init_root_block);
     AddOp("gaussian_random", {}, {{"Out", {"w2"}}},
           {{"dims", std::vector<int>{embed_dim, input_dim}}}, init_root_block);
-    AddOp("fetch", {{"Input", {"w1"}}}, {{"Out", {kFetchValueName}}},
-          {{"col", 0}}, init_root_block);
-    AddOp("fetch", {{"Input", {"w2"}}}, {{"Out", {kFetchValueName}}},
-          {{"col", 1}}, init_root_block);
+    init_root_block->Var("w1");
+    init_root_block->Var("w2");
 
     // flush
     init_program.Proto();
-
     for (auto& var : *init_pdesc_.mutable_blocks(0)->mutable_vars()) {
       var.set_persistable(true);
     }
@@ -149,22 +137,24 @@ class ExecutorTesterRandom : public ::testing::Test {
         paddle::framework::ProgramDescBind::Instance(&pdesc_);
     paddle::framework::BlockDescBind* root_block = program.Block(0);
     paddle::framework::BlockDescBind* second_block =
-        program.AppendBlock(root_block);
+        program.AppendBlock(*root_block);
 
     // feed data
     AddOp("gaussian_random", {}, {{"Out", {"a"}}},
           {{"dims", std::vector<int>{seq_len, batch_size, input_dim}}},
           root_block);
-    // AddOp("recurrent", {})
+    root_block->Var("a");
+    AddOp("recurrent", {{"inlinks", {"a"}}, {"boot_memories", {"UNKOWN"}}},
+          {{"outlinks", {"b"}}, {"step_scopes", {"UNKNOWN"}}},
+          {{"block_idx", 1},
+           {"pre_memories", std::vector<std::string>{"h@pre"}},
+           {"memories", std::vector<std::string>{"h@mem"}}},
+          root_block);
+    root_block->Var("b");
 
-    // forward
-    AddOp("mul", {{"X", {"a"}}, {"Y", {"w1"}}}, {{"Out", {"b"}}}, {},
-          root_block);
-    AddOp("mul", {{"X", {"b"}}, {"Y", {"w2"}}}, {{"Out", {"a_out"}}}, {},
-          root_block);
-    AddOp("squared_l2_distance", {{"X", {"a"}}, {"Y", {"a_out"}}},
-          {{"Out", {"l2_distance"}}, {"sub_result", {"l2_distance_sub"}}}, {},
-          root_block);
+    AddOp("elementwise_add", {{"X", {"a"}}, {"Y", {"h@pre"}}},
+          {{"Out", {"h@mem"}}}, {}, second_block);
+    AddOp("relu", {{"X", {"h@mem"}}}, {{"Y", {"b"}}}, {}, second_block);
 
     // flush
     program.Proto();
@@ -191,7 +181,6 @@ TEST_F(ExecutorTesterRandom, CPU) {
   std::unique_ptr<Executor> executor(new Executor(places));
   LOG(INFO) << "Here";
   executor->Run(init_pdesc_, &GetGlobalScope(), 0);
-  LOG(INFO) << "Here";
   LOG(INFO) << "Here";
   executor->Run(pdesc_, &GetGlobalScope(), 0);
   LOG(INFO) << "Here";
