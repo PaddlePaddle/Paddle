@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 
+#include "paddle/operators/recurrent_op.h"
+
 namespace paddle {
 namespace framework {
 
@@ -78,7 +80,11 @@ std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
     for (auto& my_op_desc : pdesc.blocks(block_idx).ops()) {
       step_net->push_back(create_op(pdesc, my_op_desc));
     }
-    // op->set_stepnet(step_net);
+    if (auto* rnn_op = dynamic_cast<operators::RecurrentOp*>(op.get())) {
+      rnn_op->set_stepnet(step_net);
+    } else {
+      PADDLE_THROW("dynamic_cast<RecurrentOp*> fail");
+    }
     LOG(INFO) << "GO";
   }
 
@@ -110,6 +116,18 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
     op->Run(local_scope, *device);
   }
 
+  for (auto& var : block.vars()) {
+    std::set<std::string> name_to_print{"a", "b", "h_boot"};
+    if (!var.persistable() && name_to_print.count(var.name())) {
+      LOG(INFO) << var.name();
+      auto* v = local_scope.Var(var.name());
+      const float* f = v->GetMutable<LoDTensor>()->data<float>();
+      const int64_t s = v->GetMutable<LoDTensor>()->numel();
+      for (int i = 0; i < s; ++i) {
+        LOG(INFO) << f[i];
+      }
+    }
+  }
   // TODO(tonyyang-svail):
   //  - Destroy local_scope
 }

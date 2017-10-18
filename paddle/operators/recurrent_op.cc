@@ -41,10 +41,13 @@ void RecurrentAlgorithm::Run(const Scope& scope,
   InitMemories(step_scopes[0]);
 
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
+    LOG(INFO) << "step " << step_id;
     if (step_id > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1);
     }
-    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
+    for (auto& op : **stepnet_) {
+      op->Run(*step_scopes[step_id], dev_ctx);
+    }
   }
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
 }
@@ -59,25 +62,26 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
 
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
+  PADDLE_ENFORCE(!(*stepnet_)->empty());
 
   if (seq_len > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len; ++i) {
       auto& step_scope = scope.NewScope();
-
-      // create step net's temp inputs
-      for (auto& input : (*stepnet_)->Inputs()) {
-        // the weight are located in parent scope
-        for (auto& var_name : input.second) {
-          if (!step_scope.FindVar(var_name)) {
-            step_scope.Var(var_name)->GetMutable<LoDTensor>();
+      for (auto& op : **stepnet_) {
+        // create step net's temp inputs
+        for (auto& input : op->Inputs()) {
+          // the weight are located in parent scope
+          for (auto& var_name : input.second) {
+            if (!step_scope.FindVar(var_name)) {
+              step_scope.Var(var_name)->GetMutable<LoDTensor>();
+            }
           }
         }
-      }
-      // create stepnet's outputs
-      for (const auto& output : (*stepnet_)->Outputs()) {
-        for (auto& var_name : output.second) {
-          step_scope.Var(var_name);
+        // create stepnet's outputs
+        for (const auto& output : op->Outputs()) {
+          for (auto& var_name : output.second) {
+            step_scope.Var(var_name);
+          }
         }
       }
       step_scopes->emplace_back(&step_scope);
@@ -154,7 +158,9 @@ void RecurrentGradientAlgorithm::Run(
     if (static_cast<size_t>(step_id) != seq_len - 1) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
     }
-    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
+    for (auto& op : **stepnet_) {
+      op->Run(*step_scopes[step_id], dev_ctx);
+    }
   }
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
   LinkBootMemoryGradients(step_scopes[0]);
