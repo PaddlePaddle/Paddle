@@ -3,7 +3,7 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc_layer', 'data_layer', 'cross_entropy']
+__all__ = ['fc_layer', 'data_layer', 'cross_entropy', 'conv2d_layer']
 
 
 def fc_layer(input,
@@ -24,6 +24,7 @@ def fc_layer(input,
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
         param_shape = list(input_shape[num_flatten_dims:]) + [size]
+
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype)
         tmp = helper.create_tmp_variable(dtype)
@@ -111,6 +112,7 @@ def _create_op_func_(op_type):
 
 
 _create_op_func_('mean')
+_create_op_func_('pool2d')
 
 
 def cross_entropy(input, label, **kwargs):
@@ -141,3 +143,47 @@ def square_error_cost(input, label, **kwargs):
         outputs={'Y': [square_out]},
         attrs={'factor': 2.0})
     return square_out
+
+
+def conv2d_layer(input,
+                 num_filters,
+                 name=None,
+                 filter_size=[1, 1],
+                 act=None,
+                 groups=None,
+                 stride=[1, 1],
+                 padding=None,
+                 bias_attr=None,
+                 param_attr=None,
+                 program=None):
+    helper = LayerHelper('conv2d', **locals())
+    dtype = helper.input_dtype()
+
+    num_channels = input.shape[1]
+    if groups is None:
+        num_filter_channels = num_channels
+    else:
+        if num_channels % groups is not 0:
+            raise ValueError("num_channels must be divisible by groups.")
+        num_filter_channels = num_channels / groups
+
+    input_shape = input.shape
+    filter_shape = [num_filters, num_filter_channels] + filter_size
+    filter = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+    pre_bias = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='conv2d',
+        inputs={
+            'Input': input,
+            'Filter': filter,
+        },
+        outputs={"Output": pre_bias},
+        attrs={'strides': stride,
+               'paddings': padding,
+               'groups': groups})
+
+    pre_act = helper.append_bias_op(pre_bias)
+
+    return helper.append_activation(pre_act)
