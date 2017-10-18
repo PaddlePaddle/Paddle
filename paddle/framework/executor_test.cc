@@ -65,35 +65,13 @@ OpDescBind* AddOp(const std::string& type, const VariableNameMap& inputs,
   return op;
 }
 
-class ExecutorTesterRandom : public ::testing::Test {
+class ExecutorRNNForward : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    int seq_len = 2, input_dim = 3, batch_size = 1, embed_dim = 5;
-
-    auto temp_init_root_block = init_pdesc_.add_blocks();
-    temp_init_root_block->set_idx(0);
-    temp_init_root_block->set_parent_idx(-1);
-    ProgramDescBind& init_program = ProgramDescBind::Instance(&init_pdesc_);
-    BlockDescBind* init_root_block = init_program.Block(0);
-
-    AddOp("gaussian_random", {}, {{"Out", {"w1"}}},
-          {{"dims", std::vector<int>{input_dim, embed_dim}}}, init_root_block);
-    AddOp("gaussian_random", {}, {{"Out", {"w2"}}},
-          {{"dims", std::vector<int>{embed_dim, input_dim}}}, init_root_block);
-    init_root_block->Var("w1");
-    init_root_block->Var("w2");
-
-    // flush
-    init_program.Proto();
-    for (auto& var : *init_pdesc_.mutable_blocks(0)->mutable_vars()) {
-      var.set_persistable(true);
-    }
+    int seq_len = 2, input_dim = 3, batch_size = 1;
 
     // run block
-    auto temp_root_block = pdesc_.add_blocks();
-    temp_root_block->set_idx(0);
-    temp_root_block->set_parent_idx(-1);
-    ProgramDescBind& program = ProgramDescBind::Instance(&pdesc_);
+    ProgramDescBind program;
     BlockDescBind* root_block = program.Block(0);
 
     // feed data
@@ -125,16 +103,15 @@ class ExecutorTesterRandom : public ::testing::Test {
     second_block->Var("h@mem");
 
     // flush
-    program.Proto();
+    pdesc_ = *program.Proto();
   }
 
  protected:
-  ProgramDesc init_pdesc_;
   ProgramDesc pdesc_;
   std::vector<std::vector<float>> inputs_;
 };
 
-TEST_F(ExecutorTesterRandom, CPU) {
+TEST_F(ExecutorRNNForward, CPU) {
   std::vector<Place> places;
   CPUPlace cpu_place;
   places.push_back(cpu_place);
@@ -146,6 +123,5 @@ TEST_F(ExecutorTesterRandom, CPU) {
   paddle::memory::Used(cpu_place);
 
   std::unique_ptr<Executor> executor(new Executor(places));
-  executor->Run(init_pdesc_, &GetGlobalScope(), 0);
   executor->Run(pdesc_, &GetGlobalScope(), 0);
 }
