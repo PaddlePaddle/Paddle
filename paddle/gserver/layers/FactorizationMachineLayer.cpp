@@ -33,10 +33,11 @@ bool FactorizationMachineLayer::init(const LayerMap& layerMap,
   /* initialize the latentVectors_ */
   CHECK_EQ(inputLayers_.size(), 1UL);
   size_t height = inputLayers_[0]->getSize();
+  CHECK_EQ(parameters_[0]->getSize(), height * factorSize_);
   latentVectors_ =
       std::unique_ptr<Weight>(new Weight(height, factorSize_, parameters_[0]));
 
-  v2_ = latentVectors_->getW()->clone(0, 0, useGpu_);
+  v2_ = Matrix::create(height, factorSize_, false, useGpu_);
 
   return true;
 }
