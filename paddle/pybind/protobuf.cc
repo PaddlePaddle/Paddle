@@ -101,6 +101,10 @@ using namespace paddle::framework;  // NOLINT
 void BindProgramDesc(py::module &m) {
   py::class_<ProgramDescBind>(m, "ProgramDesc", "")
       .def(py::init<>())
+      .def("__init__",
+           [](ProgramDescBind &self, const ProgramDescBind &other) {
+             new (&self) ProgramDescBind(other);
+           })
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("append_backward",

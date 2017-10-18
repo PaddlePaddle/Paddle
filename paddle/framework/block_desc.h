@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <deque>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/var_desc.h"
 #include "paddle/platform/macros.h"
@@ -54,6 +56,14 @@ class BlockDescBind {
 
   bool HasVar(const std::string &var_name) const;
 
+  std::set<std::string> LocalVarNames() const {
+    std::set<std::string> var_names;
+    for (auto &var : vars_) {
+      var_names.insert(var.first);
+    }
+    return var_names;
+  }
+
   std::vector<VarDescBind *> AllVars() const;
 
   BlockDescBind *ParentBlock() const;
@@ -67,6 +77,12 @@ class BlockDescBind {
   void Flush();
 
   BlockDesc *Proto();
+
+  size_t NumOfOps() const { return this->ops_.size(); }
+
+  const OpDescBind &Op(size_t i) const { return *ops_[i]; }
+
+  OpDescBind *MutableOp(size_t i) { return ops_[i].get(); }
 
  private:
   void ClearPBOps();
