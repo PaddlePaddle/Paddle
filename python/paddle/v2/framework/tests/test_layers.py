@@ -1,4 +1,5 @@
 from paddle.v2.framework.layers import fc_layer, data_layer, cross_entropy, mean, square_error_cost, conv2d_layer
+import paddle.v2.framework.nets as nets
 from paddle.v2.framework.framework import Program, g_program
 import paddle.v2.framework.core as core
 import unittest
@@ -18,7 +19,7 @@ class TestBook(unittest.TestCase):
         avg_cost = mean(x=cost, program=program)
         self.assertIsNotNone(avg_cost)
         program.append_backward(avg_cost, set())
-        print str(program)
+        # print str(program)
 
     def test_recognize_digits_mlp(self):
         program = Program()
@@ -47,14 +48,18 @@ class TestBook(unittest.TestCase):
 
         # print str(program)
 
-    def test_simple_conv2d(self):
+    def test_simple_conv_pool(self):
         pd = core.ProgramDesc.__create_program_desc__()
         program = Program(desc=pd)
         images = data_layer(
             name='pixel', shape=[3, 48, 48], data_type='int32', program=program)
-        conv2d_layer(
-            input=images, num_filters=3, filter_size=[4, 4], program=program)
-
+        res = nets.simple_img_conv_pool(
+            images,
+            filter_size=5,
+            num_filter=2,
+            pool_size=2,
+            pool_stride=2,
+            act='rule')
         print str(program)
 
 
