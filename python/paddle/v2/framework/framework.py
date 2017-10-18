@@ -384,10 +384,8 @@ class Program(object):
             cls._instance = cls()
         return cls._instance
 
-    def __init__(self, desc=None):
-        if desc is None:
-            desc = core.ProgramDesc.instance()
-        self.desc = desc
+    def __init__(self):
+        self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
 

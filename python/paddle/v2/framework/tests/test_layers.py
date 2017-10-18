@@ -6,8 +6,7 @@ import unittest
 
 class TestBook(unittest.TestCase):
     def test_fit_a_line(self):
-        pd = core.ProgramDesc.__create_program_desc__()
-        program = Program(desc=pd)
+        program = Program()
         x = data_layer(
             name='x', shape=[13], data_type='float32', program=program)
         y_predict = fc_layer(input=x, size=1, act=None, program=program)
@@ -21,8 +20,7 @@ class TestBook(unittest.TestCase):
         print str(program)
 
     def test_recognize_digits_mlp(self):
-        pd = core.ProgramDesc.__create_program_desc__()
-        program = Program(desc=pd)
+        program = Program()
 
         # Change g_program, so the rest layers use `g_program`
         images = data_layer(

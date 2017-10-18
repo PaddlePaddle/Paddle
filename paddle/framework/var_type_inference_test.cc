@@ -62,7 +62,7 @@ namespace paddle {
 namespace framework {
 
 TEST(InferVarType, sum_op) {
-  auto &prog = ProgramDescBind::Instance(&GetProgramDesc());
+  ProgramDescBind prog;
   auto *op = prog.Block(0)->AppendOp();
   op->SetType("sum");
   op->SetInput("X", {"test_a", "test_b", "test_c"});
@@ -83,7 +83,7 @@ TEST(InferVarType, sum_op) {
 }
 
 TEST(InferVarType, sum_op_without_infer_var_type) {
-  auto &prog = ProgramDescBind::Instance(&GetProgramDesc());
+  ProgramDescBind prog;
   auto *op = prog.Block(0)->AppendOp();
   op->SetType("sum_without_infer_var_type");
   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
