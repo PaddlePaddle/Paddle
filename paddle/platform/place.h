@@ -41,21 +41,49 @@ struct GPUPlace {
   int device;
 };
 
+struct FPGAPlace {
+  FPGAPlace() : FPGAPlace(0) {}
+  explicit FPGAPlace(int d) : device(d) {}
+
+  // needed for variant equality comparison
+  inline bool operator==(const FPGAPlace &o) const {
+    return device == o.device;
+  }
+  inline bool operator!=(const FPGAPlace &o) const { return !(*this == o); }
+
+  int device;
+};
+
+struct IsCPUPlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &) const { return true; }
+  bool operator()(const GPUPlace &gpu) const { return false; }
+  bool operator()(const FPGAPlace &fpga) const { return false; }
+};
+
 struct IsGPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const GPUPlace &gpu) const { return true; }
+  bool operator()(const FPGAPlace &fpga) const { return false; }
 };
 
-typedef boost::variant<GPUPlace, CPUPlace> Place;
+struct IsFPGAPlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &) const { return false; }
+  bool operator()(const GPUPlace &gpu) const { return false; }
+  bool operator()(const FPGAPlace &fpga) const { return true; }
+};
+
+typedef boost::variant<GPUPlace, CPUPlace, FPGAPlace> Place;
 
 void set_place(const Place &);
 const Place &get_place();
 
+const FPGAPlace default_fpga();
 const GPUPlace default_gpu();
 const CPUPlace default_cpu();
 
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
+bool is_fpga_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 
 std::ostream &operator<<(std::ostream &, const Place &);
