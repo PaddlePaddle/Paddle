@@ -56,17 +56,31 @@ Executor::~Executor() {
   }
 }
 
+int getBlockIdx(const OpDesc& op_desc) {
+  for (auto& attr : op_desc.attrs()) {
+    if (attr.has_block_idx()) {
+      return attr.block_idx();
+    }
+  }
+
+  PADDLE_THROW("Missing block_idx in recurrent opDesc");
+  return -1;
+}
+
 std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
                                         const OpDesc& op_desc) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
-  // if (op_desc.type() == "recurrent") {
-  //   auto& block = pdesc.blocks(op_desc.attrs().block_idx());
-  //   std::vector<std::unique_ptr<OperatorBase>> step_nets;
-  //   for (auto& my_op_desc : block.ops()) {
-  //     step_nets.push_back(create_op(pdesc, my_op_desc));
-  //   }
-  // }
+  if (op_desc.type() == "recurrent") {
+    int block_idx = getBlockIdx(op_desc);
+    std::unique_ptr<std::vector<std::unique_ptr<OperatorBase>>> step_net{
+        new std::vector<std::unique_ptr<OperatorBase>>};
+    for (auto& my_op_desc : pdesc.blocks(block_idx).ops()) {
+      step_net->push_back(create_op(pdesc, my_op_desc));
+    }
+    // op->set_stepnet(step_net);
+    LOG(INFO) << "GO";
+  }
 
   return op;
 }

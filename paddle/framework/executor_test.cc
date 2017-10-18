@@ -42,12 +42,15 @@ USE_NO_KERNEL_OP(recurrent);
 constexpr auto kFeedValueName = "feed_value";
 constexpr auto kFetchValueName = "fetch_value";
 
+using ProgramDescBind = paddle::framework::ProgramDescBind;
+using BlockDescBind = paddle::framework::BlockDescBind;
+using OpDescBind = paddle::framework::OpDescBind;
 using namespace paddle::platform;
 using namespace paddle::framework;
 
-void AddOp(const std::string& type, const VariableNameMap& inputs,
-           const VariableNameMap& outputs, AttributeMap attrs,
-           paddle::framework::BlockDescBind* block) {
+OpDescBind* AddOp(const std::string& type, const VariableNameMap& inputs,
+                  const VariableNameMap& outputs, AttributeMap attrs,
+                  BlockDescBind* block) {
   auto op = block->AppendOp();
   op->SetType(type);
   for (auto& kv : inputs) {
@@ -58,50 +61,8 @@ void AddOp(const std::string& type, const VariableNameMap& inputs,
   }
   op->SetAttrMap(attrs);
   op->CheckAttrs();
-}
 
-// Tensors in feed value variable will only be in CPUPlace
-// So we can memcpy the data from vector<T> to feed_value
-template <typename T>
-void SetFeedVariable(const std::vector<std::vector<T>>& inputs,
-                     const std::vector<std::vector<int64_t>>& dims) {
-  LOG(INFO) << "Here";
-  Variable* g_feed_value = GetGlobalScope().FindVar(kFeedValueName);
-  LOG(INFO) << "Here";
-  auto& feed_inputs =
-      *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
-  LOG(INFO) << "Here";
-  size_t size = inputs.size();
-  LOG(INFO) << "Here";
-  feed_inputs.resize(size);
-  LOG(INFO) << "Here";
-  for (size_t i = 0; i < size; i++) {
-    LOG(INFO) << "Here" << i;
-    T* dst = feed_inputs[i].mutable_data<T>(make_ddim(dims[i]), CPUPlace());
-    memcpy(dst, inputs[i].data(), inputs[i].size() * sizeof(T));
-  }
-}
-
-// Tensors in fetch value variable will only be in CPUPlace
-// So we can memcpy the data from fetch_value to vector<T>
-template <typename T>
-std::vector<std::vector<T>> GetFetchVariable() {
-  Variable* g_fetch_value = GetGlobalScope().FindVar(kFetchValueName);
-  auto& fetch_outputs =
-      *(g_fetch_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
-
-  size_t size = fetch_outputs.size();
-  std::vector<std::vector<T>> result;
-  result.reserve(size);
-  for (size_t i = 0; i < size; i++) {
-    std::vector<T> tmp;
-    tmp.resize(fetch_outputs[i].numel());
-    memcpy(tmp.data(), fetch_outputs[i].data<T>(),
-           fetch_outputs[i].numel() * sizeof(T));
-    result.push_back(tmp);
-  }
-
-  return result;
+  return op;
 }
 
 class ExecutorTesterRandom : public ::testing::Test {
@@ -112,9 +73,8 @@ class ExecutorTesterRandom : public ::testing::Test {
     auto temp_init_root_block = init_pdesc_.add_blocks();
     temp_init_root_block->set_idx(0);
     temp_init_root_block->set_parent_idx(-1);
-    paddle::framework::ProgramDescBind& init_program =
-        paddle::framework::ProgramDescBind::Instance(&init_pdesc_);
-    paddle::framework::BlockDescBind* init_root_block = init_program.Block(0);
+    ProgramDescBind& init_program = ProgramDescBind::Instance(&init_pdesc_);
+    BlockDescBind* init_root_block = init_program.Block(0);
 
     AddOp("gaussian_random", {}, {{"Out", {"w1"}}},
           {{"dims", std::vector<int>{input_dim, embed_dim}}}, init_root_block);
@@ -133,25 +93,24 @@ class ExecutorTesterRandom : public ::testing::Test {
     auto temp_root_block = pdesc_.add_blocks();
     temp_root_block->set_idx(0);
     temp_root_block->set_parent_idx(-1);
-    paddle::framework::ProgramDescBind& program =
-        paddle::framework::ProgramDescBind::Instance(&pdesc_);
-    paddle::framework::BlockDescBind* root_block = program.Block(0);
-    paddle::framework::BlockDescBind* second_block =
-        program.AppendBlock(*root_block);
+    ProgramDescBind& program = ProgramDescBind::Instance(&pdesc_);
+    BlockDescBind* root_block = program.Block(0);
 
     // feed data
     AddOp("gaussian_random", {}, {{"Out", {"a"}}},
           {{"dims", std::vector<int>{seq_len, batch_size, input_dim}}},
           root_block);
     root_block->Var("a");
-    AddOp("recurrent", {{"inlinks", {"a"}}, {"boot_memories", {"UNKOWN"}}},
-          {{"outlinks", {"b"}}, {"step_scopes", {"UNKNOWN"}}},
-          {{"block_idx", 1},
-           {"pre_memories", std::vector<std::string>{"h@pre"}},
-           {"memories", std::vector<std::string>{"h@mem"}}},
-          root_block);
+    auto rnn_op =
+        AddOp("recurrent", {{"inlinks", {"a"}}, {"boot_memories", {"UNKOWN"}}},
+              {{"outlinks", {"b"}}, {"step_scopes", {"UNKNOWN"}}},
+              {{"pre_memories", std::vector<std::string>{"h@pre"}},
+               {"memories", std::vector<std::string>{"h@mem"}}},
+              root_block);
     root_block->Var("b");
 
+    BlockDescBind* second_block = program.AppendBlock(*root_block);
+    rnn_op->SetBlockAttr("block_idx", *second_block);
     AddOp("elementwise_add", {{"X", {"a"}}, {"Y", {"h@pre"}}},
           {{"Out", {"h@mem"}}}, {}, second_block);
     AddOp("relu", {{"X", {"h@mem"}}}, {{"Y", {"b"}}}, {}, second_block);
@@ -184,5 +143,4 @@ TEST_F(ExecutorTesterRandom, CPU) {
   LOG(INFO) << "Here";
   executor->Run(pdesc_, &GetGlobalScope(), 0);
   LOG(INFO) << "Here";
-  std::vector<std::vector<float>> result = GetFetchVariable<float>();
 }
