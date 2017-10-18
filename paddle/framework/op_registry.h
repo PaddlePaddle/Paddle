@@ -75,7 +75,7 @@ class OpRegistry {
                                                 AttributeMap attrs);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc,
-                                                ProgramDesc* prog_desc);
+                                                ProgramDesc* program);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
 };
