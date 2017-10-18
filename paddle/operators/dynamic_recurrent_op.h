@@ -83,13 +83,13 @@ class RNNAlgorithm {
    * Link the pre-state of the first time step to the `boot-state` in parent's
    * scope.
    */
-  void LinkInitialState(const rnn::StateAttr &state);
+  void LinkInitialState(const rnn::StateAttr& state);
 
   /*
    * Copy the gradient from `pre-state` in the first step-scope to the
    * `boot-state` in parent's scope.
    */
-  void ExportInitialStateGradient(const rnn::StateAttr &state);
+  void ExportInitialStateGradient(const rnn::StateAttr& state);
 
   /*
    * Calculate time steps.

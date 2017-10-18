@@ -54,8 +54,8 @@ struct ArgumentName {
   std::string step_scopes;
   std::string inlinks;
   std::string outlinks;
-  std::string states;       // the memory name
-  std::string ex_states;   // the previous memory name
+  std::string states;          // the memory name
+  std::string ex_states;       // the previous memory name
   std::string initial_states;  // the boot memory name
 };
 
