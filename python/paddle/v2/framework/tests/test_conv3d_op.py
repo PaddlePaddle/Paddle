@@ -65,6 +65,7 @@ class TestConv3dOp(OpTest):
         self.check_grad(
             set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
 
+    def test_check_grad_no_filter(self):
         self.check_grad(
             ['Input'],
             'Output',
@@ -81,7 +82,7 @@ class TestConv3dOp(OpTest):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3, 3]
@@ -97,7 +98,7 @@ class TestCase1(TestConv3dOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3, 3]
