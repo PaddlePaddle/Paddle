@@ -69,6 +69,15 @@ add_unittest_without_exec(test_PriorBox
 
 add_test(NAME test_PriorBox
     COMMAND test_PriorBox)
+
+################# test_MaxPoolingWithMaskOutput #################
+add_unittest_without_exec(test_MaxPoolingWithMaskOutput
+    test_MaxPoolingWithMaskOutput.cpp
+    LayerGradUtil.cpp)
+
+add_test(NAME test_MaxPoolingWithMaskOutput
+    COMMAND test_MaxPoolingWithMaskOutput)
+
 ################# test_DetectionOutput #######################
 add_unittest_without_exec(test_DetectionOutput
     test_DetectionOutput.cpp
