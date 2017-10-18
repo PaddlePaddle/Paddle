@@ -28,6 +28,7 @@ protected:
   int confPaddingY_, confPadding_;
   size_t channels_;
   std::string poolType_;
+  bool with_mask_;
 
 public:
   PoolProjection(const ProjectionConfig& config,
@@ -37,7 +38,6 @@ public:
   static PoolProjection* create(const ProjectionConfig& config,
                                 ParameterPtr parameter,
                                 bool useGpu);
-
   const std::string& getPoolType() const { return poolType_; }
 
   size_t getSize();
@@ -64,4 +64,15 @@ public:
   virtual void forward();
   virtual void backward(const UpdateCallback& callback = nullptr);
 };
+
+class MaxWithMaskPoolProjection : public MaxPoolProjection {
+public:
+  MaxWithMaskPoolProjection(const ProjectionConfig& config,
+                            ParameterPtr parameter,
+                            bool useGpu)
+      : MaxPoolProjection(config, parameter, useGpu) {}
+
+  virtual void forward();
+};
+
 }  // namespace paddle

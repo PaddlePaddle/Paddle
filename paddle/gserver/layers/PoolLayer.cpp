@@ -44,14 +44,19 @@ bool PoolLayer::init(const LayerMap& layerMap,
   strideY_ = conf.has_stride_y() ? conf.stride_y() : conf.stride();
   confPaddingY_ = conf.has_padding_y() ? conf.padding_y() : conf.padding();
   outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
-
+  with_mask_ = false;
+  if (poolType_ == "max-pool-with-mask") {
+    setOutput("mask", &mask_);
+    with_mask_ = true;
+  }
   return true;
 }
 
 Layer* PoolLayer::create(const LayerConfig& config) {
   CHECK_EQ(config.inputs_size(), 1);
   const std::string& pool = config.inputs(0).pool_conf().pool_type();
-  if (pool == "max-projection" || pool == "avg-projection") {
+  if (pool == "max-projection" || pool == "avg-projection" ||
+      pool == "max-pool-with-mask") {
     return new PoolProjectionLayer(config);
 #ifdef PADDLE_WITH_CUDA
   } else if (CudnnPoolLayer::typeCheck(pool)) {

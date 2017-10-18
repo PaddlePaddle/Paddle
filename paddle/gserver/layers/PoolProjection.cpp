@@ -36,6 +36,10 @@ PoolProjection::PoolProjection(const ProjectionConfig& config,
   strideY_ = conf.has_stride_y() ? conf.stride_y() : conf.stride();
   confPaddingY_ = conf.has_padding_y() ? conf.padding_y() : conf.padding();
   outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
+  with_mask_ = false;
+  if (poolType_ == "max-pool-with-mask") {
+    with_mask_ = true;
+  }
 }
 
 size_t PoolProjection::getSize() {
@@ -73,6 +77,8 @@ PoolProjection* PoolProjection::create(const ProjectionConfig& config,
     return new MaxPoolProjection(config, parameter, useGpu);
   } else if (pool == "avg-projection") {
     return new AvgPoolProjection(config, parameter, useGpu);
+  } else if (pool == "max-pool-with-mask") {
+    return new MaxPoolProjection(config, parameter, useGpu);
   } else {
     LOG(FATAL) << "Unknown pool type: " << pool;
     return nullptr;
@@ -84,6 +90,10 @@ void MaxPoolProjection::forward() {
   CHECK_EQ(width, out_->value->getWidth());
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
+  MatrixPtr maskV = out_->value;
+  if (with_mask_) {
+    maskV = mask_->value;
+  }
   outV->maxPoolForward(*inputV,
                        imgSizeY_,
                        imgSize_,
@@ -95,7 +105,9 @@ void MaxPoolProjection::forward() {
                        outputY_,
                        outputX_,
                        confPaddingY_,
-                       confPadding_);
+                       confPadding_,
+                       maskV,
+                       with_mask_);
 }
 
 void MaxPoolProjection::backward(const UpdateCallback& callback) {
@@ -167,5 +179,27 @@ void AvgPoolProjection::backward(const UpdateCallback& callback) {
                              1,
                              confPaddingY_,
                              confPadding_);
+}
+
+void MaxWithMaskPoolProjection::forward() {
+  size_t width = getSize();
+  CHECK_EQ(width, out_->value->getWidth());
+  MatrixPtr inputV = in_->value;
+  MatrixPtr outV = out_->value;
+  MatrixPtr maskV = mask_->value;
+  outV->maxPoolForward(*inputV,
+                       imgSizeY_,
+                       imgSize_,
+                       channels_,
+                       sizeX_,
+                       sizeY_,
+                       strideY_,
+                       stride_,
+                       outputY_,
+                       outputX_,
+                       confPaddingY_,
+                       confPadding_,
+                       maskV,
+                       with_mask_);
 }
 }  // namespace paddle
