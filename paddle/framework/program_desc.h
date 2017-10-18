@@ -28,6 +28,8 @@ class ProgramDescBind {
  public:
   ProgramDescBind();
 
+  ProgramDescBind(const ProgramDescBind &o);
+
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
   BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
@@ -40,8 +42,6 @@ class ProgramDescBind {
   ProgramDesc prog_;
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
-
-  DISABLE_COPY_AND_ASSIGN(ProgramDescBind);
 };
 }  // namespace framework
 }  // namespace paddle

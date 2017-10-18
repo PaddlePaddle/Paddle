@@ -36,6 +36,9 @@ class BlockDescBind {
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
 
+  BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+                ProgramDescBind *prog);
+
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
