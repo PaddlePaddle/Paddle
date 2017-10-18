@@ -24,7 +24,7 @@ template <typename T, int block_size>
 __global__ void SparseSGDFunctorKernel(const T* selected_rows,
                                        const int64_t* rows,
                                        const T* learning_rate, T* tensor_out,
-                                       int64_t row_numel, int block_size) {
+                                       int64_t row_numel) {
   const int ty = blockIdx.y;
   int tid = threadIdx.x;
 
