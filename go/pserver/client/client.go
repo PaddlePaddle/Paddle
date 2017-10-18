@@ -137,7 +137,7 @@ func (c *Client) FinishInitParams() error {
 			return err
 		}
 	}
-	return nil
+	return c.sel.Done()
 }
 
 // SendGrads sends gradients to parameter servers for updating

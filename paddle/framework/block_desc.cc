@@ -72,13 +72,13 @@ std::vector<OpDescBind *> BlockDescBind::AllOps() const {
 void BlockDescBind::Flush() {
   if (need_update_) {
     auto &op_field = *this->desc_->mutable_ops();
-    op_field.Clear();
+    this->ClearPBOps();
     op_field.Reserve(static_cast<int>(ops_.size()));
     for (auto &op_desc : ops_) {
       op_field.AddAllocated(op_desc->Proto());
     }
     auto &var_field = *this->desc_->mutable_vars();
-    var_field.Clear();
+    this->ClearPBVars();
     var_field.Reserve(static_cast<int>(vars_.size()));
     for (auto &var_desc : vars_) {
       var_field.AddAllocated(var_desc.second->Proto());
@@ -97,6 +97,22 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
 BlockDesc *BlockDescBind::Proto() {
   Flush();
   return desc_;
+}
+
+void BlockDescBind::ClearPBOps() {
+  auto ops = this->desc_->mutable_ops();
+  while (!ops->empty()) {
+    // we do not own the OpDesc, so release the ownership.
+    ops->ReleaseLast();
+  }
+}
+
+void BlockDescBind::ClearPBVars() {
+  auto vars = this->desc_->mutable_vars();
+  while (!vars->empty()) {
+    // we do not own the VarDesc, so release the ownership.
+    vars->ReleaseLast();
+  }
 }
 
 }  // namespace framework
