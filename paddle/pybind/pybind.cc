@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
@@ -272,7 +273,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    return OpRegistry::CreateOp(desc);
+                    return OpRegistry::CreateOp(desc, nullptr);
                   })
       .def("backward",
            [](const OperatorBase &forwardOp,
@@ -376,7 +377,7 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(desc.IsInitialized(),
                            "User OpDesc is not initialized, reason %s",
                            desc.InitializationErrorString());
-            auto rnn_op = OpRegistry::CreateOp(desc);
+            auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
             return static_cast<operators::RecurrentOp *>(rnn_op.release());
           })
       .def("set_stepnet", [](operators::RecurrentOp &self,
@@ -394,7 +395,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto rnn_op = OpRegistry::CreateOp(desc);
+                    auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
@@ -421,7 +422,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto cond_op = OpRegistry::CreateOp(desc);
+                    auto cond_op = OpRegistry::CreateOp(desc, nullptr);
                     return static_cast<operators::CondOp *>(cond_op.release());
                   })
       .def("set_truenet",
