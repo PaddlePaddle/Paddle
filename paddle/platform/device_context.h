@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "polaris.h"
 
 #ifndef PADDLE_ONLY_CPU
 #include "paddle/platform/dynload/cublas.h"
@@ -49,6 +50,24 @@ class CPUDeviceContext : public DeviceContext {
  private:
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
+
+#ifdef PADDLE_WITH_FPGA
+class FPGADeviceContext : public DeviceContext {
+ public:
+  explicit FPGADeviceContext(FPGAPlace place);
+  virtual ~FPGADeviceContext() {}
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  Place GetPlace() const override;
+
+  PolarisContext* polaris_context();
+
+ private:
+  FPGAPlace place_;
+  PolarisContext* ctxt;
+};
+#endif
 
 #ifndef PADDLE_ONLY_CPU
 class EigenCudaStreamDevice;

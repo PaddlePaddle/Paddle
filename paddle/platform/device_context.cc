@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/platform/device_context.h"
 #include "paddle/memory/memory.h"
+#include "polaris.h"
 
 namespace paddle {
 namespace platform {
@@ -34,6 +35,24 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 }
 
 Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
+
+#ifdef PADDLE_WITH_FPGA
+FPGADeviceContext::FPGADeviceContext(FPGAPlace place) {
+  place_ = place;
+  ctxt = polaris_create_context(place.device);
+  PADDLE_ENFORCE_NOT_NULL(ctxt);
+}
+
+Eigen::DefaultDevice* FPGADeviceContext::eigen_device() const {
+  return NULL;
+}
+
+PolarisContext* FPGADeviceContext::polaris_context() {
+  return ctxt;
+}
+
+Place FPGADeviceContext::GetPlace() const { return place_; }
+#endif
 
 #ifndef PADDLE_ONLY_CPU
 

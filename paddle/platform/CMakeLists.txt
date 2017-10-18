@@ -19,8 +19,13 @@ ENDIF()
 
 # memcpy deoends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc DEPS memory buddy_allocator
-    system_allocator memory_block meta_data meta_cache place eigen3 ${GPU_CTX_DEPS})
+if(WITH_FPGA)
+    cc_library(device_context SRCS device_context.cc DEPS polaris memory buddy_allocator
+        system_allocator memory_block meta_data meta_cache place eigen3 ${GPU_CTX_DEPS})
+else()
+    cc_library(device_context SRCS device_context.cc DEPS memory buddy_allocator
+        system_allocator memory_block meta_data meta_cache place eigen3 ${GPU_CTX_DEPS})
+endif()
 nv_test(device_context_test SRCS device_context_test.cc DEPS device_context gpu_info)
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
