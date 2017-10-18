@@ -87,11 +87,11 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
             "The format of output tensor is also NCDHW.");
   AddAttr<std::vector<int>>("strides", "strides of convolution operator.")
       .SetDefault({1, 1, 1});
-  AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.")
+  AddAttr<std::vector<int>>("paddings", "The paddings of convolution operator.")
       .SetDefault({0, 0, 0});
   AddAttr<int>(
       "groups",
-      "group size of convolution operator. "
+      "The group size of convolution operator. "
       "Refer to grouped convolution in Alex Krizhevsky's paper: "
       "when group=2, the first half of the filters are only connected to the "
       "first half of the input channels, and the second half only connected "

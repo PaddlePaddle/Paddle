@@ -93,10 +93,13 @@ class GemmConv3DKernel : public framework::OpKernel<T> {
     Tensor col_matrix = col;
     col_matrix.Resize(col_matrix_shape);
 
-    framework::DDim input_shape = {input->dims()[1], input->dims()[2],
-                                   input->dims()[3], input->dims()[4]};
-    framework::DDim filter_matrix_shape = {filter.dims()[0],
-                                           filter.numel() / filter.dims()[0]};
+    framework::DDim input_shape = {
+        input->dims()[1], input->dims()[2], input->dims()[3],
+        input->dims()[4]};  // channel, depth, height, width
+    framework::DDim filter_matrix_shape = {
+        filter.dims()[0],
+        filter.numel() / filter.dims()[0]};  // filter_out_channel,
+    // filter_in_channel*filter_depth*filter_height*filter_width
     filter.Resize(filter_matrix_shape);
 
     framework::DDim output_matrix_shape = {
@@ -177,15 +180,18 @@ class GemmConvGrad3DKernel : public framework::OpKernel<T> {
     Tensor col_matrix = col;
     col_matrix.Resize(col_matrix_shape);
 
-    framework::DDim input_shape = {input->dims()[1], input->dims()[2],
-                                   input->dims()[3], input->dims()[4]};
+    framework::DDim input_shape = {
+        input->dims()[1], input->dims()[2], input->dims()[3],
+        input->dims()[4]};  // channel, depth, height, width
     framework::DDim output_matrix_shape = {output_grad->dims()[1],
                                            output_grad->dims()[2] *
                                                output_grad->dims()[3] *
                                                output_grad->dims()[4]};
 
-    framework::DDim filter_matrix_shape = {filter.dims()[0],
-                                           filter.numel() / filter.dims()[0]};
+    framework::DDim filter_matrix_shape = {
+        filter.dims()[0],
+        filter.numel() / filter.dims()[0]};  // filter_out_channel,
+    // filter_in_channel*filter_depth*filter_height*filter_width
     filter.Resize(filter_matrix_shape);
 
     // convolution backward input operator:  gemm + col2vol

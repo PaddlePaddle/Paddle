@@ -34,7 +34,7 @@ def conv3d_forward_naive(input, filter, group, conv_param):
                     for k in range(sub_out_c):
                         out[:, g * sub_out_c + k, d, i, j] = \
                             np.sum(input_pad_masked * f_sub[k, :, :, :, :],
-                                   axis=(1, 2, 3,4))
+                                   axis=(1, 2, 3, 4))
 
     return out
 
@@ -65,7 +65,6 @@ class TestConv3dOp(OpTest):
         self.check_grad(
             set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
 
-    def test_check_grad_no_filter(self):
         self.check_grad(
             ['Input'],
             'Output',
@@ -80,8 +79,6 @@ class TestConv3dOp(OpTest):
             no_grad_set=set(['Input']))
 
     def init_test_case(self):
-        # self.groups = 1
-        # self.op_type = "conv3d"
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
@@ -98,8 +95,6 @@ class TestConv3dOp(OpTest):
 
 class TestCase1(TestConv3dOp):
     def init_test_case(self):
-        # self.groups = 1
-        # self.op_type = "conv3d"
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
@@ -114,7 +109,6 @@ class TestCase1(TestConv3dOp):
         self.op_type = "conv3d"
 
 
-'''
 class TestWithGroup1(TestConv3dOp):
     def init_group(self):
         self.groups = 3
@@ -129,7 +123,7 @@ class TestWithGroup2(TestCase1):
 
     def init_op_type(self):
         self.op_type = "conv3d"
-'''
+
 
 if __name__ == '__main__':
     unittest.main()
