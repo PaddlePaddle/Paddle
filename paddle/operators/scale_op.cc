@@ -25,8 +25,7 @@ class ScaleOp : public framework::OperatorWithKernel {
           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ScaleOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -56,7 +55,6 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
- protected:
   std::unique_ptr<framework::OpDescBind> Apply() const override {
     auto *grad_op = new framework::OpDescBind();
     grad_op->SetType("scale");

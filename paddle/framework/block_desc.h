@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <deque>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 #include "paddle/framework/op_desc.h"
@@ -32,24 +33,21 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
-  friend std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
-      ProgramDescBind &program_desc, int block_idx,
-      std::unordered_set<std::string> &no_grad_vars);
-
-  friend void AppendBackward(
-      ProgramDescBind &program_desc,
-      const std::unordered_set<std::string> &no_grad_vars);
-
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
+
+  ~BlockDescBind() {
+    this->ClearPBVars();
+    this->ClearPBOps();
+  }
 
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
-  VarDescBind *NewVar(const std::string &name_bytes);
+  VarDescBind *Var(const std::string &name_bytes);
 
-  VarDescBind *Var(const std::string &name_bytes) const;
+  VarDescBind *FindVar(const std::string &name_bytes) const;
 
   bool HasVar(const std::string &var_name) const;
 
@@ -63,11 +61,17 @@ class BlockDescBind {
 
   std::vector<OpDescBind *> AllOps() const;
 
-  void Sync();
+  void Flush();
 
-  BlockDesc *RawPtr() { return desc_; }
+  BlockDesc *Proto();
 
  private:
+  void ClearPBOps();
+  void ClearPBVars();
+
+  // FIXME(yuyang18): backward will access private data of BlockDesc.
+  // Mark it public temporary. We can fix it later.
+ public:
   ProgramDescBind *prog_;  // not_own
   BlockDesc *desc_;        // not_own
   bool need_update_;

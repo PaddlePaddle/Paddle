@@ -198,3 +198,9 @@ class ReduceGradKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+
+#define FOR_EACH_KERNEL_FUNCTOR(__macro)                \
+  __macro(reduce_sum, SumFunctor, SumGradFunctor);      \
+  __macro(reduce_mean, MeanFunctor, MeanGradFunctor);   \
+  __macro(reduce_max, MaxFunctor, MaxOrMinGradFunctor); \
+  __macro(reduce_min, MinFunctor, MaxOrMinGradFunctor);

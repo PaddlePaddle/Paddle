@@ -26,7 +26,10 @@ if(WITH_MKLDNN)
         test_MKLDNN.cpp
         MKLDNNTester.cpp
         LayerGradUtil.cpp)
-    add_test(NAME test_MKLDNN COMMAND test_MKLDNN)
+    add_test(NAME test_MKLDNN
+        COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python
+            ${CMAKE_CURRENT_BINARY_DIR}/test_MKLDNN
+            WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
 endif()
 
 ################ test_CRFLayerGrad ####################
