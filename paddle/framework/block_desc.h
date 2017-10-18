@@ -39,6 +39,11 @@ class BlockDescBind {
   BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
                 ProgramDescBind *prog);
 
+  ~BlockDescBind() {
+    this->ClearPBVars();
+    this->ClearPBOps();
+  }
+
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
@@ -62,6 +67,10 @@ class BlockDescBind {
   void Flush();
 
   BlockDesc *Proto();
+
+ private:
+  void ClearPBOps();
+  void ClearPBVars();
 
   // FIXME(yuyang18): backward will access private data of BlockDesc.
   // Mark it public temporary. We can fix it later.
