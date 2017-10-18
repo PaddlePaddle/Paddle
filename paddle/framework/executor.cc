@@ -64,100 +64,24 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   auto& block = pdesc.blocks(block_id);
   auto& device = device_contexts_[0];
 
-  // Instantiate all the vars in the global scope
-  for (auto& var : block.vars()) {
-    scope->Var(var.name());
-  }
-
   Scope& local_scope = scope->NewScope();
 
-  std::vector<bool> should_run = Prune(pdesc, block_id);
-  PADDLE_ENFORCE_EQ(should_run.size(), static_cast<size_t>(block.ops_size()));
-  for (size_t i = 0; i < should_run.size(); ++i) {
-    if (should_run[i]) {
-      for (auto& var : block.ops(i).outputs()) {
-        for (auto& argu : var.arguments()) {
-          if (local_scope.FindVar(argu) == nullptr) {
-            local_scope.Var(argu);
-          }
-        }
-      }
-      auto op = paddle::framework::OpRegistry::CreateOp(
-          block.ops(i), const_cast<ProgramDesc*>(&pdesc));
-      op->Run(local_scope, *device);
+  for (auto& var : block.vars()) {
+    if (var.persistable()) {
+      scope->Var(var.name());
+    } else {
+      local_scope.Var(var.name());
     }
+  }
+
+  for (auto& op_desc : block.ops()) {
+    auto op = paddle::framework::OpRegistry::CreateOp(
+        op_desc, const_cast<ProgramDesc*>(&pdesc));
+    op->Run(local_scope, *device);
   }
 
   // TODO(tonyyang-svail):
   //  - Destroy local_scope
-}
-
-std::vector<bool> Prune(const ProgramDesc& pdesc, int block_id) {
-  // TODO(tonyyang-svail):
-  //    - will change to use multiple blocks for RNN op and Cond Op
-
-  auto& block = pdesc.blocks(block_id);
-  auto& ops = block.ops();
-
-  bool expect_feed = true;
-  for (auto& op_desc : ops) {
-    PADDLE_ENFORCE(op_desc.type() != kFeedOpType || expect_feed,
-                   "All FeedOps are at the beginning of the ProgramDesc");
-    expect_feed = (op_desc.type() == kFeedOpType);
-  }
-
-  bool expect_fetch = true;
-  for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
-    auto& op_desc = *op_iter;
-    PADDLE_ENFORCE(op_desc.type() != kFetchOpType || expect_fetch,
-                   "All FetchOps must at the end of the ProgramDesc");
-    expect_fetch = (op_desc.type() == kFetchOpType);
-  }
-
-  std::set<std::string> dependent_vars;
-  std::vector<bool> should_run;
-  for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
-    auto& op_desc = *op_iter;
-
-    bool found_dependent_vars = false;
-    for (auto& var : op_desc.outputs()) {
-      for (auto& argu : var.arguments()) {
-        if (dependent_vars.count(argu) != 0) {
-          found_dependent_vars = true;
-        }
-      }
-    }
-
-    if (op_desc.type() == kFetchOpType || found_dependent_vars) {
-      // erase its output to the dependency graph
-      for (auto& var : op_desc.outputs()) {
-        for (auto& argu : var.arguments()) {
-          dependent_vars.erase(argu);
-        }
-      }
-
-      // insert its input to the dependency graph
-      for (auto& var : op_desc.inputs()) {
-        for (auto& argu : var.arguments()) {
-          dependent_vars.insert(argu);
-        }
-      }
-
-      should_run.push_back(true);
-    } else {
-      should_run.push_back(false);
-    }
-  }
-
-  // TODO(tonyyang-svail):
-  //    - check this after integration of Init
-  // PADDLE_ENFORCE(dependent_vars.empty());
-
-  // since we are traversing the ProgramDesc in reverse order
-  // we reverse the should_run vector
-  std::reverse(should_run.begin(), should_run.end());
-
-  return should_run;
 }
 
 }  // namespace framework
