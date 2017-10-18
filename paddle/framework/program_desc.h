@@ -26,6 +26,8 @@ class BlockDescBind;
 
 class ProgramDescBind {
  public:
+  ProgramDescBind();
+
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
   BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
@@ -34,10 +36,7 @@ class ProgramDescBind {
 
   ProgramDesc *Proto();
 
-  ProgramDescBind();
-
  private:
-  // Not owned
   ProgramDesc prog_;
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
