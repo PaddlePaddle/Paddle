@@ -133,7 +133,9 @@ class TestBlockDesc(unittest.TestCase):
         op1 = block.append_op()
         op2 = block.append_op()
         op0 = block.prepend_op()
-        all_ops = block.all_ops()
+        all_ops = []
+        for idx in xrange(0, block.op_size()):
+            all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op1, op2])
 
 
