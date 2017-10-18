@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "glog/logging.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
 
@@ -24,6 +25,7 @@ void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
+  VLOG(10) << "Setting variable " << var_name;
   Variable* g_feed_value = GetGlobalScope().Var(var_name);
   auto& feed_inputs =
       *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());

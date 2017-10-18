@@ -27,23 +27,27 @@ class Executor(object):
         program = program.clone()
         global_block = program.global_block()
         assert isinstance(global_block, Block)
-        # global_block.create_var(
-        #     name=feed_var_name,
-        #     type=
-        # )
+        feed_var = global_block.create_var(
+            name=feed_var_name, type=core.VarDesc.VarType.FEED_MINIBATCH)
 
         for i, name in enumerate(feed):
+            out = global_block.var(name)
             global_block.prepend_op(
                 'feed',
-                inputs={'Input': [feed_var_name]},
-                outputs={'Out': [name]},
+                inputs={'Input': [feed_var]},
+                outputs={'Out': [out]},
                 attrs={'col': i})
             # FIXME
-            core.set_feed_variable_float(feed[name], feed_var_name, i)
+            core.set_feed_variable_float(feed[name], feed_var.name, i)
 
-        for fetch_name in fetch_list:
-            var = block.var(fetch_name)
-            print var.op
+        fetch_var = global_block.create_var(
+            name=fetch_var_name, type=core.VarDesc.VarType.FETCH_LIST)
+        for i, var in enumerate(fetch_list):
+            global_block.append_op(
+                type='fetch',
+                inputs={'Input': [var]},
+                outputs={'Out': [fetch_var]},
+                attrs={'col': 1})
 
         assert isinstance(global_block, Block)
-        self.executor.run(block.program.desc, block.idx)
+        self.executor.run(program.desc, 0)

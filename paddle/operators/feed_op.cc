@@ -28,6 +28,8 @@ class FeedOp : public framework::OperatorBase {
            const platform::DeviceContext &dev_ctx) const override {
     auto feed_var_name = Input("Input");
     auto *feed_var = scope.FindVar(feed_var_name);
+
+    VLOG(10) << "Feed var name " << feed_var_name;
     PADDLE_ENFORCE(feed_var != nullptr,
                    "Cannot find feed_var in scope, feed_var_name is %s",
                    feed_var_name);
