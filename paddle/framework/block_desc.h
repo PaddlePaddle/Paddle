@@ -84,12 +84,6 @@ class BlockDescBind {
 
   BlockDesc *Proto();
 
-  size_t NumOfOps() const { return this->ops_.size(); }
-
-  const OpDescBind &Op(size_t i) const { return *ops_[i]; }
-
-  OpDescBind *MutableOp(size_t i) { return ops_[i].get(); }
-
  private:
   void ClearPBOps();
   void ClearPBVars();

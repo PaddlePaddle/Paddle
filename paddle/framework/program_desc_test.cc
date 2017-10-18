@@ -64,9 +64,9 @@ TEST(ProgramDesc, copy_ctor) {
   assert_same_var("Y", y);
   assert_same_var("Out", out);
 
-  for (size_t i = 0; i < global_block->NumOfOps(); ++i) {
-    auto op_origin = global_block->MutableOp(i);
-    auto op_copy = global_block->MutableOp(i);
+  for (size_t i = 0; i < global_block->OpSize(); ++i) {
+    auto op_origin = global_block->Op(i);
+    auto op_copy = global_block->Op(i);
     ASSERT_EQ(op_copy->Proto()->SerializeAsString(),
               op_origin->Proto()->SerializeAsString());
   }
