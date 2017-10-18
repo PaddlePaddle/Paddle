@@ -1,4 +1,4 @@
-# An LoD based Sequence Decoder (Beam Search)
+# A LoD based Sequence Decoder (Beam Search)
 Sequence Decoder is an operator that help generate sequences, 
 it shares much logic with `dynamic_recurrent_op`,
 but some more codes to support beam search algorithm.
@@ -12,12 +12,12 @@ Beam search is a heuristic search algorithm that explores a graph by expanding t
 
 It is the core component of Sequence Decoder.
 
-In the original implemention of `RecurrentGradientMachine`, the beam search is a method in RNN,
-due to complexity of the algorithm, the implementation is quite trivial and hard to reuse by other module.
+In the original implementation of `RecurrentGradientMachine`, the beam search is a method in RNN,
+due to the complexity of the algorithm, the implementation is quite trivial and hard to reuse by another module.
 
 During PaddlePaddle's refactoring work,
-some new concept are proposed such as `LoDTensor` and `TensorArray` that can better support sequence usage,
-and they can help to make the implementation of beam search based sequence decoder more transparent and modular.
+some new concept is proposed such as `LoDTensor` and `TensorArray` that can better support sequence usage,
+and they can help to make the implementation of beam search based sequence decoder **more transparent and modular** .
 
 ## Introducing the absolute-offset and relative-offset Level of Details (LoD)
 The current `LoDTensor` is designed to store levels of variable-length sequences,
@@ -26,7 +26,7 @@ it stores several arrays of integers each represents a level.
 The integers in each level represents the begin and end (not inclusive) offset of a sequence **in the underlying tensor**, 
 let's call this format the **absolute-offset LoD** for clear.
 
-The relative-offset LoD can fast retrive any sequence, but fails to represent empty sequences, for example, a two-level LoD is as follows
+The relative-offset LoD can fast retrieve any sequence but fails to represent empty sequences, for example, a two-level LoD is as follows
 ```python
 [[0, 3, 9]
  [0, 2, 3, 3, 3, 9]]
@@ -35,11 +35,11 @@ The first level tells that there are two sequences:
 - the first's offset is `[0, 3)`
 - the second's offset is `[3, 9)`
 
-while in the second level, there are several empty sequences that both begin and end at `3`.
-It is impossible to tell how many empty second-level sequences exists in the first-level sequences.
+while on the second level, there are several empty sequences that both begin and end at `3`.
+It is impossible to tell how many empty second-level sequences exist in the first-level sequences.
 
-There are many sceneraios need empty sequence representation,
-such as machine translation or image to text, one instances has no translations or the empty candidate set for a prefix.
+There are many scenarios need empty sequence representation,
+such as machine translation or image to text, one instance has no translations or the empty candidate set for a prefix.
 
 So let's introduce another format of LoD, 
 it stores **the offsets of the lower level sequences** and is called **relative-offset** LoD.
@@ -54,14 +54,14 @@ For example, to represent the same sequences of the above data
 the first level represents that there are two sequences, 
 their offsets in the second-level LoD is `[0, 3)` and `[3, 5)`.
 
-The second level are the same with the relative offset example because the lower level is tensor.
+The second level is the same with the relative offset example because the lower level is a tensor.
 It is easy to find out the second sequence in the first-level LoD has two empty sequences.
 
 The following demos are based on relative-offset LoD.
 
 ## Usage demostration
 
-Let's start from a simple machine translation model, it has an encoder that learns the semantic vector from a sequence,
+Let's start from a simple machine translation model; it has an encoder that learns the semantic vector from a sequence,
 and a decoder which uses the Sequence Decoder to generate new sentences.
 
 **Encoder**
@@ -313,7 +313,7 @@ selected_scores:
   shape = selected_ids.shape
 ```
 
-In conclude, there are two groups of LoD
+In conclusion, there are two groups of LoD
 1. same with `decoder.gendrated_ids()`
   - `target_words`
   - `encoder_ctx_expand`
@@ -327,19 +327,19 @@ In conclude, there are two groups of LoD
   - `selected_scores`
   - all the other tensors in the next time step will be updated to this LoD
 
-The `decoder.output(selected_ids)` will concat the `selected_ids` in every step and output as a variable which has the LoD like
+The `decoder.output(selected_ids)` will concatenate the `selected_ids` in every step and output as a variable which has the LoD like
 
 ```
 [[0, 4, 9, 12],
 [0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11]]
 ```
 
-because there are 3 sentence need to translate, 
-so the first level of LoD has 4 numbers,
+because there are three sentences need to translate, 
+so the first level of LoD has four numbers,
 
-- the first sentence has 4 translation prefixes
+- the first sentence has four translation prefixes
   - each has a1, a2-a1, a3-a2, a4-a3 candidate words.
-- the second sentence has 5 translation prefixes
+- the second sentence has five translation prefixes
   - each has a5-a4, a6-a5, a7-a6, a8-a7 candidate words.
-- the third sentence has 3 translation prefixes
+- the third sentence has three translation prefixes
   - each has a9-a8, a10-a9, a11-a10 candidate words
