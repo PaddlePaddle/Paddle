@@ -1,7 +1,12 @@
 add_subdirectory(detail)
 
-cc_library(memory SRCS memory.cc)
-cc_library(memcpy SRCS memcpy.cc)
+if(WITH_FPGA)
+    cc_library(memory SRCS memory.cc DEPS polaris)
+    cc_library(memcpy SRCS memcpy.cc DEPS polaris)
+else()
+    cc_library(memory SRCS memory.cc)
+    cc_library(memcpy SRCS memcpy.cc)
+endif()
 
 cc_library(paddle_memory
     DEPS

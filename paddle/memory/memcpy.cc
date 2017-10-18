@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/memory/memcpy.h"
 
 #include <cstring>  // for memcpy
+#include "polaris.h"
 
 namespace paddle {
 namespace memory {
@@ -81,6 +82,38 @@ void Copy<platform::GPUPlace, platform::CPUPlace>(platform::GPUPlace dst_place,
 }
 
 #endif  // PADDLE_ONLY_CPU
+
+#ifdef PADDLE_WITH_FPGA
+template <>
+void Copy<platform::FPGAPlace, platform::CPUPlace>(platform::FPGAPlace dst_place,
+                                                  void* dst,
+                                                  platform::CPUPlace src_place,
+                                                  const void* src, size_t num) {
+  PolarisContext* fpga_ctx = polaris_create_context(dst_place.device);
+  polaris_memcpy(fpga_ctx, POLARIS_HOST_TO_DEVICE, dst, src, num);
+  polaris_destroy_context(fpga_ctx);
+}
+
+template <>
+void Copy<platform::CPUPlace, platform::FPGAPlace>(platform::CPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::FPGAPlace src_place,
+                                                  const void* src, size_t num) {
+  PolarisContext* fpga_ctx = polaris_create_context(dst_place.device);
+  polaris_memcpy(fpga_ctx, POLARIS_DEVICE_TO_HOST, dst, src, num);
+  polaris_destroy_context(fpga_ctx);
+}
+
+template <>
+void Copy<platform::FPGAPlace, platform::FPGAPlace>(platform::FPGAPlace dst_place,
+                                                  void* dst,
+                                                  platform::FPGAPlace src_place,
+                                                  const void* src, size_t num) {
+  PolarisContext* fpga_ctx = polaris_create_context(dst_place.device);
+  polaris_memcpy(fpga_ctx, POLARIS_DEVICE_TO_DEVICE, dst, src, num);
+  polaris_destroy_context(fpga_ctx);
+}
+#endif
 
 }  // namespace memory
 }  // namespace paddle

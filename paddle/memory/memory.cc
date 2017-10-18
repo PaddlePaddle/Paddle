@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/gpu_info.h"
 
+#include "polaris.h"
+
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
@@ -34,6 +36,7 @@ using BuddyAllocator = detail::BuddyAllocator;
 
 std::once_flag cpu_allocator_flag;
 std::once_flag gpu_allocator_flag;
+std::once_flag fpga_allocator_flag;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
   static std::unique_ptr<BuddyAllocator> a{nullptr};
@@ -113,5 +116,33 @@ size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
 
 #endif  // PADDLE_ONLY_CPU
 
+#ifdef PADDLE_WITH_FPGA
+static size_t fpga_used = 0;
+template <>
+void* Alloc<platform::FPGAPlace>(platform::FPGAPlace place, size_t size) {
+  PolarisContext*  fpga_ctx = polaris_create_context(place.device);
+  void * ptr;
+  PolarisStatus ret = polaris_malloc(fpga_ctx, size, &ptr);
+  if (ret != POLARIS_OK) {
+    return NULL;
+  }
+  polaris_destroy_context(fpga_ctx);
+  fpga_used += size;
+  return ptr;
+}
+template <>
+void Free<platform::FPGAPlace>(platform::FPGAPlace place, void* p) {
+  PolarisContext*  fpga_ctx = polaris_create_context(place.device);
+  PolarisStatus ret = polaris_free(fpga_ctx, p);
+  if (ret != POLARIS_OK) {
+    return;
+  }
+  polaris_destroy_context(fpga_ctx);
+  return ;
+}
+template <>
+size_t Used<platform::FPGAPlace>(platform::FPGAPlace place) {
+  return fpga_used;
+}
 }  // namespace memory
 }  // namespace paddle
