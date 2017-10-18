@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/pybind/protobuf.h"
 #include <deque>
 #include <iostream>
+#include "paddle/framework/backward.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/program_desc.h"
@@ -99,25 +100,39 @@ using namespace paddle::framework;  // NOLINT
 // Bind Methods
 void BindProgramDesc(py::module &m) {
   py::class_<ProgramDescBind>(m, "ProgramDesc", "")
-      .def_static("instance",
-                  []() -> ProgramDescBind * {
-                    return &ProgramDescBind::Instance(&GetProgramDesc());
-                  },
-                  py::return_value_policy::reference)
-      .def_static("__create_program_desc__",
-                  []() -> ProgramDescBind * {
-                    // Only used for unit-test
-                    auto *prog_desc = new ProgramDesc;
-                    auto *block = prog_desc->mutable_blocks()->Add();
-                    block->set_idx(0);
-                    block->set_parent_idx(-1);
-                    return &ProgramDescBind::Instance(prog_desc);
-                  },
-                  py::return_value_policy::reference)
+      .def(py::init<>())
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
+      .def("append_backward",
+           [](ProgramDescBind &program_desc, const VarDescBind &target,
+              const std::unordered_set<std::string> &no_grad_vars) {
+             ParamGradInfoMap param_grad_map =
+                 AppendBackward(program_desc, target, no_grad_vars);
+             std::unordered_map<
+                 std::string, std::tuple<std::string /* grad_var_name */,
+                                         int /* block_idx */, int /* op_idx */>>
+                 retv;
+             for (auto it = param_grad_map.begin(); it != param_grad_map.end();
+                  ++it) {
+               const auto &grad_info = it->second;
+               retv[it->first] = std::make_tuple(
+                   grad_info.name_, grad_info.block_idx_, grad_info.op_idx_);
+             }
+             return retv;
+           })
       .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
-      .def("num_blocks", &ProgramDescBind::Size);
+      .def("num_blocks", &ProgramDescBind::Size)
+      .def("serialize_to_string",
+           [](ProgramDescBind &program_desc) -> py::bytes {
+             const ProgramDesc *desc = program_desc.Proto();
+             PADDLE_ENFORCE(desc->IsInitialized(),
+                            "ProgramDesc has not been initialized.");
+             std::string res;
+             PADDLE_ENFORCE(
+                 desc->SerializeToString(&res),
+                 "Serialize ProgramDesc Error. This could be a bug of Paddle.");
+             return res;
+           });
 }
 
 void BindBlockDesc(py::module &m) {
@@ -128,22 +143,37 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDescBind::PrependOp,
            py::return_value_policy::reference)
-      .def("new_var",
-           [](BlockDescBind &self, py::bytes byte_name) {
-             std::string name = byte_name;
-             return self.NewVar(name);
-           },
-           py::return_value_policy::reference)
       .def("var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.Var(name);
            },
            py::return_value_policy::reference)
+      .def("has_var",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.HasVar(name);
+           })
+      .def("find_var",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.FindVar(name);
+           },
+           py::return_value_policy::reference)
       .def("all_vars", &BlockDescBind::AllVars,
            py::return_value_policy::reference)
       .def("all_ops", &BlockDescBind::AllOps,
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("serialize_to_string", [](BlockDescBind &block_desc) -> py::bytes {
+        const BlockDesc *desc = block_desc.Proto();
+        PADDLE_ENFORCE(desc->IsInitialized(),
+                       "BlockDesc has not been initialized.");
+        std::string res;
+        PADDLE_ENFORCE(
+            desc->SerializeToString(&res),
+            "Serialize BlockDesc Error. This could be a bug of Paddle.");
+        return res;
+      });
 }
 
 void BindVarDsec(py::module &m) {
@@ -156,7 +186,8 @@ void BindVarDsec(py::module &m) {
       .value("FP32", DataType::FP32)
       .value("FP64", DataType::FP64);
 
-  py::class_<VarDescBind>(m, "VarDesc", "")
+  py::class_<VarDescBind> var_desc(m, "VarDesc", "");
+  var_desc
       .def("name",
            [](const VarDescBind &self) {
              py::bytes name = self.Name();
@@ -166,7 +197,25 @@ void BindVarDsec(py::module &m) {
       .def("set_shape", &VarDescBind::SetShape)
       .def("set_data_type", &VarDescBind::SetDataType)
       .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
-      .def("data_type", &VarDescBind::GetDataType);
+      .def("data_type", &VarDescBind::GetDataType)
+      .def("lod_level", &VarDescBind::GetLodLevel)
+      .def("set_lod_level", &VarDescBind::SetLoDLevel)
+      .def("type", &VarDescBind::GetType)
+      .def("set_type", &VarDescBind::SetType)
+      .def("serialize_to_string", [](VarDescBind &var_desc) -> py::bytes {
+        const VarDesc *desc = var_desc.Proto();
+        PADDLE_ENFORCE(desc->IsInitialized(),
+                       "VarDesc has not been initialized.");
+        std::string res;
+        PADDLE_ENFORCE(
+            desc->SerializeToString(&res),
+            "Serialize VarDesc Error. This could be a bug of Paddle.");
+        return res;
+      });
+
+  py::enum_<VarDesc::VarType>(var_desc, "VarType", "")
+      .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
+      .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS);
 }
 
 void BindOpDesc(py::module &m) {
@@ -196,7 +245,19 @@ void BindOpDesc(py::module &m) {
       .def("set_attr", &OpDescBind::SetAttr)
       .def("attr", &OpDescBind::GetAttr)
       .def("set_block_attr", &OpDescBind::SetBlockAttr)
-      .def("get_block_attr", &OpDescBind::GetBlockAttr);
+      .def("block_attr", &OpDescBind::GetBlockAttr)
+      .def("check_attrs", &OpDescBind::CheckAttrs)
+      .def("infer_shape", &OpDescBind::InferShape)
+      .def("serialize_to_string", [](OpDescBind &op_desc) -> py::bytes {
+        const OpDesc *desc = op_desc.Proto();
+        PADDLE_ENFORCE(desc->IsInitialized(),
+                       "OpDesc has not been initialized.");
+        std::string res;
+        PADDLE_ENFORCE(
+            desc->SerializeToString(&res),
+            "Serialize OpDesc Error. This could be a bug of Paddle.");
+        return res;
+      });
 }
 
 }  // namespace pybind

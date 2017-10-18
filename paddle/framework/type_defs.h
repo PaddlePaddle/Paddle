@@ -16,12 +16,18 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include "paddle/platform/variant.h"
 
 namespace paddle {
 namespace framework {
 class OperatorBase;
 class OpDescBind;
+class BlockDescBind;
+class BlockDesc;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
 // The order should be as same as framework.proto
@@ -36,8 +42,12 @@ using OpCreator = std::function<OperatorBase*(
     const std::string& /*type*/, const VariableNameMap& /*inputs*/,
     const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
-using GradOpMakerFN =
-    std::function<std::vector<std::unique_ptr<OpDescBind>>(const OpDescBind&)>;
+using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDescBind>>(
+    const OpDescBind&, const std::unordered_set<std::string>& /*no_grad_set*/,
+    std::unordered_map<std::string, std::string>* /*grad_to_var*/)>;
+
+using InferVarTypeFN = std::function<void(const OpDescBind& /*op_desc*/,
+                                          BlockDescBind* /*block*/)>;
 
 }  // namespace framework
 }  // namespace paddle

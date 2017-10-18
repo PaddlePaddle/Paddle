@@ -22,7 +22,7 @@ Whenever we create a block, we need to set its parent block to the current block
 ```python
 class Program(objects):
     def __init__(self):
-        self.proto = core.NewProgram() # a C++ ProgramDesc pointer.
+        self.desc = core.NewProgram() # a C++ ProgramDesc pointer.
         self.blocks = vector<Block>()
         self.blocks.append(Block(self, -1)) # the global block
         self.current_block = 0          # initialized to the global block
@@ -57,7 +57,7 @@ A [Block](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.m
 ```python
 class Block(objects):
     def __init__(self, program, parent_idx):
-        self.proto = core.NewBlock(program.proto)
+        self.desc = core.NewBlock(program.desc)
         self.program = program
         self.vars = map<string, Variable>()
         self.ops = vector<Operator>()
@@ -98,11 +98,11 @@ class Operator(object):
                  outputs,# dict<stirng, Variable>
                  attrs   # dict<string, Any>
                  ):
-        self.proto = core.NewOpDesc(block.proto, type, inputs, outputs, attrs)
-        core.infer_shape(self.proto, inputs, outputs)
+        self.desc = core.NewOpDesc(block.desc, type, inputs, outputs, attrs)
+        core.infer_shape(self.desc, inputs, outputs)
 
     def type(self):
-        return self.proto.type()
+        return self.desc.type()
 ```
 
 `Operator` creates the `OpDesc` message in C++ space, so that it can call the `InferShape` function, which is in C++.
@@ -124,7 +124,7 @@ class Variable(object):
             name = unique_name_generator()
         self.name = name
         self.block = block
-        self.proto = core.NewVarDesc(block.proto, name, shape, lod_level)
+        self.desc = core.NewVarDesc(block.desc, name, shape, lod_level)
         self.writer = None
 ```
 
@@ -179,38 +179,106 @@ init_attr={
 
 `optimize_op_attrs` is not in the `VarDesc` message, but kept in the Python instance, as it will be used in the Python space when creating the optimize operator's `OpDesc`, and will be in the `OpDesc` message.
 
-## Layer Functions
+## Layer Function
 
-A layer is a Python function that creates some operators and variables.  Layers simplify the work of application programmers.
+A layer is a Python function that creates some operators and variables. Layers simplify the work of application programmers.
 
-### Data Layer
+Layer functions take `Variable` and configuration parameters as its input and return the output variable(s).
+
+For example, `FullyConnected` take one or more variable as its input. The input could be input data or another layer's output. There are many configuration options for a `FullyConnected` layer, such as layer size, activation, parameter names, initialization strategies of parameters, and so on. The `FullyConnected` layer will return an output variable.
+
+
+### Necessity for reusing code between layer functions
+
+There are a lot of code that can be reused. Such as
+
+* Give the default value of configuration. e.g., default initialize strategy for parameters is uniform random with `min = -1.0`, `max = 1.0`. and default initialize strategy for bias is to fill zero.
+* Append the activation operator.
+* Create a temporary variable.
+* Create parameter.
+* Generate a unique name.
+* Add a bias.
+* ...
+
+A mechanism to reuse code between layer functions is necessary. It will be around [150 lines of code](https://github.com/PaddlePaddle/Paddle/pull/4724/files#diff-823b27e07e93914ada859232ae23f846R12) if we write a `FullyConnected` layer without any helper functions.
+
+
+
+### Comparision between global functions and helper class
+
+The `FullyConnected` layer will be as follow when we provide global functions:
 
 ```python
-def data_layer(name, type, column_name):
-    block = the_current_program.glolal_block()
-    var = block.create_global_var(
-            name=name,
-            shape=[None] + type.dims(),
-            dtype=type.dtype)
-    block.prepend_operator(block,
-                           type="Feed",
-                           inputs = None,
-                           outputs = [var],
-                           {column_name: column_name})
-    return var
+def fc_layer(input, size, param_attr=None, bias_attr=None, act=None, name=None):
+  if name is None:
+    name = unique_name("fc")
+  input = multiple_input(input)
+  param_attr = default_param_attr(param_attr)
+  param_attr = multiple_param_attr(param_attr, len(input))
+
+  # mul
+  mul_results = []
+  for ipt, attr in zip(input, param_attr):
+    shape = ipt.shape[1:] + [size]
+    w = g_program.global_block().create_parameter(shape, ipt.dtype, name, attr)
+    tmp = create_tmp_var(name)
+    g_program.current_block().append_op("mul", {ipt, w}, {tmp})
+  mul_results.append(tmp)
+
+  # add sum
+  ...
+  # add bias
+  ...
+  # add activation
+  ...
+  return out
 ```
 
-The input to the feed operator is a special variable in the global scope, which is the output of [Python readers](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md).
+We can provide many helpers functions for layer developers. However, there are several disadvantages for global helper functions:
 
-### FC Layer
+1. We need a namespace for these methods, then layer developers can quickly figure out what method they can use.
+2. Global functions will force layer developers to pass its parameter time by time.
+
+So we provide a helper class, `LayerHelper`, to share code between layer functions. The `FullyConnected` Layer will be as follow.
 
 ```python
-def fc_layer(input, size, ...):
-    block = program.current_block()
-    w = block.create_parameter(...)
-    b = block.create_parameter(...)
-    out = block.create_var()
-    op = block.append_operator("FC", X=input, W=w, b=b, out=out)
-    out.writer = op
-    return out
+def fc_layer(input, size, param_attr=None, bias_attr=None, act=None, name=None):
+  helper = LayerHelper(locals())  # pass all parameter to LayerHelper
+
+  mul_results = []
+  for ipt, param in helper.iter_multiple_input_and_param():
+    w = helper.create_parameter(shape=ipt.shape[1:] + [size], dtype = ipt.dtype)
+    tmp = helper.create_tmp_variable()
+    helper.append_op('mul', {ipt, w}, {tmp})
+    mul_results.append(tmp)
+
+  pre_bias = helper.add_sum(mul_results)
+  pre_activation = helper.add_bias(pre_bias)
+  return helper.add_activation(pre_activation)
 ```
+
+We not only use the fewer lines of code to write `fc_layer` but also make the code clearer to understand. At the same time, layer developers can figure out what function they can invoke by typing `helper.` in a python editor.
+
+
+### Implementation of layer helper
+
+We just keep all parameters of a layer function as a dictionary in layer helper as a private data member. Every method of layer helper will look up the dictionary after it is invoked. In that way, we can implement a layer helper for all layer functions even some layer does not contain some operator. For example, The `activation` is used by the FullyConnected layer or convolution layers, but a cross-entropy layer does not use it. The example code of `add_activation` are:
+
+```python
+class LayerHelper(object):
+  def __init__(self, **kwargs):  # kwargs is short for `keyword arguments`
+    self.kwargs = kwargs
+
+  def add_activation(self, input_var):
+    act = self.kwargs.get("act", None)  # default value is None
+    if act is None:  # do nothing if no act
+      return input_var
+
+    tmp = self.create_tmp_var(self)
+    self.append_op(type=act, input=input_var, output=tmp)
+    return tmp
+```
+
+## Optimizer
+
+[Optimizer Design Doc](./optimizer.md)

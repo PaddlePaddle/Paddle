@@ -66,7 +66,7 @@ class PySimpleRNNTest(unittest.TestCase):
 
 
 def create_tensor(scope, name, shape, np_data):
-    tensor = scope.new_var(name).get_tensor()
+    tensor = scope.var(name).get_tensor()
     tensor.set_dims(shape)
     tensor.set(np_data, core.CPUPlace())
     return tensor
@@ -125,8 +125,8 @@ class RecurrentOpTest(unittest.TestCase):
         h_boot_np_data = self.py_rnn.h_boot
         create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim],
                       h_boot_np_data)
-        self.scope.new_var("step_scopes")
-        self.scope.new_var("h@mem")
+        self.scope.var("step_scopes")
+        self.scope.var("h@mem")
 
     def create_rnn_op(self):
         # create RNNOp
