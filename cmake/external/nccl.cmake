@@ -19,14 +19,9 @@ IF(NOT ${WITH_GPU})
   return()
 ENDIF(NOT ${WITH_GPU})
 
-IF(NOT ${WITH_NCCL})
-  return()
-ENDIF(NOT ${WITH_NCCL})
-
 INCLUDE(ExternalProject)
 
 
-# SET(NCCL_PROJECT   extern_nccl)
 SET(NCCL_SOURCES_DIR ${THIRD_PARTY_PATH}/nccl)
 SET(NCCL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/nccl)
 SET(NCCL_INCLUDE_DIR "${NCCL_INSTALL_DIR}/include" CACHE PATH "nccl include directory." FORCE)
@@ -45,13 +40,15 @@ ENDIF(WIN32)
 ExternalProject_Add(
   extern_nccl
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    PREFIX ${NCCL_SOURCES_DIR}
+    DOWNLOAD_DIR ${NCCL_SOURCES_DIR}
     GIT_REPOSITORY  "https://github.com/NVIDIA/nccl.git"
     GIT_TAG         "v1.3.4-1"
-    PREFIX          ${NCCL_SOURCE_DIR}
     CONFIGURE_COMMAND ""
     CMAKE_COMMAND ""
+    UPDATE_COMMAND  ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND    make -j 4
+    BUILD_COMMAND    make -j 8
     INSTALL_COMMAND  make install
     INSTALL_DIR ${NCCL_INSTALL_DIR}
     TEST_COMMAND      ""
