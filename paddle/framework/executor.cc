@@ -82,7 +82,11 @@ std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
       step_net->push_back(create_op(pdesc, my_op_desc));
     }
     if (auto* rnn_op = dynamic_cast<operators::RecurrentOp*>(op.get())) {
-      rnn_op->set_stepnet(step_net);
+      std::vector<std::string> vars;
+      for (auto& var : pdesc.blocks(block_idx).vars()) {
+        vars.push_back(var.name());
+      }
+      rnn_op->set_stepnet(step_net, vars);
     } else {
       PADDLE_THROW("dynamic_cast<RecurrentOp*> fail");
     }

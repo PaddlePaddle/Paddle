@@ -97,7 +97,6 @@ class ExecutorRNNForward : public ::testing::Test {
     AddOp("elementwise_add", {{"X", {"a"}}, {"Y", {"h@pre"}}},
           {{"Out", {"h@mem"}}}, {}, second_block);
     AddOp("relu", {{"X", {"h@mem"}}}, {{"Y", {"b"}}}, {}, second_block);
-    second_block->Var("a");
     second_block->Var("b");
     second_block->Var("h@pre");
     second_block->Var("h@mem");

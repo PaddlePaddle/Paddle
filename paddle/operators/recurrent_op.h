@@ -39,10 +39,12 @@ class RecurrentAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void Init(rnn::Argument* arg, StepNet* stepnet) {
+  void Init(rnn::Argument* arg, StepNet* stepnet,
+            std::vector<std::string>* vars) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = arg;
     stepnet_ = stepnet;
+    vars_ = vars;
   }
 
  protected:
@@ -65,6 +67,7 @@ class RecurrentAlgorithm {
  private:
   StepNet* stepnet_;
   rnn::Argument* arg_;
+  std::vector<std::string>* vars_;
 };
 
 class RecurrentGradientAlgorithm {
@@ -79,10 +82,12 @@ class RecurrentGradientAlgorithm {
    * operator.
    */
  public:
-  void Init(rnn::Argument* arg, StepNet* stepnet) {
+  void Init(rnn::Argument* arg, StepNet* stepnet,
+            std::vector<std::string>* vars) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = std::move(arg);
     stepnet_ = stepnet;
+    vars_ = vars;
   }
 
   void Run(const framework::Scope& scope,
@@ -100,6 +105,7 @@ class RecurrentGradientAlgorithm {
  private:
   rnn::Argument* arg_;
   StepNet* stepnet_;
+  std::vector<std::string>* vars_;
 };
 
 class RecurrentOp : public framework::OperatorBase {
@@ -120,7 +126,10 @@ class RecurrentOp : public framework::OperatorBase {
     alg_.Run(scope, dev_ctx);
   }
 
-  void set_stepnet(StepNet& net) { stepnet_ = std::move(net); }
+  void set_stepnet(StepNet& net, std::vector<std::string>& vars) {
+    stepnet_ = std::move(net);
+    vars_ = vars;
+  }
 
   // FIXME(tonyyang-svail): old backward needs this.
   // const OperatorBase& stepnet() const { return *(stepnet_->at(0)); }
@@ -131,6 +140,7 @@ class RecurrentOp : public framework::OperatorBase {
   RecurrentAlgorithm alg_;
   rnn::Argument arg_;
   StepNet stepnet_;
+  std::vector<std::string> vars_;
 };
 
 class RecurrentGradientOp : public framework::OperatorBase {
@@ -157,7 +167,10 @@ class RecurrentGradientOp : public framework::OperatorBase {
   /*
    * set a stepnet that is created according to a RecurrentOp's stepnet.
    */
-  void set_stepnet(StepNet& net) { stepnet_ = std::move(net); }
+  void set_stepnet(StepNet& net, std::vector<std::string>& vars) {
+    stepnet_ = std::move(net);
+    vars_ = vars;
+  }
 
   // FIXME(tonyyang-svail): old backward needs this.
   // const OperatorBase& stepnet() const { return *(stepnet_->at(0)); }
@@ -166,6 +179,7 @@ class RecurrentGradientOp : public framework::OperatorBase {
   RecurrentGradientAlgorithm alg_;
   rnn::Argument arg_;
   StepNet stepnet_;
+  std::vector<std::string> vars_;
 };
 
 }  // namespace operators

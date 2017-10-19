@@ -67,24 +67,9 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
   if (seq_len > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len; ++i) {
       auto& step_scope = scope.NewScope();
-      for (auto& op : **stepnet_) {
-        // create step net's temp inputs
-        for (auto& input : op->Inputs()) {
-          // the weight are located in parent scope
-          for (auto& var_name : input.second) {
-            if (!step_scope.FindVar(var_name)) {
-              LOG(INFO) << "step " << i << " create i " << var_name;
-              step_scope.Var(var_name)->GetMutable<LoDTensor>();
-            }
-          }
-        }
-        // create stepnet's outputs
-        for (const auto& output : op->Outputs()) {
-          for (auto& var_name : output.second) {
-            LOG(INFO) << "step " << i << " create o " << var_name;
-            step_scope.Var(var_name);
-          }
-        }
+      for (auto& var_name : *vars_) {
+        LOG(INFO) << "step " << i << " create " << var_name;
+        step_scope.Var(var_name);
       }
       step_scopes->emplace_back(&step_scope);
     }
@@ -119,7 +104,7 @@ RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
   rnn::InitArgument(kArgName, &arg_, *this);
-  alg_.Init(&arg_, &stepnet_);
+  alg_.Init(&arg_, &stepnet_, &vars_);
 }
 
 class RecurrentAlgorithmProtoAndCheckerMaker
@@ -189,7 +174,7 @@ RecurrentGradientOp::RecurrentGradientOp(
     const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
   rnn::InitArgument(kArgName, &arg_, *this, true /*is grad*/);
-  alg_.Init(&arg_, &stepnet_);
+  alg_.Init(&arg_, &stepnet_, &vars_);
 }
 
 }  // namespace operators
