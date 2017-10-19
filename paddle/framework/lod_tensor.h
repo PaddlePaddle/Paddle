@@ -74,12 +74,12 @@ class LoDTensor : public Tensor {
   LoD lod() const { return lod_; }
 
   /*
-   * Get a element from LoD.
+   * Get the start offset and end offset of an  element from LoD.
    */
-  size_t lod_element(size_t level, size_t elem) const {
+  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
     PADDLE_ENFORCE_LT(level, NumLevels());
-    PADDLE_ENFORCE_LE(elem, NumElements(level));
-    return (lod_)[level][elem];
+    PADDLE_ENFORCE_LT(elem, NumElements(level));
+    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
   }
 
   /*
