@@ -48,7 +48,7 @@ exe = Executor(place)
 
 exe.run(init_program, feed={}, fetch_list=[])
 
-PASS_NUM = 10
+PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
@@ -67,4 +67,4 @@ for pass_id in range(PASS_NUM):
                        fetch_list=[avg_cost])
         out = np.array(outs[0])
 
-        print out
+    print out
