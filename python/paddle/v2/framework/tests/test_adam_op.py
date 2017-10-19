@@ -33,14 +33,12 @@ class TestAdamOp1(OpTest):
 
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
 
-        param_out, moment1_out, moment2_out, beta1_pow_out, \
-            beta2_pow_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, \
+            moment2_out = adam_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
-            'Beta1PowOut': beta1_pow_out,
-            'Beta2PowOut': beta2_pow_out,
             'ParamOut': param_out
         }
 
@@ -78,14 +76,12 @@ class TestAdamOp2(OpTest):
 
         attributes = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
 
-        param_out, moment1_out, moment2_out, beta1_pow_out, \
-            beta2_pow_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, \
+            moment2_out = adam_step(self.inputs, attributes)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
-            'Beta1PowOut': beta1_pow_out,
-            'Beta2PowOut': beta2_pow_out,
             'ParamOut': param_out
         }
 
@@ -127,14 +123,12 @@ class TestAdamOpMultipleSteps(OpTest):
 
     def test_check_output(self):
         for _ in range(self.num_steps):
-            param_out, moment1_out, moment2_out, beta1_pow_out, \
-                beta2_pow_out = adam_step(self.inputs, self.attrs)
+            param_out, moment1_out, \
+                moment2_out = adam_step(self.inputs, self.attrs)
 
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
-                'Beta1PowOut': beta1_pow_out,
-                'Beta2PowOut': beta2_pow_out,
                 'ParamOut': param_out
             }
 
@@ -145,8 +139,10 @@ class TestAdamOpMultipleSteps(OpTest):
             self.inputs['Param'] = param_out
             self.inputs['Moment1'] = moment1_out
             self.inputs['Moment2'] = moment2_out
-            self.inputs['Beta1Pow'] = beta1_pow_out
-            self.inputs['Beta2Pow'] = beta2_pow_out
+
+            # Update powers of Beta1 and Beta2 for next time step
+            self.inputs['Beta1Pow'] *= self.attrs['beta1']
+            self.inputs['Beta2Pow'] *= self.attrs['beta1']
 
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(
@@ -175,11 +171,9 @@ def adam_step(inputs, attributes):
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
-    beta1_pow_out = beta1_pow * beta1
-    beta2_pow_out = beta2_pow * beta2
-    lr_t = lr * np.sqrt(1 - beta2_pow_out) / (1 - beta1_pow_out)
+    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
     param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
-    return param_out, moment1_out, moment2_out, beta1_pow_out, beta2_pow_out
+    return param_out, moment1_out, moment2_out
 
 
 if __name__ == "__main__":

@@ -20,6 +20,8 @@ limitations under the License. */
 #include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
+
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/details/op_registry.h"
 #include "paddle/framework/framework.pb.h"
@@ -74,7 +76,8 @@ class OpRegistry {
                                                 const VariableNameMap& outputs,
                                                 AttributeMap attrs);
 
-  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc,
+                                                ProgramDesc* program);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
 };
