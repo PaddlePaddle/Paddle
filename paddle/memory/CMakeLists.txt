@@ -1,7 +1,7 @@
 add_subdirectory(detail)
 
 if(WITH_FPGA)
-    cc_library(memory SRCS memory.cc DEPS polaris)
+    cc_library(memory SRCS memory.cc DEPS fpga_allocator polaris)
     cc_library(memcpy SRCS memcpy.cc DEPS polaris)
 else()
     cc_library(memory SRCS memory.cc)

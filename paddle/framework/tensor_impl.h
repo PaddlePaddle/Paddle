@@ -65,9 +65,8 @@ inline T* Tensor::mutable_data(platform::Place place) {
       holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size));
     } else if (platform::is_fpga_place(place)) {
-#ifdef PADDLE_WITH_FPGA
+#ifndef PADDLE_WITH_FPGA
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
-    }
 #else
       holder_.reset(new PlaceholderImpl<T, platform::FPGAPlace>(
           boost::get<platform::FPGAPlace>(place), size));

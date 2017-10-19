@@ -131,6 +131,7 @@ class MulOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+#ifdef PADDLE_WITH_FPGA
 template <typename Place, typename T>
 class MulFPGAKernel : public framework::OpKernel {
  public:
@@ -164,7 +165,7 @@ class MulFPGAKernel : public framework::OpKernel {
     }
   }
 };
-
+#endif
 
 }  // namespace operators
 }  // namespace paddle

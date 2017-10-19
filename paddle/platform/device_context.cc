@@ -11,7 +11,9 @@ limitations under the License. */
 
 #include "paddle/platform/device_context.h"
 #include "paddle/memory/memory.h"
+#ifdef PADDLE_WITH_FPGA
 #include "polaris.h"
+#endif
 
 namespace paddle {
 namespace platform {

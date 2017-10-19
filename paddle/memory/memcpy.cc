@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/memory/memcpy.h"
 
 #include <cstring>  // for memcpy
+#ifdef PADDLE_WITH_FPGA
 #include "polaris.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -99,7 +101,7 @@ void Copy<platform::CPUPlace, platform::FPGAPlace>(platform::CPUPlace dst_place,
                                                   void* dst,
                                                   platform::FPGAPlace src_place,
                                                   const void* src, size_t num) {
-  PolarisContext* fpga_ctx = polaris_create_context(dst_place.device);
+  PolarisContext* fpga_ctx = polaris_create_context(src_place.device);
   polaris_memcpy(fpga_ctx, POLARIS_DEVICE_TO_HOST, dst, src, num);
   polaris_destroy_context(fpga_ctx);
 }

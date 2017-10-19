@@ -13,7 +13,9 @@ limitations under the License. */
 
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#ifdef PADDLE_WITH_FPGA
 #include "polaris.h"
+#endif
 
 #ifndef PADDLE_ONLY_CPU
 #include "paddle/platform/dynload/cublas.h"

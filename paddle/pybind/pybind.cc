@@ -217,7 +217,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::FPGAPlace& place)
                       -> paddle::platform::DeviceContext* {
-#ifdef PADDLE_WITH_FPGA
+#ifndef PADDLE_WITH_FPGA
                     PADDLE_THROW("FPGAPlace is not supported in current device.");
 #else
                     return new paddle::platform::FPGADeviceContext(place);

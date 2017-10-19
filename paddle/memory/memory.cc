@@ -21,11 +21,15 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/platform/enforce.h"
 #include "paddle/memory/detail/buddy_allocator.h"
 #include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/gpu_info.h"
 
+#ifdef PADDLE_WITH_FPGA
 #include "polaris.h"
+#include "paddle/memory/detail/fpga_allocator.h"
+#endif
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
@@ -117,32 +121,59 @@ size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
 #endif  // PADDLE_ONLY_CPU
 
 #ifdef PADDLE_WITH_FPGA
-static size_t fpga_used = 0;
+
+#define MAX_FPGA_DEVICE_NUM 10
+
+using FPGAAllocator = detail::FPGAAllocator;
+
+FPGAAllocator* GetFPGAAllocator(int fpga_id) {
+  using FPGAAllocVec = std::vector<FPGAAllocator*>;
+  static std::unique_ptr<FPGAAllocVec, void (*)(FPGAAllocVec * p)> as{
+      new FPGAAllocVec, [](FPGAAllocVec* p) {
+        std::for_each(p->begin(), p->end(),
+                      [](FPGAAllocator* p) { delete p; });
+      }};
+
+  // FPGA allocators
+  auto& allocators = *as.get();
+  int fpga_devices[MAX_FPGA_DEVICE_NUM];
+  int fpga_num = polaris_get_devices(fpga_devices, MAX_FPGA_DEVICE_NUM);
+
+  // FPGA allocator initialization
+  std::call_once(fpga_allocator_flag, [&]() {
+    allocators.reserve(fpga_num);
+    for (int i = 0; i < fpga_num; i++) {
+      allocators.emplace_back(new FPGAAllocator(fpga_devices[i]));
+    }
+  });
+
+  FPGAAllocator* ret = NULL;
+  for (int i = 0; i < fpga_num; i++) {
+    if (allocators[i]->GetFPGAId() == fpga_id) {
+      ret = allocators[i];
+      break;
+    }
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(ret);
+  return ret;
+}
+
 template <>
 void* Alloc<platform::FPGAPlace>(platform::FPGAPlace place, size_t size) {
-  PolarisContext*  fpga_ctx = polaris_create_context(place.device);
-  void * ptr;
-  PolarisStatus ret = polaris_malloc(fpga_ctx, size, &ptr);
-  if (ret != POLARIS_OK) {
-    return NULL;
-  }
-  polaris_destroy_context(fpga_ctx);
-  fpga_used += size;
-  return ptr;
+  return GetFPGAAllocator(place.device)->Alloc(size);
 }
+
 template <>
 void Free<platform::FPGAPlace>(platform::FPGAPlace place, void* p) {
-  PolarisContext*  fpga_ctx = polaris_create_context(place.device);
-  PolarisStatus ret = polaris_free(fpga_ctx, p);
-  if (ret != POLARIS_OK) {
-    return;
-  }
-  polaris_destroy_context(fpga_ctx);
-  return ;
+  GetFPGAAllocator(place.device)->Free(p);
 }
+
 template <>
 size_t Used<platform::FPGAPlace>(platform::FPGAPlace place) {
-  return fpga_used;
+  return GetFPGAAllocator(place.device)->Used();
 }
+#endif
+
 }  // namespace memory
 }  // namespace paddle
