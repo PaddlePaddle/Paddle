@@ -58,9 +58,11 @@ def data(name,
          shape,
          data_type='float32',
          type=core.VarDesc.VarType.LOD_TENSOR,
+         append_batch_size=True,
          program=None):
     helper = LayerHelper('data', **locals())
-    shape = [-1] + shape  # append batch size as -1
+    if append_batch_size:
+        shape = [-1] + shape  # append batch size as -1
     return helper.create_global_variable(
         name=name, shape=shape, dtype=data_type, type=type)
 
@@ -115,6 +117,7 @@ def _create_op_func_(op_type):
 
 
 _create_op_func_('mean')
+_create_op_func_('mul')
 
 
 def cross_entropy(input, label, **kwargs):

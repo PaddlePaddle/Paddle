@@ -68,9 +68,13 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
 
   for (auto& var : block.vars()) {
     if (var.persistable()) {
-      scope->Var(var.name());
+      auto* ptr = scope->Var(var.name());
+      VLOG(3) << "Create Variable " << var.name()
+              << " global, which pointer is " << ptr;
     } else {
-      local_scope.Var(var.name());
+      auto* ptr = local_scope.Var(var.name());
+      VLOG(3) << "Create Variable " << var.name()
+              << " locally, which pointer is " << ptr;
     }
   }
 

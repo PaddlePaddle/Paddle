@@ -256,7 +256,8 @@ class Operator(object):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
 
         self.desc.check_attrs()
-        self.desc.infer_shape(self.block.desc)
+        if type not in {'feed', 'fetch'}:
+            self.desc.infer_shape(self.block.desc)
 
     def __str__(self):
         protostr = self.desc.serialize_to_string()
@@ -323,9 +324,12 @@ class Block(object):
         return self.desc.id
 
     def var(self, name):
-        if name not in self.vars:
+        if not isinstance(name, basestring):
+            raise TypeError()
+        v = self.vars.get(name, None)
+        if v is None:
             raise ValueError("var %s not in this block" % name)
-        return self.vars[name]
+        return v
 
     def all_parameters(self):
         return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
@@ -399,14 +403,6 @@ class Block(object):
 
 
 class Program(object):
-    @classmethod
-    def instance(cls):
-        # From https://stackoverflow.com/questions/8212053
-        # Making Program as a Singleton class.
-        if not hasattr(cls, '_instance'):
-            cls._instance = cls()
-        return cls._instance
-
     def __init__(self):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
@@ -502,4 +498,4 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_program = Program.instance()
+g_program = Program()
