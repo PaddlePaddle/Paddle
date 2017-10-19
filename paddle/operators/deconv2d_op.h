@@ -23,6 +23,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using DDim = framework::DDim;
 
 // Define Op classes in .h file so that other deconv
 // operator implementations can reuse the code.
@@ -47,6 +48,168 @@ class Deconv2DOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
+
+template <typename Place, typename T>
+class GemmDeconv2DKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* input = context.Input<Tensor>("Input");
+    // filter will be reshaped, so we do not use constant pointer here
+    Tensor filter = *context.Input<Tensor>("Filter");
+
+    Tensor* output = context.Output<Tensor>("Output");
+
+    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+
+    // no paddings and groups allowed in deconv
+
+    int N = input->dims()[0];
+    int M = input->dims()[1];
+    int H = input->dims()[2];
+    int W = input->dims()[3];
+
+    int K_H = filter.dims()[2];
+    int K_W = filter.dims()[3];
+
+    int C = output->dims()[1];  // output channels
+    int O_H = output->dims()[2];
+    int O_W = output->dims()[3];
+
+    paddle::operators::math::Col2ImFunctor<
+        paddle::operators::math::ColFormat::kCFO, Place, T>
+        col2im;
+
+    // use col_shape in the im2col and col2im calculation
+    framework::DDim col_shape = {C, K_H, K_W, H, W};
+
+    // use col_matrix_shape in the gemm calculation
+    framework::DDim col_matrix_shape = {M * K_H * K_W, H * W};
+
+    Tensor col;
+    col.mutable_data<T>(col_shape, context.GetPlace());
+    // col_matrix shares the same piece of data with col,
+    // but will be reshaped into a two-dimensional matrix shape
+    // to call the matrix multiplication interface.
+    Tensor col_matrix = col;
+    col_matrix.Resize(col_matrix_shape);
+
+    DDim output_shape = {C, O_H, O_W};
+    DDim input_matrix_shape = {M, H * W};
+
+    DDim filter_matrix_shape = {M, C * K_H * K_W};
+    filter.Resize(filter_matrix_shape);
+
+    // deconvolution: gemm + col2im (similar to conv-backward on input)
+
+    output->mutable_data<T>(context.GetPlace());
+    auto t = framework::EigenVector<T>::Flatten(*output);
+    t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+
+    for (int i = 0; i < N; i++) {
+      // batch with size (M, H * W)
+      Tensor input_batch = input->Slice<T>(i, i + 1).Resize(input_matrix_shape);
+      // output size: (C, O_H, O_W)
+      Tensor output_batch = output->Slice<T>(i, i + 1).Resize(output_shape);
+
+      // filter size: (Co, Ci * Hf * Wf)
+
+      // col_matrix = filter * input_batch
+      // of shape (C * K_H * K_W, H * W)
+      math::matmul<Place, T>(context.device_context(), filter, true,
+                             input_batch, false, T(1.0), &col_matrix, T(0.0));
+
+      col2im(context.device_context(), output_batch, col_matrix, strides[0],
+             strides[1], 0, 0);
+    }
+  }
+};
+
+/*
+template <typename Place, typename T>
+class GemmDeconvGrad2DKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* input = context.Input<Tensor>("Input");
+    const Tensor* output_grad =
+        context.Input<Tensor>(framework::GradVarName("Output"));
+
+    // For filter, we do not use const pointer
+    // but we should avoid
+    Tensor filter = *context.Input<Tensor>("Filter");
+
+    Tensor* input_grad =
+        context.Output<Tensor>(framework::GradVarName("Input"));
+    Tensor* filter_grad =
+        context.Output<Tensor>(framework::GradVarName("Filter"));
+
+    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+
+    // no paddings and groups allowed in deconv
+
+    int N = input->dims()[0];
+    int M = input->dims()[1];
+    int H = input->dims()[2];
+    int W = input->dims()[3];
+
+    int K_H = filter.dims()[2];
+    int K_W = filter.dims()[3];
+
+    int C = output->dims()[1]; // output channels
+    int O_H = output->dims()[2];
+    int O_W = output->dims()[3];
+
+    paddle::operators::math::Col2ImFunctor<
+        paddle::operators::math::ColFormat::kCFO, Place, T>
+        col2im;
+
+    // use col_shape in the im2col and col2im calculation
+    framework::DDim col_shape = {C, K_H, K_W, H, W};
+
+    // use col_matrix_shape in the gemm calculation
+    framework::DDim col_matrix_shape = {M * K_H * K_W, H * W};
+
+    Tensor col;
+    col.mutable_data<T>(col_shape, context.GetPlace());
+    // col_matrix shares the same piece of data with col,
+    // but will be reshaped into a two-dimensional matrix shape
+    // to call the matrix multiplication interface.
+    Tensor col_matrix = col;
+    col_matrix.Resize(col_matrix_shape);
+
+    DDim output_shape = {C, O_H, O_W};
+    DDim input_matrix_shape = {M, H * W};
+
+    DDim filter_matrix_shape = {M, C* K_H * K_W};
+    filter.Resize(filter_matrix_shape);
+
+    // deconvolution: gemm + col2im (similar to conv-backward on input)
+
+    output->mutable_data<T>(context.GetPlace());
+    auto t = framework::EigenVector<T>::Flatten(*output);
+    t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+
+    for (int i = 0; i < N; i++) {
+      // batch with size (M, H * W)
+      Tensor input_batch =
+          input->Slice<T>(i, i + 1).Resize(input_matrix_shape);
+      // output size: (C, O_H, O_W)
+      Tensor output_batch =
+          output->Slice<T>(i, i + 1).Resize(output_shape);
+
+      // filter size: (Co, Ci * Hf * Wf)
+
+      // col_matrix = filter * input_batch
+      // of shape (C * K_H * K_W, H * W)
+      math::matmul<Place, T>(context.device_context(), filter, true,
+                             input_batch, false, T(1.0), &col_matrix,
+                             T(0.0));
+
+      col2im(context.device_context(), output_batch, col_matrix, strides[0],
+               strides[1], 0, 0);
+    }
+  }
+};
+*/
 
 }  // namespace operators
 }  // namespace paddle

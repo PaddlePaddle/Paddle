@@ -31,22 +31,23 @@ void Deconv2DOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
-  int input_channels = in_dims[1];
-  int output_channels = filter_dims[0];
 
-  PADDLE_ENFORCE_EQ(in_dims.size(), 4, "Conv2DOp input should be 4-D.");
-  PADDLE_ENFORCE_EQ(filter_dims.size(), 4, "Conv2DOp filter should be 4-D.");
-  PADDLE_ENFORCE_EQ(input_channels, filter_dims[1] * groups,
-                    "The number of input channels should be equal to filter "
-                    "channels * groups.");
-  PADDLE_ENFORCE_EQ(
-      output_channels % groups, 0,
-      "The number of output channels should be divided by groups.");
+  for (int i = 0; i < paddings.size(); ++i) {
+    PADDLE_ENFORCE_EQ(paddings[i], 0, "No Padding allowed in deconv op.");
+  }
+
+  PADDLE_ENFORCE_EQ(in_dims.size(), 4, "Deconv2DOp input should be 4-D.");
+  PADDLE_ENFORCE_EQ(filter_dims.size(), 4, "Deconv2DOp filter should be 4-D.");
+  PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
+                    "input and kernel input dimension should be equal.");
+
+  PADDLE_ENFORCE_EQ(groups, 1,
+                    "The number of groups should be 1 in case of deconv op.");
 
   auto output_height = (in_dims[2] - 1) * strides[0] + filter_dims[2];
   auto output_width = (in_dims[3] - 1) * strides[1] + filter_dims[3];
   ctx->SetOutputDim("Output",
-                    {in_dims[0], filter_dims[0], output_height, output_width});
+                    {in_dims[0], filter_dims[1], output_height, output_width});
 }
 
 Deconv2DOpMaker::Deconv2DOpMaker(framework::OpProto* proto,
@@ -55,12 +56,12 @@ Deconv2DOpMaker::Deconv2DOpMaker(framework::OpProto* proto,
   AddInput(
       "Input",
       "The input tensor of deconvolution operator. "
-      "The format of input tensor is NCHW. Where N is batch size, C is the "
-      "number of channels, H and W is the height and width of image.");
+      "The format of input tensor is NMHW. Where N is batch size, M is the "
+      "number of input channels, H and W is the height and width of image.");
   AddInput("Filter",
            "The filter tensor of deconvolution operator."
            "The format of the filter tensor is MCHW, where M is the number of "
-           "output image channels, C is the number of input image channels, "
+           "input image channels, C is the number of output image channels, "
            "H and W is height and width of filter. "
            "We enforce groups number == 1 and padding == 0 in our "
            "deconvolution Scenario.");
@@ -97,6 +98,6 @@ REGISTER_OP(deconv2d, ops::Deconv2DOp, ops::Deconv2DOpMaker, deconv2d_grad,
             ops::Deconv2DOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    deconv2d, ops::GemmConvGrad2DKernel<paddle::platform::CPUPlace, float>);
+    deconv2d, ops::GemmDeconv2DKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     deconv2d_grad, ops::GemmConv2DKernel<paddle::platform::CPUPlace, float>);
