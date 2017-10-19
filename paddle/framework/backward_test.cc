@@ -495,19 +495,8 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
   EXPECT_EQ(bwd_net->ops_[2]->Outputs(all).size(), 0UL);
 }
 
-// =================================== //
-
-f::ProgramDesc *GetNewProgramDesc() {
-  auto *program_desc = new f::ProgramDesc();
-  auto *root_block = program_desc->add_blocks();
-  root_block->set_idx(0);
-  root_block->set_parent_idx(-1);
-  return program_desc;
-}
-
 TEST(Backward, simple_single_op) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
 
   f::OpDescBind *op = block->AppendOp();
@@ -543,8 +532,7 @@ TEST(Backward, simple_single_op) {
 }
 
 TEST(Backward, default_attribute) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
   f::OpDescBind *op = block->AppendOp();
   op->SetType("mul");
@@ -570,8 +558,7 @@ TEST(Backward, default_attribute) {
 }
 
 TEST(Backward, simple_mult_op) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
@@ -654,8 +641,7 @@ TEST(Backward, simple_mult_op) {
 }
 
 TEST(Backward, intermedia_var_no_grad) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
@@ -725,8 +711,7 @@ TEST(Backward, intermedia_var_no_grad) {
 }
 
 TEST(Backward, var_no_grad) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("mult_in_out");
@@ -802,8 +787,7 @@ TEST(Backward, var_no_grad) {
 }
 
 TEST(Backward, shared_var) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
@@ -893,8 +877,7 @@ TEST(Backward, shared_var) {
 }
 
 TEST(Backward, half_backward) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
   auto *op1 = block->AppendOp();
   op1->SetType("minus");

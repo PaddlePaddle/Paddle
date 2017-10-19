@@ -51,7 +51,7 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
     CreateGlobalVariables();
 
     auto op_desc = CreateOpDesc();
-    op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
     dop = dynamic_cast<DynamicRecurrentOp*>(op.get());
     InitCacheManually();
     InitStepNet();

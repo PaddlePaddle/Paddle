@@ -75,7 +75,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   }
 
   for (auto& op_desc : block.ops()) {
-    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    auto op = paddle::framework::OpRegistry::CreateOp(
+        op_desc, const_cast<ProgramDesc*>(&pdesc));
     op->Run(local_scope, *device);
   }
 

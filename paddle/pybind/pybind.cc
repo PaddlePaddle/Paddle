@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
@@ -153,7 +154,15 @@ PYBIND11_PLUGIN(core) {
            py::return_value_policy::reference)
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
-      .def("set_rows", &SelectedRows::set_rows)
+      .def("set_rows",
+           [](SelectedRows &self, std::vector<int64_t> rows) {
+#ifndef PADDLE_WITH_CUDA
+             self.set_rows(rows);
+#else
+        Vector<int64_t> new_rows(rows);
+        self.set_rows(new_rows);
+#endif
+           })
       .def("rows", [](SelectedRows &self) {
 #ifndef PADDLE_WITH_CUDA
         return self.rows();
@@ -184,6 +193,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
+           },
+           py::return_value_policy::reference)
+      .def("get_selected_rows",
+           [](Variable &self) -> SelectedRows * {
+             return self.GetMutable<SelectedRows>();
            },
            py::return_value_policy::reference)
       .def("get_net",
@@ -259,7 +273,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    return OpRegistry::CreateOp(desc);
+                    return OpRegistry::CreateOp(desc, nullptr);
                   })
       .def("backward",
            [](const OperatorBase &forwardOp,
@@ -363,7 +377,7 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(desc.IsInitialized(),
                            "User OpDesc is not initialized, reason %s",
                            desc.InitializationErrorString());
-            auto rnn_op = OpRegistry::CreateOp(desc);
+            auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
             return static_cast<operators::RecurrentOp *>(rnn_op.release());
           })
       .def("set_stepnet", [](operators::RecurrentOp &self,
@@ -381,7 +395,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto rnn_op = OpRegistry::CreateOp(desc);
+                    auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
@@ -408,7 +422,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto cond_op = OpRegistry::CreateOp(desc);
+                    auto cond_op = OpRegistry::CreateOp(desc, nullptr);
                     return static_cast<operators::CondOp *>(cond_op.release());
                   })
       .def("set_truenet",
