@@ -50,17 +50,8 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
   op->SetAttrMap(attrs);
 }
 
-f::ProgramDesc *GetNewProgramDesc() {
-  auto *program_desc = new f::ProgramDesc();
-  auto *root_block = program_desc->add_blocks();
-  root_block->set_idx(0);
-  root_block->set_parent_idx(-1);
-  return program_desc;
-}
-
 TEST(Prune, one_operator) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, {}, block);
@@ -77,8 +68,7 @@ TEST(Prune, one_operator) {
 }
 
 TEST(Prune, forward) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, {}, block);
@@ -97,8 +87,7 @@ TEST(Prune, forward) {
 }
 
 TEST(Prune, multi_input_op) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
 
   AddOp("one_one", {{"input", {"a0"}}}, {{"output", {"b0"}}}, {}, block);
@@ -116,8 +105,7 @@ TEST(Prune, multi_input_op) {
 }
 
 TEST(Prune, multi_output_op) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}}, {}, block);
@@ -133,8 +121,7 @@ TEST(Prune, multi_output_op) {
 }
 
 TEST(Prune, multi_target) {
-  f::ProgramDesc *program_desc = GetNewProgramDesc();
-  f::ProgramDescBind &program = f::ProgramDescBind::Instance(program_desc);
+  f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}}, {}, block);
