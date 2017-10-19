@@ -23,11 +23,10 @@ class TestExecutor(unittest.TestCase):
         tensor_b = core.LoDTensor()
         tensor_b.set(b_np, place)
         exe = Executor(place)
-        outs = list(
-            exe.run(g_program,
-                    feed={'a': tensor_a,
-                          'b': tensor_b},
-                    fetch_list=[out]))
+        outs = exe.run(g_program,
+                       feed={'a': tensor_a,
+                             'b': tensor_b},
+                       fetch_list=[out])
         out = numpy.array(outs[0])
         self.assertEqual((100, 100), out.shape)
         self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))

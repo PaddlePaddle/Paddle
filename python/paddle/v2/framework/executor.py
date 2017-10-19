@@ -26,7 +26,6 @@ class Executor(object):
 
         program = program.clone()
         global_block = program.global_block()
-        assert isinstance(global_block, Block)
         feed_var = global_block.create_var(
             name=feed_var_name,
             type=core.VarDesc.VarType.FEED_MINIBATCH,
@@ -53,7 +52,8 @@ class Executor(object):
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
 
-        assert isinstance(global_block, Block)
         self.executor.run(program.desc, 0)
-        for i, _ in enumerate(fetch_list):
-            yield core.get_fetch_variable(fetch_var_name, i)
+        return [
+            core.get_fetch_variable(fetch_var_name, i)
+            for i in xrange(len(fetch_list))
+        ]
