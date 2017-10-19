@@ -408,11 +408,13 @@ class Program(object):
     def current_block(self):
         return self.blocks[self.current_block_idx]
 
-    def append_backward(self, target, no_grad_set):
+    def append_backward(self, target, no_grad_set=None):
         """
         return map(param_name -> (grad_name, block_index, op_index))
         """
         assert isinstance(target, Variable)
+        if no_grad_set is None:
+            no_grad_set = set()
         param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
         self.sync_with_cpp()
         return param_to_grad_info

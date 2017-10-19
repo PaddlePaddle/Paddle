@@ -8,12 +8,17 @@ def simple_img_conv_pool(input,
                          pool_stride,
                          act,
                          program=None):
-    pre_pool = layers.conv2d_layer(
+    conv_out = layers.conv2d(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
-        program=program,
-        act=act)
-    res = layers.pool2d(
-        x=pre_pool, pooling_type='max', ksize=pool_size, strides=pool_stride)
-    return res
+        act=act,
+        program=program)
+
+    pool_out = layers.pool2d(
+        input=conv_out,
+        pool_size=pool_size,
+        pool_type='max',
+        pool_stride=pool_stride,
+        program=program)
+    return pool_out

@@ -3,7 +3,7 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc', 'data', 'cross_entropy', 'conv2d']
+__all__ = ['fc', 'data', 'cross_entropy', 'conv2d', 'pool2d']
 
 
 def fc(input,
@@ -35,7 +35,10 @@ def fc(input,
                 "Y": w,
             },
             outputs={"Out": tmp},
-            attrs={'x_num_col_dims': num_flatten_dims})
+            attrs={
+                'x_num_col_dims': num_flatten_dims,
+                'y_num_col_dims': len(input_shape) - num_flatten_dims
+            })
         mul_results.append(tmp)
 
     # sum
@@ -166,6 +169,13 @@ def conv2d(input,
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
 
+    if isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+    if isinstance(stride, int):
+        stride = [stride, stride]
+    if isinstance(padding, int):
+        padding = [padding, padding]
+
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
     filter = helper.create_parameter(
@@ -187,28 +197,39 @@ def conv2d(input,
 
     return helper.append_activation(pre_act)
 
-    def pool2d(input,
-               pool_size,
-               pool_type,
-               pool_stride=[1, 1],
-               pool_padding=[0, 0],
-               program=None):
-        if pool_type not in ["max", "avg"]:
-            raise ValueError(
-                "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
-                str(pool_type))
-        if isinstance(pool_size, int):
-            pool_size = [pool_size, pool_size]
-        if isinstance(pool_stride, int):
-            pool_stride = [pool_stride, pool_stride]
-        if isinstance(pool_padding, int):
-            pool_padding = [pool_padding, pool_padding]
 
-        helper = LayerHelper('conv2d', **locals())
-        dtype = helper.input_dtype()
-        pool_out = helper.create_tmp_variable(dtype)
+def pool2d(input,
+           pool_size,
+           pool_type,
+           pool_stride=[1, 1],
+           pool_padding=[0, 0],
+           global_pooling=False,
+           program=None):
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+    if isinstance(pool_size, int):
+        pool_size = [pool_size, pool_size]
+    if isinstance(pool_stride, int):
+        pool_stride = [pool_stride, pool_stride]
+    if isinstance(pool_padding, int):
+        pool_padding = [pool_padding, pool_padding]
 
-        helper.append_op(
-            type="pool2d", inputs={"X": input}, outputs={"Out": pool_out})
+    helper = LayerHelper('conv2d', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
 
-        return pool_out
+    helper.append_op(
+        type="pool2d",
+        inputs={"X": input},
+        outputs={"Out": pool_out},
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "global_pooling": global_pooling,
+            "strides": pool_stride,
+            "paddings": pool_padding
+        })
+
+    return pool_out
