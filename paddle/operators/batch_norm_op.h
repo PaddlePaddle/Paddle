@@ -40,7 +40,7 @@ class BatchNormKernel : public framework::OpKernel<T> {
 template <typename Place, typename T>
 class BatchNormGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
 }  // namespace operators

@@ -53,7 +53,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], C);
 
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("Out", x_dims);
     ctx->SetOutputDim("MeanOut", {C});
     ctx->SetOutputDim("VarianceOut", {C});
     ctx->SetOutputDim("SavedMean", {C});
@@ -101,13 +101,6 @@ we choose NCHW as the order.
   }
 };
 
-class BatchNormGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {}
-};
-
 // BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
 class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
@@ -124,11 +117,10 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
-    const int N = x_dims[0];                          // sample num / batch size
-    const int C = x_dims[1];                          // channel num
-    const int H = x_dims[2];                          // sample height
-    const int W = x_dims.size() > 3 ? x_dims[3] : 1;  // sample width
-    // sample depth, the last dimension or 1
+    const int N = x_dims[0];
+    const int C = x_dims[1];
+    const int H = x_dims[2];
+    const int W = x_dims.size() > 3 ? x_dims[3] : 1;
     const int D = x_dims.size() > 4 ? x_dims[4] : 1;
 
     const int sample_size = H * W * D;
@@ -185,7 +177,8 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
       inv_std = (var_arr + epsilon).sqrt().inverse();
     } else {
       EigenVectorArrayMap<T> saved_inv_std(
-          ctx.Output<Tensor>("SavedMean")->data<T>(), C);
+          ctx.Output<Tensor>("SavedVariance")->data<T>(), C);
+      // inverse SavedVariance first, gradient will use it too.
       saved_inv_std = (saved_inv_std + epsilon).inverse().sqrt();
       inv_std = saved_inv_std;
     }
@@ -209,6 +202,108 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
     for (int nc = 0; nc < N * C; ++nc) {
       Y_arr.col(nc) = X_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
+    }
+  }
+};
+
+class BatchNormGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    // check input
+    PADDLE_ENFORCE(ctx->HasInput("X"));
+    PADDLE_ENFORCE(ctx->HasInput("Scale"), "");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")), "");
+    PADDLE_ENFORCE(ctx->HasInput("SavedMean"), "");
+    PADDLE_ENFORCE(ctx->HasInput("SavedVariance"), "");
+
+    // check output
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Scale")), "");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")), "");
+
+    const auto x_dims = ctx->GetInputDim("X");
+    const int C = x_dims[1];  // channel num
+
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
+    ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+  }
+};
+
+// BatchNormKernel for CPU, now only support NCHW data format
+template <typename T>
+class BatchNormGradKernel<platform::CPUPlace, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto *dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    // SavedVariance have been reverted in forward operator
+    const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
+
+    // Get the size for each dimension.
+    // NCHW [batch_size, in_channels, in_height, in_width]
+    const auto &x_dims = x->dims();
+    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
+                   "The Input dim size should be between 3 and 5");
+    const int N = x_dims[0];
+    const int C = x_dims[1];
+    const int H = x_dims[2];
+    const int W = x_dims.size() > 3 ? x_dims[3] : 1;
+    const int D = x_dims.size() > 4 ? x_dims[4] : 1;
+
+    const int sample_size = H * W * D;
+
+    ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
+    ConstEigenVectorArrayMap<T> mean_arr(saved_mean->data<T>(), C);
+    ConstEigenVectorArrayMap<T> inv_var_arr(saved_inv_variance->data<T>(), C);
+
+    // init output
+    auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *dScale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *dBias = ctx.Output<Tensor>(framework::GradVarName("Biase"));
+
+    dX->mutable_data<T>(ctx.GetPlace());
+    dScale->mutable_data<T>(ctx.GetPlace());
+    dBias->mutable_data<T>(ctx.GetPlace());
+
+    // dBias = np.sum(dY, axis=0)
+    // dScale = np.sum((X - mean) / inv_std * dy, axis=0)
+    // dX = (1. / N) * scale * inv_var * (N * dY - np.sum(dY, axis=0)
+    //   - (X - mean) * inv_var * inv_var * np.sum(dY * (X - mean), axis=0))
+
+    EigenVectorArrayMap<T> dBias_arr(dBias->mutable_data<T>(ctx.GetPlace()), C);
+    EigenVectorArrayMap<T> dScale_arr(dScale->mutable_data<T>(ctx.GetPlace()),
+                                      C);
+
+    dBias_arr.setZero();
+    dScale_arr.setZero();
+
+    const auto scaleInvVarNHW = scale_arr * inv_var_arr / (N * sample_size);
+
+    ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
+    ConstEigenArrayMap<T> dY_arr(dY->data<T>(), sample_size, N * C);
+    EigenArrayMap<T> dX_arr(dX->mutable_data<float>(ctx.GetPlace()),
+                            sample_size, N * C);
+    dX_arr.setZero();
+
+    for (int nc = 0; nc < N * C; ++nc) {
+      int c = nc % C;
+      dBias_arr(c) += dY_arr.col(nc).sum();
+      dScale_arr(c) +=
+          ((X_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * dY_arr.col(nc))
+              .sum();
+    }
+    for (int nc = 0; nc < N * C; ++nc) {
+      int c = nc % C;
+      dX_arr.col(nc) +=
+          scaleInvVarNHW(c) *
+          (dY_arr.col(nc) * N * sample_size - dBias_arr(c) -
+           (X_arr.col(nc) - mean_arr[c]) * dScale_arr(c) * inv_var_arr(c));
     }
   }
 };
