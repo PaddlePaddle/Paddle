@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename T>
 void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
