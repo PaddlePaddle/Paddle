@@ -27,6 +27,7 @@ SET(NCCL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/nccl)
 SET(NCCL_INCLUDE_DIR "${NCCL_INSTALL_DIR}/include" CACHE PATH "nccl include directory." FORCE)
 
 INCLUDE_DIRECTORIES(${NCCL_SOURCE_DIR}/src/extern_nccl/build/include)
+INCLUDE_DIRECTORIES(${NCCL_INCLUDE_DIR})
 
 IF(WIN32)
   SET(NCCL_LIBRARIES "${NCCL_INSTALL_DIR}/lib/libnccl_static.lib" CACHE FILEPATH "nccl library." FORCE)
