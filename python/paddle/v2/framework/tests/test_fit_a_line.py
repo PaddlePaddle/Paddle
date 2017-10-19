@@ -33,10 +33,10 @@ cost = layers.square_error_cost(
     input=y_predict, label=y, program=program, init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.005)
+sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.0001)
 opts = sgd_optimizer.minimize(avg_cost)
 
-BATCH_SIZE = 10
+BATCH_SIZE = 2
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
