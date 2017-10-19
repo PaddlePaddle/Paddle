@@ -46,7 +46,7 @@ class FCOp : public OperatorBase {
 REGISTER_OP(FCOp, "fc");
 ```
 
-We need to support such a composition in Python as well. To do so, we need a higher level Python wrapping of operator creation than `paddle.cpp.create_operator`.  This higher level operator API should be compatible with the layer API.
+We need to support such a composition in Python as well. To do so, we need a higher level Python wrapping of operator creation than `paddle.cpp.create_operator`.  This API should be compatible with the layer API.
 
 Let's explain using an example.  Suppose that we are going to compose the FC using mul and add in Python, we'd like to have Python functions `mul` and `add` defined in module `operator`:
 
