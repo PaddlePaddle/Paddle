@@ -32,6 +32,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Bias"), "");
     PADDLE_ENFORCE(ctx->HasInput("Mean"), "");
     PADDLE_ENFORCE(ctx->HasInput("Variance"), "");
+    PADDLE_ENFORCE(ctx->HasOutput("Y"), "");
     PADDLE_ENFORCE(ctx->HasOutput("MeanOut"), "");
     PADDLE_ENFORCE(ctx->HasOutput("VarianceOut"), "");
     PADDLE_ENFORCE(ctx->HasOutput("SavedMean"), "");
@@ -79,14 +80,15 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The running variance (training) "
              "or the estimated");
+    AddOutput("Y", "result after normalized");
     AddOutput("MeanOut",
               "The running mean (training) or the "
               "estimated mean (testing)");
     AddOutput("VarianceOut",
               "The running variance (training) "
               "or the estimated");
-    AddOutput("SavedMean", "");
-    AddOutput("SavedVariance", "");
+    AddOutput("SavedMean", "Local Mean");
+    AddOutput("SavedVariance", "Local Variance");
     AddComment(R"DOC(
 https://arxiv.org/pdf/1502.03167.pdf
 
@@ -106,17 +108,16 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 };
 
+// BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
 class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
     const bool is_test = ctx.Attr<bool>("is_test");
-    //    const float epsilon = ctx.Attr<float>("epsilon");
+    const float epsilon = ctx.Attr<float>("epsilon");
 
     const auto *x = ctx.Input<Tensor>("X");
-    //    const auto* scale = ctx.Input<Tensor>("Scale");
-    //    const auto* bias = ctx.Input<Tensor>("Bias");
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -133,14 +134,14 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     const int sample_size = H * W * D;
 
     // const auto& place = ctx.GetEigenDevice<Place>();
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *y = ctx.Output<Tensor>("Y");
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
     auto *variance_out = ctx.Output<Tensor>("VarianceOut");
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
 
     // alloc memory
-    out->mutable_data<T>(ctx.GetPlace());
+    y->mutable_data<T>(ctx.GetPlace());
     mean_out->mutable_data<T>(ctx.GetPlace());
     variance_out->mutable_data<T>(ctx.GetPlace());
     saved_mean->mutable_data<T>(ctx.GetPlace());
@@ -148,8 +149,10 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
     if (!is_test) {
       // saved_xx is use just in this batch of data
-      auto saved_mean_e = EigenMatrix<T>::From(*saved_mean);
-      auto saved_variance_e = EigenMatrix<T>::From(*saved_variance);
+      EigenVectorArrayMap<float> saved_mean_e(
+          saved_mean->mutable_data<float>(ctx.GetPlace()), C);
+      EigenVectorArrayMap<float> saved_variance_e(
+          saved_variance->mutable_data<float>(ctx.GetPlace()), C);
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
@@ -196,6 +199,40 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
         variance_out_d[i] = variance_out_d[i] * momentum +
                             saved_variance_d[i] * (1. - momentum);
       }
+    }
+
+    // use SavedMean and SavedVariance to do normalize
+    Eigen::Array<T, Eigen::Dynamic, 1> inv_std(C);
+    if (is_test) {
+      ConstEigenVectorArrayMap<T> var_arr(
+          ctx.Input<Tensor>("Variance")->data<T>(), C);
+      inv_std = (var_arr + epsilon).sqrt().inverse();
+    } else {
+      EigenVectorArrayMap<T> saved_inv_std(
+          ctx.Output<Tensor>("SavedMean")->data<T>(), C);
+      saved_inv_std = (saved_inv_std + epsilon).inverse().sqrt();
+      inv_std = saved_inv_std;
+    }
+    ConstEigenVectorArrayMap<T> mean_arr(
+        is_test ? ctx.Input<Tensor>("Mean")->data<T>()
+                : ctx.Output<Tensor>("SavedMean")->data<T>(),
+        C);
+
+    //   ((x - est_mean) * (inv_var) * scale + bias
+    //   formula transform ====>
+    //   (x * inv_var * scale) + (bias - est_mean * inv_var * scale)
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
+    ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
+    ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
+    Eigen::Array<float, Eigen::Dynamic, 1> new_scale = inv_std * scale_arr;
+    Eigen::Array<float, Eigen::Dynamic, 1> new_bias =
+        bias_arr - mean_arr * inv_std * scale_arr;
+    EigenArrayMap<float> Y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
+                               N * C);
+    ConstEigenArrayMap<float> X_arr(x->data<T>(), sample_size, N * C);
+    for (int nc = 0; nc < N * C; ++nc) {
+      Y_arr.col(nc) = X_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
     }
   }
 };
