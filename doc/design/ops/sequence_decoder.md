@@ -66,10 +66,9 @@ The following demos are based on relative-offset LoD.
 Let's start from a simple machine translation model that is simplified from [machine translation chapter](https://github.com/PaddlePaddle/book/tree/develop/08.machine_translation) to draw a simple blueprint of what a sequence decoder can do and how to use it.
 
 The model has an encoder that learns the semantic vector from a sequence,
-and a decoder which uses the Sequence Decoder to generate new sentences.
+and a decoder which uses the sequence decoder to generate new sentences.
 
 **Encoder**
-
 ```python
 import paddle as pd
 
@@ -143,7 +142,7 @@ def generate():
         # selected_scores is the scores of the selected candidates
         # generated_scores is the score of the translations(with candidates appended)
         selected_ids, selected_scores, generated_scores = decoder.beam_search(
-            topk_scores, topk_ids, decoder.generated_scores())
+            topk_ids, topk_scores, decoder.generated_scores())
         # the latest value of trans_scores will be cached in decoder.generated_scores()
         # the latest value of selected_ids will be cached in decoder.generated_ids()
 
@@ -165,7 +164,7 @@ Compared to a RNN, sequence decoder has two special members (that exposed as var
 Both of them are two-level `LoDTensors`
 
 - the first level represents `batch_size` of (source) sentences;
-- the second level represents the candidate word ID sets for translation prefix.
+- the second level represents the candidate ID sets for translation prefix.
 
 for example, 3 source sentences to translate, and has 2, 3, 1 candidates.
 
@@ -203,8 +202,34 @@ it will be `Packed` by `TensorArray` to a two-level `LoDTensor`,
 the first level represents the source sequences,
 the second level represents generated sequences.
 
+Pack the `selected_scores` will get a `LoDTensor` that stores scores of each candidate of translations.
 
-## Appendix
+Pack the `generated_scores` will get a `LoDTensor`, and each tail is the probability of the translation.
+
+## LoD and shape changes during decoding
+<p align="center">
+  <img src="./images/LOD-and-shape-changes-during-decoding.jpg"/>
+</p>
+
+According the image above, the only phrase to change LoD is beam search.
+
+### Beam search design
+The beam search algorthm will be implemented as one method of the sequence decoder, it has 3 inputs
+
+1. `topk_ids`, top K candidate ids for each prefix.
+2. `topk_scores`, the corresponding scores for `topk_ids`
+3. `generated_scores`, the score of the prefixes.
+
+All of the are LoDTensors, so that the sequence affilication is clear.
+Beam search will keep a beam for each prefix and select a smaller candidate set for each prefix.
+
+It will return three variables
+
+1. `selected_ids`, the final candidate beam search function selected for the next step.
+2. `selected_scores`, the scores for the candidates.
+3. `generated_scores`, the updated scores for each prefixes (with the new candidates appended).
+
+## Appendik
 Let's validate the logic with some simple data, assuming that there are 3 sentences to translate
 
 **initial statistics**
