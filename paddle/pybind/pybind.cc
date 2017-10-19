@@ -154,7 +154,15 @@ PYBIND11_PLUGIN(core) {
            py::return_value_policy::reference)
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
-      .def("set_rows", &SelectedRows::set_rows)
+      .def("set_rows",
+           [](SelectedRows &self, std::vector<int64_t> rows) {
+#ifndef PADDLE_WITH_CUDA
+             self.set_rows(rows);
+#else
+        Vector<int64_t> new_rows(rows);
+        self.set_rows(new_rows);
+#endif
+           })
       .def("rows", [](SelectedRows &self) {
 #ifndef PADDLE_WITH_CUDA
         return self.rows();
@@ -185,6 +193,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
+           },
+           py::return_value_policy::reference)
+      .def("get_selected_rows",
+           [](Variable &self) -> SelectedRows * {
+             return self.GetMutable<SelectedRows>();
            },
            py::return_value_policy::reference)
       .def("get_net",
