@@ -26,7 +26,7 @@ class BlockDescBind;
 
 class ProgramDescBind {
  public:
-  static ProgramDescBind &Instance(ProgramDesc *prog);
+  ProgramDescBind();
 
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
@@ -37,10 +37,7 @@ class ProgramDescBind {
   ProgramDesc *Proto();
 
  private:
-  explicit ProgramDescBind(ProgramDesc *prog);
-
-  // Not owned
-  ProgramDesc *prog_;
+  ProgramDesc prog_;
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
 
