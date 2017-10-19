@@ -100,4 +100,5 @@ REGISTER_OP(deconv2d, ops::Deconv2DOp, ops::Deconv2DOpMaker, deconv2d_grad,
 REGISTER_OP_CPU_KERNEL(
     deconv2d, ops::GemmDeconv2DKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    deconv2d_grad, ops::GemmConv2DKernel<paddle::platform::CPUPlace, float>);
+    deconv2d_grad,
+    ops::GemmDeconvGrad2DKernel<paddle::platform::CPUPlace, float>);
