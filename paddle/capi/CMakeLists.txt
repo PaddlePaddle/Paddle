@@ -40,8 +40,8 @@ set(PADDLE_CAPI_INFER_LIBS
 cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
 
 # Link the static library for inference
-cc_library(paddle_nn_engine DEPS paddle_capi paddle_utils paddle_parameter paddle_math paddle_cuda paddle_proto)
-cc_library(paddle_layers DEPS paddle_function paddle_gserver)
+cc_library(paddle_capi_engine DEPS paddle_capi paddle_utils paddle_parameter paddle_math paddle_cuda paddle_proto)
+cc_library(paddle_capi_layers DEPS paddle_function paddle_gserver)
 
 # Link the shared library for inference
 if(NOT IOS)
@@ -57,7 +57,7 @@ endif()
 install(FILES ${CAPI_HEADERS} DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
 if(ANDROID)
-  install(TARGETS paddle_nn_engine paddle_layers paddle_capi_shared
+  install(TARGETS paddle_capi_whole paddle_capi_engine paddle_capi_layers paddle_capi_shared
           ARCHIVE DESTINATION lib/${ANDROID_ABI}
           LIBRARY DESTINATION lib/${ANDROID_ABI})
   execute_process(
@@ -82,7 +82,7 @@ if(ANDROID)
       )"
   )
 else(ANDROID)
-  install(TARGETS paddle_nn_engine paddle_layers ARCHIVE DESTINATION lib)
+  install(TARGETS paddle_capi_whole paddle_capi_engine paddle_capi_layers ARCHIVE DESTINATION lib)
   if(NOT IOS)
     install(TARGETS paddle_capi_shared DESTINATION lib)
   endif()
