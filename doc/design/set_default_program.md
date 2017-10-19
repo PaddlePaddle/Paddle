@@ -1,4 +1,4 @@
-# Design: Simply Layer program inputs
+# Design: Add Model module to maintain global programDesc
 
 ## Motivation
 
