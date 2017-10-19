@@ -36,7 +36,7 @@ class Executor(object):
             out = global_block.var(name)
             global_block.prepend_op(
                 'feed',
-                inputs={'Input': [feed_var]},
+                inputs={'X': [feed_var]},
                 outputs={'Out': [out]},
                 attrs={'col': i})
             # FIXME
@@ -49,7 +49,7 @@ class Executor(object):
         for i, var in enumerate(fetch_list):
             global_block.append_op(
                 type='fetch',
-                inputs={'Input': [var]},
+                inputs={'X': [var]},
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
 
