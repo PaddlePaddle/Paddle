@@ -35,7 +35,7 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(0, b.parent_idx)
 
     def test_append_backward(self):
-        prog = Program.instance()
+        prog = Program()
         block = prog.global_block()
 
         mul_x = block.create_var(
