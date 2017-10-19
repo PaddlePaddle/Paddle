@@ -48,7 +48,6 @@ class Registrar {
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
-    VLOG(3) << "Registering operator " << op_type;
     PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
                    "'%s' is registered more than once.", op_type);
     static_assert(sizeof...(ARGS) != 0,
