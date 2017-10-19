@@ -49,9 +49,15 @@ class FetchOp : public framework::OperatorBase {
     }
     auto &dst_item = fetch_list->at(col);
 
+    VLOG(3) << "Fetch " << fetch_var_name << ", shape=" << src_item.dims();
+
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
     dst_item.CopyFromTensor(src_item, platform::CPUPlace(), dev_ctx);
+
+    VLOG(3) << "Fetch out name = " << out_name
+            << " dest shape = " << dst_item.dims()
+            << " Fetched Var = " << out_var;
   }
 };
 

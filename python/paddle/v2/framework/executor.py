@@ -51,7 +51,7 @@ class Executor(object):
                 type='fetch',
                 inputs={'Input': [var]},
                 outputs={'Out': [fetch_var]},
-                attrs={'col': 1})
+                attrs={'col': i})
 
         assert isinstance(global_block, Block)
         self.executor.run(program.desc, 0)

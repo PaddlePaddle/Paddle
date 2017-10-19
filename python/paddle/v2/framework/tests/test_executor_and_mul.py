@@ -29,7 +29,8 @@ class TestExecutor(unittest.TestCase):
                     feed={'a': tensor_a,
                           'b': tensor_b},
                     fetch_list=[out]))
-        print outs[0].shape()
+        out = numpy.array(outs[0])
+        self.assertEqual((100, 100), out.shape)
 
 
 if __name__ == '__main__':

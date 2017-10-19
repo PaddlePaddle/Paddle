@@ -42,10 +42,14 @@ LoDTensor& GetFetchVariable(const std::string& var_name, size_t index) {
   // Since we want to fetch LodTensor from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = GetGlobalScope().FindVar(var_name);
+  VLOG(3) << "Fetched Variable" << g_fetch_value;
   auto& fetch_outputs =
-      *(g_fetch_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
+      g_fetch_value->Get<std::vector<paddle::framework::LoDTensor>>();
+  auto& tensor = fetch_outputs[index];
+  VLOG(3) << "Fetch " << var_name << " with index " << index
+          << " shape= " << tensor.dims();
   PADDLE_ENFORCE_LT(index, fetch_outputs.size());
-  return fetch_outputs[index];
+  return const_cast<LoDTensor&>(tensor);
 }
 
 }  // namespace framework
