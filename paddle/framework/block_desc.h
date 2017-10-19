@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <deque>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/var_desc.h"
 #include "paddle/platform/macros.h"
@@ -36,6 +38,9 @@ class BlockDescBind {
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
 
+  BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+                ProgramDescBind *prog);
+
   ~BlockDescBind() {
     this->ClearPBVars();
     this->ClearPBOps();
@@ -50,6 +55,14 @@ class BlockDescBind {
   VarDescBind *FindVar(const std::string &name_bytes) const;
 
   bool HasVar(const std::string &var_name) const;
+
+  std::set<std::string> LocalVarNames() const {
+    std::set<std::string> var_names;
+    for (auto &var : vars_) {
+      var_names.insert(var.first);
+    }
+    return var_names;
+  }
 
   std::vector<VarDescBind *> AllVars() const;
 

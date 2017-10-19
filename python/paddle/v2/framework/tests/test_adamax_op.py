@@ -31,14 +31,13 @@ class TestAdamaxOp1(OpTest):
 
         self.attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
 
-        param_out, moment_out, inf_norm_out, beta1_pow_out = adamax_step(
-            self.inputs, self.attrs)
+        param_out, moment_out, inf_norm_out = adamax_step(self.inputs,
+                                                          self.attrs)
 
         self.outputs = {
             'ParamOut': param_out,
             'MomentOut': moment_out,
-            'InfNormOut': inf_norm_out,
-            'Beta1PowOut': beta1_pow_out
+            'InfNormOut': inf_norm_out
         }
 
     def test_check_output(self):
@@ -73,14 +72,12 @@ class TestAdamaxOp2(OpTest):
         }
 
         attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
-        param_out, moment_out, inf_norm_out, beta1_pow_out = adamax_step(
-            self.inputs, attrs)
+        param_out, moment_out, inf_norm_out = adamax_step(self.inputs, attrs)
 
         self.outputs = {
             'ParamOut': param_out,
             'MomentOut': moment_out,
-            'InfNormOut': inf_norm_out,
-            'Beta1PowOut': beta1_pow_out
+            'InfNormOut': inf_norm_out
         }
 
     def test_check_output(self):
@@ -117,19 +114,15 @@ class TestAdamaxOpMultipleSteps(OpTest):
 
         self.attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
 
-        param_out, moment_out, inf_norm_out, beta1_pow_out = adamax_step(
-            self.inputs, self.attrs)
-
     def test_check_output(self):
         for _ in range(self.num_steps):
-            param_out, moment_out, inf_norm_out, beta1_pow_out = adamax_step(
-                self.inputs, self.attrs)
+            param_out, moment_out, inf_norm_out = adamax_step(self.inputs,
+                                                              self.attrs)
 
             self.outputs = {
                 'ParamOut': param_out,
                 'MomentOut': moment_out,
-                'InfNormOut': inf_norm_out,
-                'Beta1PowOut': beta1_pow_out
+                'InfNormOut': inf_norm_out
             }
 
             # Verify output for this step
@@ -139,7 +132,9 @@ class TestAdamaxOpMultipleSteps(OpTest):
             self.inputs['Param'] = param_out
             self.inputs['Moment'] = moment_out
             self.inputs['InfNorm'] = inf_norm_out
-            self.inputs['Beta1Pow'] = beta1_pow_out
+
+            # Update Beta1 Power accumulator for next step
+            self.inputs['Beta1Pow'] *= self.attrs['beta1']
 
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(
@@ -167,11 +162,10 @@ def adamax_step(inputs, attributes):
 
     moment_out = beta1 * moment + (1 - beta1) * grad
     inf_norm_out = np.maximum(beta2 * inf_norm + epsilon, np.abs(grad))
-    beta1_pow_out = beta1_pow * beta1
-    lr_t = (lr / (1 - beta1_pow_out))
+    lr_t = (lr / (1 - beta1_pow))
     param_out = param - lr_t * np.divide(moment_out, inf_norm_out)
 
-    return param_out, moment_out, inf_norm_out, beta1_pow_out
+    return param_out, moment_out, inf_norm_out
 
 
 if __name__ == "__main__":

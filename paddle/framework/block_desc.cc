@@ -107,6 +107,19 @@ BlockDesc *BlockDescBind::Proto() {
   Flush();
   return desc_;
 }
+BlockDescBind::BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+                             ProgramDescBind *prog)
+    : prog_(prog), desc_(desc) {
+  need_update_ = true;
+  for (auto &op : other.ops_) {
+    ops_.emplace_back(new OpDescBind(*op));
+  }
+
+  for (auto &it : other.vars_) {
+    auto *var = new VarDescBind(*it.second);
+    vars_[it.first].reset(var);
+  }
+}
 
 void BlockDescBind::ClearPBOps() {
   auto ops = this->desc_->mutable_ops();

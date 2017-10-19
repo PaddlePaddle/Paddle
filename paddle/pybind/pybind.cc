@@ -111,6 +111,7 @@ PYBIND11_PLUGIN(core) {
              new (&instance) LoDTensor(new_lod);
 #endif
           })
+      .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
 #ifndef PADDLE_WITH_CUDA
@@ -154,7 +155,15 @@ PYBIND11_PLUGIN(core) {
            py::return_value_policy::reference)
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
-      .def("set_rows", &SelectedRows::set_rows)
+      .def("set_rows",
+           [](SelectedRows &self, std::vector<int64_t> rows) {
+#ifndef PADDLE_WITH_CUDA
+             self.set_rows(rows);
+#else
+        Vector<int64_t> new_rows(rows);
+        self.set_rows(new_rows);
+#endif
+           })
       .def("rows", [](SelectedRows &self) {
 #ifndef PADDLE_WITH_CUDA
         return self.rows();
@@ -187,6 +196,11 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_selected_rows",
+           [](Variable &self) -> SelectedRows * {
+             return self.GetMutable<SelectedRows>();
+           },
+           py::return_value_policy::reference)
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
@@ -203,7 +217,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
-      .def("drop_kids", &Scope::DropKids);
+      .def("drop_kids", &Scope::DropKids)
+      .def_static("global_scope", &GetGlobalScope);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -250,6 +265,17 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
+
+  py::class_<platform::Place>(m, "Place")
+      .def(py::init<>())
+      .def("set_place",
+           [](platform::Place &self, const platform::CPUPlace &cpu_place) {
+             self = cpu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::GPUPlace &gpu_place) {
+             self = gpu_place;
+           });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
@@ -424,14 +450,15 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
       .def("run",
-           [](Executor &self, const ProgramDesc &program_desc, int block_id) {
+           [](Executor &self, ProgramDescBind *program_bind, int block_id) {
              framework::Scope &global_scope = GetGlobalScope();
-             self.Run(program_desc, &global_scope, block_id);
+             self.Run(*program_bind->Proto(), &global_scope, block_id);
            });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 
   m.def("is_compile_gpu", IsCompileGPU);
+  //! FIXME: it is no need to `set_xxx_float/double/int`
   m.def("set_feed_variable_float", framework::SetFeedVariable<float>);
   m.def("set_feed_variable_double", framework::SetFeedVariable<double>);
   m.def("set_feed_variable_int", framework::SetFeedVariable<int>);

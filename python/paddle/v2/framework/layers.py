@@ -3,17 +3,17 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc_layer', 'data_layer', 'cross_entropy', 'conv2d_layer']
+__all__ = ['fc', 'data', 'cross_entropy', 'conv2d', 'pool2d']
 
 
-def fc_layer(input,
-             size,
-             param_attr=None,
-             bias_attr=True,
-             name=None,
-             act=None,
-             num_flatten_dims=1,
-             program=None):
+def fc(input,
+       size,
+       param_attr=None,
+       bias_attr=True,
+       name=None,
+       act=None,
+       num_flatten_dims=1,
+       program=None):
     # create helper
     helper = LayerHelper('fc', **locals())
 
@@ -35,7 +35,10 @@ def fc_layer(input,
                 "Y": w,
             },
             outputs={"Out": tmp},
-            attrs={'x_num_col_dims': num_flatten_dims})
+            attrs={
+                'x_num_col_dims': num_flatten_dims,
+                'y_num_col_dims': len(input_shape) - num_flatten_dims
+            })
         mul_results.append(tmp)
 
     # sum
@@ -51,13 +54,15 @@ def fc_layer(input,
     return helper.append_activation(pre_activation)
 
 
-def data_layer(name,
-               shape,
-               data_type='float32',
-               type=core.VarDesc.VarType.LOD_TENSOR,
-               program=None):
+def data(name,
+         shape,
+         data_type='float32',
+         type=core.VarDesc.VarType.LOD_TENSOR,
+         append_batch_size=True,
+         program=None):
     helper = LayerHelper('data', **locals())
-    shape = [-1] + shape  # append batch size as -1
+    if append_batch_size:
+        shape = [-1] + shape  # append batch size as -1
     return helper.create_global_variable(
         name=name, shape=shape, dtype=data_type, type=type)
 
@@ -112,7 +117,7 @@ def _create_op_func_(op_type):
 
 
 _create_op_func_('mean')
-_create_op_func_('pool2d')
+_create_op_func_('mul')
 
 
 def cross_entropy(input, label, **kwargs):
@@ -145,17 +150,17 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
-def conv2d_layer(input,
-                 num_filters,
-                 name=None,
-                 filter_size=[1, 1],
-                 act=None,
-                 groups=None,
-                 stride=[1, 1],
-                 padding=None,
-                 bias_attr=None,
-                 param_attr=None,
-                 program=None):
+def conv2d(input,
+           num_filters,
+           name=None,
+           filter_size=[1, 1],
+           act=None,
+           groups=None,
+           stride=[1, 1],
+           padding=None,
+           bias_attr=None,
+           param_attr=None,
+           program=None):
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -166,6 +171,13 @@ def conv2d_layer(input,
         if num_channels % groups is not 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
+
+    if isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+    if isinstance(stride, int):
+        stride = [stride, stride]
+    if isinstance(padding, int):
+        padding = [padding, padding]
 
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
@@ -187,3 +199,40 @@ def conv2d_layer(input,
     pre_act = helper.append_bias_op(pre_bias)
 
     return helper.append_activation(pre_act)
+
+
+def pool2d(input,
+           pool_size,
+           pool_type,
+           pool_stride=[1, 1],
+           pool_padding=[0, 0],
+           global_pooling=False,
+           program=None):
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+    if isinstance(pool_size, int):
+        pool_size = [pool_size, pool_size]
+    if isinstance(pool_stride, int):
+        pool_stride = [pool_stride, pool_stride]
+    if isinstance(pool_padding, int):
+        pool_padding = [pool_padding, pool_padding]
+
+    helper = LayerHelper('conv2d', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="pool2d",
+        inputs={"X": input},
+        outputs={"Out": pool_out},
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "global_pooling": global_pooling,
+            "strides": pool_stride,
+            "paddings": pool_padding
+        })
+
+    return pool_out

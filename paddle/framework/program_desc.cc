@@ -39,5 +39,14 @@ ProgramDescBind::ProgramDescBind() {
   block->set_parent_idx(-1);
   blocks_.emplace_back(new BlockDescBind(this, block));
 }
+
+ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
+  prog_ = o.prog_;
+
+  for (int i = 0; i < prog_.blocks_size(); ++i) {
+    auto *block = prog_.mutable_blocks(i);
+    blocks_.emplace_back(new BlockDescBind(*o.blocks_[i], block, this));
+  }
+}
 }  // namespace framework
 }  // namespace paddle
