@@ -121,10 +121,13 @@ class LayerHelper(object):
 
     def create_tmp_variable(self, dtype):
         return self.program.current_block().create_var(
-            name=unique_name(".".join([self.name, 'tmp'])), dtype=dtype)
+            name=unique_name(".".join([self.name, 'tmp'])),
+            persistable=False,
+            dtype=dtype)
 
     def create_global_variable(self, *args, **kwargs):
-        return self.program.global_block().create_var(*args, **kwargs)
+        return self.program.global_block().create_var(
+            *args, persistable=False, **kwargs)
 
     def append_bias_op(self, input_var):
         size = list(input_var.shape[1:])

@@ -15,7 +15,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
-                 persistable=False,
+                 persistable=None,
                  **kwargs):
         self.block = block
 
