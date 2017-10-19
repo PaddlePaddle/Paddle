@@ -1,6 +1,6 @@
-# A LoD-based Sequence Decoder 
+# Design: Sequence Decoder Generating LoDTensors
 In tasks such as machine translation and image to text, 
-a **sequence decoder** is necessary to generate sequences.
+a [sequence decoder](https://github.com/PaddlePaddle/book/blob/develop/08.machine_translation/README.md) is necessary to generate sequences.
 
 This documentation describes how to implement the sequence decoder as an operator.
 
@@ -62,7 +62,7 @@ It is easy to find out the second sequence in the first-level LoD has two empty 
 
 The following demos are based on relative-offset LoD.
 
-## Usage in a simple machine translation
+## Usage in a simple machine translation model
 Let's start from a simple machine translation model that is simplified from [machine translation chapter](https://github.com/PaddlePaddle/book/tree/develop/08.machine_translation) to draw a simple blueprint of what a sequence decoder can do and how to use it.
 
 The model has an encoder that learns the semantic vector from a sequence,
