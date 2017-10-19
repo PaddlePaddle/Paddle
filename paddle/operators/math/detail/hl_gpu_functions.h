@@ -30,7 +30,9 @@ __device__ static float sigmoid(const float a) {
 }
 
 __device__ static float tanh(const float a) {
-  return __fdividef(2.0f, (1.0f + __expf(-2.0f * a))) - 1.0f;
+  float tmp = -2.0 * a;
+  tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
+  return __fdividef(2.0f, (1.0f + __expf(-2.0f * tmp))) - 1.0f;
 }
 
 __device__ static float linear(const float a) { return a; }
@@ -63,6 +65,8 @@ __device__ static double sigmoid(const double a) {
 }
 
 __device__ static double tanh(const double a) {
+  double tmp = -2.0 * a;
+  tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
   return (2.0 / (1.0 + exp(-2.0 * a))) - 1.0;
 }
 

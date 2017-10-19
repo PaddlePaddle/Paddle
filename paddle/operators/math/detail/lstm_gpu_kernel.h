@@ -205,11 +205,13 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
   if (batchSize == 1) {
     KeLstmForward<T, Op,
                   /* isBatch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, frameSize, batchSize, active_node, active_gate, active_gate);
+        op, value, frameSize, batchSize, active_node, active_gate,
+        active_state);
   } else {
     KeLstmForward<T, Op,
                   /* isBatch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, frameSize, batchSize, active_node, active_gate, active_gate);
+        op, value, frameSize, batchSize, active_node, active_gate,
+        active_state);
   }
 }
 

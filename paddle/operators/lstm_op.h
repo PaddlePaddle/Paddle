@@ -56,10 +56,6 @@ class LSTMKernel : public framework::OpKernel<T> {
     framework::DDim dims({in_dims[0], frame_size});
 
     if (bias) {
-      // framework::Tensor cpu_t;
-      // cpu_t.mutable_data<T>(in_dims, platform::CPUPlace());
-      // cpu_t.CopyFrom<T>(*batch_gate, platform::CPUPlace(),
-      //     ctx.device_context());
       Eigen::array<int, 2> extents({{1, 4 * frame_size}});
       Eigen::array<int, 2> offsets({{0, 0}});
       auto b = EigenMatrix<T>::From(*bias);
@@ -105,14 +101,14 @@ class LSTMKernel : public framework::OpKernel<T> {
       int cur_batch_size = bend - bstart;
 
       if (n != 0) {
-        int pre_end = batch_lod[n - 1];
-        auto pre_hidden_t = batch_out.Slice<T>(pre_end, bstart);
+        int pre_h_start = batch_lod[n - 1];
+        int pre_h_end = pre_h_start + cur_batch_size;
+        auto pre_hidden_t = batch_out.Slice<T>(pre_h_start, pre_h_end);
         math::matmul<Place, T>(ctx.device_context(), pre_hidden_t, false,
                                *weight, false, static_cast<T>(1.0), &gate_t,
-                               static_cast<T>(0.0));
+                               static_cast<T>(1.0));
       }
-      // else if : how to pass the state from
-      // last mini-batch will be supported later
+      // else if : support the initial hidden and cell
 
       lstm_value.gateValue = gate_t.data<T>();
       lstm_value.outputValue = out_t.data<T>();
@@ -132,9 +128,6 @@ class LSTMKernel : public framework::OpKernel<T> {
     batch_cell.set_lod(batch_gate->lod());
     // restore the output cell state in LoDTensor from the batch cell
     to_seq(ctx.device_context(), batch_cell, *cell_out);
-
-    auto t = framework::EigenVector<T>::Flatten(*batch_gate);
-    t.device(ctx.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
   }
 };
 

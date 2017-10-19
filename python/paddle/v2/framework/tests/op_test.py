@@ -242,7 +242,7 @@ class OpTest(unittest.TestCase):
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=atol),
-                        "output name: " + out_name + " has diff.")
+                        "Output (" + out_name + ") has diff at " + str(place))
             else:
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
                 expect = self.outputs[out_name]
@@ -250,7 +250,7 @@ class OpTest(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(
                         actual, expect, atol=atol),
-                    "output name: " + out_name + " has diff.")
+                    "Output (" + out_name + ") has diff at " + str(place))
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]

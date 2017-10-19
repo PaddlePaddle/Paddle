@@ -60,7 +60,7 @@ inline activation_mode_t ActiveType(const std::string &type) {
     return HL_ACTIVATION_RELU;
   } else if (type == "tanh") {
     return HL_ACTIVATION_TANH;
-  } else if (type == "linear" || type == "") {
+  } else if (type == "linear" || type == "identity" || type == "") {
     return HL_ACTIVATION_LINEAR;
   } else {
     PADDLE_THROW("Do not support activation type.");
