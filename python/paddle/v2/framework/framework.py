@@ -15,6 +15,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
+                 persistable=False,
                  **kwargs):
         self.block = block
 
@@ -70,6 +71,17 @@ class Variable(object):
                                      "lod_level is {2}. They are not "
                                      "matched".format(self.name, self.lod_level,
                                                       lod_level))
+        if persistable is not None:
+            if is_new_var:
+                self.desc.set_persistable(persistable)
+            else:
+                if persistable != self.persistable:
+                    raise ValueError(
+                        "Variable {0} has been created before."
+                        "The previous persistable is {1}; the new "
+                        "persistable is {2}. They are not matched".format(
+                            self.name, self.persistable, persistable))
+
         self.block.vars[name] = self
         self.op = None
 
@@ -79,6 +91,10 @@ class Variable(object):
         return proto.__str__()
 
     __repr__ = __str__
+
+    @property
+    def persistable(self):
+        return self.desc.persistable()
 
     @property
     def name(self):
@@ -348,18 +364,22 @@ class Block(object):
         for op_idx in range(0, self.desc.op_size()):
             ops_in_cpp.append(self.desc.op(op_idx))
 
-        first_op_in_python = self.ops[0].desc
-        last_op_in_python = self.ops[len(self.ops) - 1].desc
-        start_index = None
-        end_index = None
-        for index in range(len(ops_in_cpp)):
-            if first_op_in_python == ops_in_cpp[index]:
-                start_index = index
-            if last_op_in_python == ops_in_cpp[index]:
-                end_index = index
-        assert start_index is not None
-        assert end_index is not None
-        assert start_index <= end_index
+        if len(self.ops) != 0:
+            first_op_in_python = self.ops[0].desc
+            last_op_in_python = self.ops[len(self.ops) - 1].desc
+            start_index = None
+            end_index = None
+            for index in range(len(ops_in_cpp)):
+                if first_op_in_python == ops_in_cpp[index]:
+                    start_index = index
+                if last_op_in_python == ops_in_cpp[index]:
+                    end_index = index
+            assert start_index is not None
+            assert end_index is not None
+            assert start_index <= end_index
+        else:
+            start_index = 0
+            end_index = -1
 
         # sync ops append to the head of cpp_ops
         for index in range((start_index - 1 - 1), -1, -1):
@@ -397,7 +417,15 @@ class Program(object):
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return proto.__str__()
 
-    __repr__ = __str__
+    def clone(self):
+        p = Program()
+        p.desc = core.ProgramDesc(self.desc)
+        p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+        p.sync_with_cpp()
+        return p
+
+    def __repr__(self):
+        return str(self)
 
     def global_block(self):
         return self.blocks[0]
@@ -447,7 +475,9 @@ class Parameter(Variable):
             if each < 0:
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
-        Variable.__init__(self, block, shape=shape, dtype=dtype, **kwargs)
+
+        Variable.__init__(
+            self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
         self.init_attr = kwargs.get('initialize_attr', {
             'type': 'uniform_random',

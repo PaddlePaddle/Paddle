@@ -101,6 +101,10 @@ using namespace paddle::framework;  // NOLINT
 void BindProgramDesc(py::module &m) {
   py::class_<ProgramDescBind>(m, "ProgramDesc", "")
       .def(py::init<>())
+      .def("__init__",
+           [](ProgramDescBind &self, const ProgramDescBind &other) {
+             new (&self) ProgramDescBind(other);
+           })
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("append_backward",
@@ -202,16 +206,19 @@ void BindVarDsec(py::module &m) {
       .def("set_lod_level", &VarDescBind::SetLoDLevel)
       .def("type", &VarDescBind::GetType)
       .def("set_type", &VarDescBind::SetType)
-      .def("serialize_to_string", [](VarDescBind &var_desc) -> py::bytes {
-        const VarDesc *desc = var_desc.Proto();
-        PADDLE_ENFORCE(desc->IsInitialized(),
-                       "VarDesc has not been initialized.");
-        std::string res;
-        PADDLE_ENFORCE(
-            desc->SerializeToString(&res),
-            "Serialize VarDesc Error. This could be a bug of Paddle.");
-        return res;
-      });
+      .def("serialize_to_string",
+           [](VarDescBind &var_desc) -> py::bytes {
+             const VarDesc *desc = var_desc.Proto();
+             PADDLE_ENFORCE(desc->IsInitialized(),
+                            "VarDesc has not been initialized.");
+             std::string res;
+             PADDLE_ENFORCE(
+                 desc->SerializeToString(&res),
+                 "Serialize VarDesc Error. This could be a bug of Paddle.");
+             return res;
+           })
+      .def("persistable", &VarDescBind::Persistable)
+      .def("set_persistable", &VarDescBind::SetPersistable);
 
   py::enum_<VarDesc::VarType>(var_desc, "VarType", "")
       .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
