@@ -44,7 +44,7 @@ class LSTMOp : public framework::OperatorWithKernel {
                      "should be the same.");
     }
 
-    int frame_size = x_dims[1];
+    int frame_size = x_dims[1] / 4;
     auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(w_dims.size(), 2,
                       "The rank of Input(Weight) should be 2.");
@@ -71,9 +71,9 @@ class LSTMOp : public framework::OperatorWithKernel {
                         "4 * %d if diable peepholes connection",
                         frame_size);
     }
-    ctx->SetOutputDim("Hidden", x_dims);
-    ctx->SetOutputDim("Cell", x_dims);
-    ctx->SetOutputDim("Batch", x_dims);
+    ctx->SetOutputDim("Hidden", {x_dims[0], frame_size});
+    ctx->SetOutputDim("Cell", {x_dims[0], frame_size});
+    ctx->SetOutputDim("BatchGate", x_dims);
     ctx->ShareLoD("Input", "Hidden");
     ctx->ShareLoD("Input", "Cell");
   }

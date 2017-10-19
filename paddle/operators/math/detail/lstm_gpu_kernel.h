@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/platform/cuda_helper.h"
 #include "paddle/platform/device_context.h"
 
+#include <glog/logging.h>
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -29,11 +31,10 @@ namespace detail {
  * grid(frameBlocks, batchBlocks)
  */
 template <class T, class Op, bool isBatch>
-__global__ void KeLstmForward(
-    Op op, LstmMetaValue<T> value, int frameSize, int batchSize,
-    typename hppl::ForwardActType<T>::type active_node,
-    typename hppl::ForwardActType<T>::type active_gate,
-    typename hppl::ForwardActType<T>::type active_state) {
+__global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frameSize,
+                              int batchSize, activation_mode_t active_node,
+                              activation_mode_t active_gate,
+                              activation_mode_t active_state) {
   const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frameIdx >= frameSize) return;
 
@@ -69,8 +70,10 @@ __global__ void KeLstmForward(
     rPrevState = value.prevStateValue[frameIdx];
   }
 
+  hppl::gpu::ForwardAct<T> act;
   op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-     rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
+     rOut, rCheckI, rCheckF, rCheckO, act(active_node), act(active_gate),
+     act(active_state));
 
   value.gateValue[frameIdx] = rValueIn;
   value.gateValue[frameIdx + frameSize] = rValueIg;
@@ -87,11 +90,11 @@ __global__ void KeLstmForward(
  * grid(frameBlocks, batchBlocks)
  */
 template <class T, class Op, bool isBatch>
-__global__ void KeLstmBackward(
-    Op op, LstmMetaValue<T> value, LstmMetaGrad<T> grad, int frameSize,
-    int batchSize, typename hppl::BackwardActType<T>::type active_node,
-    typename hppl::BackwardActType<T>::type active_gate,
-    typename hppl::BackwardActType<T>::type active_state) {
+__global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
+                               LstmMetaGrad<T> grad, int frameSize,
+                               int batchSize, activation_mode_t active_node,
+                               activation_mode_t active_gate,
+                               activation_mode_t active_state) {
   const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frameIdx >= frameSize) return;
 
@@ -142,10 +145,11 @@ __global__ void KeLstmBackward(
     rPrevState = value.prevStateValue[frameIdx];
   }
 
+  hppl::gpu::BackwardAct<T> act;
   op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg, rGradOg,
      rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv, rOutputGrad,
      rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad, rCheckOGrad,
-     active_node, active_gate, active_state);
+     act(active_node), act(active_gate), act(active_state));
 
   grad.gateGrad[frameIdx] = rGradIn;
   grad.gateGrad[frameIdx + frameSize] = rGradIg;
@@ -196,22 +200,16 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
     grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 32 - 1) / 32);
   }
 
-  using type = typename hppl::ForwardActType<T>::type;
-  hppl::gpu::ForwardAct<T> act;
-  type act_node = act(active_node);
-  type act_gate = act(active_gate);
-  type act_state = act(active_state);
-
   auto stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
   if (batchSize == 1) {
     KeLstmForward<T, Op,
                   /* isBatch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, frameSize, batchSize, act_node, act_gate, act_state);
+        op, value, frameSize, batchSize, active_node, active_gate, active_gate);
   } else {
     KeLstmForward<T, Op,
                   /* isBatch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, frameSize, batchSize, act_node, act_gate, act_state);
+        op, value, frameSize, batchSize, active_node, active_gate, active_gate);
   }
 }
 
@@ -235,22 +233,18 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
     grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 32 - 1) / 32);
   }
 
-  using type = typename hppl::BackwardActType<T>::type;
-  hppl::gpu::BackwardAct<T> act;
-  type act_node = act(active_node);
-  type act_gate = act(active_gate);
-  type act_state = act(active_state);
-
   auto stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
   if (batchSize == 1) {
     KeLstmBackward<T, Op,
                    /* isBatch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, grad, frameSize, batchSize, act_node, act_gate, act_state);
+        op, value, grad, frameSize, batchSize, active_node, active_gate,
+        active_state);
   } else {
     KeLstmBackward<T, Op,
                    /* isBatch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, grad, frameSize, batchSize, act_node, act_gate, act_state);
+        op, value, grad, frameSize, batchSize, active_node, active_gate,
+        active_state);
   }
 }
 

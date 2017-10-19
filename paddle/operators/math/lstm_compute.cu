@@ -26,18 +26,9 @@ struct LstmUnitFunctor<platform::GPUPlace, T> {
                       LstmMetaValue<T> value, int frame_size, int batch_size,
                       std::string gate_act, std::string cell_act,
                       std::string cand_act) {
-    for (int b = 0; b < batch_size; b++) {
-      detail::gpu_lstm_forward(context, detail::forward::lstm<T>(), value,
-                               frame_size, batch_size, ActiveType(cand_act),
-                               ActiveType(gate_act), ActiveType(cell_act));
-      value.gateValue += frame_size * 4;
-      value.stateValue += frame_size;
-      value.stateActiveValue += frame_size;
-      value.outputValue += frame_size;
-      if (value.prevStateValue) {
-        value.prevStateValue += frame_size;
-      }
-    }
+    detail::gpu_lstm_forward<T>(context, detail::forward::lstm<T>(), value,
+                                frame_size, batch_size, ActiveType(cand_act),
+                                ActiveType(gate_act), ActiveType(cell_act));
   }
 };
 
@@ -47,32 +38,15 @@ struct LstmUnitGradFunctor<platform::GPUPlace, T> {
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
                       int frame_size, int batch_size, std::string gate_act,
                       std::string cell_act, std::string cand_act) {
-    for (int b = 0; b < batch_size; b++) {
-      detail::gpu_lstm_backward(context, detail::backward::lstm<T>(), value,
-                                grad, frame_size, batch_size,
-                                ActiveType(cand_act), ActiveType(gate_act),
-                                ActiveType(cell_act));
-
-      value.gateValue += frame_size * 4;
-      value.stateValue += frame_size;
-      value.stateActiveValue += frame_size;
-      value.outputValue += frame_size;
-      if (value.prevStateValue) {
-        value.prevStateValue += frame_size;
-      }
-
-      grad.gateGrad += frame_size * 4;
-      grad.stateGrad += frame_size;
-      grad.stateActiveGrad += frame_size;
-      grad.outputGrad += frame_size;
-      if (grad.prevStateGrad) {
-        grad.prevStateGrad += frame_size;
-      }
-    }
+    detail::gpu_lstm_backward(context, detail::backward::lstm<T>(), value, grad,
+                              frame_size, batch_size, ActiveType(cand_act),
+                              ActiveType(gate_act), ActiveType(cell_act));
   }
 };
 
 template class LstmUnitFunctor<platform::GPUPlace, float>;
+template class LstmUnitFunctor<platform::GPUPlace, double>;
+template class LstmUnitGradFunctor<platform::GPUPlace, float>;
 template class LstmUnitGradFunctor<platform::GPUPlace, double>;
 
 }  // namespace math

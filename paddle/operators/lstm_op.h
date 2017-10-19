@@ -52,9 +52,14 @@ class LSTMKernel : public framework::OpKernel<T> {
     to_batch(ctx.device_context(), *input, *batch_gate, is_reverse);
 
     auto in_dims = input->dims();
-    int frame_size = in_dims[1];
+    int frame_size = in_dims[1] / 4;
+    framework::DDim dims({in_dims[0], frame_size});
 
     if (bias) {
+      // framework::Tensor cpu_t;
+      // cpu_t.mutable_data<T>(in_dims, platform::CPUPlace());
+      // cpu_t.CopyFrom<T>(*batch_gate, platform::CPUPlace(),
+      //     ctx.device_context());
       Eigen::array<int, 2> extents({{1, 4 * frame_size}});
       Eigen::array<int, 2> offsets({{0, 0}});
       auto b = EigenMatrix<T>::From(*bias);
@@ -76,15 +81,14 @@ class LSTMKernel : public framework::OpKernel<T> {
     lstm_value.prevStateValue = nullptr;
 
     framework::LoDTensor batch_out;
-    batch_out.mutable_data<T>(in_dims, ctx.GetPlace());
+    batch_out.mutable_data<T>(dims, ctx.GetPlace());
     framework::LoDTensor batch_cell;
-    batch_cell.mutable_data<T>(in_dims, ctx.GetPlace());
+    batch_cell.mutable_data<T>(dims, ctx.GetPlace());
     framework::LoDTensor batch_cell_pre_act;
-    batch_cell_pre_act.mutable_data<T>(in_dims, ctx.GetPlace());
+    batch_cell_pre_act.mutable_data<T>(dims, ctx.GetPlace());
 
     auto batch_lod = batch_gate->lod()[0];
     int num_batch = batch_lod.size() - 1;
-
     auto gate_act = ctx.Attr<std::string>("gateActivation");
     auto cell_act = ctx.Attr<std::string>("cellActivation");
     auto cand_act = ctx.Attr<std::string>("candidateActivation");
@@ -125,9 +129,12 @@ class LSTMKernel : public framework::OpKernel<T> {
     // restore the output hidden in LoDTensor from the batch hidden
     to_seq(ctx.device_context(), batch_out, *hidden_out);
 
-    batch_out.set_lod(batch_gate->lod());
+    batch_cell.set_lod(batch_gate->lod());
     // restore the output cell state in LoDTensor from the batch cell
     to_seq(ctx.device_context(), batch_cell, *cell_out);
+
+    auto t = framework::EigenVector<T>::Flatten(*batch_gate);
+    t.device(ctx.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
   }
 };
 

@@ -72,6 +72,8 @@ struct LstmUnitGradFunctor<platform::CPUPlace, T> {
 };
 
 template class LstmUnitFunctor<platform::CPUPlace, float>;
+template class LstmUnitFunctor<platform::CPUPlace, double>;
+template class LstmUnitGradFunctor<platform::CPUPlace, float>;
 template class LstmUnitGradFunctor<platform::CPUPlace, double>;
 
 }  // namespace math

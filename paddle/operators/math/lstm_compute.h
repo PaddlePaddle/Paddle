@@ -53,7 +53,7 @@ struct LstmMetaGrad {
   T *checkOgGrad;
 };
 
-activation_mode_t ActiveType(const std::string &type) {
+inline activation_mode_t ActiveType(const std::string &type) {
   if (type == "sigmoid") {
     return HL_ACTIVATION_SIGMOID;
   } else if (type == "relu") {

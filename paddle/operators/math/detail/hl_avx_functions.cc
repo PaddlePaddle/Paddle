@@ -14,10 +14,12 @@ limitations under the License. */
 
 #include <immintrin.h>
 #include "hl_functions.h"
+// TODO(qingqing) refine this dependence
+#include "paddle/cuda/src/avx_mathfun.h"
 
 namespace hppl {
 
-extern __m256 exp(__m256 a);
+__m256 exp(__m256 a) { return exp256_ps(a); }
 
 __m256 relu(const __m256 a) {
   __m256 tmp = _mm256_set1_ps(0.0f);

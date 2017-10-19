@@ -34,83 +34,28 @@ limitations under the License. */
 #ifndef __NVCC__
 namespace hppl {
 namespace typef {
-/*
- * forward activation
- */
-float relu(const float a) {
-  return a > static_cast<float>(0.0) ? a : static_cast<float>(0.0);
-}
+float relu(const float a);
+float sigmoid(const float a);
+float tanh(const float a);
+float linear(const float a);
 
-float sigmoid(const float a) {
-  const float min = SIGMOID_THRESHOLD_MIN;
-  const float max = SIGMOID_THRESHOLD_MAX;
-  float tmp = (a < min) ? min : ((a > max) ? max : a);
-  return static_cast<float>(1.0) / (static_cast<float>(1.0) + exp(-tmp));
-}
+float relu(const float a, const float b);
+float sigmoid(const float a, const float b);
+float tanh(const float a, const float b);
+float linear(const float a, const float b);
 
-float tanh(const float a) {
-  float tmp = -2.0 * a;
-  tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
-  return (2.0 / (1.0 + exp(tmp))) - 1.0;
-}
-
-float linear(const float a) { return a; }
-
-/*
- * backward activation
- */
-float relu(const float a, const float b) { return a * (b > 0.0 ? 1.0 : 0.0); }
-
-float sigmoid(const float a, const float b) {
-  return a * b * (static_cast<float>(1) - b);
-}
-
-float tanh(const float a, const float b) {
-  return a * (static_cast<float>(1) - b * b);
-}
-
-float linear(const float a, const float b) { return a; }
 }  // namespace typef
 
 namespace typed {
-/*
- * forward activation
- */
-double relu(const double a) {
-  return a > static_cast<double>(0.0) ? a : static_cast<double>(0.0);
-}
+double relu(const double a);
+double sigmoid(const double a);
+double tanh(const double a);
+double linear(const double a);
 
-double sigmoid(const double a) {
-  const double min = SIGMOID_THRESHOLD_MIN;
-  const double max = SIGMOID_THRESHOLD_MAX;
-  double tmp = (a < min) ? min : ((a > max) ? max : a);
-  return static_cast<double>(1.0) / (static_cast<double>(1.0) + exp(-tmp));
-}
-
-double tanh(const double a) {
-  double tmp = -2.0 * a;
-  tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
-  return (2.0 / (1.0 + exp(tmp))) - 1.0;
-}
-
-double linear(const double a) { return a; }
-
-/*
- * backward activation
- */
-double relu(const double a, const double b) {
-  return a * (b > 0.0 ? 1.0 : 0.0);
-}
-
-double sigmoid(const double a, const double b) {
-  return a * b * (static_cast<double>(1) - b);
-}
-
-double tanh(const double a, const double b) {
-  return a * (static_cast<double>(1) - b * b);
-}
-
-double linear(const double a, const double b) { return a; }
+double relu(const double a, const double b);
+double sigmoid(const double a, const double b);
+double tanh(const double a, const double b);
+double linear(const double a, const double b);
 }  // namespace typed
 
 }  // namespace hppl
