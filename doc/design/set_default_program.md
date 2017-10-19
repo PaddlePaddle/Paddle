@@ -26,9 +26,6 @@ class set_program_desc:
         DEFAULT_INIT_PROGRAM = None
 
 def fc_layer():
-    program = DEFAULT_PROGRAM
-    init_program = DEFAULT_INIT_PROGRAM
-
     DEFAULT_PROGRAM.name += " fc_layer added"
     DEFAULT_INIT_PROGRAM.name += " fc_layer added"
 
