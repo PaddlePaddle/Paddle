@@ -84,37 +84,8 @@ class Tensor {
   template <typename T>
   inline Tensor& ShareDataWith(const Tensor& src);
 
-  /**
-   * @brief   Copy the content of external tensor to a new place.
-   *
-   * @param[in] src        The external tensor.
-   * @param[in] dst_place  The dst place.
-   * @param[in] ctx        The device context contains device resources.
-   *
-   * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
-   */
-  // TODO(qijun): https://github.com/PaddlePaddle/Paddle/issues/4647
-  // Remove `CopyFrom` and `CopyFromVector` from Tensor interface
-  // and make them global functions
-  template <typename T>
   inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
                        const platform::DeviceContext& ctx);
-
-  // FIXME(yuyang18): CopyFrom should without template T, use the replace
-  // `CopyFrom` with `CopyFromTensor`
-  inline void CopyFromTensor(const Tensor& src,
-                             const platform::Place& dst_place,
-                             const platform::DeviceContext& ctx) {
-    // NOLINTNEXTLINES_8 cpplint.py will recognize below lines as functions.
-    // That is a bug of cpplint.py. Just ignore lint these lines.
-    if (src.type() == std::type_index(typeid(double))) {
-      CopyFrom<double>(src, dst_place, ctx);
-    } else if (src.type() == std::type_index(typeid(float))) {
-      CopyFrom<float>(src, dst_place, ctx);
-    } else if (src.type() == std::type_index(typeid(int))) {
-      CopyFrom<int>(src, dst_place, ctx);
-    }
-  }
 
   /**
    * @brief   Copy the content of an external vector to a tensor.
@@ -144,6 +115,22 @@ class Tensor {
   }
 
   std::type_index type() const { return holder_->type(); }
+
+  /**
+   * @brief   Copy the content of external tensor to a new place.
+   *
+   * @param[in] src        The external tensor.
+   * @param[in] dst_place  The dst place.
+   * @param[in] ctx        The device context contains device resources.
+   *
+   * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+   */
+  // TODO(qijun): https://github.com/PaddlePaddle/Paddle/issues/4647
+  // Remove `CopyFrom` and `CopyFromVector` from Tensor interface
+  // and make them global functions
+  template <typename T>
+  inline void CopyFromWithT(const Tensor& src, const platform::Place& dst_place,
+                            const platform::DeviceContext& ctx);
 
  private:
   template <typename T>

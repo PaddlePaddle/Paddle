@@ -72,7 +72,7 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
       // TODO(luotao02) data type and platform::DeviceContext() should set
       // correctly
       (output->Slice<float>(j, j + 1))
-          .CopyFrom<float>(*step_output, platform::CPUPlace(), ctx);
+          .CopyFrom(*step_output, platform::CPUPlace(), ctx);
     }
   }
 }

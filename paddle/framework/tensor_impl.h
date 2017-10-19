@@ -87,9 +87,9 @@ inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
 }
 
 template <typename T>
-inline void Tensor::CopyFrom(const Tensor& src,
-                             const platform::Place& dst_place,
-                             const platform::DeviceContext& ctx) {
+inline void Tensor::CopyFromWithT(const Tensor& src,
+                                  const platform::Place& dst_place,
+                                  const platform::DeviceContext& ctx) {
   src.check_memory_size<T>();
   Resize(src.dims());
 
@@ -140,6 +140,56 @@ inline void Tensor::CopyFrom(const Tensor& src,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+}
+namespace details {
+template <typename... T>
+struct CopyFromInvoker;
+
+template <typename T>
+struct CopyFromInvoker<T> {
+  bool operator()(Tensor* self, const Tensor& src,
+                  const platform::Place& dst_place,
+                  const platform::DeviceContext& ctx) const {
+    if (src.type() == std::type_index(typeid(T))) {  // NOLINT
+      self->CopyFromWithT<T>(src, dst_place, ctx);
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
+template <typename HEAD, typename... TAIL>
+struct CopyFromInvoker<HEAD, TAIL...> {
+  bool operator()(Tensor* self, const Tensor& src,
+                  const platform::Place& dst_place,
+                  const platform::DeviceContext& ctx) const {
+    CopyFromInvoker<HEAD> head;
+    if (head(self, src, dst_place, ctx)) {
+      return true;
+    } else {
+      CopyFromInvoker<TAIL...> tail;
+      return tail(self, src, dst_place, ctx);
+    }
+  }
+};
+
+template <>
+struct CopyFromInvoker<> {
+  bool operator()(Tensor* self, const Tensor& src,
+                  const platform::Place& dst_place,
+                  const platform::DeviceContext& ctx) const {
+    return false;
+  }
+};
+}  // namespace details
+inline void Tensor::CopyFrom(const Tensor& src,
+                             const platform::Place& dst_place,
+                             const platform::DeviceContext& ctx) {
+  details::CopyFromInvoker<float, double, int, short, int64_t> invoker;
+  PADDLE_ENFORCE(invoker(this, src, dst_place, ctx),
+                 "Cannot CopyFrom Tensor, the source type is %s",
+                 src.type().name());
 }
 
 template <typename T>
