@@ -399,14 +399,6 @@ class Block(object):
 
 
 class Program(object):
-    @classmethod
-    def instance(cls):
-        # From https://stackoverflow.com/questions/8212053
-        # Making Program as a Singleton class.
-        if not hasattr(cls, '_instance'):
-            cls._instance = cls()
-        return cls._instance
-
     def __init__(self):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
@@ -500,4 +492,4 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_program = Program.instance()
+g_program = Program()
