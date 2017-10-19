@@ -106,8 +106,8 @@ void TensorArray::Write(size_t index, const LoDTensor& value) {
 
   values_[index].Resize(value.dims());
   values_[index].mutable_data<value_type>(platform::CPUPlace());
-  values_[index].CopyFrom<value_type>(value, platform::CPUPlace(),
-                                      platform::CPUDeviceContext());
+  values_[index].CopyFrom(value, platform::CPUPlace(),
+                          platform::CPUDeviceContext());
 }
 
 void TensorArray::WriteShared(size_t index, const LoDTensor& value) {
@@ -164,8 +164,8 @@ LoDTensor TensorArray::Stack() const {
 
   for (size_t idx = 0; idx < size(); idx++) {
     result.Slice<value_type>(idx, idx + 1)
-        .CopyFrom<value_type>(Read(idx), platform::CPUPlace(),
-                              platform::CPUDeviceContext());
+        .CopyFrom(Read(idx), platform::CPUPlace(),
+                  platform::CPUDeviceContext());
   }
   return result;
 }
@@ -195,9 +195,8 @@ void TensorArray::Unstack(const LoDTensor& source, bool data_shared) const {
     } else {
       // copy
       value.Resize(value_dims);
-      value.CopyFrom<value_type>(source.Slice<value_type>(elem, elem + 1),
-                                 platform::CPUPlace(),
-                                 platform::CPUDeviceContext());
+      value.CopyFrom(source.Slice<value_type>(elem, elem + 1),
+                     platform::CPUPlace(), platform::CPUDeviceContext());
     }
   }
 }
@@ -245,8 +244,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
     auto target = result.Slice<value_type>(i, i + 1);
     auto slice = source->Slice<value_type>(index, index + 1);
 
-    target.CopyFrom<value_type>(slice, platform::CPUPlace(),
-                                platform::CPUDeviceContext());
+    target.CopyFrom(slice, platform::CPUPlace(), platform::CPUDeviceContext());
   }
 
   return result;
@@ -279,8 +277,8 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
       if (index >= seq_meta.end) break;
       auto source_ = source[batch_id].Slice<float>(seq_id, seq_id + 1);
       auto target = result.Slice<float>(index, index + 1);
-      target.CopyFrom<float>(source_, platform::CPUPlace(),
-                             platform::CPUDeviceContext());
+      target.CopyFrom(source_, platform::CPUPlace(),
+                      platform::CPUDeviceContext());
     }
   }
 

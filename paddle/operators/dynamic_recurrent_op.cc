@@ -52,8 +52,7 @@ inline void ReorderBootState(const DySeqMetaBatch& metas,
     auto boot_slice =
         boot_state.Slice<T>(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
     // TODO(superjom) pass in device context as an argument
-    slice.template CopyFrom<T>(boot_slice, dst_place,
-                               platform::CPUDeviceContext());
+    slice.CopyFrom(boot_slice, dst_place, platform::CPUDeviceContext());
   }
 }
 
