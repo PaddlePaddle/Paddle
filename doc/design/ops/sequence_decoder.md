@@ -174,21 +174,35 @@ a `lod_expand` operator is used to expand the LoD of the previous state to fit t
 
 For example, the previous state
 
-- LoD is `[0, 1, 3][0, 2, 5, 6]`
-- content of tensor is `a1 a2 b1 b2 b3 c1`
+* LoD is `[0, 1, 3][0, 2, 5, 6]`
+* content of tensor is `a1 a2 b1 b2 b3 c1`
 
 the current state stored in `encoder_ctx_expanded`
 
-- LoD is `[0, 2, 7][0 3 5 8 9 11 11]`
-- the content is 
-  1. a1 a1 a1 (a1 has 3 candidates, so the state should be copied 3 times for each candidates)
-  2. a2 a2
-  3. b1 b1 b1
-  4. b2
-  5. b3 b3
-  6. - (c1 has 0 candidates, so c1 is dropped)
+* LoD is `[0, 2, 7][0 3 5 8 9 11 11]`
+* the content is 
+  - a1 a1 a1 (a1 has 3 candidates, so the state should be copied 3 times for each candidates)
+  - a2 a2
+  - b1 b1 b1
+  - b2
+  - b3 b3
+  - None (c1 has 0 candidates, so c1 is dropped)
 
 Benefit from the relative offset LoD, empty candidate set can be represented naturally.
+
+the status in each time step can be stored in `TensorArray`, and `Pack`ed to a final LoDTensor, the corresponding syntax is 
+
+```python
+decoder.output(selected_ids)
+decoder.output(selected_scores)
+decoder.output(generated_scores)
+```
+
+the `selected_ids` is the candidate ids for the prefixes, 
+it will be `Packed` by `TensorArray` to a two-level `LoDTensor`,
+the first level represents the source sequences,
+the second level represents generated sequences.
+
 
 ## Appendix
 Let's validate the logic with some simple data, assuming that there are 3 sentences to translate
