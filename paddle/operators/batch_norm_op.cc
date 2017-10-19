@@ -67,7 +67,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<bool>("is_test", "").SetDefault(false);
-    AddAttr<float>("momentum", "").SetDefault(0.5);
+    AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
     AddInput("X", "The input 4-dimensional tensor");
     AddInput("Scale", "The second input of mul op");
