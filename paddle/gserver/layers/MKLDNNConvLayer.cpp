@@ -370,8 +370,7 @@ void MKLDNNConvLayer::resetWgtValBwdData(
   // since the primitive_desc would be different with wgtVal_
   CHECK(wgtVal_) << "should have weight value";
   if (dataPD->weights_primitive_desc() != wgtVal_->getPrimitiveDesc()) {
-    wgtValBwdData_ =
-        MKLDNNMatrix::create(nullptr, dataPD->weights_primitive_desc());
+    wgtValBwdData_ = MKLDNNMatrix::create(dataPD->weights_primitive_desc());
     cvtWgtVal_ = MKLDNNMatrix::createReorder(wgtVal_, wgtValBwdData_);
     CHECK(cvtWgtVal_);
   } else {

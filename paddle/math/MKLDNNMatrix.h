@@ -40,16 +40,17 @@ public:
   /**
    * Create MKLDNNMatrix from a MatrixPtr and memory primitive_desc
    */
-  static MKLDNNMatrixPtr create(MatrixPtr m, mkldnn::memory::primitive_desc pd);
+  static MKLDNNMatrixPtr create(mkldnn::memory::primitive_desc pd,
+                                MatrixPtr m = nullptr);
 
   /**
    * Create MKLDNNMatrix from a MatrixPtr and memory details info
    */
   static MKLDNNMatrixPtr create(
-      MatrixPtr m,
       mkldnn::memory::dims dims,
       mkldnn::memory::format fmt,
       mkldnn::engine& eg,
+      MatrixPtr m = nullptr,
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
 
   /**
