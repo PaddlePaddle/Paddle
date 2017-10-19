@@ -282,4 +282,4 @@ mpirun -hostfile machines -n 3  /home/tutorial/start_mpi_train.sh
 
 ## 在Kubernetes集群中提交训练作业
 
-此部分的使用方法可以参考[Kubernetes分布式训练](../k8s/k8s_distributed_cn.md)。
+此部分的使用方法可以参考[here](../k8s/k8s_distributed_cn.md)。
