@@ -1529,7 +1529,7 @@ def multi_head_attention(query,
     :param head_num: The number of attention heads.
     :type head_num: int
     :param attention_type: The type of the attention mechanism used in each attention
-                           heads. Now, we only support scaled dot-product attention and ###
+                           heads. Now, we only support scaled dot-product attention and
                            additive attention.
     :type attention_type: basestring
     :return: The context vector.
