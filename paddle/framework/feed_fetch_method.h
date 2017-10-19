@@ -34,7 +34,7 @@ void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  feed_inputs[index].ShareDataWith<T>(input);
+  feed_inputs[index].ShareDataWith(input);
   // set lod
   feed_inputs[index].set_lod(input.lod());
 }
