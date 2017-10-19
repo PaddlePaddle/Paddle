@@ -21,9 +21,9 @@ namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-template <int BlockSize>
-__global__ void AccuracyCudaKernel(const int N, const int D, const int* Xdata,
-                                   const int* labeldata, float* accuracy) {
+template <typename T, int BlockSize>
+__global__ void AccuracyCudaKernel(const int N, const int D, const T* Xdata,
+                                   const T* labeldata, float* accuracy) {
   int count = 0;
   __shared__ int total[BlockSize];
 
@@ -57,8 +57,8 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
     // FIXME(typhoonzero): only support indices currently
     // if add support for output values, how to detect the data type?
-    const int* inference_data = inference->data<int>();
-    const int* label_data = label->data<int>();
+    const T* inference_data = inference->data<T>();
+    const T* label_data = label->data<T>();
     float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
 
     size_t num_samples = inference->dims()[0];
@@ -69,7 +69,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
-    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<
+    AccuracyCudaKernel<T, PADDLE_CUDA_NUM_THREADS><<<
         1, PADDLE_CUDA_NUM_THREADS, 0,
         reinterpret_cast<const platform::CUDADeviceContext&>(
             ctx.device_context())
