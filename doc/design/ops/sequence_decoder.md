@@ -1,22 +1,22 @@
-# A LoD based Sequence Decoder (Beam Search)
-Sequence Decoder is an operator that help generate sequences, 
-it shares much logic with `dynamic_recurrent_op`,
-but some more codes to support beam search algorithm.
+# A LoD-based Sequence Decoder 
+In tasks such as machine translation and image to text, 
+a **sequence decoder** is necessary to generate sequences.
 
-In text generation tasks, such as machine translation, 
-a neural network is trained to rate candidate words given the context,
-a decoder will be used to select out good candidates as the next word and extend the prefix with the candidates.
+This documentation describes how to implement the sequence decoder as an operator.
 
-## Beam Search
-Beam search is a heuristic search algorithm that explores a graph by expanding the most promising node in a limited set.
+## Beam Search based Decoder
+The [beam search algorithm](https://en.wikipedia.org/wiki/Beam_search) is necessary when generating sequences, 
+it is a a heuristic search algorithm that explores a graph by expanding the most promising node in a limited set.
 
-It is the core component of Sequence Decoder.
+In the old version of PaddlePaddle, a C++ class `RecurrentGradientMachine` implements the general sequence decoder based on beam search, 
+due to the complexity, the implementation relays on a lot of special data structures, 
+quite trivial and hard to be customized by users.
 
-In the original implementation of `RecurrentGradientMachine`, the beam search is a method in RNN,
-due to the complexity of the algorithm, the implementation is quite trivial and hard to reuse by another module.
+There are a lot of heuristic tricks in the sequence generation tasks, 
+so the flexibliliby of sequence decoder is very important to users.
 
 During PaddlePaddle's refactoring work,
-some new concept is proposed such as `LoDTensor` and `TensorArray` that can better support sequence usage,
+some new concept is proposed such as [LoDTensor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md) and [TensorArray](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/tensor_array.md) that can better support sequence usage,
 and they can help to make the implementation of beam search based sequence decoder **more transparent and modular** .
 
 ## Introducing the absolute-offset and relative-offset Level of Details (LoD)
