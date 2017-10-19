@@ -20,7 +20,7 @@ class TestBook(unittest.TestCase):
         avg_cost = layers.mean(x=cost, program=program)
         self.assertIsNotNone(avg_cost)
         program.append_backward(avg_cost)
-        # print str(program)
+        print str(program)
 
     def test_recognize_digits_mlp(self):
         program = Program()
@@ -39,7 +39,7 @@ class TestBook(unittest.TestCase):
         cost = layers.cross_entropy(input=predict, label=label, program=program)
         avg_cost = layers.mean(x=cost, program=program)
         self.assertIsNotNone(avg_cost)
-        # print str(program)
+        print str(program)
 
     def test_simple_conv2d(self):
         program = Program()
@@ -48,7 +48,7 @@ class TestBook(unittest.TestCase):
         layers.conv2d(
             input=images, num_filters=3, filter_size=[4, 4], program=program)
 
-        # print str(program)
+        print str(program)
 
     def test_recognize_digits_conv(self):
         program = Program()
