@@ -26,7 +26,7 @@ SET(NCCL_SOURCES_DIR ${THIRD_PARTY_PATH}/nccl)
 SET(NCCL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/nccl)
 SET(NCCL_INCLUDE_DIR "${NCCL_INSTALL_DIR}/include" CACHE PATH "nccl include directory." FORCE)
 
-INCLUDE_DIRECTORIES(${NCCL_SOURCE_DIR}/src/extern_nccl/build/include)
+INCLUDE_DIRECTORIES(${NCCL_SOURCES_DIR}/src/extern_nccl/build/include)
 INCLUDE_DIRECTORIES(${NCCL_INCLUDE_DIR})
 
 IF(WIN32)
@@ -54,6 +54,9 @@ ExternalProject_Add(
     INSTALL_DIR ${NCCL_INSTALL_DIR}
     TEST_COMMAND      ""
     )
+
+MESSAGE(STATUS "nccl include: ${NCCL_INCLUDE_DIR}")
+MESSAGE(STATUS "nccl source: ${NCCL_SOURCES_DIR}")
 
 MESSAGE(STATUS "nccl library: ${NCCL_LIBRARIES}")
 
