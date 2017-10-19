@@ -58,13 +58,13 @@ protected:
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-  /// value and grad are seperate as internal and external buffers.
+  /// value and grad are seperated as internal and external buffers.
   /// each MKLDNNLayer must init or reset internal buffer at least,
   /// and the external buffer format is always nchw of nc(when h==w==1),
   /// which is the same format as paddle.
-  /// When mixed with cpu device, the output_.value and output_.grad
-  /// always save the external data.
-  /// When all layers are all mkldnn layers, they could be internal data.
+  /// The output_.value and output_.grad always save the external data,
+  /// when mixed with cpu device.
+  /// When all layers are mkldnn layers, they could save internal data.
   /// below MKLDNNMatrix buffers are all internal buffers
   MKLDNNMatrixPtr inVal_;
   MKLDNNMatrixPtr inGrad_;

@@ -105,6 +105,10 @@ void MKLDNNLayer::backward(const UpdateCallback& callback) {
     // external output grad is not necessary
     // since output may be mkldnn internal buffer or merge them directly.
     CHECK(outGrad_) << "internal output grad is necessary";
+    if (extOutGrad_) {
+      CHECK_EQ(extOutGrad_->getData(), output_.grad->getData())
+          << "the external buffer should share the same data with output_.grad";
+    }
     if (cvtOutGrad_) {
       pipelineBwd_.insert(pipelineBwd_.begin(), *cvtOutGrad_);
     }
@@ -293,7 +297,6 @@ void MKLDNNLayer::resetMergeGrad(MKLDNNMatrixPtr& out) {
   for (auto it = outputMap_.begin(); it != outputMap_.end(); ++it) {
     MKLDNNMatrixPtr src =
         std::dynamic_pointer_cast<MKLDNNMatrix>(it->second->grad);
-    VLOG(MKLDNN_BASE) << getName() << " has output grad " << it->first;
     CHECK(src) << "should be MKLDNNMatrix";
     auto srcDims = src->getDims();
     auto dstDims = out->getDims();
@@ -301,6 +304,8 @@ void MKLDNNLayer::resetMergeGrad(MKLDNNMatrixPtr& out) {
     for (size_t i = 0; i < srcDims.size(); ++i) {
       CHECK_EQ(srcDims[i], dstDims[i]);
     }
+    VLOG(MKLDNN_BASE) << getName() << " has output grad " << it->first
+                      << ", format " << src->getFormat();
     srcPDs.push_back(src->getPrimitiveDesc());
     srcs.push_back(*src);
   }
