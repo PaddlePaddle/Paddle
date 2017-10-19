@@ -22,7 +22,7 @@ and they can help to make the implementation of beam search based sequence decod
 For example, the RNN sates, candidates IDs and probabilities of beam search can be represented as `LoDTensors`;
 the selected candidate's IDs in each time step can be stored in a `TensorArray`, and `Packed` to the sentences translated.
 
-## Necessary to change LoD's absolute offset to relative offsets
+## Changing LoD's absolute offset to relative offsets
 The current `LoDTensor` is designed to store levels of variable-length sequences,
 it stores several arrays of integers each represents a level.
 
@@ -213,7 +213,7 @@ Pack the `generated_scores` will get a `LoDTensor`, and each tail is the probabi
 
 According the image above, the only phrase to change LoD is beam search.
 
-### Beam search design
+## Beam search design
 The beam search algorthm will be implemented as one method of the sequence decoder, it has 3 inputs
 
 1. `topk_ids`, top K candidate ids for each prefix.
@@ -228,6 +228,17 @@ It will return three variables
 1. `selected_ids`, the final candidate beam search function selected for the next step.
 2. `selected_scores`, the scores for the candidates.
 3. `generated_scores`, the updated scores for each prefixes (with the new candidates appended).
+
+## Introducing the LoD-based `Pack` and `Unpack` methods in `TensorArray`
+The `selected_ids`, `selected_scores` and `generated_scores` are LoDTensors,
+and they exist in each time step,
+so it is natural to store them in arrays.
+
+Currently, PaddlePaddle has a module called `TensorArray` which can store an array of tensors,
+the results of beam search are better to store in a `TensorArray`.
+
+The `Pack` and `UnPack` in `TensorArray` are used to package tensors in the array to a `LoDTensor` or split the `LoDTensor` to an array of tensors. 
+It needs some extensions to support pack or unpack an array of `LoDTensors`.
 
 ## Appendik
 Let's validate the logic with some simple data, assuming that there are 3 sentences to translate
