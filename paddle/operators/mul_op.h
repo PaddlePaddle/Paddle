@@ -36,12 +36,12 @@ class MulKernel : public framework::OpKernel<T> {
     Tensor* z = context.Output<Tensor>("Out");
     const Tensor x_matrix =
         x->dims().size() > 2
-            ? framework::ReshapeToMatrix<T>(
+            ? framework::ReshapeToMatrix(
                   *x, context.template Attr<int>("x_num_col_dims"))
             : *x;
     const Tensor y_matrix =
         y->dims().size() > 2
-            ? framework::ReshapeToMatrix<T>(
+            ? framework::ReshapeToMatrix(
                   *y, context.template Attr<int>("y_num_col_dims"))
             : *y;
 
@@ -59,30 +59,30 @@ class MulGradKernel : public framework::OpKernel<T> {
     int y_num_col_dims = ctx.template Attr<int>("y_num_col_dims");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
-    const Tensor x_matrix =
-        x->dims().size() > 2 ? framework::ReshapeToMatrix<T>(*x, x_num_col_dims)
-                             : *x;
-    const Tensor y_matrix =
-        y->dims().size() > 2 ? framework::ReshapeToMatrix<T>(*y, y_num_col_dims)
-                             : *y;
+    const Tensor x_matrix = x->dims().size() > 2
+                                ? framework::ReshapeToMatrix(*x, x_num_col_dims)
+                                : *x;
+    const Tensor y_matrix = y->dims().size() > 2
+                                ? framework::ReshapeToMatrix(*y, y_num_col_dims)
+                                : *y;
     const Tensor* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     Tensor* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     Tensor* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
-      Tensor dx_matrix = dx->dims().size() > 2 ? framework::ReshapeToMatrix<T>(
-                                                     *dx, x_num_col_dims)
-                                               : *dx;
+      Tensor dx_matrix = dx->dims().size() > 2
+                             ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
+                             : *dx;
       // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
       math::matmul<Place, T>(ctx.device_context(), *dout, false, y_matrix, true,
                              1, &dx_matrix, 0);
     }
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor dy_matrix = dy->dims().size() > 2 ? framework::ReshapeToMatrix<T>(
-                                                     *dy, y_num_col_dims)
-                                               : *dy;
+      Tensor dy_matrix = dy->dims().size() > 2
+                             ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
+                             : *dy;
       // dy = x' * dout. dy K x N, dout : M x N, x : M x K
       math::matmul<Place, T>(ctx.device_context(), x_matrix, true, *dout, false,
                              1, &dy_matrix, 0);
