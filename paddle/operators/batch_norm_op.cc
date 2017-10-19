@@ -149,56 +149,32 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
     if (!is_test) {
       // saved_xx is use just in this batch of data
-      EigenVectorArrayMap<float> saved_mean_e(
-          saved_mean->mutable_data<float>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<float> saved_variance_e(
-          saved_variance->mutable_data<float>(ctx.GetPlace()), C);
+      EigenVectorArrayMap<T> saved_mean_e(
+          saved_mean->mutable_data<T>(ctx.GetPlace()), C);
+      EigenVectorArrayMap<T> saved_variance_e(
+          saved_variance->mutable_data<T>(ctx.GetPlace()), C);
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
-      const auto *x_d = x->data<T>();
+      ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
+      for (int nc = 0; nc < N * C; ++nc) {
+        saved_mean_e(nc % C) += X_arr.col(nc).sum();
+      }
+      saved_mean_e /= N * sample_size;
+      for (int nc = 0; nc < N * C; ++nc) {
+        saved_variance_e(nc % C) +=
+            (X_arr.col(nc) - saved_variance_e(nc % C)).matrix().squaredNorm();
+      }
+      saved_variance_e /= N * sample_size;
 
-      T *saved_mean_d = saved_mean->mutable_data<T>(ctx.GetPlace());
-      // calculate local mean
-      for (int i = 0; i < N * C; ++i) {
-        // calculate the sum of one op.
-        T sum = 0;
-        for (int j = 0; j < sample_size; ++j) {
-          sum += x_d[i * sample_size + j];
-        }
-        saved_mean_d[i % C] += sum;
-      }
-      for (int i = 0; i < C; ++i) {
-        saved_mean_d[i] /= N * sample_size;
-      }
-
-      T *saved_variance_d = saved_variance->mutable_data<T>(ctx.GetPlace());
-      for (int i = 0; i < N * C; ++i) {
-        // calculate the sum of one op.
-        T sum = 0;
-        for (int j = 0; j < sample_size; ++j) {
-          T diff = x_d[i * sample_size + j] - saved_mean_d[i % C];
-          sum += diff * diff;
-        }
-        saved_variance_d[i % C] += sum;
-      }
-      // calculate local variance
-      for (int i = 0; i < C; ++i) {
-        saved_variance_d[i] /= N * sample_size;
-      }
-
-      // calculate global mean
-      auto mean_out_d = mean_out->mutable_data<T>(ctx.GetPlace());
-      for (int i = 0; i < C; ++i) {
-        mean_out_d[i] =
-            mean_out_d[i] * momentum + saved_mean_d[i] * (1. - momentum);
-      }
-      // calculate global variance
-      auto variance_out_d = variance_out->mutable_data<T>(ctx.GetPlace());
-      for (int i = 0; i < C; ++i) {
-        variance_out_d[i] = variance_out_d[i] * momentum +
-                            saved_variance_d[i] * (1. - momentum);
-      }
+      EigenVectorArrayMap<T> running_mean_arr(
+          mean_out->mutable_data<T>(ctx.GetPlace()), C);
+      EigenVectorArrayMap<T> running_var_arr(
+          variance_out->mutable_data<T>(ctx.GetPlace()), C);
+      running_mean_arr =
+          running_mean_arr * momentum + saved_mean_e * (1. - momentum);
+      running_var_arr =
+          running_var_arr * momentum + saved_variance_e * (1. - momentum);
     }
 
     // use SavedMean and SavedVariance to do normalize
@@ -225,12 +201,12 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     const auto *bias = ctx.Input<Tensor>("Bias");
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
-    Eigen::Array<float, Eigen::Dynamic, 1> new_scale = inv_std * scale_arr;
-    Eigen::Array<float, Eigen::Dynamic, 1> new_bias =
+    Eigen::Array<T, Eigen::Dynamic, 1> new_scale = inv_std * scale_arr;
+    Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
         bias_arr - mean_arr * inv_std * scale_arr;
-    EigenArrayMap<float> Y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
-                               N * C);
-    ConstEigenArrayMap<float> X_arr(x->data<T>(), sample_size, N * C);
+    EigenArrayMap<T> Y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
+                           N * C);
+    ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
     for (int nc = 0; nc < N * C; ++nc) {
       Y_arr.col(nc) = X_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
     }
