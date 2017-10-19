@@ -2,10 +2,13 @@
 
 ## Motivation
 
-In the experience of writting simple python models, we found python API always need to specify a `program` and
+In the experience of writting simple python models, we found python layer API always need to specify a `program` and
 a `init_program`. This is very redundant.
 
 ## Solution
+
+We add a `Model` module which has `__enter__` and `__exit__` to manage global settings of `programDesc`.
+
 ```python
 DEFAULT_PROGRAM = None
 DEFAULT_INIT_PROGRAM = None
