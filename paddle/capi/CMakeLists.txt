@@ -29,15 +29,29 @@ add_style_check_target(paddle_capi ${CAPI_SOURCES} ${CAPI_HEADER}
 add_dependencies(paddle_capi paddle_proto)
 
 # TODO: paddle_capi_whole will be removed.
-set(PADDLE_CAPI_INFER_LIBS
-    paddle_utils
-    paddle_parameter
-    paddle_math
-    paddle_cuda
-    paddle_function
-    paddle_gserver
-    paddle_proto)
-cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
+if(MOBILE_INFERENCE)
+    set(PADDLE_CAPI_INFER_LIBS
+        paddle_utils
+        paddle_parameter
+        paddle_math
+        paddle_cuda
+        paddle_function
+        paddle_gserver
+        paddle_proto)
+    cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
+else()
+    set(PADDLE_CAPI_INFER_LIBS
+        paddle_utils
+        paddle_parameter
+        paddle_math
+        paddle_cuda
+        paddle_function
+        paddle_gserver
+        paddle_proto
+        paddle_pserver
+        paddle_network)
+    cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
+endif()
 
 # Link the static library for inference
 cc_library(paddle_capi_engine DEPS paddle_capi paddle_utils paddle_parameter paddle_math paddle_cuda paddle_proto)
