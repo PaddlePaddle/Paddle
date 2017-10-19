@@ -28,8 +28,7 @@ add_style_check_target(paddle_capi ${CAPI_SOURCES} ${CAPI_HEADER}
 
 add_dependencies(paddle_capi paddle_proto)
 
-# combine all paddle static libraries together, into libpaddle_capi_whole.a
-# user should use PaddleCAPI as -lpaddle_capi_whole
+# TODO: paddle_capi_whole will be removed.
 set(PADDLE_CAPI_INFER_LIBS
     paddle_utils
     paddle_parameter
@@ -38,10 +37,13 @@ set(PADDLE_CAPI_INFER_LIBS
     paddle_function
     paddle_gserver
     paddle_proto)
-
 cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
 
-# No shared library for iOS
+# Link the static library for inference
+cc_library(paddle_nn_engine DEPS paddle_capi paddle_utils paddle_parameter paddle_math paddle_cuda paddle_proto)
+cc_library(paddle_layers DEPS paddle_function paddle_gserver)
+
+# Link the shared library for inference
 if(NOT IOS)
   set(LINK_FLAGS " -Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/export.sym -Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/export.map")
   # TODO: merge mkl into paddle_capi_shared
@@ -55,7 +57,7 @@ endif()
 install(FILES ${CAPI_HEADERS} DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
 if(ANDROID)
-  install(TARGETS paddle_capi_whole paddle_capi_shared
+  install(TARGETS paddle_nn_engine paddle_layers paddle_capi_shared
           ARCHIVE DESTINATION lib/${ANDROID_ABI}
           LIBRARY DESTINATION lib/${ANDROID_ABI})
   execute_process(
@@ -80,7 +82,7 @@ if(ANDROID)
       )"
   )
 else(ANDROID)
-  install(TARGETS paddle_capi_whole ARCHIVE DESTINATION lib)
+  install(TARGETS paddle_nn_engine paddle_layers ARCHIVE DESTINATION lib)
   if(NOT IOS)
     install(TARGETS paddle_capi_shared DESTINATION lib)
   endif()
