@@ -78,7 +78,7 @@ class LoDTensor : public Tensor {
    */
   size_t lod_element(size_t level, size_t elem) const {
     PADDLE_ENFORCE_LT(level, NumLevels());
-    PADDLE_ENFORCE_LT(elem, NumElements(level));
+    PADDLE_ENFORCE_LE(elem, NumElements(level));
     return (lod_)[level][elem];
   }
 
