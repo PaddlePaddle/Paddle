@@ -43,12 +43,13 @@ static VariableNameMap ConvertOpDescVarsToVarNameMap(
   return ret_val;
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc,
+                                                   ProgramDesc* program) {
   VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
   AttributeMap attrs;
   for (auto& attr : op_desc.attrs()) {
-    attrs[attr.name()] = GetAttrValue(attr);
+    attrs[attr.name()] = GetAttrValue(attr, program);
   }
 
   return CreateOp(op_desc.type(), inputs, outputs, attrs);
@@ -57,12 +58,6 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDescBind& op_desc) {
   return CreateOp(op_desc.Type(), op_desc.Inputs(), op_desc.Outputs(),
                   op_desc.GetAttrMap());
-}
-
-std::vector<std::unique_ptr<OpDescBind>> OpRegistry::CreateGradOpDescs(
-    const OpDescBind& op_desc) {
-  auto& info = OpInfoMap::Instance().Get(op_desc.Type());
-  return info.grad_op_maker_(op_desc);
 }
 
 }  // namespace framework

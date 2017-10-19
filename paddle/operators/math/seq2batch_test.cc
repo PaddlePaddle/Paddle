@@ -35,13 +35,6 @@ void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
   }
 
   auto* place = new Place();
-  if (paddle::platform::is_cpu_place(*place)) {
-    seq = cpu_seq;
-  } else {
-    seq.CopyFrom<T>(cpu_seq, paddle::platform::GPUPlace());
-    seq.set_lod(lod);
-  }
-
   paddle::platform::DeviceContext* context;
   if (paddle::platform::is_cpu_place(*place)) {
     context =
@@ -55,6 +48,13 @@ void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
 #endif  // PADDLE_ONLY_CPU
   }
 
+  if (paddle::platform::is_cpu_place(*place)) {
+    seq = cpu_seq;
+  } else {
+    seq.CopyFrom<T>(cpu_seq, paddle::platform::GPUPlace(), *context);
+    seq.set_lod(lod);
+  }
+
   paddle::operators::math::Seq2BatchFunctor<true, Place, T> seq2batch;
   paddle::operators::math::Batch2SeqFunctor<true, Place, T> batch2seq;
 
@@ -66,7 +66,7 @@ void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
   if (paddle::platform::is_cpu_place(*place)) {
     cpu_seq_back = seq_back;
   } else {
-    cpu_seq_back.CopyFrom<T>(seq_back, paddle::platform::CPUPlace());
+    cpu_seq_back.CopyFrom<T>(seq_back, paddle::platform::CPUPlace(), *context);
     cpu_seq_back.set_lod(lod);
   }
 

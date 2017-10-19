@@ -35,6 +35,7 @@ ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  "https://github.com/gangliao/warp-ctc.git"
+    GIT_TAG         b63a0644654a3e0ed624c85a1767bc8193aead09
     PREFIX          ${WARPCTC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -48,9 +49,9 @@ ExternalProject_Add(
                     -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
                     -DBUILD_SHARED=ON
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                    -DCMAKE_BUILD_TYPE=Release
+                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
-    CMAKE_CACHE_ARGS -DCMAKE_BUILD_TYPE:STRING=Release
+    CMAKE_CACHE_ARGS -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_INSTALL_PREFIX:PATH=${WARPCTC_INSTALL_DIR}
 )

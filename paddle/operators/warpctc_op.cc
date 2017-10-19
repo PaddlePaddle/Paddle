@@ -21,20 +21,19 @@ class WarpCTCOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) of WarpCTCOp should not be null.")
+                   "Input(Logits) of WarpCTCOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of WarpCTCOp should not be null.")
+                   "Input(Label) of WarpCTCOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("WarpCTCGrad"),
                    "Output(WarpCTCGrad) of WarpCTCOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
                    "Output(Loss) of WarpCTCOp should not be null.");
 
-    auto dims = ctx->GetInputDims("Logits");
-    int sequence_width = static_cast<int>(framework::product() / dims[0]);
-    int blank = ctx->Attrs().Get<int>("blank"));
+    auto dims = ctx->GetInputDim("Logits");
+    int sequence_width = static_cast<int>(framework::product(dims) / dims[0]);
+    int blank = ctx->Attrs().Get<int>("blank");
     PADDLE_ENFORCE((blank > 0) && (blank < sequence_width),
                    "The value of Attr(blank) should be in interval [0, %d).",
                    sequence_width);
@@ -54,7 +53,7 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Logits", "(LodTensor)");
     AddInput("Label", "(LodTensor)");
     AddOutput("WarpCTCGrad", "(Tensor)").AsIntermediate();
-    AddOutput("Loss", "(Tensor)").NotInGradient();
+    AddOutput("Loss", "(Tensor)");
     AddAttr<int>("blank", "").SetDefault(0);
     AddAttr<bool>("normByTimes", "").SetDefault(false);
     AddComment(R"DOC(
@@ -71,17 +70,11 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("WarpCTCGrad"),
                    "Input(WarpCTCGrad) of WarpCTCGradOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
-                   "Output(Logits@GRAD) of WarpCTCGradOp should not be null.")
-
-    auto label_grad = Input(framework::GradVarName("Label"));
-    if (label_grad != framework::kEmptyVarName) {
-      this->Rename(label_grad, framework::kEmptyVarName);
-    }
+                   "Output(Logits@GRAD) of WarpCTCGradOp should not be null.");
   }
 
   framework::DataType IndicateDataType(
