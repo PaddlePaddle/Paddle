@@ -3,17 +3,17 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc_layer', 'data_layer', 'cross_entropy', 'conv2d_layer']
+__all__ = ['fc', 'data', 'cross_entropy', 'conv2d']
 
 
-def fc_layer(input,
-             size,
-             param_attr=None,
-             bias_attr=True,
-             name=None,
-             act=None,
-             num_flatten_dims=1,
-             program=None):
+def fc(input,
+       size,
+       param_attr=None,
+       bias_attr=True,
+       name=None,
+       act=None,
+       num_flatten_dims=1,
+       program=None):
     # create helper
     helper = LayerHelper('fc', **locals())
 
@@ -51,11 +51,11 @@ def fc_layer(input,
     return helper.append_activation(pre_activation)
 
 
-def data_layer(name,
-               shape,
-               data_type='float32',
-               type=core.VarDesc.VarType.LOD_TENSOR,
-               program=None):
+def data(name,
+         shape,
+         data_type='float32',
+         type=core.VarDesc.VarType.LOD_TENSOR,
+         program=None):
     helper = LayerHelper('data', **locals())
     shape = [-1] + shape  # append batch size as -1
     return helper.create_global_variable(
@@ -145,17 +145,17 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
-def conv2d_layer(input,
-                 num_filters,
-                 name=None,
-                 filter_size=[1, 1],
-                 act=None,
-                 groups=None,
-                 stride=[1, 1],
-                 padding=None,
-                 bias_attr=None,
-                 param_attr=None,
-                 program=None):
+def conv2d(input,
+           num_filters,
+           name=None,
+           filter_size=[1, 1],
+           act=None,
+           groups=None,
+           stride=[1, 1],
+           padding=None,
+           bias_attr=None,
+           param_attr=None,
+           program=None):
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
