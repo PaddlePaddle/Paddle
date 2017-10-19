@@ -15,6 +15,7 @@ limitations under the License. */
 #include "MKLDNNTester.h"
 #include "paddle/gserver/layers/MKLDNNBase.h"
 #include "paddle/gserver/layers/MKLDNNLayer.h"
+#include "paddle/trainer/Trainer.h"
 
 namespace paddle {
 
@@ -315,6 +316,7 @@ void MKLDNNTester::runOnce() {
     auto& value = para->getBuf(PARAMETER_VALUE);
     real lr = 1e-3;
     value->add(*grad, lr);
+    grad->zeroMem();
   };
   randomTopDiffs();
   dnnLayer_->backward(updateCallback);
@@ -409,6 +411,145 @@ void MKLDNNTester::run(const TestConfig& dnn,
     VLOG(MKLDNN_TESTS) << "Check Iteration " << i;
     runOnce();
   }
+}
+
+void MKLDNNTester::initArgument(DataIn& data,
+                                const std::string& configPath,
+                                const size_t iter) {
+  TrainerConfigHelper config(configPath);
+  size_t batchSize = config.getOptConfig().batch_size();
+  data.inArgs.resize(iter);
+  data.outGrads.resize(iter);
+  data.paraValues.clear();
+  for (const auto& layer_name : config.getModelConfig().input_layer_names()) {
+    auto layer_config = std::find_if(config.getModelConfig().layers().begin(),
+                                     config.getModelConfig().layers().end(),
+                                     [=](const LayerConfig& layer_config) {
+                                       return layer_config.name() == layer_name;
+                                     });
+    CHECK(layer_config != config.getModelConfig().layers().end());
+
+    size_t layerSize = layer_config->size();
+    for (size_t i = 0; i < iter; ++i) {
+      Argument arg;
+      arg.value = Matrix::create(batchSize, layerSize, false, false);
+      arg.grad = Matrix::create(batchSize, layerSize, false, false);
+      arg.value->randomizeUniform();
+      arg.value->add(-0.5);
+      arg.value->sigmoid(*arg.value);
+      arg.grad->zeroMem();
+      arg.ids = VectorT<int>::create(batchSize, false);
+      arg.ids->rand(layerSize);
+      generateSequenceStartPositions(batchSize, arg.sequenceStartPositions);
+      data.inArgs[i].push_back(arg);
+    }
+  }
+
+  for (const auto& layer_name : config.getModelConfig().output_layer_names()) {
+    auto layer_config = std::find_if(config.getModelConfig().layers().begin(),
+                                     config.getModelConfig().layers().end(),
+                                     [=](const LayerConfig& layer_config) {
+                                       return layer_config.name() == layer_name;
+                                     });
+    CHECK(layer_config != config.getModelConfig().layers().end());
+
+    size_t layerSize = layer_config->size();
+    for (size_t i = 0; i < iter; ++i) {
+      MatrixPtr grad = Matrix::create(batchSize, layerSize, false, false);
+      grad->randomizeUniform();
+      data.outGrads[i].push_back(grad);
+    }
+  }
+
+  for (const auto& para_config : config.getModelConfig().parameters()) {
+    VectorPtr value = Vector::create(para_config.size(), false);
+    value->randnorm(0, 2);
+    data.paraValues.push_back(value);
+  }
+}
+
+void MKLDNNTester::getOutResult(const std::string& configPath,
+                                DataIn& in,
+                                DataOut& out,
+                                bool use_mkldnn,
+                                size_t iter) {
+  FLAGS_use_gpu = false;
+  FLAGS_use_mkldnn = use_mkldnn;
+  *ThreadLocalRand::getSeed() = 1;
+  srand(1);
+
+  Trainer trainer;
+  auto config = std::make_shared<TrainerConfigHelper>(configPath);
+  trainer.init(config, false);
+  auto gradientMachine = trainer.getGradientMachine();
+  std::vector<ParameterPtr> parameters = gradientMachine->getParameters();
+  for (size_t i = 0; i < in.paraValues.size(); i++) {
+    parameters[i]->getBuf(PARAMETER_VALUE)->copyFrom(*in.paraValues[i]);
+  }
+  UpdateCallback simpleUpdate = [](Parameter* para) {
+    auto& grad = para->getBuf(PARAMETER_GRADIENT);
+    auto& value = para->getBuf(PARAMETER_VALUE);
+    real lr = 1e-2;
+    value->add(*grad, lr);
+    grad->zeroMem();
+  };
+
+  vector<Argument> outArgs;
+  gradientMachine->start();
+  out.outValues.clear();
+  out.paraValues.clear();
+  for (size_t i = 0; i < iter; ++i) {
+    VLOG(MKLDNN_TESTS) << "runing iteration " << i;
+    gradientMachine->forward(in.inArgs[i], &outArgs, PASS_TRAIN);
+    // save forward result
+    for (size_t k = 0; k < outArgs.size(); k++) {
+      MatrixPtr value = Matrix::create(outArgs[k].value->getHeight(),
+                                       outArgs[k].value->getWidth(),
+                                       false,
+                                       false);
+      value->copyFrom(*outArgs[k].value);
+      out.outValues.push_back(value);
+    }
+
+    // random backward input
+    for (size_t k = 0; k < outArgs.size(); k++) {
+      outArgs[k].grad->copyFrom(*in.outGrads[i][k]);
+    }
+    gradientMachine->backward(simpleUpdate);
+  }
+  gradientMachine->finish();
+
+  // save param value
+  for (size_t i = 0; i < in.paraValues.size(); i++) {
+    VectorPtr val = Vector::create(
+        parameters[i]->getBuf(PARAMETER_VALUE)->getSize(), false);
+    val->copyFrom(*parameters[i]->getBuf(PARAMETER_VALUE));
+    out.paraValues.push_back(val);
+  }
+}
+
+void MKLDNNTester::compareResult(DataOut& ref, DataOut& dnn, float eps) {
+  CHECK_EQ(ref.outValues.size(), dnn.outValues.size());
+  CHECK_EQ(ref.paraValues.size(), dnn.paraValues.size());
+  for (size_t i = 0; i < ref.outValues.size(); i++) {
+    EXPECT_LE(fabs(compareMatrix(ref.outValues[i], dnn.outValues[i])), eps);
+  }
+  for (size_t i = 0; i < ref.paraValues.size(); i++) {
+    EXPECT_LE(fabs(compareVector(ref.paraValues[i], dnn.paraValues[i])), eps);
+  }
+}
+
+void MKLDNNTester::runBranchesTest(const std::string& configPath,
+                                   size_t iter,
+                                   float eps) {
+  DataIn in;
+  initArgument(in, configPath, iter);
+
+  DataOut outCpu, outDnn;
+  getOutResult(configPath, in, outCpu, false, iter);
+  getOutResult(configPath, in, outDnn, true, iter);
+
+  compareResult(outCpu, outDnn, eps);
 }
 
 }  //  namespace paddle

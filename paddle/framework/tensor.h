@@ -100,6 +100,22 @@ class Tensor {
   inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
                        const platform::DeviceContext& ctx);
 
+  // FIXME(yuyang18): CopyFrom should without template T, use the replace
+  // `CopyFrom` with `CopyFromTensor`
+  inline void CopyFromTensor(const Tensor& src,
+                             const platform::Place& dst_place,
+                             const platform::DeviceContext& ctx) {
+    // NOLINTNEXTLINES_8 cpplint.py will recognize below lines as functions.
+    // That is a bug of cpplint.py. Just ignore lint these lines.
+    if (src.type() == std::type_index(typeid(double))) {
+      CopyFrom<double>(src, dst_place, ctx);
+    } else if (src.type() == std::type_index(typeid(float))) {
+      CopyFrom<float>(src, dst_place, ctx);
+    } else if (src.type() == std::type_index(typeid(int))) {
+      CopyFrom<int>(src, dst_place, ctx);
+    }
+  }
+
   /**
    * @brief   Copy the content of an external vector to a tensor.
    *

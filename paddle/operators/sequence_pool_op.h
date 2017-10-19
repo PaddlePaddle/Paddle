@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -77,6 +78,16 @@ class SequencePoolKernel : public framework::OpKernel<T> {
         case SUM:
           out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
           break;
+        case SQRT:
+          out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
+                                std::sqrt(static_cast<T>(h));
+          break;
+        case LAST:
+          out_e.device(place) = in_e.chip(h - 1, 0);
+          break;
+        case FIRST:
+          out_e.device(place) = in_e.chip(0, 0);
+          break;
         default:
           PADDLE_THROW("unsupported pooling strategy");
       }
@@ -98,6 +109,11 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     int64_t w = in->numel() / dims[0];
 
     in_g->mutable_data<T>(context.GetPlace());
+    if (strategy == LAST || strategy == FIRST) {
+      // set X@Grad be zero at first when strategy is LAST/FIRST
+      math::SetConstant<Place, T> functor;
+      functor(context.device_context(), in_g, 0);
+    }
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       auto in_g_t = in_g->Slice<T>(static_cast<int>(lod[i]),
@@ -114,6 +130,16 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
           break;
         case SUM:
           in_g_e.device(place) = (out_g_e).broadcast(bcast);
+          break;
+        case SQRT:
+          in_g_e.device(place) =
+              (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
+          break;
+        case LAST:
+          in_g_e.chip(h - 1, 0).device(place) = out_g_e;
+          break;
+        case FIRST:
+          in_g_e.chip(0, 0).device(place) = out_g_e;
           break;
         default:
           PADDLE_THROW("unsupported pooling strategy");

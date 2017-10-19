@@ -100,21 +100,11 @@ using namespace paddle::framework;  // NOLINT
 // Bind Methods
 void BindProgramDesc(py::module &m) {
   py::class_<ProgramDescBind>(m, "ProgramDesc", "")
-      .def_static("instance",
-                  []() -> ProgramDescBind * {
-                    return &ProgramDescBind::Instance(&GetProgramDesc());
-                  },
-                  py::return_value_policy::reference)
-      .def_static("__create_program_desc__",
-                  []() -> ProgramDescBind * {
-                    // Only used for unit-test
-                    auto *prog_desc = new ProgramDesc;
-                    auto *block = prog_desc->mutable_blocks()->Add();
-                    block->set_idx(0);
-                    block->set_parent_idx(-1);
-                    return &ProgramDescBind::Instance(prog_desc);
-                  },
-                  py::return_value_policy::reference)
+      .def(py::init<>())
+      .def("__init__",
+           [](ProgramDescBind &self, const ProgramDescBind &other) {
+             new (&self) ProgramDescBind(other);
+           })
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("append_backward",
@@ -163,6 +153,11 @@ void BindBlockDesc(py::module &m) {
              return self.Var(name);
            },
            py::return_value_policy::reference)
+      .def("has_var",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.HasVar(name);
+           })
       .def("find_var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
@@ -171,8 +166,8 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("all_vars", &BlockDescBind::AllVars,
            py::return_value_policy::reference)
-      .def("all_ops", &BlockDescBind::AllOps,
-           py::return_value_policy::reference)
+      .def("op_size", &BlockDescBind::OpSize)
+      .def("op", &BlockDescBind::Op, py::return_value_policy::reference)
       .def("serialize_to_string", [](BlockDescBind &block_desc) -> py::bytes {
         const BlockDesc *desc = block_desc.Proto();
         PADDLE_ENFORCE(desc->IsInitialized(),
@@ -211,16 +206,19 @@ void BindVarDsec(py::module &m) {
       .def("set_lod_level", &VarDescBind::SetLoDLevel)
       .def("type", &VarDescBind::GetType)
       .def("set_type", &VarDescBind::SetType)
-      .def("serialize_to_string", [](VarDescBind &var_desc) -> py::bytes {
-        const VarDesc *desc = var_desc.Proto();
-        PADDLE_ENFORCE(desc->IsInitialized(),
-                       "VarDesc has not been initialized.");
-        std::string res;
-        PADDLE_ENFORCE(
-            desc->SerializeToString(&res),
-            "Serialize VarDesc Error. This could be a bug of Paddle.");
-        return res;
-      });
+      .def("serialize_to_string",
+           [](VarDescBind &var_desc) -> py::bytes {
+             const VarDesc *desc = var_desc.Proto();
+             PADDLE_ENFORCE(desc->IsInitialized(),
+                            "VarDesc has not been initialized.");
+             std::string res;
+             PADDLE_ENFORCE(
+                 desc->SerializeToString(&res),
+                 "Serialize VarDesc Error. This could be a bug of Paddle.");
+             return res;
+           })
+      .def("persistable", &VarDescBind::Persistable)
+      .def("set_persistable", &VarDescBind::SetPersistable);
 
   py::enum_<VarDesc::VarType>(var_desc, "VarType", "")
       .value("LOD_TENSOR", VarDesc::LOD_TENSOR)

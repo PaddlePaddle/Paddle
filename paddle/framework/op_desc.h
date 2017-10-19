@@ -102,6 +102,8 @@ class OpDescBind {
 
   void InferShape(const BlockDescBind &block) const;
 
+  void InferVarType(BlockDescBind *block) const;
+
   void Flush();
 
  private:

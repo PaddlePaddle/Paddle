@@ -20,13 +20,14 @@ proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim op_info)
+cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope proto_desc)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope proto_desc glog)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
-cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator)
+cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 py_proto_compile(framework_py_proto SRCS framework.proto)
@@ -51,8 +52,13 @@ else()
     # cc_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})
 endif()
 
+cc_library(prune SRCS prune.cc DEPS framework_proto)
+cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
+
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
 cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
 
+cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
+        proto_desc)
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
