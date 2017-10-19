@@ -17,6 +17,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -33,9 +38,10 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"), "");
 
     // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Mean"), ctx->Outputs("MeanOut"),
+    PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
                       "Mean and MeanOut should share the same memory");
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Variance"), ctx->Outputs("VarianceOut"),
+    PADDLE_ENFORCE_EQ(ctx->Inputs("Variance")[0],
+                      ctx->Outputs("VarianceOut")[0],
                       "Variance and VarianceOut should share the same memory");
 
     const auto x_dims = ctx->GetInputDim("X");
@@ -98,6 +104,98 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {}
+};
+
+template <typename T>
+class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
+    //    const float epsilon = ctx.Attr<float>("epsilon");
+
+    const auto* x = ctx.Input<Tensor>("X");
+    //    const auto* scale = ctx.Input<Tensor>("Scale");
+    //    const auto* bias = ctx.Input<Tensor>("Bias");
+    //    const bool is_test = ctx.Attr<bool>("is_test");
+
+    // Get the size for each dimension.
+    // NCHW [batch_size, in_channels, in_height, in_width]
+    const auto& x_dims = x->dims();
+    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
+                   "The Input dim size should be between 3 and 5");
+    const int N = x_dims[0];                          // sample num / batch size
+    const int C = x_dims[1];                          // channel num
+    const int H = x_dims[2];                          // sample height
+    const int W = x_dims.size() > 3 ? x_dims[3] : 1;  // sample width
+    // sample depth, the last dimension or 1
+    const int D = x_dims.size() > 4 ? x_dims[4] : 1;
+
+    const int sample_size = H * W * D;
+
+    // const auto& place = ctx.GetEigenDevice<Place>();
+    auto* out = ctx.Output<Tensor>("Out");
+    auto* mean_out = ctx.Output<Tensor>("MeanOut");
+    auto* variance_out = ctx.Output<Tensor>("VarianceOut");
+    auto* saved_mean = ctx.Output<Tensor>("SavedMean");
+    auto* saved_variance = ctx.Output<Tensor>("SavedVariance");
+
+    // alloc memory
+    out->mutable_data<T>(ctx.GetPlace());
+    mean_out->mutable_data<T>(ctx.GetPlace());
+    variance_out->mutable_data<T>(ctx.GetPlace());
+    saved_mean->mutable_data<T>(ctx.GetPlace());
+    saved_variance->mutable_data<T>(ctx.GetPlace());
+
+    // saved_xx is use just in this batch of data
+    auto saved_mean_e = EigenMatrix<T>::From(*saved_mean);
+    auto saved_variance_e = EigenMatrix<T>::From(*saved_variance);
+    saved_mean_e.setZero();
+    saved_variance_e.setZero();
+
+    const auto* x_d = x->data<T>();
+
+    T* saved_mean_d = saved_mean->mutable_data<T>(ctx.GetPlace());
+    // calculate local mean
+    for (int i = 0; i < N * C; ++i) {
+      // calculate the sum of one op.
+      T sum = 0;
+      for (int j = 0; j < sample_size; ++j) {
+        sum += x_d[i * sample_size + j];
+      }
+      saved_mean_d[i % C] += sum;
+    }
+    for (int i = 0; i < C; ++i) {
+      saved_mean_d[i] /= N * sample_size;
+    }
+
+    T* saved_variance_d = saved_variance->mutable_data<T>(ctx.GetPlace());
+    for (int i = 0; i < N * C; ++i) {
+      // calculate the sum of one op.
+      T sum = 0;
+      for (int j = 0; j < sample_size; ++j) {
+        T diff = x_d[i * sample_size + j] - saved_mean_d[i % C];
+        sum += diff * diff;
+      }
+      saved_variance_d[i % C] += sum;
+    }
+    // calculate local variance
+    for (int i = 0; i < C; ++i) {
+      saved_variance_d[i] /= N * sample_size;
+    }
+
+    // calculate global mean
+    auto mean_out_d = mean_out->mutable_data<T>(ctx.GetPlace());
+    for (int i = 0; i < C; ++i) {
+      mean_out_d[i] =
+          mean_out_d[i] * momentum + saved_mean_d[i] * (1. - momentum);
+    }
+    // calculate global variance
+    auto variance_out_d = variance_out->mutable_data<T>(ctx.GetPlace());
+    for (int i = 0; i < C; ++i) {
+      variance_out_d[i] =
+          variance_out_d[i] * momentum + saved_variance_d[i] * (1. - momentum);
+    }
+  }
 };
 
 }  // namespace operators
