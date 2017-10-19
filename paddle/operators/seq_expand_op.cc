@@ -50,28 +50,68 @@ class SeqExpandOpMaker : public framework::OpProtoAndCheckerMaker {
   SeqExpandOpMaker(framework::OpProto* proto,
                    framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    // TODO(wanghaoshuang): Add more comments
-    AddInput("X", "The input('X') of seq_expand op.");
-    AddInput("Y", "The reference input('Y') of seq_expand op.");
-    AddOutput("Out", "The output of seq_expand op.");
-    AddAttr<int>("repeat", "repeat times").SetDefault(0);
+    AddInput(
+        "X",
+        "The input('X') of seq_expand op. It can be LoDTensor or base Tensor.");
+    AddInput(
+        "Y",
+        "The reference input('Y') of seq_expand op."
+        "It must be a LoDTensor with k-level(k>0)."
+        "This reference input is essential if 'repeat' attribute is not "
+        "configured."
+        "Input(X) will be expanded by LoD of input(Y) while repeat ==  0.");
+    AddOutput("Out",
+              "The output of seq_expand op."
+              "The output is a (k+1)-level LoDTensor"
+              "while input(X) being k-level LoDTensor."
+              "(Given base tensor is 0-level LoDTensor.)");
+    AddAttr<int>("repeat",
+                 "(type:int; default value: 0)"
+                 "Repeatting times of each element while expanding input(X)."
+                 "It works while input(Y) is not configured.")
+        .SetDefault(0);
     AddComment(R"DOC(
-As an example:
+Expand k-level LoDTensor to (k+1)-level LoDTensor
+by lod of input(Y) or 'repeat' attribute.
 
-Given:
+Case 1:
 
-X.data = [1, 2 , 3, 4]
-X.lod = [[0, 3, 4], [0, 1, 3, 4]]
-
+Given a 2-level LoDTensor X:
+    X.data = [1, 2 , 3, 4]
+    X.lod = [[0, 3, 4], [0, 1, 3, 4]]
 and
+    repeat = 2
+then we get 3-level LoDTensor
+    Out.data = [1, 2, 3, 1, 2, 3, 4, 4]
+    Out.lod = [[0, 6, 8],
+               [0, 3, 6, 7, 8],
+               [0, 1, 3, 4, 6, 7, 8]]
 
-repeat = 2
+Case 2:
 
+Given 2-level a LoDTensor X
+    X.data = [1, 2, 3, 4]
+    X.lod = [[0, 3, 4], [0, 1, 3, 4]]
+and
+    Y.lod = [[0, 6, 8],
+             [0, 3, 6, 7, 8],
+             [0,1,3,4,6,7,8]]
+then we get 3-level LoDTensor
+    Out.data = [1, 2, 3, 1, 2, 3, 4, 4]
+    Out.lod = [[0, 6, 8],
+               [0, 3, 6, 7, 8],
+               [0, 1, 3, 4, 6, 7, 8]]
 
-then we get
+Case 3:
 
-Out.data = [1, 2, 3, 1, 2, 3, 4, 4]
-Out.lod = [[0, 6, 8], [0, 3, 6, 7, 8], [0, 1, 3, 4, 6, 7, 8]]
+Given a 0-level LoDTensor X
+    X.data = [1, 2, 3, 4]
+    X.lod = NULL
+and
+    repeat = 2
+then we get 1-level LoDTensor
+    Out.data = [1, 1, 2, 2, 3, 3, 4, 4]
+    Out.lod = [[0, 2, 4, 6, 8]]
 
 )DOC");
   }

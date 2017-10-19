@@ -103,28 +103,28 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   lod_ = new_lod;
 }
 
-Vector<size_t> repeat_lod(Vector<size_t> data, Vector<size_t> starts,
-                          Vector<size_t> times, bool is_first) {
+Vector<size_t> expand_lod(Vector<size_t> level, Vector<size_t> starts,
+                          Vector<size_t> scales, bool repeat) {
   Vector<size_t> result;
-  result.push_back(data[0]);
+  result.push_back(level[0]);
   size_t p = 0, start = 0, end = 0;
-  if (is_first == true) {
-    for (size_t i = 0; i < times.size(); ++i) {
-      result.push_back(result.back() + times[i] * (data[i + 1] - data[i]));
+  if (!repeat) {
+    for (size_t i = 0; i < scales.size(); ++i) {
+      result.push_back(result.back() + scales[i] * (level[i + 1] - level[i]));
     }
   } else {
-    for (size_t i = 0; i < times.size(); ++i) {
-      while (starts[i] != data[p] && p < data.size()) {
+    for (size_t i = 0; i < scales.size(); ++i) {
+      while (starts[i] != level[p] && p < level.size()) {
         ++p;
       }
       start = p;
-      while (starts[i + 1] != data[p] && p < data.size()) {
+      while (starts[i + 1] != level[p] && p < level.size()) {
         ++p;
       }
       end = p + 1;
-      for (size_t j = 0; j < times[i]; ++j) {
+      for (size_t j = 0; j < scales[i]; ++j) {
         for (size_t index = start; index < end - 1; ++index) {
-          result.push_back(result.back() + data[index + 1] - data[index]);
+          result.push_back(result.back() + level[index + 1] - level[index]);
         }
       }
     }

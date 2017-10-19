@@ -44,10 +44,10 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     }
 
     size_t repeat = static_cast<size_t>(context.Attr<int>("repeat"));
-    framework::Vector<size_t> repeats;
+    framework::Vector<size_t> scales;
     if (repeat != 0) {
       for (int i = 0; i < x_lod[0].size() - 1; ++i) {
-        repeats.push_back(repeat);
+        scales.push_back(repeat);
       }
       std::vector<int64_t> dims = framework::vectorize(x->dims());
       dims[0] = dims[0] * repeat;
@@ -57,18 +57,18 @@ class SeqExpandKernel : public framework::OpKernel<T> {
       auto* y = context.Input<LoDTensor>("Y");
       auto y_lod = y->lod();
       for (int i = 0; i < y_lod[0].size() - 1; ++i) {
-        repeats.push_back((y_lod[0][i + 1] - y_lod[0][i]) /
-                          (x_lod[0][i + 1] - x_lod[0][i]));
+        scales.push_back((y_lod[0][i + 1] - y_lod[0][i]) /
+                         (x_lod[0][i + 1] - x_lod[0][i]));
       }
       out->Resize(y->dims());
     }
 
     framework::LoD out_lod;
-    auto level0 = framework::repeat_lod(x_lod[0], x_lod[0], repeats, true);
+    auto level0 = framework::expand_lod(x_lod[0], x_lod[0], scales, false);
     out_lod.push_back(level0);
     for (int i = 1; i < x_lod.size(); ++i) {
       out_lod.push_back(
-          framework::repeat_lod(x_lod[i], x_lod[0], repeats, false));
+          framework::expand_lod(x_lod[i], x_lod[0], scales, true));
     }
 
     size_t element_len = framework::product(x_dims) / x_dims[0];
@@ -77,9 +77,9 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     // copy data
     Place place = boost::get<Place>(context.GetPlace());
     size_t count = 0;
-    for (size_t i = 0; i < repeats.size(); ++i) {
+    for (size_t i = 0; i < scales.size(); ++i) {
       count = element_len * (x_lod[0][i + 1] - x_lod[0][i]);
-      for (size_t j = 0; j < repeats[i]; ++j) {
+      for (size_t j = 0; j < scales[i]; ++j) {
         memory::Copy(place, out_data, place, x_data, sizeof(T) * count);
         out_data += count;
       }
@@ -95,9 +95,9 @@ class SeqExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto* x = context.Input<LoDTensor>("X");
     auto* out = context.Input<LoDTensor>("Out");
+    auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto out_lod = out->lod();
     d_x->set_lod(x->lod());
     const T* d_out_data = d_out->data<T>();

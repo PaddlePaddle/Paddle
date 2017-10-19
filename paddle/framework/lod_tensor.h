@@ -15,9 +15,6 @@
 #pragma once
 
 #include <memory>
-#include "paddle/memory/memcpy.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -126,8 +123,8 @@ class LoDTensor : public Tensor {
   LoD lod_;
 };
 
-Vector<size_t> repeat_lod(Vector<size_t> data, Vector<size_t> starts,
-                          Vector<size_t> times, bool is_first);
+Vector<size_t> expand_lod(Vector<size_t> level, Vector<size_t> starts,
+                          Vector<size_t> scales, bool repeat);
 
 }  // namespace framework
 }  // namespace paddle
