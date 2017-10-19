@@ -48,20 +48,6 @@ class TestBook(unittest.TestCase):
 
         # print str(program)
 
-    def test_simple_conv_pool(self):
-        pd = core.ProgramDesc.__create_program_desc__()
-        program = Program(desc=pd)
-        images = data_layer(
-            name='pixel', shape=[3, 48, 48], data_type='int32', program=program)
-        res = nets.simple_img_conv_pool(
-            images,
-            filter_size=5,
-            num_filter=2,
-            pool_size=2,
-            pool_stride=2,
-            act='rule')
-        print str(program)
-
 
 if __name__ == '__main__':
     unittest.main()
