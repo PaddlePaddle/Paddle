@@ -1,4 +1,4 @@
-from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program
+from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program, g_init_program
 import paddle.v2.framework.core as core
 import copy
 import itertools
@@ -26,6 +26,14 @@ class LayerHelper(object):
         prog = self.kwargs.get('program', None)
         if prog is None:
             return g_program
+        else:
+            return prog
+
+    @property
+    def init_program(self):
+        prog = self.kwargs.get('init_program', None)
+        if prog is None:
+            return g_init_program
         else:
             return prog
 
@@ -73,9 +81,9 @@ class LayerHelper(object):
                 'name': None,
                 'init_attr': {
                     'type': 'fill_constant',
-                    'value': 0.0,
-                    'shape': shape,
-                    'dataType': dtype
+                    'value': 0.0
+                    #'shape': shape,
+                    #'dataType': dtype
                 }
             }
         return bias_attr
@@ -113,11 +121,13 @@ class LayerHelper(object):
     def create_parameter(self, attr, shape, dtype, suffix='w'):
         if attr['name'] is None:
             attr['name'] = unique_name(".".join([self.name, suffix]))
-        return self.program.global_block().create_parameter(
+        self.init_program.global_block().create_parameter(
             name=attr['name'],
             dtype=dtype,
             shape=shape,
-            initialize_attr=attr['init_attr'])
+            init_attr=attr['init_attr'])
+        return self.program.global_block().create_parameter(
+            name=attr['name'], dtype=dtype, shape=shape)
 
     def create_tmp_variable(self, dtype):
         return self.program.current_block().create_var(

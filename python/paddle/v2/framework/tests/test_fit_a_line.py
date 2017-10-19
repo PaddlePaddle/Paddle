@@ -8,24 +8,35 @@ from paddle.v2.framework.executor import Executor
 
 import numpy as np
 
+init_program = Program()
 program = Program()
-x = layers.data(name='x', shape=[13], data_type='float32', program=program)
-y_predict = layers.fc(input=x, size=1, act=None, program=program)
+x = layers.data(
+    name='x',
+    shape=[13],
+    data_type='float32',
+    program=program,
+    init_program=init_program)
+y_predict = layers.fc(input=x,
+                      size=1,
+                      act=None,
+                      program=program,
+                      init_program=init_program)
 
-y = layers.data(name='y', shape=[1], data_type='float32', program=program)
+y = layers.data(
+    name='y',
+    shape=[1],
+    data_type='float32',
+    program=program,
+    init_program=init_program)
 
-cost = layers.square_error_cost(input=y_predict, label=y, program=program)
-avg_cost = layers.mean(x=cost, program=program)
+cost = layers.square_error_cost(
+    input=y_predict, label=y, program=program, init_program=init_program)
+avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
+sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.005)
 opts = sgd_optimizer.minimize(avg_cost)
 
-print str(program)
-
-import pdb
-pdb.set_trace()
-
-BATCH_SIZE = 100
+BATCH_SIZE = 10
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -35,12 +46,15 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-PASS_NUM = 200
+exe.run(init_program,
+        feed={},
+        fetch_list=[init_program.global_block().var('fc_0.w_1')])
+
+PASS_NUM = 10
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("float32")
-        #y_data = np.expand_dims(y_data, axis=1)
 
         tensor_x = core.LoDTensor()
         tensor_x.set(x_data, place)
@@ -50,6 +64,11 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(program,
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost])
+                       fetch_list=[
+                           avg_cost, program.global_block().var('fc_0.w_1'),
+                           program.global_block().var('fc_0.w_1@GRAD')
+                       ])
         out = np.array(outs[0])
+        w = np.array(outs[1])
+        wg = np.array(outs[2])
         print out
