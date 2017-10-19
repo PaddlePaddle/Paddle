@@ -46,6 +46,9 @@ protected:
   // backward also need reset after reset forward handle
   bool needResetBwd_;
 
+  // is output only mkldnn
+  bool outputOnlyMKLDNN_;
+
   // mkldnn engine, stream and primivtives
   mkldnn::engine engine_;
   std::shared_ptr<MKLDNNStream> stream_;
@@ -141,6 +144,9 @@ public:
         updateInputData();
       }
 
+      if (!outputOnlyMKLDNN_) {
+        clearGrads();
+      }
       stream_->submit(pipelineFwd_);
     }
 
@@ -389,7 +395,8 @@ protected:
       CHECK_EQ(outputOtherDevice_[i].deviceId, CPU_DEVICE)
           << "Only support other device is CPU yet";
     }
-    return outputOtherDevice_.size() == 0;
+    outputOnlyMKLDNN_ = outputOtherDevice_.size() == 0;
+    return outputOnlyMKLDNN_;
   }
 
   /**
@@ -398,6 +405,16 @@ protected:
   void setDevice(int id) { deviceId_ = id; }
 
 private:
+  /**
+   * clear all grad
+   */
+  void clearGrads() {
+    output_.grad->zeroMem();
+    for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
+      outputOtherDevice_[i].grad->zeroMem();
+    }
+  }
+
   /**
    * Set deviceId of the params used in this layer.
    */

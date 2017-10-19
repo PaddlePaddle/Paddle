@@ -232,7 +232,7 @@ class Operator(object):
         if attrs is not None:
             for attr in proto.attrs:
                 attr_name = attr.name
-                if not attr_name in attrs:
+                if (not attr_name in attrs) or (attrs[attr_name] is None):
                     continue
                 if not isinstance(attrs[attr_name], Block):
                     self.desc.set_attr(attr_name, attrs[attr_name])
@@ -306,6 +306,14 @@ class Block(object):
     def idx(self):
         return self.desc.id
 
+    def var(self, name):
+        if name not in self.vars:
+            raise ValueError("var %s not in this block" % name)
+        return self.vars[name]
+
+    def all_parameters(self):
+        return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
+
     def create_var(self, *args, **kwargs):
         return Variable(self, *args, **kwargs)
 
@@ -314,7 +322,8 @@ class Block(object):
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
-        return Parameter(global_block, *args, **kwargs)
+        param = Parameter(global_block, *args, **kwargs)
+        return param
 
     def append_op(self, *args, **kwargs):
         op_desc = self.desc.append_op()
@@ -335,7 +344,10 @@ class Block(object):
                 self.create_var(name=var.name(), desc=var, type=var.type())
 
         # sync operators from cpp
-        ops_in_cpp = self.desc.all_ops()
+        ops_in_cpp = []
+        for op_idx in range(0, self.desc.op_size()):
+            ops_in_cpp.append(self.desc.op(op_idx))
+
         first_op_in_python = self.ops[0].desc
         last_op_in_python = self.ops[len(self.ops) - 1].desc
         start_index = None
@@ -375,10 +387,8 @@ class Program(object):
             cls._instance = cls()
         return cls._instance
 
-    def __init__(self, desc=None):
-        if desc is None:
-            desc = core.ProgramDesc.instance()
-        self.desc = desc
+    def __init__(self):
+        self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
 
@@ -392,10 +402,16 @@ class Program(object):
     def global_block(self):
         return self.blocks[0]
 
+    def block(self, index):
+        return self.blocks[index]
+
     def current_block(self):
         return self.blocks[self.current_block_idx]
 
     def append_backward(self, target, no_grad_set):
+        """
+        return map(param_name -> (grad_name, block_index, op_index))
+        """
         assert isinstance(target, Variable)
         param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
         self.sync_with_cpp()

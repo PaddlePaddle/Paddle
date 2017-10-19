@@ -4,7 +4,7 @@ import paddle.v2.framework.core as core
 
 class TestOpDesc(unittest.TestCase):
     def test_op_desc(self):
-        prog = core.ProgramDesc.__create_program_desc__()
+        prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
@@ -64,16 +64,16 @@ class TestOpDesc(unittest.TestCase):
 
 class TestProgramDesc(unittest.TestCase):
     def test_instance(self):
-        program_desc = core.ProgramDesc.__create_program_desc__()
+        program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)
         del program_desc
-        program_desc = core.ProgramDesc.instance()
+        program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)
         self.assertIsNotNone(program_desc.block(0))
         del program_desc
 
     def test_append_block(self):
-        prog_desc = core.ProgramDesc.__create_program_desc__()
+        prog_desc = core.ProgramDesc()
         self.assertIsNotNone(prog_desc)
         block_root = prog_desc.block(0)
         self.assertIsNotNone(block_root)
@@ -91,7 +91,7 @@ class TestProgramDesc(unittest.TestCase):
 
 class TestVarDesc(unittest.TestCase):
     def test_shape(self):
-        program_desc = core.ProgramDesc.__create_program_desc__()
+        program_desc = core.ProgramDesc()
         block = program_desc.block(0)
         var = block.var('my_var')
         var.set_type(core.VarDesc.VarType.SELECTED_ROWS)
@@ -102,7 +102,7 @@ class TestVarDesc(unittest.TestCase):
         self.assertEqual(core.VarDesc.VarType.SELECTED_ROWS, var.type())
 
     def test_data_type(self):
-        program_desc = core.ProgramDesc.__create_program_desc__()
+        program_desc = core.ProgramDesc()
         block = program_desc.block(0)
         var = block.var('my_var')
         var.set_type(core.VarDesc.VarType.LOD_TENSOR)
@@ -113,7 +113,7 @@ class TestVarDesc(unittest.TestCase):
 
 class TestBlockDesc(unittest.TestCase):
     def test_add_var(self):
-        prog = core.ProgramDesc.__create_program_desc__()
+        prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
@@ -121,19 +121,21 @@ class TestBlockDesc(unittest.TestCase):
         var2 = block.var("var2")
         var3 = block.var("var3")
         all_vars = block.all_vars()
-        self.assertEqual(set(all_vars), set([var1, var2, var3]))
+        self.assertEqual(set(all_vars), {var1, var2, var3})
         var2_re = block.find_var("var2")
         self.assertEqual(var2_re, var2)
 
     def test_add_op(self):
-        prog = core.ProgramDesc.__create_program_desc__()
+        prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
         op1 = block.append_op()
         op2 = block.append_op()
         op0 = block.prepend_op()
-        all_ops = block.all_ops()
+        all_ops = []
+        for idx in xrange(0, block.op_size()):
+            all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op1, op2])
 
 

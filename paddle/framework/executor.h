@@ -40,16 +40,5 @@ class Executor {
   std::vector<platform::DeviceContext*> device_contexts_;
 };
 
-/* @Brief
- * Pruning the graph
- *
- * @param
- *  ProgramDesc
- *
- * @return
- *  vector<bool> Same size as ops. Indicates whether an op should be run.
- */
-std::vector<bool> Prune(const ProgramDesc& pdesc, int block_id);
-
 }  // namespace framework
 }  // namespace paddle
