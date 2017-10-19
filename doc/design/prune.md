@@ -3,7 +3,7 @@
 ## Motivation
 
 We want to support running inference, training and checkpointing in one `ProgramDesc`. We implement 
-`void Prune(const ProgramDesc* input, ProgramDesc* output, int block_id)` function, which takes a `ProgramDesc`
+`void Prune(const ProgramDesc* input, ProgramDesc* output)` function, which takes a `ProgramDesc`
 and generate a pruned `ProgramDesc`.
 
 ## Challenge
@@ -30,7 +30,7 @@ message OpDesc {
   repeated Var inputs = 1;
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
-  required bool is_target = 5 [ default = false ];
+  optional bool is_target = 5 [ default = false ];
 };
 ```
 
@@ -60,48 +60,5 @@ bool HasDependentVar(const OpDesc& op_desc, const std::set<string>& dependent_va
 }
 ```
 
+Then the whole algorithm can be implemented as the following [code](https://github.com/tonyyang-svail/Paddle/blob/prune_impl/paddle/framework/prune.cc).
 
-
-Then the whole algorithm can be implemented as the following
-
-```c++
-void Prune(const ProgramDesc& input, ProgramDesc* output, int block_id) {
-  auto& block = input.blocks(block_id);
-  auto& ops = block.ops();
-
-  std::set<std::string> dependent_vars;
-  std::vector<bool> should_run;
-  
-  // traverse the op list in reverse order
-  for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
-    auto& op_desc = *op_iter;
-    if (op_desc.is_traget() || HasDependentVar(op_desc, dependent_vars)) {
-      // insert its input to the dependency graph
-      for (auto& var : op_desc.inputs()) {
-        for (auto& argu : var.arguments()) {
-          dependent_vars.insert(argu);
-        }
-      }
-
-      should_run.push_back(true);
-    } else {
-      should_run.push_back(false);
-    }
-  }
-
-  // since we are traversing the ProgramDesc in reverse order
-  // we reverse the should_run vector
-  std::reverse(should_run.begin(), should_run.end());
-  
-  output = input;
-  auto* op_field = output.mutable_blocks(block_id)->mutable_ops();
-  op_field->Clear();
-  
-  // add pruned ops to output
-  for (size_t i = 0; i < should_run.size(); ++i) {
-    if (should_run[i]) {
-      *op_field->Add() = input.blocks(block_id).ops(i);
-    }
-  }
-}
-```
