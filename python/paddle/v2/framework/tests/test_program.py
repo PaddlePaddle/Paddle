@@ -53,7 +53,7 @@ class TestProgram(unittest.TestCase):
         print prog.clone()
 
     def test_append_backward(self):
-        prog = Program.instance()
+        prog = Program()
         block = prog.global_block()
 
         mul_x = block.create_var(
