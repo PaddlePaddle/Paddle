@@ -55,12 +55,18 @@ for pass_id in range(PASS_NUM):
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("float32")
+        # y_data = np.expand_dims(y_data, axis=1)
+        # print x_data
+        # print type(x_data)
+        # print y_data
 
         tensor_x = core.LoDTensor()
         tensor_x.set(x_data, place)
+        # print tensor_x.get_dims()
 
         tensor_y = core.LoDTensor()
         tensor_y.set(y_data, place)
+        # print tensor_y.get_dims()
         outs = exe.run(program,
                        feed={'x': tensor_x,
                              'y': tensor_y},

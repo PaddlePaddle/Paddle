@@ -152,7 +152,9 @@ class LayerHelper(object):
             type='elementwise_add',
             inputs={'X': [input_var],
                     'Y': [b]},
-            outputs={'Out': [tmp]})
+            outputs={'Out': [tmp]},
+            # for rowwise add, we should set axis 1
+            attrs={'axis': 1})
         return tmp
 
     def append_activation(self, input_var):
