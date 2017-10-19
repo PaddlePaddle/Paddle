@@ -28,7 +28,9 @@ class Executor(object):
         global_block = program.global_block()
         assert isinstance(global_block, Block)
         feed_var = global_block.create_var(
-            name=feed_var_name, type=core.VarDesc.VarType.FEED_MINIBATCH)
+            name=feed_var_name,
+            type=core.VarDesc.VarType.FEED_MINIBATCH,
+            persistable=True)
 
         for i, name in enumerate(feed):
             out = global_block.var(name)
@@ -41,7 +43,9 @@ class Executor(object):
             core.set_feed_variable_float(feed[name], feed_var.name, i)
 
         fetch_var = global_block.create_var(
-            name=fetch_var_name, type=core.VarDesc.VarType.FETCH_LIST)
+            name=fetch_var_name,
+            type=core.VarDesc.VarType.FETCH_LIST,
+            persistable=True)
         for i, var in enumerate(fetch_list):
             global_block.append_op(
                 type='fetch',
@@ -51,3 +55,5 @@ class Executor(object):
 
         assert isinstance(global_block, Block)
         self.executor.run(program.desc, 0)
+        for i, _ in enumerate(fetch_list):
+            yield core.get_fetch_variable(fetch_var_name, i)
