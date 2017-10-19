@@ -17,12 +17,12 @@ y = layers.data(name='y', shape=[1], data_type='float32', program=program)
 cost = layers.square_error_cost(input=y_predict, label=y, program=program)
 avg_cost = layers.mean(x=cost, program=program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
+sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.005)
 opts = sgd_optimizer.minimize(avg_cost)
 
 # print str(program)
 
-BATCH_SIZE = 2
+BATCH_SIZE = 16
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -32,23 +32,17 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-PASS_NUM = 1
+PASS_NUM = 5
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("float32")
-        # y_data = np.expand_dims(y_data, axis=1)
-        # print x_data
-        # print type(x_data)
-        # print y_data
 
         tensor_x = core.LoDTensor()
         tensor_x.set(x_data, place)
-        # print tensor_x.get_dims()
 
         tensor_y = core.LoDTensor()
         tensor_y.set(y_data, place)
-        # print tensor_y.get_dims()
         outs = exe.run(program,
                        feed={'x': tensor_x,
                              'y': tensor_y},
