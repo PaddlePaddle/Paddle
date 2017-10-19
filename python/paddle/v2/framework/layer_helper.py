@@ -144,7 +144,7 @@ class LayerHelper(object):
                     'Y': [b]},
             outputs={'Out': [tmp]},
             # for rowwise add, we should set axis 1
-            attr={'axis': 1})
+            attrs={'axis': 1})
         return tmp
 
     def append_activation(self, input_var):
