@@ -41,7 +41,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
   InitMemories(step_scopes[0]);
 
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
-    LOG(INFO) << "step " << step_id;
+    LOG(INFO) << "step " << step_id << " run";
     if (step_id > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1);
     }
@@ -73,6 +73,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
           // the weight are located in parent scope
           for (auto& var_name : input.second) {
             if (!step_scope.FindVar(var_name)) {
+              LOG(INFO) << "step " << i << " create i " << var_name;
               step_scope.Var(var_name)->GetMutable<LoDTensor>();
             }
           }
@@ -80,6 +81,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
         // create stepnet's outputs
         for (const auto& output : op->Outputs()) {
           for (auto& var_name : output.second) {
+            LOG(INFO) << "step " << i << " create o " << var_name;
             step_scope.Var(var_name);
           }
         }
