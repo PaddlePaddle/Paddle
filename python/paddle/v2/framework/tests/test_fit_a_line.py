@@ -46,19 +46,13 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(init_program,
-        feed={},
-        fetch_list=[init_program.global_block().var('fc_0.w_1')])
+exe.run(init_program, feed={}, fetch_list=[])
 
 PASS_NUM = 10
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("float32")
-        # y_data = np.expand_dims(y_data, axis=1)
-        # print x_data
-        # print type(x_data)
-        # print y_data
 
         tensor_x = core.LoDTensor()
         tensor_x.set(x_data, place)
@@ -70,11 +64,7 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(program,
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[
-                           avg_cost, program.global_block().var('fc_0.w_1'),
-                           program.global_block().var('fc_0.w_1@GRAD')
-                       ])
+                       fetch_list=[avg_cost])
         out = np.array(outs[0])
-        w = np.array(outs[1])
-        wg = np.array(outs[2])
+
         print out
