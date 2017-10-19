@@ -79,7 +79,22 @@ struct Communicator {
     streams_.resize(gpus.size());
     events_.resize(gpus.size());
   }
-  // Communicator(int num_device): comms_.resize(num_device) {}
+
+  ~Communicator() {
+    for (size_t i = 0; i < gpus_.size(); ++i) {
+      int gid = gpus_[i];
+      platform::SetDeviceId(gid);
+
+      int idx = gid % gpus_.size();
+      // wait finish
+      PADDLE_ENFORCE(
+          cudaStreamWaitEvent(comm->streams_[idx], comm->events_[idx], 0));
+
+      PADDLE_ENFORCE(cudaEventDestroy(comm->events_[idx]));
+
+      PADDLE_ENFORCE(ncclCommDestroy(comm->comms_[idx]));
+    }
+  }
 
   inline int get_root_gpu() const { return root_gpu; }
 

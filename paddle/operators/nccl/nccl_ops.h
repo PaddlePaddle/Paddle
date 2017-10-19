@@ -35,6 +35,16 @@ class NCCLTypeWrapper<double> {
   static const ncclDataType_t type = ncclDouble;
 };
 
+class NCCLInitOp : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto gpus = ctx.Input<std::vector<int>>("gpus");
+    auto* comm = ctx.Output<Communicator>("Communicator");
+    comm->mutable_data<Communicator>(CPUPlace());
+    comm = NCCLManager::GetCommunicator(gpus);
+  }
+};
+
 template <typename T>
 class NCCLAllReduceKernel : public framework::OpKernel<T> {
  public:
@@ -54,13 +64,15 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
       op_type = ncclMax;
     }
 
+    auto* comm = ctx.Input<Communicator>("Communicator");
+
     auto dev_ctx =
         static_cast<const platform::CUDADeviceContext>(ctx.device_context());
 
-    platform::NCCLManager* m = platform::NCCLManager::Get();
+    // platform::NCCLManager* m = platform::NCCLManager::Get();
 
-    auto* comm = m->GetCommunicator(gpus);
-    comm->wg_.Add(1);
+    // auto* comm = m->GetCommunicator(gpus);
+    // comm->wg_.Add(1);
 
     auto stream = dev_ctx.stream();
 
@@ -76,14 +88,14 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
                         op_type, comm->comms_[idx], comm->streams_[idx]));
       PADDLE_ENFORCE(cudaEventRecord(comm->events_[idx], comm->streams_[idx]));
 
-      // wait finish
-      PADDLE_ENFORCE(
-          cudaStreamWaitEvent(comm->streams_[idx], comm->events_[idx], 0));
+      // // wait finish
+      // PADDLE_ENFORCE(
+      //     cudaStreamWaitEvent(comm->streams_[idx], comm->events_[idx], 0));
     }
 
-    comm->wg_.Done();
+    // comm->wg_.Done();
 
-    comm->wg_.Wait();
+    // comm->wg_.Wait();
   }
 };
 
