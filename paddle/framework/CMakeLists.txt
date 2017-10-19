@@ -45,6 +45,9 @@ cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_co
 
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
 
+cc_library(prune SRCS prune.cc DEPS framework_proto)
+cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
+
 cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
 cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
 

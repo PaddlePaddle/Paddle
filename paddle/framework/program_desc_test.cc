@@ -67,6 +67,11 @@ TEST(ProgramDesc, copy_ctor) {
   for (size_t i = 0; i < global_block->OpSize(); ++i) {
     auto op_origin = global_block->Op(i);
     auto op_copy = global_block->Op(i);
+
+    ASSERT_EQ(op_origin->Type(), op_copy->Type());
+    ASSERT_EQ(op_origin->Inputs(), op_copy->Inputs());
+    ASSERT_EQ(op_origin->Outputs(), op_copy->Outputs());
+
     ASSERT_EQ(op_copy->Proto()->SerializeAsString(),
               op_origin->Proto()->SerializeAsString());
   }
