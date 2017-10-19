@@ -22,6 +22,7 @@ To compile the source code, your computer must be equipped with the following de
 - **CMake**: CMake >= 3.0 (at least CMake 3.4 on Mac OS X)
 - **BLAS**: MKL, OpenBlas or ATLAS
 - **Python**: only support Python 2.7
+- **Go**
 
 **Note:** For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
 For CUDA 8.0, GCC versions later than 5.3 are not supported!
@@ -67,7 +68,7 @@ As a simple example, consider the following:
 
 1. **BLAS Dependencies(optional)**
   
-    CMake will search BLAS libraries from system. If not found, OpenBLAS will be downloaded, built and installed automatically.
+    CMake will search BLAS libraries from the system. If not found, OpenBLAS will be downloaded, built and installed automatically.
     To utilize preinstalled BLAS， you can simply specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
 
     ```bash
@@ -107,6 +108,18 @@ As a simple example, consider the following:
     sudo apt-get install -y python python-pip python-numpy libpython-dev bison
     sudo pip install 'protobuf==3.1.0.post1'
 
+    # Install Go
+    # You can follow https://golang.org/doc/install for a detailed explanation.
+    wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
+    tar -C $HOME -xzf go.tgz && \
+    mkdir $HOME/gopath && \
+    rm go.tgz
+
+    # Setup environment variables
+    export GOROOT=$HOME/go
+    export GOPATH=$HOME/gopath
+    export PATH=$PATH:$GOROOT/bin
+
     # install cmake 3.4
     curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
         cd cmake-3.4.1 && ./bootstrap && make -j4 && sudo make install && \
@@ -118,9 +131,9 @@ As a simple example, consider the following:
     To build GPU version, you will need the following installed:
 
         1. a CUDA-capable GPU
-        2. A supported version of Linux with a gcc compiler and toolchain
+        2. A supported version of Linux with a GCC compiler and toolchain
         3. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
-        4. NVIDIA cuDNN Library (availabel at https://developer.nvidia.com/cudnn)
+        4. NVIDIA cuDNN Library (available at https://developer.nvidia.com/cudnn)
 
     The CUDA development environment relies on tight integration with the host development environment,
     including the host compiler and C runtime libraries, and is therefore only supported on
@@ -159,6 +172,7 @@ export PATH=<path to install>/bin:$PATH
 # install PaddlePaddle Python modules.
 sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
 ```
+
 ## <span id="centos">Build on Centos 7</span>
 
 ### Install Dependencies
@@ -179,9 +193,9 @@ sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
     To build GPU version, you will need the following installed:
 
         1. a CUDA-capable GPU
-        2. A supported version of Linux with a gcc compiler and toolchain
+        2. A supported version of Linux with a GCC compiler and toolchain
         3. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
-        4. NVIDIA cuDNN Library (availabel at https://developer.nvidia.com/cudnn)
+        4. NVIDIA cuDNN Library (available at https://developer.nvidia.com/cudnn)
 
     The CUDA development environment relies on tight integration with the host development environment,
     including the host compiler and C runtime libraries, and is therefore only supported on
@@ -209,7 +223,7 @@ mkdir build && cd build
 ``` 
 
 Finally, you can build and install PaddlePaddle:
-
+  
 ```bash
 # you can add build option here, such as:    
 cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>

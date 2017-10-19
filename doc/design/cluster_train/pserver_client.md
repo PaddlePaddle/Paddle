@@ -74,14 +74,25 @@ typedef enum {
 typedef struct {
   char*               name;
   paddle_element_type element_type;
-  void*               content;
+  unsigned char*      content;
   int                 content_len;
 } paddle_parameter, paddle_gradient;
 
-typedef struct paddle_pserver_client paddle_pserver_client;
+typedef int paddle_pserver_client;
 
-paddle_pserver_client* paddle_new_pserver_client();
-void paddle_pserver_client_release(paddle_pserver_client* client);
+/**
+ * @brief creates a pserver client that talks to etcd for coordination.
+ */
+paddle_pserver_client paddle_new_etcd_pserver_client(char* etcd_addr);
+
+/**
+ * @brief creates a pserver client given pserver addresses.
+ *
+ * @param pserver_addrs comma-separated pserver addresses.
+ * @param selected if current pserver client is selected to initialize all parameter servers.
+ */
+paddle_pserver_client paddle_new_pserver_client(char* pserver_addrs, int selected);
+void paddle_pserver_client_release(paddle_pserver_client c);
 
 /**
  * @brief paddle_begin_init_params begins to initialize parameters on
@@ -95,7 +106,7 @@ void paddle_pserver_client_release(paddle_pserver_client* client);
  * @return 1 if the trainer is selected to initialize parameter
  * servers, otherwise 0.
  */
-int paddle_begin_init_params(paddle_pserver_client* client);
+int paddle_begin_init_params(paddle_pserver_client client);
 
 /**
  * @brief paddle_init_param initializes the parameter on parameter
@@ -109,7 +120,7 @@ int paddle_begin_init_params(paddle_pserver_client* client);
  * @paddle_begin_init_param). Or simply exit the program and wait for
  * the cluster management system to restart the trainer.
  */
-int paddle_init_param(paddle_pserver_client* client, paddle_parameter param, const unsigned char* param_config_proto, int config_len);
+int paddle_init_param(paddle_pserver_client client, paddle_parameter param, const unsigned char* param_config_proto, int config_len);
 
 /**
  * @brief paddle_finish_init_params tells parameter servers client has
@@ -120,7 +131,7 @@ int paddle_init_param(paddle_pserver_client* client, paddle_parameter param, con
  * @paddle_begin_init_param). Or simply exit the program and wait for
  * the cluster management system to restart the trainer.
  */
-int paddle_finish_init_params(paddle_pserver_client* client);
+int paddle_finish_init_params(paddle_pserver_client client);
 
 /**
  * @brief paddle_send_grads sends gradients to parameter servers for
@@ -131,7 +142,7 @@ int paddle_finish_init_params(paddle_pserver_client* client);
  * @param learning_rate the learning rate for the gradients.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_send_grads(paddle_pserver_client* client, const paddle_gradient* grads, int len);
+int paddle_send_grads(paddle_pserver_client client, const paddle_gradient* grads, int len);
 
 /**
  * @brief paddle_get_params gets parameters from parameter servers.
@@ -139,13 +150,15 @@ int paddle_send_grads(paddle_pserver_client* client, const paddle_gradient* grad
  * paddle_get_params will block until parameters are initialized on
  * the parameter servers.
  *
- * @param names the array of names of the parameters to get.
- * @param dst the destination array of parameters to save to.
+ * @param dst the destination array of parameter pointers to save to.
+ * The parameter pointer must be pre-popullated with required parameter name,
+ * and the content of parameter must be pre-allocated of the size of required
+ * parameter on pserver.
  * @param len the length of the names array and the paddle_parameter
  * array.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_get_params(paddle_pserver_client* client, const char** names, paddle_parameter* dst, int len);
+int paddle_get_params(paddle_pserver_client client, paddle_parameter** dst, int len);
 
 /**
  * @brief paddle_save_model indicates parameters to save the parameter
@@ -154,5 +167,5 @@ int paddle_get_params(paddle_pserver_client* client, const char** names, paddle_
  * @param path the path to save parameters.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_save_model(paddle_pserver_client* client, const char* path);
+int paddle_save_model(paddle_pserver_client client, const char* path);
 ```

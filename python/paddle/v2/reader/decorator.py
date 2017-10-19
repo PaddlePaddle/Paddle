@@ -166,12 +166,12 @@ def buffered(reader, size):
     The buffered data reader will read and save data entries into a
     buffer. Reading from the buffered data reader will proceed as long
     as the buffer is not empty.
-    
+
     :param reader: the data reader to read from.
     :type reader: callable
     :param size: max buffer size.
     :type size: int
-    
+
     :returns: the buffered data reader.
     """
 
@@ -230,7 +230,7 @@ class XmapEndSignal():
     pass
 
 
-def xmap_readers(mapper, reader, process_num, buffer_size):
+def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     """
     Use multiprocess to map samples from reader by a mapper defined by user.
     And this function contains a buffered decorator.
@@ -238,16 +238,16 @@ def xmap_readers(mapper, reader, process_num, buffer_size):
     :type mapper: callable
     :param reader: the data reader to read from
     :type reader: callable
-    :param process_num: process number to handle original sample 
+    :param process_num: process number to handle original sample
     :type process_num: int
     :param buffer_size: max buffer size
     :type buffer_size: int
+    :param order: keep the order of reader
+    :type order: bool
     :return: the decarated reader
     :rtype: callable
     """
     end = XmapEndSignal()
-    in_queue = Queue(buffer_size)
-    out_queue = Queue(buffer_size)
 
     # define a worker to read samples from reader to in_queue
     def read_worker(reader, in_queue):
@@ -255,10 +255,13 @@ def xmap_readers(mapper, reader, process_num, buffer_size):
             in_queue.put(i)
         in_queue.put(end)
 
-    # start a read worker in a thread
-    t = Thread(target=read_worker, args=(reader, in_queue))
-    t.daemon = True
-    t.start()
+    # define a worker to read samples from reader to in_queue with order flag
+    def order_read_worker(reader, in_queue):
+        in_order = 0
+        for i in reader():
+            in_queue.put((in_order, i))
+            in_order += 1
+        in_queue.put(end)
 
     # define a worker to handle samples from in_queue by mapper
     # and put mapped samples into out_queue
@@ -271,17 +274,42 @@ def xmap_readers(mapper, reader, process_num, buffer_size):
         in_queue.put(end)
         out_queue.put(end)
 
-    # start several handle_workers
-    workers = []
-    for i in xrange(process_num):
-        worker = Thread(
-            target=handle_worker, args=(in_queue, out_queue, mapper))
-        worker.daemon = True
-        workers.append(worker)
-    for w in workers:
-        w.start()
+    # define a worker to handle samples from in_queue by mapper
+    # and put mapped samples into out_queue by order
+    def order_handle_worker(in_queue, out_queue, mapper, out_order):
+        ins = in_queue.get()
+        while not isinstance(ins, XmapEndSignal):
+            order, sample = ins
+            r = mapper(sample)
+            while order != out_order[0]:
+                pass
+            out_queue.put(r)
+            out_order[0] += 1
+            ins = in_queue.get()
+        in_queue.put(end)
+        out_queue.put(end)
 
     def xreader():
+        in_queue = Queue(buffer_size)
+        out_queue = Queue(buffer_size)
+        out_order = [0]
+        # start a read worker in a thread
+        target = order_read_worker if order else read_worker
+        t = Thread(target=target, args=(reader, in_queue))
+        t.daemon = True
+        t.start()
+        # start several handle_workers
+        target = order_handle_worker if order else handle_worker
+        args = (in_queue, out_queue, mapper, out_order) if order else (
+            in_queue, out_queue, mapper)
+        workers = []
+        for i in xrange(process_num):
+            worker = Thread(target=target, args=args)
+            worker.daemon = True
+            workers.append(worker)
+        for w in workers:
+            w.start()
+
         sample = out_queue.get()
         while not isinstance(sample, XmapEndSignal):
             yield sample

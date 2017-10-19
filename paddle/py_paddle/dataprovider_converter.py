@@ -109,6 +109,10 @@ class DenseScanner(IScanner):
             if len(self.__shape__) > 3:
                 raise ValueError(
                     "The dimension of input cannot be greater than 3.")
+            if len(self.__shape__) == 0:
+                raise ValueError(
+                    "The input should be a vector, please check your input data."
+                )
             self.__dim__ = reduce(lambda x, y: x * y, self.__shape__)
             if len(self.__shape__) == 1 and self.__dim__ != self.input_type.dim:
                 raise ValueError(
@@ -140,7 +144,7 @@ class DenseScanner(IScanner):
         if len(self.__shape__) > 1:
             # The last-two dimenstions are the frame height and width.
             # For example, the layout is CHW for 3-D feature of image.
-            # The H and W are the fram height and width.
+            # The H and W are the frame height and width.
             h, w = self.__shape__[-2:]
             argument.setSlotFrameHeight(self.pos, h)
             argument.setSlotFrameWidth(self.pos, w)

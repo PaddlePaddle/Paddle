@@ -239,7 +239,8 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  // asynchronous copy
+  // For GpuMatrix this is an asynchronous copy interface
+  // For CpuMatrix this is an synchronous copy interface
   virtual void copyFrom(const Matrix& src, hl_stream_t stream) {
     LOG(FATAL) << "Not implemented";
   }
@@ -859,49 +860,6 @@ public:
   }
 
   /**
-   * This function is used to calculate the convolution:
-   *
-   * It will expand a feature matrix according to the
-   * convolution filters
-   */
-  virtual void convExpand(Matrix& feature,
-                          int feaImgHeight,
-                          int feaImgWidth,
-                          int channels,
-                          int blockH,
-                          int blockW,
-                          int strideH,
-                          int strideW,
-                          int paddingH,
-                          int paddingW,
-                          int outputH,
-                          int outputW) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  /**
-   * This function is the reverse implementation of convExpand:
-   *
-   * Its function is to restore a expanded-matrix into a feature matrix
-   */
-  virtual void convShrink(Matrix& expandColMat,
-                          int thisImgHeight,
-                          int thisImgWidth,
-                          int channels,
-                          int blockH,
-                          int blockW,
-                          int strideH,
-                          int strideW,
-                          int paddingH,
-                          int paddingW,
-                          int outputH,
-                          int outputW,
-                          real alpha = 1.0f,
-                          real beta = 0.0f) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  /**
    * Pooling forward operation, pick out the largest element
    * in the sizeX of value
    */
@@ -970,15 +928,102 @@ public:
                                size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
+  /**
+   * Pooling 3D forward operation, pick out the largest element
+   * in the sizeX of value
+   */
+  virtual void maxPool3DForward(Matrix& inputMat,
+                                Matrix& maxPoolIdx,
+                                size_t channels,
+                                size_t imgSizeD,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t outputD,
+                                size_t outputH,
+                                size_t outputW,
+                                size_t sizeZ,
+                                size_t sizeY,
+                                size_t sizeX,
+                                size_t strideD,
+                                size_t strideH,
+                                size_t strideW,
+                                size_t paddingD,
+                                size_t paddingH,
+                                size_t paddingW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void maxPool3DBackward(Matrix& outGrad,
+                                 Matrix& maxPoolIdx,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW,
+                                 real scaleTargets,
+                                 real scaleOutput) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void avgPool3DForward(Matrix& input,
+                                size_t channels,
+                                size_t imgSizeD,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t outputD,
+                                size_t outputH,
+                                size_t outputW,
+                                size_t sizeZ,
+                                size_t sizeY,
+                                size_t sizeX,
+                                size_t strideD,
+                                size_t strideH,
+                                size_t strideW,
+                                size_t paddingD,
+                                size_t paddingH,
+                                size_t paddingW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void avgPool3DBackward(Matrix& input,
+                                 size_t imgSizeD,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t outputD,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 size_t sizeZ,
+                                 size_t sizeY,
+                                 size_t sizeX,
+                                 size_t strideD,
+                                 size_t strideH,
+                                 size_t strideW,
+                                 size_t paddingD,
+                                 size_t paddingH,
+                                 size_t paddingW,
+                                 real scaleTargets,
+                                 real scaleOutput) {
+    LOG(FATAL) << "Not implemeted";
+  }
 
   /**
-   * Input: one or more sequences. Each sequence contains some instances.
-   *
-   * Output: output size is the number of input sequences (NOT input
-   * instances).
-   *
-   * output[i] is set to max_input[i].
-   */
+ * Input: one or more sequences. Each sequence contains some instances.
+ *
+ * Output: output size is the number of input sequences (NOT input
+ * instances).
+ *
+ * output[i] is set to max_input[i].
+ */
   virtual void maxSequenceForward(Matrix& input,
                                   const IVector& sequence,
                                   IVector& index) {
@@ -1079,6 +1124,42 @@ public:
   }
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void vol2Col(real* data,
+                       int channels,
+                       int depth,
+                       int height,
+                       int width,
+                       int filterD,
+                       int filterH,
+                       int filterW,
+                       int strideD,
+                       int strideH,
+                       int strideW,
+                       int paddingD,
+                       int paddingH,
+                       int paddingW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void col2Vol(real* trg,
+                       int channels,
+                       int depth,
+                       int height,
+                       int width,
+                       int filterD,
+                       int filterH,
+                       int filterW,
+                       int strideD,
+                       int strideH,
+                       int strideW,
+                       int paddingD,
+                       int paddingH,
+                       int paddingW,
+                       real alpha,
+                       real beta) {
+    LOG(FATAL) << "Not implemeted";
   }
 
   virtual void bilinearForward(const Matrix& in,
@@ -1334,34 +1415,6 @@ public:
 
   void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
-  void convExpand(Matrix& feature,
-                  int feaImgHeight,
-                  int feaImgWidth,
-                  int channels,
-                  int blockH,
-                  int blockW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingW,
-                  int outputH,
-                  int outputW);
-
-  void convShrink(Matrix& expandColMat,
-                  int thisImgHeight,
-                  int thisImgWidth,
-                  int channels,
-                  int blockH,
-                  int blochW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingWreal,
-                  int outputH,
-                  int outputW,
-                  real alpha = 1.0f,
-                  real beta = 0.0f);
-
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,
                       size_t imgSizeW,
@@ -1418,6 +1471,82 @@ public:
                        size_t paddingH,
                        size_t paddingW);
 
+  void maxPool3DForward(Matrix& inputMat,
+                        Matrix& maxPoolIdx,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void maxPool3DBackward(Matrix& outGrad,
+                         Matrix& maxPoolIdx,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
+
+  void avgPool3DForward(Matrix& input,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void avgPool3DBackward(Matrix& input,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
+
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,
                           IVector& index);
@@ -1444,6 +1573,38 @@ public:
                         const real ratioH,
                         const real ratioW);
 
+  void vol2Col(real* data,
+               int channels,
+               int depth,
+               int height,
+               int width,
+               int filterD,
+               int filterH,
+               int filterW,
+               int strideD,
+               int strideH,
+               int strideW,
+               int paddingD,
+               int paddingH,
+               int paddingW);
+
+  void col2Vol(real* trg,
+               int channels,
+               int depth,
+               int height,
+               int width,
+               int filterD,
+               int filterH,
+               int filterW,
+               int strideD,
+               int strideH,
+               int strideW,
+               int paddingD,
+               int paddingH,
+               int paddingW,
+               real alpha,
+               real beta);
+
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
 
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
@@ -1455,6 +1616,10 @@ public:
 };
 
 class CpuMatrix : public Matrix {
+private:
+  MatrixPtr sftmaxSum_;
+  MatrixPtr sftmaxDot_;
+
 public:
   CpuMatrix(size_t height, size_t width, bool trans = false);
   CpuMatrix(real* data, size_t height, size_t width, bool trans = false)
@@ -1521,34 +1686,6 @@ public:
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
-  void convExpand(Matrix& feature,
-                  int feaImgHeight,
-                  int feaImgWidth,
-                  int channels,
-                  int blcokH,
-                  int blockW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingW,
-                  int outputH,
-                  int outputW);
-
-  void convShrink(Matrix& expandFeat,
-                  int thisImgHeight,
-                  int thisImgWidth,
-                  int channels,
-                  int blockH,
-                  int blockW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingW,
-                  int outputH,
-                  int outputW,
-                  real alpha = 1.0f,
-                  real beta = 0.0f);
-
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,
                       size_t imgSizeW,
@@ -1604,6 +1741,82 @@ public:
                        real scaleOutput,
                        size_t paddingH,
                        size_t paddingW);
+
+  void maxPool3DForward(Matrix& inputMat,
+                        Matrix& maxPoolIdx,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void maxPool3DBackward(Matrix& outGrad,
+                         Matrix& maxPoolIdx,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
+
+  void avgPool3DForward(Matrix& input,
+                        size_t channels,
+                        size_t imgSizeD,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t outputD,
+                        size_t outputH,
+                        size_t outputW,
+                        size_t sizeZ,
+                        size_t sizeY,
+                        size_t sizeX,
+                        size_t strideD,
+                        size_t strideH,
+                        size_t strideW,
+                        size_t paddingD,
+                        size_t paddingH,
+                        size_t paddingW);
+
+  void avgPool3DBackward(Matrix& input,
+                         size_t imgSizeD,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t outputD,
+                         size_t outputH,
+                         size_t outputW,
+                         size_t sizeZ,
+                         size_t sizeY,
+                         size_t sizeX,
+                         size_t strideD,
+                         size_t strideH,
+                         size_t strideW,
+                         size_t paddingD,
+                         size_t paddingH,
+                         size_t paddingW,
+                         real scaleTargets,
+                         real scaleOutput);
 
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,
@@ -1812,6 +2025,38 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  void vol2Col(real* data,
+               int channels,
+               int depth,
+               int height,
+               int width,
+               int filterD,
+               int filterH,
+               int filterW,
+               int strideD,
+               int strideH,
+               int strideW,
+               int paddingD,
+               int paddingH,
+               int paddingW);
+
+  void col2Vol(real* trg,
+               int channels,
+               int depth,
+               int height,
+               int width,
+               int filterD,
+               int filterH,
+               int filterW,
+               int strideD,
+               int strideH,
+               int strideW,
+               int paddingD,
+               int paddingH,
+               int paddingW,
+               real alpha,
+               real beta);
 
   template <typename ExpressionType>
   void operator=(const ExpressionType& expr) {

@@ -22,10 +22,42 @@ public:
 
   void forward(PassType passType) override {
     Layer::forward(passType);
+    std::vector<std::string> vals;
     for (size_t i = 0; i != inputLayers_.size(); ++i) {
-      getInput(i).printValueString(LOG(INFO),
-                                   "layer=" + inputLayers_[i]->getName() + " ");
+      std::ostringstream s;
+      getInput(i).printValueString(s, "");
+      vals.push_back(s.str());
     }
+    size_t pos = 0;
+    size_t i = 0;
+    std::ostringstream s;
+    const std::string& format = config_.user_arg();
+    while (true) {
+      size_t pos1 = format.find("%s", pos);
+      if (pos1 == std::string::npos) break;
+      if (i >= vals.size()) {
+        break;
+      }
+      s << format.substr(pos, pos1 - pos) << vals[i];
+      pos = pos1 + 2;
+      ++i;
+    }
+    if (i != inputLayers_.size()) {
+      LOG(ERROR) << "Number of value in the format (" << format
+                 << ") is not same as the number of inputs ("
+                 << inputLayers_.size() << ") at " << getName();
+    }
+    s << format.substr(pos);
+
+    const std::string delimiter("\n");
+    std::string content = s.str();
+    std::string::size_type foundPos = 0;
+    std::string::size_type prevPos = 0;
+    while ((foundPos = content.find(delimiter, prevPos)) != std::string::npos) {
+      LOG(INFO) << content.substr(prevPos, foundPos - prevPos);
+      prevPos = foundPos + delimiter.size();
+    }
+    LOG(INFO) << content.substr(prevPos);
   }
 
   void backward(const UpdateCallback& callback) override {}

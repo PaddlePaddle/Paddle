@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 `paddle.v2.layer` is a part of model config packages in paddle.v2. In API v2,
-we want to make Paddle a plain Python package. The model config package defined
+we want to make Paddle a plain Python package. The model config package defines
 the way how to configure a neural network topology in Paddle Python code.
 
 The primary usage shows below.
@@ -30,7 +30,6 @@ The primary usage shows below.
     # use prediction instance where needed.
     parameters = paddle.parameters.create(cost)
 """
-
 import collections
 import copy
 import re
@@ -44,16 +43,19 @@ __all__ = ['data', 'parse_network']
 
 
 def __need_to_keep__(name):
-    if name in ['StaticInput', 'LayerType', 'layer_support']:
-        return False
-    return True
+    return name in [
+        'StaticInput', 'SubsequenceInput', 'GeneratedInput', 'LayerType',
+        'layer_support', 'BaseGeneratedInput'
+    ]
 
 
 def __need_to_wrap__(name):
-    return name not in ['AggregateLevel', 'ExpandLevel']
+    return name not in ['AggregateLevel', 'ExpandLevel', 'BaseGeneratedInput']
 
 
 def __convert_name__(inname):
+    if __need_to_keep__(inname):
+        return inname
     if inname == 'maxid_layer':
         return 'max_id'
     elif inname.endswith('memory') or inname.endswith(
@@ -74,8 +76,6 @@ def __convert_name__(inname):
 
 for name in v1_layers.__all__:
     obj = getattr(v1_layers, name)
-    if not __need_to_keep__(name):
-        continue
     new_name = __convert_name__(name)
     if callable(obj) and __need_to_wrap__(name):
         globals()[new_name] = __convert_to_v2__(obj, new_name, __name__)
@@ -107,7 +107,7 @@ __data_layer__.__doc__ = __map_data_docstr__(v1_layers.data_layer.__doc__)
 data = __convert_to_v2__(__data_layer__, 'name', __name__)
 
 
-def __get_used_layers__(output_layers, extra_layers=None):
+def __get_used_layers__(output_layers):
     layer_names = set()
     parents = {}
 
@@ -131,6 +131,13 @@ def __get_used_layers__(output_layers, extra_layers=None):
                 if mem.boot_layer_name:
                     add_parent(mem.layer_name, mem.boot_layer_name)
                 add_parent(mem.link_name, mem.layer_name)
+
+            if sub_model.HasField('generator'):
+                # according to the implementation of text generation
+                # in recurrent layer group, the generated word must be
+                # the first out link
+                add_parent(sub_model.out_links[0].layer_name,
+                           sub_model.generator.eos_layer_name)
 
     def dfs_travel(layer_name):
         if layer_name in layer_names:
@@ -192,6 +199,15 @@ def __get_used_submodels__(layer_names):
     return submodel_names
 
 
+def __get_submodel_data_out_links__():
+    data_links = set()
+    for submodel in cp.g_config.model_config.sub_models:
+        for link in submodel.out_links:
+            if cp.g_layer_map[link.link_name].type == 'data':
+                data_links.add(link.link_name)
+    return data_links
+
+
 def __get_used_evaluators__(layer_names):
     evaluator_names = set()
     for e in cp.g_config.model_config.evaluators:
@@ -247,32 +263,44 @@ def __trim_submodel__(old_submodel, layer_names, input_layer_names,
 def parse_network(output_layers, extra_layers=None):
     if not isinstance(output_layers, collections.Sequence):
         output_layers = [output_layers]
-    if extra_layers is not None and not isinstance(extra_layers,
-                                                   collections.Sequence):
-        extra_layers = [extra_layers]
+    if extra_layers is not None:
+        if not isinstance(extra_layers, collections.Sequence):
+            extra_layers = [extra_layers]
     else:
         extra_layers = []
 
-    layer_names = __get_used_layers__(output_layers + extra_layers)
+    layer_names = __get_used_layers__(list(output_layers) + list(extra_layers))
     submodel_names = __get_used_submodels__(layer_names)
     submodel_names.add('root')
     evaluator_names = __get_used_evaluators__(layer_names)
+    data_out_links = __get_submodel_data_out_links__()
     input_layer_names = set()
     output_layer_names = set()
 
     model_config = ModelConfig()
     model_config.type = cp.g_config.model_config.type
+
+    for layer in output_layers:
+        model_config.output_layer_names.append(layer.full_name)
+        output_layer_names.add(layer.full_name)
+
     for l in cp.g_config.model_config.layers:
         if l.name not in layer_names:
             continue
         model_config.layers.extend([l])
         if l.type == 'data':
+            if l.name in data_out_links:
+                """
+                In text generation, the outlink to save the generated word
+                indices is a data_layer defined in recurrent_group. This
+                data_layer is sure to be the output of the network in text
+                generation task, so this statement excludes such a special
+                data_layer from being inputs of the network, otherwise an error
+                will occur during data feeding.
+                """
+                continue
             model_config.input_layer_names.append(l.name)
             input_layer_names.add(l.name)
-
-    for layer in output_layers:
-        model_config.output_layer_names.append(layer.full_name)
-        output_layer_names.add(layer.full_name)
 
     for e in cp.g_config.model_config.evaluators:
         if e.name in evaluator_names:
@@ -296,6 +324,3 @@ def parse_network(output_layers, extra_layers=None):
 
 def get_layer(name):
     return config_base.__layer_map__.get(name)
-
-
-cp.begin_parse()

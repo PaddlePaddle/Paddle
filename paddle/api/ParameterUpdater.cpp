@@ -15,6 +15,9 @@ limitations under the License. */
 #include "PaddleAPI.h"
 
 #include "PaddleAPIPrivate.h"
+#ifndef PADDLE_WITHOUT_GOLANG
+#include "paddle/trainer/NewRemoteParameterUpdater.h"
+#endif
 #include "paddle/trainer/RemoteParameterUpdater.h"
 #include "paddle/trainer/ThreadParameterUpdater.h"
 
@@ -26,6 +29,20 @@ ParameterUpdater *ParameterUpdater::createLocalUpdater(
   updater->m->updater.reset(
       new paddle::SgdThreadUpdater(config->m->getConfig()));
   return updater;
+}
+
+ParameterUpdater *ParameterUpdater::createNewRemoteUpdater(
+    OptimizationConfig *config,
+    const std::string pserverSpec,
+    const bool useEtcd) throw(UnsupportError) {
+#ifndef PADDLE_WITHOUT_GOLANG
+  auto updater = new ParameterUpdater();
+  updater->m->updater.reset(new paddle::NewRemoteParameterUpdater(
+      config->m->getConfig(), pserverSpec, useEtcd));
+  return updater;
+#else
+  throw UnsupportError("not compiled with WITH_GOLANG");
+#endif
 }
 
 ParameterUpdater *ParameterUpdater::createRemoteUpdater(

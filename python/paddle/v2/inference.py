@@ -1,9 +1,8 @@
 import numpy
-import py_paddle.swig_paddle as api
 import collections
 import topology
 import minibatch
-from data_feeder import DataFeeder
+import cPickle
 
 __all__ = ['infer', 'Inference']
 
@@ -27,19 +26,39 @@ class Inference(object):
     :type parameters: paddle.v2.parameters.Parameters
     """
 
-    def __init__(self, output_layer, parameters):
-        topo = topology.Topology(output_layer)
-        gm = api.GradientMachine.createFromConfigProto(
-            topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
+    def __init__(self, parameters, output_layer=None, fileobj=None):
+        import py_paddle.swig_paddle as api
+
+        if output_layer is not None:
+            topo = topology.Topology(output_layer)
+            gm = api.GradientMachine.createFromConfigProto(
+                topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
+            self.__data_types__ = topo.data_type()
+        elif fileobj is not None:
+            tmp = cPickle.load(fileobj)
+            gm = api.GradientMachine.createByConfigProtoStr(
+                tmp['protobin'], api.CREATE_MODE_TESTING,
+                [api.PARAMETER_VALUE])
+            self.__data_types__ = tmp['data_type']
+        else:
+            raise ValueError("Either output_layer or fileobj must be set")
+
         for param in gm.getParameters():
             val = param.getBuf(api.PARAMETER_VALUE)
             name = param.getName()
             assert isinstance(val, api.Vector)
             val.copyFromNumpyArray(parameters.get(name).flatten())
+            # the setValueUpdated function is called in randomize, zeroMem,
+            # load function in paddle/parameter/Parameter.cpp. But in the
+            # inference mode, the setValueUpdated is never called, it will
+            # cause the parameter will not be dispatched
+            # in MultiGradientMachine for multi-GPU. So setValueUpdated is
+            # called here, but it's better to call this function in one place.
+            param.setValueUpdated()
         self.__gradient_machine__ = gm
-        self.__data_types__ = topo.data_type()
 
     def iter_infer(self, input, feeding=None):
+        from data_feeder import DataFeeder
         feeder = DataFeeder(self.__data_types__, feeding)
         batch_size = len(input)
 
@@ -63,7 +82,7 @@ class Inference(object):
                 item = [each_result[each_field] for each_field in field]
                 yield item
 
-    def infer(self, input, field='value', **kwargs):
+    def infer(self, input, field='value', flatten_result=True, **kwargs):
         """
         Infer a data by model.
         :param input: input data batch. Should be python iterable object.
@@ -76,7 +95,13 @@ class Inference(object):
                 retv = [[] for i in xrange(len(result))]
             for i, item in enumerate(result):
                 retv[i].append(item)
-        retv = [numpy.concatenate(out) for out in retv]
+
+        if retv == None:
+            return []
+
+        if flatten_result:
+            retv = [numpy.concatenate(out) for out in retv]
+
         if len(retv) == 1:
             return retv[0]
         else:

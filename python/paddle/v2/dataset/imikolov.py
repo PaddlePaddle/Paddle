@@ -22,7 +22,7 @@ import paddle.v2.dataset.common
 import collections
 import tarfile
 
-__all__ = ['train', 'test', 'build_dict']
+__all__ = ['train', 'test', 'build_dict', 'convert']
 
 URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
@@ -146,3 +146,16 @@ def test(word_idx, n, data_type=DataType.NGRAM):
 
 def fetch():
     paddle.v2.dataset.common.download(URL, "imikolov", MD5)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    N = 5
+    word_dict = build_dict()
+    paddle.v2.dataset.common.convert(path,
+                                     train(word_dict, N), 1000,
+                                     "imikolov_train")
+    paddle.v2.dataset.common.convert(path,
+                                     test(word_dict, N), 1000, "imikolov_test")

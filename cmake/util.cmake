@@ -25,7 +25,9 @@ function(target_circle_link_libraries TARGET_NAME)
             endif()
         endforeach()
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-            list(APPEND LIBS "-undefined dynamic_lookup")
+            if(NOT IOS_ENABLE_BITCODE)
+                list(APPEND LIBS "-undefined dynamic_lookup")
+            endif()
         endif()
         list(REVERSE libsInArgn)
         target_link_libraries(${TARGET_NAME}
@@ -71,28 +73,51 @@ function(link_paddle_exe TARGET_NAME)
         generate_rdma_links()
     endif()
 
-    target_circle_link_libraries(${TARGET_NAME}
-        ARCHIVE_START
-        paddle_gserver
-        paddle_function
-        ARCHIVE_END
-        paddle_pserver
-        paddle_trainer_lib
-        paddle_network
-        paddle_math
-        paddle_utils
-        paddle_parameter
-        paddle_proto
-        paddle_cuda
-        ${EXTERNAL_LIBS}
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${CMAKE_DL_LIBS}
-        ${RDMA_LD_FLAGS}
-        ${RDMA_LIBS})
+    if(MOBILE_INFERENCE)
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_gserver
+            paddle_function
+            ARCHIVE_END
+            paddle_math
+            paddle_utils
+            paddle_parameter
+            paddle_proto
+            paddle_cuda
+            ${EXTERNAL_LIBS}
+            ${CMAKE_THREAD_LIBS_INIT}
+            ${CMAKE_DL_LIBS}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    else()
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_gserver
+            paddle_function
+            ARCHIVE_END
+            paddle_pserver
+            paddle_trainer_lib
+            paddle_network
+            paddle_math
+            paddle_utils
+            paddle_parameter
+            paddle_proto
+            paddle_cuda
+            paddle_optimizer
+            ${EXTERNAL_LIBS}
+            ${CMAKE_THREAD_LIBS_INIT}
+            ${CMAKE_DL_LIBS}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    endif()
 
     if(ANDROID)
         target_link_libraries(${TARGET_NAME} log)
     endif(ANDROID)
+
+    if(WITH_MKLDNN AND WITH_MKLML AND MKLDNN_IOMP_DIR)
+      target_link_libraries(${TARGET_NAME} "-L${MKLDNN_IOMP_DIR} -liomp5 -Wl,--as-needed")
+    endif()
 
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
@@ -117,7 +142,6 @@ endfunction()
 macro(add_unittest_without_exec TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
     link_paddle_test(${TARGET_NAME})
-    add_style_check_target(${TARGET_NAME} ${ARGN})
 endmacro()
 
 # add_unittest
@@ -141,17 +165,20 @@ endmacro()
 function(create_resources res_file output_file)
   add_custom_command(
     OUTPUT ${output_file}
-    COMMAND python ARGS ${PROJ_ROOT}/cmake/make_resource.py ${res_file} ${output_file}
-    DEPENDS ${res_file} ${PROJ_ROOT}/cmake/make_resource.py)
+    COMMAND python ARGS ${PADDLE_SOURCE_DIR}/cmake/make_resource.py ${res_file} ${output_file}
+    DEPENDS ${res_file} ${PADDLE_SOURCE_DIR}/cmake/make_resource.py)
 endfunction()
 
 
 # Create a python unittest using run_python_tests.sh,
 # which takes care of making correct running environment
 function(add_python_test TEST_NAME)
-  add_test(NAME ${TEST_NAME}
-        COMMAND env PADDLE_PACKAGE_DIR=${PADDLE_PYTHON_PACKAGE_DIR}
-        bash ${PROJ_ROOT}/paddle/scripts/run_python_tests.sh
-        ${USE_VIRTUALENV_FOR_TEST} ${PYTHON_EXECUTABLE} ${ARGN}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    foreach(arg ${ARGN})
+        get_filename_component(py_fn ${arg} NAME_WE)
+        set(TRG_NAME ${TEST_NAME}_${py_fn})
+        add_test(NAME ${TRG_NAME}
+                COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
+                python2 ${arg}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endforeach()
 endfunction()

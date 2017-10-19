@@ -99,3 +99,12 @@ value_printer
 ..  automodule:: paddle.v2.evaluator
     :members:  value_printer
     :noindex:
+
+Detection
+=====
+
+detection_map
+-------------
+..  automodule:: paddle.v2.evaluator
+    :members:  detection_map
+    :noindex:

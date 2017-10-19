@@ -41,6 +41,11 @@ void ConvBaseProjection::getConvParams() {
   strideH_ = conf.stride_y();
   strideW_ = conf.stride();
 
+  dilationH_ = conf.dilation_y();
+  dilationW_ = conf.dilation();
+  CHECK_GT(dilationH_, 0);
+  CHECK_GT(dilationW_, 0);
+
   filterH_ = conf.filter_size_y();
   filterW_ = conf.filter_size();
 
@@ -77,7 +82,9 @@ void ConvBaseProjection::initCudnn() {
                                    paddingH_,
                                    paddingW_,
                                    strideH_,
-                                   strideW_);
+                                   strideW_,
+                                   dilationH_,
+                                   dilationW_);
 
   // initialize all to default algorithms
   fwdAlgo_ = 0;
@@ -87,9 +94,6 @@ void ConvBaseProjection::initCudnn() {
   bwdDataLimitBytes_ = 0;
   bwdFilterLimitBytes_ = 0;
   workSpaceInBytes_ = 0;
-
-  batchNum_ = 0;
-  isSelectAlgo_ = false;
 }
 
 void ConvBaseProjection::reshapeTensorDesc(int batchSize) {
@@ -134,7 +138,9 @@ void ConvBaseProjection::reshapeTensorDesc(int batchSize) {
                                   paddingH_,
                                   paddingW_,
                                   strideH_,
-                                  strideW_);
+                                  strideW_,
+                                  dilationH_,
+                                  dilationW_);
 }
 
 void ConvBaseProjection::reshape(int batchSize) {
@@ -142,32 +148,30 @@ void ConvBaseProjection::reshape(int batchSize) {
   CHECK_EQ(width, out_->value->getWidth());
   CHECK_EQ(calInputSize(), in_->value->getWidth());
 
-  isSelectAlgo_ = (batchSize == batchNum_);
-  batchNum_ = batchSize;
-
-  if (!isSelectAlgo_) {
-    reshapeTensorDesc(batchSize);
-    hl_conv_workspace(imageDesc_,
-                      outputDesc_,
-                      filterDesc_,
-                      convDesc_,
-                      &fwdAlgo_,
-                      &fwdLimitBytes_,
-                      &bwdDataAlgo_,
-                      &bwdDataLimitBytes_,
-                      &bwdFilterAlgo_,
-                      &bwdFilterLimitBytes_);
-
-    size_t maxWorkSpace = 0;
-    maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);
-    maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_);
-    workSpaceInBytes_ = maxWorkSpace;
-
-    VLOG(3) << getName() << " Fwd / BwdData / BwdFilter algo: " << fwdAlgo_
-            << " / " << bwdDataAlgo_ << " / " << bwdFilterAlgo_;
+  reshapeTensorDesc(batchSize);
+  bool useDilation = false;
+  if (dilationH_ > 1 || dilationW_ > 1) {
+    useDilation = true;
   }
+  hl_conv_workspace(imageDesc_,
+                    outputDesc_,
+                    filterDesc_,
+                    convDesc_,
+                    &fwdAlgo_,
+                    &fwdLimitBytes_,
+                    &bwdDataAlgo_,
+                    &bwdDataLimitBytes_,
+                    &bwdFilterAlgo_,
+                    &bwdFilterLimitBytes_,
+                    useDilation);
 
-  isSelectAlgo_ = true;
+  size_t maxWorkSpace = 0;
+  maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);
+  maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_);
+  workSpaceInBytes_ = maxWorkSpace;
+
+  VLOG(3) << getName() << " Fwd / BwdData / BwdFilter algo: " << fwdAlgo_
+          << " / " << bwdDataAlgo_ << " / " << bwdFilterAlgo_;
 }
 
 void *ConvBaseProjection::getSpaceBytes(size_t size) {

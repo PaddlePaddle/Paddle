@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "GruCompute.h"
 #include "hl_recurrent_apply.cuh"
+#include "paddle/function/GruFunctor.h"
 #include "paddle/utils/Util.h"
 
 namespace paddle {
@@ -25,13 +26,13 @@ void GruCompute::init(LayerConfig &config) {
 
 template <>
 void GruCompute::forward<0>(hl_gru_value value, int frameSize, int batchSize) {
-  hl_cpu_gru_forward(hppl::forward::gru_resetOutput(),
-                     hppl::forward::gru_finalOutput(),
-                     value,
-                     frameSize,
-                     batchSize,
-                     activeNode_,
-                     activeGate_);
+  GruFunctor<DEVICE_TYPE_CPU, real>::compute(hppl::forward::gru_resetOutput(),
+                                             hppl::forward::gru_finalOutput(),
+                                             value,
+                                             frameSize,
+                                             batchSize,
+                                             activeNode_,
+                                             activeGate_);
 }
 
 template <>
@@ -39,14 +40,15 @@ void GruCompute::backward<0>(hl_gru_value value,
                              hl_gru_grad grad,
                              int frameSize,
                              int batchSize) {
-  hl_cpu_gru_backward(hppl::backward::gru_stateGrad(),
-                      hppl::backward::gru_resetGrad(),
-                      value,
-                      grad,
-                      frameSize,
-                      batchSize,
-                      activeNode_,
-                      activeGate_);
+  GruGradFunctor<DEVICE_TYPE_CPU, real>::compute(
+      hppl::backward::gru_stateGrad(),
+      hppl::backward::gru_resetGrad(),
+      value,
+      grad,
+      frameSize,
+      batchSize,
+      activeNode_,
+      activeGate_);
 }
 
 }  // namespace paddle

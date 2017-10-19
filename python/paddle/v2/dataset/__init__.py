@@ -25,8 +25,10 @@ import uci_housing
 import sentiment
 import wmt14
 import mq2007
+import flowers
+import voc2012
 
 __all__ = [
     'mnist', 'imikolov', 'imdb', 'cifar', 'movielens', 'conll05', 'sentiment'
-    'uci_housing', 'wmt14', 'mq2007'
+    'uci_housing', 'wmt14', 'mq2007', 'flowers', 'voc2012'
 ]

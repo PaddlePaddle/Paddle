@@ -262,7 +262,12 @@ def left_right_flip(im):
         return im[:, ::-1, :]
 
 
-def simple_transform(im, resize_size, crop_size, is_train, is_color=True):
+def simple_transform(im,
+                     resize_size,
+                     crop_size,
+                     is_train,
+                     is_color=True,
+                     mean=None):
     """
     Simply data argumentation for training. These operations include
     resizing, croping and flipping.
@@ -288,7 +293,19 @@ def simple_transform(im, resize_size, crop_size, is_train, is_color=True):
             im = left_right_flip(im)
     else:
         im = center_crop(im, crop_size)
-    im = to_chw(im)
+    if len(im.shape) == 3:
+        im = to_chw(im)
+
+    im = im.astype('float32')
+    if mean is not None:
+        mean = np.array(mean, dtype=np.float32)
+        # mean value, may be one value per channel 
+        if mean.ndim == 1:
+            mean = mean[:, np.newaxis, np.newaxis]
+        else:
+            # elementwise mean
+            assert len(mean.shape) == len(im)
+        im -= mean
 
     return im
 
@@ -297,7 +314,8 @@ def load_and_transform(filename,
                        resize_size,
                        crop_size,
                        is_train,
-                       is_color=True):
+                       is_color=True,
+                       mean=None):
     """
     Load image from the input file `filename` and transform image for
     data argumentation. Please refer to the `simple_transform` interface
@@ -318,5 +336,5 @@ def load_and_transform(filename,
     :type is_train: bool
     """
     im = load_image(filename)
-    im = simple_transform(im, resize_size, crop_size, is_train, is_color)
+    im = simple_transform(im, resize_size, crop_size, is_train, is_color, mean)
     return im

@@ -12,149 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <float.h>
 #include "hl_base.h"
 #include "hl_cnn.h"
 #include "hl_device_functions.cuh"
 
-__global__ void KeFeature2col(size_t n, size_t height, const real* data_im,
-                              size_t blockH, size_t blockW, size_t width,
-                              size_t strideH, size_t strideW,
-                              size_t paddingH, size_t paddingW,
-                              size_t height_col, size_t width_col,
-                              real* data_col) {
-  size_t index =
-    (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
-  if (index < n) {
-    size_t w_out = index % width_col;
-    index /= width_col;
-    size_t h_out = index % height_col;
-    size_t channel_in = index / height_col;
-    size_t channel_out = channel_in * blockH * blockW;
-    size_t h_in = h_out * strideH;
-    size_t w_in = w_out * strideW;
-
-    data_col += (channel_out * height_col + h_out) * width_col + w_out;
-    for (size_t i = 0; i < blockH; ++i) {
-      for (size_t j = 0; j < blockW; ++j) {
-        int rIdx = int(h_in+i);
-        int cIdx = int(w_in+j);
-        if ((rIdx-(int)paddingH) >= (int)height ||
-            (rIdx-(int)paddingH) < 0 ||
-            (cIdx-(int)paddingW) >= (int)width ||
-            (cIdx-(int)paddingW) < 0) {
-          *data_col = 0;
-        } else {
-          rIdx = rIdx + channel_in*height - paddingH;
-          cIdx = cIdx - paddingW;
-          *data_col = data_im[rIdx* width + cIdx];
-        }
-        data_col += height_col * width_col;
-      }
-    }
-  }
-}
-
-void hl_expand_feature2col(const real* dataIm, size_t channels,
-                           size_t height, size_t width,
-                           size_t blockH, size_t blockW,
-                           size_t strideH, size_t strideW,
-                           size_t paddingH, size_t paddingW,
-                           size_t outputH, size_t outputW,
-                           real* dataCol) {
-  size_t numKernels = channels * outputH * outputW;
-
-  size_t blocks = (numKernels + 1024 -1) / 1024;
-  size_t blockX = 512;
-  size_t blockY = (blocks+512-1)/512;
-  dim3 threads(1024, 1);
-  dim3 grid(blockX, blockY);
-  KeFeature2col<<< grid, threads, 0, STREAM_DEFAULT >>>
-           (numKernels, height, dataIm, blockH, blockW, width,
-           strideH, strideW, paddingH, paddingW,
-           outputH, outputW, dataCol);
-  CHECK_SYNC("hl_expand_feature2col failed");
-}
-
-__global__ void KeCol2Feature(size_t n, const real* data_col, size_t height,
-                              size_t width, size_t channels,
-                              size_t blockH, size_t blockW,
-                              size_t strideH, size_t strideW,
-                              size_t paddingH, size_t paddingW,
-                              size_t height_col, size_t width_col,
-                              real* data_im, real alpha, real beta) {
-  size_t index =
-    (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
-  if (index < n) {
-    real val = 0;
-    int w = int(index % width);
-    int h = int((index / width) % height);
-    int c = int(index / (width * height));
-    if ((w - (int)paddingW) >= 0 &&
-        (w - (int)paddingW) < (width-2 * paddingW) &&
-        (h - (int)paddingH) >= 0 &&
-        (h - paddingH) < (height - 2 * paddingH)) {
-      // compute the start and end of the output
-      int w_col_start =
-        (w < (int)blockW) ? 0 : (w - int(blockW)) / (int)strideW + 1;
-      int w_col_end =
-        min((int)(w / (int)strideW + 1), (int)(width_col));
-      int h_col_start =
-        (h < (int)blockH) ? 0 : (h - (int)blockH) / (int)strideH + 1;
-      int h_col_end = min(int(h / strideH + 1), int(height_col));
-      for (int h_col = h_col_start; h_col < h_col_end; ++h_col) {
-        for (int w_col = w_col_start; w_col < w_col_end; ++w_col) {
-          // the col location: [c * width * height + h_out, w_out]
-          int c_col = int(c * blockH* blockW) + \
-            (h - h_col * (int)strideH) * (int)blockW +
-            (w - w_col * (int)strideW);
-          val += data_col[(c_col * height_col + h_col) * width_col + w_col];
-        }
-      }
-      h -= paddingH;
-      w -= paddingW;
-      real tD = data_im[c*((width-2*paddingW) * (height-2*paddingH)) +
-                          h*(width-2*paddingW) + w];
-      data_im[c*((width-2*paddingW) * (height-2*paddingH)) +
-              h*(width-2*paddingW) + w] = alpha * val + beta*tD;
-    }
-  }
-}
-
-void hl_shrink_col2feature(const real * dataCol, size_t channels,
-                           size_t height, size_t width,
-                           size_t blockH, size_t blockW,
-                           size_t strideH, size_t strideW,
-                           size_t paddingH, size_t paddingW,
-                           size_t outputH, size_t outputW,
-                           real* dataIm, real alpha, real beta) {
-  size_t numKernels = channels * (height + 2*paddingH) * (width + 2*paddingW);
-
-  size_t blocks = (numKernels + 1024 -1) / 1024;
-  size_t blockX = 512;
-  size_t blockY = (blocks+512-1)/512;
-  dim3 threads(1024, 1);
-  dim3 grid(blockX, blockY);
-
-  // To avoid involving atomic operations, we will launch one kernel per
-  // bottom dimension, and then in the kernel add up the top dimensions.
-  KeCol2Feature<<< grid, threads, 0, STREAM_DEFAULT >>>
-           (numKernels, dataCol, height + 2*paddingH, width + 2*paddingW,
-           channels, blockH, blockW, strideH, strideW, paddingH, paddingW,
-           outputH, outputW, dataIm, alpha, beta);
-  CHECK_SYNC("hl_shrink_col2feature failed");
-}
-
-__global__ void KeMaxPoolForward(const int nthreads, const real* inputData,
-                                 const int channels, const int height,
+__global__ void KeMaxPoolForward(const int nthreads,
+                                 const real* inputData,
+                                 const int channels,
+                                 const int height,
                                  const int width,
-                                 const int pooledH, const int pooledW,
-                                 const int ksizeW, const int ksizeH,
-                                 const int strideH, const int strideW,
-                                 const int offsetH, const int offsetW,
-                                 real* tgtData, const int tgtStride) {
-  int index =  blockIdx.x * blockDim.x + threadIdx.x;
+                                 const int pooledH,
+                                 const int pooledW,
+                                 const int ksizeW,
+                                 const int ksizeH,
+                                 const int strideH,
+                                 const int strideW,
+                                 const int offsetH,
+                                 const int offsetW,
+                                 real* tgtData,
+                                 const int tgtStride) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int pw = index % pooledW;
     int ph = (index / pooledW) % pooledH;
@@ -174,44 +52,70 @@ __global__ void KeMaxPoolForward(const int nthreads, const real* inputData,
           maxval = inputData[h * width + w];
       }
     }
-    int tgtIndex = index % (pooledW * pooledH * channels) +
-        frameNum * tgtStride;
+    int tgtIndex =
+        index % (pooledW * pooledH * channels) + frameNum * tgtStride;
     tgtData[tgtIndex] = maxval;
   }
 }
 
-void hl_maxpool_forward(const int frameCnt, const real* inputData,
+void hl_maxpool_forward(const int frameCnt,
+                        const real* inputData,
                         const int channels,
-                        const int height, const int width,
-                        const int pooledH, const int pooledW,
-                        const int sizeX, const int sizeY,
-                        const int strideH, const int strideW,
-                        const int paddingH, const int paddingW,
-                        real* tgtData, const int tgtStride) {
-
+                        const int height,
+                        const int width,
+                        const int pooledH,
+                        const int pooledW,
+                        const int sizeX,
+                        const int sizeY,
+                        const int strideH,
+                        const int strideW,
+                        const int paddingH,
+                        const int paddingW,
+                        real* tgtData,
+                        const int tgtStride) {
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KeMaxPoolForward<<< grid, threads, 0, STREAM_DEFAULT >>>
-           (num_kernels, inputData, channels, height, width,
-           pooledH, pooledW, sizeX, sizeY, strideH, strideW,
-           paddingH, paddingW, tgtData, tgtStride);
+  KeMaxPoolForward<<<grid, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                         inputData,
+                                                         channels,
+                                                         height,
+                                                         width,
+                                                         pooledH,
+                                                         pooledW,
+                                                         sizeX,
+                                                         sizeY,
+                                                         strideH,
+                                                         strideW,
+                                                         paddingH,
+                                                         paddingW,
+                                                         tgtData,
+                                                         tgtStride);
   CHECK_SYNC("hl_maxpool_forward failed");
 }
 
-__global__ void KeMaxPoolBackward(const int nthreads, const real* inputData,
-                                  const real* outData, const real* outGrad,
-                                  const int channels, const int height,
+__global__ void KeMaxPoolBackward(const int nthreads,
+                                  const real* inputData,
+                                  const real* outData,
+                                  const real* outGrad,
+                                  const int channels,
+                                  const int height,
                                   const int width,
-                                  const int pooledH, const int pooledW,
-                                  const int sizeX, const int sizeY,
-                                  const int strideH, const int strideW,
-                                  const int padH, const int padW,
-                                  real scaleA, real scaleB,
-                                  real* targetGrad, const int outStride) {
-  int index = blockIdx.x  * blockDim.x + threadIdx.x;
+                                  const int pooledH,
+                                  const int pooledW,
+                                  const int sizeX,
+                                  const int sizeY,
+                                  const int strideH,
+                                  const int strideW,
+                                  const int padH,
+                                  const int padW,
+                                  real scaleA,
+                                  real scaleB,
+                                  real* targetGrad,
+                                  const int outStride) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     // find out the local index
     // find out the local offset
@@ -235,43 +139,69 @@ __global__ void KeMaxPoolBackward(const int nthreads, const real* inputData,
         }
       }
     }
-    targetGrad[index] =
-      scaleB * targetGrad[index] + scaleA * gradient;
+    targetGrad[index] = scaleB * targetGrad[index] + scaleA * gradient;
   }
 }
 
-void hl_maxpool_backward(const int frameCnt, const real* inputData,
-                        const real* outData, const real* outGrad,
-                        const int channels, const int height,
-                        const int width,
-                        const int pooledH, const int pooledW,
-                        const int sizeX, const int sizeY,
-                        const int strideH, const int strideW,
-                        const int paddingH, const int paddingW,
-                        real scaleA, real scaleB,
-                        real* targetGrad, const int outStride) {
-
+void hl_maxpool_backward(const int frameCnt,
+                         const real* inputData,
+                         const real* outData,
+                         const real* outGrad,
+                         const int channels,
+                         const int height,
+                         const int width,
+                         const int pooledH,
+                         const int pooledW,
+                         const int sizeX,
+                         const int sizeY,
+                         const int strideH,
+                         const int strideW,
+                         const int paddingH,
+                         const int paddingW,
+                         real scaleA,
+                         real scaleB,
+                         real* targetGrad,
+                         const int outStride) {
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeMaxPoolBackward<<< blocks, 1024, 0, STREAM_DEFAULT >>>
-           (num_kernels, inputData, outData, outGrad, channels,
-           height, width, pooledH, pooledW, sizeX, sizeY,
-           strideH, strideW,
-           paddingH, paddingW,
-           scaleA, scaleB,
-           targetGrad, outStride);
+  KeMaxPoolBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                         inputData,
+                                                         outData,
+                                                         outGrad,
+                                                         channels,
+                                                         height,
+                                                         width,
+                                                         pooledH,
+                                                         pooledW,
+                                                         sizeX,
+                                                         sizeY,
+                                                         strideH,
+                                                         strideW,
+                                                         paddingH,
+                                                         paddingW,
+                                                         scaleA,
+                                                         scaleB,
+                                                         targetGrad,
+                                                         outStride);
   CHECK_SYNC("hl_maxpool_backward");
 }
 
-__global__ void KeAvgPoolForward(const int nthreads, const real* inputData,
+__global__ void KeAvgPoolForward(const int nthreads,
+                                 const real* inputData,
                                  const int channels,
-                                 const int height, const int width,
-                                 const int pooledH, const int pooledW,
-                                 const int sizeX, const int sizeY,
-                                 const int strideH, const int strideW,
-                                 const int padH, const int padW,
-                                 real* tgtData, const int tgtStride) {
+                                 const int height,
+                                 const int width,
+                                 const int pooledH,
+                                 const int pooledW,
+                                 const int sizeX,
+                                 const int sizeY,
+                                 const int strideH,
+                                 const int strideW,
+                                 const int padH,
+                                 const int padW,
+                                 real* tgtData,
+                                 const int tgtStride) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int pw = index % pooledW;
@@ -281,13 +211,11 @@ __global__ void KeAvgPoolForward(const int nthreads, const real* inputData,
 
     int hstart = ph * strideH - padH;
     int wstart = pw * strideW - padW;
-    int hend = min(hstart + sizeY, height + padH);
-    int wend = min(wstart + sizeX, width + padW);
-    int pool_size = (hend - hstart) * (wend - wstart);
+    int hend = min(hstart + sizeY, height);
+    int wend = min(wstart + sizeX, width);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
-    hend = min(hend, height);
-    wend = min(wend, width);
+    int pool_size = (hend - hstart) * (wend - wstart);
 
     real aveval = 0;
     inputData += (frameNum * channels + c) * height * width;
@@ -296,39 +224,64 @@ __global__ void KeAvgPoolForward(const int nthreads, const real* inputData,
         aveval += inputData[h * width + w];
       }
     }
-    int tgtIndex = index % (pooledW * pooledH * channels) +
-        frameNum * tgtStride;
+    int tgtIndex =
+        index % (pooledW * pooledH * channels) + frameNum * tgtStride;
     tgtData[tgtIndex] = aveval / pool_size;
   }
 }
 
-void hl_avgpool_forward(const int frameCnt, const real* inputData,
+void hl_avgpool_forward(const int frameCnt,
+                        const real* inputData,
                         const int channels,
-                        const int height, const int width,
-                        const int pooledH, const int pooledW,
-                        const int sizeX, const int sizeY,
-                        const int strideH, const int strideW,
-                        const int paddingH, const int paddingW, 
-                        real* tgtData, const int tgtStride) {
+                        const int height,
+                        const int width,
+                        const int pooledH,
+                        const int pooledW,
+                        const int sizeX,
+                        const int sizeY,
+                        const int strideH,
+                        const int strideW,
+                        const int paddingH,
+                        const int paddingW,
+                        real* tgtData,
+                        const int tgtStride) {
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  KeAvgPoolForward<<< blocks, 1024, 0, STREAM_DEFAULT >>>
-           (num_kernels, inputData, channels,
-           height, width, pooledH, pooledW,
-           sizeX, sizeY, strideH, strideW,
-           paddingH, paddingW, tgtData, tgtStride);
+  KeAvgPoolForward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                        inputData,
+                                                        channels,
+                                                        height,
+                                                        width,
+                                                        pooledH,
+                                                        pooledW,
+                                                        sizeX,
+                                                        sizeY,
+                                                        strideH,
+                                                        strideW,
+                                                        paddingH,
+                                                        paddingW,
+                                                        tgtData,
+                                                        tgtStride);
   CHECK_SYNC("hl_avgpool_forward failed");
 }
 
-__global__ void KeAvgPoolBackward(const int nthreads, const real* outGrad,
-                                  const int channels, const int height,
+__global__ void KeAvgPoolBackward(const int nthreads,
+                                  const real* outGrad,
+                                  const int channels,
+                                  const int height,
                                   const int width,
-                                  const int pooledH, const int pooledW,
-                                  const int sizeX, const int sizeY,
-                                  const int strideH, const int strideW,
-                                  const int padH, const int padW,
-                                  real scaleA, real scaleB,
-                                  real* tgtGrad, const int outStride) {
+                                  const int pooledH,
+                                  const int pooledW,
+                                  const int sizeX,
+                                  const int sizeY,
+                                  const int strideH,
+                                  const int strideW,
+                                  const int padH,
+                                  const int padW,
+                                  real scaleA,
+                                  real scaleB,
+                                  real* tgtGrad,
+                                  const int outStride) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int offsetW = index % width + padW;
@@ -343,42 +296,488 @@ __global__ void KeAvgPoolBackward(const int nthreads, const real* outGrad,
     real gradient = 0;
     outGrad += (frameNum * outStride + offsetC * pooledH * pooledW);
 
-
     for (int ph = phstart; ph < phend; ++ph) {
+      int hstart = ph * strideH - padH;
+      int hend = min(hstart + sizeY, height);
+      hstart = max(hstart, 0);
       for (int pw = pwstart; pw < pwend; ++pw) {
         // figure out the pooling size
-        int hstart = ph * strideH - padH;
         int wstart = pw * strideW - padW;
-        int hend = min(hstart + sizeY, height + padH);
-        int wend = min(wstart + sizeX, width + padW);
+        int wend = min(wstart + sizeX, width);
+        wstart = max(wstart, 0);
         int poolsize = (hend - hstart) * (wend - wstart);
-        gradient += outGrad[ph * pooledW + pw]/poolsize;
+        gradient += outGrad[ph * pooledW + pw] / poolsize;
       }
     }
     tgtGrad[index] = scaleB * tgtGrad[index] + scaleA * gradient;
   }
 }
 
-void hl_avgpool_backward(const int frameCnt, const real* outGrad,
+void hl_avgpool_backward(const int frameCnt,
+                         const real* outGrad,
                          const int channels,
-                         const int height, const int width,
-                         const int pooledH, const int pooledW,
-                         const int sizeX, const int sizeY,
-                         const int strideH, const int strideW,
-                         const int paddingH, const int paddingW,
-                         real scaleA, real scaleB,
-                         real* backGrad, const int outStride) {
+                         const int height,
+                         const int width,
+                         const int pooledH,
+                         const int pooledW,
+                         const int sizeX,
+                         const int sizeY,
+                         const int strideH,
+                         const int strideW,
+                         const int paddingH,
+                         const int paddingW,
+                         real scaleA,
+                         real scaleB,
+                         real* backGrad,
+                         const int outStride) {
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeAvgPoolBackward <<< blocks, 1024, 0, STREAM_DEFAULT >>>
-           (num_kernels, outGrad, channels, height, width,
-           pooledH, pooledW, sizeX, sizeY,
-           strideH, strideW,
-           paddingH, paddingW,
-           scaleA, scaleB,
-           backGrad, outStride);
+  KeAvgPoolBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                         outGrad,
+                                                         channels,
+                                                         height,
+                                                         width,
+                                                         pooledH,
+                                                         pooledW,
+                                                         sizeX,
+                                                         sizeY,
+                                                         strideH,
+                                                         strideW,
+                                                         paddingH,
+                                                         paddingW,
+                                                         scaleA,
+                                                         scaleB,
+                                                         backGrad,
+                                                         outStride);
   CHECK_SYNC("hl_avgpool_backward failed");
+}
+
+__global__ void KeMaxPool3DForward(const int nthreads,
+                                   const real* inputData,
+                                   const int channels,
+                                   const int depth,
+                                   const int height,
+                                   const int width,
+                                   const int pooledD,
+                                   const int pooledH,
+                                   const int pooledW,
+                                   const int ksizeD,
+                                   const int ksizeH,
+                                   const int ksizeW,
+                                   const int strideD,
+                                   const int strideH,
+                                   const int strideW,
+                                   const int padD,
+                                   const int padH,
+                                   const int padW,
+                                   real* tgtData,
+                                   real* maxPoolIdxData,
+                                   const int tgtStride) {
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+       index += blockDim.x * gridDim.x) {
+    int pw = index % pooledW;
+    int ph = (index / pooledW) % pooledH;
+    int pd = (index / pooledW / pooledH) % pooledD;
+    int c = (index / pooledW / pooledH / pooledD) % channels;
+    int frameNum = index / pooledW / pooledH / pooledD / channels;
+    int dstart = pd * strideD - padD;
+    int hstart = ph * strideH - padH;
+    int wstart = pw * strideW - padW;
+    int dend = min(dstart + ksizeD, depth);
+    int hend = min(hstart + ksizeH, height);
+    int wend = min(wstart + ksizeW, width);
+    dstart = max(dstart, 0);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
+    real maxval = -FLT_MAX;
+    int maxIdx = -1;
+    inputData += (frameNum * channels + c) * depth * height * width;
+    for (int d = dstart; d < dend; ++d) {
+      for (int h = hstart; h < hend; ++h) {
+        for (int w = wstart; w < wend; ++w) {
+          if (maxval < inputData[(d * height + h) * width + w]) {
+            maxval = inputData[(d * height + h) * width + w];
+            maxIdx = (d * height + h) * width + w;
+          }
+        }
+      }
+    }
+    int tgtIndex =
+        index % (pooledW * pooledH * pooledD * channels) + frameNum * tgtStride;
+    tgtData[tgtIndex] = maxval;
+    maxPoolIdxData[tgtIndex] = maxIdx;
+  }
+}
+
+void hl_maxpool3D_forward(const int frameCnt,
+                          const real* inputData,
+                          const int channels,
+                          const int depth,
+                          const int height,
+                          const int width,
+                          const int pooledD,
+                          const int pooledH,
+                          const int pooledW,
+                          const int sizeZ,
+                          const int sizeY,
+                          const int sizeX,
+                          const int strideD,
+                          const int strideH,
+                          const int strideW,
+                          const int padD,
+                          const int padH,
+                          const int padW,
+                          real* tgtData,
+                          real* maxPoolIdxData,
+                          const int tgtStride) {
+  int num_kernels = pooledD * pooledH * pooledW * channels * frameCnt;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+  dim3 threads(1024, 1);
+  dim3 grid(blocks, 1);
+
+  KeMaxPool3DForward<<<grid, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                           inputData,
+                                                           channels,
+                                                           depth,
+                                                           height,
+                                                           width,
+                                                           pooledD,
+                                                           pooledH,
+                                                           pooledW,
+                                                           sizeZ,
+                                                           sizeY,
+                                                           sizeX,
+                                                           strideD,
+                                                           strideH,
+                                                           strideW,
+                                                           padD,
+                                                           padH,
+                                                           padW,
+                                                           tgtData,
+                                                           maxPoolIdxData,
+                                                           tgtStride);
+  CHECK_SYNC("hl_maxpool3D_forward failed");
+}
+
+__global__ void KeMaxPool3DBackward(const int nthreads,
+                                    const real* outGrad,
+                                    const int channels,
+                                    const int depth,
+                                    const int height,
+                                    const int width,
+                                    const int pooledD,
+                                    const int pooledH,
+                                    const int pooledW,
+                                    const int sizeZ,
+                                    const int sizeY,
+                                    const int sizeX,
+                                    const int strideD,
+                                    const int strideH,
+                                    const int strideW,
+                                    const int padD,
+                                    const int padH,
+                                    const int padW,
+                                    real scaleA,
+                                    real scaleB,
+                                    real* targetGrad,
+                                    real* maxPoolIdxData,
+                                    const int outStride) {
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+       index += blockDim.x * gridDim.x) {
+    int offsetW = index % width;
+    int offsetH = (index / width) % height;
+    int offsetD = (index / width / height) % depth;
+    int offsetC = (index / width / height / depth) % channels;
+    int frameNum = index / width / height / depth / channels;
+
+    int pdstart =
+        (offsetD + padD < sizeZ) ? 0 : (offsetD + padD - sizeZ) / strideD + 1;
+    int phstart =
+        (offsetH + padH < sizeY) ? 0 : (offsetH + padH - sizeY) / strideH + 1;
+    int pwstart =
+        (offsetW + padW < sizeX) ? 0 : (offsetW + padW - sizeX) / strideW + 1;
+    int pdend = min((offsetD + padD) / strideD + 1, pooledD);
+    int phend = min((offsetH + padH) / strideH + 1, pooledH);
+    int pwend = min((offsetW + padW) / strideW + 1, pooledW);
+
+    real gradient = 0;
+    outGrad += ((frameNum * channels + offsetC) * pooledD * pooledH * pooledW);
+    maxPoolIdxData +=
+        ((frameNum * channels + offsetC) * pooledD * pooledH * pooledW);
+    for (int pd = pdstart; pd < pdend; ++pd) {
+      for (int ph = phstart; ph < phend; ++ph) {
+        for (int pw = pwstart; pw < pwend; ++pw) {
+          if (((offsetD * height + offsetH) * width + offsetW) ==
+              maxPoolIdxData[(pd * pooledH + ph) * pooledW + pw])
+            gradient += outGrad[(pd * pooledH + ph) * pooledW + pw];
+        }
+      }
+    }
+    targetGrad[index] = scaleA * gradient + scaleB * targetGrad[index];
+  }
+}
+
+void hl_maxpool3D_backward(const int frameCnt,
+                           const real* outGrad,
+                           const int channels,
+                           const int depth,
+                           const int height,
+                           const int width,
+                           const int outputD,
+                           const int outputH,
+                           const int outputW,
+                           const int sizeZ,
+                           const int sizeY,
+                           const int sizeX,
+                           const int strideD,
+                           const int strideH,
+                           const int strideW,
+                           const int paddingD,
+                           const int paddingH,
+                           const int paddingW,
+                           real scaleA,
+                           real scaleB,
+                           real* targetGrad,
+                           real* maxPoolIdxData,
+                           const int outStride) {
+  int num_kernels = depth * height * width * channels * frameCnt;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+
+  KeMaxPool3DBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                           outGrad,
+                                                           channels,
+                                                           depth,
+                                                           height,
+                                                           width,
+                                                           outputD,
+                                                           outputH,
+                                                           outputW,
+                                                           sizeZ,
+                                                           sizeY,
+                                                           sizeX,
+                                                           strideD,
+                                                           strideH,
+                                                           strideW,
+                                                           paddingD,
+                                                           paddingH,
+                                                           paddingW,
+                                                           scaleA,
+                                                           scaleB,
+                                                           targetGrad,
+                                                           maxPoolIdxData,
+                                                           outStride);
+  CHECK_SYNC("hl_maxpool3D_backward");
+}
+
+__global__ void KeAvgPool3DForward(const int nthreads,
+                                   const real* inputData,
+                                   const int channels,
+                                   const int depth,
+                                   const int height,
+                                   const int width,
+                                   const int pooledD,
+                                   const int pooledH,
+                                   const int pooledW,
+                                   const int sizeZ,
+                                   const int sizeY,
+                                   const int sizeX,
+                                   const int strideD,
+                                   const int strideH,
+                                   const int strideW,
+                                   const int padD,
+                                   const int padH,
+                                   const int padW,
+                                   real* tgtData,
+                                   const int tgtStride) {
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+       index += blockDim.x * gridDim.x) {
+    int pw = index % pooledW;
+    int ph = (index / pooledW) % pooledH;
+    int pd = (index / pooledW / pooledH) % pooledD;
+    int c = (index / pooledW / pooledH / pooledD) % channels;
+    int frameNum = index / pooledW / pooledH / pooledD / channels;
+    int dstart = pd * strideD - padD;
+    int hstart = ph * strideH - padH;
+    int wstart = pw * strideW - padW;
+    int dend = min(dstart + sizeZ, depth);
+    int hend = min(hstart + sizeY, height);
+    int wend = min(wstart + sizeX, width);
+    dstart = max(dstart, 0);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
+    int pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
+
+    real aveval = 0;
+    inputData += (frameNum * channels + c) * depth * height * width;
+    for (int d = dstart; d < dend; ++d) {
+      for (int h = hstart; h < hend; ++h) {
+        for (int w = wstart; w < wend; ++w) {
+          aveval += inputData[(d * height + h) * width + w];
+        }
+      }
+    }
+    int tgtIndex =
+        index % (pooledW * pooledH * pooledD * channels) + frameNum * tgtStride;
+    tgtData[tgtIndex] = aveval / pool_size;
+  }
+}
+
+void hl_avgpool3D_forward(const int frameCnt,
+                          const real* inputData,
+                          const int channels,
+                          const int depth,
+                          const int height,
+                          const int width,
+                          const int pooledD,
+                          const int pooledH,
+                          const int pooledW,
+                          const int sizeZ,
+                          const int sizeY,
+                          const int sizeX,
+                          const int strideD,
+                          const int strideH,
+                          const int strideW,
+                          const int paddingD,
+                          const int paddingH,
+                          const int paddingW,
+                          real* tgtData,
+                          const int tgtStride) {
+  int num_kernels = pooledD * pooledH * pooledW * channels * frameCnt;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+  KeAvgPool3DForward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                          inputData,
+                                                          channels,
+                                                          depth,
+                                                          height,
+                                                          width,
+                                                          pooledD,
+                                                          pooledH,
+                                                          pooledW,
+                                                          sizeZ,
+                                                          sizeY,
+                                                          sizeX,
+                                                          strideD,
+                                                          strideH,
+                                                          strideW,
+                                                          paddingD,
+                                                          paddingH,
+                                                          paddingW,
+                                                          tgtData,
+                                                          tgtStride);
+  CHECK_SYNC("hl_avgpool3D_forward failed");
+}
+
+__global__ void KeAvgPool3DBackward(const int nthreads,
+                                    const real* outGrad,
+                                    const int channels,
+                                    const int depth,
+                                    const int height,
+                                    const int width,
+                                    const int pooledD,
+                                    const int pooledH,
+                                    const int pooledW,
+                                    const int sizeZ,
+                                    const int sizeY,
+                                    const int sizeX,
+                                    const int strideD,
+                                    const int strideH,
+                                    const int strideW,
+                                    const int padD,
+                                    const int padH,
+                                    const int padW,
+                                    real scaleA,
+                                    real scaleB,
+                                    real* tgtGrad,
+                                    const int outStride) {
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
+       index += blockDim.x * gridDim.x) {
+    int offsetW = index % width + padW;
+    int offsetH = (index / width) % height + padH;
+    int offsetD = (index / width / height) % depth + padD;
+    int offsetC = (index / width / height / depth) % channels;
+    int frameNum = index / width / height / depth / channels;
+
+    int pdstart = (offsetD < sizeZ) ? 0 : (offsetD - sizeZ) / strideD + 1;
+    int phstart = (offsetH < sizeY) ? 0 : (offsetH - sizeY) / strideH + 1;
+    int pwstart = (offsetW < sizeX) ? 0 : (offsetW - sizeX) / strideW + 1;
+    int pdend = min(offsetD / strideD + 1, pooledD);
+    int phend = min(offsetH / strideH + 1, pooledH);
+    int pwend = min(offsetW / strideW + 1, pooledW);
+
+    real gradient = 0;
+    outGrad += (frameNum * channels + offsetC) * pooledD * pooledH * pooledW;
+
+    for (int pd = pdstart; pd < pdend; ++pd) {
+      int dstart = pd * strideD - padD;
+      int dend = min(dstart + sizeZ, depth);
+      dstart = max(dstart, 0);
+      for (int ph = phstart; ph < phend; ++ph) {
+        int hstart = ph * strideH - padH;
+        int hend = min(hstart + sizeY, height);
+        hstart = max(hstart, 0);
+        for (int pw = pwstart; pw < pwend; ++pw) {
+          // figure out the pooling size
+          int wstart = pw * strideW - padW;
+          int wend = min(wstart + sizeX, width);
+          wstart = max(wstart, 0);
+          int poolsize = (dend - dstart) * (hend - hstart) * (wend - wstart);
+          gradient += outGrad[(pd * pooledH + ph) * pooledW + pw] / poolsize;
+        }
+      }
+    }
+    tgtGrad[index] = scaleA * gradient + scaleB * tgtGrad[index];
+  }
+}
+
+void hl_avgpool3D_backward(const int frameCnt,
+                           const real* outGrad,
+                           const int channels,
+                           const int depth,
+                           const int height,
+                           const int width,
+                           const int outputD,
+                           const int outputH,
+                           const int outputW,
+                           const int sizeZ,
+                           const int sizeY,
+                           const int sizeX,
+                           const int strideD,
+                           const int strideH,
+                           const int strideW,
+                           int paddingD,
+                           int paddingH,
+                           int paddingW,
+                           real scaleA,
+                           real scaleB,
+                           real* backGrad,
+                           const int outStride) {
+  int num_kernels = depth * height * width * channels * frameCnt;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+
+  KeAvgPool3DBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+                                                           outGrad,
+                                                           channels,
+                                                           depth,
+                                                           height,
+                                                           width,
+                                                           outputD,
+                                                           outputH,
+                                                           outputW,
+                                                           sizeZ,
+                                                           sizeY,
+                                                           sizeX,
+                                                           strideD,
+                                                           strideH,
+                                                           strideW,
+                                                           paddingD,
+                                                           paddingH,
+                                                           paddingW,
+                                                           scaleA,
+                                                           scaleB,
+                                                           backGrad,
+                                                           outStride);
+  CHECK_SYNC("hl_avgpool3D_backward failed");
 }
 
 __global__ void KeBilinearInterpFw(const real* in,
@@ -394,7 +793,7 @@ __global__ void KeBilinearInterpFw(const real* in,
                                    const size_t numChannels,
                                    const real ratioH,
                                    const real ratioW) {
-  int nthreads = outputH * outputW;                      
+  int nthreads = outputH * outputW;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < nthreads) {
     int outIdH = tid / outputW;
@@ -415,13 +814,14 @@ __global__ void KeBilinearInterpFw(const real* in,
     real w1lambda = ratioW * outImgIdx - inImgIdx;
     real w2lambda = 1.f - w1lambda;
 
-    const real* inPos =
-      &in[outIdH * inputW + channelId * inImgSize + inImgIdy * inImgW + inImgIdx];
+    const real* inPos = &in[outIdH * inputW + channelId * inImgSize +
+                            inImgIdy * inImgW + inImgIdx];
 
     // bilinear interpolation
     out[outIdH * outputW + outIdW] =
-      h2lambda * (w2lambda * inPos[0]            + w1lambda * inPos[wId]) + 
-      h1lambda * (w2lambda * inPos[hId * inImgW] + w1lambda * inPos[hId * inImgW + wId]);
+        h2lambda * (w2lambda * inPos[0] + w1lambda * inPos[wId]) +
+        h1lambda * (w2lambda * inPos[hId * inImgW] +
+                    w1lambda * inPos[hId * inImgW + wId]);
   }
 }
 
@@ -441,9 +841,19 @@ void hl_bilinear_forward(const real* inData,
   int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
 
-  KeBilinearInterpFw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
-    inData, inImgH, inImgW, inputH, inputW, outData, outImgH,
-    outImgW, outputH, outputW, numChannels, ratioH, ratioW);
+  KeBilinearInterpFw<<<blocks, 1024, 0, STREAM_DEFAULT>>>(inData,
+                                                          inImgH,
+                                                          inImgW,
+                                                          inputH,
+                                                          inputW,
+                                                          outData,
+                                                          outImgH,
+                                                          outImgW,
+                                                          outputH,
+                                                          outputW,
+                                                          numChannels,
+                                                          ratioH,
+                                                          ratioW);
   CHECK_SYNC("hl_bilinear_forward failed");
 }
 
@@ -481,13 +891,15 @@ __global__ void KeBilinearInterpBw(real* in,
     real w1lambda = ratioW * outImgIdx - inImgIdx;
     real w2lambda = 1.f - w1lambda;
 
-    real* inPos =
-      &in[outIdH * inputW + channelId * inImgSize + inImgIdy * inImgW + inImgIdx];
+    real* inPos = &in[outIdH * inputW + channelId * inImgSize +
+                      inImgIdy * inImgW + inImgIdx];
     const real* outPos = &out[outIdH * outputW + outIdW];
     paddle::paddleAtomicAdd(&inPos[0], h2lambda * w2lambda * outPos[0]);
     paddle::paddleAtomicAdd(&inPos[wId], h2lambda * w1lambda * outPos[0]);
-    paddle::paddleAtomicAdd(&inPos[hId * inImgW], h1lambda * w2lambda * outPos[0]);
-    paddle::paddleAtomicAdd(&inPos[hId * inImgW + wId], h1lambda * w1lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[hId * inImgW],
+                            h1lambda * w2lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[hId * inImgW + wId],
+                            h1lambda * w1lambda * outPos[0]);
   }
 }
 
@@ -507,22 +919,37 @@ void hl_bilinear_backward(real* inGrad,
   int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
 
-  KeBilinearInterpBw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
-    inGrad, inImgH, inImgW, inputH, inputW, outGrad, outImgH,
-    outImgW, outputH, outputW, numChannels, ratioH, ratioW);
+  KeBilinearInterpBw<<<blocks, 1024, 0, STREAM_DEFAULT>>>(inGrad,
+                                                          inImgH,
+                                                          inImgW,
+                                                          inputH,
+                                                          inputW,
+                                                          outGrad,
+                                                          outImgH,
+                                                          outImgW,
+                                                          outputH,
+                                                          outputW,
+                                                          numChannels,
+                                                          ratioH,
+                                                          ratioW);
   CHECK_SYNC("hl_bilinear_backward failed");
 }
 
-__global__ void maxoutFpCompute(size_t nthreads, const real * inData,
-                                real * outData, int* idData, 
-                                size_t size, size_t featLen, size_t groups) {
+__global__ void maxoutFpCompute(size_t nthreads,
+                                const real* inData,
+                                real* outData,
+                                int* idData,
+                                size_t size,
+                                size_t featLen,
+                                size_t groups) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if(index < nthreads) {
+  if (index < nthreads) {
     size_t batch_idx = index / size;
     size_t i = index % size;
     size_t channel_idx = i / featLen;
     size_t feat_idx = i % featLen;
-    size_t data_idx = (batch_idx * size + channel_idx * featLen) * groups + feat_idx;
+    size_t data_idx =
+        (batch_idx * size + channel_idx * featLen) * groups + feat_idx;
     real max = inData[data_idx];
     int maxId = 0;
     for (size_t g = 1; g < groups; ++g) {
@@ -537,37 +964,50 @@ __global__ void maxoutFpCompute(size_t nthreads, const real * inData,
   }
 }
 
-void hl_maxout_forward(const real* inData, real* outData,
-                       int* idData, size_t batchSize, size_t size,
-                       size_t featLen, size_t groups) {
+void hl_maxout_forward(const real* inData,
+                       real* outData,
+                       int* idData,
+                       size_t batchSize,
+                       size_t size,
+                       size_t featLen,
+                       size_t groups) {
   int num_kernels = size * batchSize;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  maxoutFpCompute<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
-    num_kernels, inData, outData, idData, size, featLen, groups);
+  maxoutFpCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(
+      num_kernels, inData, outData, idData, size, featLen, groups);
   CHECK_SYNC("hl_maxout_forward failed");
 }
 
-__global__ void maxoutBpCompute(size_t nthreads, real* inGrad,
-                                const real* outGrad, const int* idData,
-                                size_t size, size_t featLen, size_t groups) {
+__global__ void maxoutBpCompute(size_t nthreads,
+                                real* inGrad,
+                                const real* outGrad,
+                                const int* idData,
+                                size_t size,
+                                size_t featLen,
+                                size_t groups) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if(index < nthreads) {
+  if (index < nthreads) {
     size_t batch_idx = index / size;
     size_t i = index % size;
     size_t channel_idx = i / featLen;
     size_t feat_idx = i % featLen;
     size_t newIndex = batch_idx * size;
-    size_t gradIdx = (channel_idx * groups + (idData + newIndex)[i]) * featLen + feat_idx;
+    size_t gradIdx =
+        (channel_idx * groups + (idData + newIndex)[i]) * featLen + feat_idx;
     (inGrad + newIndex * groups)[gradIdx] += (outGrad + newIndex)[i];
   }
 }
 
-void hl_maxout_backward(real* inGrad, const real* outGrad,
-                        const int* idData, size_t batchSize, size_t size,
-                        size_t featLen, size_t groups) {
+void hl_maxout_backward(real* inGrad,
+                        const real* outGrad,
+                        const int* idData,
+                        size_t batchSize,
+                        size_t size,
+                        size_t featLen,
+                        size_t groups) {
   int num_kernels = size * batchSize;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  maxoutBpCompute<<< blocks, 1024, 0, STREAM_DEFAULT >>>(
-    num_kernels, inGrad, outGrad, idData, size, featLen, groups);
+  maxoutBpCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(
+      num_kernels, inGrad, outGrad, idData, size, featLen, groups);
   CHECK_SYNC("hl_maxout_backward failed");
 }

@@ -171,11 +171,7 @@ struct VectorPrivate {
 
 Vector::Vector() : m(new VectorPrivate()) {}
 
-Vector::~Vector() {
-  if (m) {
-    delete m;
-  }
-}
+Vector::~Vector() { delete m; }
 
 Vector* Vector::createZero(size_t sz, bool useGpu) {
   auto retVec = new Vector();

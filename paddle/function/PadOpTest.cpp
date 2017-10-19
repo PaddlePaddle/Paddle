@@ -25,7 +25,7 @@ TEST(Pad, real) {
           VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
                   << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW;
           for (bool test_grad : {false, true}) {
-            FunctionCompare compare(
+            CpuGpuFuncCompare compare(
                 test_grad ? "PadGrad" : "Pad",
                 FuncConfig()
                     .set<std::vector<uint32_t>>("channel", {2, 3})
