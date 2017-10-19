@@ -62,7 +62,7 @@ void MKLDNNFcLayer::convertWeightsFromPaddle() {
   CHECK(wgtVal_) << "should have been initialized";
   bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
   auto targetDim = wgtVal_->getDims();
-  auto srcFmt = hasNoSpatial_ ? memory::format::io : memory::format::ihwo;
+  auto srcFmt = hasNoSpatial_ ? format::io : format::ihwo;
   wgtVal_->reorderDataFrom(wgtVal_, srcFmt, targetDim);
   hasInitedWgt_ = true;
 }
@@ -71,7 +71,7 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
   CHECK(wgtVal_) << "should have been initialized";
   bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
   auto targetDim = wgtVal_->getDims();
-  auto dstFmt = hasNoSpatial_ ? memory::format::io : memory::format::ihwo;
+  auto dstFmt = hasNoSpatial_ ? format::io : format::ihwo;
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
@@ -100,8 +100,6 @@ void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
   resetFwdPD(fwdPD_, in, wgt, bias, out);
 
   resetFwdPipeline(pipeline, fwdPD_, in, wgt, bias, out);
-
-  printValueFormatFlow();
 }
 
 void MKLDNNFcLayer::resetBwd(std::vector<primitive>& pipeline,
@@ -119,12 +117,6 @@ void MKLDNNFcLayer::resetBwd(std::vector<primitive>& pipeline,
   resetBwdDataPD(bwdDataPD, in, out);
 
   resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgt, bias, out);
-
-  printGradFormatFlow();
-}
-
-void MKLDNNFcLayer::updateInputData() {
-  inVal_->setData(getInputValue(0, CPU_DEVICE)->getData());
 }
 
 void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {
@@ -139,51 +131,33 @@ void MKLDNNFcLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,
                                     MKLDNNMatrixPtr& bias,
                                     MKLDNNMatrixPtr& out) {
   resetInValue(in);
-
-  resetWgtBiasValue(wgt, bias);
-
-  resetOutValue(out);
-}
-
-void MKLDNNFcLayer::resetInValue(MKLDNNMatrixPtr& in) {
-  if (inputIsOnlyMKLDNN()) {
-    const MatrixPtr& dnnIn = getInputValue(0);
-    in = std::dynamic_pointer_cast<MKLDNNMatrix>(dnnIn);
-    CHECK(in) << "Input should be MKLDNNMatrix";
-  } else {
-    CHECK_EQ(getPrev(0)->getDeviceId(), CPU_DEVICE) << "Only support CPU yet";
-    const MatrixPtr& cpuIn = getInputValue(0, CPU_DEVICE);
-    in = MKLDNNMatrix::create(
-        cpuIn, {bs_, ic_, ih_, iw_}, format::nchw, engine_);
-  }
+  CHECK(in);
   in->downSpatial();
-}
 
-void MKLDNNFcLayer::resetWgtBiasValue(MKLDNNMatrixPtr& wgt,
-                                      MKLDNNMatrixPtr& bias) {
+  //  if (extInVal_) {
+  //    extInVal_->downSpatial();
+  //  }
+
+  auto outPD =
+      MKLDNNMatrix::createPrimitiveDesc({bs_, oc_}, format::nc, engine_);
+  resetOutValue(out, outPD);
+
   format wgtFmt = format::oihw;
-  if (inVal_->getFormat() == format::nChw8c) {
+  if (in->getFormat() == format::nChw8c) {
     wgtFmt = format::oIhw8i;
-  } else if (inVal_->getFormat() == format::nChw16c) {
+  } else if (in->getFormat() == format::nChw16c) {
     wgtFmt = format::oIhw16i;
   }
-  wgt = MKLDNNMatrix::create(
-      weight_->getW(), {oc_, ic_, ih_, iw_}, wgtFmt, engine_);
+  auto wgtPD =
+      MKLDNNMatrix::createPrimitiveDesc({oc_, ic_, ih_, iw_}, wgtFmt, engine_);
+  resetWithMatrix(wgt, weight_->getW(), wgtPD);
   wgt->downSpatial();
-  VLOG(MKLDNN_FMTS) << "Weight value format: " << wgt->getFormat();
 
-  bias = (biases_ && biases_->getW())
-             ? MKLDNNMatrix::create(biases_->getW(), {oc_}, format::x, engine_)
-             : nullptr;
-}
-
-void MKLDNNFcLayer::resetOutValue(MKLDNNMatrixPtr& out) {
-  out = MKLDNNMatrix::create(output_.value, {bs_, oc_}, format::nc, engine_);
-  if (!outputIsOnlyMKLDNN()) {
-    // fc cpu output value do not need create convert, just share data
-    getOutput(CPU_DEVICE).value->setData(out->getData());
+  if (biases_ == nullptr || biases_->getW() == nullptr) {
+    return;
   }
-  output_.value = std::dynamic_pointer_cast<Matrix>(out);
+  auto biasPD = MKLDNNMatrix::createPrimitiveDesc({oc_}, format::x, engine_);
+  resetWithMatrix(bias, biases_->getW(), biasPD);
 }
 
 void MKLDNNFcLayer::resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,
@@ -219,7 +193,6 @@ void MKLDNNFcLayer::resetFwdPipeline(
   } else {
     fwd_.reset(new fc_fwd(*pd, *in, *wgt, *out));
   }
-
   pipeline.push_back(*fwd_);
 }
 
@@ -227,44 +200,18 @@ void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
                                     MKLDNNMatrixPtr& wgt,
                                     MKLDNNMatrixPtr& bias,
                                     MKLDNNMatrixPtr& out) {
-  resetOutGrad(out);
+  CHECK(inVal_ && outVal_);
+  resetOutGrad(out, outVal_->getPrimitiveDesc());
+  resetInGrad(in, inVal_->getPrimitiveDesc());
 
-  resetWgtBiasGrad(wgt, bias);
-
-  resetInGrad(in);
-}
-
-void MKLDNNFcLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
-  CHECK(outVal_);
-  if (outputIsOnlyMKLDNN()) {
-    MKLDNNLayer::resetOutGrad(out, outVal_->getPrimitiveDesc());
-  } else {
-    const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
-    output_.grad->setData(cpuOut->getData());
-    out = MKLDNNMatrix::create(cpuOut, outVal_->getPrimitiveDesc());
-  }
-}
-
-void MKLDNNFcLayer::resetWgtBiasGrad(MKLDNNMatrixPtr& wgt,
-                                     MKLDNNMatrixPtr& bias) {
   CHECK(wgtVal_);
-  wgt = MKLDNNMatrix::create(weight_->getWGrad(), wgtVal_->getPrimitiveDesc());
+  resetWithMatrix(wgt, weight_->getWGrad(), wgtVal_->getPrimitiveDesc());
 
   bias = nullptr;
   if (biasVal_ == nullptr) {
     return;
   }
-  bias =
-      MKLDNNMatrix::create(biases_->getWGrad(), biasVal_->getPrimitiveDesc());
-}
-
-void MKLDNNFcLayer::resetInGrad(MKLDNNMatrixPtr& in) {
-  in = nullptr;
-  if (inputLayers_[0]->getOutput().grad == nullptr) {
-    return;
-  }
-  CHECK(inVal_);
-  MKLDNNLayer::resetInGrad(in, inVal_->getPrimitiveDesc());
+  resetWithMatrix(bias, biases_->getWGrad(), biasVal_->getPrimitiveDesc());
 }
 
 void MKLDNNFcLayer::resetBwdWgtPD(

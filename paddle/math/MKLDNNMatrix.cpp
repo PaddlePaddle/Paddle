@@ -46,7 +46,7 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
                                      memory::format fmt,
                                      engine& eg,
                                      mkldnn::memory::data_type dtype) {
-  return create(m, memory::primitive_desc(memory::desc(dims, dtype, fmt), eg));
+  return create(m, createPrimitiveDesc(dims, fmt, eg, dtype));
 }
 
 std::shared_ptr<reorder> MKLDNNMatrix::createReorder(const MKLDNNMatrixPtr& src,
