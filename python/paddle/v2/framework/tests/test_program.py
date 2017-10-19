@@ -34,6 +34,24 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
+    def test_program_clone(self):
+        prog = Program()
+
+        x = prog.global_block().create_var(
+            name='X', shape=[1000, 784], dtype='float32')
+
+        y = prog.global_block().create_var(
+            name='Y', shape=[784, 100], dtype='float32')
+        out = prog.global_block().create_var(name='Out', dtype='float32')
+        prog.global_block().append_op(
+            type="mul", inputs={'X': [x],
+                                'Y': [y]}, outputs={'Out': [out]})
+
+        # FIXME(yuyang18): We manual compare the output string, since the order
+        # of variable could be changed.
+        print prog
+        print prog.clone()
+
     def test_append_backward(self):
         prog = Program.instance()
         block = prog.global_block()

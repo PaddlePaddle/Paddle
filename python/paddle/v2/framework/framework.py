@@ -364,18 +364,22 @@ class Block(object):
         for op_idx in range(0, self.desc.op_size()):
             ops_in_cpp.append(self.desc.op(op_idx))
 
-        first_op_in_python = self.ops[0].desc
-        last_op_in_python = self.ops[len(self.ops) - 1].desc
-        start_index = None
-        end_index = None
-        for index in range(len(ops_in_cpp)):
-            if first_op_in_python == ops_in_cpp[index]:
-                start_index = index
-            if last_op_in_python == ops_in_cpp[index]:
-                end_index = index
-        assert start_index is not None
-        assert end_index is not None
-        assert start_index <= end_index
+        if len(self.ops) != 0:
+            first_op_in_python = self.ops[0].desc
+            last_op_in_python = self.ops[len(self.ops) - 1].desc
+            start_index = None
+            end_index = None
+            for index in range(len(ops_in_cpp)):
+                if first_op_in_python == ops_in_cpp[index]:
+                    start_index = index
+                if last_op_in_python == ops_in_cpp[index]:
+                    end_index = index
+            assert start_index is not None
+            assert end_index is not None
+            assert start_index <= end_index
+        else:
+            start_index = 0
+            end_index = -1
 
         # sync ops append to the head of cpp_ops
         for index in range((start_index - 1 - 1), -1, -1):
@@ -413,7 +417,15 @@ class Program(object):
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return proto.__str__()
 
-    __repr__ = __str__
+    def clone(self):
+        p = Program()
+        p.desc = core.ProgramDesc(self.desc)
+        p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+        p.sync_with_cpp()
+        return p
+
+    def __repr__(self):
+        return str(self)
 
     def global_block(self):
         return self.blocks[0]
