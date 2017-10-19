@@ -5,7 +5,7 @@ import paddle.v2.framework.core as core
 
 class TestInferShape(unittest.TestCase):
     def test_sum_op(self):
-        prog = core.ProgramDesc.__create_program_desc__()
+        prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
@@ -33,7 +33,7 @@ class TestInferShape(unittest.TestCase):
         self.assertEqual(out.shape(), shape)
 
     def test_mul_op(self):
-        prog = core.ProgramDesc.__create_program_desc__()
+        prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)

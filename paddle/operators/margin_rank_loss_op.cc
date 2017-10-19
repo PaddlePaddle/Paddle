@@ -21,7 +21,6 @@ class MarginRankLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     // input check
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null.");
@@ -94,7 +93,6 @@ class MarginRankLossGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("X1"), "Input(X1) shouldn't be null.");

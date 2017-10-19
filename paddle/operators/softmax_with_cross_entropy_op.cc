@@ -82,7 +82,6 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Logits"),
                    "Input(Logits) should be not null.");
@@ -117,6 +116,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Logits", /*->*/ "Loss");
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.Input<Tensor>("Logits")->type());
@@ -127,7 +127,6 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
                    "Input(Loss@Grad) should not be null.");
@@ -156,6 +155,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
                       ctx->GetInputDim("Softmax"));
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(
