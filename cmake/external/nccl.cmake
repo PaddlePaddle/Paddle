@@ -30,8 +30,8 @@ INCLUDE_DIRECTORIES(${NCCL_SOURCE_DIR}/src/extern_nccl/include)
 
 IF(WIN32)
   SET(NCCL_LIBRARIES "${NCCL_INSTALL_DIR}/lib/libnccl_static.lib" CACHE FILEPATH "nccl library." FORCE)
-  SET(NCCL_LIBRARIES "${NCCL_INSTALL_DIR}/lib/libnccl_static.a" CACHE FILEPATH "nccl library." FORCE)
 ENDIF(WIN32)
+  SET(NCCL_LIBRARIES "${NCCL_INSTALL_DIR}/lib/libnccl_static.a" CACHE FILEPATH "nccl library." FORCE)
 
 
 # currently, nccl2 is not support in docker. So we use nccl1.
