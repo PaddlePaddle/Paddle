@@ -112,7 +112,6 @@ def _create_op_func_(op_type):
 
 
 _create_op_func_('mean')
-_create_op_func_('pool2d')
 
 
 def cross_entropy(input, label, **kwargs):
@@ -187,3 +186,29 @@ def conv2d(input,
     pre_act = helper.append_bias_op(pre_bias)
 
     return helper.append_activation(pre_act)
+
+    def pool2d(input,
+               pool_size,
+               pool_type,
+               pool_stride=[1, 1],
+               pool_padding=[0, 0],
+               program=None):
+        if pool_type not in ["max", "avg"]:
+            raise ValueError(
+                "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+                str(pool_type))
+        if isinstance(pool_size, int):
+            pool_size = [pool_size, pool_size]
+        if isinstance(pool_stride, int):
+            pool_stride = [pool_stride, pool_stride]
+        if isinstance(pool_padding, int):
+            pool_padding = [pool_padding, pool_padding]
+
+        helper = LayerHelper('conv2d', **locals())
+        dtype = helper.input_dtype()
+        pool_out = helper.create_tmp_variable(dtype)
+
+        helper.append_op(
+            type="pool2d", inputs={"X": input}, outputs={"Out": pool_out})
+
+        return pool_out
