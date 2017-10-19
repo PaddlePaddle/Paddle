@@ -146,6 +146,7 @@ void MKLDNNPoolLayer::resetOutValue(MKLDNNMatrixPtr& out) {
       cvtOutVal_ = MKLDNNMatrix::createReorder(out, cpuOutVal_);
       CHECK(cvtOutVal_) << "should not be emptry";
     } else {
+      cpuOut->setData(output_.value->getData());
       cpuOutVal_ = out;
     }
     output_.value = std::dynamic_pointer_cast<Matrix>(cpuOutVal_);
@@ -213,15 +214,16 @@ void MKLDNNPoolLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
     MKLDNNLayer::resetOutGrad(out, outVal_->getPrimitiveDesc());
   } else {
     const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
+    // always share the same grad data of CPU output
+    // then the activation can get the right grad from output_.grad
+    output_.grad->setData(cpuOut->getData());
     cpuOutGrad_ = MKLDNNMatrix::create(
         cpuOut, memory::dims{bs_, oc_, oh_, ow_}, format::nchw, engine_);
     if (cpuOutGrad_->getPrimitiveDesc() != outVal_->getPrimitiveDesc()) {
-      out = MKLDNNMatrix::create(output_.grad, outVal_->getPrimitiveDesc());
+      out = MKLDNNMatrix::create(nullptr, outVal_->getPrimitiveDesc());
       cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
       CHECK(cvtOutGrad_) << "should not be emptry";
     } else {
-      // share the same data of CPU output
-      output_.grad->setData(cpuOut->getData());
       out = cpuOutGrad_;
     }
   }
