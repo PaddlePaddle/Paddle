@@ -30,7 +30,6 @@ void Deconv2DOp::InferShape(framework::InferShapeContext* ctx) const {
   auto filter_dims = ctx->GetInputDim("Filter");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-  int groups = ctx->Attrs().Get<int>("groups");
 
   for (int i = 0; i < paddings.size(); ++i) {
     PADDLE_ENFORCE_EQ(paddings[i], 0, "No Padding allowed in deconv op.");
@@ -40,9 +39,6 @@ void Deconv2DOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(filter_dims.size(), 4, "Deconv2DOp filter should be 4-D.");
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "input and kernel input dimension should be equal.");
-
-  PADDLE_ENFORCE_EQ(groups, 1,
-                    "The number of groups should be 1 in case of deconv op.");
 
   auto output_height = (in_dims[2] - 1) * strides[0] + filter_dims[2];
   auto output_width = (in_dims[3] - 1) * strides[1] + filter_dims[3];
