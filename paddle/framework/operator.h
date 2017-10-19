@@ -20,13 +20,14 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "op_info.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -58,9 +59,6 @@ inline std::string GradVarName(const std::string& var_name) {
 
 class OperatorBase;
 class ExecutionContext;
-
-extern const Tensor* GetTensorFromVar(const Variable* var);
-extern Tensor* GetTensorFromVar(Variable* var);
 
 /**
  * OperatorBase has the basic element that Net will call to do computation.
@@ -167,6 +165,34 @@ class NOP : public OperatorBase {
     return std::unique_ptr<OperatorBase>(new NOP(*this));
   }
 };
+
+static const Tensor* GetTensorFromVar(const Variable* var) {
+  const Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = &(var->Get<LoDTensor>());
+  } else if (var->IsType<Tensor>()) {
+    t = &(var->Get<Tensor>());
+  } else if (var->IsType<SelectedRows>()) {
+    t = &(var->Get<SelectedRows>().value());
+  } else {
+    PADDLE_THROW("The Input must be LoDTensor/Tensor/SelectedRows.");
+  }
+  return t;
+}
+
+static Tensor* GetMutableTensorFromVar(Variable* var) {
+  Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<Tensor>()) {
+    t = var->GetMutable<Tensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW("The Input must be LoDTensor/Tensor/SelectedRows.");
+  }
+  return t;
+}
 
 class ExecutionContext {
  public:
@@ -486,28 +512,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
  private:
-  template <bool Allocate>
-  Tensor* GetTensor(const std::string& name) const {
-    Tensor* t = nullptr;
-    auto* var = scope_.FindVar(name);
-    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
-      if (Allocate) {
-        t = var->GetMutable<LoDTensor>();
-      } else {
-        PADDLE_THROW("Variable(%s) should be tensor", name);
-      }
-    } else {
-      t = GetTensorFromVar(scope_.FindVar(name));
-    }
-    return t;
-  }
-
   DDim GetDim(const std::string& name) const override {
-    return GetTensor<false>(name)->dims();
+    Variable* var = scope_.FindVar(name);
+    return GetTensorFromVar(var)->dims();
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
-    GetTensor<true>(name)->Resize(dim);
+    Variable* var = scope_.FindVar(name);
+    GetMutableTensorFromVar(var)->Resize(dim);
   }
 
   const OperatorBase& op_;

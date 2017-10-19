@@ -33,24 +33,6 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 }
 #endif
 
-const Tensor* GetTensorFromVar(const Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return &var->Get<LoDTensor>();
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input must be LoDTensor or Tensor.");
-  return &var->Get<Tensor>();
-}
-
-Tensor* GetTensorFromVar(Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input must be LoDTensor or Tensor.");
-  return var->GetMutable<Tensor>();
-}
-
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -227,7 +209,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto var = OutputVar(name);
-  return var == nullptr ? nullptr : var->GetMutable<LoDTensor>();
+  return var == nullptr ? nullptr : GetMutableTensorFromVar(var);
 }
 
 template <>
@@ -240,7 +222,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                  [&](const std::string& sub_name) {
                    auto var = scope_.FindVar(sub_name);
                    return var == nullptr ? nullptr
-                                         : var->GetMutable<LoDTensor>();
+                                         : GetMutableTensorFromVar(var);
                  });
   return res;
 }
