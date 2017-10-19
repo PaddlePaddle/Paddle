@@ -51,12 +51,12 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
-def data_layer(name,
-               shape,
-               data_type='float32',
-               type=core.VarDesc.VarType.LOD_TENSOR,
-               append_batch_size=True,
-               program=None):
+def data(name,
+         shape,
+         data_type='float32',
+         type=core.VarDesc.VarType.LOD_TENSOR,
+         append_batch_size=True,
+         program=None):
     helper = LayerHelper('data', **locals())
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
