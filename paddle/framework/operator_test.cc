@@ -83,7 +83,7 @@ TEST(OperatorBase, all) {
   paddle::platform::CPUDeviceContext device_context;
   paddle::framework::Scope scope;
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
   scope.Var("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->Run(scope, device_context);
@@ -208,7 +208,7 @@ TEST(OpKernel, all) {
   paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::framework::Scope scope;
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_device_context);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
@@ -244,7 +244,7 @@ TEST(OpKernel, multi_inputs) {
   scope.Var("y0")->GetMutable<Tensor>();
   scope.Var("y1")->GetMutable<Tensor>();
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
   op->Run(scope, cpu_device_context);
 }
 
