@@ -61,4 +61,3 @@ bool HasDependentVar(const OpDesc& op_desc, const std::set<string>& dependent_va
 ```
 
 Then the whole algorithm can be implemented as the following [code](https://github.com/tonyyang-svail/Paddle/blob/prune_impl/paddle/framework/prune.cc).
-
