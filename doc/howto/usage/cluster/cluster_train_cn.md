@@ -22,7 +22,7 @@
 # 概述
 本文将介绍如何使用PaddlePaddle在不同的集群框架下完成分布式训练。分布式训练架构如下图所示：
 
-<img src="src/trainer_cn.png" width="500">
+<img src="https://user-images.githubusercontent.com/13348433/31772175-5f419eca-b511-11e7-9db7-5231fe3d9ccb.png" width="500">
 
 - 数据分片（Data shard): 用于训练神经网络的数据，被切分成多个部分，每个部分分别给每个trainer使用。
 - 计算节点（Trainer）: 每个trainer启动后读取切分好的一部分数据，开始神经网络的“前馈”和“后馈”计算，并和参数服务器通信。在完成一定量数据的训练后，上传计算得出的梯度（gradients），然后下载优化更新后的神经网络参数（parameters）。
