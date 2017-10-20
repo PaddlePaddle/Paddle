@@ -58,14 +58,15 @@ protected:
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-  /// value and grad are seperated as internal and external buffers.
-  /// each MKLDNNLayer must init or reset internal buffer at least,
-  /// and the external buffer format is always nchw of nc(when h==w==1),
-  /// which is the same format as paddle.
-  /// The output_.value and output_.grad always save the external data,
-  /// when mixed with cpu device.
-  /// When all layers are mkldnn layers, they could save internal data.
-  /// below MKLDNNMatrix buffers are all internal buffers
+  /* Value and grad are seperated as internal and external buffers.
+   * Each MKLDNNLayer must init or reset internal buffer at least,
+   * and the external buffer format is always nchw of nc(when h==w==1),
+   * which is the same format as paddle.
+   * The output_.value and output_.grad always save the external data,
+   * when mixed with cpu device.
+   * When all layers are mkldnn layers, they could save internal data.
+   */
+  // below MKLDNNMatrix buffers are all internal buffers
   MKLDNNMatrixPtr inVal_;
   MKLDNNMatrixPtr inGrad_;
   MKLDNNMatrixPtr outVal_;
@@ -120,8 +121,8 @@ public:
   ~MKLDNNLayer() {}
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  void forward(PassType passType) override;
-  void backward(const UpdateCallback& callback) override;
+  virtual void forward(PassType passType);
+  virtual void backward(const UpdateCallback& callback);
 
   /**
    * reshape the input image sizes
@@ -217,7 +218,7 @@ protected:
    * reset output grad from internal primitive desc.
    * merge grad if necessary.
    * reset both internal and external buffer and create reorder if necessary.
-   * note: about merge grad, when this layer has serval outputs,
+   * note: about merge grad, when this layer has several outputs,
    *       it could not be mixed with cpu device,
    *       since it can not get memory desc from cpu device.
    */
@@ -225,7 +226,7 @@ protected:
 
   /**
    * reset the merge grad primitive if necessary.
-   * note: do not support the grads are mixed with cpu device,
+   * note: do not support the grads mixed with cpu device,
    *       since it can not get memory desc from cpu device.
    */
   void resetMergeGrad(MKLDNNMatrixPtr& out);
@@ -313,17 +314,17 @@ protected:
    * print the mkldnn memory format of grad
    */
   virtual void printGradFormat() {
-    if (extInGrad_) {
-      VLOG(MKLDNN_FMTS) << extInGrad_->getFormat() << " <<< ";
-    }
-    if (inGrad_) {
-      VLOG(MKLDNN_FMTS) << inGrad_->getFormat() << " <<<";
+    if (extOutGrad_) {
+      VLOG(MKLDNN_FMTS) << extOutGrad_->getFormat();
     }
     if (outGrad_) {
       VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< ";
     }
-    if (extOutGrad_) {
-      VLOG(MKLDNN_FMTS) << extOutGrad_->getFormat();
+    if (inGrad_) {
+      VLOG(MKLDNN_FMTS) << inGrad_->getFormat() << " <<<";
+    }
+    if (extInGrad_) {
+      VLOG(MKLDNN_FMTS) << extInGrad_->getFormat() << " <<< ";
     }
     if (wgtGrad_) {
       VLOG(MKLDNN_FMTS) << "Weight grad format: " << wgtGrad_->getFormat();

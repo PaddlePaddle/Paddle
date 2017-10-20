@@ -210,11 +210,11 @@ void MKLDNNConvLayer::resetFwdBuffers(
 
   resetWithMatrix(wgt, weight_->getW(), pd->weights_primitive_desc());
 
-  bias = nullptr;
-  if (biases_ == nullptr || biases_->getW() == nullptr) {
-    return;
+  if (biases_ && biases_->getW()) {
+    resetWithMatrix(bias, biases_->getW(), pd->bias_primitive_desc());
+  } else {
+    bias = nullptr;
   }
-  resetWithMatrix(bias, biases_->getW(), pd->bias_primitive_desc());
 }
 
 void MKLDNNConvLayer::resetFwdPipeline(

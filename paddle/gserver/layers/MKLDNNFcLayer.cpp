@@ -134,10 +134,6 @@ void MKLDNNFcLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,
   CHECK(in);
   in->downSpatial();
 
-  //  if (extInVal_) {
-  //    extInVal_->downSpatial();
-  //  }
-
   auto outPD =
       MKLDNNMatrix::createPrimitiveDesc({bs_, oc_}, format::nc, engine_);
   resetOutValue(out, outPD);
@@ -153,11 +149,12 @@ void MKLDNNFcLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,
   resetWithMatrix(wgt, weight_->getW(), wgtPD);
   wgt->downSpatial();
 
-  if (biases_ == nullptr || biases_->getW() == nullptr) {
-    return;
+  if (biases_ && biases_->getW()) {
+    auto biasPD = MKLDNNMatrix::createPrimitiveDesc({oc_}, format::x, engine_);
+    resetWithMatrix(bias, biases_->getW(), biasPD);
+  } else {
+    bias = nullptr;
   }
-  auto biasPD = MKLDNNMatrix::createPrimitiveDesc({oc_}, format::x, engine_);
-  resetWithMatrix(bias, biases_->getW(), biasPD);
 }
 
 void MKLDNNFcLayer::resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,
@@ -207,11 +204,11 @@ void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
   CHECK(wgtVal_);
   resetWithMatrix(wgt, weight_->getWGrad(), wgtVal_->getPrimitiveDesc());
 
-  bias = nullptr;
-  if (biasVal_ == nullptr) {
-    return;
+  if (biasVal_) {
+    resetWithMatrix(bias, biases_->getWGrad(), biasVal_->getPrimitiveDesc());
+  } else {
+    bias = nullptr;
   }
-  resetWithMatrix(bias, biases_->getWGrad(), biasVal_->getPrimitiveDesc());
 }
 
 void MKLDNNFcLayer::resetBwdWgtPD(

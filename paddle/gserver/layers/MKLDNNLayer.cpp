@@ -60,7 +60,7 @@ void MKLDNNLayer::forward(PassType passType) {
       resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
       // MKLDNNLayer output value should be MKLDNNMatrix
       // so external output value is necessary.
-      // then external input value is not necessary,
+      // Then external input value is not necessary,
       // since input may be mkldnn internal buffer.
       CHECK(extOutVal_) << "external output value is necessary";
       output_.value = std::dynamic_pointer_cast<Matrix>(extOutVal_);
@@ -235,8 +235,8 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
   in = MKLDNNMatrix::create(intPD, inMat);
   Argument& arg = input->getOutput(this->getName());
   arg.grad = std::dynamic_pointer_cast<Matrix>(in);
-  CHECK(inVal_ != nullptr && inVal_->getPrimitiveDesc() == intPD)
-      << "should have internal input value and primitive desc must equal";
+  CHECK(inVal_);
+  CHECK(inVal_->getPrimitiveDesc() == intPD) << "the primitive desc must equal";
   if (inputIsOnlyMKLDNN()) {
     return;
   }
@@ -246,6 +246,7 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
     return;
   }
   // need create reorder
+  // TODO(TJ): add macro definition to simplify it
   CHECK(extInVal_ != nullptr && isPaddleFormat(extInVal_->getFormat()))
       << "should have external input value and the format must be nchw(nc)";
   extInGrad_ = MKLDNNMatrix::create(extInVal_->getPrimitiveDesc(), inMat);
