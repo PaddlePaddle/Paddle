@@ -21,28 +21,28 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename T>
-void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
-                     size_t index) {
+void SetFeedVariable(Scope* scope, const LoDTensor& input,
+                     const std::string& var_name, size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
-  Variable* g_feed_value = GetGlobalScope().Var(var_name);
+  Variable* g_feed_value = scope->Var(var_name);
   auto& feed_inputs =
       *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
   if (index >= feed_inputs.size()) {
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  feed_inputs[index].ShareDataWith<T>(input);
+  feed_inputs[index].ShareDataWith(input);
   // set lod
   feed_inputs[index].set_lod(input.lod());
 }
 
-LoDTensor& GetFetchVariable(const std::string& var_name, size_t index) {
+LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
+                            size_t index) {
   // Since we want to fetch LodTensor from a variable, the variable must
   // be created alreadly.
-  Variable* g_fetch_value = GetGlobalScope().FindVar(var_name);
+  Variable* g_fetch_value = scope.FindVar(var_name);
   PADDLE_ENFORCE(g_fetch_value->IsType<FeedFetchList>(),
                  "Only %s can be invoked by GetFetchVariable",
                  typeid(FeedFetchList).name());

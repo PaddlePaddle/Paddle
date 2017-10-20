@@ -51,7 +51,7 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    dst_item.CopyFromTensor(src_item, platform::CPUPlace(), dev_ctx);
+    dst_item.CopyFrom(src_item, platform::CPUPlace(), dev_ctx);
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
   }

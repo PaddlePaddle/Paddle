@@ -84,8 +84,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
     op->Run(local_scope, *device);
   }
 
-  // TODO(tonyyang-svail):
-  //  - Destroy local_scope
+  scope->DeleteScope(&local_scope);
 }
 
 }  // namespace framework

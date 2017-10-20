@@ -34,7 +34,8 @@ class RNNAlgorithm {
   using value_type = float;
 
   /*
-   * different `Run` method for forward and backward.
+   * Different `Run` method for forward and backward, `_` is just for template
+   * specifialization.
    */
   template <ComputeMode _>
   void Run(const framework::Scope& scope, const framework::OperatorBase& op,

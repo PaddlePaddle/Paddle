@@ -33,8 +33,7 @@ class MultiplexGPUKernel : public framework::OpKernel<T> {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    index_t_cpu.CopyFrom<int32_t>(*ids, platform::CPUPlace(),
-                                  ctx.device_context());
+    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
     auto* index = index_t_cpu.data<int32_t>();
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                       ctx.device_context())
@@ -71,8 +70,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    index_t_cpu.CopyFrom<int32_t>(*ids, platform::CPUPlace(),
-                                  ctx.device_context());
+    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
     auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(

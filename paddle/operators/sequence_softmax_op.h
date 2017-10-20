@@ -46,8 +46,8 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
-      Tensor x_i = x->Slice<T>(start_pos, end_pos);
-      Tensor out_i = out->Slice<T>(start_pos, end_pos);
+      Tensor x_i = x->Slice(start_pos, end_pos);
+      Tensor out_i = out->Slice(start_pos, end_pos);
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
       framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
@@ -75,9 +75,9 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
 
-      Tensor out_i = out->Slice<T>(start_pos, end_pos);
-      Tensor out_grad_i = out_grad->Slice<T>(start_pos, end_pos);
-      Tensor x_grad_i = x_grad->Slice<T>(start_pos, end_pos);
+      Tensor out_i = out->Slice(start_pos, end_pos);
+      Tensor out_grad_i = out_grad->Slice(start_pos, end_pos);
+      Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
       framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});

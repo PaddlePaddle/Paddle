@@ -13,7 +13,8 @@ def fc(input,
        name=None,
        act=None,
        num_flatten_dims=1,
-       program=None):
+       program=None,
+       init_program=None):
     # create helper
     helper = LayerHelper('fc', **locals())
 
@@ -59,7 +60,8 @@ def data(name,
          data_type='float32',
          type=core.VarDesc.VarType.LOD_TENSOR,
          append_batch_size=True,
-         program=None):
+         program=None,
+         init_program=None):
     helper = LayerHelper('data', **locals())
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
@@ -160,7 +162,8 @@ def conv2d(input,
            padding=None,
            bias_attr=None,
            param_attr=None,
-           program=None):
+           program=None,
+           init_program=None):
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -207,7 +210,8 @@ def pool2d(input,
            pool_stride=[1, 1],
            pool_padding=[0, 0],
            global_pooling=False,
-           program=None):
+           program=None,
+           init_program=None):
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
