@@ -72,13 +72,5 @@ void Scope::DeleteScope(Scope* scope) {
   delete scope;
 }
 
-framework::Scope& GetGlobalScope() {
-  static framework::Scope* g_scope = nullptr;
-  if (g_scope == nullptr) {
-    g_scope = new framework::Scope();
-  }
-  return *g_scope;
-}
-
 }  // namespace framework
 }  // namespace paddle

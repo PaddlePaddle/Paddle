@@ -219,8 +219,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
-      .def("drop_kids", &Scope::DropKids)
-      .def_static("global_scope", &GetGlobalScope);
+      .def("drop_kids", &Scope::DropKids);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -451,11 +450,10 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
-      .def("run",
-           [](Executor &self, ProgramDescBind *program_bind, int block_id) {
-             framework::Scope &global_scope = GetGlobalScope();
-             self.Run(*program_bind->Proto(), &global_scope, block_id);
-           });
+      .def("run", [](Executor &self, ProgramDescBind *program_bind,
+                     Scope *scope, int block_id) {
+        self.Run(*program_bind->Proto(), scope, block_id);
+      });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 
