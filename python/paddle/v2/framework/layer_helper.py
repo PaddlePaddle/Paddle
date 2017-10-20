@@ -74,7 +74,7 @@ class LayerHelper(object):
         actual = self.kwargs.get('param_attr', None)
         return actual if actual is not None else default
 
-    def bias_attr(self, shape, dtype):
+    def bias_attr(self):
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
             bias_attr = {
@@ -82,8 +82,6 @@ class LayerHelper(object):
                 'init_attr': {
                     'type': 'fill_constant',
                     'value': 0.0
-                    #'shape': shape,
-                    #'dataType': dtype
                 }
             }
         return bias_attr
@@ -141,7 +139,7 @@ class LayerHelper(object):
 
     def append_bias_op(self, input_var):
         size = list(input_var.shape[1:])
-        bias_attr = self.bias_attr(size, dtype=input_var.data_type)
+        bias_attr = self.bias_attr()
         if not bias_attr:
             return input_var
 
@@ -153,8 +151,6 @@ class LayerHelper(object):
             inputs={'X': [input_var],
                     'Y': [b]},
             outputs={'Out': [tmp]})
-        # for rowwise add, we should set axis 1
-        # attrs={'axis': 1})
         return tmp
 
     def append_activation(self, input_var):
