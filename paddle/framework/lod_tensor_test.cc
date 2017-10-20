@@ -75,7 +75,8 @@ TEST_F(LoDTensorTester, ShrinkLevels) {
     LoDTensor new_lod_tensor = lod_tensor_;
     new_lod_tensor.ShrinkLevels(level, level + 2);
     // the lowest level's last element should be the tensor's batch_size.
-    ASSERT_EQ(new_lod_tensor.lod().back().back(), lod_tensor_.lod().back().back());
+    ASSERT_EQ(new_lod_tensor.lod().back().back(),
+              lod_tensor_.lod().back().back());
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
     ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
   }

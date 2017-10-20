@@ -68,7 +68,7 @@ LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
 /*
  * Transform an LoD from relative offsets to absolute offsets.
  */
-LoD ToAbsOffset(const LoD &in);
+LoD ToAbsOffset(const LoD& in);
 
 bool operator==(const LoD& a, const LoD& b);
 
