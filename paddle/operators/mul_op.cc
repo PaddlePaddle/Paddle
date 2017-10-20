@@ -104,10 +104,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
-    auto x_mat_dims =
-        framework::flatten_to_2d(x_dims, Attr<int>("x_num_col_dims"));
-    auto y_mat_dims =
-        framework::flatten_to_2d(y_dims, Attr<int>("y_num_col_dims"));
+    auto x_mat_dims = framework::flatten_to_2d(
+        x_dims, ctx->Attrs().Get<int>("x_num_col_dims"));
+    auto y_mat_dims = framework::flatten_to_2d(
+        y_dims, ctx->Attrs().Get<int>("y_num_col_dims"));
 
     PADDLE_ENFORCE_EQ(
         x_mat_dims[0], out_dims[0],

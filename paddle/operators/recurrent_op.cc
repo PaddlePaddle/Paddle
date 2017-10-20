@@ -95,7 +95,7 @@ void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
         step_scope->FindVar(attr.boot_var)->GetMutable<LoDTensor>();
     pre_mem->Resize(boot_mem->dims());
     PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
-    pre_mem->ShareDataWith<float>(*boot_mem);
+    pre_mem->ShareDataWith(*boot_mem);
   }
 }
 
@@ -171,7 +171,7 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
     auto* boot_mem_grad =
         step_scope->Var(attr.boot_var)->GetMutable<LoDTensor>();
     boot_mem_grad->Resize(mem_grad->dims());
-    boot_mem_grad->ShareDataWith<float>(*mem_grad);
+    boot_mem_grad->ShareDataWith(*mem_grad);
   }
 }
 

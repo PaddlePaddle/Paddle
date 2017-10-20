@@ -13,17 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "glog/logging.h"
+#include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
 
 namespace paddle {
 namespace framework {
 
-template <typename T>
 void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
+  VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
   Variable* g_feed_value = GetGlobalScope().Var(var_name);
   auto& feed_inputs =
       *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
@@ -31,7 +33,7 @@ void SetFeedVariable(const LoDTensor& input, const std::string& var_name,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  feed_inputs[index].ShareDataWith<T>(input);
+  feed_inputs[index].ShareDataWith(input);
   // set lod
   feed_inputs[index].set_lod(input.lod());
 }
@@ -40,10 +42,15 @@ LoDTensor& GetFetchVariable(const std::string& var_name, size_t index) {
   // Since we want to fetch LodTensor from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = GetGlobalScope().FindVar(var_name);
-  auto& fetch_outputs =
-      *(g_fetch_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
+  PADDLE_ENFORCE(g_fetch_value->IsType<FeedFetchList>(),
+                 "Only %s can be invoked by GetFetchVariable",
+                 typeid(FeedFetchList).name());
+  auto& fetch_outputs = *g_fetch_value->GetMutable<FeedFetchList>();
+  auto& tensor = fetch_outputs[index];
+  VLOG(3) << "Fetch " << var_name << " with index " << index
+          << " shape= " << tensor.dims();
   PADDLE_ENFORCE_LT(index, fetch_outputs.size());
-  return fetch_outputs[index];
+  return tensor;
 }
 
 }  // namespace framework

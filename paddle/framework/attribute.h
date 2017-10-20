@@ -26,16 +26,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-ProgramDesc& GetProgramDesc();
-
 template <typename T>
 inline AttrType AttrTypeID() {
   Attribute tmp = T();
   return static_cast<AttrType>(tmp.which() - 1);
 }
 
-Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
+Attribute GetAttrValue(const OpDesc::Attr& attr_desc, ProgramDesc* desc);
 
 class AttrReader {
  public:

@@ -48,12 +48,11 @@ inline void ReorderBootState(const DySeqMetaBatch& metas,
                              const LoDTensor& boot_state, LoDTensor* tensor,
                              const platform::Place& dst_place) {
   for (size_t seq_id = 0; seq_id < metas.size(); seq_id++) {
-    auto slice = tensor->Slice<T>(seq_id, seq_id + 1);
+    auto slice = tensor->Slice(seq_id, seq_id + 1);
     auto boot_slice =
-        boot_state.Slice<T>(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
+        boot_state.Slice(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
     // TODO(superjom) pass in device context as an argument
-    slice.template CopyFrom<T>(boot_slice, dst_place,
-                               platform::CPUDeviceContext());
+    slice.CopyFrom(boot_slice, dst_place, platform::CPUDeviceContext());
   }
 }
 
@@ -138,7 +137,7 @@ void DynamicRecurrentOp::WriteStepInputs() const {
       if (var == nullptr) {
         var = step_scope.Var(item.first);
       }
-      var->GetMutable<LoDTensor>()->ShareDataWith<value_type>(tensor);
+      var->GetMutable<LoDTensor>()->ShareDataWith(tensor);
     }
   }
 }
@@ -206,7 +205,7 @@ void DynamicRecurrentOp::ConcatOutputs() const {
   for (auto& item : step_outputs_) {
     auto tensor = item.second.Pack(level, some_meta, some_lod);
     auto* output = cache_.outlinks[item.first]->GetMutable<LoDTensor>();
-    const_cast<LoDTensor*>(output)->ShareDataWith<value_type>(tensor);
+    const_cast<LoDTensor*>(output)->ShareDataWith(tensor);
   }
 }
 
@@ -260,8 +259,8 @@ void DynamicRecurrentOp::LinkState(const rnn::MemoryAttr& memory,
   }
 
   // shink and share from previous state
-  auto shrinked_pre_state = pre_state->Slice<value_type>(0, num_instances);
-  state_pre.ShareDataWith<value_type>(shrinked_pre_state);
+  auto shrinked_pre_state = pre_state->Slice(0, num_instances);
+  state_pre.ShareDataWith(shrinked_pre_state);
 }
 
 void DynamicRecurrentOp::ArgCache::Init(

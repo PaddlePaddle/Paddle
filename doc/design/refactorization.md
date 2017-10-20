@@ -177,9 +177,6 @@ REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type, grad_op_class)
 REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 ```
 
-### USE Macros
-Make sure the registration process is executed and linked.
-
 ---
 # Registration Process
 1. Write an Op class and its gradient Op class, if required.
@@ -187,8 +184,6 @@ Make sure the registration process is executed and linked.
 3. Invoke the macro `REGISTER_OP`. This macro will
 	1. Call maker class to complete `proto` and `checker`
 	2. Using the completed `proto` and `checker`, it will add a new key-value pair to the `OpInfoMap`
-
-4. Invoke the `USE` macro in which the Op is used to make sure that it is linked.
 
 ---
 # Backward Module (1/2)
