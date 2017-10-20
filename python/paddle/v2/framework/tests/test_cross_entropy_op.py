@@ -21,7 +21,7 @@ class TestCrossEntropyOp1(OpTest):
 
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": cross_entropy}
-        self.attrs = {"softLabel": False}
+        self.attrs = {"soft_label": False}
 
     def test_check_output(self):
         self.check_output()

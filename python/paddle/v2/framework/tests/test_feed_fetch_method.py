@@ -5,6 +5,7 @@ import numpy as np
 
 class TestFeedFetch(unittest.TestCase):
     def test_feed_fetch(self):
+        scope = core.Scope()
         place = core.CPUPlace()
         input_array = np.ones((4, 4, 6)).astype("float32")
         input_array[0, 0, 0] = 3
@@ -12,9 +13,9 @@ class TestFeedFetch(unittest.TestCase):
         input_tensor = core.LoDTensor([[0, 2, 4]])
         input_tensor.set(input_array, place)
 
-        core.set_feed_variable_float(input_tensor, "feed", 0)
+        core.set_feed_variable(scope, input_tensor, "feed", 0)
 
-        output_tensor = core.get_fetch_variable("feed", 0)
+        output_tensor = core.get_fetch_variable(scope, "feed", 0)
 
         output_lod = output_tensor.lod()
         self.assertEqual(0, output_lod[0][0])

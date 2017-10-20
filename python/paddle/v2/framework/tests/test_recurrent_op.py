@@ -132,15 +132,15 @@ class RecurrentOpTest(unittest.TestCase):
         # create RNNOp
         self.rnnop = RecurrentOp(
             # inputs
-            inlinks=["x"],
-            boot_memories=["h_boot"],
+            inputs=["x"],
+            initial_states=["h_boot"],
             step_net="stepnet",
             # outputs
-            outlinks=["h@mem"],
+            outputs=["h@mem"],
             step_scopes="step_scopes",
             # attributes
-            pre_memories=["h@pre"],
-            memories=["h@mem"])
+            ex_states=["h@pre"],
+            states=["h@mem"])
 
     def create_step_net(self):
         stepnet = core.Net.create()
@@ -169,15 +169,15 @@ class RecurrentGradientOpTest(unittest.TestCase):
     def create_forward_op(self):
         self.forward_op = RecurrentOp(
             # inputs
-            inlinks=["x"],
-            boot_memories=["h_boot"],
+            inputs=["x"],
+            initial_states=["h_boot"],
             step_net="stepnet",
             # outputs
-            outlinks=["h"],
+            outputs=["h"],
             step_scopes="step_scopes",
             # attributes
-            pre_memories=["h@pre"],
-            memories=["h@alias"])
+            ex_states=["h@pre"],
+            states=["h@alias"])
 
         # create a stepnet for RNN
         stepnet = core.Net.create()

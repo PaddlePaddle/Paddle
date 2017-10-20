@@ -250,7 +250,7 @@ TEST(MKLDNNActivation, Activations) {
 
 DECLARE_string(config_args);
 TEST(MKLDNNLayer, branches) {
-  std::vector<std::string> cases = {"conv"};
+  std::vector<std::string> cases = {"conv", "pool", "fc"};
   for (auto name : cases) {
     std::string config = "./gserver/tests/mkldnn_branches_" + name + ".conf";
     for (auto channels : {2, 32}) {
