@@ -34,7 +34,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     auto dims = ctx->GetInputDim("Logits");
     int sequence_width = static_cast<int>(framework::product(dims) / dims[0]);
     int blank = ctx->Attrs().Get<int>("blank");
-    PADDLE_ENFORCE((blank > 0) && (blank < sequence_width),
+    PADDLE_ENFORCE((blank >= 0) && (blank < sequence_width),
                    "The value of Attr(blank) should be in interval [0, %d).",
                    sequence_width);
   }

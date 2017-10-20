@@ -182,6 +182,9 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                      warpctc_label_data, warpctc_label_lengths.data(),
                      warpctc_logits_lengths.data(), sequence_width,
                      num_sequences, blank, warpctc_loss_data);
+    std::cout << "Loss in warpctc_op:" << std::endl;
+    for (size_t i = 0; i < num_sequences; i++)
+      std::cout << warpctc_loss_data[i] << std::endl;
 
     // Copy the loss back
     loss->CopyFrom<T>(warpctc_loss, ctx.GetPlace(), ctx.device_context());

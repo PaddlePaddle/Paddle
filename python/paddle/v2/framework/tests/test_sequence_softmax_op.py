@@ -1,13 +1,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-
-
-def stable_softmax(x):
-    """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.)
-    exps = np.exp(shiftx)
-    return exps / np.sum(exps)
+from test_softmax_op import stable_softmax
 
 
 class TestSequenceSoftmaxOp(OpTest):

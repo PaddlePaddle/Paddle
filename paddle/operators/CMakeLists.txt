@@ -126,7 +126,7 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
-op_library(warpctc_op DEPS dynload_warpctc)
+op_library(warpctc_op DEPS dynload_warpctc seq2batch)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
