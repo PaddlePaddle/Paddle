@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 
 #include <gtest/gtest.h>
 #include "paddle/math/Matrix.h"
@@ -162,4 +162,4 @@ int main(int argc, char** argv) {
   return RUN_ALL_TESTS();
 }
 
-#endif /* PADDLE_ONLY_CPU */
+#endif

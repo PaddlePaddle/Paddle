@@ -15,7 +15,7 @@
 #pragma once
 
 #include <memory>
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
@@ -30,7 +30,7 @@
 namespace paddle {
 namespace framework {
 
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
 template <typename T>
 using Vector = std::vector<T>;
 #else
@@ -75,12 +75,12 @@ class LoDTensor : public Tensor {
   LoD lod() const { return lod_; }
 
   /*
-   * Get a element from LoD.
+   * Get the start offset and end offset of an  element from LoD.
    */
-  size_t lod_element(size_t level, size_t elem) const {
+  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
     PADDLE_ENFORCE_LT(level, NumLevels());
     PADDLE_ENFORCE_LT(elem, NumElements(level));
-    return (lod_)[level][elem];
+    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
   }
 
   /*

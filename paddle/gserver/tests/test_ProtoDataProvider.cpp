@@ -485,7 +485,7 @@ TEST(ProtoDataProvider, test) {
               // Currently in async mode, useGpu is not supported
               continue;
             }
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
             if (useGpu) {
               continue;
             }
@@ -525,7 +525,7 @@ TEST(ProtoDataProvider, constant_slots) {
       for (int numConstantSlots : {1, 2}) {
         for (int useGpu : numTwoArray) {
           for (int dataCompression : numTwoArray) {
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
             if (useGpu) {
               continue;
             }
@@ -708,7 +708,7 @@ TEST(ProtoSequenceDataProvider, test) {
               // Currently in async mode, useGpu is not supported
               continue;
             }
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
             if (useGpu) {
               continue;
             }

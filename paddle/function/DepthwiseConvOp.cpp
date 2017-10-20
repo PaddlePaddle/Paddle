@@ -292,7 +292,7 @@ REGISTER_TYPED_FUNC(DepthwiseConvGradInput,
 REGISTER_TYPED_FUNC(DepthwiseConvGradFilter,
                     CPU,
                     DepthwiseConvGradFilterFunction);
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(DepthwiseConv, GPU, DepthwiseConvFunction);
 REGISTER_TYPED_FUNC(DepthwiseConvGradInput,
                     GPU,

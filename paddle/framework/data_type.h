@@ -26,9 +26,10 @@ inline DataType ToDataType(std::type_index type) {
     return DataType::FP64;
   } else if (typeid(int).hash_code() == type.hash_code()) {
     return DataType::INT32;
+  } else if (typeid(int64_t).hash_code() == type.hash_code()) {
+    return DataType::INT64;
   } else {
     PADDLE_THROW("Not supported");
-    return static_cast<DataType>(-1);
   }
 }
 

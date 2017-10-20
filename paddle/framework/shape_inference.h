@@ -19,9 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class InferShapeContextBase {
+class InferShapeContext {
  public:
-  virtual ~InferShapeContextBase() {}
+  virtual ~InferShapeContext() {}
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
 

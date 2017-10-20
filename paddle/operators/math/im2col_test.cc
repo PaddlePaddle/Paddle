@@ -49,10 +49,22 @@ void testIm2col() {
   memcpy(input_ptr, arr, 6 * sizeof(float));
 
   auto* place = new Place();
+  paddle::platform::DeviceContext* context;
+  if (paddle::platform::is_cpu_place(*place)) {
+    context =
+        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    context =
+        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
+#else
+    PADDLE_THROW("no GPU support");
+#endif  // PADDLE_ONLY_CPU
+  }
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom<float>(input_tmp, *place);
+    input.CopyFrom(input_tmp, *place, *context);
   }
   output_cfo.mutable_data<float>(
       {1, filter_size, filter_size, output_height, output_width}, *place);
@@ -66,18 +78,6 @@ void testIm2col() {
       paddle::operators::math::ColFormat::kOCF, Place, float>
       im2col_ocf;
 
-  paddle::platform::DeviceContext* context;
-  if (paddle::platform::is_cpu_place(*place)) {
-    context =
-        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
-  } else {
-#ifdef PADDLE_WITH_GPU
-    context =
-        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
-#else
-    PADDLE_THROW("no GPU support");
-#endif  // PADDLE_ONLY_CPU
-  }
   im2col(*context, input, output_cfo, stride, stride, padding, padding);
   im2col_ocf(*context, input, output_ocf, stride, stride, padding, padding);
 
@@ -85,7 +85,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
-    output_tmp.CopyFrom<float>(output_cfo, paddle::platform::CPUPlace());
+    output_tmp.CopyFrom(output_cfo, paddle::platform::CPUPlace(), *context);
     out_cfo_ptr = output_tmp.data<float>();
   }
   EXPECT_EQ(out_cfo_ptr[0], 0);
@@ -101,7 +101,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
-    output_tmp.CopyFrom<float>(output_ocf, paddle::platform::CPUPlace());
+    output_tmp.CopyFrom(output_ocf, paddle::platform::CPUPlace(), *context);
     out_ocf_ptr = output_tmp.data<float>();
   }
   EXPECT_EQ(out_ocf_ptr[0], 0);
@@ -116,7 +116,7 @@ void testIm2col() {
 
 TEST(math, im2col) {
   testIm2col<paddle::platform::CPUPlace>();
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   testIm2col<paddle::platform::GPUPlace>();
 #endif
 }

@@ -14,6 +14,7 @@
 
 #include "paddle/operators/softmax_with_cross_entropy_op.h"
 #include <paddle/function/TensorType.h>
+#include <iostream>
 
 namespace paddle {
 namespace operators {
@@ -27,15 +28,14 @@ class SoftmaxWithCrossEntropyOpMaker
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "
              "which is a 2-D tensor with shape [N x K]. N is the batch_size, "
-             "and K is the class number.")
-        .NotInGradient();
-    AddInput(
-        "Label",
-        "(Tensor, default: Tensor<int>), The ground truth which is a 2-D "
-        "tensor. "
-        "If softLable is set to 0, Label is a Tensor<int> with shape [N x 1]. "
-        "If softLable is set to 1, Label is a Tensor<float/double> "
-        "with shape [N x K].");
+             "and K is the class number.");
+    AddInput("Label",
+             "(Tensor, default: Tensor<int>), The ground truth which is a 2-D "
+             "tensor. "
+             "If softLable is set to 0, Label is a Tensor<int> with shape [N x "
+             "1]. "
+             "If softLable is set to 1, Label is a Tensor<float/double> "
+             "with shape [N x K].");
     AddOutput(
         "Softmax",
         "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N x K]. "
@@ -46,7 +46,7 @@ class SoftmaxWithCrossEntropyOpMaker
               "(Tensor, default: Tensor<float>), A 2-D tensor. The cross "
               "entropy loss with shape [N x 1].");
     AddAttr<bool>(
-        "softLabel",
+        "soft_label",
         "(bool, default: false), A flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
@@ -82,8 +82,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Logits"),
                    "Input(Logits) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
@@ -100,13 +99,13 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       "The labels should be a 2-D tensor.");
 
-    if (ctx->Attrs().Get<bool>("softLabel")) {
+    if (ctx->Attrs().Get<bool>("soft_label")) {
       PADDLE_ENFORCE_EQ(logits_dims[1], labels_dims[1],
-                        "If Attr(softLabel) == true, the 2nd dimension of "
+                        "If Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(labels_dims[1], 1UL,
-                        "If Attr(softLabel) == false, the 2nd dimension of "
+                        "If Attr(soft_label) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
@@ -117,6 +116,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Logits", /*->*/ "Loss");
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.Input<Tensor>("Logits")->type());
@@ -127,8 +127,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
                    "Input(Loss@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Softmax"),
@@ -142,13 +141,13 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       "The labels should be a 2-D tensor.");
 
-    if (ctx->Attrs().Get<bool>("softLabel")) {
+    if (ctx->Attrs().Get<bool>("soft_label")) {
       PADDLE_ENFORCE_EQ(softmax_dims[1], labels_dims[1],
-                        "When Attr(softLabel) == true, the 2nd dimension of "
+                        "When Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(labels_dims[1], 1UL,
-                        "When Attr(softLabel) == false, the 2nd dimension of "
+                        "When Attr(soft_label) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
@@ -156,10 +155,30 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
                       ctx->GetInputDim("Softmax"));
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(
         ctx.Input<Tensor>(framework::GradVarName("Loss"))->type());
+  }
+};
+
+class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto* grad_op = new framework::OpDescBind();
+    grad_op->SetType("softmax_with_cross_entropy_grad");
+    grad_op->SetInput("Label", Input("Label"));
+    grad_op->SetInput("Softmax", Output("Softmax"));
+    grad_op->SetInput("Loss", Output("Loss"));
+    grad_op->SetInput(framework::GradVarName("Softmax"), OutputGrad("Softmax"));
+    grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDescBind>(grad_op);
   }
 };
 
@@ -168,10 +187,10 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
-            ops::SoftmaxWithCrossEntropyOpMaker,
-            softmax_with_cross_entropy_grad,
-            ops::SoftmaxWithCrossEntropyOpGrad);
+REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
+                  ops::SoftmaxWithCrossEntropyOpMaker, ops::SoftmaxGradMaker);
+REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
+                  ops::SoftmaxWithCrossEntropyOpGrad);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
                        ops::SoftmaxWithCrossEntropyKernel<float>);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,

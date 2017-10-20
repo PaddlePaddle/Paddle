@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
 
 #include <cuda_runtime.h>
 #include <stddef.h>
@@ -63,4 +63,4 @@ void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
 }  // namespace platform
 }  // namespace paddle
 
-#endif  // PADDLE_ONLY_CPU
+#endif

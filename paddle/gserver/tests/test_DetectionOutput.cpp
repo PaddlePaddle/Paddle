@@ -150,7 +150,7 @@ TEST(Layer, detectionOutputLayerFwd) {
                            useGpu,
                            result2);
 
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   // GPU case 1.
   useGpu = true;
   inputLoc = Matrix::create(1, 16, false, useGpu);

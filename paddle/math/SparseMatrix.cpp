@@ -836,7 +836,7 @@ void GpuSparseMatrix::zeroMem() {
 }
 
 void GpuSparseMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
-#ifdef PADDLE_WITH_GPU
+#ifdef PADDLE_WITH_CUDA
   CHECK(maxIds.useGpu() && maxVal.useGpu()) << "Matrix type are not equal";
   size_t numSamples = getHeight();
   size_t beam = maxVal.getWidth();
