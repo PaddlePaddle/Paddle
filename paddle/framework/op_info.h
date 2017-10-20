@@ -87,14 +87,8 @@ class OpInfoMap {
     }
   }
 
-  template <typename Callback>
-  void Iterate(Callback callback) {
-    size_t n = map_.size();
-    size_t i = 0;
-    for (auto& it : map_) {
-      callback(it.first, it.second, i == n - 1);
-      i++;
-    }
+  const std::unordered_map<std::string, const OpInfo>& map() const {
+    return map_;
   }
 
  private:
