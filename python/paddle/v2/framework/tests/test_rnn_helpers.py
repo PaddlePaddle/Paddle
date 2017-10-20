@@ -1,6 +1,7 @@
 import unittest
 from paddle.v2.framework.layer_helper import StaticRNNHelper
 from paddle.v2.framework.layers import *
+from paddle.v2.framework.framework import g_program
 
 
 class TestRNN(unittest.TestCase):
@@ -13,10 +14,22 @@ class TestRNN(unittest.TestCase):
             ],  # image width
             data_type='float32',
             name='image')
-        print img.shape
         hidden = fc(input=img, size=100, act='sigmoid', num_flatten_dims=2)
-        print hidden.shape  # [-1, 80, 100]
+        self.assertEqual((-1, 80, 100), hidden.shape)
         hidden = fc(input=hidden, size=100, act='sigmoid', num_flatten_dims=2)
+        self.assertEqual((-1, 80, 100), hidden.shape)
+
+        rnn = StaticRNNHelper()
+        with rnn.step():
+            hidden = rnn.step_input(hidden)
+            self.assertEqual((-1, 100), hidden.shape)
+            memory = rnn.memory(shape=(-1, 32), dtype='float32', init_value=0.0)
+
+            rnn_out = fc(input=[hidden, memory], size=32, act='sigmoid')
+            rnn.update_memory(memory, rnn_out)
+            rnn.output(rnn_out)
+
+        print g_program
 
 
 if __name__ == '__main__':

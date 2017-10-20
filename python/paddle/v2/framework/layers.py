@@ -24,7 +24,9 @@ def fc(input,
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
-        param_shape = list(input_shape[num_flatten_dims:]) + [size]
+        param_shape = [
+            reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+        ] + [size]
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype)
@@ -36,10 +38,8 @@ def fc(input,
                 "Y": w,
             },
             outputs={"Out": tmp},
-            attrs={
-                'x_num_col_dims': num_flatten_dims,
-                'y_num_col_dims': len(input_shape) - num_flatten_dims
-            })
+            attrs={'x_num_col_dims': num_flatten_dims,
+                   'y_num_col_dims': 1})
         mul_results.append(tmp)
 
     # sum

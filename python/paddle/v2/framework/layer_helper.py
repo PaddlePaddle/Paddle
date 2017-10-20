@@ -47,7 +47,7 @@ class RNNMemoryLink(object):
     def __init__(self, init, pre_mem, mem=None):
         self.init = init
         self.pre_mem = pre_mem
-        self.mem = None
+        self.mem = mem
 
 
 class StaticRNNHelper(object):
@@ -56,7 +56,7 @@ class StaticRNNHelper(object):
     AFTER_RNN_BLOCK = 2
 
     def __init__(self, name=None, program=None):
-        self.helper = LayerHelper(**locals())
+        self.helper = LayerHelper("static_rnn", name=name, program=program)
         self.memories = {}
         self.inputs = []
         self.outputs = []
@@ -67,10 +67,10 @@ class StaticRNNHelper(object):
         return RNNGuard(self)
 
     def _assert_in_rnn_block_(self, method):
-        if not self.status != StaticRNNHelper.IN_RNN_BLOCK:
+        if self.status != StaticRNNHelper.IN_RNN_BLOCK:
             raise ValueError("You must invoke {0} in rnn block".format(method))
 
-    def memory(self, init=None, shape=None, dtype=None, value=0):
+    def memory(self, init=None, shape=None, dtype=None, init_value=0):
         self._assert_in_rnn_block_('memory')
         if init is None:
             if shape is None or dtype is None:
@@ -86,7 +86,7 @@ class StaticRNNHelper(object):
                 inputs={},
                 outputs={'Out': [boot_var]},
                 attrs={
-                    'value': value,
+                    'value': init_value,
                     'shape': boot_var.shape,
                     'data_type': boot_var.data_type
                 })
@@ -113,7 +113,7 @@ class StaticRNNHelper(object):
         ipt = self.helper.create_variable(
             name=x.name,
             dtype=x.data_type,
-            shape=[-1] + x.shape[2:],
+            shape=[-1] + list(x.shape[2:]),
             type=x.type)
         self.inputs.append(ipt)
         return ipt
