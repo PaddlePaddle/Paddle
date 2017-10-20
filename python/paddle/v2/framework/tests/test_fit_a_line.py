@@ -16,6 +16,7 @@ x = layers.data(
     data_type='float32',
     program=program,
     init_program=init_program)
+
 y_predict = layers.fc(input=x,
                       size=1,
                       act=None,
@@ -33,10 +34,10 @@ cost = layers.square_error_cost(
     input=y_predict, label=y, program=program, init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.0001)
+sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
 
-BATCH_SIZE = 2
+BATCH_SIZE = 20
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -66,5 +67,6 @@ for pass_id in range(PASS_NUM):
                              'y': tensor_y},
                        fetch_list=[avg_cost])
         out = np.array(outs[0])
-
-    print out
+        if out[0] < 10.0:
+            exit(0)  # if avg cost less than 10.0, we think our code is good.
+exit(1)
