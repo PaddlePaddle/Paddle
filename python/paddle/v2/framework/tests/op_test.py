@@ -266,10 +266,8 @@ class OpTest(unittest.TestCase):
                 continue
 
             if out_dup:
+                # FIXME
                 raise AssertionError("Not Implemented")
-
-            if out_dup:
-                pass
                 # sub_out = self.outputs[out_name]
                 # if not isinstance(sub_out, list):
                 #     raise AssertionError("sub_out type %s is not list",
