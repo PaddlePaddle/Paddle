@@ -12,8 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/deconv2d_op.h"
-#include "paddle/operators/conv2d_op.h"
+#include "paddle/operators/conv2dtranspose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -54,18 +53,18 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
-      "The input tensor of convolution transpose operator. "
+      "(Tensor) The input tensor of convolution transpose operator. "
       "The format of input tensor is NCHW. Where N is batch size, C is the "
       "number of input channels, H and W is the height and width of image.");
   AddInput("Filter",
-           "The filter tensor of convolution transpose operator."
+           "(Tensor) The filter tensor of convolution transpose operator."
            "The format of the filter tensor is CMHW, where C is the number of "
            "output image channels, M is the number of input image channels, "
            "H and W is height and width of filter. "
            "We enforce groups number == 1 and padding == 0 in "
            "convolution transpose Scenario.");
   AddOutput("Output",
-            "The output tensor of convolution transpose operator."
+            "(Tensor) The output tensor of convolution transpose operator."
             "The format of output tensor is also NCHW.");
   AddAttr<std::vector<int>>("strides",
                             "strides of convolution transpose operator.")

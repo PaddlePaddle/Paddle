@@ -3,14 +3,14 @@ import numpy as np
 from op_test import OpTest
 
 
-def deconv2d_forward_naive(input_, filter_, deconv_param):
+def conv2dtranspose_forward_naive(input_, filter_, conv2dtranspose_param):
     # [2, 3, 5, 5]
     in_n, in_c, in_h, in_w = input_.shape
     # [3, 6, 3, 3]
     f_c, out_c, f_h, f_w = filter_.shape
     assert in_c == f_c
 
-    stride, pad = deconv_param['stride'], deconv_param['pad']
+    stride, pad = conv2dtranspose_param['stride'], conv2dtranspose_param['pad']
     out_h = (in_h - 1) * stride[0] + f_h
     out_w = (in_w - 1) * stride[1] + f_w
 
@@ -32,18 +32,19 @@ def deconv2d_forward_naive(input_, filter_, deconv_param):
     return out
 
 
-class TestDeconv2dOp(OpTest):
+class TestConv2dTransposeOp(OpTest):
     def setUp(self):
-        # init as deconv
+        # init as conv transpose
         self.init_op_type()
 
         # [2, 3, 5, 5] -> kernel [3, 6, 3, 3] -> output [2, 6, 7, 7]
         self.init_test_case()
 
-        deconv2d_param = {'stride': self.stride, 'pad': self.pad}
+        conv2dtranspose_param = {'stride': self.stride, 'pad': self.pad}
         input_ = np.random.random(self.input_size).astype("float32")
         filter_ = np.random.random(self.filter_size).astype("float32")
-        output = deconv2d_forward_naive(input_, filter_, deconv2d_param)
+        output = conv2dtranspose_forward_naive(input_, filter_,
+                                               conv2dtranspose_param)
         # print 'deconv output py', output, output.shape
 
         self.inputs = {'Input': input_, 'Filter': filter_}
@@ -85,7 +86,7 @@ class TestDeconv2dOp(OpTest):
         self.filter_size = [f_c, 6, 3, 3]
 
     def init_op_type(self):
-        self.op_type = "deconv2d"
+        self.op_type = "conv2dtranspose"
 
 
 """

@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/deconv2d_op.h"
+#include "paddle/operators/conv2dtranspose_op.h"
 
 namespace ops = paddle::operators;
 
