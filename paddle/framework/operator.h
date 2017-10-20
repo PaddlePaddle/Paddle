@@ -20,12 +20,13 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "op_info.h"
+#include "glog/logging.h"  // For VLOG
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
@@ -573,6 +574,7 @@ class OperatorWithKernel : public OperatorBase {
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
+    VLOG(3) << "Running operator " << this->Type();
     RuntimeInferShapeContext infer_shape_ctx(*this, scope);
     this->InferShape(&infer_shape_ctx);
 
@@ -646,6 +648,8 @@ class OperatorWithKernel : public OperatorBase {
 
 std::ostream& operator<<(std::ostream& os,
                          const OperatorWithKernel::OpKernelKey& kernel_key);
+
+extern bool OpSupportGPU(const std::string& op_type);
 
 }  // namespace framework
 }  // namespace paddle

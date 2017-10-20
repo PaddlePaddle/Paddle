@@ -26,14 +26,10 @@ class AdamOpKernel : public framework::OpKernel<T> {
     auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
     auto moment1_out_tensor = ctx.Output<framework::Tensor>("Moment1Out");
     auto moment2_out_tensor = ctx.Output<framework::Tensor>("Moment2Out");
-    auto beta1_pow_out_tensor = ctx.Output<framework::Tensor>("Beta1PowOut");
-    auto beta2_pow_out_tensor = ctx.Output<framework::Tensor>("Beta2PowOut");
 
     param_out_tensor->mutable_data<T>(ctx.GetPlace());
     moment1_out_tensor->mutable_data<T>(ctx.GetPlace());
     moment2_out_tensor->mutable_data<T>(ctx.GetPlace());
-    beta1_pow_out_tensor->mutable_data<T>(ctx.GetPlace());
-    beta2_pow_out_tensor->mutable_data<T>(ctx.GetPlace());
 
     float beta1 = ctx.Attr<float>("beta1");
     float beta2 = ctx.Attr<float>("beta2");
@@ -56,18 +52,13 @@ class AdamOpKernel : public framework::OpKernel<T> {
     auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
     auto moment1_out = framework::EigenVector<T>::Flatten(*moment1_out_tensor);
     auto moment2_out = framework::EigenVector<T>::Flatten(*moment2_out_tensor);
-    auto beta1_pow_out =
-        framework::EigenVector<T>::Flatten(*beta1_pow_out_tensor);
-    auto beta2_pow_out =
-        framework::EigenVector<T>::Flatten(*beta2_pow_out_tensor);
     auto place = ctx.GetEigenDevice<Place>();
 
     moment1_out.device(place) = beta1 * moment1 + (1 - beta1) * grad;
     moment2_out.device(place) = beta2 * moment2 + (1 - beta2) * grad.square();
-    beta1_pow_out.device(place) = beta1_pow * beta1;
-    beta2_pow_out.device(place) = beta2_pow * beta2;
+
     // All of these are tensors of 1 element
-    auto lr_t = lr * (1 - beta2_pow_out).sqrt() / (1 - beta1_pow_out);
+    auto lr_t = lr * (1 - beta2_pow).sqrt() / (1 - beta1_pow);
     // Eigen does not support automatic broadcast
     // Get dimensions of moment vector to broadcast lr_t
     Eigen::DSizes<int, 1> m_dsize(moment1_out_tensor->numel());
