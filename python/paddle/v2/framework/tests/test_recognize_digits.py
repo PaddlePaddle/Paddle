@@ -27,7 +27,7 @@ label = layers.data(
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,
-    num_filters=2,
+    num_filters=20,
     pool_size=2,
     pool_stride=2,
     act="relu",
@@ -36,7 +36,7 @@ conv_pool_1 = nets.simple_img_conv_pool(
 conv_pool_2 = nets.simple_img_conv_pool(
     input=conv_pool_1,
     filter_size=5,
-    num_filters=4,
+    num_filters=50,
     pool_size=2,
     pool_stride=2,
     act="relu",
@@ -69,5 +69,28 @@ exe = Executor(place)
 exe.run(init_program, feed={}, fetch_list=[])
 
 for pass_id in range(PASS_NUM):
+    count = 0
     for data in train_reader():
-        print data
+        img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
+                                data)).astype("float32")
+        y_data = np.array(map(lambda x: x[1], data)).astype("int32")
+        y_data = y_data.reshape([BATCH_SIZE, 1])
+
+        #import pdb
+        # pdb.set_trace()
+
+        tensor_img = core.LoDTensor()
+        tensor_y = core.LoDTensor()
+        tensor_img.set(img_data, place)
+        tensor_y.set(y_data, place)
+
+        outs = exe.run(program,
+                       feed={"pixel": tensor_img,
+                             "label": tensor_y},
+                       fetch_list=[avg_cost])
+
+        loss = np.array(outs[0])
+
+        if count % 50 == 0:
+            print(loss)
+        count = count + 1
