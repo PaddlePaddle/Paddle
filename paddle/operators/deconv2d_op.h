@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/im2col.h"
@@ -117,8 +118,7 @@ class GemmDeconv2DKernel : public framework::OpKernel<T> {
       // of shape (C * K_H * K_W, H * W)
       math::matmul<Place, T>(context.device_context(), filter, true,
                              input_batch, false, T(1.0), &col_matrix, T(0.0));
-
-      col2im(context.device_context(), output_batch, col_matrix, strides[0],
+      col2im(context.device_context(), output_batch, col, strides[0],
              strides[1], 0, 0);
     }
   }
@@ -203,8 +203,8 @@ class GemmDeconvGrad2DKernel : public framework::OpKernel<T> {
             input_grad->Slice<T>(i, i + 1).Resize(input_matrix_shape);
 
         // im2col: dy from (C, O_H, O_W) -> (C * K_H * K_W, H * W)
-        im2col(context.device_context(), output_grad_batch, col_matrix,
-               strides[0], strides[1], paddings[0], paddings[1]);
+        im2col(context.device_context(), output_grad_batch, col, strides[0],
+               strides[1], paddings[0], paddings[1]);
 
         // gemm: dx = filter * dy
         // (M, C * K_H * K_W) * (C * K_H * K_W, H * W) -> (M, C, H)
@@ -234,13 +234,14 @@ class GemmDeconvGrad2DKernel : public framework::OpKernel<T> {
         Tensor in_batch = input->Slice<T>(i, i + 1).Resize(input_matrix_shape);
 
         // im2col: (C * H * W, K_H * K_W)
-        im2col(context.device_context(), output_grad_batch, col_matrix_f,
-               strides[0], strides[1], paddings[0], paddings[1]);
+        im2col(context.device_context(), output_grad_batch, col, strides[0],
+               strides[1], paddings[0], paddings[1]);
 
         // gemm: d_filter = x * y_grad^T
         // (M, C * H * W) * (K_H * K_W, C * H * W) -> (M, C, H)
         math::matmul<Place, T>(context.device_context(), in_batch, false,
-                               col_matrix, true, T(1.0), &filter_grad_, T(1.0));
+                               col_matrix_f, true, T(1.0), &filter_grad_,
+                               T(1.0));
       }
     }
   }
