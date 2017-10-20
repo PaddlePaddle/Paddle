@@ -108,7 +108,7 @@ void ElementwiseCompute(const framework::ExecutionContext& ctx) {
   PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                     "Rank of first input must >= rank of second input.")
 
-  if (x_dims == y_dims) {
+  if (x_dims == y_dims || product(y_dims) == 1) {
     functor f;
     f.template Run<Place, T>(x, y, z, ctx);
     return;
@@ -170,6 +170,12 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
 
   if (x_dims == y_dims) {
     functor f;
+    f(place, x, y, out, dx, dy, dout);
+    return;
+  }
+
+  if (product(y_dims) == 1) {
+    functor1 f;
     f(place, x, y, out, dx, dy, dout);
     return;
   }
