@@ -138,11 +138,11 @@ void BindProgramDesc(py::module &m) {
              return res;
            })
       .def("dump_to_file",
-           [](ProgramDescBind &programe_desc, py::bytes bytes_name) {
+           [](ProgramDescBind &program_desc, py::bytes bytes_name) {
              const ProgramDesc *desc = program_desc.Proto();
              std::string file_name = bytes_name;
              std::ofstream fout(file_name.c_str());
-             PADDLE_ENFORCE(desc->SerializeToOstream(fout),
+             PADDLE_ENFORCE(desc->SerializeToOstream(&fout),
                             "Fail to dump ProgramDesc to file.");
              fout.close();
            });
