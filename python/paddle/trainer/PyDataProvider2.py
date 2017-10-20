@@ -175,7 +175,7 @@ def index_slot(value_range, seq_type=SequenceType.NO_SEQUENCE):
 
 dense_vector = dense_slot
 sparse_binary_vector = sparse_non_value_slot
-sparse_vector = sparse_value_slot
+sparse_float_vector = sparse_value_slot
 integer_value = index_slot
 
 # dense_array can be used for variable-length input feature.
