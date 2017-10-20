@@ -27,7 +27,6 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "X(Input) of Pooling should not be null.");
@@ -45,7 +44,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                    "Pooling intput should be 4-D or 5-D tensor.");
 
-    if (ctx->Attrs().Get<bool>("globalPooling")) {
+    if (ctx->Attrs().Get<bool>("global_pooling")) {
       ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
       for (size_t i = 0; i < ksize.size(); ++i)
         ksize[i] = static_cast<int>(in_x_dims[i + 2]);
@@ -72,7 +71,6 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Mask"), "Input(Mask) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
@@ -108,15 +106,15 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "ksize",
         "The pooling window size(height, width) of pooling operator."
-        "If globalPooling = true, ksize is ignored and need not be "
+        "If global_pooling = true, ksize is ignored and need not be "
         "specified.");  // TODO(Chengduo): Add checker. (Currently,
                         // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
-        "globalPooling",
-        "Whether to use the globalPooling."
+        "global_pooling",
+        "Whether to use the global_pooling."
         "Bool constant equal to false or true."
         "Default false."
-        "If globalPooling = true, ksize is ignored and need not be specified.")
+        "If global_pooling = true, ksize is ignored and need not be specified.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "The strides(height, width) of pooling window."
@@ -179,15 +177,15 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "ksize",
         "The pooling window size(depth, height, width) of pooling operator."
-        "If globalPooling = true, ksize is ignored and need not be "
+        "If global_pooling = true, ksize is ignored and need not be "
         "specified.");  // TODO(Chengduo): Add checker. (Currently,
                         // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
-        "globalPooling",
-        "Whether to use the globalPooling."
+        "global_pooling",
+        "Whether to use the global_pooling."
         "Bool constant equal to false or true."
         "Default false."
-        "If globalPooling = true, ksize is ignored and need not be specified.")
+        "If global_pooling = true, ksize is ignored and need not be specified.")
         .SetDefault(false);
     AddAttr<std::vector<int>>(
         "strides",

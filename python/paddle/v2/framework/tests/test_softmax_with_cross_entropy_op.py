@@ -57,7 +57,7 @@ class TestSoftmaxWithCrossEntropyOp2(OpTest):
 
         self.inputs = {"Logits": logits, "Label": labels}
         self.outputs = {"Softmax": softmax, "Loss": cross_entropy}
-        self.attrs = {"softLabel": True}
+        self.attrs = {"soft_label": True}
 
     def test_check_output(self):
         self.check_output()
