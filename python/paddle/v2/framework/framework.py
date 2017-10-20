@@ -15,7 +15,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
-                 persistable=False,
+                 persistable=None,
                  **kwargs):
         self.block = block
 
@@ -347,6 +347,8 @@ class Block(object):
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
+        if 'init_attr' in kwargs:
+            self._prepend_initialize_ops_(param, kwargs['init_attr'])
         return param
 
     def append_op(self, *args, **kwargs):
@@ -404,6 +406,17 @@ class Block(object):
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
+
+    def _prepend_initialize_ops_(self, param, init_attr):
+        op_type = init_attr['type']
+        init_attr['shape'] = param.shape
+        init_attr['data_type'] = int(param.data_type)
+        op = self.prepend_op(
+            type=op_type,
+            inputs=None,
+            outputs={'Out': [param]},
+            attrs=init_attr)
+        param.op = op
 
 
 class Program(object):
@@ -479,27 +492,10 @@ class Parameter(Variable):
         Variable.__init__(
             self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
-        self.init_attr = kwargs.get('initialize_attr', {
-            'type': 'uniform_random',
-            'min': -1.0,
-            'max': 1.0
-        })
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
-        self._append_initialize_ops_()
-
-    def _append_initialize_ops_(self):
-        attr = self.init_attr
-        op_type = attr.pop('type', None)
-        block = self.block
-        assert isinstance(block, Block)
-        shape = self.shape
-        attr['dims'] = shape
-        attr['data_type'] = int(self.data_type)
-        op = block.prepend_op(
-            type=op_type, inputs=None, outputs={'Out': [self]}, attrs=attr)
-        self.op = op
 
 
 # program is a global instance.
 g_program = Program()
+g_init_program = Program()
