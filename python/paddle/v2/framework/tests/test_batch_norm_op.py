@@ -42,8 +42,9 @@ class TestBatchNormOp(OpTest):
     def setUp(self):
         self.op_type = "batch_norm"
 
-        x_shape = [2, 3, 4, 5]
-        scale_shape = [5]
+        channel_num = 2
+        x_shape = [2, 3, 4, channel_num]
+        scale_shape = [channel_num]
 
         # input
         x_val = np.random.random_sample(x_shape).astype(np.float32)
@@ -63,6 +64,14 @@ class TestBatchNormOp(OpTest):
         mean_out = mean_ref * (1 - momentum)
         variance_out = var_ref * (1 - momentum)
         saved_variance = 1 / np.sqrt(var_ref + epsilon)
+
+        #  for gradient test
+        y_grad = np.ones(x_shape).astype(np.float32)
+        grad_x_ref, grad_scale_ref, grad_bias_ref = _reference_grad(
+            x_val, y_grad, scale_val, mean_ref, var_ref, epsilon, data_format)
+        self.grad_x_ref = grad_x_ref
+        self.grad_scale_ref = grad_scale_ref
+        self.grad_bias_ref = grad_bias_ref
 
         self.inputs = {
             "X": x_val,
@@ -89,7 +98,11 @@ class TestBatchNormOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Scale', 'Bias'], 'Y')
+        user_defined_grads = [
+            self.grad_x_ref, self.grad_scale_ref, self.grad_bias_ref
+        ]
+        self.check_grad(
+            ['X', 'Scale', 'Bias'], 'Y', user_defined_grads=user_defined_grads)
 
 
 if __name__ == '__main__':

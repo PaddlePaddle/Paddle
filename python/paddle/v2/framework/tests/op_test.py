@@ -283,7 +283,8 @@ class OpTest(unittest.TestCase):
                    output_names,
                    no_grad_set=None,
                    in_place=False,
-                   max_relative_error=0.005):
+                   max_relative_error=0.005,
+                   user_defined_grads=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -296,7 +297,7 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        numeric_grads = [
+        numeric_grads = user_defined_grads or [
             get_numeric_gradient(
                 self.scope,
                 self.op,
