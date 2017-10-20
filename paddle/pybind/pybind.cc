@@ -219,8 +219,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
-      .def("drop_kids", &Scope::DropKids)
-      .def_static("global_scope", &GetGlobalScope);
+      .def("drop_kids", &Scope::DropKids);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -414,18 +413,18 @@ All parameter, weight, gradient are variables in Paddle.
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
-      .def("set_stepnet",
+      .def("set_step_unit",
            [](operators::DynamicRecurrentOp &self, const operators::NetOp &net)
-               -> void { self.SetStepNet(net.Clone()); })
+               -> void { self.rnn.SetStepUnit(net.Clone()); })
       .def("get_state",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.state(name); })
+               -> const TensorArray & { return self.rnn.state(name); })
       .def("get_step_input",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.step_input(name); })
+               -> const TensorArray & { return self.rnn.step_input(name); })
       .def("get_step_output",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.step_output(name); });
+               -> const TensorArray & { return self.rnn.step_output(name); });
 
   // cond_op
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
@@ -451,11 +450,10 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
-      .def("run",
-           [](Executor &self, ProgramDescBind *program_bind, int block_id) {
-             framework::Scope &global_scope = GetGlobalScope();
-             self.Run(*program_bind->Proto(), &global_scope, block_id);
-           });
+      .def("run", [](Executor &self, ProgramDescBind *program_bind,
+                     Scope *scope, int block_id) {
+        self.Run(*program_bind->Proto(), scope, block_id);
+      });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 
