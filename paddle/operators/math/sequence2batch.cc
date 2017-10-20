@@ -51,8 +51,6 @@ class CopyMatrixRowsFunctor<platform::CPUPlace, T> {
 template class CopyMatrixRowsFunctor<platform::CPUPlace, float>;
 template class CopyMatrixRowsFunctor<platform::CPUPlace, double>;
 
-template class LoDTensor2BatchFunctor<platform::CPUPlace, float>;
-template class LoDTensor2BatchFunctor<platform::CPUPlace, double>;
 template class Batch2LoDTensorFunctor<platform::CPUPlace, float>;
 template class Batch2LoDTensorFunctor<platform::CPUPlace, double>;
 

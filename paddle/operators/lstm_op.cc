@@ -68,7 +68,7 @@ class LSTMOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
                         "The second dimension of Input(Bias) should be "
-                        "4 * %d if diable peepholes connection",
+                        "4 * %d if disable peepholes connection",
                         frame_size);
     }
     ctx->SetOutputDim("Hidden", {x_dims[0], frame_size});
@@ -86,7 +86,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input",
              "(LoDTensor) the first input is a LodTensor, which support "
              "variable-time length input sequence. The underlying tensor in "
-             "this LoDTenosr is a matrix with shape (T X 4D), where, T is the "
+             "this LoDTensor is a matrix with shape (T X 4D), where, T is the "
              "total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
              "(Tensor, optional) the initial hidden state is an optional "
@@ -112,7 +112,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              " - Bias = {b_i, b_f, b_c, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("BatchGate",
               "(LoDTensor) This LoDTensor contains input gate, forget gate "
-              "and output gate aftern the nonlinear computation. This "
+              "and output gate after the nonlinear computation. This "
               "LoDTensor has the same shape with the reorganized input, which "
               "was also be called batch input. The LoD size is 2. The first "
               "LoD is the batch offsets and the second LoD contains the "
@@ -135,18 +135,18 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<std::string>(
         "gateActivation",
-        "(string, defalut: sigmoid)"
+        "(string, default: sigmoid)"
         "The activation for input gate, forget gate and output "
-        "gate, `sigmoid` by defalut.")
+        "gate, `sigmoid` by default.")
         .SetDefault("sigmoid");
     AddAttr<std::string>("cellActivation",
-                         "(string, defalut: tanh)"
+                         "(string, default: tanh)"
                          "The activation for cell output, `tanh` by defalut.")
         .SetDefault("tanh");
     AddAttr<std::string>("candidateActivation",
-                         "(string, defalut: tanh)"
+                         "(string, default: tanh)"
                          "The activation for candidate hidden state, "
-                         "`tanh` by defalut.")
+                         "`tanh` by default.")
         .SetDefault("tanh");
     AddComment(R"DOC(Long-Short Term Memory (LSTM) Operator
 

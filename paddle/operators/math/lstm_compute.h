@@ -72,8 +72,8 @@ class LstmUnitFunctor {
  public:
   static void compute(const platform::DeviceContext &context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      std::string gate_act, std::string cell_act,
-                      std::string cand_act);
+                      const std::string &gate_act, const std::string &cell_act,
+                      const std::string &cand_act);
 };
 
 template <typename Place, typename T>
@@ -81,8 +81,9 @@ class LstmUnitGradFunctor {
  public:
   static void compute(const platform::DeviceContext &context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                      int frame_size, int batch_size, std::string gate_act,
-                      std::string cell_act, std::string cand_act);
+                      int frame_size, int batch_size,
+                      const std::string &gate_act, const std::string &cell_act,
+                      const std::string &cand_act);
 };
 
 }  // namespace math

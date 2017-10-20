@@ -31,32 +31,32 @@ class CopyMatrixRowsFunctor {
   // The indexed rows are based on the input index.
   void operator()(const platform::DeviceContext& context,
                   const framework::LoDTensor& src, const size_t* index,
-                  framework::LoDTensor& dst, const bool is_src_index);
+                  framework::LoDTensor& dst, bool is_src_index);
 };
 
 template <typename Place, typename T>
 class LoDTensor2BatchFunctor {
+  // Calculate the length of each sequence and
+  // sort sequence index by the length.
+  // example:  sequences = {s0, s1, s2}
+  //           s0: 0 0 0 0, s1: 1 1 1 1 1, s2: 2 2 2
+  //           seq_info[3] = {(4, 5, 1), (0, 4, 0), (9, 3, 2)}
+  //
+  struct SeqInfo {
+    SeqInfo(int start, int length, int seq_idx)
+        : start(start), length(length), seq_idx(seq_idx) {}
+    int start;
+    int length;
+    int seq_idx;
+  };
+
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::LoDTensor& lod_tensor,
-                  framework::LoDTensor& batch, const bool is_reverse) const {
+                  framework::LoDTensor& batch, bool is_reverse) const {
     auto lods = lod_tensor.lod();
     PADDLE_ENFORCE_EQ(lods.size(), 1UL, "Only support one level sequence now.");
     auto lod = lods[0];
-
-    // Calculate the length of each sequence and
-    // sort sequence index by the length.
-    // example:  sequences = {s0, s1, s2}
-    //           s0: 0 0 0 0, s1: 1 1 1 1 1, s2: 2 2 2
-    //           seq_info[3] = {(4, 5, 1), (0, 4, 0), (9, 3, 2)}
-    //
-    struct SeqInfo {
-      SeqInfo(int start, int length, int seq_idx)
-          : start(start), length(length), seq_idx(seq_idx) {}
-      int start;
-      int length;
-      int seq_idx;
-    };
 
     std::vector<SeqInfo> seq_info;
     for (size_t seq_id = 0; seq_id < lod.size() - 1; ++seq_id) {
@@ -75,31 +75,34 @@ class LoDTensor2BatchFunctor {
     //           batchIndex = {b0, b1, b2, b3, b4}
     //           b0: 1 0 2, b1: 1 0 2, b2: 1 0 2, b3: 1 0, b4: 1
     //           batch_start_positions[6] = {0, 3, 6, 9, 11, 12}
+    //              batch_start_positions[0] = len(b0)
+    //              batch_start_positions[1] = len(b0) + len(b1)
+    //              batch_start_positions[2] = len(b0) + len(b1) + len(b2)
+    //              ...
     //           seq2batch_idx[12] = {4, 0, 9,
     //                                5, 1, 10,
     //                                6, 2, 11,
     //                                7, 3,
     //                                8}
-
     // The batch number represents batch size after rearranging the
     // input LodTensor. It is also the maximum length of input sequence.
 
     paddle::framework::LoD batch_lods;
-    batch_lods.push_back(std::vector<size_t>{0});
-    batch_lods.push_back(std::vector<size_t>{0});
+    batch_lods.emplace_back(std::vector<size_t>{0});
+    batch_lods.emplace_back(std::vector<size_t>{0});
 
     // batch_lods[0] is the start positions for batch LoDTensor
-    int num_batch = (size_t)seq_info[0].length;
-    batch_lods[0].resize(num_batch + 1);
+    int num_batch = seq_info[0].length;
+    batch_lods[0].resize(static_cast<size_t>(num_batch + 1));
     // batch_lods[1] is the raw index in the input LoDTensor
     auto dims = lod_tensor.dims();
-    batch_lods[1].resize(dims[0]);
+    batch_lods[1].resize(static_cast<size_t>(dims[0]));
 
     size_t* batch_starts = batch_lods[0].data();
     size_t* seq2batch_idx = batch_lods[1].data();
     batch_starts[0] = 0;
     for (size_t n = 0; n < num_batch; n++) {
-      int batch_id = batch_starts[n];
+      auto batch_id = static_cast<int>(batch_starts[n]);
       for (size_t i = 0; i < seq_info.size(); ++i) {
         size_t seq_len = seq_info[i].length;
         int start = seq_info[i].start;
@@ -114,7 +117,7 @@ class LoDTensor2BatchFunctor {
           break;
         }
       }
-      batch_starts[n + 1] = batch_id;
+      batch_starts[n + 1] = static_cast<size_t>(batch_id);
     }
     batch.set_lod(batch_lods);
 

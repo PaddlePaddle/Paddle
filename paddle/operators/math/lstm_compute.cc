@@ -24,8 +24,8 @@ template <class T>
 struct LstmUnitFunctor<platform::CPUPlace, T> {
   static void compute(const platform::DeviceContext& context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      std::string gate_act, std::string cell_act,
-                      std::string cand_act) {
+                      const std::string& gate_act, const std::string& cell_act,
+                      const std::string& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frame_size,
                                ActiveType(cand_act), ActiveType(gate_act),
@@ -45,8 +45,9 @@ template <class T>
 struct LstmUnitGradFunctor<platform::CPUPlace, T> {
   static void compute(const platform::DeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                      int frame_size, int batch_size, std::string gate_act,
-                      std::string cell_act, std::string cand_act) {
+                      int frame_size, int batch_size,
+                      const std::string& gate_act, const std::string& cell_act,
+                      const std::string& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_backward(detail::backward::lstm<T>(), value, grad,
                                 frame_size, ActiveType(cand_act),

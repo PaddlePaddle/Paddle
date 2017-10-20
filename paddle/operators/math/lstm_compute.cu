@@ -24,8 +24,8 @@ template <class T>
 struct LstmUnitFunctor<platform::GPUPlace, T> {
   static void compute(const platform::DeviceContext& context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      std::string gate_act, std::string cell_act,
-                      std::string cand_act) {
+                      const std::string& gate_act, const std::string& cell_act,
+                      const std::string& cand_act) {
     detail::gpu_lstm_forward<T>(context, detail::forward::lstm<T>(), value,
                                 frame_size, batch_size, ActiveType(cand_act),
                                 ActiveType(gate_act), ActiveType(cell_act));
@@ -36,8 +36,9 @@ template <class T>
 struct LstmUnitGradFunctor<platform::GPUPlace, T> {
   static void compute(const platform::DeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                      int frame_size, int batch_size, std::string gate_act,
-                      std::string cell_act, std::string cand_act) {
+                      int frame_size, int batch_size,
+                      const std::string& gate_act, const std::string& cell_act,
+                      const std::string& cand_act) {
     detail::gpu_lstm_backward(context, detail::backward::lstm<T>(), value, grad,
                               frame_size, batch_size, ActiveType(cand_act),
                               ActiveType(gate_act), ActiveType(cell_act));
