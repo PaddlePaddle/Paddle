@@ -17,7 +17,8 @@
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
-    deconv2d, ops::GemmDeconv2DKernel<paddle::platform::GPUPlace, float>);
+    conv2dtranspose,
+    ops::GemmConv2DTransposeKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    deconv2d_grad,
-    ops::GemmDeconvGrad2DKernel<paddle::platform::GPUPlace, float>);
+    conv2dtranspose_grad,
+    ops::GemmConv2DTransposeGradKernel<paddle::platform::GPUPlace, float>);

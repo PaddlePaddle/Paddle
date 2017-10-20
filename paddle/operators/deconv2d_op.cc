@@ -18,13 +18,13 @@
 namespace paddle {
 namespace operators {
 
-void Deconv2DOp::InferShape(framework::InferShapeContext* ctx) const {
+void Conv2DTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("Input"),
-                 "Input(Input) of Deconv2DOp should not be null.");
+                 "Input(Input) of Conv2DTransposeOp should not be null.");
   PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                 "Input(Filter) of Deconv2DOp should not be null.");
+                 "Input(Filter) of Conv2DTransposeOp should not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                 "Output(Output) of Deconv2DOp should not be null.");
+                 "Output(Output) of Conv2DTransposeOp should not be null.");
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
@@ -32,13 +32,14 @@ void Deconv2DOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
   for (size_t i = 0; i < paddings.size(); ++i) {
-    PADDLE_ENFORCE_EQ(paddings[i], 0, "No Padding allowed in deconv op.");
+    PADDLE_ENFORCE_EQ(paddings[i], 0,
+                      "No Padding allowed in conv transpose op.");
   }
 
   PADDLE_ENFORCE_EQ(in_dims.size(), 4,
-                    "Deconv2DOp input should be 4-D tensor.");
+                    "Conv2DTransposeOp input should be 4-D tensor.");
   PADDLE_ENFORCE_EQ(filter_dims.size(), 4,
-                    "Deconv2DOp filter should be 4-D tensor.");
+                    "Conv2DTransposeOp filter should be 4-D tensor.");
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "input and kernel input dimension should be equal.");
 
@@ -48,36 +49,39 @@ void Deconv2DOp::InferShape(framework::InferShapeContext* ctx) const {
                     {in_dims[0], filter_dims[1], output_height, output_width});
 }
 
-Deconv2DOpMaker::Deconv2DOpMaker(framework::OpProto* proto,
-                                 framework::OpAttrChecker* op_checker)
+Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
+    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
-      "The input tensor of deconvolution operator. "
+      "The input tensor of convolution transpose operator. "
       "The format of input tensor is NCHW. Where N is batch size, C is the "
       "number of input channels, H and W is the height and width of image.");
   AddInput("Filter",
-           "The filter tensor of deconvolution operator."
-           "The format of the filter tensor is MCHW, where C is the number of "
+           "The filter tensor of convolution transpose operator."
+           "The format of the filter tensor is CMHW, where C is the number of "
            "output image channels, M is the number of input image channels, "
            "H and W is height and width of filter. "
            "We enforce groups number == 1 and padding == 0 in "
-           "deconvolution Scenario.");
+           "convolution transpose Scenario.");
   AddOutput("Output",
-            "The output tensor of deconvolution operator."
+            "The output tensor of convolution transpose operator."
             "The format of output tensor is also NCHW.");
-  AddAttr<std::vector<int>>("strides", "strides of deconvolution operator.")
+  AddAttr<std::vector<int>>("strides",
+                            "strides of convolution transpose operator.")
       .SetDefault({1, 1});
-  AddAttr<std::vector<int>>("paddings", "paddings of deconvolution operator.")
+  AddAttr<std::vector<int>>("paddings",
+                            "paddings of convolution transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
-The deconvolution operation calculates the output based on the input, filter
+The convolution transpose operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 )DOC");
 }
 
-void Deconv2DOpGrad::InferShape(framework::InferShapeContext* ctx) const {
+void Conv2DTransposeOpGrad::InferShape(
+    framework::InferShapeContext* ctx) const {
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
   if (ctx->HasOutput(framework::GradVarName("Input"))) {
@@ -92,11 +96,13 @@ void Deconv2DOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(deconv2d, ops::Deconv2DOp, ops::Deconv2DOpMaker, deconv2d_grad,
-            ops::Deconv2DOpGrad);
+REGISTER_OP(conv2dtranspose, ops::Conv2DTransposeOp,
+            ops::Conv2DTransposeOpMaker, conv2dtranspose_grad,
+            ops::Conv2DTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    deconv2d, ops::GemmDeconv2DKernel<paddle::platform::CPUPlace, float>);
+    conv2dtranspose,
+    ops::GemmConv2DTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    deconv2d_grad,
-    ops::GemmDeconvGrad2DKernel<paddle::platform::CPUPlace, float>);
+    conv2dtranspose_grad,
+    ops::GemmConv2DTransposeGradKernel<paddle::platform::CPUPlace, float>);
