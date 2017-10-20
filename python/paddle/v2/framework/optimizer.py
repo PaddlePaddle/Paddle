@@ -13,7 +13,9 @@ class Optimizer(object):
     """
 
     def __init__(self):
-        # Dictionary of accumulators.
+        # Dictionary of accumulators. Some optimizer subclasses need to
+        # allocate and manage extra variables associated with the parameters
+        # to train. These variables are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
 
