@@ -30,7 +30,7 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
 
-    Out->ShareDataWith<T>(*Ref);
+    Out->ShareDataWith(*Ref);
 
     GPUScatterAssign<T>(ctx.device_context(), *Updates, *Index, Out);
   }
@@ -48,7 +48,7 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     // In place gradient: dRef = dO
-    dRef->ShareDataWith<T>(*dOut);
+    dRef->ShareDataWith(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
     // Gradient by Gather: dUpdates = dO[Index]
     GPUGather<T>(ctx.device_context(), *dOut, *Index, dUpdates);
