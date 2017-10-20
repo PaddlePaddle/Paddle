@@ -88,9 +88,12 @@ class OpInfoMap {
   }
 
   template <typename Callback>
-  void IterAllInfo(Callback callback) {
+  void Iterate(Callback callback) {
+    size_t n = map_.size();
+    size_t i = 0;
     for (auto& it : map_) {
-      callback(it.first, it.second);
+      callback(it.first, it.second, i == n - 1);
+      i++;
     }
   }
 

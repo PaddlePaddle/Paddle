@@ -8,39 +8,44 @@
 class OpInfoIterator {
  public:
   void operator()(const std::string& type,
-                  const paddle::framework::OpInfo& opinfo) const {
+                  const paddle::framework::OpInfo& opinfo,
+                  bool last_one) const {
     std::cerr << "Processing " << type << "\n";
 
-    const paddle::framework::OpProto& p = opinfo.Proto();
+    const paddle::framework::OpProto* p = opinfo.proto_;
+    if (p == nullptr) {
+      return;  // It is possible that an operator doesn't have OpProto.
+    }
+
     std::cout << "{\n"
-              << " \"type\" : \"" << Escape(p.type()) << "\",\n"
-              << " \"comment\" : \"" << Escape(p.comment()) << "\",\n";
+              << " \"type\" : \"" << Escape(p->type()) << "\",\n"
+              << " \"comment\" : \"" << Escape(p->comment()) << "\",\n";
 
     std::cout << " \"inputs\" : [ "
               << "\n";
-    for (int i = 0; i < p.inputs_size(); i++) {
-      PrintVar(p.inputs(i), i < p.inputs_size() - 1);
+    for (int i = 0; i < p->inputs_size(); i++) {
+      PrintVar(p->inputs(i), i < p->inputs_size() - 1);
     }
     std::cout << " ], "
               << "\n";
 
     std::cout << " \"outputs\" : [ "
               << "\n";
-    for (int i = 0; i < p.outputs_size(); i++) {
-      PrintVar(p.outputs(i), i < p.outputs_size() - 1);
+    for (int i = 0; i < p->outputs_size(); i++) {
+      PrintVar(p->outputs(i), i < p->outputs_size() - 1);
     }
     std::cout << " ], "
               << "\n";
 
     std::cout << " \"attrs\" : [ "
               << "\n";
-    for (int i = 0; i < p.attrs_size(); i++) {
-      PrintAttr(p.attrs(i), i < p.attrs_size() - 1);
+    for (int i = 0; i < p->attrs_size(); i++) {
+      PrintAttr(p->attrs(i), i < p->attrs_size() - 1);
     }
     std::cout << " ] "
               << "\n";
 
-    std::cout << "},\n";
+    std::cout << (last_one ? "}\n" : "},\n");
   }
 
  private:
@@ -115,6 +120,6 @@ class OpInfoIterator {
 int main() {
   OpInfoIterator iter;
   std::cout << "[\n";
-  paddle::framework::OpInfoMap::Instance().IterAllInfo(iter);
+  paddle::framework::OpInfoMap::Instance().Iterate(iter);
   std::cout << "]\n";
 }

@@ -225,8 +225,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
 
-    OpInfoMap::Instance().IterAllInfo([&ret_values](const std::string &type,
-                                                    const OpInfo &info) {
+    OpInfoMap::Instance().Iterate([&ret_values](
+        const std::string &type, const OpInfo &info, bool last_one) {
       if (!info.HasOpProtoAndChecker()) return;
       std::string str;
       PADDLE_ENFORCE(info.Proto().SerializeToString(&str),
