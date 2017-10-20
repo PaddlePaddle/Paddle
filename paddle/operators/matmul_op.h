@@ -46,7 +46,7 @@ class MatMulKernel : public framework::OpKernel<T> {
 template <typename T>
 inline Tensor Reshape(const Tensor& input, const DDim& dims) {
   Tensor output;
-  output.ShareDataWith<T>(input);
+  output.ShareDataWith(input);
   output.Resize(dims);
   return output;
 }
@@ -56,7 +56,7 @@ inline Tensor Reshape(const Tensor& input, const DDim& dims) {
 template <typename T>
 Tensor CombineBatchAndM(const Tensor& input) {
   Tensor output;
-  output.ShareDataWith<T>(input);
+  output.ShareDataWith(input);
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
     std::vector<int64_t> out_dims = {in_dims[0] * in_dims[1], in_dims[2]};
@@ -80,7 +80,7 @@ Tensor CombineBatchAndN(const framework::ExecutionContext& context,
     std::vector<int64_t> out_dims = {in_dims[1], in_dims[0] * in_dims[2]};
     output.Resize(make_ddim(out_dims));
   } else {
-    output.ShareDataWith<T>(input);
+    output.ShareDataWith(input);
   }
   return output;
 }
