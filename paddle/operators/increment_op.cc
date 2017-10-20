@@ -43,7 +43,9 @@ class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
 
 The equation is: Out = X + step
 )DOC");
-    AddAttr<AttrType>("step", "The scaling factor of the scale operator.")
+    AddAttr<AttrType>("step",
+                      "The step size by which the "
+                      "input tensor will be incremented.")
         .SetDefault(1.0);
   }
 };
