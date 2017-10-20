@@ -38,6 +38,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("SavedMean"), "");
     PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"), "");
 
+    // TODO(qiao) enable this check after
     // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
     //    PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
     //                      "Mean and MeanOut should share the same memory");
@@ -47,7 +48,11 @@ class BatchNormOp : public framework::OperatorWithKernel {
     //                  memory");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const int C = x_dims[1];  // channel num
+    const TensorFormat tensor_format =
+        StringToTensorFormat(ctx->Attrs().Get<std::string>("tensor_format"));
+    const int C =
+        (tensor_format == TensorFormat::NCHW ? x_dims[1]
+                                             : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
@@ -72,32 +77,36 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
     AddAttr<std::string>("tensor_format", "").SetDefault("NCHW");
     AddInput("X", "The input 4-dimensional tensor");
-    AddInput("Scale", "The second input of mul op");
+    AddInput("Scale",
+             "Bias is a 1-dimensional tensor of size C "
+             "to be applied to the output");
     AddInput("Bias",
-             "The bias as a 1-dimensional "
-             "tensor of size C to be applied to the output");
+             "Bias is a 1-dimensional tensor of size C "
+             "to be applied to the output");
     AddInput("Mean",
-             "The running mean (training) or the "
-             "estimated mean (testing)");
+             "The global mean (for training) or the "
+             "estimated mean (for testing)");
     AddInput("Variance",
-             "The running variance (training) "
-             "or the estimated");
+             "The global variance (for training) "
+             "or the estimated Variance (for testing)");
     AddOutput("Y", "result after normalized");
     AddOutput("MeanOut",
-              "The running mean (training) or the "
-              "estimated mean (testing)");
+              "Share memory with Mean. "
+              "Store the global mean when training");
     AddOutput("VarianceOut",
-              "The running variance (training) "
-              "or the estimated");
-    AddOutput("SavedMean", "Local Mean");
-    AddOutput("SavedVariance", "Local Variance");
+              "Share memory with Variance. "
+              "Store the global Variance when training");
+    AddOutput("SavedMean",
+              "Mean of the current mini batch, "
+              "will apply to output when training");
+    AddOutput("SavedVariance",
+              "Variance of the current mini batch, "
+              "will apply to output when training");
     AddComment(R"DOC(
 https://arxiv.org/pdf/1502.03167.pdf
 
 NHWC `[batch, in_height, in_width, in_channels]`
 NCHW `[batch, in_channels, in_height, in_width]`
-
-we choose NCHW as the order.
 
 )DOC");
   }
@@ -108,18 +117,16 @@ template <typename T>
 class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
+    const float epsilon = ctx.Attr<float>("epsilon");
+    const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const std::string tensor_format_str =
         ctx.Attr<std::string>("tensor_format");
     const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
-    const float epsilon = ctx.Attr<float>("epsilon");
 
     const auto *x = ctx.Input<Tensor>("X");
-
-    // Get the size for each dimension.
-    // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
+
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
     const int N = x_dims[0];
@@ -138,7 +145,6 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
     const int sample_size = H * W * D;
 
-    // const auto& place = ctx.GetEigenDevice<Place>();
     auto *y = ctx.Output<Tensor>("Y");
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
     auto *variance_out = ctx.Output<Tensor>("VarianceOut");
@@ -276,7 +282,11 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")), "");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const int C = x_dims[1];  // channel num
+    const TensorFormat tensor_format =
+        StringToTensorFormat(ctx->Attrs().Get<std::string>("tensor_format"));
+    const int C =
+        (tensor_format == TensorFormat::NCHW ? x_dims[1]
+                                             : x_dims[x_dims.size() - 1]);
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
