@@ -58,8 +58,7 @@ cc_library(paddle_capi_layers DEPS paddle_function paddle_gserver)
 
 # Link the shared library for inference
 if(NOT IOS)
-  set(LINK_FLAGS " -Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/export.sym -Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/export.map")
-  # TODO: merge mkl into paddle_capi_shared
+  set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_capi.map")
   add_library(paddle_capi_shared SHARED ${CAPI_SOURCES})
   set_target_properties(paddle_capi_shared	PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
   target_include_directories(paddle_capi_shared PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
@@ -68,6 +67,7 @@ endif()
 
 # install library & headers.
 install(FILES ${CAPI_HEADERS} DESTINATION include/paddle)
+install(FILES paddle_capi.map DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
 if(ANDROID)
   install(TARGETS paddle_capi_whole paddle_capi_engine paddle_capi_layers paddle_capi_shared
