@@ -59,6 +59,8 @@ class Scope {
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
+  void DeleteScope(Scope* scope);
+
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
 

@@ -65,5 +65,12 @@ void Scope::DropKids() {
   kids_.clear();
 }
 
+void Scope::DeleteScope(Scope* scope) {
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+  PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
+  this->kids_.erase(it);
+  delete scope;
+}
+
 }  // namespace framework
 }  // namespace paddle
