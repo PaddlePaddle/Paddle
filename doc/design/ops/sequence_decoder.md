@@ -148,82 +148,22 @@ def generate():
         generated_ids.update(selected_ids)
         generated_scores.update(selected_generation_scores)
 
-translation_ids, trans_scores = decoder()
-```
-```python
-def generate():
-    decoder = pd.sequence_decoder()
-    with decoder.step():
-        # states for prefixes
-        decoder_mem = decoder.memory(init=encoder_ctx)  # mark the memory
-        target_word = pd.lookup(trg_embedding, decoder.gendrated_ids())
-        # expand encoder_ctx's batch to fit target_word's lod
-        # for example
-        # decoder_mem.lod is
-        # [[0 1 3],
-        #  [0 1 3 6]]
-        # its tensor content is [a1 a2 a3 a4 a5]
-        # which means there are 2 sentences to translate
-        #   - the first sentence has 1 translation prefixes, the offsets are [0, 1)
-        #   - the second sentence has 2 translation prefixes, the offsets are [1, 3) and [3, 6)
-        # the target_word.lod is 
-        # [[0, 1, 6]
-        #  [0, 2, 4, 7, 9 12]]
-        # which means 2 sentences to translate, each has 1 and 5 prefixes
-        # the first prefix has 2 candidates
-        # the following has 2, 3, 2, 3 candidates
-        # the encoder_ctx_expanded's content will be
-        # [a1 a1 a2 a2 a3 a3 a3 a4 a4 a5 a5 a5]
-        encoder_ctx_expanded = pd.lod_expand(encoder_ctx, target_word)
-        decoder_input = pd.fc(
-            act=pd.activation.Linear(),
-            input=[target_word, encoder_ctx],
-            size=3 * decoder_dim)
-        gru_out, cur_mem = pd.gru_step(
-            decoder_input, mem=decoder_mem, size=decoder_dim)
-        decoder.update(mem)  # tell how to update state
-        # scores's lod same with the encoder_ctx_expanded
-        scores = pd.fc(
-            gru_out,
-            size=trg_dic_size,
-            bias=None,
-            act=pd.activation.Softmax())
-        # topk_scores, a tensor, [None, k]
-        topk_scores, topk_ids = pd.top_k(scores)
-        # calculate the new score for prefix+topk_words
-        topk_generated_scores = pd.add_scalar(topk_scores, decoder.generated_scores())
-        # selected_ids is the selected candidates that will be append to the translation
-        # selected_scores is the scores of the selected candidates
-        # generated_scores is the score of the translations(with candidates appended)
-        selected_ids, generated_scores = decoder.beam_search(
-            topk_ids, topk_generated_scores)
-        # the latest value of trans_scores will be cached in decoder.generated_scores()
-        # the latest value of selected_ids will be cached in decoder.generated_ids()
-
         decoder.output(selected_ids)
-        decoder.output(generated_scores)
+        decoder.output(selected_generation_scores)
 
-translation_ids, trans_scores = decoder()
+translation_ids, translation_scores = decoder()
 ```
-The `decoder.generated_scores()` and `decoder.generated_ids()` is similar to RNN states (will remember the previous state),
-thery are embeded into sequence decoder to make the usage easier.
-
-The `beam_search` is a operator that given the candidates and the scores of translations with the candidates,
+The `decoder.beam_search` is a operator that given the candidates and the scores of translations including the candidates,
 return the result of the beam search algorithm.
 
 In this way, users can customize anything on the inputs or outputs of beam search, for example, two ways to prune some translation prefixes
 
 1. meke the correspondind elements in `topk_generated_scores` zero or some small values, beam_search will discard this candidate.
 2. remove some specific candidate in `selected_ids`
-3. get the `translation_ids`, remove the translation sequence in it.
+3. get the final `translation_ids`, remove the translation sequence in it.
 
 The implementation of sequence decoder can reuse the C++ class [RNNAlgorithm](https://github.com/Superjom/Paddle/blob/68cac3c0f8451fe62a4cdf156747d6dc0ee000b3/paddle/operators/dynamic_recurrent_op.h#L30),
 so the python syntax is quite similar to a [RNN](https://github.com/Superjom/Paddle/blob/68cac3c0f8451fe62a4cdf156747d6dc0ee000b3/doc/design/block.md#blocks-with-for-and-rnnop).
-
-Compared to a RNN, sequence decoder has two special members (that exposed as variables):
-
-1. `decoder.generated_scores()` store the latest scores for candidates set.
-2. `decoder.generated_ids()` store the latest candidate word ids.
 
 Both of them are two-level `LoDTensors`
 
@@ -257,8 +197,7 @@ the status in each time step can be stored in `TensorArray`, and `Pack`ed to a f
 
 ```python
 decoder.output(selected_ids)
-decoder.output(selected_scores)
-decoder.output(generated_scores)
+decoder.output(selected_generation_scores)
 ```
 
 the `selected_ids` is the candidate ids for the prefixes, 
@@ -268,9 +207,7 @@ the second level represents generated sequences.
 
 Pack the `selected_scores` will get a `LoDTensor` that stores scores of each candidate of translations.
 
-Pack the `generated_scores` will get a `LoDTensor`, and each tail is the probability of the translation.
-
-
+Pack the `selected_generation_scores` will get a `LoDTensor`, and each tail is the probability of the translation.
 
 ## LoD and shape changes during decoding
 <p align="center">
