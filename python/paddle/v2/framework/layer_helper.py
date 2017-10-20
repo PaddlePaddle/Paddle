@@ -1,4 +1,5 @@
-from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program
+from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program, \
+    Program
 import paddle.v2.framework.core as core
 import copy
 import itertools
@@ -7,6 +8,123 @@ import itertools
 def unique_name(prefix):
     uid = core.unique_integer()  # unique during whole process.
     return "_".join([prefix, str(uid)])
+
+
+class BlockGuard(object):
+    def __init__(self, program):
+        if not isinstance(program, Program):
+            raise TypeError("BlockGuard takes a program")
+        self.program = program
+
+    def __enter__(self):
+        self.program.create_block()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.program.rollback()
+        if exc_type is not None:
+            return False  # re-raise exception
+        return True
+
+
+class RNNGuard(BlockGuard):
+    def __init__(self, rnn):
+        if not isinstance(rnn, StaticRNNHelper):
+            raise TypeError("RNNGuard takes an RNNHelper")
+        super(RNNGuard, self).__init__(rnn.helper.program)
+        self.rnn = rnn
+
+    def __enter__(self):
+        self.rnn.status = StaticRNNHelper.IN_RNN_BLOCK
+        return super(RNNGuard, self).__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.rnn.status = StaticRNNHelper.AFTER_RNN_BLOCK
+        return super(RNNGuard, self).__exit__(exc_type, exc_val, exc_tb)
+
+
+class RNNMemoryLink(object):
+    def __init__(self, init, pre_mem, mem=None):
+        self.init = init
+        self.pre_mem = pre_mem
+        self.mem = None
+
+
+class StaticRNNHelper(object):
+    BEFORE_RNN_BLOCK = 0
+    IN_RNN_BLOCK = 1
+    AFTER_RNN_BLOCK = 2
+
+    def __init__(self, name=None, program=None):
+        self.helper = LayerHelper(**locals())
+        self.memories = {}
+        self.inputs = []
+        self.outputs = []
+        self.status = StaticRNNHelper.BEFORE_RNN_BLOCK
+        self.seq_len = None
+
+    def step(self):
+        return RNNGuard(self)
+
+    def _assert_in_rnn_block_(self, method):
+        if not self.status != StaticRNNHelper.IN_RNN_BLOCK:
+            raise ValueError("You must invoke {0} in rnn block".format(method))
+
+    def memory(self, init=None, shape=None, dtype=None, value=0):
+        self._assert_in_rnn_block_('memory')
+        if init is None:
+            if shape is None or dtype is None:
+                raise ValueError(
+                    "if init is None, memory at least need shape and dtype")
+
+            prog = self.helper.program
+            parent_idx = prog.current_block().parent_idx
+            assert parent_idx >= 0
+            parent_block = prog.block(parent_idx)
+            var_name = unique_name("@".join([self.helper.name, "memory_boot"]))
+            boot_var = parent_block.create_var(
+                name=var_name, shape=shape, dtype=dtype, persistable=False)
+
+            parent_block.append_op(
+                type="fill_constant",
+                inputs={},
+                outputs={'Out': [boot_var]},
+                attrs={
+                    'value': value,
+                    'shape': boot_var.shape,
+                    'data_type': boot_var.data_type
+                })
+
+            return self.memory(init=boot_var)
+        else:
+            pre_mem = self.helper.create_variable(
+                name=unique_name("@".join([self.helper.name, "mem"])),
+                dtype=init.data_type,
+                shape=init.shape)
+            self.memories[pre_mem.name] = RNNMemoryLink(
+                init=init, pre_mem=pre_mem)
+            return pre_mem
+
+    def step_input(self, x):
+        self._assert_in_rnn_block_('step_input')
+        if not isinstance(x, Variable):
+            raise TypeError("step input takes a Variable")
+        if self.seq_len is None:
+            self.seq_len = x.shape[1]
+        elif self.seq_len != x.shape[1]:
+            raise ValueError("Static RNN only take fix seq_len input")
+
+        ipt = self.helper.create_variable(
+            name=x.name,
+            dtype=x.data_type,
+            shape=[-1] + x.shape[2:],
+            type=x.type)
+        self.inputs.append(ipt)
+        return ipt
+
+    def step_output(self, o):
+        self._assert_in_rnn_block_('step_output')
+        if not isinstance(o, Variable):
+            raise TypeError("step output takes a Variable")
 
 
 class LayerHelper(object):
@@ -122,6 +240,9 @@ class LayerHelper(object):
     def create_tmp_variable(self, dtype):
         return self.program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])), dtype=dtype)
+
+    def create_variable(self, *args, **kwargs):
+        return self.program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, *args, **kwargs):
         return self.program.global_block().create_var(*args, **kwargs)
