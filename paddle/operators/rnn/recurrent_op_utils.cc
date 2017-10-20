@@ -40,10 +40,10 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
     f::DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_input =
-          step_scopes[j]->NewVar(inlinks[i])->GetMutable<Tensor>();
+          step_scopes[j]->Var(inlinks[i])->GetMutable<Tensor>();
       // The input of operators of each step is Tensor here.
       // Maybe need to modify Slice function.
-      *step_input = input->Slice<float>(j, j + 1);
+      *step_input = input->Slice(j, j + 1);
       step_input->Resize(step_dims);
     }
   }
@@ -71,8 +71,8 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
           step_scopes[j]->FindVar(outlinks[i])->GetMutable<LoDTensor>();
       // TODO(luotao02) data type and platform::DeviceContext() should set
       // correctly
-      (output->Slice<float>(j, j + 1))
-          .CopyFrom<float>(*step_output, platform::CPUPlace(), ctx);
+      (output->Slice(j, j + 1))
+          .CopyFrom(*step_output, platform::CPUPlace(), ctx);
     }
   }
 }
@@ -95,7 +95,7 @@ void LinkMemories(const std::vector<Scope*>& scopes,
     auto* mem = scope->FindVar(attr.pre_var)->GetMutable<LoDTensor>();
     auto* linked_mem = linked_scope->FindVar(attr.var)->GetMutable<LoDTensor>();
     mem->Resize(linked_mem->dims());
-    mem->ShareDataWith<float>(*linked_mem);
+    mem->ShareDataWith(*linked_mem);
   }
 }
 

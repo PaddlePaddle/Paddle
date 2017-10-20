@@ -45,10 +45,10 @@ class Scope {
   Scope& NewScope() const;
 
   /// Create a variable with given name if it doesn't exist.
-  Variable* NewVar(const std::string& name);
+  Variable* Var(const std::string& name);
 
   /// Create a variable with a scope-unique name.
-  Variable* NewVar();
+  Variable* Var();
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
@@ -58,6 +58,8 @@ class Scope {
 
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
+
+  void DeleteScope(Scope* scope);
 
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
@@ -72,8 +74,5 @@ class Scope {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 };
-
-framework::Scope& GetGlobalScope();
-
 }  // namespace framework
 }  // namespace paddle

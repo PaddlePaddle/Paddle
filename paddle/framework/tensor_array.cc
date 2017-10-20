@@ -76,6 +76,17 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
                            const std::vector<DySeqMeta>& meta, const LoD& lod,
                            size_t level);
 
+std::vector<size_t> GenDyBatchIndice(const DySeqMetaBatch& meta, int batch_id) {
+  // collect indice need to copy to the batch
+  std::vector<size_t> indice;
+  for (const auto& seq : meta) {
+    size_t id = seq.begin + batch_id;
+    if (id >= seq.end) break;
+    indice.push_back(id);
+  }
+  return indice;
+}
+
 }  // namespace detail
 
 const LoDTensor& TensorArray::Read(size_t index) const {
@@ -95,8 +106,8 @@ void TensorArray::Write(size_t index, const LoDTensor& value) {
 
   values_[index].Resize(value.dims());
   values_[index].mutable_data<value_type>(platform::CPUPlace());
-  values_[index].CopyFrom<value_type>(value, platform::CPUPlace(),
-                                      platform::CPUDeviceContext());
+  values_[index].CopyFrom(value, platform::CPUPlace(),
+                          platform::CPUDeviceContext());
 }
 
 void TensorArray::WriteShared(size_t index, const LoDTensor& value) {
@@ -105,7 +116,7 @@ void TensorArray::WriteShared(size_t index, const LoDTensor& value) {
     values_.resize(index + 1);
   }
 
-  values_[index].ShareDataWith<value_type>(value);
+  values_[index].ShareDataWith(value);
 }
 
 LoDTensor TensorArray::Pack(size_t level, const std::vector<DySeqMeta>& meta,
@@ -113,8 +124,8 @@ LoDTensor TensorArray::Pack(size_t level, const std::vector<DySeqMeta>& meta,
   return detail::PackDynamicBatch(values_, meta, lod, level);
 }
 
-std::vector<DySeqMeta> TensorArray::Unpack(const LoDTensor& source, int level,
-                                           bool length_desend) {
+DySeqMetaBatch TensorArray::Unpack(const LoDTensor& source, int level,
+                                   bool length_desend) {
   detail::DynamicBatchUnpacker unpacker(source, level,
                                         length_desend /*descend*/);
 
@@ -129,6 +140,7 @@ std::vector<DySeqMeta> TensorArray::Unpack(const LoDTensor& source, int level,
     Write(batch_id, unpacker.GetBatch(batch_id));
   }
 
+  PADDLE_ENFORCE(!unpacker.meta.empty());
   return unpacker.meta;
 }
 
@@ -151,9 +163,9 @@ LoDTensor TensorArray::Stack() const {
   result.mutable_data<value_type>(platform::CPUPlace());
 
   for (size_t idx = 0; idx < size(); idx++) {
-    result.Slice<value_type>(idx, idx + 1)
-        .CopyFrom<value_type>(Read(idx), platform::CPUPlace(),
-                              platform::CPUDeviceContext());
+    result.Slice(idx, idx + 1)
+        .CopyFrom(Read(idx), platform::CPUPlace(),
+                  platform::CPUDeviceContext());
   }
   return result;
 }
@@ -179,13 +191,12 @@ void TensorArray::Unstack(const LoDTensor& source, bool data_shared) const {
     auto& value = values_[elem];
     if (data_shared) {
       // share memory
-      value.ShareDataWith<value_type>(source.Slice<value_type>(elem, elem + 1));
+      value.ShareDataWith(source.Slice(elem, elem + 1));
     } else {
       // copy
       value.Resize(value_dims);
-      value.CopyFrom<value_type>(source.Slice<value_type>(elem, elem + 1),
-                                 platform::CPUPlace(),
-                                 platform::CPUDeviceContext());
+      value.CopyFrom(source.Slice(elem, elem + 1), platform::CPUPlace(),
+                     platform::CPUDeviceContext());
     }
   }
 }
@@ -218,13 +229,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   PADDLE_ENFORCE(!meta.empty(), "should build meta first");
   LoDTensor result;
 
-  // collect indice need to copy to the batch
-  std::vector<size_t> indice;
-  for (const auto& seq : meta) {
-    size_t id = seq.begin + index;
-    if (id >= seq.end) break;
-    indice.push_back(id);
-  }
+  auto indice = detail::GenDyBatchIndice(meta, index);
   PADDLE_ENFORCE(!indice.empty(), "invalid batch at %d", index);
 
   // copy the indice of records in LoDTensor
@@ -236,11 +241,10 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
 
   for (size_t i = 0; i < indice.size(); i++) {
     auto index = indice[i];
-    auto target = result.Slice<value_type>(i, i + 1);
-    auto source_ = source->Slice<value_type>(index, index + 1);
+    auto target = result.Slice(i, i + 1);
+    auto slice = source->Slice(index, index + 1);
 
-    target.CopyFrom<value_type>(source_, platform::CPUPlace(),
-                                platform::CPUDeviceContext());
+    target.CopyFrom(slice, platform::CPUPlace(), platform::CPUDeviceContext());
   }
 
   return result;
@@ -271,10 +275,10 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
       // target is result[index]
       auto index = seq_meta.begin + batch_id;
       if (index >= seq_meta.end) break;
-      auto source_ = source[batch_id].Slice<float>(seq_id, seq_id + 1);
-      auto target = result.Slice<float>(index, index + 1);
-      target.CopyFrom<float>(source_, platform::CPUPlace(),
-                             platform::CPUDeviceContext());
+      auto source_ = source[batch_id].Slice(seq_id, seq_id + 1);
+      auto target = result.Slice(index, index + 1);
+      target.CopyFrom(source_, platform::CPUPlace(),
+                      platform::CPUDeviceContext());
     }
   }
 

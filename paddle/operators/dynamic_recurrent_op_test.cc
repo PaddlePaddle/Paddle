@@ -36,7 +36,7 @@ void OpDescNewVar(const std::string& param_name,
 // create a LoD tensor in scope with specific dims
 LoDTensor* CreateVar(Scope& scope, std::string name, framework::DDim dims,
                      const platform::Place& place) {
-  auto* var = scope.NewVar(name);
+  auto* var = scope.Var(name);
   auto* tensor = var->GetMutable<LoDTensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(place);
@@ -51,7 +51,7 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
     CreateGlobalVariables();
 
     auto op_desc = CreateOpDesc();
-    op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
     dop = dynamic_cast<DynamicRecurrentOp*>(op.get());
     InitCacheManually();
     InitStepNet();
@@ -85,9 +85,8 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
 
   void CreateGlobalVariables() {
     platform::CPUPlace place;
-    scope.NewVar("step_scopes");
+    scope.Var("step_scopes");
     CreateVar(scope, "boot_mem", framework::make_ddim({10, 20}), place);
-    // auto* out0 =
     CreateVar(scope, "out0", framework::make_ddim({10, 20}), place);
     auto* in0 = CreateVar(scope, "in0", framework::make_ddim({10, 8}), place);
     // 10 instanes with 4 sentences, length is 4, 3, 2, 1 respectively.

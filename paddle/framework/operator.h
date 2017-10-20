@@ -20,12 +20,13 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "op_info.h"
+#include "glog/logging.h"  // For VLOG
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
@@ -403,11 +404,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.Var(name)->Shape());
+    return framework::make_ddim(block_.FindVar(name)->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
-    block_.Var(name)->SetShape(framework::vectorize(dim));
+    block_.FindVar(name)->SetShape(framework::vectorize(dim));
   }
 
   const OpDescBind& op_;
@@ -573,6 +574,7 @@ class OperatorWithKernel : public OperatorBase {
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
+    VLOG(3) << "Running operator " << this->Type();
     RuntimeInferShapeContext infer_shape_ctx(*this, scope);
     this->InferShape(&infer_shape_ctx);
 
