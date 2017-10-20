@@ -31,12 +31,14 @@ void Deconv2DOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-  for (int i = 0; i < paddings.size(); ++i) {
+  for (size_t i = 0; i < paddings.size(); ++i) {
     PADDLE_ENFORCE_EQ(paddings[i], 0, "No Padding allowed in deconv op.");
   }
 
-  PADDLE_ENFORCE_EQ(in_dims.size(), 4, "Deconv2DOp input should be 4-D.");
-  PADDLE_ENFORCE_EQ(filter_dims.size(), 4, "Deconv2DOp filter should be 4-D.");
+  PADDLE_ENFORCE_EQ(in_dims.size(), 4,
+                    "Deconv2DOp input should be 4-D tensor.");
+  PADDLE_ENFORCE_EQ(filter_dims.size(), 4,
+                    "Deconv2DOp filter should be 4-D tensor.");
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "input and kernel input dimension should be equal.");
 
@@ -52,14 +54,14 @@ Deconv2DOpMaker::Deconv2DOpMaker(framework::OpProto* proto,
   AddInput(
       "Input",
       "The input tensor of deconvolution operator. "
-      "The format of input tensor is NMHW. Where N is batch size, M is the "
+      "The format of input tensor is NCHW. Where N is batch size, C is the "
       "number of input channels, H and W is the height and width of image.");
   AddInput("Filter",
            "The filter tensor of deconvolution operator."
-           "The format of the filter tensor is MCHW, where M is the number of "
-           "input image channels, C is the number of output image channels, "
+           "The format of the filter tensor is MCHW, where C is the number of "
+           "output image channels, M is the number of input image channels, "
            "H and W is height and width of filter. "
-           "We enforce groups number == 1 and padding == 0 in our "
+           "We enforce groups number == 1 and padding == 0 in "
            "deconvolution Scenario.");
   AddOutput("Output",
             "The output tensor of deconvolution operator."

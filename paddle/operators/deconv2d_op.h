@@ -55,7 +55,7 @@ class GemmDeconv2DKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<Tensor>("Input");
-    // filter will be reshaped, so we do not use constant pointer here
+    // The filter will be reshaped, so it should not be constant pointer
     Tensor filter = *context.Input<Tensor>("Filter");
 
     Tensor* output = context.Output<Tensor>("Output");
@@ -132,8 +132,8 @@ class GemmDeconvGrad2DKernel : public framework::OpKernel<T> {
     const Tensor* output_grad =
         context.Input<Tensor>(framework::GradVarName("Output"));
 
-    // For filter, we do not use const pointer b/c we will do reshape
-    // but we should avoid modifying its value
+    // For filter, we do not use const pointer b/c we will do reshape,
+    // but we should avoid modifying its value.
     Tensor filter = *context.Input<Tensor>("Filter");
 
     Tensor* input_grad =
@@ -142,7 +142,7 @@ class GemmDeconvGrad2DKernel : public framework::OpKernel<T> {
         context.Output<Tensor>(framework::GradVarName("Filter"));
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    // Actually, no paddings and groups allowed in deconv
+    // Actually, no paddings and groups allowed in deconv.
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
     int N = input->dims()[0];
