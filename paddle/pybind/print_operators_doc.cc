@@ -9,8 +9,9 @@ class OpInfoIterator {
  public:
   void operator()(const std::string& type,
                   const paddle::framework::OpInfo& opinfo) const {
-    const paddle::framework::OpProto& p = opinfo.Proto();
+    std::cerr << "Processing " << type << "\n";
 
+    const paddle::framework::OpProto& p = opinfo.Proto();
     std::cout << "{\n"
               << " \"type\" : \"" << Escape(p.type()) << "\",\n"
               << " \"comment\" : \"" << Escape(p.comment()) << "\",\n";
@@ -90,10 +91,22 @@ class OpInfoIterator {
   std::string Escape(const std::string& s) const {
     std::string r;
     for (size_t i = 0; i < s.size(); i++) {
-      if (s[i] == '\"' || s[i] == '\n' || s[i] == '\r') {
-        r += "\\";
+      switch (s[i]) {
+        case '\"':
+          r += "\\\"";
+          break;
+        case '\\':
+          r += "\\\\";
+          break;
+        case '\n':
+          r += "\\n";
+          break;
+        case '\r':
+          break;
+        default:
+          r += s[i];
+          break;
       }
-      r += s[i];
     }
     return r;
   }
