@@ -69,5 +69,8 @@ information, or not. But the output only shares the LoD with input `Inference`.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker);
-REGISTER_OP_CPU_KERNEL(accuracy,
-                       ops::AccuracyKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    accuracy, ops::AccuracyKernel<paddle::platform::CPUPlace, float>,
+    ops::AccuracyKernel<paddle::platform::CPUPlace, int>,
+    ops::AccuracyKernel<paddle::platform::CPUPlace, double>,
+    ops::AccuracyKernel<paddle::platform::CPUPlace, int64_t>);
