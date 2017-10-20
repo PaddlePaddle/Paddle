@@ -127,8 +127,6 @@ std::string LoDTensor::SerializeToString() const {
   if (this->type() == typeid(double))  // NOLINT
     desc.set_data_type(DataType::FP64);
 
-  // set dims
-  // std::vector<int64_t> dims = vectorize(this->dims());
   for (int i = 0; i < dims().size(); ++i) {
     desc.add_dims(dims()[i]);
   }
@@ -210,7 +208,7 @@ void LoDTensor::DeserializeFromString(const std::string& s,
   this->Resize(make_ddim(dims));
 
   // parse data type
-  void* ptr;
+  void* ptr = nullptr;
   if (desc.data_type() == DataType::BOOL)
     ptr = this->mutable_data<bool>(dst_place);
   if (desc.data_type() == DataType::INT16)

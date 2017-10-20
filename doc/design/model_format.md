@@ -2,7 +2,7 @@
 
 ## Motivation
 
-The model is the output of training process. One complete model consists of two parts, namely, the **topology** and the **parameters**. To support business deployment, we need to make the model format must be self-completed and do not expose any training source code.
+The model is the output of training process. One complete model consists of two parts, namely, the **topology** and the **parameters**. To support industrial deployment, we need to make the model format must be self-completed and do not expose any training source code.
 
 As a result, In PaddlePaddle, the **topology** represents as a  [ProgramDesc](https://github.com/PaddlePaddle/Paddle/blob/1c0a4c901c9fc881d120249c703b15d1c50dae7d/doc/design/program.md), which describes the model structure. The **parameters** contain all the trainable weights in the model, we must support large size parameter, and efficient serialization/deserialization. 
 
@@ -20,14 +20,14 @@ In detail, tensor's  byte view as the table shows. Note that all the signed valu
 
 ```text
 [offset] [type]              [description] 
-0004     64 bit integer      HeaderLength, the length of LoDTensorDesc
-0008     64 bit integer      ContentLength, the length of LodTensor Buffer
-0009      8 bit char         TensorDesc
-00010     8 bit char         TensorDesc
+0004     4 bytes integer      HeaderLength, the length of LoDTensorDesc
+0008     4 bytes integer      ContentLength, the length of LodTensor Buffer
+0009     1 bytes char         TensorDesc
+00010    1 bytes char         TensorDesc
 ...
-00100     8 bit char         TensorValue
-00101     8 bit char         TensorValue
-00102     8 bit char         TensorValue              ..
+00100    1 bytes char         TensorValue
+00101    1 bytes char         TensorValue
+00102    1 bytes char         TensorValue              ..
 ...
 ```
 

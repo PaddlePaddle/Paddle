@@ -69,6 +69,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
+    # save_restore_op contains several operators
+    if ("${TARGET}" STREQUAL "save_restore_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(save);\n")
+    endif()
+
     # activation_op contains several operators
     if ("${TARGET}" STREQUAL "activation_op")
         set(pybind_flag 1)
