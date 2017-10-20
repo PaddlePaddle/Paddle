@@ -98,6 +98,58 @@ encoder_ctx_proj = pd.fc(
 ```
 
 **Decoder**
+
+```python
+def generate():
+    decoder = pd.sequence_decoder()
+    with decoder.step():
+        decoder_mem = decoder.memory(init=encoder_ctx)  # mark the memory
+        generated_ids = decoder.memory() # TODO init to batch_size <s>s
+        generated_scores = decoder.memory() # TODO init to batch_size 1s or 0s
+
+        target_word = pd.lookup(trg_embedding, decoder.gendrated_ids())
+        # expand encoder_ctx's batch to fit target_word's lod
+        # for example
+        # decoder_mem.lod is
+        # [[0 1 3],
+        #  [0 1 3 6]]
+        # its tensor content is [a1 a2 a3 a4 a5]
+        # which means there are 2 sentences to translate
+        #   - the first sentence has 1 translation prefixes, the offsets are [0, 1)
+        #   - the second sentence has 2 translation prefixes, the offsets are [1, 3) and [3, 6)
+        # the target_word.lod is 
+        # [[0, 1, 6]
+        #  [0, 2, 4, 7, 9 12]]
+        # which means 2 sentences to translate, each has 1 and 5 prefixes
+        # the first prefix has 2 candidates
+        # the following has 2, 3, 2, 3 candidates
+        # the encoder_ctx_expanded's content will be
+        # [a1 a1 a2 a2 a3 a3 a3 a4 a4 a5 a5 a5]
+        encoder_ctx_expanded = pd.lod_expand(encoder_ctx, target_word)
+        decoder_input = pd.fc(
+            act=pd.activation.Linear(),
+            input=[target_word, encoder_ctx],
+            size=3 * decoder_dim)
+        gru_out, cur_mem = pd.gru_step(
+            decoder_input, mem=decoder_mem, size=decoder_dim)
+        scores = pd.fc(
+            gru_out,
+            size=trg_dic_size,
+            bias=None,
+            act=pd.activation.Softmax())
+        topk_scores, topk_ids = pd.top_k(scores)
+        topk_generated_scores = pd.add_scalar(topk_scores, generated_scores)
+
+        selected_ids, selected_generation_scores = decoder.beam_search(
+            topk_ids, topk_generated_scores)
+
+        # update the states
+        decoder_mem.update(mem)  # tells how to update state
+        generated_ids.update(selected_ids)
+        generated_scores.update(selected_generation_scores)
+
+translation_ids, trans_scores = decoder()
+```
 ```python
 def generate():
     decoder = pd.sequence_decoder()
@@ -138,20 +190,32 @@ def generate():
             act=pd.activation.Softmax())
         # topk_scores, a tensor, [None, k]
         topk_scores, topk_ids = pd.top_k(scores)
+        # calculate the new score for prefix+topk_words
+        topk_generated_scores = pd.add_scalar(topk_scores, decoder.generated_scores())
         # selected_ids is the selected candidates that will be append to the translation
         # selected_scores is the scores of the selected candidates
         # generated_scores is the score of the translations(with candidates appended)
-        selected_ids, selected_scores, generated_scores = decoder.beam_search(
-            topk_ids, topk_scores, decoder.generated_scores())
+        selected_ids, generated_scores = decoder.beam_search(
+            topk_ids, topk_generated_scores)
         # the latest value of trans_scores will be cached in decoder.generated_scores()
         # the latest value of selected_ids will be cached in decoder.generated_ids()
 
         decoder.output(selected_ids)
-        decoder.output(selected_scores)
         decoder.output(generated_scores)
 
-translation_word_ids, word_scores, trans_scores = decoder()
+translation_ids, trans_scores = decoder()
 ```
+The `decoder.generated_scores()` and `decoder.generated_ids()` is similar to RNN states (will remember the previous state),
+thery are embeded into sequence decoder to make the usage easier.
+
+The `beam_search` is a operator that given the candidates and the scores of translations with the candidates,
+return the result of the beam search algorithm.
+
+In this way, users can customize anything on the inputs or outputs of beam search, for example, two ways to prune some translation prefixes
+
+1. meke the correspondind elements in `topk_generated_scores` zero or some small values, beam_search will discard this candidate.
+2. remove some specific candidate in `selected_ids`
+3. get the `translation_ids`, remove the translation sequence in it.
 
 The implementation of sequence decoder can reuse the C++ class [RNNAlgorithm](https://github.com/Superjom/Paddle/blob/68cac3c0f8451fe62a4cdf156747d6dc0ee000b3/paddle/operators/dynamic_recurrent_op.h#L30),
 so the python syntax is quite similar to a [RNN](https://github.com/Superjom/Paddle/blob/68cac3c0f8451fe62a4cdf156747d6dc0ee000b3/doc/design/block.md#blocks-with-for-and-rnnop).
@@ -206,6 +270,8 @@ Pack the `selected_scores` will get a `LoDTensor` that stores scores of each can
 
 Pack the `generated_scores` will get a `LoDTensor`, and each tail is the probability of the translation.
 
+
+
 ## LoD and shape changes during decoding
 <p align="center">
   <img src="./images/LOD-and-shape-changes-during-decoding.jpg"/>
@@ -239,198 +305,3 @@ the results of beam search are better to store in a `TensorArray`.
 
 The `Pack` and `UnPack` in `TensorArray` are used to package tensors in the array to a `LoDTensor` or split the `LoDTensor` to an array of tensors. 
 It needs some extensions to support pack or unpack an array of `LoDTensors`.
-
-## Appendik
-Let's validate the logic with some simple data, assuming that there are 3 sentences to translate
-
-**initial statistics**
-
-```python
-3 sentences to translate
-
-encoder_ctx:
-  lod = [[0, 1, 2, 3]]
-  shape = [3, 128]
-decoder_mem:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 128]
-decoder.gendrated_ids()
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 1]
-  content = [0, 0, 0] # 0 is the word id of <s>
-target_word:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 128]
-encoder_ctx_expand:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 128]
-decoder_input:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 768]
-gru_out:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 128]
-cur_mem:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 128]
-scores:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 8000]
-topk_scores:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 5]
-topk_ids:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 5]
-# first instance get 2 candidates
-# second instance get 3 candidates
-# third instance get 1 candidates
-selected_ids:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 1]
-selected_scores:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 1]
-```
-
-**first step**
-```python
-encoder_ctx (updated with cur_mem):
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 128]
-decoder_mem:
-  lod = [[0, 1, 2, 3], [0, 1, 2, 3]]
-  shape = [3, 128]
-decoder.gendrated_ids()
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 1]
-target_words:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 128]
-# in the second level of LoD
-# the first sequence repeat 2 times
-# the second sequence repeat 3 times
-# third sequence repeat 1 time
-encoder_ctx_expand:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 128]
-decoder_input:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 768]
-gru_out:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 128]
-cur_mem:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 128]
-scores:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 8000]
-topk_scores:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 5]
-topk_ids:
-  lod = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] 
-  shape = [6, 5]
-# there are 6 instances (prefixes) now
-# 1-th instance get 5 candidates
-# 2-th instance get 2 candidates
-# 3-th instance get 4 candidates
-# 4-th instance get 2 candidates
-# 5-th instance get 4 candidates
-# 6-th instance get 1 candidates (may be reatch the end of sequence)
-# NOTE each sentence to translate share a beam_size throughout all the instances
-selected_ids:
-  lod = [[0, 7, 17, 18], # 3 sentence
-         [0, 5, 7, 11, 13, 17, 18]] # candidates for each instance
-  shape = [18, 1]
-selected_scores:
-  lod = selected_ids.lod
-  shape = selected_ids.shape
-```
-**second step**
-```python
-encoder_ctx:
-  lod  = [[0, 2, 5, 6], [0, 1, 2, 3, 4, 5, 6]] # equals last cur_mem.lod
-  shape = [6, 128]
-decoder_mem:
-  lod = cur_mem.lod # last step
-  shape = cur_mem.shape
-decoder.gendrated_ids() # same with last selected_ids
-  lod = [[0, 2, 5, 6], # 3 sentence
-         [0, 5, 7, 11, 13, 17, 18]] # candidates for each instance
-  shape = [18, 1]
-target_words:
-  lod = decoder.gendrated_ids().lod
-  shape = [18, 128]
-encoder_ctx_expand:
-  # there are 6 instances in the previous encoder_ctx 
-  # the 1-th instance repeat 5 times
-  # the 2-th repeat 2 times
-  # the 3-th repeat 4 times
-  # ...
-  lod = [[0, 2, 5, 6], # 3 sentence
-         [0, 5, 7, 11, 13, 17, 18]] # candidates for each instance
-  shape = [18, 128]
-decoder_input:
-  lod = decoder.gendrated_ids().lod
-  shape = [18, 768]
-gru_out:
-  lod = decoder.gendrated_ids().lod
-  shape = [18, 128]
-cur_mem:
-  lod = decoder.gendrated_ids().lod
-  shape = [18, 128]
-scores:
-  lod = decoder.gendrated_ids().lod
-  shape = [18, 8000]
-topk_scores:
-  lod = decoder.gendrated_ids().lod
-  shape = [18, 5]
-topk_ids:
-  lod = decoder.gendrated_ids().lod
-  shape = [18, 5]
-# there are 18 instances now
-# something special happens
-# some instances has no candidates(pruned or reach the end of a sentence)
-# the number of candidates are 
-# 0 1 2 0 1 2 0 1 2 0 1 2 0 1 2 0 1 2
-# LoD can cover these sceneraios naturally.
-selected_ids:
-  lod = [[0, 6, 9, 18], [0, 0, 1, 3, 3, 4, 6, 6, 7, 9, 9, 10, 12, 12, 13, 15, 15, 16, 18]]
-  shape = [18, 1]
-selected_scores:
-  lod = selected_ids.lod
-  shape = selected_ids.shape
-```
-
-In conclusion, there are two groups of LoD
-1. same with `decoder.gendrated_ids()`
-  - `target_words`
-  - `encoder_ctx_expand`
-  - `decoder_input`
-  - `gru_out`
-  - `cur_mem`
-  - `scores`
-  - `topk_scores`
-  - `topk_ids`
-2. same with `selected_ids` 
-  - `selected_scores`
-  - all the other tensors in the next time step will be updated to this LoD
-
-The `decoder.output(selected_ids)` will concatenate the `selected_ids` in every step and output as a variable which has the LoD like
-
-```
-[[0, 4, 9, 12],
-[0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11]]
-```
-
-because there are three sentences need to translate, 
-so the first level of LoD has four numbers,
-
-- the first sentence has four translation prefixes
-  - each has a1, a2-a1, a3-a2, a4-a3 candidate words.
-- the second sentence has five translation prefixes
-  - each has a5-a4, a6-a5, a7-a6, a8-a7 candidate words.
-- the third sentence has three translation prefixes
-  - each has a9-a8, a10-a9, a11-a10 candidate words
