@@ -1,9 +1,13 @@
+import pdb
+
 import unittest
 import numpy as np
 import random
 import itertools
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
+from paddle.v2.framework.executor import Executor
+from paddle.v2.framework.framework import Program
 
 
 def grad_var_name(var_name):
@@ -214,43 +218,78 @@ class OpTest(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
     def check_output_with_place(self, place, atol):
-        self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
-                            op_attrs)
-        if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
-            return
-        set_input(self.scope, self.op, self.inputs, place)
-        ctx = core.DeviceContext.create(place)
-        self.op.run(self.scope, ctx)
+        # FIXME: how do i know an op.support_gpu() from OpDesc ...
+        # if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
+        #     return
 
-        for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
+        #self.scope = core.Scope()
+        program = Program()
+        block = program.global_block()
+
+        inputs = {}
+        for var_name, np_value in self.inputs.iteritems():
+            var = block.create_var(
+                dtype="float32",
+                shape=list(np_value.shape),
+                lod_level=0,
+                name=var_name)
+            inputs[var_name] = var
+
+        outputs = {}
+        fetch_list = []
+        for var_name, np_value in self.outputs.iteritems():
+            var = block.create_var(
+                dtype="float32",
+                shape=list(np_value.shape),
+                lod_level=0,
+                name=var_name)
+            outputs[var_name] = var
+            fetch_list.append(var)
+
+        op = block.append_op(
+            type=self.op_type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=self.attrs if hasattr(self, "attrs") else dict())
+
+        feed_map = {}
+        for var_name, np_value in self.inputs.iteritems():
+            tensor = core.LoDTensor()
+            tensor.set(np_value, place)
+            feed_map[var_name] = tensor
+
+        exe = Executor(place)
+        outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
+
+        for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
 
             if out_dup:
-                sub_out = self.outputs[out_name]
-                if not isinstance(sub_out, list):
-                    raise AssertionError("sub_out type %s is not list",
-                                         type(sub_out))
+                raise AssertionError("Not Implemented")
 
-                for sub_out_name, expect in sub_out:
-                    actual = np.array(
-                        self.scope.find_var(sub_out_name).get_tensor())
+            if out_dup:
+                pass
+                # sub_out = self.outputs[out_name]
+                # if not isinstance(sub_out, list):
+                #     raise AssertionError("sub_out type %s is not list",
+                #                          type(sub_out))
+
+                # for sub_out_name, expect in sub_out:
+                #     actual = np.array(
+                #         self.scope.find_var(sub_out_name).get_tensor())
+                #     self.assertTrue(
+                #         np.allclose(
+                #             actual, expect, atol=atol),
+                #         "output name: " + out_name + " has diff.")
+            else:
+                for i, var in enumerate(fetch_list):
+                    actual = np.array(outs[i])
+                    expect = self.outputs[var.name]
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=atol),
-                        "output name: " + out_name + " has diff.")
-            else:
-                actual = np.array(self.scope.find_var(out_name).get_tensor())
-                expect = self.outputs[out_name]
-
-                self.assertTrue(
-                    np.allclose(
-                        actual, expect, atol=atol),
-                    "output name: " + out_name + " has diff.")
+                        "output name: " + var.name + " has diff.")
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
