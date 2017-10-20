@@ -3,7 +3,7 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc', 'data', 'cross_entropy', 'conv2d', 'pool2d']
+__all__ = ['fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'accuracy']
 
 
 def fc(input,
