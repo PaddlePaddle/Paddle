@@ -1,5 +1,5 @@
 #include <iostream>
-#include <sstream>      // std::stringstream
+#include <sstream>  // std::stringstream
 #include <string>
 
 #include "paddle/framework/op_info.h"
@@ -65,7 +65,8 @@ void PrintVar(const paddle::framework::OpProto::Var& v, std::stringstream& ss) {
      << " },";
 }
 
-void PrintAttr(const paddle::framework::OpProto::Attr& a, std::stringstream& ss) {
+void PrintAttr(const paddle::framework::OpProto::Attr& a,
+               std::stringstream& ss) {
   ss << " { "
      << "\n"
      << "   \"name\" : \"" << Escape(a.name()) << "\",\n"
