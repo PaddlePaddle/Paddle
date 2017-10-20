@@ -145,9 +145,19 @@ def square_error_cost(input, label, **kwargs):
     helper.append_op(
         type='pow',
         inputs={'X': [minus_out]},
-        outputs={'Y': [square_out]},
+        outputs={'Y': [squhare_out]},
         attrs={'factor': 2.0})
     return square_out
+
+
+def accuracy(input, label, **kwargs):
+    helper = LayerHelper("accuracy", **kwargs)
+    out_dtype = kwargs.get("out_dtype", "float32")
+    acc_out = helper.create_tmp_variable(dtype=out_dtype)
+    helper.append_op(
+        type="accuracy", inputs={"Inference": [input],
+                                 "Label": [label]})
+    return acc_out
 
 
 def conv2d(input,
