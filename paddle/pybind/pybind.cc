@@ -413,18 +413,18 @@ All parameter, weight, gradient are variables in Paddle.
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
-      .def("set_stepnet",
+      .def("set_step_unit",
            [](operators::DynamicRecurrentOp &self, const operators::NetOp &net)
-               -> void { self.SetStepNet(net.Clone()); })
+               -> void { self.rnn.SetStepUnit(net.Clone()); })
       .def("get_state",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.state(name); })
+               -> const TensorArray & { return self.rnn.state(name); })
       .def("get_step_input",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.step_input(name); })
+               -> const TensorArray & { return self.rnn.step_input(name); })
       .def("get_step_output",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.step_output(name); });
+               -> const TensorArray & { return self.rnn.step_output(name); });
 
   // cond_op
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
