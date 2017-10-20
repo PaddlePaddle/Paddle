@@ -145,7 +145,7 @@ def square_error_cost(input, label, **kwargs):
     helper.append_op(
         type='pow',
         inputs={'X': [minus_out]},
-        outputs={'Y': [squhare_out]},
+        outputs={'Y': [square_out]},
         attrs={'factor': 2.0})
     return square_out
 
