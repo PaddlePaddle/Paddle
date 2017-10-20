@@ -64,6 +64,11 @@ class SGD(object):
                             "paddle.v2.optimizer.Optimizer")
         import py_paddle.swig_paddle as api
         topology = Topology(cost, extra_layers=extra_layers)
+        # HACK(typhoonzero): update ParameterConfig(proto) in case of optimizers
+        # are defined after layers, or between layers.
+        topology.update_from_default()
+        parameters.update_param_conf(topology.proto())
+
         self.__optimizer__ = update_equation
         self.__topology__ = topology
         self.__parameters__ = parameters
