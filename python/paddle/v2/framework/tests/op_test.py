@@ -284,7 +284,14 @@ class OpTest(unittest.TestCase):
 
         inputs = self.generate_vars(block, op_proto, True)
         outputs = self.generate_vars(block, op_proto, False)
-        fetch_list = [var for name, var in outputs.iteritems()]
+
+        fetch_list = []
+        for var_name, var in outputs.iteritems():
+            if isinstance(var, list):
+                for v in var:
+                    fetch_list.append(v)
+            else:
+                fetch_list.append(var)
 
         op = block.append_op(
             type=self.op_type,
@@ -294,6 +301,8 @@ class OpTest(unittest.TestCase):
 
         feed_map = self.feed_var(inputs, place)
 
+        # pdb.set_trace()
+
         exe = Executor(place)
         outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
 
@@ -301,16 +310,35 @@ class OpTest(unittest.TestCase):
             if out_name not in self.outputs:
                 continue
 
+            def find_actual(fetch_list, target_name, outs):
+                found = [
+                    i for i, var in enumerate(fetch_list)
+                    if var.name == target_name
+                ]
+                self.assertTrue(
+                    len(found) == 1,
+                    "Should be exact one var name, found {}".format(
+                        len(found)))
+                return outs[found[0]]
+
             if out_dup:
-                raise AssertionError("Not Implemented")
-            else:
-                for i, var in enumerate(fetch_list):
-                    actual = np.array(outs[i])
-                    expect = self.outputs[var.name]
+                sub_out = self.outputs[out_name]
+                if not isinstance(sub_out, list):
+                    raise AssertionError("sub_out type %s is not list",
+                                         type(sub_out))
+                for sub_out_name, expect in sub_out:
+                    actual = find_actual(fetch_list, sub_out_name, outs)
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=atol),
-                        "output name: " + var.name + " has diff.")
+                        "output name: " + sub_out_name + " has diff.")
+            else:
+                actual = find_actual(fetch_list, out_name, outs)
+                expect = self.outputs[out_name]
+                self.assertTrue(
+                    np.allclose(
+                        actual, expect, atol=atol),
+                    "output name: " + out_name + " has diff.")
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
