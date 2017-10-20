@@ -44,7 +44,6 @@ inline void CreateVariables(Scope& scope,
  * be reordered, but the RNN op should not change the `boot_state` as an input
  * variable's content.
  */
-template <typename T>
 inline void ReorderInitialState(const DySeqMetaBatch& metas,
                                 const LoDTensor& boot_state, LoDTensor* tensor,
                                 const platform::Place& dst_place) {
@@ -57,16 +56,14 @@ inline void ReorderInitialState(const DySeqMetaBatch& metas,
   }
 }
 
-template <typename T>
 inline void RestoreInitialState(const DySeqMetaBatch& metas,
                                 const LoDTensor& tensor, LoDTensor* boot_state,
                                 const platform::Place& dst_place) {
   for (size_t seq_id = 0; seq_id < metas.size(); seq_id++) {
-    auto slice = tensor.Slice<T>(seq_id, seq_id + 1);
+    auto slice = tensor.Slice(seq_id, seq_id + 1);
     auto boot_slice =
-        boot_state->Slice<T>(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
-    boot_slice.template CopyFrom<T>(slice, dst_place,
-                                    platform::CPUDeviceContext());
+        boot_state->Slice(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
+    boot_slice.CopyFrom(slice, dst_place, platform::CPUDeviceContext());
   }
 }
 
@@ -269,8 +266,8 @@ void RNNAlgorithm::LinkState(const rnn::StateAttr& state, size_t step) {
         step_inputs_[arg_.inlinks.front()].Read(step).dims()[0];
     auto* pre_state = cache_.GetTensor(cache_.GetScope(step - 1), state.var);
     // shink and share from previous state
-    auto shrinked_pre_state = pre_state->Slice<value_type>(0, num_instances);
-    state_pre.ShareDataWith<value_type>(shrinked_pre_state);
+    auto shrinked_pre_state = pre_state->Slice(0, num_instances);
+    state_pre.ShareDataWith(shrinked_pre_state);
   }
 }
 
@@ -285,8 +282,8 @@ void RNNAlgorithm::LinkInitialState(const rnn::StateAttr& state) {
   // allocate state
   state_pre.Resize(pre_state->dims());
   state_pre.mutable_data<value_type>(platform::CPUPlace());
-  detail::ReorderInitialState<value_type>(some_meta, *pre_state, &state_pre,
-                                          pre_state->place());
+  detail::ReorderInitialState(some_meta, *pre_state, &state_pre,
+                              pre_state->place());
 }
 
 void RNNAlgorithm::ExportInitialStateGradient(const rnn::StateAttr& state) {
@@ -295,17 +292,11 @@ void RNNAlgorithm::ExportInitialStateGradient(const rnn::StateAttr& state) {
   const auto& some_meta = dy_seq_metas_[arg_.inlinks.front()];
   auto& scope = cache_.GetScope(0);
 
-<<<<<<< HEAD
   auto& state_pre = *cache_.GetTensor(scope, state.pre_var);
   auto& pre_state = *cache_.GetTensor(*cache_.scope, state.boot_var);
   pre_state.Resize(state_pre.dims());
-  detail::RestoreInitialState<value_type>(some_meta, state_pre, &pre_state,
-                                          pre_state.place());
-=======
-  // shink and share from previous state
-  auto shrinked_pre_state = pre_state->Slice(0, num_instances);
-  state_pre.ShareDataWith(shrinked_pre_state);
->>>>>>> 102a5f349926539c256afca54108241cc5e313c6
+  detail::RestoreInitialState(some_meta, state_pre, &pre_state,
+                              pre_state.place());
 }
 
 void RNNAlgorithm::ArgCache::Init(const rnn::ArgumentName& name,
