@@ -12,7 +12,7 @@ class TestFeedFetch(unittest.TestCase):
         input_tensor = core.LoDTensor([[0, 2, 4]])
         input_tensor.set(input_array, place)
 
-        core.set_feed_variable_float(input_tensor, "feed", 0)
+        core.set_feed_variable(input_tensor, "feed", 0)
 
         output_tensor = core.get_fetch_variable("feed", 0)
 

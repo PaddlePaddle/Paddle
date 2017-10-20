@@ -38,8 +38,7 @@ class Executor(object):
                 inputs={'X': [feed_var]},
                 outputs={'Out': [out]},
                 attrs={'col': i})
-            # FIXME
-            core.set_feed_variable_float(feed[name], feed_var.name, i)
+            core.set_feed_variable(feed[name], feed_var.name, i)
 
         fetch_var = global_block.create_var(
             name=fetch_var_name,
