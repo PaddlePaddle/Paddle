@@ -55,9 +55,8 @@ avg_cost = layers.mean(x=cost, program=program)
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
 
-BATCH_SIZE = 20
-PASS_NUM = 100
-
+BATCH_SIZE = 50
+PASS_NUM = 1
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=500),
@@ -76,9 +75,6 @@ for pass_id in range(PASS_NUM):
         y_data = np.array(map(lambda x: x[1], data)).astype("int32")
         y_data = y_data.reshape([BATCH_SIZE, 1])
 
-        #import pdb
-        # pdb.set_trace()
-
         tensor_img = core.LoDTensor()
         tensor_y = core.LoDTensor()
         tensor_img.set(img_data, place)
@@ -91,6 +87,6 @@ for pass_id in range(PASS_NUM):
 
         loss = np.array(outs[0])
 
-        if count % 50 == 0:
-            print(loss)
-        count = count + 1
+        if loss < 10.0:
+            exit(0)  # if avg cost less than 10.0, we think our code is good.
+exit(1)
