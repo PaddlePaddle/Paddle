@@ -2,6 +2,7 @@
 Module Trainer
 """
 import collections
+import numpy as np
 from topology import Topology
 from . import event as v2_event
 from . import optimizer as v2_optimizer
@@ -169,8 +170,18 @@ class SGD(object):
                         pass_id=pass_id,
                         batch_id=batch_id,
                         gm=self.__gradient_machine__))
-                for each_param in self.__gradient_machine__.getNonStaticParameters(
-                ):
+
+                if api.getClippingMethod() == "global_norm":
+                    l2_norm2 = 0
+                    for each_param in self.__gradient_machine__ \
+                                          .getNonStaticParameters():
+                        l2_norm2 += self.__parameter_updater__ \
+                                    .getParameterGradSquaredL2Norm(each_param)
+                    self.__parameter_updater__ \
+                        .setParametersGradGlobalL2Norm(np.sqrt(l2_norm2))
+
+                for each_param in self.__gradient_machine__ \
+                                      .getNonStaticParameters():
                     self.__parameter_updater__.update(each_param)
                 cost_sum = out_args.sum()
                 cost = cost_sum / len(data_batch)

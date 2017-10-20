@@ -20,6 +20,7 @@ limitations under the License. */
 #include <cmath>
 
 DEFINE_bool(log_clipping, false, "enable log clipping or not");
+DECLARE_string(gradient_clipping_method);
 
 namespace paddle {
 
@@ -302,27 +303,46 @@ void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
   adamaxApply(value, grad, mom, u, beta1_, beta2_, step_, learningRate);
 }
 
-void OptimizerWithGradientClipping::update(const VectorPtr vecs[],
-                                           const ParameterConfig& config,
-                                           size_t sparseId) const {
+void OptimizerWithGradientClipping::updateWithL2Norm(
+    const VectorPtr vecs[],
+    const ParameterConfig& config,
+    double l2_norm,
+    size_t sparseId) const {
   real globalThreshold = optConfig_.gradient_clipping_threshold();
   real localThreshold = config.gradient_clipping_threshold();
-
   // Use local gradient clipping threshold if it's enabled,
   // otherwise using the global one.
   real threshold = localThreshold > 0.0f ? localThreshold : globalThreshold;
   std::string field = localThreshold > 0.0f ? "local" : "global";
 
-  real maxAbsGrad = vecs[PARAMETER_GRADIENT]->getAbsMax();
-  if (maxAbsGrad > threshold) {
-    if (FLAGS_log_clipping) {
-      real avgAbsGrad = vecs[PARAMETER_GRADIENT]->getAbsSum() /
-                        vecs[PARAMETER_GRADIENT]->getSize();
-      LOG(INFO) << "parameter=" << config.name() << " need clipping by "
-                << field << " threshold=" << threshold
-                << ", max grad=" << maxAbsGrad << ", avg grad=" << avgAbsGrad;
+  if (FLAGS_gradient_clipping_method == "value") {
+    real maxAbsGrad = vecs[PARAMETER_GRADIENT]->getAbsMax();
+    if (maxAbsGrad > threshold) {
+      if (FLAGS_log_clipping) {
+        real avgAbsGrad = vecs[PARAMETER_GRADIENT]->getAbsSum() /
+                          vecs[PARAMETER_GRADIENT]->getSize();
+        LOG(INFO) << "parameter=" << config.name() << " need clipped by value, "
+                  << field << " threshold=" << threshold
+                  << ", max grad=" << maxAbsGrad << ", avg grad=" << avgAbsGrad;
+      }
+      vecs[PARAMETER_GRADIENT]->clip(-threshold, threshold);
     }
-    vecs[PARAMETER_GRADIENT]->clip(-threshold, threshold);
+  } else if (FLAGS_gradient_clipping_method == "norm" ||
+             FLAGS_gradient_clipping_method == "global_norm") {
+    if (l2_norm > threshold) {
+      if (FLAGS_log_clipping) {
+        std::string norm_field =
+            (FLAGS_gradient_clipping_method == "norm") ? "local" : "global";
+        LOG(INFO) << "parameter=" << config.name() << " need clipped by "
+                  << FLAGS_gradient_clipping_method << ", " << field
+                  << " threshold=" << threshold << ", " << norm_field
+                  << " l2_norm=" << l2_norm;
+      }
+      vecs[PARAMETER_GRADIENT]->clip_by_norm(threshold, l2_norm);
+    }
+  } else {
+    LOG(FATAL) << "Unsupported gradient_clipping_method: "
+               << FLAGS_gradient_clipping_method;
   }
   optimizer_->update(vecs, config, sparseId);
 }

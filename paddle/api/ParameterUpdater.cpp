@@ -83,6 +83,15 @@ void ParameterUpdater::finishBatch(float cost) {
   m->updater->finishBatch(cost);
 }
 
+double ParameterUpdater::getParameterGradSquaredL2Norm(Parameter *param) {
+  auto paddleParam = param->m->getPtr();
+  return m->updater->getParameterGradSquaredL2Norm(paddleParam);
+}
+
+void ParameterUpdater::setParametersGradGlobalL2Norm(double global_norm) {
+  m->updater->setParametersGradGlobalL2Norm(global_norm);
+}
+
 void ParameterUpdater::update(Parameter *param) {
   auto paddleParam = param->m->getPtr();
   m->updater->update(paddleParam);

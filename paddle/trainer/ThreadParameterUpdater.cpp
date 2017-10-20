@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/utils/Thread.h"
 
 DECLARE_int32(trainer_count);
+DECLARE_string(gradient_clipping_method);
 
 namespace paddle {
 
@@ -81,11 +82,33 @@ bool SgdThreadUpdater::finishPass() {
   return true;
 }
 
+double SgdThreadUpdater::getParameterGradSquaredL2Norm(Parameter* para) {
+  SetDevice setDevice(para->getDeviceId());
+  auto* vecs = para->getBufs();
+  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
+  MatrixPtr grad2;
+  Matrix::resizeOrCreate(
+      grad2, vecs[PARAMETER_GRADIENT]->getSize(), 1, false, grad.useGpu());
+  grad2->copyFrom(grad.data_, vecs[PARAMETER_GRADIENT]->getSize());
+  grad2->square2();
+  return grad2->getSum();
+}
+
 void SgdThreadUpdater::updateImpl(Parameter* para) {
   if (!para->useGpu()) return;
   SetDevice setDevice(para->getDeviceId());
   ParameterOptimizer* optimizer = optimizers_[para->getID()].get();
-  optimizer->update(para->getBufs(), para->getConfig());
+
+  if (FLAGS_gradient_clipping_method == "norm") {
+    double local_norm = std::sqrt(getParameterGradSquaredL2Norm(para));
+    optimizer->updateWithL2Norm(para->getBufs(), para->getConfig(), local_norm);
+  } else if (FLAGS_gradient_clipping_method == "global_norm") {
+    optimizer->updateWithL2Norm(
+        para->getBufs(), para->getConfig(), parametersGradGlobalL2Norm_);
+  } else {
+    optimizer->update(para->getBufs(), para->getConfig());
+  }
+
   if (auto callback = optimizer->needSpecialTraversal(para->getConfig())) {
     callback(para->getBufs(), para->getConfig(), -1LU);
   }

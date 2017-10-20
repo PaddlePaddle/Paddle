@@ -364,9 +364,17 @@ public:
       const ParameterConfig& config) const {
     return optimizer_->needSpecialTraversal(config);
   }
+
   virtual void update(const VectorPtr vecs[],
                       const ParameterConfig& config,
-                      size_t sparseId) const;
+                      size_t sparseId) const {
+    updateWithL2Norm(vecs, config, 0.0, sparseId);
+  }
+
+  virtual void updateWithL2Norm(const VectorPtr vecs[],
+                                const ParameterConfig& config,
+                                double l2_norm,
+                                size_t sparseId) const;
 
   virtual void setNoDecay() { optimizer_->setNoDecay(); }
 

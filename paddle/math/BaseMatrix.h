@@ -489,6 +489,11 @@ public:
   void clip(T p1, T p2);
 
   /**
+   * this = this * p1 / p2;
+   */
+  void clip_by_norm(T p1, T p2);
+
+  /**
    * this = b < low ? 0 : 1
    *
    * this = b > high ? 0 : 1

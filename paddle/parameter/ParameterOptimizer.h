@@ -114,6 +114,17 @@ public:
   virtual void update(const VectorPtr vecs[],
                       const ParameterConfig& config,
                       size_t sparseId = -1LU) const = 0;
+  /**
+   * called when gradient's clipping method is 'norm' or 'global_norm'.
+   * This virtual function will be reimplemented in class
+   * OptimizerWithGradientClipping.
+   */
+  virtual void updateWithL2Norm(const VectorPtr vecs[],
+                                const ParameterConfig& config,
+                                double l2_norm,
+                                size_t sparseId = -1LU) const {
+    update(vecs, config, sparseId);
+  }
 
   /**
    * following hooks catch up with current time for sparse update,

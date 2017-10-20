@@ -82,3 +82,6 @@ DEFINE_string(init_model_path,
               "",
               "Path of the initial model parameters."
               "If it was set, start_pass will be ignored.");
+DEFINE_string(gradient_clipping_method,
+              "value",
+              "Method of gradient clipping: value, norm, global_norm");

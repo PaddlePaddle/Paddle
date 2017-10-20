@@ -56,5 +56,7 @@ bool isGpuVersion() {
 
 int getTrainerCount() { return FLAGS_trainer_count; }
 
+std::string getClippingMethod() { return FLAGS_gradient_clipping_method; }
+
 static_assert(NUM_PARAMETER_TYPES == paddle::NUM_PARAMETER_TYPES,
               "The Parameter Type should be same in core/api and core/common");

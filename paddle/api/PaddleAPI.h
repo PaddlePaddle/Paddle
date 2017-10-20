@@ -51,6 +51,9 @@ bool isGpuVersion();
 /// Return FLAGS_trainer_count
 int getTrainerCount();
 
+/// Return FLAGS_gradient_clipping_method
+std::string getClippingMethod();
+
 /// The Error of IO Operation. Such as file not found, etc.
 class IOError {};
 
@@ -883,7 +886,19 @@ public:
   void update(Parameter* param);
 
   /**
-   * @breif only get required sparse rows by default.
+   * @brief get the gradient's squared l2 norm of a parameter
+   * @param param
+   */
+  double getParameterGradSquaredL2Norm(Parameter* param);
+
+  /**
+   * @brief set the global l2 norm of all parameters' gradient
+   * @param global_norm
+   */
+  void setParametersGradGlobalL2Norm(double global_norm);
+
+  /**
+   * @brief only get required sparse rows by default.
    * @param fullSize: get full matrix parameter if *fullSize* set
    * @param apply: get PARAMETER_APPLY on pserver if *apply* set
    */

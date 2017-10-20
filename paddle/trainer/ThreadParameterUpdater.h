@@ -61,6 +61,7 @@ protected:
   // This is the function that will be eventualy called by the GradientMachine.
   // used only for GPU update.
   virtual void updateImpl(Parameter* para);
+  virtual double getParameterGradSquaredL2Norm(Parameter* para);
   OptimizationConfig config_;
   int64_t numSamplesProcessed_;
 

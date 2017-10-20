@@ -22,7 +22,10 @@ class ParameterOptimizer;
 
 class ParameterUpdater {
 public:
-  ParameterUpdater() : parameterTypes_{PARAMETER_VALUE, PARAMETER_GRADIENT} {}
+  ParameterUpdater() : parameterTypes_{PARAMETER_VALUE, PARAMETER_GRADIENT} {
+    parametersGradGlobalL2Norm_ = 0.0;
+  }
+
   virtual ~ParameterUpdater() {}
 
   void addParameterType(ParameterType type) {
@@ -61,6 +64,11 @@ public:
     this->updateImpl(para);
   }
 
+  virtual double getParameterGradSquaredL2Norm(Parameter* para) { return 0.0; }
+
+  void setParametersGradGlobalL2Norm(double global_norm) {
+    parametersGradGlobalL2Norm_ = global_norm;
+  }
   // only get required sparse rows by default,
   // get full matrix parameter if *fullSize* set
   // get PARAMETER_APPLY on pserver if *apply* set
@@ -94,6 +102,7 @@ protected:
 
   std::vector<ParameterType> parameterTypes_;
   std::vector<ParameterPtr> parameters_;
+  double parametersGradGlobalL2Norm_;
   std::map<size_t, size_t> nonStaticParaIDMap_;
 };
 

@@ -511,6 +511,12 @@ void BaseMatrixT<T>::clip(T p1, T p2) {
   applyUnary(unary::Clip<T>(p1, p2));
 }
 
+DEFINE_MATRIX_UNARY_PARAMETER_OP(ClipByNorm, TWO_PARAMETER, a = a * p1 / p2);
+template <class T>
+void BaseMatrixT<T>::clip_by_norm(/* threshold */ T p1, /* l2 norm */ T p2) {
+  applyUnary(unary::ClipByNorm<T>(p1, p2));
+}
+
 DEFINE_MATRIX_BINARY_PARAMETER_OP(ClipDerivative,
                                   TWO_PARAMETER,
                                   a = b < p1 ? 0 : (b > p2 ? 0 : 1));
