@@ -155,8 +155,10 @@ def accuracy(input, label, **kwargs):
     out_dtype = kwargs.get("out_dtype", "float32")
     acc_out = helper.create_tmp_variable(dtype=out_dtype)
     helper.append_op(
-        type="accuracy", inputs={"Inference": [input],
-                                 "Label": [label]})
+        type="accuracy",
+        inputs={"Inference": [input],
+                "Label": [label]},
+        outputs={"Accuracy": [acc_out]})
     return acc_out
 
 
