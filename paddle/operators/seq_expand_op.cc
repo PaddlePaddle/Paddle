@@ -40,7 +40,7 @@ class SeqExpandOp : public framework::OperatorWithKernel {
       out_dim[0] = out_dim[0] * repeat;
     }
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PadOp should not be null.");
+                   "Output(Out) of SeqExpandOp should not be null.");
     ctx->SetOutputDim("Out", out_dim);
   }
 };

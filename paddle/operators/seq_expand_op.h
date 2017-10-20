@@ -75,15 +75,37 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     // copy data
-    Place place = boost::get<Place>(context.GetPlace());
+    auto place = context.GetPlace();
     size_t count = 0;
-    for (size_t i = 0; i < scales.size(); ++i) {
-      count = element_len * (x_lod[0][i + 1] - x_lod[0][i]);
-      for (size_t j = 0; j < scales[i]; ++j) {
-        memory::Copy(place, out_data, place, x_data, sizeof(T) * count);
-        out_data += count;
+    if (platform::is_cpu_place(place)) {
+      auto& cpu_place = boost::get<platform::CPUPlace>(place);
+      for (size_t i = 0; i < scales.size(); ++i) {
+        count = element_len * (x_lod[0][i + 1] - x_lod[0][i]);
+        for (size_t j = 0; j < scales[i]; ++j) {
+          memory::Copy(cpu_place, out_data, cpu_place, x_data,
+                       sizeof(T) * count);
+          out_data += count;
+        }
+        x_data += count;
       }
-      x_data += count;
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      auto& gpu_place = boost::get<platform::GPUPlace>(place);
+      auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                        context.device_context())
+                        .stream();
+      for (size_t i = 0; i < scales.size(); ++i) {
+        count = element_len * (x_lod[0][i + 1] - x_lod[0][i]);
+        for (size_t j = 0; j < scales[i]; ++j) {
+          memory::Copy(gpu_place, out_data, gpu_place, x_data,
+                       sizeof(T) * count, stream);
+          out_data += count;
+        }
+        x_data += count;
+      }
+#else
+      PADDLE_THROW("Paddle is not compiled with GPU");
+#endif
     }
 
     out->set_lod(out_lod);
@@ -113,7 +135,7 @@ class SeqExpandGradKernel : public framework::OpKernel<T> {
       Eigen::TensorMap<Eigen::Tensor<T, 1>> d_x_t(
           d_x_data, static_cast<int>((ele_count * element_len) / repeat));
       auto place = context.GetEigenDevice<Place>();
-      d_x_t.device(place) = d_out_t.sum(Eigen::array<int, 1>({0}));
+      d_x_t.device(place) = d_out_t.sum(Eigen::array<int, 1>({{0}}));
       d_out_data += (ele_count * element_len);
       d_x_data += ((ele_count * element_len) / repeat);
     }
