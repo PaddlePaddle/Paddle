@@ -20,7 +20,7 @@ class TestBook(unittest.TestCase):
         avg_cost = layers.mean(x=cost, program=program)
         self.assertIsNotNone(avg_cost)
         program.append_backward(avg_cost)
-        print str(program)
+        # print str(program)
 
     def test_recognize_digits_mlp(self):
         program = Program()
@@ -39,7 +39,7 @@ class TestBook(unittest.TestCase):
         cost = layers.cross_entropy(input=predict, label=label, program=program)
         avg_cost = layers.mean(x=cost, program=program)
         self.assertIsNotNone(avg_cost)
-        print str(program)
+        # print str(program)
 
     def test_simple_conv2d(self):
         program = Program()
@@ -48,7 +48,7 @@ class TestBook(unittest.TestCase):
         layers.conv2d(
             input=images, num_filters=3, filter_size=[4, 4], program=program)
 
-        print str(program)
+        # print str(program)
 
     def test_recognize_digits_conv(self):
         program = Program()
@@ -86,7 +86,50 @@ class TestBook(unittest.TestCase):
 
         program.append_backward(avg_cost)
 
-        print str(program)
+        # print str(program)
+
+    def test_word_embedding(self):
+        program = Program()
+        dict_size = 10000
+        embed_size = 32
+        first_word = layers.data(
+            name='firstw',
+            shape=[dict_size],
+            data_type='int64_t',
+            program=program)
+        second_word = layers.data(
+            name='secondw',
+            shape=[dict_size],
+            data_type='int64_t',
+            program=program)
+        third_word = layers.data(
+            name='thirdw',
+            shape=[dict_size],
+            data_type='int64_t',
+            program=program)
+        forth_word = layers.data(
+            name='forthw',
+            shape=[dict_size],
+            data_type='int64_t',
+            program=program)
+        next_word = layers.data(
+            name='nextw',
+            shape=[dict_size],
+            data_type='int64_t',
+            program=program)
+
+        def word_embed(in_layer):
+            embed = layers.look_table(
+                input=in_layer, size=embed_size, program=program)
+            return embed
+
+        embed_first = word_embed(first_word)
+        embed_second = word_embed(second_word)
+        embed_third = word_embed(third_word)
+        embed_forth = word_embed(forth_word)
+
+        concat_embed = layers.concat(
+            x=[embed_first, embed_second, embed_third, embed_forth])
 
 
 if __name__ == '__main__':

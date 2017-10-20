@@ -55,6 +55,15 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
+def embedding(input, size, param_attr=None, program=None, init_program=None):
+    helper = LayerHelper('embedding', **locals())
+
+    dtype = helper.input_dtype()
+
+    param_shape = input.shape[-1]
+    w = helper.create_parameter(attr=param_attr, shape=param_shape, dtype=dtype)
+
+
 def data(name,
          shape,
          data_type='float32',
@@ -91,6 +100,7 @@ def _create_op_func_(op_type):
         inputs = dict()
         dtype = None
         for ipt in op_proto.inputs:
+            print ipt
             name = _convert_(ipt.name)
             val = kwargs.pop(name, [])
             if not isinstance(val, list) and not isinstance(val, tuple):
@@ -120,6 +130,8 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+_create_op_func_('concat')
+_create_op_func_('lookup_table')
 
 
 def cross_entropy(input, label, **kwargs):
