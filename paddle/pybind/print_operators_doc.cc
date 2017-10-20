@@ -18,6 +18,8 @@ std::string Escape(const std::string& s) {
       case '\n':
         r += "\\n";
         break;
+      case '\t':
+        r += "\\t";
       case '\r':
         break;
       default:
