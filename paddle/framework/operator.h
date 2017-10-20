@@ -649,5 +649,7 @@ class OperatorWithKernel : public OperatorBase {
 std::ostream& operator<<(std::ostream& os,
                          const OperatorWithKernel::OpKernelKey& kernel_key);
 
+extern bool OpSupportGPU(const std::string& op_type);
+
 }  // namespace framework
 }  // namespace paddle
