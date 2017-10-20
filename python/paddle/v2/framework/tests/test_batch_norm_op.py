@@ -83,6 +83,9 @@ class TestBatchNormOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X', 'Scale', 'Bias'], 'Y')
+
 
 if __name__ == '__main__':
     unittest.main()

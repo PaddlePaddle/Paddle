@@ -328,7 +328,7 @@ class BatchNormGradKernel<platform::CPUPlace, T>
     // init output
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dScale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *dBias = ctx.Output<Tensor>(framework::GradVarName("Biase"));
+    auto *dBias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     dX->mutable_data<T>(ctx.GetPlace());
     dScale->mutable_data<T>(ctx.GetPlace());
