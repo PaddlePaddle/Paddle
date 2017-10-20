@@ -67,6 +67,7 @@ for pass_id in range(PASS_NUM):
                              'y': tensor_y},
                        fetch_list=[avg_cost])
         out = np.array(outs[0])
+
         if out[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
 exit(1)
