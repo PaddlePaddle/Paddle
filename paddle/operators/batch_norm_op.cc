@@ -39,11 +39,12 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"), "");
 
     // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
-                      "Mean and MeanOut should share the same memory");
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Variance")[0],
-                      ctx->Outputs("VarianceOut")[0],
-                      "Variance and VarianceOut should share the same memory");
+    //    PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
+    //                      "Mean and MeanOut should share the same memory");
+    //    PADDLE_ENFORCE_EQ(ctx->Inputs("Variance")[0],
+    //                      ctx->Outputs("VarianceOut")[0],
+    //                  "Variance and VarianceOut should share the same
+    //                  memory");
 
     const auto x_dims = ctx->GetInputDim("X");
     const int C = x_dims[1];  // channel num
@@ -53,7 +54,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], C);
 
-    ctx->SetOutputDim("Out", x_dims);
+    ctx->SetOutputDim("Y", x_dims);
     ctx->SetOutputDim("MeanOut", {C});
     ctx->SetOutputDim("VarianceOut", {C});
     ctx->SetOutputDim("SavedMean", {C});
@@ -69,6 +70,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
+    AddAttr<std::string>("tensor_format", "").SetDefault("NCHW");
     AddInput("X", "The input 4-dimensional tensor");
     AddInput("Scale", "The second input of mul op");
     AddInput("Bias",
@@ -108,6 +110,9 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
     const bool is_test = ctx.Attr<bool>("is_test");
+    const std::string tensor_format_str =
+        ctx.Attr<std::string>("tensor_format");
+    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
     const float epsilon = ctx.Attr<float>("epsilon");
 
     const auto *x = ctx.Input<Tensor>("X");
@@ -118,10 +123,18 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
     const int N = x_dims[0];
-    const int C = x_dims[1];
-    const int H = x_dims[2];
-    const int W = x_dims.size() > 3 ? x_dims[3] : 1;
-    const int D = x_dims.size() > 4 ? x_dims[4] : 1;
+    const int C =
+        (tensor_format == TensorFormat::NCHW ? x_dims[1]
+                                             : x_dims[x_dims.size() - 1]);
+    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
+    const int W =
+        x_dims.size() > 3
+            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
+            : 1;
+    const int D =
+        x_dims.size() > 4
+            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
+            : 1;
 
     const int sample_size = H * W * D;
 
@@ -148,16 +161,38 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
-      ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
-      for (int nc = 0; nc < N * C; ++nc) {
-        saved_mean_e(nc % C) += X_arr.col(nc).sum();
+      switch (tensor_format) {
+        case TensorFormat::NCHW: {
+          ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
+          for (int nc = 0; nc < N * C; ++nc) {
+            saved_mean_e(nc % C) += X_arr.col(nc).sum();
+          }
+          saved_mean_e /= N * sample_size;
+          for (int nc = 0; nc < N * C; ++nc) {
+            saved_variance_e(nc % C) +=
+                (X_arr.col(nc) - saved_variance_e(nc % C))
+                    .matrix()
+                    .squaredNorm();
+          }
+          saved_variance_e /= N * sample_size;
+          break;
+        }
+        case TensorFormat::NHWC: {
+          ConstEigenArrayMap<float> X_arr(x->data<float>(), C, N * sample_size);
+          for (int i = 0; i < N * sample_size; ++i) {
+            saved_mean_e += X_arr.col(i);
+          }
+          saved_mean_e /= N * sample_size;
+          for (int i = 0; i < N * sample_size; ++i) {
+            saved_variance_e +=
+                (X_arr.col(i) - saved_mean_e) * (X_arr.col(i) - saved_mean_e);
+          }
+          saved_variance_e /= N * sample_size;
+          break;
+        }
+        default:
+          PADDLE_THROW("Unknown storage order: %s", tensor_format_str);
       }
-      saved_mean_e /= N * sample_size;
-      for (int nc = 0; nc < N * C; ++nc) {
-        saved_variance_e(nc % C) +=
-            (X_arr.col(nc) - saved_variance_e(nc % C)).matrix().squaredNorm();
-      }
-      saved_variance_e /= N * sample_size;
 
       EigenVectorArrayMap<T> running_mean_arr(
           mean_out->mutable_data<T>(ctx.GetPlace()), C);
@@ -197,11 +232,28 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     Eigen::Array<T, Eigen::Dynamic, 1> new_scale = inv_std * scale_arr;
     Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
         bias_arr - mean_arr * inv_std * scale_arr;
-    EigenArrayMap<T> Y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
-                           N * C);
-    ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
-    for (int nc = 0; nc < N * C; ++nc) {
-      Y_arr.col(nc) = X_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
+
+    switch (tensor_format) {
+      case TensorFormat::NCHW: {
+        EigenArrayMap<T> Y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
+                               N * C);
+        ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
+        for (int nc = 0; nc < N * C; ++nc) {
+          Y_arr.col(nc) = X_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
+        }
+        break;
+      }
+      case TensorFormat::NHWC: {
+        EigenArrayMap<T>(y->mutable_data<T>(ctx.GetPlace()), C,
+                         N * sample_size) =
+            (ConstEigenArrayMap<T>(x->data<T>(), C, N * sample_size).colwise() *
+             new_scale)
+                .colwise() +
+            new_bias;
+        break;
+      }
+      default:
+        PADDLE_THROW("Unknown storage order: %d", tensor_format);
     }
   }
 };
@@ -244,6 +296,9 @@ class BatchNormGradKernel<platform::CPUPlace, T>
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     // SavedVariance have been reverted in forward operator
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
+    const std::string tensor_format_str =
+        ctx.Attr<std::string>("tensor_format");
+    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -251,10 +306,18 @@ class BatchNormGradKernel<platform::CPUPlace, T>
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
     const int N = x_dims[0];
-    const int C = x_dims[1];
-    const int H = x_dims[2];
-    const int W = x_dims.size() > 3 ? x_dims[3] : 1;
-    const int D = x_dims.size() > 4 ? x_dims[4] : 1;
+    const int C =
+        (tensor_format == TensorFormat::NCHW ? x_dims[1]
+                                             : x_dims[x_dims.size() - 1]);
+    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
+    const int W =
+        x_dims.size() > 3
+            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
+            : 1;
+    const int D =
+        x_dims.size() > 4
+            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
+            : 1;
 
     const int sample_size = H * W * D;
 
@@ -285,25 +348,55 @@ class BatchNormGradKernel<platform::CPUPlace, T>
 
     const auto scaleInvVarNHW = scale_arr * inv_var_arr / (N * sample_size);
 
-    ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
-    ConstEigenArrayMap<T> dY_arr(dY->data<T>(), sample_size, N * C);
-    EigenArrayMap<T> dX_arr(dX->mutable_data<float>(ctx.GetPlace()),
-                            sample_size, N * C);
-    dX_arr.setZero();
+    switch (tensor_format) {
+      case TensorFormat::NCHW: {
+        ConstEigenArrayMap<T> X_arr(x->data<T>(), sample_size, N * C);
+        ConstEigenArrayMap<T> dY_arr(dY->data<T>(), sample_size, N * C);
+        EigenArrayMap<T> dX_arr(dX->mutable_data<T>(ctx.GetPlace()),
+                                sample_size, N * C);
+        dX_arr.setZero();
 
-    for (int nc = 0; nc < N * C; ++nc) {
-      int c = nc % C;
-      dBias_arr(c) += dY_arr.col(nc).sum();
-      dScale_arr(c) +=
-          ((X_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * dY_arr.col(nc))
-              .sum();
-    }
-    for (int nc = 0; nc < N * C; ++nc) {
-      int c = nc % C;
-      dX_arr.col(nc) +=
-          scaleInvVarNHW(c) *
-          (dY_arr.col(nc) * N * sample_size - dBias_arr(c) -
-           (X_arr.col(nc) - mean_arr[c]) * dScale_arr(c) * inv_var_arr(c));
+        for (int nc = 0; nc < N * C; ++nc) {
+          int c = nc % C;
+          dBias_arr(c) += dY_arr.col(nc).sum();
+          dScale_arr(c) +=
+              ((X_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * dY_arr.col(nc))
+                  .sum();
+        }
+        for (int nc = 0; nc < N * C; ++nc) {
+          int c = nc % C;
+          dX_arr.col(nc) +=
+              scaleInvVarNHW(c) *
+              (dY_arr.col(nc) * N * sample_size - dBias_arr(c) -
+               (X_arr.col(nc) - mean_arr[c]) * dScale_arr(c) * inv_var_arr(c));
+        }
+        break;
+      }
+      case TensorFormat::NHWC: {
+        ConstEigenArrayMap<T> X_arr(x->data<T>(), C, N * sample_size);
+        ConstEigenArrayMap<T> dY_arr(dY->data<T>(), C, N * sample_size);
+        EigenArrayMap<T> dX_arr(dX->mutable_data<T>(ctx.GetPlace()), C,
+                                N * sample_size);
+        dX_arr.setZero();
+
+        const auto dYRowSum = dY_arr.rowwise().sum();
+        const auto XMinusMean = X_arr.colwise() - mean_arr;
+        const auto dYMulXMinusMeanRowSum =
+            (dY_arr * XMinusMean).rowwise().sum();
+        const auto invVarSqr = inv_var_arr * inv_var_arr;
+        for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+          dBias_arr += dY_arr.col(nhw);
+          dScale_arr +=
+              (X_arr.col(nhw) - mean_arr) * inv_var_arr * dY_arr.col(nhw);
+          dX_arr.col(nhw) +=
+              scaleInvVarNHW *
+              (dY_arr.col(nhw) * N * sample_size - dYRowSum -
+               XMinusMean.col(nhw) * invVarSqr * dYMulXMinusMeanRowSum);
+        }
+        break;
+      }
+      default:
+        PADDLE_THROW("Unknown storage order: %s", tensor_format_str);
     }
   }
 };
