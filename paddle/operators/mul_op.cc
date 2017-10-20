@@ -49,7 +49,19 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
         "First matrix's width must be equal with second matrix's height.");
-    ctx->SetOutputDim("Out", {x_mat_dims[0], y_mat_dims[1]});
+    std::vector<int64_t> output_dims;
+    output_dims.reserve(
+        static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
+
+    for (int i = 0; i < x_num_col_dims; ++i) {
+      output_dims.push_back(x_dims[i]);
+    }
+
+    for (int i = y_num_col_dims; i < y_dims.size(); ++i) {
+      output_dims.push_back(y_dims[i]);
+    }
+
+    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
