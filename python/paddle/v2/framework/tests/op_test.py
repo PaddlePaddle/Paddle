@@ -7,7 +7,7 @@ import itertools
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
 from paddle.v2.framework.executor import Executor
-from paddle.v2.framework.framework import Program
+from paddle.v2.framework.framework import Program, OpProtoHolder
 
 
 def grad_var_name(var_name):
@@ -217,34 +217,74 @@ class OpTest(unittest.TestCase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
+    def generate_vars(self, block, op_proto, is_input):
+        '''Insert VarDesc and generate Python variable instance'''
+        if is_input:
+            proto_list = op_proto.inputs
+            np_list = self.inputs
+        else:
+            proto_list = op_proto.outputs
+            np_list = self.outputs
+
+        var_dict = {}
+        for var_proto in proto_list:
+            var_name = str(var_proto.name)
+            if is_input:
+                self.assertTrue(var_name in np_list,
+                                "Missing {} as input".format(var_name))
+            if var_proto.duplicable:
+                self.assertTrue(
+                    type(np_list[var_name]) is list,
+                    "Duplicable {} should be set as list".format(var_name))
+                var_list = []
+                for (name, np_value) in np_list[var_name]:
+                    var = block.create_var(
+                        dtype="float32",
+                        shape=list(np_value.shape),
+                        lod_level=0,
+                        name=name)
+                    var_list.append(var)
+                var_dict[var_name] = var_list
+            else:
+                name = var_name
+                np_value = np_list[var_name]
+                var = block.create_var(
+                    dtype="float32",
+                    shape=list(np_value.shape),
+                    lod_level=0,
+                    name=name)
+                var_dict[var_name] = var
+
+        return var_dict
+
+    def feed_var(self, input_vars, place):
+        feed_map = {}
+        for var_name in input_vars:
+            if type(input_vars[var_name]) is list:
+                for name, np_value in self.inputs[var_name]:
+                    tensor = core.LoDTensor()
+                    tensor.set(np_value, place)
+                    feed_map[name] = tensor
+            else:
+                tensor = core.LoDTensor()
+                tensor.set(self.inputs[var_name], place)
+                feed_map[var_name] = tensor
+
+        return feed_map
+
     def check_output_with_place(self, place, atol):
         # FIXME: how do i know an op.support_gpu() from OpDesc ...
         # if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
         #     return
+        op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
         #self.scope = core.Scope()
         program = Program()
         block = program.global_block()
 
-        inputs = {}
-        for var_name, np_value in self.inputs.iteritems():
-            var = block.create_var(
-                dtype="float32",
-                shape=list(np_value.shape),
-                lod_level=0,
-                name=var_name)
-            inputs[var_name] = var
-
-        outputs = {}
-        fetch_list = []
-        for var_name, np_value in self.outputs.iteritems():
-            var = block.create_var(
-                dtype="float32",
-                shape=list(np_value.shape),
-                lod_level=0,
-                name=var_name)
-            outputs[var_name] = var
-            fetch_list.append(var)
+        inputs = self.generate_vars(block, op_proto, True)
+        outputs = self.generate_vars(block, op_proto, False)
+        fetch_list = [var for name, var in outputs.iteritems()]
 
         op = block.append_op(
             type=self.op_type,
@@ -252,11 +292,7 @@ class OpTest(unittest.TestCase):
             outputs=outputs,
             attrs=self.attrs if hasattr(self, "attrs") else dict())
 
-        feed_map = {}
-        for var_name, np_value in self.inputs.iteritems():
-            tensor = core.LoDTensor()
-            tensor.set(np_value, place)
-            feed_map[var_name] = tensor
+        feed_map = self.feed_var(inputs, place)
 
         exe = Executor(place)
         outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
@@ -266,20 +302,7 @@ class OpTest(unittest.TestCase):
                 continue
 
             if out_dup:
-                # FIXME
                 raise AssertionError("Not Implemented")
-                # sub_out = self.outputs[out_name]
-                # if not isinstance(sub_out, list):
-                #     raise AssertionError("sub_out type %s is not list",
-                #                          type(sub_out))
-
-                # for sub_out_name, expect in sub_out:
-                #     actual = np.array(
-                #         self.scope.find_var(sub_out_name).get_tensor())
-                #     self.assertTrue(
-                #         np.allclose(
-                #             actual, expect, atol=atol),
-                #         "output name: " + out_name + " has diff.")
             else:
                 for i, var in enumerate(fetch_list):
                     actual = np.array(outs[i])
@@ -291,8 +314,8 @@ class OpTest(unittest.TestCase):
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
-        if core.is_compile_gpu():
-            places.append(core.GPUPlace(0))
+        # if core.is_compile_gpu():
+        #     places.append(core.GPUPlace(0))
         for place in places:
             self.check_output_with_place(place, atol)
 
