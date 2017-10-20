@@ -39,6 +39,7 @@ class RNNGuard(BlockGuard):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.rnn.status = StaticRNNHelper.AFTER_RNN_BLOCK
+        self.rnn.complete_rnn_op()
         return super(RNNGuard, self).__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -75,11 +76,7 @@ class StaticRNNHelper(object):
             if shape is None or dtype is None:
                 raise ValueError(
                     "if init is None, memory at least need shape and dtype")
-
-            prog = self.helper.program
-            parent_idx = prog.current_block().parent_idx
-            assert parent_idx >= 0
-            parent_block = prog.block(parent_idx)
+            parent_block = self.parent_block()
             var_name = unique_name("@".join([self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
                 name=var_name, shape=shape, dtype=dtype, persistable=False)
@@ -125,6 +122,35 @@ class StaticRNNHelper(object):
         self._assert_in_rnn_block_('step_output')
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
+
+        out_var = self.parent_block().create_var(
+            name=o.name,
+            shape=[-1, self.seq_len] + o.shape[1:],
+            dtype=o.data_type)
+
+        self.outputs.append(out_var)
+
+    def output(self, **outputs):
+        for each in outputs:
+            self.step_output(each)
+
+    def update_memory(self, mem, var):
+        if not isinstance(mem, Variable) or not isinstance(var, Variable):
+            raise TypeError("update memory should take variables")
+        self.memories[mem.name].mem = var
+
+    def parent_block(self):
+        prog = self.helper.program
+        parent_idx = prog.current_block().parent_idx
+        assert parent_idx >= 0
+        parent_block = prog.block(parent_idx)
+        return parent_block
+
+    def __call__(self, *args, **kwargs):
+        return self.outputs
+
+    def complete_rnn_op(self):
+        pass
 
 
 class LayerHelper(object):
