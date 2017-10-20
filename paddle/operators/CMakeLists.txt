@@ -76,6 +76,14 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
     
+    # nccl_op contains several operators
+    if ("${TARGET}" STREQUAL "nccl_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(ncclInit);\n")
+        # file(APPEND ${pybind_file} "USE_OP(ncclInit);\n")
+    endif()
+    
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)
@@ -116,7 +124,9 @@ set(DEPS_OPS
     softmax_with_cross_entropy_op
     sum_op
     pool_op
-    pool_with_index_op)
+    pool_with_index_op
+    nccl_op
+    )
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -127,6 +137,9 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+if(WITH_GPU)
+op_library(nccl_op DEPS nccl_common)
+endif()
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
@@ -134,6 +147,7 @@ foreach(src ${GENERAL_OPS})
 endforeach()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
+message(STATUS "operators_list: ${OP_LIBRARY}")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)

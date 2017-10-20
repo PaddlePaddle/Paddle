@@ -65,65 +65,30 @@ class WaitGroup {
   std::condition_variable cv_;
 };
 
-// TODO(dzh) : make resources managed unified with framework
 struct Communicator {
   std::vector<ncclComm_t> comms_;
-  std::vector<cudaStream_t> streams_;
-  std::vector<cudaEvent_t> events_;
-  std::vector<int> gpus_;
-  WaitGroup wg_;
-  int root_gpu = -1;
-  // cudaEvent_t root_monitor;
-  explicit Communicator(const std::vector<int>& gpus) : gpus_(gpus) {
+  std::unordered_map<int, int> comm_id_map_;
+
+  int GetCommId(int device_id) const { return comm_id_map_.at(device_id); }
+
+  void InitAll(const std::vector<int>& gpus) {
     comms_.resize(gpus.size());
-    streams_.resize(gpus.size());
-    events_.resize(gpus.size());
+    for (size_t i = 0; i < gpus.size(); ++i) {
+      comm_id_map_[gpus[i]] = i;
+    }
+    PADDLE_ENFORCE(ncclCommInitAll(comms_.data(), gpus.size(), gpus.data()));
   }
 
   ~Communicator() {
-    for (size_t i = 0; i < gpus_.size(); ++i) {
-      int gid = gpus_[i];
-      platform::SetDeviceId(gid);
-
-      int idx = gid % gpus_.size();
-      // wait finish
-      PADDLE_ENFORCE(
-          cudaStreamWaitEvent(comm->streams_[idx], comm->events_[idx], 0));
-
-      PADDLE_ENFORCE(cudaEventDestroy(comm->events_[idx]));
-
-      PADDLE_ENFORCE(ncclCommDestroy(comm->comms_[idx]));
+    for (size_t i = 0; i < comms_.size(); ++i) {
+      PADDLE_ENFORCE(ncclCommDestroy(comms_[i]));
     }
   }
 
-  inline int get_root_gpu() const { return root_gpu; }
-
-  inline void set_root_gpu(int id) { root_gpu = id; }
+  // DISABLE_COPY_AND_ASSIGN(Communicator);
 };
 
-class NCCLManager {
- public:
-  static NCCLManager* Get() {
-    static NCCLManager m;
-    return &m;
-  }
-
-  NCCLManager();
-
-  ~NCCLManager();
-
-  // for each card only have one communicator
-  Communicator* GetCommunicator(const std::vector<int>& gpus);
-
- private:
-  // // the gpu id list available. Note that only support
-  // // whole world communication.
-  // std::vector<int> _gpu_worlds;
-
-  // communicator list
-  std::unordered_map<std::string /* key*/, std::unique_ptr<Communicator>>
-      comm_table;
-};
+Communicator* NewCommunicator(const std::vector<int>& gpus);
 
 }  // namespace platform
 }  // namespace paddle

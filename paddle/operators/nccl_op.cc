@@ -9,7 +9,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/nccl/nccl_ops.h"
+#include "paddle/operators/nccl_op.h"
 
 namespace paddle {
 namespace operators {
@@ -85,31 +85,36 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-// // BcastSendOp
-// class NCCLBcastSendOpMaker : public framework::OpProtoAndCheckerMaker {
-//  public:
-//   NCCLAllReduceOpMaker(framework::OpProto *proto,
-//                        framework::OpAttrChecker *op_checker)
-//       : OpProtoAndCheckerMaker(proto, op_checker) {
-//     AddInput("X", "The input of BcastSend op");
-//     AddComment(R"DOC(
-//             BcastSend the tensors.
-//         )DOC");
-//   }
-// };
+// BcastOp
+class NCCLBcastOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  NCCLAllBcastOpMaker(framework::OpProto *proto,
+                      framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "The input of Bcast op");
+    AddInput("Communicator", "Communicator for communicating between gpus");
+    AddInput("root", "root gpu of Bcast");
+    AddComment(R"DOC(
+            Bcast the tensors.
+        )DOC");
+  }
+};
 
-// // BcastRecvOp
-// class NCCLBcastRecvOpMaker : public framework::OpProtoAndCheckerMaker {
-//  public:
-//   NCCLAllReduceOpMaker(framework::OpProto *proto,
-//                        framework::OpAttrChecker *op_checker)
-//       : OpProtoAndCheckerMaker(proto, op_checker) {
-//     AddOutput("Out", "The output of BcastRecv op");
-//     AddComment(R"DOC(
-//             BcastRecv the tensors.
-//         )DOC");
-//   }
-// };
+// BcastRecvOp
+class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  NCCLReduceOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "The input of Reduce op");
+    AddInput("Communicator", "Communicator for communicating between gpus");
+    AddInput("root", "root gpu of Reduce");
+    AddOutput("Out", "The output of Reduce op");
+    AddComment(R"DOC(
+            Reduce the tensors.
+        )DOC");
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
@@ -117,3 +122,5 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce, ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(ncclInit, ops::NCCLInitOp, ops::NCCLInitOpMaker);
+REGISTER_OP_CPU_KERNEL(ncclInit, ops::NCCLInitKernel<float>);

@@ -1,61 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+   http://www.apache.org/licenses/LICENSE-2.0
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include "paddle/operators/nccl/nccl_gpu_common.h"
 #include "paddle/platform/gpu_info.h"
 
 namespace paddle {
-namespace platform {
-
-NCCLManager::NCCLManager() {}
-
-NCCLManager::~NCCLManager() {
-  for (auto& p : comm_table) {
-    auto& comm = p.second;
-    auto& gpus_ = comm->gpus_;
-    for (size_t i = 0; i < gpus_.size(); ++i) {
-      int gid = gpus_[i];
-      platform::SetDeviceId(gid);
-
-      // mapping gid to idx
-      int idx = gid % gpus_.size();
-      // wait finish
-      PADDLE_ENFORCE(
-          cudaStreamWaitEvent(comm->streams_[idx], comm->events_[idx], 0));
-
-      PADDLE_ENFORCE(cudaEventDestroy(comm->events_[idx]));
-
-      PADDLE_ENFORCE(ncclCommDestroy(comm->comms_[idx]));
-    }
-    comm.reset(nullptr);
-  }
-}
-
-Communicator* NCCLManager::GetCommunicator(const std::vector<int>& gpus) {
-  std::string key;
-  for (auto& id : gpus) {
-    key += std::to_string(id);
-  }
-  std::sort(key.begin(), key.end());
-
-  std::mutex mu;
-  std::lock_guard<std::mutex> lk(mu);
-
-  auto it = comm_table.find(key);
-
-  if (it->second == nullptr) {
-    auto* comm = new Communicator(gpus);
-    PADDLE_ENFORCE(
-        ncclCommInitAll(comm->comms_.data(), gpus.size(), gpus.data()));
-
-    for (size_t i = 0; i < gpus.size(); ++i) {
-      platform::SetDeviceId(gpus[i]);
-
-      // block wait
-      PADDLE_ENFORCE(cudaEventCreateWithFlags(
-          &comm->events_[i], cudaEventBlockingSync | cudaEventDisableTiming));
-    }
-    comm_table[key].reset(comm);
-  }
-  return comm_table[key].get();
-}
-
-}  // namespace operators
+namespace platform {}  // namespace platform
 }  // namespace paddle

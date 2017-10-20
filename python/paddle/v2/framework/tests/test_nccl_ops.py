@@ -5,13 +5,15 @@ from paddle.v2.framework.op import Operator
 import paddle.v2.framework.core as core
 from op_test import OpTest, create_op, set_input
 
-gpu_list = os.environ["NV_LIST"]
+# gpu_list = os.environ["NV_LIST"]
+gpu_list = "0,1,2,3"
 
 if not core.is_compile_gpu() or not gpu_list:
     exit(0)
 
 
-def allreduce(tensors, num_device):
+def allreduce(tensors, gpus):
+    num_device = len(gpus)
     assert (len(tensors) == num_device), "not match of tensor and device"
     Out = tensors
     for i in range(1, len(tensors)):
@@ -24,23 +26,32 @@ def allreduce(tensors, num_device):
 
 
 class TestNCCLAllReduce(unittest.TestCase):
-    def __init__(self):
-        self.op_type = "nnclAllReduce"
+    def setUp(self):
 
-        self.gpus = [int(g) for g in gpu_list]
+        self.op_type = "ncclAllReduce"
 
+        self.gpus = [int(g) for g in gpu_list.split(",")]
+
+        self.g_scope = core.Scope()
+        self.g_ctx = core.DeviceContext.create(core.CPUPlace())
         self.scopes = []
         self.ops = []
         self.places = []
 
         self.input_data = []
-        for i in range(len(self.gpus)):
-            input_data.append(np.random.random((32, 32)))
-        self.output_data = allreduce(input_data)
 
         for i in range(len(self.gpus)):
-            scope = core.Scope()
+            self.input_data.append(np.random.random((32, 32)))
+        self.output_data = allreduce(self.input_data, self.gpus)
+
+        nccl_init = Operator("ncclInit", Out="Communicator", gpus=self.gpus)
+        op.run(self.g_scope, self.g_ctx)
+
+        for i in range(len(self.gpus)):
+            # insert kid scope
+            scope = self.g_scope.new_scope()
             place = core.GPUPlace(self.gpus[i])
+
             inputs = {"X": self.input_data[i]}
             outputs = {"Out": self.output_data[i]}
             attrs = {"gpus": self.gpus}
@@ -66,8 +77,11 @@ class TestNCCLAllReduce(unittest.TestCase):
             self.assertTrue(actual, expect), "has diff"
 
 
-if __name__ == "__main__":
-    # usage : export NV_LIST=0,1,2,3 python *.py
+# if __name__ == "__main__":
+#     unittest.main()
+# usage : export NV_LIST=0,1,2,3 python *.py
 
-    os.environ["NV_LIST"] = ["0,1,2,3"]
+# os.environ["NV_LIST"] = ["0,1,2,3"]
+
+if __name__ == "__main__":
     unittest.main()
