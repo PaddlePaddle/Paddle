@@ -224,7 +224,7 @@ All parameter, weight, gradient are variables in Paddle.
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
-    for (auto iter : OpInfoMap::Instance().map()) {
+    for (auto& iter : OpInfoMap::Instance().map()) {
       auto type = iter.first;
       auto info = iter.second;
       if (info.HasOpProtoAndChecker()) {

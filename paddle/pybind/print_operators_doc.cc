@@ -116,7 +116,7 @@ void PrintOpProto(const std::string& type,
 
 int main() {
   std::cout << "[\n";
-  for (auto iter : paddle::framework::OpInfoMap::Instance().map()) {
+  for (auto& iter : paddle::framework::OpInfoMap::Instance().map()) {
     PrintOpProto(iter.first, iter.second);
   }
   std::cout << "]\n";
