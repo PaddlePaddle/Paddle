@@ -53,7 +53,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "An input represents embedding tensors,"
              " which is a learnable parameter.");
     AddInput("Ids",
-             "An input with type int32 or int64"
+             "An input with type int64"
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type with W.");
     AddComment(R"DOC(

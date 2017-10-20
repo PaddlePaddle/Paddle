@@ -35,7 +35,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
     int N = table_t->dims()[0];
     int D = table_t->dims()[1];
-    auto ids = ids_t->data<int32_t>();
+    auto ids = ids_t->data<int64_t>();
     auto table = table_t->data<T>();
     auto output = output_t->mutable_data<T>(context.GetPlace());
     for (int64_t i = 0; i < ids_t->numel(); ++i) {
@@ -54,13 +54,12 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     auto* d_output = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
-    auto* ids_data = ids->data<int32_t>();
+    auto* ids_data = ids->data<int64_t>();
     auto ids_dim = ids->dims();
     framework::Vector<int64_t> new_rows;
     new_rows.reserve(ids_dim[0]);
     for (int64_t i = 0; i < ids_dim[0]; i++) {
-      // TODO(qijun): Support int64_t input data type.
-      new_rows.push_back(static_cast<int64_t>(ids_data[i]));
+      new_rows.push_back(ids_data[i]);
     }
     d_table->set_rows(new_rows);
 

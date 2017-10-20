@@ -23,13 +23,13 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
-__global__ void LookupTable(T* output, const T* table, const int32_t* ids,
-                            const int N, const int K, const int D) {
+__global__ void LookupTable(T* output, const T* table, const int64_t* ids,
+                            const int64_t N, const int64_t K, const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
 
   while (idy < K) {
-    int id = ids[idy];
+    int64_t id = ids[idy];
     PADDLE_ASSERT(id >= 0);
     PADDLE_ASSERT(id < N);
     T* out = output + idy * D;
@@ -42,8 +42,9 @@ __global__ void LookupTable(T* output, const T* table, const int32_t* ids,
 }
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
-__global__ void LookupTableGrad(T* table, const T* output, const int32_t* ids,
-                                const int N, const int K, const int D) {
+__global__ void LookupTableGrad(T* table, const T* output, const int64_t* ids,
+                                const int64_t N, const int64_t K,
+                                const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
 
@@ -71,7 +72,7 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
     size_t K = ids_t->numel();
-    auto ids = ids_t->data<int32_t>();
+    auto ids = ids_t->data<int64_t>();
     auto table = table_t->data<T>();
     auto output = output_t->mutable_data<T>(context.GetPlace());
 
@@ -84,15 +85,6 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <int block_size>
-__global__ void CastMemcpyKernel(const int32_t* input, int64_t* output,
-                                 int length) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < length;
-       i += blockDim.x * gridDim.x) {
-    output[i] = static_cast<int64_t>(input[i]);
-  }
-}
-
 template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -102,23 +94,26 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     auto* d_table =
         context.Output<framework::SelectedRows>(framework::GradVarName("W"));
 
-    auto* ids_data = ids->data<int32_t>();
+    auto* ids_data = ids->data<int64_t>();
     auto ids_dim = ids->dims();
+
+    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                      context.device_context())
+                      .stream();
+    // copy GPU memory to CPU pinned memory
     Vector<int64_t> new_rows;
     new_rows.resize(ids_dim[0]);
-    dim3 cast_threads(256, 1) dim3 cast_grids(ids_dim[0] / 256 + 1, 1);
+    auto gpu_place = boost::get<platform::GPUPlace>(context.GetPlace());
 
-    CastMemcpyKernel<
-        256><<<cast_grids, cast_threads, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(
-                   context.device_context())
-                   .stream()>>>(ids_data, new_rows.data(), ids_dim[0]);
+    memory::Copy(platform::CPUPlace(), new_rows.data(), gpu_place, ids_data,
+                 ids_dim[0] * sizeof(int64_t), stream);
+
     d_table->set_rows(new_rows);
 
-    int N = d_table->height();
-    int D = d_output->dims()[1];
-    int K = ids->numel();
-    const int32_t* ids_data = ids->data<int32_t>();
+    int64_t N = d_table->height();
+    int64_t D = d_output->dims()[1];
+    int64_t K = ids->numel();
+    auto* ids_data = ids->data<int64_t>();
 
     framework::Tensor* d_table_value = d_table->mutable_value();
     d_table_value->mutable_data<T>(context.GetPlace());
@@ -131,11 +126,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     auto* d_table_data = d_table_value.data<T>();
     dim3 threads(128, 8);
     dim3 grids(8, 1);
-    LookupTableGrad<T, 128, 8, 8><<<
-        grids, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               context.device_context())
-                               .stream()>>>(d_table_data, d_output_data,
-                                            ids_data, N, K, D);
+    LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, stream>>>(
+        d_table_data, d_output_data, ids_data, N, K, D);
   }
 };
 
