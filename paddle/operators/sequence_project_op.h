@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/im2col.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/operators/strided_memcpy.h"
 
 namespace paddle {
@@ -177,6 +178,10 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto* in = context.Input<LoDTensor>("X");
     in_g->mutable_data<T>(context.GetPlace());
+    if (in_g) {
+      math::SetConstant<Place, T> functor;
+      functor(context.device_context(), in_g, 0);
+    }
     auto place = context.GetEigenDevice<Place>();
 
     int context_start = context.Attr<int>("context_start");
@@ -204,6 +209,8 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
       padding_width = padding_data_g->dims()[1];
       PADDLE_ENFORCE(padding_width == input_width,
                      "Input size and pooling size should be consistent.");
+      math::SetConstant<Place, T> functor;
+      functor(context.device_context(), padding_data_g, 0);
     }
 
     int up_pad = std::max(0, -context_start);
@@ -282,7 +289,7 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
         }
       }
 
-      if (in && input_row_begin < input_row_end) {
+      if (in_g && input_row_begin < input_row_end) {
         Tensor in_t = in_g->Slice(input_row_begin, input_row_end);
 
         std::vector<int64_t> output_shape(

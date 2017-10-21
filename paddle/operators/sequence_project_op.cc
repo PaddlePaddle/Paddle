@@ -71,6 +71,8 @@ class SequenceProjectGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Gradient of input(X@GRAD) should not be null.");
 
     if (ctx->Attrs().Get<bool>("padding_trainable")) {
       PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("PaddingData")),

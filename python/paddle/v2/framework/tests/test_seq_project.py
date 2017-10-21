@@ -87,9 +87,9 @@ class TestSeqProject(OpTest):
     def test_check_output(self):
         self.check_output()
 
-        # def test_check_grad(self):
-        #     self.check_grad(
-        #         set(['X', 'PaddingData']), 'Out', max_relative_error=0.05)
+    def test_check_grad(self):
+        self.check_grad(
+            set(['X', 'PaddingData']), 'Out', max_relative_error=0.05)
 
         # def test_check_grad_no_filter(self):
         #     self.check_grad(
