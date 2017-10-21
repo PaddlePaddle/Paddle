@@ -59,7 +59,8 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input should be a k-D tensor(k > 0 and k < 7)");
     AddInput("Y",
              "The input used as reference for cropping"
-             " with the same dimension as X. ");
+             " with the same dimension as X. ")
+        .AsDispensable();
     AddOutput("Out",
               "The output of crop op "
               "with the same dimension as X.");
