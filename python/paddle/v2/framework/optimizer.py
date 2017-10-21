@@ -1,7 +1,9 @@
 import paddle.v2.framework.framework as framework
 from collections import defaultdict
 
-__all__ = ['SGDOptimizer', 'MomentumOptimizer', 'AdamOptimizer']
+__all__ = [
+    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer'
+]
 
 
 class Optimizer(object):
@@ -297,6 +299,63 @@ class MomentumOptimizer(Optimizer):
             attrs={"mu": self._momentum})
 
         return momentum_op
+
+
+class AdagradOptimizer(Optimizer):
+    """Simple Adagrad optimizer with moment state
+    """
+    _moment_acc_str = "moment"
+
+    def __init__(self, learning_rate, epsilon=1.0e-6):
+        assert learning_rate is not None
+        assert epsilon is not None
+        super(AdagradOptimizer, self).__init__()
+        self.type = "adagrad"
+        self._learning_rate = learning_rate
+        self._epsilon = epsilon
+
+    def _initialize_tensors(self, block):
+        assert isinstance(block, framework.Block)
+        lr_shape = [1]
+        # create a variable for learning_rate
+        self._lr = block.create_var(
+            dtype="float32", shape=lr_shape, lod_level=0)
+
+        # create an op to init the learning_rate
+        # FIXME: Fix when Initialization design has been implemented
+        # https://github.com/PaddlePaddle/Paddle/pull/4852
+        block.append_op(
+            type="fill_constant",
+            outputs={"Out": self._lr},
+            attrs={"shape": lr_shape,
+                   "value": self._learning_rate})
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
+        for p in parameters:
+            self._add_accumulator(block, self._moment_acc_str, p, 'float32')
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        moment_acc = self._get_accumulator(self._moment_acc_str,
+                                           param_and_grad[0])
+
+        # create the adagrad optimizer op
+        adagrad_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": moment_acc,
+                "LearningRate": self._lr
+            },
+            outputs={"ParamOut": param_and_grad[0],
+                     "MomentOut": moment_acc},
+            attrs={"epsilon": self._epsilon})
+
+        return adagrad_op
 
 
 class AdamOptimizer(Optimizer):
