@@ -85,10 +85,10 @@ void testIm2col() {
       paddle::operators::math::ColFormat::kOCF, Place, float>
       im2col_ocf;
 
-  im2col(*context, input, output_cfo, stride, stride, padding, padding);
-  im2col_ocf(*context, input, output_ocf, /*stride_height*/ stride,
-             /*stride_width*/ stride, /*up_pad*/ padding,
-             /*down_pad*/ padding);
+  im2col(*context, input, output_cfo, stride, stride, padding, padding, padding,
+         padding);
+  im2col_ocf(*context, input, output_ocf, stride, stride, padding, padding,
+             padding, padding);
 
   float out_cfo_data[] = {0, 1, 1, 2, 3, 4, 4, 5};
   float out_ocf_data[] = {0, 1, 3, 4, 1, 2, 4, 5};
@@ -133,7 +133,8 @@ void testIm2col() {
     input.CopyFrom<float>(input_tmp, *place, *context);
   }
 
-  col2im(*context, input, output_cfo, stride, stride, padding, padding);
+  col2im(*context, input, output_cfo, stride, stride, padding, padding, padding,
+         padding);
 
   float* in_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
@@ -154,9 +155,8 @@ void testIm2col() {
     input.CopyFrom<float>(input_tmp, *place, *context);
   }
 
-  col2im_ocf(*context, input, output_ocf, /*stride_height*/ stride,
-             /*stride_width*/ stride, /*up_pad*/ padding,
-             /*down_pad*/ padding);
+  col2im_ocf(*context, input, output_ocf, stride, stride, padding, padding,
+             padding, padding);
 
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();

@@ -116,7 +116,7 @@ class GemmConv2DKernel : public framework::OpKernel<T> {
         // im2col
         Tensor in_slice = in_batch.Slice<T>(g * in_step, (g + 1) * in_step);
         im2col(context.device_context(), in_slice, col, strides[0], strides[1],
-               paddings[0], paddings[1]);
+               paddings[0], paddings[0], paddings[1], paddings[1]);
 
         // gemm
         Tensor out_slice = out_batch.Slice<T>(g * out_step, (g + 1) * out_step);
@@ -217,7 +217,8 @@ class GemmConvGrad2DKernel : public framework::OpKernel<T> {
           Tensor in_grad_slice =
               in_grad_batch.Slice<T>(g * in_step, (g + 1) * in_step);
           col2im(context.device_context(), in_grad_slice, col, strides[0],
-                 strides[1], paddings[0], paddings[1]);
+                 strides[1], paddings[0], paddings[0], paddings[1],
+                 paddings[1]);
         }
       }
     }
@@ -239,7 +240,8 @@ class GemmConvGrad2DKernel : public framework::OpKernel<T> {
               out_grad_batch.Slice<T>(g * out_step, (g + 1) * out_step);
           Tensor in_slice = in_batch.Slice<T>(g * in_step, (g + 1) * in_step);
           im2col(context.device_context(), in_slice, col, strides[0],
-                 strides[1], paddings[0], paddings[1]);
+                 strides[1], paddings[0], paddings[0], paddings[1],
+                 paddings[1]);
 
           // gemm
           Tensor filter_grad_slice =
