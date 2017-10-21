@@ -24,7 +24,7 @@ class CheckpointOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Step"),
                    "Input(Step) of Checkpoint should not be null.");
     std::string absolutePath = ctx->Attrs().Get<std::string>("absolutePath");
@@ -82,7 +82,7 @@ class CheckpointKernel : public framework::OpKernel<T> {
     }
 
     std::ofstream fout(absolutePath, std::fstream::app);
-    PADDLE_ENFORCE(!fout.is_open(), "open file for model failed.");
+    PADDLE_ENFORCE(fout.is_open(), "open file for model failed.");
     for (size_t i = 0; i < inputs.size(); ++i) {
       std::string bytes = inputs[i]->Get<LoDTensor>().SerializeToString();
       fout << bytes << '\n';

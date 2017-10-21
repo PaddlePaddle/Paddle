@@ -20,38 +20,6 @@ namespace operators {
 using framework::Tensor;
 using framework::LoDTensor;
 
-class SaveOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"),
-                   "Input(X) of SaveOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("absolutePath"),
-                   "Input(absolutePath) of SaveOp should not be null.");
-  }
-};
-
-class SaveOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  SaveOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X",
-             "(tensor), the tensor count can be 1~INT_MAX, tensors names which "
-             "values will be saved.")
-        .AsDuplicable()
-        .NotInGradient();
-    AddAttr<std::string>("absolutePath", "the absolutePath for save model.");
-    AddComment(R"DOC(
-Save the input tensors to a binary file based on input tensor names and absolute path.
-
-All the inputs can carry the LoD (Level of Details) information,
-or not.
-)DOC");
-  }
-};
-
 template <typename T>
 class SaveKernel : public framework::OpKernel<T> {
  public:
@@ -59,47 +27,15 @@ class SaveKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
 
-    std::ofstream fout(absolutePath, std::fstream::app);
-    PADDLE_ENFORCE(!fout.is_open(), "open file for model failed.");
+    std::ofstream fout(absolutePath, std::ofstream::out | std::ofstream::app);
+    VLOG(1) << " open file for save model in " << absolutePath;
+    PADDLE_ENFORCE(fout.is_open(), "open file for model failed.");
     for (size_t i = 0; i < ins.size(); ++i) {
       std::string bytes = ins[i]->SerializeToString();
       fout << bytes << '\n';
     }
 
     fout.close();
-  }
-};
-
-class RestoreOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "Output(X) of RestoreOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("absolutePath"),
-                   "Input(absolutePath) of Restore Op should not be null.");
-  }
-};
-
-class RestoreOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  RestoreOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddOutput("Out",
-              "(tensor), the tensor count can be 1~INT_MAX, tensors which "
-              "values will be restores.")
-        .AsDuplicable()
-        .NotInGradient();
-    AddAttr<std::string>("absolutePath", "the absolutePath for model file.");
-    AddComment(R"DOC(
-Restore the tensors from model file based on absolute path.
-
-All the tensors outputs may carry the LoD (Level of Details) information,
-or not.
-)DOC");
   }
 };
 
@@ -111,7 +47,7 @@ class RestoreKernel : public framework::OpKernel<T> {
     std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
 
     std::ifstream fin(absolutePath);
-    PADDLE_ENFORCE(!fin.is_open(), "open model file failed.");
+    PADDLE_ENFORCE(fin.is_open(), "open model file failed.");
 
     std::string line;
     int i = 0;
@@ -119,6 +55,78 @@ class RestoreKernel : public framework::OpKernel<T> {
       outs[i++]->DeserializeFromString(line, ctx.GetPlace());
     }
     fin.close();
+  }
+};
+
+class SaveOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInputs("X"),
+                   "Input(X) of SaveOp should not be null.");
+    auto absolutePath = ctx->Attrs().Get<std::string>("absolutePath");
+    PADDLE_ENFORCE(!absolutePath.empty(),
+                   "Input(absolutePath) of SaveOp should not be null.");
+  }
+};
+
+class SaveOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SaveOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X",
+             "(tensor), the tensor count can be 1~INT_MAX, tensors names which "
+             "values will be saved.")
+        .AsDuplicable();
+    AddAttr<std::string>("absolutePath", "the absolutePath for save model.");
+    AddComment(R"DOC(
+Save the input tensors to a binary file based on input tensor names and absolute path.
+
+All the inputs can carry the LoD (Level of Details) information,
+or not.
+)DOC");
+  }
+};
+
+class RestoreOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
+                   "Output(X) of RestoreOp should not be null.");
+    auto absolutePath = ctx->Attrs().Get<std::string>("absolutePath");
+    PADDLE_ENFORCE(!absolutePath.empty(),
+                   "Input(absolutePath) of Restore Op should not be null.");
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return static_cast<framework::DataType>(Attr<int>("data_type"));
+  }
+};
+
+class RestoreOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  RestoreOpMaker(framework::OpProto* proto,
+                 framework::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddOutput("Out",
+              "(tensor), the tensor count can be 1~INT_MAX, tensors which "
+              "values will be restores.")
+        .AsDuplicable();
+    AddAttr<std::string>("absolutePath", "the absolutePath for model file.");
+    AddAttr<int>("data_type", "output tensor data type")
+        .SetDefault(framework::DataType::FP32);
+    AddComment(R"DOC(
+Restore the tensors from model file based on absolute path.
+
+All the tensors outputs may carry the LoD (Level of Details) information,
+or not.
+)DOC");
   }
 };
 
