@@ -149,5 +149,13 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
   }
 };
 
+class EmptyGradOpMaker : public GradOpDescMakerBase {
+ public:
+  using GradOpDescMakerBase::GradOpDescMakerBase;
+  std::vector<std::unique_ptr<OpDescBind>> operator()() const override {
+    return {};
+  }
+};
+
 }  // namespace framework
 }  // namespace paddle

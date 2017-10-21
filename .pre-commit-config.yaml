@@ -31,6 +31,3 @@
     -   id: go-fmt
         types:
         - go
-    -   id: gometalinter
-        types:
-        - go

@@ -21,7 +21,7 @@ wmt14数据的提供文件在 `python/paddle/v2/dataset/wmt14.py <https://github
 
 循环神经网络在每个时间步骤顺序地处理序列。下面列出了 LSTM 的架构的示例。
 
-.. image:: ../../../tutorials/sentiment_analysis/bi_lstm.jpg
+.. image:: src/bi_lstm.jpg
       :align: center
 
 一般来说，循环网络从 :math:`t=1` 到 :math:`t=T` 或者反向地从 :math:`t=T` 到 :math:`t=1` 执行以下操作。
@@ -96,7 +96,7 @@ Sequence to Sequence Model with Attention
 我们将使用 sequence to sequence model with attention
 作为例子演示如何配置复杂的循环神经网络模型。该模型的说明如下图所示。
 
-.. image:: ../../../tutorials/text_generation/encoder-decoder-attention-model.png
+.. image:: src/encoder-decoder-attention-model.png
       :align: center
 
 在这个模型中，源序列 :math:`S = \{s_1, \dots, s_T\}` 

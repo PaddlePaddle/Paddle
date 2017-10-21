@@ -15,9 +15,10 @@ class TestSeqProject(OpTest):
         self.begin_pad = np.max([0, -self.context_start])
         self.end_pad = np.max([0, self.context_start + self.context_length - 1])
         self.total_pad = self.begin_pad + self.end_pad
-        # w =  np.ones((self.total_pad, self.input_size[1])) * 100
-        w = np.array(range(self.total_pad * self.input_size[1]))
-        w.shape = self.total_pad, self.input_size[1]
+        # w = np.array(range(self.total_pad * self.input_size[1]))
+        # w.shape = self.total_pad, self.input_size[1]
+        w = np.random.uniform(
+            0.1, 1, [self.total_pad, self.input_size[1]]).astype('float32')
         self.inputs = {
             'X': (x, self.lod),
             'PaddingData': (w, [[0, self.total_pad]])
@@ -73,36 +74,52 @@ class TestSeqProject(OpTest):
                     self.input_size[1]] += in_sub
 
     def init_test_case(self):
-        self.input_row = 11
-        self.input_size = [self.input_row, 23]
-        self.lod = [[0, 4, 5, 8, self.input_row]]
         self.op_type = "sequence_project"
-
+        self.input_row = 11
         self.context_start = -1
         self.context_length = 3
         self.padding_trainable = True
         self.context_stride = 1
 
+        self.input_size = [self.input_row, 23]
+        self.lod = [[0, 4, 5, 8, self.input_row]]
+
     def test_check_output(self):
         self.check_output()
 
-    # def test_check_grad(self):
-    #     self.check_grad(
-    #         set(['X', 'PaddingData']), 'Out', max_relative_error=0.05)
+        # def test_check_grad(self):
+        #     self.check_grad(
+        #         set(['X', 'PaddingData']), 'Out', max_relative_error=0.05)
 
-    # def test_check_grad_no_filter(self):
-    #     self.check_grad(
-    #         ['X'],
-    #         'Out',
-    #         max_relative_error=0.05,
-    #         no_grad_set=set(['PaddingData']))
-    #
-    # def test_check_grad_no_input(self):
-    #     self.check_grad(
-    #         ['PaddingData'],
-    #         'Out',
-    #         max_relative_error=0.05,
-    #         no_grad_set=set(['X']))
+        # def test_check_grad_no_filter(self):
+        #     self.check_grad(
+        #         ['X'],
+        #         'Out',
+        #         max_relative_error=0.05,
+        #         no_grad_set=set(['PaddingData']))
+        #
+        # def test_check_grad_no_input(self):
+        #     self.check_grad(
+        #         ['PaddingData'],
+        #         'Out',
+        #         max_relative_error=0.05,
+        #         no_grad_set=set(['X']))
+
+
+class TestSeqProjectCases(TestSeqProject):
+    def init_test_case(self):
+        self.op_type = "sequence_project"
+        self.input_row = 25
+        self.context_start = 2
+        self.context_length = 3
+        self.padding_trainable = True
+        self.context_stride = 1
+
+        self.input_size = [self.input_row, 23]
+        idx = range(self.input_size[0])
+        del idx[0]
+        self.lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
+                    [self.input_size[0]]]
 
 
 '''
