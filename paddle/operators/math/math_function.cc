@@ -82,16 +82,16 @@ void matmul<platform::CPUPlace, float>(
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
   auto dim_out = matrix_out->dims();
-  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2,
-                 "The input of matmul be matrix");
+  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
+                 "The input and output of matmul be matrix");
 
   PADDLE_ENFORCE(platform::is_cpu_place(matrix_a.place()) &&
                      platform::is_cpu_place(matrix_b.place()) &&
                      platform::is_cpu_place(matrix_out->place()),
                  "Matrix must all be in CPUPlace");
 
-  int M = (trans_a == false) ? dim_a[0] : dim_a[1];
-  int N = (trans_b == false) ? dim_b[1] : dim_b[0];
+  int M = dim_out[0];
+  int N = dim_out[1];
   int K = (trans_a == false) ? dim_a[1] : dim_a[0];
 
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
@@ -110,7 +110,7 @@ void matmul<platform::CPUPlace, double>(
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
   auto dim_out = matrix_out->dims();
-  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2,
+  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
                  "The input and output of matmul be matrix");
 
   PADDLE_ENFORCE(platform::is_cpu_place(matrix_a.place()) &&
@@ -118,8 +118,8 @@ void matmul<platform::CPUPlace, double>(
                      platform::is_cpu_place(matrix_out->place()),
                  "Matrix must all be in CPUPlace");
 
-  int M = (trans_a == false) ? dim_a[0] : dim_a[1];
-  int N = (trans_b == false) ? dim_b[1] : dim_b[0];
+  int M = dim_out[0];
+  int N = dim_out[1];
   int K = (trans_a == false) ? dim_a[1] : dim_a[0];
 
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;

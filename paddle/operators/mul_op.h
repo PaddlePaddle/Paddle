@@ -46,8 +46,15 @@ class MulKernel : public framework::OpKernel<T> {
             : *y;
 
     z->mutable_data<T>(context.GetPlace());
+    auto z_dim = z->dims();
+    if (z_dim.size() != 2) {
+      z->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
+    }
     math::matmul<Place, T>(context.device_context(), x_matrix, false, y_matrix,
                            false, 1, z, 0);
+    if (z_dim.size() != 2) {
+      z->Resize(z_dim);
+    }
   }
 };
 
@@ -76,15 +83,22 @@ class MulGradKernel : public framework::OpKernel<T> {
     Tensor* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
+      Tensor dx_matrix = dx->dims().size() > 2
+                             ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
+                             : *dx;
+
       // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
       math::matmul<Place, T>(ctx.device_context(), dout_mat, false, y_matrix,
-                             true, 1, dx, 0);
+                             true, 1, &dx_matrix, 0);
     }
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
+      Tensor dy_matrix = dy->dims().size() > 2
+                             ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
+                             : *dy;
       // dy = x' * dout. dy K x N, dout : M x N, x : M x K
       math::matmul<Place, T>(ctx.device_context(), x_matrix, true, dout_mat,
-                             false, 1, dy, 0);
+                             false, 1, &dy_matrix, 0);
     }
   }
 };
