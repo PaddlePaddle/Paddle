@@ -34,8 +34,8 @@ TEST(NCCL, init) {
     PADDLE_ENFORCE(ncclCommDestroy(comms[i]));
   }
 }
-}
-}
+}  // namespace platform
+}  // namespace paddle
 
 int main(int argc, char** argv) {
   dev_count = paddle::platform::GetCUDADeviceCount();
