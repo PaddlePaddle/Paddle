@@ -3,7 +3,9 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding']
+__all__ = [
+    'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat'
+]
 
 
 def fc(input,
@@ -138,7 +140,19 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
-_create_op_func_('concat')
+
+
+def concat(input, axis, program=None, init_program=None):
+    helper = LayerHelper('concat', **locals())
+    if not isinstance(input, list) and not isinstance(input, tuple):
+        input = [input]
+    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    helper.append_op(
+        type='concat',
+        inputs={'X': input},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
 
 
 def cross_entropy(input, label, **kwargs):
