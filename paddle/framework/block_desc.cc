@@ -32,13 +32,25 @@ VarDescBind *BlockDescBind::Var(const std::string &name) {
 VarDescBind *BlockDescBind::FindVar(const std::string &name) const {
   auto it = vars_.find(name);
   if (it == vars_.end()) {
-    return Parent() == kNoneBlockIndex ? nullptr : ParentBlock()->FindVar(name);
+    return nullptr;
   }
   return it->second.get();
 }
 
 bool BlockDescBind::HasVar(const std::string &name) const {
-  return FindVar(name) != nullptr;
+  return vars_.find(name) != vars_.end();
+}
+
+VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
+  auto it = vars_.find(name);
+  if (it == vars_.end()) {
+    return Parent() == kNoneBlockIndex ? nullptr : ParentBlock()->FindVar(name);
+  }
+  return it->second.get();
+}
+
+bool BlockDescBind::HasVarRecursive(const std::string &name) const {
+  return FindVarRecursive(name) != nullptr;
 }
 
 std::vector<VarDescBind *> BlockDescBind::AllVars() const {

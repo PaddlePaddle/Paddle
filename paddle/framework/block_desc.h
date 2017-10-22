@@ -57,6 +57,10 @@ class BlockDescBind {
 
   bool HasVar(const std::string &var_name) const;
 
+  VarDescBind *FindVarRecursive(const std::string &name_bytes) const;
+
+  bool HasVarRecursive(const std::string &var_name) const;
+
   std::set<std::string> LocalVarNames() const {
     std::set<std::string> var_names;
     for (auto &var : vars_) {
