@@ -5,7 +5,7 @@ from op_test import OpTest, create_op
 import unittest
 import os, sys
 
-ABSOLUTE_PATH = "/tmp/PADDLE_MODEL"  # directory for save parameter files.
+ABSOLUTE_PATH = "/tmp/MODEL"  # directory for save parameter files.
 
 scope = core.Scope()
 place = core.CPUPlace()
@@ -19,58 +19,42 @@ dev_ctx = core.DeviceContext.create(place)
 def Saver(var_list=None):
     net = core.Net.create()
     save_tensors = []
-    # for var in var_list:
-    #     tensor = scope.find_var(var)
-    #     save_tensors.append(tensor)
-    # save_op = Operator("save", X=save_tensors, absolutePath=ABSOLUTE_PATH)
-    save_op = Operator("save", X=var_list, absolutePath="/tmp/test_model.model")
+    save_op = Operator("save", X=save_tensors, absolutePath=ABSOLUTE_PATH)
     net.append_op(save_op)
-    # net.complete_add_op()
     net.run(scope, dev_ctx)
 
 
-x = np.ones((3, 10)).astype("float32")
-a = scope.var("x").get_tensor()
-a.set_dims(x.shape)
-a.set(x, place)
-b = scope.var("y").get_tensor()
+class TestSaver(unittest.TestCase):
+    def test_save_tensors(self):
+        a = scope.var("a")
+        b = scope.var("b")
+        Saver(["a", "b"])
+        self.assertTrue(os.path.exists(ABSOLUTE_PATH))
 
-s = a.tobytes()
-# print s
-b.frombytes(s, place)
 
-# Saver("x")
+class TestSaveOp(OpTest):
+    def setUp(self):
+        self.op_type = "save"
+        x0 = np.ones((1, 1)).astype("float32")
+        x1 = np.ones((1, 1)).astype("float32")
+        # x2 = np.ones((2, 1)).astype("float32")
 
-# class TestSaver(unittest.TestCase):
-#     def test_save_tensors(self):
-#         a = scope.var("a")
-#         b = scope.var("b")
-#         Saver(["a", "b"])
-#         self.assertTrue(os.path.exists(ABSOLUTE_PATH))
+        # self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)], }
+        self.inputs = {"X": [("x0", x0), ("x1", x1)], }
 
-# class TestSaveOp(OpTest):
-#     def setUp(self):
-#         self.op_type = "save"
-#         x0 = np.ones((1, 1)).astype("float32")
-#         x1 = np.ones((1, 1)).astype("float32")
-#         # x2 = np.ones((2, 1)).astype("float32")
+        self.attrs = {"absolutePath": ABSOLUTE_PATH}
 
-#         # self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)], }
-#         self.inputs = {"X": [("x0", x0), ("x1", x1)], }
-
-#         self.attrs = {"absolutePath": ABSOLUTE_PATH}
-
-#     def test_check_output(self):
-#         if os.path.exists(ABSOLUTE_PATH):
-#             try:
-#                 if os.path.isdir(ABSOLUTE_PATH):
-#                     os.rmdir(ABSOLUTE_PATH)
-#                 elif os.path.isfile(ABSOLUTE_PATH):
-#                     os.remove(ABSOLUTE_PATH)
-#             except OSError:
-#                 pass
-#         self.check_output()
-#         self.assertTrue(os.path.exists(ABSOLUTE_PATH))
+    def test_check_output(self):
+        if os.path.exists(ABSOLUTE_PATH):
+            try:
+                if os.path.isdir(ABSOLUTE_PATH):
+                    os.rmdir(ABSOLUTE_PATH)
+                elif os.path.isfile(ABSOLUTE_PATH):
+                    os.remove(ABSOLUTE_PATH)
+            except OSError:
+                pass
+        self.check_output()
+        self.assertTrue(os.path.exists(ABSOLUTE_PATH))
 
 
 # must run saveTest first
@@ -95,9 +79,11 @@ class TestRestoreOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
-        # self.dst_tensors = [scope.find_var("x0"), scope.find_var("x1"), scope.find_var("x2")]
-        # for src, dst in zip(self.save_tensors, self.dst_tensors):
-        #     self.assertTrue(np.array_equal(src, dst))
+        self.dst_tensors = [
+            scope.find_var("x0"), scope.find_var("x1"), scope.find_var("x2")
+        ]
+        for src, dst in zip(self.save_tensors, self.dst_tensors):
+            self.assertTrue(np.array_equal(src, dst))
 
 
 if __name__ == "__main__":
