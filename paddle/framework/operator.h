@@ -334,7 +334,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       "Input(%s) should have only one value, "
                       "but it have %d now",
                       name, length);
-    return block_.HasVar(input_names[0]);
+    return block_.HasVarRecursive(input_names[0]);
   }
 
   bool HasOutput(const std::string& name) const override {
@@ -347,7 +347,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       "Output(%s) should have only one value, "
                       "but it have %d now",
                       name, length);
-    return block_.HasVar(output_names[0]);
+    return block_.HasVarRecursive(output_names[0]);
   }
 
   bool HasInputs(const std::string& name) const override {
@@ -356,7 +356,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       return false;
     }
     for (auto& input : input_names) {
-      if (!block_.HasVar(input)) return false;
+      if (!block_.HasVarRecursive(input)) return false;
     }
     return true;
   }
@@ -367,7 +367,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       return false;
     }
     for (auto& output : output_names) {
-      if (!block_.HasVar(output)) return false;
+      if (!block_.HasVarRecursive(output)) return false;
     }
     return true;
   }
@@ -414,11 +414,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.FindVar(name)->Shape());
+    return framework::make_ddim(block_.FindVarRecursive(name)->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
-    block_.FindVar(name)->SetShape(framework::vectorize(dim));
+    block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
   }
 
   const OpDescBind& op_;
