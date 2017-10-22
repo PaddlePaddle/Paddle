@@ -32,13 +32,13 @@ VarDescBind *BlockDescBind::Var(const std::string &name) {
 VarDescBind *BlockDescBind::FindVar(const std::string &name) const {
   auto it = vars_.find(name);
   if (it == vars_.end()) {
-    return nullptr;
+    return Parent() == kNoneBlockIndex ? nullptr : ParentBlock()->FindVar(name);
   }
   return it->second.get();
 }
 
 bool BlockDescBind::HasVar(const std::string &name) const {
-  return vars_.find(name) != vars_.end();
+  return FindVar(name) != nullptr;
 }
 
 std::vector<VarDescBind *> BlockDescBind::AllVars() const {
@@ -97,7 +97,7 @@ void BlockDescBind::Flush() {
 }
 
 BlockDescBind *BlockDescBind::ParentBlock() const {
-  if (this->desc_->parent_idx() == -1) {
+  if (this->desc_->parent_idx() == kNoneBlockIndex) {
     return nullptr;
   }
   return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));

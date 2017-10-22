@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/op_desc.h"
+#include "paddle/framework/proto_desc.h"
 #include "paddle/framework/var_desc.h"
 #include "paddle/platform/macros.h"
 
