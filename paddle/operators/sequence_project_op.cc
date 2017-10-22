@@ -27,6 +27,10 @@ class SequenceProjectOp : public framework::OperatorWithKernel {
                    "Input(X) of SequenceProjectOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceProjectOp should not be null.");
+    // PaddingData mast be not empty.
+    PADDLE_ENFORCE(
+        ctx->HasInput("PaddingData"),
+        "Output(PaddingData) of SequenceProjectOp should not be null.");
     auto in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(in_dims.size() == 2, "Input(X) should be 2-D tensor.");
 
@@ -35,9 +39,6 @@ class SequenceProjectOp : public framework::OperatorWithKernel {
     int context_start = ctx->Attrs().Get<int>("context_start");
 
     if (padding_trainable) {
-      PADDLE_ENFORCE(
-          ctx->HasInput("PaddingData"),
-          "Output(PaddingData) of SequenceProjectOp should not be null.");
       framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
       int down_pad = std::max(0, context_start + context_length - 1);
@@ -71,17 +72,15 @@ class SequenceProjectGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Gradient of input(X@GRAD) should not be null.");
 
-    if (ctx->Attrs().Get<bool>("padding_trainable")) {
-      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("PaddingData")),
-                     "Output(PaddingData@GRAD) of SequenceProjectGradOp should "
-                     "not be null.");
+    if (ctx->Attrs().Get<bool>("padding_trainable") &&
+        ctx->HasOutput(framework::GradVarName("PaddingData"))) {
       auto padding_dims = ctx->GetInputDim("PaddingData");
       ctx->SetOutputDim(framework::GradVarName("PaddingData"), padding_dims);
     }
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    }
   }
 };
 

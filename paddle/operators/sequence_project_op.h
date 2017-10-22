@@ -39,7 +39,6 @@ class SequenceProjectKernel : public framework::OpKernel<T> {
     auto* out = context.Output<LoDTensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    // need discuss, is it necessary to set zeros ?
     // Because if padding_trainable is false, padding data should be zeros.
     auto temp = framework::EigenVector<T>::Flatten(*out);
     temp.device(context.GetEigenDevice<Place>()) =
@@ -176,12 +175,9 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* padding_data_g =
+        context.Output<LoDTensor>(framework::GradVarName("PaddingData"));
     auto* in = context.Input<LoDTensor>("X");
-    in_g->mutable_data<T>(context.GetPlace());
-    if (in_g) {
-      math::SetConstant<Place, T> functor;
-      functor(context.device_context(), in_g, 0);
-    }
     auto place = context.GetEigenDevice<Place>();
 
     int context_start = context.Attr<int>("context_start");
@@ -193,16 +189,66 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
     auto lod_g_level_0 = in->lod()[0];
-    int64_t input_width = in_g->dims()[1];
+
+    int64_t input_width = in->dims()[1];
     int64_t output_width = out_g->dims()[1];
     int64_t padding_width = 0;
+
     PADDLE_ENFORCE(input_width * context_length == output_width,
                    "Input size and pooling size should be consistent.");
 
-    LoDTensor* padding_data_g = nullptr;
-    if (padding_trainable) {
-      padding_data_g =
-          context.Output<LoDTensor>(framework::GradVarName("PaddingData"));
+    int up_pad = std::max(0, -context_start);
+    int down_pad = std::max(0, context_start + context_length - 1);
+    int sequence_height, sequence_width;
+    int input_row_begin, input_row_end;
+
+    sequence_width = static_cast<int>(in->dims()[1]);
+
+    paddle::operators::math::Col2ImFunctor<
+        paddle::operators::math::ColFormat::kOCF, Place, float>
+        col2im_ocf;
+
+    if (in_g) {
+      in_g->mutable_data<T>(context.GetPlace());
+      math::SetConstant<Place, T> functor;
+      functor(context.device_context(), in_g, 0);
+
+      for (int i = 0; i < static_cast<int>(lod_g_level_0.size()) - 1; ++i) {
+        input_row_begin =
+            (context_start > 0)
+                ? static_cast<int>(lod_g_level_0[i]) + context_start
+                : static_cast<int>(lod_g_level_0[i]);
+        input_row_end = static_cast<int>(lod_g_level_0[i + 1]);
+
+        Tensor out_g_t = out_g->Slice(static_cast<int>(lod_g_level_0[i]),
+                                      static_cast<int>(lod_g_level_0[i + 1]));
+
+        sequence_height = static_cast<int>(out_g_t.dims()[0]);
+
+        if (input_row_begin < input_row_end) {
+          Tensor in_t = in_g->Slice(input_row_begin, input_row_end);
+
+          std::vector<int64_t> output_shape(
+              {sequence_height, 1, 1, context_length,
+               sequence_width});  // output_height, output_width,
+          // input_channels, filter_height, filter_width
+          out_g_t.Resize(framework::make_ddim(output_shape));
+
+          std::vector<int64_t> input_shape(
+              {1, input_row_end - input_row_begin,
+               sequence_width});  // input_channels, input_height, input_width
+          in_t.Resize(framework::make_ddim(input_shape));
+
+          col2im_ocf(context.device_context(), in_t, out_g_t,
+                     /*stride_height*/ context_stride, /*stride_width*/ 0,
+                     up_pad, down_pad);
+        }
+        out_g_t.Resize(framework::make_ddim(
+            {sequence_height, context_length * sequence_width}));
+      }
+    }
+
+    if (padding_trainable && padding_data_g) {
       padding_data_g->mutable_data<T>(context.GetPlace());
       PADDLE_ENFORCE_EQ(padding_data_g->dims().size(), 2UL,
                         "Only support one level sequence now.");
@@ -211,31 +257,19 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
                      "Input size and pooling size should be consistent.");
       math::SetConstant<Place, T> functor;
       functor(context.device_context(), padding_data_g, 0);
-    }
 
-    int up_pad = std::max(0, -context_start);
-    int down_pad = std::max(0, context_start + context_length - 1);
-    int sequence_height, sequence_width;
-    int input_row_begin, input_row_end;
+      for (int i = 0; i < static_cast<int>(lod_g_level_0.size()) - 1; ++i) {
+        input_row_begin =
+            (context_start > 0)
+                ? static_cast<int>(lod_g_level_0[i]) + context_start
+                : static_cast<int>(lod_g_level_0[i]);
+        input_row_end = static_cast<int>(lod_g_level_0[i + 1]);
 
-    paddle::operators::math::Col2ImFunctor<
-        paddle::operators::math::ColFormat::kOCF, Place, float>
-        col2im_ocf;
+        Tensor out_g_t = out_g->Slice(static_cast<int>(lod_g_level_0[i]),
+                                      static_cast<int>(lod_g_level_0[i + 1]));
 
-    for (int i = 0; i < static_cast<int>(lod_g_level_0.size()) - 1; ++i) {
-      input_row_begin = (context_start > 0)
-                            ? static_cast<int>(lod_g_level_0[i]) + context_start
-                            : static_cast<int>(lod_g_level_0[i]);
-      input_row_end = static_cast<int>(lod_g_level_0[i + 1]);
+        sequence_height = static_cast<int>(out_g_t.dims()[0]);
 
-      Tensor out_g_t = out_g->Slice(static_cast<int>(lod_g_level_0[i]),
-                                    static_cast<int>(lod_g_level_0[i + 1]));
-
-      sequence_height = static_cast<int>(out_g_t.dims()[0]);
-      sequence_width = static_cast<int>(in_g->dims()[1]);
-
-      if (padding_trainable) {
-        // add up trainable data
         out_g_t.Resize(framework::make_ddim(
             {sequence_height * context_length, sequence_width}));
 
@@ -287,29 +321,9 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
             w_sub_e.device(place) = w_sub_e + out_t_sub_e;
           }
         }
+        out_g_t.Resize(framework::make_ddim(
+            {sequence_height, context_length * sequence_width}));
       }
-
-      if (in_g && input_row_begin < input_row_end) {
-        Tensor in_t = in_g->Slice(input_row_begin, input_row_end);
-
-        std::vector<int64_t> output_shape(
-            {sequence_height, 1, 1, context_length,
-             sequence_width});  // output_height, output_width,
-        // input_channels, filter_height, filter_width
-        out_g_t.Resize(framework::make_ddim(output_shape));
-
-        std::vector<int64_t> input_shape(
-            {1, input_row_end - input_row_begin,
-             sequence_width});  // input_channels, input_height, input_width
-        in_t.Resize(framework::make_ddim(input_shape));
-
-        col2im_ocf(context.device_context(), in_t, out_g_t,
-                   /*stride_height*/ context_stride, /*stride_width*/ 0, up_pad,
-                   down_pad);
-      }
-
-      out_g_t.Resize(framework::make_ddim(
-          {sequence_height, context_length * sequence_width}));
     }
   }
 };
