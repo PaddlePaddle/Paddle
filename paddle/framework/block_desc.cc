@@ -44,7 +44,8 @@ bool BlockDescBind::HasVar(const std::string &name) const {
 VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
   auto it = vars_.find(name);
   if (it == vars_.end()) {
-    return Parent() == kNoneBlockIndex ? nullptr : ParentBlock()->FindVar(name);
+    return Parent() == kNoneBlockIndex ? nullptr
+                                       : ParentBlock()->FindVarRecursive(name);
   }
   return it->second.get();
 }
