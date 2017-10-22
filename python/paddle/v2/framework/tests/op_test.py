@@ -251,10 +251,16 @@ class OpTest(unittest.TestCase):
             else:
                 name = var_name
                 np_value = np_list[var_name]
+                if isinstance(np_value, tuple):
+                    shape = list(np_value[0].shape)
+                    lod_level = len(np_value[1])
+                else:
+                    shape = list(np_value.shape)
+                    lod_level = 0
                 var = block.create_var(
                     dtype="float32",
-                    shape=list(np_value.shape),
-                    lod_level=0,
+                    shape=shape,
+                    lod_level=lod_level,
                     name=name)
                 var_dict[var_name] = var
 
@@ -263,14 +269,18 @@ class OpTest(unittest.TestCase):
     def feed_var(self, input_vars, place):
         feed_map = {}
         for var_name in input_vars:
-            if type(input_vars[var_name]) is list:
+            if isinstance(input_vars[var_name], list):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
                     tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
-                tensor.set(self.inputs[var_name], place)
+                if isinstance(self.inputs[var_name], tuple):
+                    tensor.set(self.inputs[var_name][0], place)
+                    tensor.set_lod(self.inputs[var_name][1])
+                else:
+                    tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
 
         return feed_map
