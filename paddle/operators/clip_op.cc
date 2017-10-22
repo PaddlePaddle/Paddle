@@ -27,8 +27,8 @@ class ClipOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ClipOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
-    auto max = Attr<float>("max");
-    auto min = Attr<float>("min");
+    auto max = ctx->Attrs().Get<float>("max");
+    auto min = ctx->Attrs().Get<float>("min");
     PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
