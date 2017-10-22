@@ -27,15 +27,17 @@ class SaveKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
 
-    std::ofstream fout(absolutePath, std::ofstream::out | std::ofstream::app);
-    VLOG(1) << " open file for save model in " << absolutePath;
-    PADDLE_ENFORCE(fout.is_open(), "open file for model failed.");
+    std::ofstream fout(absolutePath, std::ofstream::out);
+    VLOG(1) << "Open model file : " << absolutePath;
+    PADDLE_ENFORCE(fout.is_open(), "Open model file failed.");
     for (size_t i = 0; i < ins.size(); ++i) {
       std::string bytes = ins[i]->SerializeToString();
-      fout << bytes << '\n';
+      // fout << bytes << '\n';
+      fout << bytes;
     }
 
     fout.close();
+    VLOG(1) << "Save model finished. Items count : " << ins.size();
   }
 };
 
@@ -46,12 +48,15 @@ class RestoreKernel : public framework::OpKernel<T> {
     auto outs = ctx.MultiOutput<LoDTensor>("Out");
     std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
 
-    std::ifstream fin(absolutePath);
-    PADDLE_ENFORCE(fin.is_open(), "open model file failed.");
+    std::ifstream fin(absolutePath, std::ifstream::in);
+    VLOG(1) << "Open model file : " << absolutePath;
+    PADDLE_ENFORCE(fin.is_open(), "Open model file failed.");
 
     std::string line;
     int i = 0;
     while (std::getline(fin, line)) {
+      VLOG(1) << "Item " << i << " size " << line.size() << " content " << line;
+      // if (line.empty()) continue;
       outs[i++]->DeserializeFromString(line, ctx.GetPlace());
     }
     fin.close();

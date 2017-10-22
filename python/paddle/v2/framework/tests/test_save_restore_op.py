@@ -15,17 +15,31 @@ dev_ctx = core.DeviceContext.create(place)
 # TODO(dzh): Saver also need to save ProgramDesc. Should be done after
 # python API done.
 
-# def Saver(var_list=None):
-#     net = core.Net.create()
-#     save_tensors = []
-#     # for var in var_list:
-#     #     tensor = scope.find_var(var)
-#     #     save_tensors.append(tensor)
-#     # save_op = Operator("save", X=save_tensors, absolutePath=ABSOLUTE_PATH)
-#     save_op = Operator("save", X=var_list, absolutePath=ABSOLUTE_PATH)
-#     net.append_op(save_op)
-#     net.infer_shape(scope)
-#     net.run(scope, dev_ctx)
+
+def Saver(var_list=None):
+    net = core.Net.create()
+    save_tensors = []
+    # for var in var_list:
+    #     tensor = scope.find_var(var)
+    #     save_tensors.append(tensor)
+    # save_op = Operator("save", X=save_tensors, absolutePath=ABSOLUTE_PATH)
+    save_op = Operator("save", X=var_list, absolutePath="/tmp/test_model.model")
+    net.append_op(save_op)
+    # net.complete_add_op()
+    net.run(scope, dev_ctx)
+
+
+x = np.ones((3, 10)).astype("float32")
+a = scope.var("x").get_tensor()
+a.set_dims(x.shape)
+a.set(x, place)
+b = scope.var("y").get_tensor()
+
+s = a.tobytes()
+# print s
+b.frombytes(s, place)
+
+# Saver("x")
 
 # class TestSaver(unittest.TestCase):
 #     def test_save_tensors(self):
@@ -34,29 +48,29 @@ dev_ctx = core.DeviceContext.create(place)
 #         Saver(["a", "b"])
 #         self.assertTrue(os.path.exists(ABSOLUTE_PATH))
 
+# class TestSaveOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "save"
+#         x0 = np.ones((1, 1)).astype("float32")
+#         x1 = np.ones((1, 1)).astype("float32")
+#         # x2 = np.ones((2, 1)).astype("float32")
 
-class TestSaveOp(OpTest):
-    def setUp(self):
-        self.op_type = "save"
-        x0 = np.ones((2, 3)).astype("float32")
-        x1 = np.ones((1, 2)).astype("float32")
-        x2 = np.ones((2, 1)).astype("float32")
+#         # self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)], }
+#         self.inputs = {"X": [("x0", x0), ("x1", x1)], }
 
-        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)], }
+#         self.attrs = {"absolutePath": ABSOLUTE_PATH}
 
-        self.attrs = {"absolutePath": ABSOLUTE_PATH}
-
-    def test_check_output(self):
-        if os.path.exists(ABSOLUTE_PATH):
-            try:
-                if os.path.isdir(ABSOLUTE_PATH):
-                    os.rmdir(ABSOLUTE_PATH)
-                elif os.path.isfile(ABSOLUTE_PATH):
-                    os.remove(ABSOLUTE_PATH)
-            except OSError:
-                pass
-        self.check_output()
-        self.assertTrue(os.path.exists(ABSOLUTE_PATH))
+#     def test_check_output(self):
+#         if os.path.exists(ABSOLUTE_PATH):
+#             try:
+#                 if os.path.isdir(ABSOLUTE_PATH):
+#                     os.rmdir(ABSOLUTE_PATH)
+#                 elif os.path.isfile(ABSOLUTE_PATH):
+#                     os.remove(ABSOLUTE_PATH)
+#             except OSError:
+#                 pass
+#         self.check_output()
+#         self.assertTrue(os.path.exists(ABSOLUTE_PATH))
 
 
 # must run saveTest first

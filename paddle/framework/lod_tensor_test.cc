@@ -119,7 +119,7 @@ TEST_F(LoDTensorTester, SerializeDeserialize) {
   }
 
   ASSERT_EQ(dst.NumElements(0), 2UL);
-  ASSERT_EQ(dst.NumElements(1), 4UL);
+  ASSERT_EQ(dst.NumElements(1), 3UL);
   ASSERT_EQ(dst.NumElements(2), 8UL);
 }
 

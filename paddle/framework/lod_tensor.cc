@@ -139,9 +139,6 @@ std::string LoDTensor::SerializeToString() const {
   for (int i = 0; i < dims().size(); ++i) {
     desc.add_dims(dims()[i]);
   }
-  // for (auto& dim : dims) {
-  //   desc.add_dims(dims()dwim);
-  // }
 
   // set lod information
   desc.set_lod_level(this->NumLevels());
@@ -174,7 +171,7 @@ std::string LoDTensor::SerializeToString() const {
   memory::Copy(dst_place, buffer + sizeof(size_t) * 2, src_place,
                desc_bytes.c_str(), desc_bytes.size());
 
-  PADDLE_ENFORCE(this->numel() != 0, " Serialize a empty Tensor!");
+  PADDLE_ENFORCE(this->numel() != 0, "Serialize a empty Tensor!");
 
   platform::Place place = holder_->place();
   int element_width = holder_->size() / this->numel();
