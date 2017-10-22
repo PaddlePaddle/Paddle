@@ -241,6 +241,7 @@ class OpTest(unittest.TestCase):
                     "Duplicable {} should be set as list".format(var_name))
                 var_list = []
                 for (name, np_value) in np_list[var_name]:
+                    # TODO(tonyyang-svail): refactor this to matach else statement
                     var = block.create_var(
                         dtype="float32",
                         shape=list(np_value.shape),
@@ -250,13 +251,19 @@ class OpTest(unittest.TestCase):
                 var_dict[var_name] = var_list
             else:
                 name = var_name
-                np_value = np_list[var_name]
-                if isinstance(np_value, tuple):
-                    shape = list(np_value[0].shape)
-                    lod_level = len(np_value[1])
+                if name not in np_list:
+                    self.assertTrue(var_proto.intermediate,
+                                    "{} not found".format(name))
+                    shape = None
+                    lod_level = None
                 else:
-                    shape = list(np_value.shape)
-                    lod_level = 0
+                    np_value = np_list[name]
+                    if isinstance(np_value, tuple):
+                        shape = list(np_value[0].shape)
+                        lod_level = len(np_value[1])
+                    else:
+                        shape = list(np_value.shape)
+                        lod_level = 0
                 var = block.create_var(
                     dtype="float32",
                     shape=shape,
@@ -300,11 +307,12 @@ class OpTest(unittest.TestCase):
 
         fetch_list = []
         for var_name, var in outputs.iteritems():
-            if isinstance(var, list):
-                for v in var:
-                    fetch_list.append(v)
-            else:
-                fetch_list.append(var)
+            if var_name in self.outputs:
+                if isinstance(var, list):
+                    for v in var:
+                        fetch_list.append(v)
+                else:
+                    fetch_list.append(var)
 
         op = block.append_op(
             type=self.op_type,
@@ -314,8 +322,6 @@ class OpTest(unittest.TestCase):
 
         feed_map = self.feed_var(inputs, place)
 
-        # pdb.set_trace()
-
         exe = Executor(place)
         outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
 
@@ -323,7 +329,7 @@ class OpTest(unittest.TestCase):
             if out_name not in self.outputs:
                 continue
 
-            def find_actual(fetch_list, target_name, outs):
+            def find_actual(target_name, fetch_list):
                 found = [
                     i for i, var in enumerate(fetch_list)
                     if var.name == target_name
@@ -332,7 +338,7 @@ class OpTest(unittest.TestCase):
                     len(found) == 1,
                     "Should be exact one var name, found {}".format(
                         len(found)))
-                return outs[found[0]]
+                return found[0]
 
             if out_dup:
                 sub_out = self.outputs[out_name]
@@ -340,13 +346,15 @@ class OpTest(unittest.TestCase):
                     raise AssertionError("sub_out type %s is not list",
                                          type(sub_out))
                 for sub_out_name, expect in sub_out:
-                    actual = find_actual(fetch_list, sub_out_name, outs)
+                    idx = find_actual(sub_out_name, fetch_list)
+                    actual = outs[idx]
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=atol),
                         "output name: " + sub_out_name + " has diff.")
             else:
-                actual = find_actual(fetch_list, out_name, outs)
+                idx = find_actual(out_name, fetch_list)
+                actual = outs[idx]
                 expect = self.outputs[out_name]
                 self.assertTrue(
                     np.allclose(
