@@ -32,7 +32,6 @@ class SaveKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(fout.is_open(), "Open model file failed.");
     for (size_t i = 0; i < ins.size(); ++i) {
       std::string bytes = ins[i]->SerializeToString();
-      // fout << bytes << '\n';
       fout << bytes;
     }
 
@@ -52,12 +51,25 @@ class RestoreKernel : public framework::OpKernel<T> {
     VLOG(1) << "Open model file : " << absolutePath;
     PADDLE_ENFORCE(fin.is_open(), "Open model file failed.");
 
-    std::string line;
-    int i = 0;
-    while (std::getline(fin, line)) {
-      VLOG(1) << "Item " << i << " size " << line.size() << " content " << line;
-      // if (line.empty()) continue;
-      outs[i++]->DeserializeFromString(line, ctx.GetPlace());
+    int tensor_idx = 0;
+    while (fin) {
+      std::string line;
+      size_t tensor_size = 0;
+      const size_t kBufferSize =
+          4096;  // read chuck by chuck for switch pageing.
+      char buffer[kBufferSize];
+
+      if (fin.read((char*)(tensor_size), sizeof(size_t))) {
+        size_t read_size = std::min(kBufferSize, tensor_size);
+        tensor_size -= kBufferSize;
+        while (read_size > 0 && fin.read(buffer, read_size)) {
+          line.append(buffer, read_size);
+        }
+      }
+      PADDLE_ENFORCE(tensor_size == line.size(), "Read tensor error.");
+      VLOG(1) << "Item " << tensor_idx << " size " << line.size() << " content "
+              << line;
+      outs[tensor_idx++]->DeserializeFromString(line, ctx.GetPlace());
     }
     fin.close();
   }

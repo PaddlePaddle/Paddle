@@ -37,10 +37,9 @@ class TestSaveOp(OpTest):
         self.op_type = "save"
         x0 = np.ones((1, 1)).astype("float32")
         x1 = np.ones((1, 1)).astype("float32")
-        # x2 = np.ones((2, 1)).astype("float32")
+        x2 = np.ones((2, 1)).astype("float32")
 
-        # self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)], }
-        self.inputs = {"X": [("x0", x0), ("x1", x1)], }
+        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)], }
 
         self.attrs = {"absolutePath": ABSOLUTE_PATH}
 
@@ -71,7 +70,6 @@ class TestRestoreOp(OpTest):
         x2 = scope.var('x2').get_tensor()
 
         self.src_tensors = [src_x0, src_x1, src_x2]
-        # self.outputs = {"Out": [x0, x1, x2]}
         self.inputs = {}
         self.outputs = {"Out": [("x0", x0), ("x1", x1), ("x2", x2)]}
 

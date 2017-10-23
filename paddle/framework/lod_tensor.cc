@@ -165,8 +165,8 @@ std::string LoDTensor::SerializeToString() const {
   platform::CPUPlace src_place;
   platform::CPUPlace dst_place;
 
-  memory::Copy(dst_place, buffer, src_place, &DESC_SIZE, sizeof(size_t));
-  memory::Copy(dst_place, buffer + sizeof(size_t), src_place, &DATA_SIZE,
+  memory::Copy(dst_place, buffer, src_place, &BUFFER_SIZE, sizeof(size_t));
+  memory::Copy(dst_place, buffer + sizeof(size_t), src_place, &DESC_SIZE,
                sizeof(size_t));
   memory::Copy(dst_place, buffer + sizeof(size_t) * 2, src_place,
                desc_bytes.c_str(), desc_bytes.size());
@@ -198,12 +198,14 @@ std::string LoDTensor::SerializeToString() const {
 
 void LoDTensor::DeserializeFromString(const std::string& s,
                                       const platform::Place& dst_place) {
-  size_t DESC_SIZE, DATA_SIZE;
+  size_t DESC_SIZE, BUFFER_SIZE;
   platform::CPUPlace src_place;
 
-  memory::Copy(src_place, &DESC_SIZE, src_place, s.c_str(), sizeof(size_t));
-  memory::Copy(src_place, &DATA_SIZE, src_place, s.c_str() + sizeof(size_t),
+  memory::Copy(src_place, &BUFFER_SIZE, src_place, s.c_str(), sizeof(size_t));
+  memory::Copy(src_place, &DESC_SIZE, src_place, s.c_str() + sizeof(size_t),
                sizeof(size_t));
+
+  const size_t DATA_SIZE = BUFFER_SIZE - DESC_SIZE - sizeof(size_t) * 2;
 
   // parse LoDTensorDesc
   LoDTensorProto desc;
