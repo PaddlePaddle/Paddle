@@ -356,15 +356,14 @@ class OpTest(unittest.TestCase):
 
     @staticmethod
     def _create_var_descs_(block, var_dict):
-        for i, param_name in enumerate(var_dict):
+        for param_name in var_dict:
             var = var_dict[param_name]
             if not isinstance(var, list) and not isinstance(var, tuple):
-                var = [var]
+                var = [(param_name, var)]
 
             var_descs = [(block.create_var(
-                name="_".join([param_name, str(i)]),
-                shape=each.shape,
-                dtype=each.dtype), each) for each in var]
+                name=name, shape=each.shape, dtype=each.dtype), each)
+                         for name, each in var]
 
             yield param_name, var_descs
 
@@ -401,7 +400,10 @@ class OpTest(unittest.TestCase):
         }
 
         block.append_op(
-            type=self.op_type, inputs=inputs, outputs=outputs, attrs=self.attrs)
+            type=self.op_type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=getattr(self, 'attrs', {}))
 
         mean_inputs = OpTest._merge_list((outputs[oname]
                                           for oname in output_names))
@@ -410,17 +412,8 @@ class OpTest(unittest.TestCase):
         block.append_op(
             inputs={"X": mean_inputs}, outputs={"Out": loss}, type='mean')
 
-        param_list = [
-            pvar.name
-            for pvar in OpTest._merge_list((inputs[iname]
-                                            for iname in input_to_check))
-        ]
-
         param_grad_list = append_backward_ops(
-            loss=loss,
-            parameter_list=param_list,
-            no_grad_set=set(
-                OpTest._merge_list((inputs[iname] for iname in no_grad_set))))
+            loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)
 
         feed_dict = {
             item[0].name: OpTest._numpy_to_lod_tensor(item[1], place)
@@ -430,9 +423,4 @@ class OpTest(unittest.TestCase):
         fetch_list = [g for p, g in param_grad_list]
         executor = Executor(place)
         result = executor.run(prog, feed_dict, fetch_list)
-        ret = collections.defaultdict(list)
-        for pg, np_val in zip(param_grad_list, map(np.array, result)):
-            p, g = pg
-            ret[p.name.split('_')[0]].append(np_val)
-
-        return OpTest._merge_list((ret[iname] for iname in input_to_check))
+        return map(np.array, result)
