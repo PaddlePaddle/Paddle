@@ -107,6 +107,25 @@ void testMatrixGetSum(int height, int width) {
   EXPECT_LE(fabs(cpuSum - gpuSum), err);
 }
 
+void testMatrixGetSquareSum(int height, int width) {
+  MatrixPtr cpuInput = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr gpuInput = std::make_shared<GpuMatrix>(height, width);
+  cpuInput->randomizeUniform();
+  gpuInput->copyFrom(*cpuInput);
+
+#ifndef PADDLE_TYPE_DOUBLE
+  int x = log10(height * width);
+  real err = 1e-6 * pow(10, x);
+#else
+  real err = 1e-8;
+#endif
+
+  real cpuSum = cpuInput->getSquareSum();
+  real gpuSum = gpuInput->getSquareSum();
+
+  EXPECT_LE(fabs(cpuSum - gpuSum), err);
+}
+
 void testMatrixGetMinMax(int height, int width) {
   MatrixPtr cpuInput = std::make_shared<CpuMatrix>(height, width);
   MatrixPtr gpuInput = std::make_shared<GpuMatrix>(height, width);
@@ -234,6 +253,7 @@ TEST(Matrix, unary) {
       testMatrixDeepSwap(height, width);
       testMatrixZeroAtOffset(height, width);
       testMatrixGetSum(height, width);
+      testMatrixGetSquareSum(height, width);
       testMatrixTranspose(height, width);
       testMatrixRotate(height, width);
     }

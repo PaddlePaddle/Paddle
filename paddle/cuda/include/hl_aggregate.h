@@ -103,4 +103,14 @@ extern void hl_vector_sum(real *A_d, real *C_h, int dimM);
  */
 extern void hl_vector_abs_sum(real *A_d, real *C_h, int dimM);
 
+/**
+ * @brief   C_h = sum(A_d[i]**2).
+ *
+ * @param[in]   A_d     input(m).
+ * @param[out]  C_h     output(host memory).
+ * @param[in]   dimM    size of vector.
+ *
+ */
+extern void hl_vector_square_sum(real *A_d, real *C_h, int dimM);
+
 #endif /* HL_AGGREGATE_H_ */

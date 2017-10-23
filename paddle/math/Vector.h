@@ -212,6 +212,7 @@ public:
   virtual T getAbsSum() = 0;
 
   virtual T getSum() = 0;
+  virtual T getSquareSum() = 0;
   virtual T getMax() = 0;
   virtual T getAbsMax() = 0;
   virtual T getMin() = 0;
@@ -316,6 +317,7 @@ public:
   virtual T* getPoint(const uint64_t beginPos);
 
   virtual T getAbsSum();
+  virtual T getSquareSum();
   virtual T getSum();
   virtual T getMax();
   virtual T getAbsMax();
@@ -385,6 +387,7 @@ public:
   }
 
   virtual T getAbsSum();
+  virtual T getSquareSum();
   virtual T getSum();
   virtual T getMax();
   virtual T getAbsMax();

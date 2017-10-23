@@ -275,6 +275,13 @@ real GpuMatrix::getSum() {
   return sum;
 }
 
+real GpuMatrix::getSquareSum() {
+  CHECK(isContiguous());
+  real sum = 0.0f;
+  hl_vector_square_sum(data_, &sum, height_ * width_);
+  return sum;
+}
+
 real GpuMatrix::getMin() {
   CHECK(isContiguous());
   auto vec = GpuVector(height_ * width_, data_);
@@ -1844,6 +1851,17 @@ real CpuMatrix::getSum() {
   for (size_t i = 0; i < height_; ++i) {
     for (size_t j = 0; j < width_; ++j) {
       sum += data_[i * width_ + j];
+    }
+  }
+  return sum;
+}
+
+real CpuMatrix::getSquareSum() {
+  CHECK(isContiguous());
+  double sum = 0;
+  for (size_t i = 0; i < height_; ++i) {
+    for (size_t j = 0; j < width_; ++j) {
+      sum += data_[i * width_ + j] * data_[i * width_ + j];
     }
   }
   return sum;

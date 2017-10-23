@@ -303,11 +303,9 @@ void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
   adamaxApply(value, grad, mom, u, beta1_, beta2_, step_, learningRate);
 }
 
-void OptimizerWithGradientClipping::updateWithL2Norm(
-    const VectorPtr vecs[],
-    const ParameterConfig& config,
-    double l2_norm,
-    size_t sparseId) const {
+void OptimizerWithGradientClipping::update(const VectorPtr vecs[],
+                                           const ParameterConfig& config,
+                                           size_t sparseId) const {
   real globalThreshold = optConfig_.gradient_clipping_threshold();
   real localThreshold = config.gradient_clipping_threshold();
   // Use local gradient clipping threshold if it's enabled,
@@ -321,24 +319,26 @@ void OptimizerWithGradientClipping::updateWithL2Norm(
       if (FLAGS_log_clipping) {
         real avgAbsGrad = vecs[PARAMETER_GRADIENT]->getAbsSum() /
                           vecs[PARAMETER_GRADIENT]->getSize();
-        LOG(INFO) << "parameter=" << config.name() << " need clipped by value, "
-                  << field << " threshold=" << threshold
-                  << ", max grad=" << maxAbsGrad << ", avg grad=" << avgAbsGrad;
+        LOG(INFO) << "param(@Grad)=" << config.name()
+                  << " needs to be clipped by value, " << field
+                  << " threshold=" << threshold << ", max grad=" << maxAbsGrad
+                  << ", avg grad=" << avgAbsGrad;
       }
       vecs[PARAMETER_GRADIENT]->clip(-threshold, threshold);
     }
   } else if (FLAGS_gradient_clipping_method == "norm" ||
              FLAGS_gradient_clipping_method == "global_norm") {
-    if (l2_norm > threshold) {
+    if (gradL2Norm_ > threshold) {
       if (FLAGS_log_clipping) {
         std::string norm_field =
             (FLAGS_gradient_clipping_method == "norm") ? "local" : "global";
-        LOG(INFO) << "parameter=" << config.name() << " need clipped by "
+        LOG(INFO) << "param(@Grad)=" << config.name()
+                  << " needs to be clipped by "
                   << FLAGS_gradient_clipping_method << ", " << field
                   << " threshold=" << threshold << ", " << norm_field
-                  << " l2_norm=" << l2_norm;
+                  << " l2_norm=" << gradL2Norm_;
       }
-      vecs[PARAMETER_GRADIENT]->clip_by_norm(threshold, l2_norm);
+      vecs[PARAMETER_GRADIENT]->clip_by_norm(threshold, gradL2Norm_);
     }
   } else {
     LOG(FATAL) << "Unsupported gradient_clipping_method: "

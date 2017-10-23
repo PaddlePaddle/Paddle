@@ -136,6 +136,12 @@ int GpuVectorT<int>::getSum() {
 }
 
 template <>
+int GpuVectorT<int>::getSquareSum() {
+  LOG(FATAL) << "Not implemented";
+  return 0;
+}
+
+template <>
 real GpuVectorT<real>::getAbsSum() {
   real* A = this->getData();
   real sum = 0;
@@ -148,6 +154,14 @@ real GpuVectorT<real>::getSum() {
   real* A = this->getData();
   real sum = 0;
   hl_vector_sum(A, &sum, this->getSize());
+  return sum;
+}
+
+template <>
+real GpuVectorT<real>::getSquareSum() {
+  real* A = this->getData();
+  real sum = 0;
+  hl_vector_square_sum(A, &sum, this->getSize());
   return sum;
 }
 
@@ -507,6 +521,28 @@ real CpuVectorT<real>::getSum() {
   double sum = 0;
   for (size_t i = 0; i < size; i++) {
     sum += A[i];
+  }
+  return sum;
+}
+
+template <class T>
+T CpuVectorT<T>::getSquareSum() {
+  const T* A = this->getData();
+  size_t size = this->getSize();
+  T sum = 0;
+  for (size_t i = 0; i < size; i++) {
+    sum += A[i] * A[i];
+  }
+  return sum;
+}
+
+template <>
+real CpuVectorT<real>::getSquareSum() {
+  const real* A = this->getData();
+  size_t size = this->getSize();
+  double sum = 0;
+  for (size_t i = 0; i < size; i++) {
+    sum += A[i] * A[i];
   }
   return sum;
 }

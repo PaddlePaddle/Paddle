@@ -331,6 +331,11 @@ public:
     return 0;
   }
 
+  virtual real getSquareSum() {
+    LOG(FATAL) << "Not implemented";
+    return 0;
+  }
+
   virtual void accumulateColSum(Matrix& src) {
     LOG(FATAL) << "Not implemented";
   }
@@ -1264,6 +1269,7 @@ public:
   virtual real* getRowBuf(size_t row) { return getRow(row); }
 
   real getSum();
+  real getSquareSum();
   void accumulateColSum(Matrix& src);
   real getAbsSum();
 
@@ -1660,6 +1666,7 @@ public:
 
   real getElement(size_t x, size_t y) const;
   real getSum();
+  real getSquareSum();
   void accumulateColSum(Matrix& src);
   real getAbsSum();
 

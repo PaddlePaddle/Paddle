@@ -31,6 +31,8 @@ inline void hl_matrix_column_min(real *A_d, real *C_d, int dimM, int dimN) {}
 
 inline void hl_vector_sum(real *A_d, real *C_h, int dimM) {}
 
+inline void hl_vector_square_sum(real *A_d, real *C_h, int dimM) {}
+
 inline void hl_vector_abs_sum(real *A_d, real *C_h, int dimM) {}
 
 #endif  // HL_AGGREGATE_STUB_H_

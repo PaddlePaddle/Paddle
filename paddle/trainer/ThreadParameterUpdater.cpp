@@ -82,16 +82,10 @@ bool SgdThreadUpdater::finishPass() {
   return true;
 }
 
-double SgdThreadUpdater::getParameterGradSquaredL2Norm(Parameter* para) {
+double SgdThreadUpdater::getGradSquaredL2Norm(Parameter* para) {
   SetDevice setDevice(para->getDeviceId());
   auto* vecs = para->getBufs();
-  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
-  MatrixPtr grad2;
-  Matrix::resizeOrCreate(
-      grad2, vecs[PARAMETER_GRADIENT]->getSize(), 1, false, grad.useGpu());
-  grad2->copyFrom(grad.data_, vecs[PARAMETER_GRADIENT]->getSize());
-  grad2->square2();
-  return grad2->getSum();
+  return vecs[PARAMETER_GRADIENT]->getSquareSum();
 }
 
 void SgdThreadUpdater::updateImpl(Parameter* para) {
@@ -100,14 +94,15 @@ void SgdThreadUpdater::updateImpl(Parameter* para) {
   ParameterOptimizer* optimizer = optimizers_[para->getID()].get();
 
   if (FLAGS_gradient_clipping_method == "norm") {
-    double local_norm = std::sqrt(getParameterGradSquaredL2Norm(para));
-    optimizer->updateWithL2Norm(para->getBufs(), para->getConfig(), local_norm);
+    real local_norm = std::sqrt(getGradSquaredL2Norm(para));
+    optimizer->setGradL2Norm(local_norm);
   } else if (FLAGS_gradient_clipping_method == "global_norm") {
-    optimizer->updateWithL2Norm(
-        para->getBufs(), para->getConfig(), parametersGradGlobalL2Norm_);
+    real global_norm = std::sqrt(gradsGlobalSquaredL2Norm_);
+    optimizer->setGradL2Norm(global_norm);
   } else {
-    optimizer->update(para->getBufs(), para->getConfig());
+    optimizer->setGradL2Norm(0.0);
   }
+  optimizer->update(para->getBufs(), para->getConfig());
 
   if (auto callback = optimizer->needSpecialTraversal(para->getConfig())) {
     callback(para->getBufs(), para->getConfig(), -1LU);

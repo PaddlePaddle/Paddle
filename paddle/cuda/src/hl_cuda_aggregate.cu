@@ -291,3 +291,59 @@ void hl_vector_abs_sum(real *A_d, real *C_h, int dimM) {
   CHECK_EQ(cudaSuccess, err) << "CUDA error: "
                              << hl_get_device_error_string((size_t)err);
 }
+
+template <int blockSize>
+__global__ void KeVectorSquareSum(real *E, real *Sum, int dimM) {
+  __shared__ double sum_s[blockSize];
+  int tid = threadIdx.x;
+  int index = blockIdx.y * blockDim.x + threadIdx.x;
+
+  sum_s[tid] = 0.0f;
+  while (index < dimM) {
+    sum_s[tid] += E[index] * E[index];
+    index += blockDim.x * gridDim.y;
+  }
+  __syncthreads();
+
+  for (int stride = blockSize / 2; stride > 0; stride = stride / 2) {
+    if (tid < stride) {
+      sum_s[tid] += sum_s[tid + stride];
+    }
+    __syncthreads();
+  }
+  __syncthreads();
+
+  if (tid == 0) {
+    Sum[blockIdx.y] = sum_s[0];
+  }
+}
+
+void hl_vector_square_sum(real *A_d, real *C_h, int dimM) {
+  CHECK_NOTNULL(A_d);
+  CHECK_NOTNULL(C_h);
+
+  int blockSize = 128;
+  int gridSize = 128;
+  int blocksX = 1;
+  int blocksY = gridSize;
+  dim3 threads(blockSize, 1);
+  dim3 grid(blocksX, blocksY);
+
+  struct _hl_event_st hl_event_st = {.cu_event = t_resource.event};
+  hl_event_t hl_event = &hl_event_st;
+  while (!hl_cuda_event_is_ready(hl_event)) {
+  }
+
+  KeVectorSquareSum<128><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      A_d, t_resource.gpu_mem, dimM);
+  KeVectorSum<128><<<1, threads, 0, STREAM_DEFAULT>>>(
+      t_resource.gpu_mem, t_resource.cpu_mem, 128);
+
+  hl_memcpy_async(C_h, t_resource.cpu_mem, sizeof(real), HPPL_STREAM_DEFAULT);
+  hl_stream_record_event(HPPL_STREAM_DEFAULT, hl_event);
+
+  hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+  cudaError_t err = (cudaError_t)hl_get_device_last_error();
+  CHECK_EQ(cudaSuccess, err) << "CUDA error: "
+                             << hl_get_device_error_string((size_t)err);
+}

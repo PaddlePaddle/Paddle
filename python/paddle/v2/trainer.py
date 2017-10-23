@@ -2,7 +2,6 @@
 Module Trainer
 """
 import collections
-import numpy as np
 from topology import Topology
 from . import event as v2_event
 from . import optimizer as v2_optimizer
@@ -176,9 +175,9 @@ class SGD(object):
                     for each_param in self.__gradient_machine__ \
                                           .getNonStaticParameters():
                         l2_norm2 += self.__parameter_updater__ \
-                                    .getParameterGradSquaredL2Norm(each_param)
+                                    .getGradSquaredL2Norm(each_param)
                     self.__parameter_updater__ \
-                        .setParametersGradGlobalL2Norm(np.sqrt(l2_norm2))
+                        .setGradsGlobalSquaredL2Norm(l2_norm2)
 
                 for each_param in self.__gradient_machine__ \
                                       .getNonStaticParameters():

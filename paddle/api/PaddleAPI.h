@@ -889,13 +889,13 @@ public:
    * @brief get the gradient's squared l2 norm of a parameter
    * @param param
    */
-  double getParameterGradSquaredL2Norm(Parameter* param);
+  double getGradSquaredL2Norm(Parameter* param);
 
   /**
    * @brief set the global l2 norm of all parameters' gradient
    * @param global_norm
    */
-  void setParametersGradGlobalL2Norm(double global_norm);
+  void setGradsGlobalSquaredL2Norm(double global_norm);
 
   /**
    * @brief only get required sparse rows by default.

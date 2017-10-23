@@ -41,6 +41,7 @@ public:
         optConfig_(optConfig),
         parameterTypes_{PARAMETER_VALUE, PARAMETER_GRADIENT},
         learningRate_(optConfig.learning_rate()),
+        gradL2Norm_(0.0),
         learningRateScheduler_(LearningRateScheduler::create(optConfig)),
         pass_(0),
         firstTime_(true) {}
@@ -114,17 +115,6 @@ public:
   virtual void update(const VectorPtr vecs[],
                       const ParameterConfig& config,
                       size_t sparseId = -1LU) const = 0;
-  /**
-   * called when gradient's clipping method is 'norm' or 'global_norm'.
-   * This virtual function will be reimplemented in class
-   * OptimizerWithGradientClipping.
-   */
-  virtual void updateWithL2Norm(const VectorPtr vecs[],
-                                const ParameterConfig& config,
-                                double l2_norm,
-                                size_t sparseId = -1LU) const {
-    update(vecs, config, sparseId);
-  }
 
   /**
    * following hooks catch up with current time for sparse update,
@@ -183,6 +173,8 @@ public:
 
   virtual void setNoDecay() { applyDecay_ = false; }
 
+  virtual void setGradL2Norm(real l2_norm) { gradL2Norm_ = l2_norm; }
+
   static ParameterOptimizer* create(const OptimizationConfig& optConfig,
                                     bool inPserver = false);
 
@@ -213,6 +205,12 @@ protected:
    * so, if lr change in StartBatch, please assign to learningRate_
    */
   real learningRate_;
+
+  /**
+   * the l2 norm of parameter's gradient, local or global. set by the
+   * ParameterUpdater.
+  */
+  real gradL2Norm_;
 
   std::unique_ptr<LearningRateScheduler> learningRateScheduler_;
   int64_t pass_;  // current training pass (starting from 0)
