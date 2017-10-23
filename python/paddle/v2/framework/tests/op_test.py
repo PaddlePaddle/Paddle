@@ -207,7 +207,6 @@ def append_input_output(block, op_proto, np_list, is_input):
 
     def create_var(block, name, np_list, var_proto):
         if name not in np_list:
-            pdb.set_trace()
             assert var_proto.intermediate, "{} not found".format(name)
             shape = None
             lod_level = None
@@ -318,7 +317,7 @@ class OpTest(unittest.TestCase):
                     if var.name == target_name
                 ]
                 self.assertTrue(
-                    len(found) == 1, "Duplicated var, found {} {}".format(
+                    len(found) == 1, "Found {} {}".format(
                         len(found), target_name))
                 return found[0]
 
