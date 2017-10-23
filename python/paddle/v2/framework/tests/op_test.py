@@ -3,13 +3,11 @@ import numpy as np
 import random
 import itertools
 import paddle.v2.framework.core as core
+import collections
+from paddle.v2.framework.backward import append_backward_ops
 from paddle.v2.framework.op import Operator
 from paddle.v2.framework.executor import Executor
 from paddle.v2.framework.framework import Program, OpProtoHolder
-
-
-def grad_var_name(var_name):
-    return var_name + "@GRAD"
 
 
 def create_op(scope, op_type, inputs, outputs, attrs):
@@ -70,30 +68,6 @@ def set_input(scope, op, inputs, place):
                 __set_input__(in_name, inputs[in_name])
 
 
-def set_output_grad(scope, op, outputs, place):
-    def __set_tensor__(name):
-        out_tensor = scope.find_var(name).get_tensor()
-        grad_tensor = scope.var(grad_var_name(name)).get_tensor()
-        out_dtype = out_tensor.dtype()
-        if out_dtype == core.DataType.FP64:
-            data = np.ones(out_tensor.shape(), dtype=np.float64)
-        elif out_dtype == core.DataType.FP32:
-            data = np.ones(out_tensor.shape(), dtype=np.float32)
-        else:
-            raise ValueError("Not supported data type " + str(out_dtype))
-
-        grad_tensor.set(data, place)
-
-    for out_name, out_dup in Operator.get_op_outputs(op.type()):
-        if out_name in outputs:
-            if out_dup:
-                sub_out = outputs[out_name]
-                for sub_out_name, _ in sub_out:
-                    __set_tensor__(sub_out_name)
-            else:
-                __set_tensor__(out_name)
-
-
 def get_numeric_gradient(scope,
                          op,
                          inputs,
@@ -103,19 +77,18 @@ def get_numeric_gradient(scope,
                          in_place=False):
     set_input(scope, op, inputs, core.CPUPlace())
 
-    tensor_to_check = scope.find_var(input_to_check).get_tensor()
-
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
     ctx = core.DeviceContext.create(core.CPUPlace())
 
     def get_output():
-        sum = 0.0
+        sum = []
         for output_name in output_names:
             op.run(scope, ctx)
-            sum += np.array(scope.find_var(output_name).get_tensor()).sum()
-        return sum
+            sum.append(
+                np.array(scope.find_var(output_name).get_tensor()).mean())
+        return np.array(sum).mean()
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
@@ -166,44 +139,6 @@ def get_numeric_gradient(scope,
         gradient_flat[i] = (y_pos - y_neg) / delta / 2
 
     return gradient_flat.reshape(tensor_to_check.get_dims())
-
-
-def get_backward_op(scope, op, no_grad_set):
-    backward_op = core.Operator.backward(op, no_grad_set)
-    for input in backward_op.input_vars():
-        var = scope.var(input)
-        var.get_tensor()
-    for output in backward_op.output_vars():
-        var = scope.var(output)
-        var.get_tensor()
-    return backward_op
-
-
-def get_gradient(scope,
-                 op,
-                 inputs,
-                 outputs,
-                 grad_names,
-                 place,
-                 no_grad_set=None):
-    ctx = core.DeviceContext.create(place)
-
-    set_input(scope, op, inputs, place)
-
-    op.run(scope, ctx)
-
-    if no_grad_set is None:
-        no_grad_set = set()
-
-    backward_op = get_backward_op(scope, op, no_grad_set)
-    set_output_grad(scope, op, outputs, place)
-
-    backward_op.run(scope, ctx)
-
-    return [
-        np.array(scope.find_var(grad_name).get_tensor())
-        for grad_name in grad_names
-    ]
 
 
 def append_input_output(block, op_proto, np_list, is_input):
@@ -386,6 +321,7 @@ class OpTest(unittest.TestCase):
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
         self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
                             op_attrs)
+
         if no_grad_set is None:
             no_grad_set = set()
 
@@ -401,67 +337,102 @@ class OpTest(unittest.TestCase):
                 output_names,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
-        grad_names = [
-            grad_var_name(input_to_check) for input_to_check in inputs_to_check
-        ]
-
         cpu_place = core.CPUPlace()
-        self._get_gradient(grad_names, cpu_place, output_names, no_grad_set)
+        cpu_analytic_grads = self._get_gradient(inputs_to_check, cpu_place,
+                                                output_names, no_grad_set)
 
-        # self.__assert_is_close(numeric_grads, cpu_analytic_grads, grad_names,
-        #                        max_relative_error,
-        #                        "Gradient Check On %s" % str(cpu_place))
+        self.__assert_is_close(numeric_grads, cpu_analytic_grads,
+                               input_to_check, max_relative_error,
+                               "Gradient Check On %s" % str(cpu_place))
 
         if core.is_compile_gpu() and self.op.support_gpu():
             gpu_place = core.GPUPlace(0)
-            gpu_analytic_grads = get_gradient(self.scope, self.op, self.inputs,
-                                              self.outputs, grad_names,
-                                              gpu_place, no_grad_set)
+            gpu_analytic_grads = self._get_gradient(inputs_to_check, gpu_place,
+                                                    output_names, no_grad_set)
 
             self.__assert_is_close(numeric_grads, gpu_analytic_grads,
-                                   grad_names, max_relative_error,
+                                   input_to_check, max_relative_error,
                                    "Gradient Check On %s" % str(gpu_place))
-
-            for c_grad, g_grad, name in itertools.izip(
-                    cpu_analytic_grads, gpu_analytic_grads, grad_names):
-                self.assertTrue(
-                    np.allclose(
-                        c_grad, g_grad, atol=1e-4),
-                    "output name: " + name + " has diff")
 
     @staticmethod
     def _create_var_descs_(block, var_dict):
-        for param_name in var_dict:
+        for i, param_name in enumerate(var_dict):
             var = var_dict[param_name]
             if not isinstance(var, list) and not isinstance(var, tuple):
                 var = [var]
 
-            var_descs = [
-                block.create_var(
-                    shape=each.shape, dtype=each.dtype) for each in var
-            ]
+            var_descs = [(block.create_var(
+                name="_".join([param_name, str(i)]),
+                shape=each.shape,
+                dtype=each.dtype), each) for each in var]
 
             yield param_name, var_descs
 
-    def _get_gradient(self, fetch_list, place, output_names, no_grad_set):
+    @staticmethod
+    def _merge_list(iterable):
+        return reduce(lambda a, b: list(a) + list(b), iterable, [])
+
+    @staticmethod
+    def _numpy_to_lod_tensor(np_value, place):
+        tensor = core.LoDTensor()
+        tensor.set(np_value, place)
+        return tensor
+
+    def _get_gradient(self, input_to_check, place, output_names, no_grad_set):
         prog = Program()
         block = prog.global_block()
-        inputs = {
+        inputs_with_np = {
             key: value
             for (key, value) in OpTest._create_var_descs_(
                 block, getattr(self, 'inputs', {}))
         }
-        outputs = {
+        outputs_with_np = {
             key: val
             for (key, val) in OpTest._create_var_descs_(
                 block, getattr(self, 'outputs', {}))
         }
+        inputs = {
+            k: [item[0] for item in inputs_with_np[k]]
+            for k in inputs_with_np
+        }
+        outputs = {
+            k: [item[0] for item in outputs_with_np[k]]
+            for k in outputs_with_np
+        }
+
         block.append_op(
             type=self.op_type, inputs=inputs, outputs=outputs, attrs=self.attrs)
 
-        mean_inputs = reduce(lambda a, b: list(a) + list(b),
-                             (outputs[oname] for oname in output_names), [])
+        mean_inputs = OpTest._merge_list((outputs[oname]
+                                          for oname in output_names))
         loss = block.create_var(dtype=mean_inputs[0].data_type, shape=[1])
 
         block.append_op(
             inputs={"X": mean_inputs}, outputs={"Out": loss}, type='mean')
+
+        param_list = [
+            pvar.name
+            for pvar in OpTest._merge_list((inputs[iname]
+                                            for iname in input_to_check))
+        ]
+
+        param_grad_list = append_backward_ops(
+            loss=loss,
+            parameter_list=param_list,
+            no_grad_set=set(
+                OpTest._merge_list((inputs[iname] for iname in no_grad_set))))
+
+        feed_dict = {
+            item[0].name: OpTest._numpy_to_lod_tensor(item[1], place)
+            for p_name in inputs_with_np for item in inputs_with_np[p_name]
+        }
+
+        fetch_list = [g for p, g in param_grad_list]
+        executor = Executor(place)
+        result = executor.run(prog, feed_dict, fetch_list)
+        ret = collections.defaultdict(list)
+        for pg, np_val in zip(param_grad_list, map(np.array, result)):
+            p, g = pg
+            ret[p.name.split('_')[0]].append(np_val)
+
+        return OpTest._merge_list((ret[iname] for iname in input_to_check))
