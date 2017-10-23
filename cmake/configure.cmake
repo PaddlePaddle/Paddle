@@ -62,29 +62,17 @@ else()
     FIND_PACKAGE(CUDA REQUIRED)
 
     if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
-        message(FATAL_ERROR "Paddle need CUDA >= 7.0 to compile")
+        message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
     if(NOT CUDNN_FOUND)
-        message(FATAL_ERROR "Paddle need cudnn to compile")
+        message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
     if (NOT NCCL_INCLUDE_DIR)
-        if (APPLE)
-            message(FATAL_ERROR "Paddle need nccl header to compile GPU version. "
-                    "If you do not need MultiGPU support on macos, "
-                    "you can just grab the nccl.h to search path, "
-                    "and enable dso support."
-                    "Even though there is no offical MacOS version of nccl, "
-                    "you can still compile nccl for MacOS by "
-                    "https://github.com/NVIDIA/nccl/pull/62")
-        else()
-            message(FATAL_ERROR "Paddle need nccl header to compile")
-        endif()
+        message(FATAL_ERROR "Paddle needs nccl header to compile")
     endif()
-    if (NOT WITH_DSO)
-      if (NOT NCCL_LIBRARY)
-        message(FATAL_ERROR "Paddle need nccl libraries when WITH_DSO=OFF")
-      endif()
+    if (NOT WITH_DSO AND NOT NCCL_LIBRARY)
+        message(FATAL_ERROR "Paddle needs nccl libraries when WITH_DSO=OFF")
     endif()
 
 
