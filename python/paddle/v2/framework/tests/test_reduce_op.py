@@ -89,7 +89,7 @@ class TestNorm(OpTest):
     def setUp(self):
         # use x away from 0 to avoid errors of numerical gradient when gradient near 0
         x = np.random.random((5, 6, 10)).astype("float32") + 0.2
-        p = 2
+        p = 2.0
         dim = 1
         keep_dim = False
         abs_out = np.absolute(x)
