@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
 using framework::Tensor;
 
 template <typename T>
