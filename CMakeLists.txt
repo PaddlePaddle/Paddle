@@ -127,6 +127,7 @@ include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)    # download pybind11
+include(external/nccl)      # download nccl1 
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
