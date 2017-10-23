@@ -21,25 +21,19 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.InputVar("X"),
-        "Input(X) of SquaredL2DistanceOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.InputVar("Y"),
-        "Input(Y) of SquaredL2DistanceOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("sub_result"),
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
+                   "Input(Y) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("sub_result"),
         "Output(sub_result) of SquaredL2DistanceOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("Out"),
-        "Output(Out) of SquaredL2DistanceOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of SquaredL2DistanceOp should not be null.");
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto x_dims = x->dims();
-    auto* y = ctx.Input<Tensor>("Y");
-    auto y_dims = y->dims();
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(framework::arity(x_dims), framework::arity(y_dims),
                       "Tensor rank of both SquaredL2DistanceOp's "
@@ -47,17 +41,16 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
     int rank = framework::arity(x_dims);
     PADDLE_ENFORCE_GE(rank, 2, "Tensor rank should be at least equal to 2.");
-    PADDLE_ENFORCE_EQ(x->numel() / x_dims[0], y->numel() / y_dims[0],
+    PADDLE_ENFORCE_EQ(product(x_dims) / x_dims[0], product(y_dims) / y_dims[0],
                       "Product of dimensions expcet the first dimension of "
                       "input and target must be equal.");
     PADDLE_ENFORCE(y_dims[0] == 1 || y_dims[0] == x_dims[0],
                    "First dimension of target must be equal to input "
                    "or to 1.");
 
-    ctx.Output<framework::Tensor>("sub_result")
-        ->Resize({x_dims[0], x->numel() / x_dims[0]});
-    ctx.Output<framework::Tensor>("Out")->Resize({x_dims[0], 1});
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
+    ctx->SetOutputDim("Out", {x_dims[0], 1});
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -91,23 +84,22 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Gradient of Out should not be null");
-    auto out_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto y_dims = ctx.Input<Tensor>("Y")->dims();
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Gradient of Out should not be null");
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
                       "First dimension of output gradient and "
                       "input value must be equal.");
     PADDLE_ENFORCE_EQ(out_dims[1], 1,
                       "Second dimension of output gradient "
                       "must be 1.");
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* y_grad = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
-    if (x_grad) x_grad->Resize(x_dims);
-    if (y_grad) y_grad->Resize(y_dims);
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput(x_grad_name)) ctx->SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(y_grad_name)) ctx->SetOutputDim(y_grad_name, y_dims);
   }
 };
 

@@ -18,28 +18,31 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename Place, typename T>
-class MultiplexGPUKernel : public framework::OpKernel {
+class MultiplexGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
-
+    auto ins = ctx.MultiInput<Tensor>("X");
+    auto* ids = ctx.Input<Tensor>("Ids");
+    auto* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto rows = ins[1]->dims()[0];
-    auto cols = ins[1]->dims()[1];
+    auto rows = ins[0]->dims()[0];
+    auto cols = ins[0]->numel() / rows;
     // copy index to cpu
-    framework::Tensor index_t_cpu;
-    index_t_cpu.CopyFrom<T>(*(ins[0]), platform::CPUPlace());
-    auto* index = index_t_cpu.data<T>();
+    Tensor index_t_cpu;
+    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
+    auto* index = index_t_cpu.data<int32_t>();
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                       ctx.device_context())
                       .stream();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      int k = (int)index[i] + 1;
-      PADDLE_ENFORCE_LT(k, ins.size(),
+      int32_t k = index[i];
+      PADDLE_ENFORCE_GE(k, 0, "index must be nonnegative.");
+      PADDLE_ENFORCE_LT((size_t)k, ins.size(),
                         "index exceeds the number of candidate tensors.");
       memory::Copy(place, out->data<T>() + i * cols, place,
                    ins[k]->data<T>() + i * cols, cols * sizeof(T), stream);
@@ -48,14 +51,14 @@ class MultiplexGPUKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MultiplexGradGPUKernel : public framework::OpKernel {
+class MultiplexGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto d_ins =
-        ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
-    for (size_t i = 1; i < d_ins.size(); i++) {
+    auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<Tensor>("X");
+    auto* ids = ctx.Input<Tensor>("Ids");
+    auto d_ins = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+    for (size_t i = 0; i < d_ins.size(); i++) {
       if (d_ins[i]) {
         d_ins[i]->mutable_data<T>(ctx.GetPlace());
         auto t = framework::EigenVector<T>::Flatten(*d_ins[i]);
@@ -63,19 +66,19 @@ class MultiplexGradGPUKernel : public framework::OpKernel {
       }
     }
 
-    auto rows = ins[1]->dims()[0];
-    auto cols = ins[1]->dims()[1];
+    auto rows = ins[0]->dims()[0];
+    auto cols = ins[0]->numel() / rows;
     // copy index to cpu
-    framework::Tensor index_t_cpu;
-    index_t_cpu.CopyFrom<T>(*(ins[0]), platform::CPUPlace());
-    auto* index = index_t_cpu.data<T>();
+    Tensor index_t_cpu;
+    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
+    auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                       ctx.device_context())
                       .stream();
     Place place = boost::get<Place>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      int k = (int)index[i] + 1;
+      size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {
         memory::Copy(place, d_ins[k]->data<T>() + i * cols, place,
                      d_out->data<T>() + i * cols, cols * sizeof(T), stream);

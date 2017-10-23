@@ -31,7 +31,7 @@ using Scope = framework::Scope;
  * boot memories in father scope. Other attributes are copied from Op's proto
  * attributes.
  */
-struct MemoryAttr {
+struct StateAttr {
   // name of current state variable
   std::string var;
   // name of previous step's state variable
@@ -46,7 +46,7 @@ struct Argument {
   std::string step_scopes;
   std::vector<std::string> inlinks;
   std::vector<std::string> outlinks;
-  std::vector<rnn::MemoryAttr> memories;
+  std::vector<rnn::StateAttr> states;
 };
 
 struct ArgumentName {
@@ -54,9 +54,9 @@ struct ArgumentName {
   std::string step_scopes;
   std::string inlinks;
   std::string outlinks;
-  std::string memories;       // the memory name
-  std::string pre_memories;   // the previous memory name
-  std::string boot_memories;  // the boot memory name
+  std::string states;          // the memory name
+  std::string ex_states;       // the previous memory name
+  std::string initial_states;  // the boot memory name
 };
 
 /**
@@ -64,18 +64,18 @@ struct ArgumentName {
  */
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& inlinks,
-                   const size_t seq_len, bool infer_shape_mode);
+                   const size_t seq_len);
 
 /**
  * Process outputs of step nets and merge to variables.
  */
 void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<std::string>& outlinks,
-                   const size_t seq_len, bool infer_shape_mode);
+                   const size_t seq_len, const platform::DeviceContext& ctx);
 
 void LinkMemories(const std::vector<Scope*>& step_scopes,
-                  const std::vector<MemoryAttr>& memories, const size_t step_id,
-                  const int offset, bool infer_shape_mode);
+                  const std::vector<StateAttr>& memories, const size_t step_id,
+                  const int offset);
 
 void InitArgument(const ArgumentName& name, Argument* arg,
                   const framework::OperatorBase& op, bool is_grad = false);

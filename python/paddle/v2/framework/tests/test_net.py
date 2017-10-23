@@ -15,7 +15,7 @@ def fc(X, W, Y):
 class TestNet(unittest.TestCase):
     def test_net_all(self):
         net = core.Net.create()
-        op1 = Operator("add", X="X", Y="Y", Out="Out")
+        op1 = Operator("sum", X=["X", "Y"], Out="Out")
         net.append_op(op1)
 
         net2 = core.Net.create()
@@ -26,7 +26,7 @@ class TestNet(unittest.TestCase):
 
         expected = '''
 Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}.
-    Op(add), inputs:{X[X], Y[Y]}, outputs:{Out[Out]}.
+    Op(sum), inputs:{X[X, Y]}, outputs:{Out[Out]}.
     Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
         Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
             Op(mul), inputs:{X[X], Y[W]}, outputs:{Out[pre_activation]}.
