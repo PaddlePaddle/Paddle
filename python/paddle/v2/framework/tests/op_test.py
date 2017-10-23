@@ -201,6 +201,49 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
     return out
 
 
+def append_input_output(block, op_proto, np_list, is_input):
+    '''Insert VarDesc and generate Python variable instance'''
+    proto_list = op_proto.inputs if is_input else op_proto.outputs
+
+    def create_var(block, name, np_list, var_proto):
+        if name not in np_list:
+            pdb.set_trace()
+            assert var_proto.intermediate, "{} not found".format(name)
+            shape = None
+            lod_level = None
+        else:
+            np_value = np_list[name]
+            if isinstance(np_value, tuple):
+                shape = list(np_value[0].shape)
+                lod_level = len(np_value[1])
+            else:
+                shape = list(np_value.shape)
+                lod_level = 0
+        return block.create_var(
+            dtype="float32", shape=shape, lod_level=lod_level, name=name)
+
+    var_dict = {}
+    for var_proto in proto_list:
+        var_name = str(var_proto.name)
+        if is_input:
+            if (var_name not in np_list) and var_proto.dispensable:
+                continue
+            assert (var_name in np_list) or (var_proto.dispensable), \
+                            "Missing {} as input".format(var_name)
+        if var_proto.duplicable:
+            assert isinstance(np_list[var_name], list), \
+                "Duplicable {} should be set as list".format(var_name)
+            var_list = []
+            for (name, np_value) in np_list[var_name]:
+                var_list.append(
+                    create_var(block, name, {name: np_value}, var_proto))
+            var_dict[var_name] = var_list
+        else:
+            var_dict[var_name] = create_var(block, var_name, np_list, var_proto)
+
+    return var_dict
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -216,62 +259,6 @@ class OpTest(unittest.TestCase):
         '''Restore random seeds'''
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
-
-    def generate_vars(self, block, op_proto, is_input):
-        '''Insert VarDesc and generate Python variable instance'''
-        if is_input:
-            proto_list = op_proto.inputs
-            np_list = self.inputs
-        else:
-            proto_list = op_proto.outputs
-            np_list = self.outputs
-
-        var_dict = {}
-        for var_proto in proto_list:
-            var_name = str(var_proto.name)
-            if is_input:
-                if (var_name not in np_list) and var_proto.dispensable:
-                    continue
-                self.assertTrue((var_name in np_list) or
-                                (var_proto.dispensable),
-                                "Missing {} as input".format(var_name))
-            if var_proto.duplicable:
-                self.assertTrue(
-                    isinstance(np_list[var_name], list),
-                    "Duplicable {} should be set as list".format(var_name))
-                var_list = []
-                for (name, np_value) in np_list[var_name]:
-                    # TODO(tonyyang-svail): refactor this to matach else statement
-                    var = block.create_var(
-                        dtype="float32",
-                        shape=list(np_value.shape),
-                        lod_level=0,
-                        name=name)
-                    var_list.append(var)
-                var_dict[var_name] = var_list
-            else:
-                name = var_name
-                if name not in np_list:
-                    self.assertTrue(var_proto.intermediate,
-                                    "{} not found".format(name))
-                    shape = None
-                    lod_level = None
-                else:
-                    np_value = np_list[name]
-                    if isinstance(np_value, tuple):
-                        shape = list(np_value[0].shape)
-                        lod_level = len(np_value[1])
-                    else:
-                        shape = list(np_value.shape)
-                        lod_level = 0
-                var = block.create_var(
-                    dtype="float32",
-                    shape=shape,
-                    lod_level=lod_level,
-                    name=name)
-                var_dict[var_name] = var
-
-        return var_dict
 
     def feed_var(self, input_vars, place):
         feed_map = {}
@@ -293,18 +280,19 @@ class OpTest(unittest.TestCase):
         return feed_map
 
     def check_output_with_place(self, place, atol):
-        if isinstance(place,
-                      core.GPUPlace) and not core.op_support_gpu(self.op_type):
-            return
-
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
-        #self.scope = core.Scope()
         program = Program()
         block = program.global_block()
 
-        inputs = self.generate_vars(block, op_proto, True)
-        outputs = self.generate_vars(block, op_proto, False)
+        inputs = append_input_output(block, op_proto, self.inputs, True)
+        outputs = append_input_output(block, op_proto, self.outputs, False)
+
+        op = block.append_op(
+            type=self.op_type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=self.attrs if hasattr(self, "attrs") else dict())
 
         fetch_list = []
         for var_name, var in outputs.iteritems():
@@ -314,12 +302,6 @@ class OpTest(unittest.TestCase):
                         fetch_list.append(v)
                 else:
                     fetch_list.append(var)
-
-        op = block.append_op(
-            type=self.op_type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=self.attrs if hasattr(self, "attrs") else dict())
 
         feed_map = self.feed_var(inputs, place)
 
@@ -336,9 +318,8 @@ class OpTest(unittest.TestCase):
                     if var.name == target_name
                 ]
                 self.assertTrue(
-                    len(found) == 1,
-                    "Should be exact one var name, found {}".format(
-                        len(found)))
+                    len(found) == 1, "Duplicated var, found {} {}".format(
+                        len(found), target_name))
                 return found[0]
 
             if out_dup:
@@ -365,7 +346,7 @@ class OpTest(unittest.TestCase):
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
-        if core.is_compile_gpu():
+        if core.is_compile_gpu() and core.op_support_gpu(self.op_type):
             places.append(core.GPUPlace(0))
         for place in places:
             self.check_output_with_place(place, atol)
