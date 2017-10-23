@@ -58,8 +58,6 @@ protected:
   size_t iter_;
   /// whether to print out the details
   bool log_;
-  /// vlog level to print the matrix details datas
-  int lvl_;
   /// epsilon
   float eps_;
   /// input image size, default 1
@@ -70,7 +68,6 @@ public:
     iter_ = iter;
     eps_ = epsilon;
     log_ = false;
-    lvl_ = MKLDNN_ALL;
   }
 
   ~MKLDNNTester() {}
@@ -81,10 +78,9 @@ public:
            size_t batchSize,
            size_t inputImgH = 1,
            size_t inputImgW = 1,
+           bool printDetails = false,
            size_t iter = 3,
-           float epsilon = 1e-4,
-           bool log = false,
-           int level = MKLDNN_ALL);
+           float epsilon = 1e-4);
   static void runBranchesTest(const std::string& configPath,
                               size_t iter = 3,
                               float eps = 1e-4);

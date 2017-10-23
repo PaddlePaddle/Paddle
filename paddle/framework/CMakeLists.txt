@@ -19,15 +19,15 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim op_info)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope proto_desc glog)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim op_info operator)
 
-cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog)
+cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 py_proto_compile(framework_py_proto SRCS framework.proto)
@@ -43,7 +43,7 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward)
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
