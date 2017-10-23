@@ -55,6 +55,9 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 
 }  // namespace detail
 
+#define CUDNN_VERSION_MIN(major, minor, patch) \
+  (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
+
 #define CUDNN_ENFORCE(condition)                            \
   do {                                                      \
     cudnnStatus_t status = condition;                       \

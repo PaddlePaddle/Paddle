@@ -20,7 +20,8 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using CudnnDataType = platform::CudnnDataType;
+template <typename T>
+using CudnnDataType = platform::CudnnDataType<T>;
 
 // BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
@@ -63,8 +64,9 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_;
 
-    CUDNN_ENFORCE(cudnnCreateTensorDescriptor(&data_desc_));
-    CUDNN_ENFORCE(cudnnCreateTensorDescriptor(&bn_param_desc_));
+    PADDLE_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE(
+        platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 
     if (epsilon_ <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -89,11 +91,11 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       dims = {N, C, H, W, D};
       strides = {H * W * D * C, 1, W * D * C, D * C, C};
     }
-    CUDNN_ENFORCE(cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    CUDNN_ENFORCE(
-        cudnnDeriveBNTensorDescriptor(bn_param_desc_, data_desc_, mode_));
+    PADDLE_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
+        bn_param_desc_, data_desc_, mode_));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -126,7 +128,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(est_mean->dims()[0], C);
       PADDLE_ENFORCE_EQ(est_var->dims()[0], C);
 
-      CUDNN_ENFORCE(cudnnBatchNormalizationForwardInference(
+      PADDLE_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardInference(
           handle,
           // Note: PERSISTENT not implemented for inference
           CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
@@ -142,7 +144,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
       void *save_var_data = save_var->template mutable_data<T>();
 
-      CUDNN_ENFORCE(cudnnBatchNormalizationForwardTraining(
+      PADDLE_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
           handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
           data_desc_, x->template data<T>(), data_desc_,
           y->template mutable_data<T>(), bn_param_desc_,
@@ -155,8 +157,9 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     }
 
     // clean when exit.
-    CUDNN_ENFORCE(cudnnDestroyTensorDescriptor(data_desc_));
-    CUDNN_ENFORCE(cudnnDestroyTensorDescriptor(bn_param_desc_));
+    PADDLE_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE(
+        platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
   }
 };
 
