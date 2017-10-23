@@ -184,7 +184,7 @@ class Optimizer(object):
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         finish_ops = self._finish_update(loss.block)
-        if not finish_ops:
+        if finish_ops is not None:
             return_ops += finish_ops
 
         return return_ops
@@ -448,8 +448,8 @@ class AdamOptimizer(Optimizer):
             },
             outputs={
                 "ParamOut": param_and_grad[0],
-                "Moment1": moment1,
-                "Moment2": moment2
+                "Moment1Out": moment1,
+                "Moment2Out": moment2
             },
             attrs={
                 "beta1": self._beta1,
