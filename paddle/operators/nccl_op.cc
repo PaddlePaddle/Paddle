@@ -81,9 +81,6 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
         " Input(Communicator) of Reduce op input should not be NULL");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    " Input(X) of Reduce op input should not be NULL");
-
-    ctx->SetOutputsDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -137,8 +134,8 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
 // BcastSendOp
 class NCCLBcastSendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLAllBcastSendOpMaker(framework::OpProto *proto,
-                          framework::OpAttrChecker *op_checker)
+  NCCLBcastSendOpMaker(framework::OpProto *proto,
+                       framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of BcastSend op");
     AddInput("Communicator", "Communicator for communicating between gpus");
@@ -152,8 +149,8 @@ class NCCLBcastSendOpMaker : public framework::OpProtoAndCheckerMaker {
 // BcastOp
 class NCCLBcastRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLAllBcastRecvOpMaker(framework::OpProto *proto,
-                          framework::OpAttrChecker *op_checker)
+  NCCLBcastRecvOpMaker(framework::OpProto *proto,
+                       framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddAttr<int>("root", "root gpu of BcastRecv");
