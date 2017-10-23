@@ -1,5 +1,4 @@
 import unittest
-from paddle.v2.framework.layer_helper import StaticRNNHelper
 from paddle.v2.framework.layers import *
 from paddle.v2.framework.framework import g_program
 
@@ -19,16 +18,19 @@ class TestRNN(unittest.TestCase):
         hidden = fc(input=hidden, size=100, act='sigmoid', num_flatten_dims=2)
         self.assertEqual((-1, 80, 100), hidden.shape)
 
-        rnn = StaticRNNHelper()
+        rnn = StaticRNN()
         with rnn.step():
             hidden = rnn.step_input(hidden)
             self.assertEqual((-1, 100), hidden.shape)
             memory = rnn.memory(shape=(-1, 32), dtype='float32', init_value=0.0)
 
             rnn_out = fc(input=[hidden, memory], size=32, act='sigmoid')
+            self.assertEqual((-1, 32), rnn_out.shape)
             rnn.update_memory(memory, rnn_out)
             rnn.output(rnn_out)
 
+        out = rnn()
+        self.assertEqual((-1, 80, 32), out.shape)
         print g_program
 
 
