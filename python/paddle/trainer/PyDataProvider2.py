@@ -216,7 +216,7 @@ def sparse_binary_vector_sub_sequence(dim):
     return sparse_binary_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
 
-def sparse_vector_sequence(dim):
+def sparse_float_vector_sequence(dim):
     """
     Data type of a sequence of sparse vector, which most elements are zero,
     others could be any float value.
@@ -226,11 +226,11 @@ def sparse_vector_sequence(dim):
     :return: An input type object
     :rtype: InputType
     """
-    return sparse_vector(dim, seq_type=SequenceType.SEQUENCE)
+    return sparse_float_vector(dim, seq_type=SequenceType.SEQUENCE)
 
 
-def sparse_vector_sub_sequence(dim):
-    return sparse_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
+def sparse_float_vector_sub_sequence(dim):
+    return sparse_float_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
 
 def integer_value_sequence(value_range):
