@@ -150,8 +150,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
           handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
           data_desc_, x->template data<T>(), data_desc_,
           y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
-          scale->template data<T>(),
-          bias->template data<T>(), this_factor,
+          scale->template data<T>(), bias->template data<T>(), this_factor,
           mean_out->template mutable_data<T>(ctx.GetPlace()),
           variance_out->template mutable_data<T>(ctx.GetPlace()), epsilon,
           saved_mean->template mutable_data<T>(ctx.GetPlace()),
@@ -172,6 +171,66 @@ class BatchNormGradKernel<platform::GPUPlace, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
+    const auto &X = Input(INPUT);
+    const auto &scale = Input(SCALE);
+    const auto &dY = Input(OUTPUT_GRAD);
+
+    CAFFE_ENFORCE_GE(X.ndim(), 3);
+    const int N = X.dim32(0);
+    const int C =
+        X.ndim() > 3 ? (order_ == StorageOrder::NCHW ? X.dim32(1)
+                                                     : X.dim32(X.ndim() - 1))
+                     : (order_ == StorageOrder::NCHW ? X.dim32(1) : X.dim32(2));
+    const int H = (order_ == StorageOrder::NCHW ? X.dim32(2) : X.dim32(1));
+    const int W = X.ndim() > 3
+                      ? (order_ == StorageOrder::NCHW ? X.dim32(3) : X.dim32(2))
+                      : 1;
+    const int D = X.ndim() > 4
+                      ? (order_ == StorageOrder::NCHW ? X.dim32(4) : X.dim32(3))
+                      : 1;
+    CAFFE_ENFORCE_EQ(scale.ndim(), 1);
+    CAFFE_ENFORCE_EQ(scale.dim32(0), C);
+    // See if we need to reshape.
+    if (X.dims() != cudnn_input_dims_) {
+      if (order_ == StorageOrder::NCHW) {
+        vector<int> dims = {N, C, H, W, D};
+        vector<int> strides = {C * H * W * D, H * W * D, W * D, D, 1};
+        CUDNN_ENFORCE(cudnnSetTensorNdDescriptor(
+            data_desc_, cudnnTypeWrapper<T>::type, X.ndim() > 3 ? X.ndim() : 4,
+            dims.data(), strides.data()));
+      } else {
+        vector<int> dims = {N, C, H, W, D};
+        vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
+        CUDNN_ENFORCE(cudnnSetTensorNdDescriptor(
+            data_desc_, cudnnTypeWrapper<T>::type, X.ndim() > 3 ? X.ndim() : 4,
+            dims.data(), strides.data()));
+      }
+      CUDNN_ENFORCE(
+          cudnnDeriveBNTensorDescriptor(bn_param_desc_, data_desc_, mode_));
+    }
+
+    auto *dX = Output(INPUT_GRAD);
+    auto *dScale = Output(SCALE_GRAD);
+    auto *dBias = Output(BIAS_GRAD);
+    dX->ResizeLike(X);
+    dScale->ResizeLike(scale);
+    dBias->ResizeLike(scale);
+
+    const auto &saved_mean = Input(SAVED_MEAN);
+    const auto &saved_var = Input(SAVED_INV_VAR);
+    const void *saved_mean_data = saved_mean.template data<BNParamType>();
+    const void *saved_var_data = saved_var.template data<BNParamType>();
+
+    PADDLE_ENFORCE(cudnnBatchNormalizationBackward(
+        cudnn_wrapper_.inline_cudnn_handle(), mode_,
+        cudnnTypeWrapper<T>::kOne(), cudnnTypeWrapper<T>::kZero(),
+        cudnnTypeWrapper<T>::kOne(), cudnnTypeWrapper<T>::kZero(), data_desc_,
+        X.template data<T>(), data_desc_, dY.template data<T>(), data_desc_,
+        dX->template mutable_data<T>(), bn_param_desc_,
+        scale.template data<BNParamType>(),
+        dScale->template mutable_data<BNParamType>(),
+        dBias->template mutable_data<BNParamType>(), epsilon_, saved_mean_data,
+        saved_var_data));
   }
 
  private:
@@ -181,9 +240,8 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    batch_norm,
-    ops::BatchNormKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(batch_norm,
+                       ops::BatchNormKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
     batch_norm_grad,
     ops::BatchNormGradKernel<paddle::platform::GPUPlace, float>);
