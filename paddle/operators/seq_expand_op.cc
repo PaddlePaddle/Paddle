@@ -77,15 +77,15 @@ by lod of input(Y) or 'repeat' attribute.
 Case 1:
 
 Given a 2-level LoDTensor X:
-    X.data = [1, 2 , 3, 4]
+    X.data = [a, b , c, d]
     X.lod = [[0, 3, 4], [0, 1, 3, 4]]
 and
     repeat = 2
 then we get 3-level LoDTensor
-    Out.data = [1, 2, 3, 1, 2, 3, 4, 4]
-    Out.lod = [[0, 6, 8],
-               [0, 3, 6, 7, 8],
-               [0, 1, 3, 4, 6, 7, 8]]
+    Out.lod = [[0,                6,    8],
+               [0,       3,       6, 7, 8],
+               [0, 1,    3, 4,    6, 7, 8]]
+    Out.data = [a, b, c, a, b, c, d, d]
 
 Case 2:
 

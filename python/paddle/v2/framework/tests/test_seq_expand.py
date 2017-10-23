@@ -27,7 +27,15 @@ def repeat_array(array, starts, times):
     return newlist
 
 
+def toAbsOffset(lod):
+    for i in range(len(lod) - 2, -1, -1):
+        for j in range(len(lod[i])):
+            lod[i][j] = lod[i + 1][lod[i][j]]
+    return lod
+
+
 class TestSeqExpand(OpTest):
+    #class TestSeqExpand():
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
         self.inputs = {'X': x_data}
@@ -35,23 +43,26 @@ class TestSeqExpand(OpTest):
 
     def compute(self):
         x = self.inputs['X']
+        print "x= %s" % x
         x_data, x_lod = x if type(x) == tuple else (x, None)
-        if not x_lod:
-            x_lod = [[i for i in range(1 + x_data.shape[0])]]
-        else:
-            x_lod = [x_lod[0]] + x_lod
+        n = 1 + x_data.shape[0] if not x_lod else len(x_lod[0])
+        x_lod = [[i for i in range(n)]] + x_lod
+        x_abs_lod = toAbsOffset(x_lod)
         if self.repeat:
+            print "repeat= %s" % self.repeat
             self.attrs = {'repeat': self.repeat}
             repeats = (len(x_lod[0]) - 1) * [self.repeat]
         else:
             y_data, y_lod = self.inputs['Y']
-            repeats = [((y_lod[0][i + 1] - y_lod[0][i]) /
-                        (x_lod[0][i + 1] - x_lod[0][i]))
-                       for i in range(len(y_lod[0]) - 1)]
-        out_lod = [repeat(x_lod[0], x_lod[0], repeats, True)] + [
-            repeat(lod, x_lod[0], repeats, False) for lod in x_lod[1:]
-        ]
-        out = repeat_array(x_data.tolist(), x_lod[0], repeats)
+            print "y_lod: %s" % y_lod
+            y_abs_lod = toAbsOffset(y_lod)
+            repeats = [((y_abs_lod[0][i + 1] - y_abs_lod[0][i]) /
+                        (x_abs_lod[0][i + 1] - x_abs_lod[0][i]))
+                       for i in range(len(y_abs_lod[0]) - 1)]
+        #out_lod = [repeat(x_lod[0], x_lod[0], repeats, True)] + [
+        #    repeat(lod, x_lod[0], repeats, False) for lod in x_lod[1:]
+        #]
+        out = repeat_array(x_data.tolist(), x_abs_lod[0], repeats)
         self.outputs = {'Out': out}
 
     def setUp(self):
@@ -69,7 +80,7 @@ class TestSeqExpand(OpTest):
 class TestSeqExpandCase1(TestSeqExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [7, 1]).astype('float32')
-        x_lod = [[0, 5, 7], [0, 2, 5, 7]]
+        x_lod = [[0, 2, 3], [0, 2, 5, 7]]
         self.inputs = {'X': (x_data, x_lod)}
         self.repeat = 2
 
@@ -95,10 +106,11 @@ class TestSeqExpandCase4(TestSeqExpand):
         x_data = np.random.uniform(0.1, 1, [5, 1]).astype('float32')
         x_lod = [[0, 2, 5]]
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float32')
-        y_lod = [[0, 4, 13], [0, 2, 4, 7, 10, 13]]
+        y_lod = [[0, 2, 5], [0, 2, 4, 7, 10, 13]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
         self.repeat = None
 
 
 if __name__ == '__main__':
     unittest.main()
+#    TestSeqExpandCase4().setUp()

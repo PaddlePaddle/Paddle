@@ -33,15 +33,12 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto x_lod = x->lod();
 
-    if (x_lod.size() == 0) {
-      framework::Vector<size_t> level;
-      for (int i = 0; i < x->dims()[0] + 1; ++i) {
-        level.push_back(i);
-      }
-      x_lod.push_back(level);
-    } else {
-      x_lod.insert(x_lod.begin(), x_lod[0]);
+    framework::Vector<size_t> level;
+    size_t num = (x_lod.size() == 0) ? (x->dims()[0] + 1) : x_lod[0].size();
+    for (int i = 0; i < num; ++i) {
+      level.push_back(i);
     }
+    x_lod.push_back(level);
 
     size_t repeat = static_cast<size_t>(context.Attr<int>("repeat"));
     framework::Vector<size_t> scales;
@@ -56,19 +53,27 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     } else {
       auto* y = context.Input<LoDTensor>("Y");
       auto y_lod = y->lod();
-      for (int i = 0; i < y_lod[0].size() - 1; ++i) {
-        scales.push_back((y_lod[0][i + 1] - y_lod[0][i]) /
-                         (x_lod[0][i + 1] - x_lod[0][i]));
+      auto y_abs_lod = y_lod.ToAbsOffset();
+      auto x_abs_lod = x_lod.ToAbsOffset();
+      for (int i = 0; i < y_abs_lod[0].size() - 1; ++i) {
+        scales.push_back((y_abs_lod[0][i + 1] - y_abs_lod[0][i]) /
+                         (x_abs_lod[0][i + 1] - x_abs_lod[0][i]));
       }
       out->Resize(y->dims());
     }
 
+    framework::Vector<size_t> indexes;
+    for (int size_t i = 0; i < x_lod[0]; ++i) {
+      indexes[i] = x_lod[0];
+    }
     framework::LoD out_lod;
-    auto level0 = framework::expand_lod(x_lod[0], x_lod[0], scales, false);
+    auto level0 = framework::expand_lod(indexes, x_lod[0], scales, false);
     out_lod.push_back(level0);
     for (int i = 1; i < x_lod.size(); ++i) {
-      out_lod.push_back(
-          framework::expand_lod(x_lod[i], x_lod[0], scales, true));
+      for (int j = 0; j < indexes.size(); ++j) {
+        indexes[j] = x_lod[i - 1][indexes[j]];
+      }
+      out_lod.push_back(framework::expand_lod(x_lod[i], indexes, scales, true));
     }
 
     size_t element_len = framework::product(x_dims) / x_dims[0];
@@ -80,7 +85,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(place)) {
       auto& cpu_place = boost::get<platform::CPUPlace>(place);
       for (size_t i = 0; i < scales.size(); ++i) {
-        count = element_len * (x_lod[0][i + 1] - x_lod[0][i]);
+        count = element_len * (x_abs_lod[0][i + 1] - x_abs_lod[0][i]);
         for (size_t j = 0; j < scales[i]; ++j) {
           memory::Copy(cpu_place, out_data, cpu_place, x_data,
                        sizeof(T) * count);
@@ -95,7 +100,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
                         context.device_context())
                         .stream();
       for (size_t i = 0; i < scales.size(); ++i) {
-        count = element_len * (x_lod[0][i + 1] - x_lod[0][i]);
+        count = element_len * (x_abs_lod[0][i + 1] - x_abs_lod[0][i]);
         for (size_t j = 0; j < scales[i]; ++j) {
           memory::Copy(gpu_place, out_data, gpu_place, x_data,
                        sizeof(T) * count, stream);
@@ -109,6 +114,11 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     }
 
     out->set_lod(out_lod);
+    for (size_t i = 0; i < lod.size; i++) {
+      for (size_t j = 0; j < lod[i].size(); j++) {
+        LOG(INFO) << "lod[" << i << "][" << j "] = " << lod[i][j];
+      }
+    }
   }
 };
 
@@ -121,13 +131,14 @@ class SeqExpandGradKernel : public framework::OpKernel<T> {
     auto* out = context.Input<LoDTensor>("Out");
     auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto out_lod = out->lod();
+    auto out_abs_lod = out_lod.ToAbsOffset();
     d_x->set_lod(x->lod());
     const T* d_out_data = d_out->data<T>();
     auto d_out_dims = d_out->dims();
     T* d_x_data = d_x->mutable_data<T>(context.GetPlace());
     size_t element_len = framework::product(d_out_dims) / d_out_dims[0];
     for (size_t i = 0; i < out->NumElements(); ++i) {
-      size_t ele_count = out_lod[0][i + 1] - out_lod[0][i];
+      size_t ele_count = out_abs_lod[0][i + 1] - out_abs_lod[0][i];
       size_t repeat = out->NumElements(0, i);
       Eigen::TensorMap<Eigen::Tensor<const T, 2>> d_out_t(
           d_out_data, static_cast<int>(repeat),

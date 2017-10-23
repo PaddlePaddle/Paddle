@@ -103,25 +103,19 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   lod_ = new_lod;
 }
 
-Vector<size_t> expand_lod(Vector<size_t> level, Vector<size_t> starts,
+Vector<size_t> expand_lod(Vector<size_t> level, Vector<size_t> indexes,
                           Vector<size_t> scales, bool repeat) {
   Vector<size_t> result;
   result.push_back(level[0]);
-  size_t p = 0, start = 0, end = 0;
+  size_t start = 0, end = 0;
   if (!repeat) {
     for (size_t i = 0; i < scales.size(); ++i) {
       result.push_back(result.back() + scales[i] * (level[i + 1] - level[i]));
     }
   } else {
     for (size_t i = 0; i < scales.size(); ++i) {
-      while (starts[i] != level[p] && p < level.size()) {
-        ++p;
-      }
-      start = p;
-      while (starts[i + 1] != level[p] && p < level.size()) {
-        ++p;
-      }
-      end = p + 1;
+      start = indexes[i];
+      end = indexes[i + 1];
       for (size_t j = 0; j < scales[i]; ++j) {
         for (size_t index = start; index < end - 1; ++index) {
           result.push_back(result.back() + level[index + 1] - level[index]);
