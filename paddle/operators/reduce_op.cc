@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/reduce_op.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {

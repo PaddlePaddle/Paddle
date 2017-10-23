@@ -3,7 +3,9 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc', 'data', 'cross_entropy', 'conv2d', 'pool2d']
+__all__ = [
+    'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat'
+]
 
 
 def fc(input,
@@ -13,7 +15,8 @@ def fc(input,
        name=None,
        act=None,
        num_flatten_dims=1,
-       program=None):
+       program=None,
+       init_program=None):
     # create helper
     helper = LayerHelper('fc', **locals())
 
@@ -54,12 +57,31 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
+def embedding(input,
+              size,
+              data_type='float32',
+              param_attr=None,
+              program=None,
+              init_program=None):
+    helper = LayerHelper('embedding', **locals())
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=size, dtype=data_type)
+    tmp = helper.create_tmp_variable(data_type)
+    helper.append_op(
+        type='lookup_table',
+        inputs={'Ids': input,
+                'W': w},
+        outputs={'Out': tmp})
+    return tmp
+
+
 def data(name,
          shape,
          data_type='float32',
          type=core.VarDesc.VarType.LOD_TENSOR,
          append_batch_size=True,
-         program=None):
+         program=None,
+         init_program=None):
     helper = LayerHelper('data', **locals())
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
@@ -120,6 +142,19 @@ _create_op_func_('mean')
 _create_op_func_('mul')
 
 
+def concat(input, axis, program=None, init_program=None):
+    helper = LayerHelper('concat', **locals())
+    if not isinstance(input, list) and not isinstance(input, tuple):
+        input = [input]
+    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    helper.append_op(
+        type='concat',
+        inputs={'X': input},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
+
+
 def cross_entropy(input, label, **kwargs):
     helper = LayerHelper('cross_entropy', **kwargs)
     out = helper.create_tmp_variable(dtype=input.data_type)
@@ -160,7 +195,8 @@ def conv2d(input,
            padding=None,
            bias_attr=None,
            param_attr=None,
-           program=None):
+           program=None,
+           init_program=None):
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -207,7 +243,8 @@ def pool2d(input,
            pool_stride=[1, 1],
            pool_padding=[0, 0],
            global_pooling=False,
-           program=None):
+           program=None,
+           init_program=None):
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",

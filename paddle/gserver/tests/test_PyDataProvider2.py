@@ -51,7 +51,10 @@ def test_sparse_non_value_no_seq(setting, filename):
         yield [(i + 1) * (j + 1) for j in xrange(10)]
 
 
-@provider(input_types=[sparse_vector(30000, seq_type=SequenceType.NO_SEQUENCE)])
+@provider(input_types=[
+    sparse_float_vector(
+        30000, seq_type=SequenceType.NO_SEQUENCE)
+])
 def test_sparse_value_no_seq(setting, filename):
     for i in xrange(200):
         yield [((i + 1) * (j + 1), float(j) / float(i + 1)) for j in xrange(10)]

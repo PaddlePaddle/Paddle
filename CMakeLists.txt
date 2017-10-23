@@ -129,6 +129,7 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)    # download pybind11
 
 include(cudnn)              # set cudnn libraries, must before configure
+include(nccl)               # set nccl libraries
 include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
@@ -159,7 +160,7 @@ set(EXTERNAL_LIBS
 if(WITH_GPU)
     list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
     if(NOT WITH_DSO)
-        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 
