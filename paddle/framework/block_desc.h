@@ -16,9 +16,12 @@ limitations under the License. */
 
 #include <deque>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/framework/op_desc.h"
+#include "paddle/framework/proto_desc.h"
 #include "paddle/framework/var_desc.h"
 #include "paddle/platform/macros.h"
 
@@ -36,6 +39,14 @@ class BlockDescBind {
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
 
+  BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+                ProgramDescBind *prog);
+
+  ~BlockDescBind() {
+    this->ClearPBVars();
+    this->ClearPBOps();
+  }
+
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
@@ -46,23 +57,43 @@ class BlockDescBind {
 
   bool HasVar(const std::string &var_name) const;
 
+  VarDescBind *FindVarRecursive(const std::string &name_bytes) const;
+
+  bool HasVarRecursive(const std::string &var_name) const;
+
+  std::set<std::string> LocalVarNames() const {
+    std::set<std::string> var_names;
+    for (auto &var : vars_) {
+      var_names.insert(var.first);
+    }
+    return var_names;
+  }
+
   std::vector<VarDescBind *> AllVars() const;
 
   BlockDescBind *ParentBlock() const;
 
   OpDescBind *AppendOp();
 
+  void AppendAllocatedOp(std::unique_ptr<OpDescBind> &&op_desc);
+
   OpDescBind *PrependOp();
 
   std::vector<OpDescBind *> AllOps() const;
+
+  size_t OpSize() const { return ops_.size(); }
+
+  OpDescBind *Op(int idx) { return ops_.at(idx).get(); }
 
   void Flush();
 
   BlockDesc *Proto();
 
-  // FIXME(yuyang18): backward will access private data of BlockDesc.
-  // Mark it public temporary. We can fix it later.
- public:
+ private:
+  void ClearPBOps();
+  void ClearPBVars();
+
+ private:
   ProgramDescBind *prog_;  // not_own
   BlockDesc *desc_;        // not_own
   bool need_update_;

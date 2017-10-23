@@ -460,14 +460,13 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
     for (int i = 0; i < tag_num; ++i)
       beta_value[(seq_length - 1) * tag_num + i] = w_exps[tag_num + i];
     NormalizeL1<T>(beta_value + (seq_length - 1) * tag_num, tag_num);
-
     for (int k = seq_length - 2; k >= 0; --k) {
       for (int i = 0; i < tag_num; ++i) {
         T sum = 0.;
         for (int j = 0; j < tag_num; ++j) {
-          sum += x_exps[(i + state_trans_base_idx) * tag_num + j] *
-                 beta_value[(k + 1) * tag_num + j] *
-                 x_exps[(k + 1) * tag_num + j];
+          sum += w_exps[(i + state_trans_base_idx) * tag_num + j] *
+                 x_exps[(k + 1) * tag_num + j] *
+                 beta_value[(k + 1) * tag_num + j];
         }
         beta_value[k * tag_num + i] = sum;
       }
