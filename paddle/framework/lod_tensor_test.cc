@@ -101,5 +101,22 @@ TEST_F(LoDTensorTester, ShrinkInLevel) {
   ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
 }
 
+TEST(LodExpand, test) {
+  LoD lod{{0, 2}};
+  LoDTensor tensor;
+  tensor.set_lod(lod);
+  tensor.Resize({2, 1});
+  tensor.mutable_data<float>(platform::CPUPlace());
+  tensor.data<float>()[0] = 0;
+  tensor.data<float>()[1] = 1;
+
+  LoD target{{0, 3, 5}};
+  auto new_tensor = LodExpand<float>(tensor, target, 0UL, platform::CPUPlace());
+  std::vector<int> result{{0, 0, 0, 1, 1}};
+  for (size_t i = 0; i < 5; i++) {
+    ASSERT_EQ(new_tensor.data<float>()[i], result[i]);
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
