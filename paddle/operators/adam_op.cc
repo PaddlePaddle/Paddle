@@ -21,7 +21,6 @@ class AdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
                    "Input(Param) of AdamOp should not be null.");
@@ -44,10 +43,6 @@ class AdamOp : public framework::OperatorWithKernel {
                    "Output(Moment1Out) of AdamOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Moment2Out"),
                    "Output(Moment2Out) of AdamOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Beta1PowOut"),
-                   "Output(Beta1PowOut) of AdamOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Beta2PowOut"),
-                   "Output(Beta2PowOut) of AdamOp should not be null.");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
@@ -73,8 +68,6 @@ class AdamOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("Moment1Out", param_dims);
     ctx->SetOutputDim("Moment2Out", param_dims);
-    ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
-    ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
   }
 };
 
@@ -93,8 +86,6 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
     AddOutput("Moment2Out", "(Tensor) Output second moment");
-    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
-    AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -122,10 +113,8 @@ Adam updates:
 
 moment1_out = beta1 * moment1 + (1 − beta1) * grad
 moment2_out = beta2 * moment2 + (1 − beta2) * grad * grad
-beta1_pow_out = beta1_pow * beta1
-beta2_pow_out = beta2_pow * beta2
 learning_rate_t = learning_rate_t *
-                  sqrt(1 - beta2_pow_out) / (1 - beta1_pow_out)
+                  sqrt(1 - beta2_pow) / (1 - beta1_pow)
 param_out = param - learning_rate_t * moment1/ (sqrt(moment2) + epsilon)
 
 References:

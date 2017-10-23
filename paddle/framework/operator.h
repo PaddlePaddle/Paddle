@@ -20,12 +20,13 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "op_info.h"
+#include "glog/logging.h"  // For VLOG
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
@@ -335,37 +336,47 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   bool HasInput(const std::string& name) const override {
     const std::vector<std::string>& input_names = op_.Input(name);
     auto length = input_names.size();
+    if (length == 0) {
+      return false;
+    }
     PADDLE_ENFORCE_EQ(length, 1UL,
                       "Input(%s) should have only one value, "
                       "but it have %d now",
                       name, length);
-    return block_.HasVar(input_names[0]);
+    return block_.HasVarRecursive(input_names[0]);
   }
 
   bool HasOutput(const std::string& name) const override {
     const std::vector<std::string>& output_names = op_.Output(name);
     auto length = output_names.size();
+    if (length == 0) {
+      return false;
+    }
     PADDLE_ENFORCE_EQ(length, 1UL,
                       "Output(%s) should have only one value, "
                       "but it have %d now",
                       name, length);
-    return block_.HasVar(output_names[0]);
+    return block_.HasVarRecursive(output_names[0]);
   }
 
   bool HasInputs(const std::string& name) const override {
     const std::vector<std::string>& input_names = op_.Input(name);
-    PADDLE_ENFORCE(!input_names.empty(), "Inputs(%s) length is 0", name);
+    if (input_names.empty()) {
+      return false;
+    }
     for (auto& input : input_names) {
-      if (!block_.HasVar(input)) return false;
+      if (!block_.HasVarRecursive(input)) return false;
     }
     return true;
   }
 
   bool HasOutputs(const std::string& name) const override {
     const std::vector<std::string>& output_names = op_.Output(name);
-    PADDLE_ENFORCE(!output_names.empty(), "Inputs(%s) length is 0", name);
+    if (output_names.empty()) {
+      return false;
+    }
     for (auto& output : output_names) {
-      if (!block_.HasVar(output)) return false;
+      if (!block_.HasVarRecursive(output)) return false;
     }
     return true;
   }
@@ -412,11 +423,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.FindVar(name)->Shape());
+    return framework::make_ddim(block_.FindVarRecursive(name)->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
-    block_.FindVar(name)->SetShape(framework::vectorize(dim));
+    block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
   }
 
   const OpDescBind& op_;
@@ -429,13 +440,27 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
-    auto ipt = op_.Input(name);
+    auto& ins = Inputs(name);
+    size_t length = ins.size();
+    if (length == 0) {
+      return false;
+    }
+    PADDLE_ENFORCE_EQ(length, 1UL, "Input %s should have more than one inputs",
+                      name);
+    auto ipt = ins[0];
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
   }
 
   bool HasOutput(const std::string& name) const override {
-    auto ipt = op_.Output(name);
+    auto& outs = Outputs(name);
+    size_t length = outs.size();
+    if (length == 0) {
+      return false;
+    }
+    PADDLE_ENFORCE_EQ(length, 1UL, "Output %s should have more than one inputs",
+                      name);
+    auto ipt = outs[0];
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
   }
@@ -582,6 +607,7 @@ class OperatorWithKernel : public OperatorBase {
 
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
+    VLOG(3) << "Running operator " << this->Type();
     RuntimeInferShapeContext infer_shape_ctx(*this, scope);
     this->InferShape(&infer_shape_ctx);
 
@@ -655,6 +681,8 @@ class OperatorWithKernel : public OperatorBase {
 
 std::ostream& operator<<(std::ostream& os,
                          const OperatorWithKernel::OpKernelKey& kernel_key);
+
+extern bool OpSupportGPU(const std::string& op_type);
 
 }  // namespace framework
 }  // namespace paddle

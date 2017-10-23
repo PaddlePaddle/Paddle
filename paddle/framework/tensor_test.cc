@@ -108,7 +108,7 @@ TEST(Tensor, ShareDataWith) {
     // Try to share data form uninitialized tensor
     bool caught = false;
     try {
-      dst_tensor.ShareDataWith<float>(src_tensor);
+      dst_tensor.ShareDataWith(src_tensor);
     } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
       std::string msg =
@@ -122,7 +122,7 @@ TEST(Tensor, ShareDataWith) {
     ASSERT_TRUE(caught);
 
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), CPUPlace());
-    dst_tensor.ShareDataWith<int>(src_tensor);
+    dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
@@ -131,7 +131,7 @@ TEST(Tensor, ShareDataWith) {
     Tensor src_tensor;
     Tensor dst_tensor;
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), GPUPlace());
-    dst_tensor.ShareDataWith<int>(src_tensor);
+    dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 #endif
@@ -143,7 +143,7 @@ TEST(Tensor, Slice) {
   {
     Tensor src_tensor;
     src_tensor.mutable_data<int>(make_ddim({5, 3, 4}), CPUPlace());
-    Tensor slice_tensor = src_tensor.Slice<int>(1, 3);
+    Tensor slice_tensor = src_tensor.Slice(1, 3);
     DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
     EXPECT_EQ(slice_dims[0], 2);
@@ -167,7 +167,7 @@ TEST(Tensor, Slice) {
   {
     Tensor src_tensor;
     src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
-    Tensor slice_tensor = src_tensor.Slice<double>(2, 6);
+    Tensor slice_tensor = src_tensor.Slice(2, 6);
     DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
@@ -202,7 +202,7 @@ TEST(Tensor, CopyFrom) {
     memcpy(src_ptr, arr, 9 * sizeof(int));
 
     auto cpu_place = new paddle::platform::CPUPlace();
-    dst_tensor.CopyFrom<int>(src_tensor, *cpu_place, cpu_ctx);
+    dst_tensor.CopyFrom(src_tensor, *cpu_place, cpu_ctx);
 
     const int* dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(src_ptr, dst_ptr);
@@ -210,8 +210,8 @@ TEST(Tensor, CopyFrom) {
       EXPECT_EQ(src_ptr[i], dst_ptr[i]);
     }
 
-    Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
-    dst_tensor.CopyFrom<int>(slice_tensor, *cpu_place, cpu_ctx);
+    Tensor slice_tensor = src_tensor.Slice(1, 2);
+    dst_tensor.CopyFrom(slice_tensor, *cpu_place, cpu_ctx);
     const int* slice_ptr = slice_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(dst_ptr, slice_ptr);
@@ -233,11 +233,11 @@ TEST(Tensor, CopyFrom) {
     // CPU Tensor to GPU Tensor
     auto gpu_place = new paddle::platform::GPUPlace(0);
     CUDADeviceContext gpu_ctx(*gpu_place);
-    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_place, gpu_ctx);
+    gpu_tensor.CopyFrom(src_tensor, *gpu_place, gpu_ctx);
 
     // GPU Tensor to CPU Tensor
     auto cpu_place = new paddle::platform::CPUPlace();
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
+    dst_tensor.CopyFrom(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Tensors
     gpu_ctx.Wait();
@@ -247,13 +247,13 @@ TEST(Tensor, CopyFrom) {
       EXPECT_EQ(src_ptr[i], dst_ptr[i]);
     }
 
-    Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
+    Tensor slice_tensor = src_tensor.Slice(1, 2);
 
     // CPU Slice Tensor to GPU Tensor
-    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_place, gpu_ctx);
+    gpu_tensor.CopyFrom(slice_tensor, *gpu_place, gpu_ctx);
 
     // GPU Tensor to CPU Tensor
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
+    dst_tensor.CopyFrom(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Slice Tensors
     gpu_ctx.Wait();
@@ -320,7 +320,7 @@ TEST(Tensor, CopyFromVector) {
     CUDADeviceContext gpu_ctx(*gpu_place);
     gpu_tensor.CopyFromVector<int>(src_vec, gpu_ctx);
     // Copy from GPU to CPU tensor for comparison
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
+    dst_tensor.CopyFrom(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Tensors
     gpu_ctx.Wait();
@@ -340,7 +340,7 @@ TEST(Tensor, CopyFromVector) {
     cpu_tensor.CopyFromVector<int>(src_vec, cpu_ctx);
     gpu_tensor.Resize(make_ddim({2, 2}));
     gpu_tensor.CopyFromVector<int>(src_vec, gpu_ctx);
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place, gpu_ctx);
+    dst_tensor.CopyFrom(gpu_tensor, *cpu_place, gpu_ctx);
 
     // Sync before Compare Tensors
     gpu_ctx.Wait();
@@ -368,7 +368,7 @@ TEST(Tensor, ReshapeToMatrix) {
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }
-  Tensor res = ReshapeToMatrix<int>(src, 2);
+  Tensor res = ReshapeToMatrix(src, 2);
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
 }

@@ -16,7 +16,7 @@ class TestOperator(unittest.TestCase):
         try:
             block.append_op(type="no_such_op")
             self.assertFail()
-        except AssertionError as a_err:
+        except ValueError as a_err:
             self.assertEqual(a_err.message,
                              "Operator \"no_such_op\" has not been registered.")
 

@@ -162,7 +162,7 @@ void GetLapackDsoHandle(void** dso_handle) {
 #endif
 }
 
-void GetNcclDsoHandle(void** dso_handle) {
+void GetNCCLDsoHandle(void** dso_handle) {
 #if defined(__APPLE__) || defined(__OSX__)
   GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", dso_handle);
 #else

@@ -126,7 +126,7 @@ set(DEPS_OPS
     pool_op
     pool_with_index_op
     nccl_op
-    )
+    lstm_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -140,6 +140,7 @@ op_library(pool_with_index_op DEPS pooling)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
 endif()
+op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})

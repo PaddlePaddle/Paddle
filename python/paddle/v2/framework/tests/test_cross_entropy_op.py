@@ -21,7 +21,7 @@ class TestCrossEntropyOp1(OpTest):
 
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": cross_entropy}
-        self.attrs = {"softLabel": False}
+        self.attrs = {"soft_label": False}
 
     def test_check_output(self):
         self.check_output()
@@ -49,7 +49,7 @@ class TestCrossEntropyOp2(OpTest):
 
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": cross_entropy}
-        self.attrs = {"softLabel": True}
+        self.attrs = {"soft_label": True}
 
     def test_check_output(self):
         self.check_output()
@@ -82,7 +82,7 @@ class TestCrossEntropyOp3(OpTest):
 
         self.inputs = {"X": X, "Label": label.astype(np.float32)}
         self.outputs = {"Y": cross_entropy}
-        self.attrs = {"softLabel": True}
+        self.attrs = {"soft_label": True}
 
     def test_check_output(self):
         self.check_output()

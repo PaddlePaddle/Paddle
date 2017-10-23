@@ -23,7 +23,6 @@ class ConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
                       "Inputs(X) of ConcatOp should be empty.")
@@ -82,7 +81,6 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
                const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }

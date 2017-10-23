@@ -33,7 +33,7 @@ extern void* nccl_dso_handle;
     auto operator()(Args... args) -> decltype(__name(args...)) {  \
       using nccl_func = decltype(__name(args...)) (*)(Args...);   \
       std::call_once(nccl_dso_flag,                               \
-                     paddle::platform::dynload::GetNcclDsoHandle, \
+                     paddle::platform::dynload::GetNCCLDsoHandle, \
                      &nccl_dso_handle);                           \
       void* p_##__name = dlsym(nccl_dso_handle, #__name);         \
       return reinterpret_cast<nccl_func>(p_##__name)(args...);    \

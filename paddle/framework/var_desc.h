@@ -75,9 +75,13 @@ class VarDescBind {
 
   int32_t GetLodLevel() const;
 
-  VarDesc::VarType GetType() const { return desc_.type(); }
+  VarDesc::VarType GetType() const;
 
-  void SetType(VarDesc::VarType type) { desc_.set_type(type); }
+  void SetType(VarDesc::VarType type);
+
+  bool Persistable() const { return desc_.persistable(); }
+
+  void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
  private:
   const TensorDesc &tensor_desc() const;

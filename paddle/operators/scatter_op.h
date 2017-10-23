@@ -35,7 +35,7 @@ class ScatterOpKernel : public framework::OpKernel<T> {
     auto *Out = ctx.Output<Tensor>("Out");
 
     // In place output: Out = Ref, Out[Index] += Updates
-    Out->ShareDataWith<T>(*Ref);
+    Out->ShareDataWith(*Ref);
     // Apply ScatterUpdate: Out[index] += Updates[:]
     ScatterAssign<T>(ctx.device_context(), *Updates, *Index, Out);
   }
@@ -53,7 +53,7 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     // In place gradient: dRef = dO
-    dRef->ShareDataWith<T>(*dOut);
+    dRef->ShareDataWith(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
     // Gradient by Gather: dUpdates += dO[Index]
     CPUGather<T>(ctx.device_context(), *dOut, *Index, dUpdates);
