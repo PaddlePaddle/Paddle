@@ -97,7 +97,7 @@ void MKLDNNTester::randomWgtDatas() {
     parameters_[REF][i]->randomize();
     dnnValue->copyFrom(*refValue);
 
-    VLOG(lvl_) << "Random weight data " << parameters_[DNN][i]->getName();
+    VLOG(MKLDNN_TESTS) << "Random weight " << parameters_[DNN][i]->getName();
     printVector(dnnValue);
   }
 }
@@ -109,7 +109,7 @@ void MKLDNNTester::randomBotDatas() {
     dataLayers_[REF][i]->getOutputValue()->randomizeUniform();
     dataLayers_[DNN][i]->getOutputValue()->copyFrom(
         *(dataLayers_[REF][i]->getOutputValue()));
-    VLOG(lvl_) << "Input " << i << " data:";
+    VLOG(MKLDNN_TESTS) << "Random Foward, InputValue " << i;
     printMatrix(dataLayers_[REF][i]->getOutputValue());
   }
 }
@@ -118,12 +118,12 @@ void MKLDNNTester::randomTopDiffs() {
   refLayer_->getOutputGrad()->randomizeUniform();
   dnnLayer_->getOutput(CPU_DEVICE)
       .grad->copyFrom(*(refLayer_->getOutputGrad()));
-  VLOG(lvl_) << "Random Backward Input, TopDiff: ";
+  VLOG(MKLDNN_TESTS) << "Random Backward, OutputGrad";
   printMatrix(refLayer_->getOutputGrad());
 }
 
 void MKLDNNTester::checkForward() {
-  VLOG(MKLDNN_ALL) << "Check Forward";
+  VLOG(MKLDNN_TESTS) << "Check Forward";
   printTopDatas();
   double delta =
       compareMatrix(dnnLayer_->getOutputValue(), refLayer_->getOutputValue());
@@ -131,15 +131,15 @@ void MKLDNNTester::checkForward() {
 }
 
 void MKLDNNTester::checkBackwardData() {
-  VLOG(MKLDNN_ALL) << "Check Backward Data";
+  VLOG(MKLDNN_TESTS) << "Check Backward Data";
   // TODO(TJ): uncomment me when batch norm ready
   // const bool isBN = dnnLayer_->getType() == "mkldnn_batch_norm";
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
     const MatrixPtr& dnnDiff = dataLayers_[DNN][i]->getOutputGrad();
     const MatrixPtr& refDiff = dataLayers_[REF][i]->getOutputGrad();
-    VLOG(lvl_) << "Mkldnn Backward Output BotDiff " << i;
+    VLOG(MKLDNN_ALL) << "MKLDNN Backward Result: InputGrad " << i;
     printMatrix(dnnDiff);
-    VLOG(lvl_) << "Reference Backward Output BotDiff " << i;
+    VLOG(MKLDNN_ALL) << "Reference Backward Result: InputGrad " << i;
     printMatrix(refDiff);
 
     double delta = compareMatrix(dnnDiff, refDiff);
@@ -153,7 +153,7 @@ void MKLDNNTester::checkBackwardData() {
 }
 
 void MKLDNNTester::checkBackwardWgts() {
-  VLOG(MKLDNN_ALL) << "Check Backward Weight";
+  VLOG(MKLDNN_TESTS) << "Check Backward Weight";
   CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
   vector<VectorPtr> dnnWgts;  // used to temply save mkldnn weights
   saveWgt(parameters_[DNN], dnnWgts);
@@ -165,9 +165,11 @@ void MKLDNNTester::checkBackwardWgts() {
   for (size_t i = 0; i < parameters_[DNN].size(); ++i) {
     const VectorPtr& dnn = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& ref = parameters_[REF][i]->getBuf(PARAMETER_VALUE);
-    VLOG(lvl_) << "Mkldnn Output weight " << parameters_[DNN][i]->getName();
+    VLOG(MKLDNN_ALL) << "MKLDNN Result: weight value"
+                     << parameters_[DNN][i]->getName();
     printVector(dnn);
-    VLOG(lvl_) << "Reference Output weight " << parameters_[REF][i]->getName();
+    VLOG(MKLDNN_ALL) << "Reference Result: weight value "
+                     << parameters_[REF][i]->getName();
     printVector(ref);
 
     double delta = compareVector(dnn, ref);
@@ -240,7 +242,8 @@ void MKLDNNTester::printTopDatas() {
   }
 
   for (int n = 0; n < NUM; ++n) {
-    VLOG(lvl_) << testLayers_[n]->getType() << " forward output TopData: ";
+    VLOG(MKLDNN_ALL) << testLayers_[n]->getType()
+                     << " Forward Result: OutputValue";
     printMatrix(testLayers_[n]->getOutputValue());
   }
 }
@@ -252,7 +255,7 @@ void MKLDNNTester::printMatrix(const MatrixPtr& m) {
 
   std::ostringstream ostr;
   m->print(ostr);
-  VLOG(lvl_) << std::endl << ostr.str();
+  VLOG(MKLDNN_ALL) << std::endl << ostr.str();
 }
 
 void MKLDNNTester::printVector(const VectorPtr& v) {
@@ -262,7 +265,7 @@ void MKLDNNTester::printVector(const VectorPtr& v) {
 
   std::ostringstream ostr;
   v->print(ostr, v->getSize());
-  VLOG(lvl_) << std::endl << ostr.str();
+  VLOG(MKLDNN_ALL) << std::endl << ostr.str();
 }
 
 double MKLDNNTester::getDelta(const real* d1,
@@ -314,7 +317,7 @@ void MKLDNNTester::runOnce() {
   UpdateCallback updateCallback = [](Parameter* para) {
     auto& grad = para->getBuf(PARAMETER_GRADIENT);
     auto& value = para->getBuf(PARAMETER_VALUE);
-    real lr = 1e-3;
+    real lr = 1e-2;
     value->add(*grad, lr);
     grad->zeroMem();
   };
@@ -340,10 +343,9 @@ void MKLDNNTester::run(const TestConfig& dnn,
                        size_t batchSize,
                        size_t inputImgH,
                        size_t inputImgW,
+                       bool printDetails,
                        size_t iter,
-                       float epsilon,
-                       bool log,
-                       int level) {
+                       float epsilon) {
   CHECK(dnn.layerConfig.type().compare(0, 7, "mkldnn_") == 0 ||
         dnn.layerConfig.active_type().compare(0, 7, "mkldnn_") == 0)
       << "should be MKLDNN layer or MKLDNN activation";
@@ -359,10 +361,9 @@ void MKLDNNTester::run(const TestConfig& dnn,
 
   ih_ = inputImgH;
   iw_ = inputImgW;
+  log_ = printDetails;
   iter_ = iter;
   eps_ = epsilon;
-  log_ = log;
-  lvl_ = level;
 
   // Firstly test mkldnn init from PARAM_FORMAT_ORIGINAL weight
   reset(dnn, ref, batchSize);
@@ -531,9 +532,11 @@ void MKLDNNTester::getOutResult(const std::string& configPath,
 void MKLDNNTester::compareResult(DataOut& ref, DataOut& dnn, float eps) {
   CHECK_EQ(ref.outValues.size(), dnn.outValues.size());
   CHECK_EQ(ref.paraValues.size(), dnn.paraValues.size());
+  VLOG(MKLDNN_TESTS) << "compare value size: " << ref.outValues.size();
   for (size_t i = 0; i < ref.outValues.size(); i++) {
     EXPECT_LE(fabs(compareMatrix(ref.outValues[i], dnn.outValues[i])), eps);
   }
+  VLOG(MKLDNN_TESTS) << "compare param size: " << ref.outValues.size();
   for (size_t i = 0; i < ref.paraValues.size(); i++) {
     EXPECT_LE(fabs(compareVector(ref.paraValues[i], dnn.paraValues[i])), eps);
   }
@@ -544,9 +547,10 @@ void MKLDNNTester::runBranchesTest(const std::string& configPath,
                                    float eps) {
   DataIn in;
   initArgument(in, configPath, iter);
-
   DataOut outCpu, outDnn;
+  VLOG(MKLDNN_TESTS) << "runing cpu network";
   getOutResult(configPath, in, outCpu, false, iter);
+  VLOG(MKLDNN_TESTS) << "runing mkldnn network";
   getOutResult(configPath, in, outDnn, true, iter);
 
   compareResult(outCpu, outDnn, eps);

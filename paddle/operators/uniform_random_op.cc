@@ -65,7 +65,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
  protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("data_type"));
+    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
   }
 };
 
