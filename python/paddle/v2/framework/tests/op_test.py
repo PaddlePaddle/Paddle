@@ -351,7 +351,8 @@ class OpTest(unittest.TestCase):
                     self.assertTrue(
                         np.allclose(
                             actual, expect, atol=atol),
-                        "output name: " + sub_out_name + " has diff.")
+                        "Output (" + sub_out_name + ") has diff at " +
+                        str(place))
             else:
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
@@ -359,7 +360,7 @@ class OpTest(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(
                         actual, expect, atol=atol),
-                    "output name: " + out_name + " has diff.")
+                    "Output (" + out_name + ") has diff at " + str(place))
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
