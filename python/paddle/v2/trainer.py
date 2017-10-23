@@ -96,6 +96,9 @@ class SGD(object):
         self.__parameters__.append_gradient_machine(gm)
         self.__parameter_updater__ = None
 
+    def get_topology_proto(self):
+        return self.__topology_in_proto__
+
     def __use_remote_sparse_updater__(self):
         return self.__use_sparse_updater__ and not self.__is_local__
 

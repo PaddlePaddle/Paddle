@@ -52,11 +52,10 @@ class Topology(object):
         assert isinstance(self.__model_config__, ModelConfig)
 
     def update_from_default(self):
-        # HACK(typhoonzero): update ParameterConfig(proto) in case of optimizers
-        # are defined after layers, or between layers.
+        # HACK(typhoonzero): update ParameterConfig(proto) in case of
+        # optimizers are defined after layers, or between layers.
         # Must be called from trainer.__init__()
         for parameter in self.__model_config__.parameters:
-            print "####", parameter.decay_rate, cp.g_default_decay_rate
             if parameter.momentum == 0.0 and cp.g_default_momentum:
                 parameter.momentum = cp.g_default_momentum
             if parameter.decay_rate == 0.0 and cp.g_default_decay_rate:
@@ -69,10 +68,14 @@ class Topology(object):
                 parameter.initial_strategy = cp.g_default_initial_strategy
             if parameter.initial_smart == False:
                 parameter.initial_smart = cp.g_default_initial_smart
-            if parameter.num_batches_regularization == 1 and cp.g_default_num_batches_regularization:
-                parameter.num_batches_regularization = cp.g_default_num_batches_regularization
-            if parameter.gradient_clipping_threshold == 0.0 and cp.g_default_gradient_clipping_threshold:
-                parameter.gradient_clipping_threshold = cp.g_default_gradient_clipping_threshold
+            if parameter.num_batches_regularization == 1 and \
+                cp.g_default_num_batches_regularization:
+                parameter.num_batches_regularization = \
+                    cp.g_default_num_batches_regularization
+            if parameter.gradient_clipping_threshold == 0.0 and \
+                cp.g_default_gradient_clipping_threshold:
+                parameter.gradient_clipping_threshold = \
+                    cp.g_default_gradient_clipping_threshold
             if parameter.device == -1 and cp.g_default_device:
                 parameter.device = cp.g_default_device
             # FIXME(typhoonzero): ignored: update_hooks, g_default_compact_func
