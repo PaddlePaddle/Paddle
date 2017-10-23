@@ -53,7 +53,7 @@ def show():
             'commit': commit,
             'istaged': ISTAGED})
 
-write_version_py(filename='$@PADDLE_SOURCE_DIR@/python/paddle/version.py')
+write_version_py(filename='@PADDLE_SOURCE_DIR@/python/paddle/version.py')
 
 
 packages=['paddle',
