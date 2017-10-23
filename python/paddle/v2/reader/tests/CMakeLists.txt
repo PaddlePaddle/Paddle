@@ -1,1 +1,2 @@
-add_python_test(reader_tests creator_test.py decorator_test.py)
+py_test(creator_test SRCS creator_test.py)
+py_test(decorator_test SRCS decorator_test.py)

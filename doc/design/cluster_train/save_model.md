@@ -75,10 +75,11 @@ snapshot to a model will be a TODO for future.
 ### Trainer Election
 
 One trainer will be elected as the one to save the model. When using
-etcd, trainer ID is a randomly generated UUID, we will utilize etcd to
-elect one trainer. When not using etcd, unique trainer IDs will be
-given by the administrator, the trainer whose ID is "0" is elected to
-save the model.
+etcd, trainer ID is a randomly generated UUID, the trainer will
+contact the master server requesting to save the model, and find out
+if itself is elected. When the master server is not used, unique
+trainer IDs will be given by the administrator, the trainer whose ID
+is "0" is elected to save the model.
 
 ### Model Save Path
 

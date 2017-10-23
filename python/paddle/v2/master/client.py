@@ -1,8 +1,15 @@
 import ctypes
 import os
 
-path = os.path.join(os.path.dirname(__file__), "libpaddle_master.so")
-lib = ctypes.cdll.LoadLibrary(path)
+__lib__ = None
+
+
+def get_c_lib():
+    global __lib__
+    if __lib__ is None:
+        path = os.path.join(os.path.dirname(__file__), "libpaddle_master.so")
+        __lib__ = ctypes.cdll.LoadLibrary(path)
+    return __lib__
 
 
 class client(object):
@@ -10,30 +17,53 @@ class client(object):
     client is a client to the master server.
     """
 
-    def __init__(self, etcd_endpoints, timeout, buf_size):
-        self.c = lib.paddle_new_etcd_master_client(etcd_endpoints, timeout,
-                                                   buf_size)
+    def __init__(self, etcd_endpoints, timeout_sec, buf_size=0):
+        self.c = get_c_lib().paddle_new_etcd_master_client(
+            etcd_endpoints, timeout_sec, buf_size)
 
-    def close(self):
-        lib.paddle_release_master_client(self.c)
+    def request_save_model(self, trainer_id, block_ms):
+        """request to save model
+
+        Conventionally the 0-th trainer will save model. But in
+        distributed training, any trainer could be killed. This
+        function asks the master server if the trainer should proceed
+        with saving model.
+
+        :param trainer_id: trainer id.
+        :param block_ms: number of millisecond that other save model
+        will be blocked if this save model request succeeded.
+
+        Returns:
+            int: 1 if the save the model request is approved, 0 if
+            does the request is rejected because other trainer is
+            saving the model, -1 if error happened.
+
+        """
+        return get_c_lib().paddle_request_save_model(self.c, trainer_id,
+                                                     block_ms)
+
+    def release(self):
+        get_c_lib().paddle_release_master_client(self.c)
         self.c = None
 
     def set_dataset(self, paths):
         holder_type = ctypes.c_char_p * len(paths)
         holder = holder_type()
-        print paths
         for idx, path in enumerate(paths):
             c_ptr = ctypes.c_char_p(path)
             holder[idx] = c_ptr
-        lib.paddle_set_dataset(self.c, holder, len(paths))
+        get_c_lib().paddle_set_dataset(self.c, holder, len(paths))
 
-    # return format: (record, errno)
-    # errno =  0: ok
-    #       <  0: error
     def next_record(self):
+        """gets next record for training
+
+        Returns:
+            string: the record.
+            int: error code, 0 if successful, < 0 otherwise.
+        """
         p = ctypes.c_char_p()
         ret = ctypes.pointer(p)
-        size = lib.paddle_next_record(self.c, ret)
+        size = get_c_lib().paddle_next_record(self.c, ret)
         if size < 0:
             # Error
             return None, size
@@ -44,5 +74,8 @@ class client(object):
 
         record = ret.contents.value[:size]
         # Memory created from C should be freed.
-        lib.mem_free(ret.contents)
+        get_c_lib().mem_free(ret.contents)
         return record, 0
+
+    def paddle_start_get_records(self, pass_id):
+        get_c_lib().paddle_start_get_records(self.c, pass_id)

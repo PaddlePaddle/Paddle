@@ -30,55 +30,62 @@ Configuring cmake in /paddle/build ...
       -DCMAKE_BUILD_TYPE=Release
       -DWITH_DOC=OFF
       -DWITH_GPU=${WITH_GPU:-OFF}
+      -DWITH_MKLDNN=${WITH_MKLDNN:-ON}
+      -DWITH_MKLML=${WITH_MKLML:-ON}
       -DWITH_AVX=${WITH_AVX:-OFF}
-      -DWITH_GOLANG=${WITH_GOLANG:-OFF}
+      -DWITH_GOLANG=${WITH_GOLANG:-ON}
       -DWITH_SWIG_PY=ON
+      -DWITH_C_API=${WITH_C_API:-OFF}
+      -DWITH_PYTHON=${WITH_PYTHON:-ON}
+      -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
       -DCUDNN_ROOT=/usr/
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
-      -DWITH_TESTING=${WITH_TESTING:-OFF}
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
+      -DWITH_TESTING=${WITH_TESTING:-ON}
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ========================================
 EOF
+
+# Disable UNITTEST_USE_VIRTUALENV in docker because
+# docker environment is fully controlled by this script.
+# See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
+      -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
+      -DWITH_MKLML=${WITH_MKLML:-ON} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
-      -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
-      -DWITH_SWIG_PY=ON \
+      -DWITH_GOLANG=${WITH_GOLANG:-ON} \
+      -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
+      -DWITH_C_API=${WITH_C_API:-OFF} \
+      -DWITH_PYTHON=${WITH_PYTHON:-ON} \
       -DCUDNN_ROOT=/usr/ \
-      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DWITH_TESTING=${WITH_TESTING:-OFF} \
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
+      -DWITH_TESTING=${WITH_TESTING:-ON} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 cat <<EOF
-========================================
+============================================
 Building in /paddle/build ...
-   Build unit tests: ${WITH_TESTING:-OFF}
-========================================
+============================================
 EOF
 make -j `nproc`
-if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    pip uninstall -y py-paddle paddle || true
+
+if [ ${WITH_TESTING:-ON} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+cat <<EOF
+========================================
+Running unit tests ...
+========================================
+EOF
     ctest --output-on-failure
+    # make install should also be test when unittest
+    make install -j `nproc`
+    pip install /usr/local/opt/paddle/share/wheels/*.whl
+    paddle version
 fi
 
 
-cat <<EOF
-========================================
-Installing ...
-========================================
-EOF
-make install
-pip install /usr/local/opt/paddle/share/wheels/*.whl
-paddle version
-
-
-# To build documentation, we need to run cmake again after installing
-# PaddlePaddle.  This awkwardness is due to
-# https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
-# describes a solution.
-if [[ ${WITH_DOC} == "ON" ]]; then
+if [[ ${WITH_DOC:-OFF} == "ON" ]]; then
     cat <<EOF
 ========================================
 Building documentation ...
@@ -93,7 +100,8 @@ EOF
           -DWITH_AVX=${WITH_AVX:-ON} \
           -DWITH_SWIG_PY=ON \
           -DWITH_STYLE_CHECK=OFF
-    make paddle_docs paddle_docs_cn
+    make -j `nproc` gen_proto_py
+    make -j `nproc` paddle_docs paddle_docs_cn
     popd
 fi
 
@@ -115,16 +123,6 @@ EOF
     /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
 fi
 
-# generate deb package for current build
-# FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-cat <<EOF
-========================================
-Generating .deb package ...
-========================================
-EOF
-cpack -D CPACK_GENERATOR='DEB' ..
-
-
 cat <<EOF
 ========================================
 Generate /paddle/build/Dockerfile ...
@@ -143,16 +141,23 @@ RUN sed -i '${APT_MIRROR}' /etc/apt/sources.list
 EOF
 fi
 
+if [[ ${WITH_GPU} == "ON"  ]]; then
+  NCCL_DEPS="apt-get install -y libnccl-dev &&"
+else
+  NCCL_DEPS="" 
+fi
+
 cat >> /paddle/build/Dockerfile <<EOF
-# Use different deb file when building different type of images
-ADD *.deb /
+ADD python/dist/*.whl /
 # run paddle version to install python packages first
 RUN apt-get update &&\
-    apt-get install -y python-pip && pip install -U pip && \
-    dpkg -i /*.deb ; apt-get install -f -y && \
+    ${NCCL_DEPS}\
+    apt-get install -y wget python-pip && pip install -U pip && \
+    pip install /*.whl; apt-get install -f -y && \
     apt-get clean -y && \
-    rm -f /*.deb && \
-    paddle version
+    rm -f /*.whl && \
+    paddle version && \
+    ldconfig
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 ADD go/cmd/pserver/pserver /usr/bin/
@@ -160,3 +165,7 @@ ADD go/cmd/master/master /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
+
+set +xe
+printf "If you need to install PaddlePaddle in develop docker image,"
+printf "please make install or pip install build/python/dist/*.whl.\n"

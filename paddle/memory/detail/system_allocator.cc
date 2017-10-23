@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/assert.h"
-#include "paddle/platform/error.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/gpu_info.h"
 
 #include <stdlib.h>    // for malloc and free
@@ -27,7 +27,7 @@ limitations under the License. */
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, false, "If set, allocate cpu pinned memory.");
+DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
 
 namespace paddle {
 namespace memory {
@@ -62,7 +62,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool CPUAllocator::UseGpu() const { return false; }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 void* GPUAllocator::Alloc(size_t& index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
@@ -128,14 +128,13 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
   // process is terminating, in which case we don't care if
   // cudaFree succeeds.
   if (err != cudaErrorCudartUnloading) {
-    platform::throw_on_error(err,
-                             "cudaFree{Host} failed in GPUAllocator::Free.");
+    PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
   }
 }
 
 bool GPUAllocator::UseGpu() const { return true; }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace detail
 }  // namespace memory

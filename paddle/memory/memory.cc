@@ -13,14 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/memory.h"
+
+#include "glog/logging.h"
+
 #include "paddle/memory/detail/buddy_allocator.h"
 #include "paddle/memory/detail/system_allocator.h"
-#include "paddle/platform/assert.h"
+#include "paddle/platform/gpu_info.h"
+
+DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
 namespace memory {
 
-detail::BuddyAllocator* GetCPUBuddyAllocator() {
+using BuddyAllocator = detail::BuddyAllocator;
+
+BuddyAllocator* GetCPUBuddyAllocator() {
   static detail::BuddyAllocator* a = nullptr;
   if (a == nullptr) {
     a = new detail::BuddyAllocator(new detail::CPUAllocator,
@@ -45,20 +52,26 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
-detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
-  static detail::BuddyAllocator** as = NULL;
+BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
+  static BuddyAllocator** as = NULL;
   if (as == NULL) {
-    int gpu_num = platform::GetDeviceCount();
-    as = new detail::BuddyAllocator*[gpu_num];
+    int gpu_num = platform::GetCUDADeviceCount();
+    as = new BuddyAllocator*[gpu_num];
     for (int gpu = 0; gpu < gpu_num; gpu++) {
       platform::SetDeviceId(gpu);
-      as[gpu] = new detail::BuddyAllocator(new detail::GPUAllocator,
-                                           platform::GpuMinChunkSize(),
-                                           platform::GpuMaxChunkSize());
+      as[gpu] = new BuddyAllocator(new detail::GPUAllocator,
+                                   platform::GpuMinChunkSize(),
+                                   platform::GpuMaxChunkSize());
     }
+    VLOG(3) << "\n\nNOTE: each GPU device use "
+            << FLAGS_fraction_of_gpu_memory_to_use * 100 << "% of GPU memory.\n"
+            << "You can set environment variable '"
+            << platform::kEnvFractionGpuMemoryToUse
+            << "' to change the fraction of GPU usage.\n\n";
   }
+  platform::SetDeviceId(gpu_id);
   return as[gpu_id];
 }
 
@@ -77,7 +90,7 @@ size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
   return GetGPUBuddyAllocator(place.device)->Used();
 }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace memory
 }  // namespace paddle

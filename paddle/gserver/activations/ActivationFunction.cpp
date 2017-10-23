@@ -22,8 +22,11 @@ limitations under the License. */
 #include <type_traits>
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/ClassRegistrar.h"
-
 #include "paddle/utils/Logging.h"
+
+#ifdef PADDLE_USE_MKLDNN
+#include "MKLDNNActivation.h"
+#endif
 
 namespace paddle {
 
@@ -112,7 +115,6 @@ BEGIN_DEFINE_ACTIVATION(softmax)
 private:
 MatrixPtr sftMaxSum_;
 MatrixPtr sftMaxDot_;
-MatrixPtr one_;
 
 public:
 Error __must_check forward(Argument& act) {
@@ -138,14 +140,6 @@ Error __must_check backward(Argument& act) {
                            1,
                            /* trans */ false,
                            useGpu(act.deviceId));
-    if (!one_ || one_->getWidth() != outputG->getWidth()) {
-      Matrix::resizeOrCreate(one_,
-                             1,
-                             outputG->getWidth(),
-                             /* trans */ false,
-                             useGpu(act.deviceId));
-      one_->one();
-    }
 
     sftMaxDot_->dotMul(*outputG, *outputV);
     sftMaxSum_->colMerge(*sftMaxDot_);
@@ -186,7 +180,10 @@ Error __must_check forward(Argument& act) {
                                     useGpu(act.deviceId));
   }
 
-  auto starts = act.sequenceStartPositions->getVector(useGpu(act.deviceId));
+  auto starts =
+      act.hasSubseq()
+          ? act.subSequenceStartPositions->getVector(useGpu(act.deviceId))
+          : act.sequenceStartPositions->getVector(useGpu(act.deviceId));
   act.value->sequenceSoftmax(*act.value, *starts);
   return Error();
 }
@@ -197,8 +194,9 @@ Error __must_check backward(Argument& act) {
         "Input width for each timestep of sequence softmax should be 1");
   }
 
-  size_t numSequences = act.getNumSequences();
-  const int* starts = act.sequenceStartPositions->getData(false);
+  size_t numSequences =
+      act.hasSubseq() ? act.getNumSubSequences() : act.getNumSequences();
+  const int* starts = act.getCpuStartPositions();
 
   for (size_t i = 0; i < numSequences; ++i) {
     // TODO(Dangqingqing) optimization for GPU
@@ -207,8 +205,8 @@ Error __must_check backward(Argument& act) {
     argument_.value->setData(act.value->getData() + offset, 1UL, size);
     argument_.grad->setData(act.grad->getData() + offset, 1UL, size);
 
-    Error status = softmax_.backward(argument_);
-    if (!status) return status;
+    Error err = softmax_.backward(argument_);
+    if (!err.isOK()) return err;
   }
   return Error();
 }
@@ -461,6 +459,12 @@ Error __must_check backward(Argument& act) {
 END_DEFINE_ACTIVATION(log)
 
 ActivationFunction* ActivationFunction::create(const std::string& type) {
+#ifdef PADDLE_USE_MKLDNN
+  if (!type.empty() && type.compare(0, 7, "mkldnn_") == 0) {
+    return MKLDNNActivation::create(type);
+  }
+#endif
+
   return gActivationRegistrar.createByType(type);
 }
 

@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/platform/gpu_info.h"
+
 #include "gflags/gflags.h"
-#include "paddle/platform/error.h"
+
+#include "paddle/platform/enforce.h"
+#include "paddle/platform/environment.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
               "Default use 95% of GPU memory for PaddlePaddle,"
@@ -23,29 +26,31 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
 namespace paddle {
 namespace platform {
 
-int GetDeviceCount() {
+int GetCUDADeviceCount() {
   int count;
-  throw_on_error(
+  PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
-      "cudaGetDeviceCount failed in paddle::platform::GetDeviceCount");
+      "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
   return count;
 }
 
 int GetCurrentDeviceId() {
   int device_id;
-  throw_on_error(
+  PADDLE_ENFORCE(
       cudaGetDevice(&device_id),
       "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
   return device_id;
 }
 
 void SetDeviceId(int id) {
-  throw_on_error(cudaSetDevice(id),
+  // TODO(qijun): find a better way to cache the cuda device count
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }
 
-void GpuMemoryUsage(size_t& available, size_t& total) {
-  throw_on_error(cudaMemGetInfo(&available, &total),
+void GpuMemoryUsage(size_t &available, size_t &total) {
+  PADDLE_ENFORCE(cudaMemGetInfo(&available, &total),
                  "cudaMemGetInfo failed in paddle::platform::GetMemoryUsage");
 }
 
@@ -70,6 +75,13 @@ size_t GpuMaxChunkSize() {
 
   GpuMemoryUsage(available, total);
 
+  if (IsEnvVarDefined(kEnvFractionGpuMemoryToUse)) {
+    auto val = std::stod(GetEnvValue(kEnvFractionGpuMemoryToUse));
+    PADDLE_ENFORCE_GT(val, 0.0);
+    PADDLE_ENFORCE_LE(val, 1.0);
+    FLAGS_fraction_of_gpu_memory_to_use = val;
+  }
+
   // Reserving the rest memory for page tables, etc.
   size_t reserving = (1 - FLAGS_fraction_of_gpu_memory_to_use) * total;
 
@@ -82,5 +94,28 @@ size_t GpuMaxChunkSize() {
   return usable;
 }
 
+void GpuMemcpyAsync(void *dst, const void *src, size_t count,
+                    enum cudaMemcpyKind kind, cudaStream_t stream) {
+  PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream),
+                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
+}
+
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   enum cudaMemcpyKind kind) {
+  PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync");
+  // note: cudaMemcpy may actually be asynchronous with respect to the caller,
+  //       block on stream 0 to make sure the copy has completed
+  PADDLE_ENFORCE(
+      cudaStreamSynchronize(0),
+      "cudaStreamSynchronize failed in paddle::platform::GpuMemcpySync");
+}
+
+void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
+                   size_t count, cudaStream_t stream) {
+  PADDLE_ENFORCE(
+      cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream),
+      "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeer");
+}
 }  // namespace platform
 }  // namespace paddle

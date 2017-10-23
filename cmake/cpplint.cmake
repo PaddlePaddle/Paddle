@@ -26,9 +26,9 @@ set(IGNORE_PATTERN
     .*ImportanceSampler.*
     .*cblas\\.h.*
     .*\\.pb\\.txt
-    .*LtrDataProvider.*
     .*MultiDataProvider.*
-    .*pb.*)
+    .*pb.*
+    .*pybind.h)
 
 # add_style_check_target
 #
@@ -42,26 +42,21 @@ macro(add_style_check_target TARGET_NAME)
     if(WITH_STYLE_CHECK)
         set(SOURCES_LIST ${ARGN})
         list(REMOVE_DUPLICATES SOURCES_LIST)
-        list(SORT SOURCES_LIST)
-
         foreach(filename ${SOURCES_LIST})
-            set(LINT ON)
             foreach(pattern ${IGNORE_PATTERN})
                 if(filename MATCHES ${pattern})
-                    message(STATUS "DROP LINT ${filename}")
-                    set(LINT OFF)
+                    list(REMOVE_ITEM SOURCES_LIST ${filename})
                 endif()
             endforeach()
-            if(LINT MATCHES ON)
-                # cpplint code style
-                get_filename_component(base_filename ${filename} NAME)
-                set(CUR_GEN ${CMAKE_CURRENT_BINARY_DIR}/${base_filename}.cpplint)
-                add_custom_command(TARGET ${TARGET_NAME} PRE_BUILD
-                    COMMAND "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"
-                            "--filter=${STYLE_FILTER}"
-                            "--write-success=${CUR_GEN}" ${filename}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-            endif()
         endforeach()
+
+        if(SOURCES_LIST)
+            add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/scripts/cpplint.py"
+                        "--filter=${STYLE_FILTER}"
+                        ${SOURCES_LIST}
+                COMMENT "cpplint: Checking source code style"
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})        
+        endif()
     endif()
 endmacro()

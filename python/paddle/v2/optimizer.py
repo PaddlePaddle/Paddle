@@ -1,12 +1,25 @@
-import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
-import paddle.trainer_config_helpers.optimizers as v1_optimizers
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Optimizers(update equation) for SGD method.
 
-TODO(zhihong) : create new optimizer with proto config, add new optimizer here
-
 TODO(yuyang18): Complete comments.
 """
+
+import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
+import paddle.trainer_config_helpers.optimizers as v1_optimizers
+from paddle.proto.OptimizerConfig_pb2 import OptimizerConfig
 
 __all__ = [
     'Momentum', 'Adam', 'Adamax', 'AdaGrad', 'DecayedAdaGrad', 'AdaDelta',
@@ -70,7 +83,8 @@ class Optimizer(object):
                         gradient_machine.prefetch(in_args)
                         parameter_updater.getParametersRemote()
 
-        :param pserver_spec: pserver location, eg: localhost:3000
+        :param pserver_spec: pserver location, eg: localhost:3000, if use etcd,
+        pserver_spec should be the etcd endpoints, eg: http://localhost:2379
         :return: parameter_updater
         """
         if is_local:

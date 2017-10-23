@@ -22,7 +22,6 @@ limitations under the License. */
 #endif
 
 #include "gflags/gflags.h"
-#include "paddle/platform/error.h"
 
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"

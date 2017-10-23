@@ -12,15 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "hl_base.h"
-#include "hl_device_functions.cuh"
 #include "hl_cuda.h"
+#include "hl_device_functions.cuh"
 #include "paddle/utils/Logging.h"
 
-template<int blockDimX, int blockDimY, int gridDimX, bool AddRow>
-__global__ void KeMatrixAddRows(real* output, int ldo,
-                                real* table, int ldt,
+template <int blockDimX, int blockDimY, int gridDimX, bool AddRow>
+__global__ void KeMatrixAddRows(real* output,
+                                int ldo,
+                                real* table,
+                                int ldt,
                                 int* ids,
                                 int numSamples,
                                 int tableSize,
@@ -31,8 +32,8 @@ __global__ void KeMatrixAddRows(real* output, int ldo,
   while (idy < numSamples) {
     int tableId = ids[idy];
     if ((0 <= tableId) && (tableId < tableSize)) {
-      real *out = output + idy * ldo;
-      real *tab = table + tableId * ldt;
+      real* out = output + idy * ldo;
+      real* tab = table + tableId * ldt;
       for (int i = idx; i < dim; i += blockDimX) {
         if (AddRow) {
           paddle::paddleAtomicAdd(&tab[i], out[i]);
@@ -45,8 +46,10 @@ __global__ void KeMatrixAddRows(real* output, int ldo,
   }
 }
 
-void hl_matrix_select_rows(real* output, int ldo,
-                           real* table, int ldt,
+void hl_matrix_select_rows(real* output,
+                           int ldo,
+                           real* table,
+                           int ldt,
                            int* ids,
                            int numSamples,
                            int tableSize,
@@ -57,14 +60,16 @@ void hl_matrix_select_rows(real* output, int ldo,
 
   dim3 threads(128, 8);
   dim3 grid(8, 1);
-  KeMatrixAddRows<128, 8, 8, 0><<< grid, threads, 0, STREAM_DEFAULT >>>
-    (output, ldo, table, ldt, ids, numSamples, tableSize, dim);
+  KeMatrixAddRows<128, 8, 8, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      output, ldo, table, ldt, ids, numSamples, tableSize, dim);
 
   CHECK_SYNC("hl_matrix_select_rows failed");
 }
 
-void hl_matrix_add_to_rows(real* table, int ldt,
-                           real* input, int ldi,
+void hl_matrix_add_to_rows(real* table,
+                           int ldt,
+                           real* input,
+                           int ldi,
                            int* ids,
                            int numSamples,
                            int tableSize,
@@ -75,16 +80,15 @@ void hl_matrix_add_to_rows(real* table, int ldt,
 
   dim3 threads(128, 8);
   dim3 grid(8, 1);
-  KeMatrixAddRows<128, 8, 8, 1><<< grid, threads, 0, STREAM_DEFAULT >>>
-    (input, ldi, table, ldt, ids, numSamples, tableSize, dim);
+  KeMatrixAddRows<128, 8, 8, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      input, ldi, table, ldt, ids, numSamples, tableSize, dim);
 
   CHECK_SYNC("hl_matrix_add_to_rows failed");
 }
 
-template<class T, int blockDimX, int gridDimX>
-__global__ void KeVectorSelect(T* dst, int sized,
-                               const T* src, int sizes,
-                               const int* ids, int sizei) {
+template <class T, int blockDimX, int gridDimX>
+__global__ void KeVectorSelect(
+    T* dst, int sized, const T* src, int sizes, const int* ids, int sizei) {
   int idx = threadIdx.x + blockDimX * blockIdx.x;
   while (idx < sizei) {
     int index = ids[idx];
@@ -95,9 +99,8 @@ __global__ void KeVectorSelect(T* dst, int sized,
 }
 
 template <class T>
-void hl_vector_select_from(T* dst, int sized,
-                           const T* src, int sizes,
-                           const int* ids, int sizei) {
+void hl_vector_select_from(
+    T* dst, int sized, const T* src, int sizes, const int* ids, int sizei) {
   CHECK_NOTNULL(dst);
   CHECK_NOTNULL(src);
   CHECK_NOTNULL(ids);
@@ -105,18 +108,17 @@ void hl_vector_select_from(T* dst, int sized,
 
   dim3 threads(512, 1);
   dim3 grid(8, 1);
-  KeVectorSelect<T, 512, 8><<< grid, threads, 0, STREAM_DEFAULT >>>
-    (dst, sized, src, sizes, ids, sizei);
+  KeVectorSelect<T, 512, 8><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      dst, sized, src, sizes, ids, sizei);
 
   CHECK_SYNC("hl_vector_select_from failed");
 }
 
-template
-void hl_vector_select_from(real* dst, int sized,
-                           const real* src, int sizes,
-                           const int* ids, int sizei);
-template
-void hl_vector_select_from(int* dst, int sized,
-                           const int* src, int sizes,
-                           const int* ids, int sizei);
-
+template void hl_vector_select_from(real* dst,
+                                    int sized,
+                                    const real* src,
+                                    int sizes,
+                                    const int* ids,
+                                    int sizei);
+template void hl_vector_select_from(
+    int* dst, int sized, const int* src, int sizes, const int* ids, int sizei);

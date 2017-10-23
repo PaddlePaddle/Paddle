@@ -46,8 +46,26 @@ bool CudnnConvBaseLayer::init(const LayerMap &layerMap,
     projConf_.emplace_back(conf);
     projections_.emplace_back(
         Projection::create(*projConf_[i], parameters_[i], useGpu_));
+
+    // create a new weight
+    size_t height, width;
+    height = filterPixels_[i] * filterChannels_[i];
+    width = (!isDeconv_) ? numFilters_ : channels_[i];
+    CHECK_EQ(parameters_[i]->getSize(), width * height);
+    Weight *w = new Weight(height, width, parameters_[i]);
+    weights_.emplace_back(w);
   }
 
+  if (biasParameter_.get()) {
+    if (sharedBiases_) {
+      CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
+    } else {
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
+    }
+  }
   if (biases_.get() && sharedBiases_) {
     hl_create_tensor_descriptor(&biasDesc_);
     hl_create_tensor_descriptor(&outputDesc_);

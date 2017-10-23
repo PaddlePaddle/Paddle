@@ -15,44 +15,42 @@ limitations under the License. */
 #include "paddle/framework/scope.h"
 #include "gtest/gtest.h"
 
-TEST(Scope, Create) {
-  using paddle::framework::Scope;
-  using paddle::framework::Variable;
+using paddle::framework::Scope;
+using paddle::framework::Variable;
 
-  auto scope = std::make_shared<Scope>();
+TEST(Scope, VarsShadowing) {
+  Scope s;
+  Scope& ss1 = s.NewScope();
+  Scope& ss2 = s.NewScope();
 
-  Variable* var0 = scope->CreateVariable("");
-  EXPECT_NE(var0, nullptr);
+  Variable* v0 = s.Var("a");
+  Variable* v1 = ss1.Var("a");
 
-  /// GetVariable will return nullptr if not exist.
-  Variable* var1 = scope->GetVariable("a");
-  EXPECT_EQ(var1, nullptr);
+  EXPECT_NE(v0, v1);
 
-  /// CreateVariable will return one.
-  Variable* var2 = scope->CreateVariable("a");
-  EXPECT_NE(var2, nullptr);
-
-  /// Get the created variable.
-  Variable* var3 = scope->GetVariable("a");
-  EXPECT_EQ(var2, var3);
-
-  /// CreateVariable will just return the variable if it's
-  /// already exist.
-  Variable* var4 = scope->CreateVariable("a");
-  EXPECT_EQ(var4, var2);
+  EXPECT_EQ(v0, s.FindVar("a"));
+  EXPECT_EQ(v1, ss1.FindVar("a"));
+  EXPECT_EQ(v0, ss2.FindVar("a"));
 }
 
-TEST(Scope, Parent) {
-  using paddle::framework::Scope;
-  using paddle::framework::Variable;
+TEST(Scope, FindVar) {
+  Scope s;
+  Scope& ss = s.NewScope();
 
-  auto parent_scope = std::make_shared<Scope>();
-  auto scope = std::make_shared<Scope>(parent_scope);
+  EXPECT_EQ(nullptr, s.FindVar("a"));
+  EXPECT_EQ(nullptr, ss.FindVar("a"));
 
-  Variable* var0 = parent_scope->CreateVariable("a");
-  EXPECT_NE(var0, nullptr);
+  ss.Var("a");
 
-  /// GetVariable will get Variable from parent scope if exist.
-  Variable* var1 = scope->GetVariable("a");
-  EXPECT_EQ(var0, var1);
+  EXPECT_EQ(nullptr, s.FindVar("a"));
+  EXPECT_NE(nullptr, ss.FindVar("a"));
+}
+
+TEST(Scope, FindScope) {
+  Scope s;
+  Scope& ss = s.NewScope();
+  Variable* v = s.Var("a");
+
+  EXPECT_EQ(&s, s.FindScope(v));
+  EXPECT_EQ(&s, ss.FindScope(v));
 }

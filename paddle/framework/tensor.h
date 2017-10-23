@@ -18,27 +18,26 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <vector>
+
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/enforce.h"
 #include "paddle/memory/memory.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
-namespace pybind {
-namespace details {  // forward declare
-template <bool less, size_t i, typename... args>
-struct CastToPyBufferImpl;
-}  // namespace details
-}  // namespace pybind
+
 namespace framework {
 
 class Tensor {
-  template <bool less, size_t i, typename... args>
-  friend struct paddle::pybind::details::CastToPyBufferImpl;
-
+ public:
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
+
+  template <typename T, int MajorType, typename IndexType>
+  friend struct EigenMatrix;
 
   template <typename T, int MajorType, typename IndexType>
   friend struct EigenVector;
@@ -46,160 +45,156 @@ class Tensor {
  public:
   Tensor() : offset_(0) {}
 
+  /*! Return a pointer to mutable memory block. */
   template <typename T>
-  const T* data() const {
-    CheckDims<T>();
-    return reinterpret_cast<const T*>(
-        reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
-  }
+  inline T* data();
 
+  /*! Return a pointer to constant memory block. */
   template <typename T>
-  T* data() {
-    CheckDims<T>();
-    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                offset_);
-  }
+  inline const T* data() const;
 
+  /**
+   * @brief   Return a pointer to mutable memory block.
+   * @note    If not exist, then allocation.
+   */
   template <typename T>
-  T* mutable_data(DDim dims, platform::Place place) {
-    set_dims(dims);
-    return mutable_data<T>(place);
-  }
+  inline T* mutable_data(platform::Place place);
 
+  inline void* mutable_data(platform::Place place, std::type_index type);
+
+  inline void* mutable_data(platform::Place place);
+
+  /**
+   * @brief     Return a pointer to mutable memory block.
+   *
+   * @param[in] dims    The dimensions of the memory block.
+   * @param[in] place   The place of the memory block.
+   *
+   * @note      If not exist, then allocation.
+   */
   template <typename T>
-  T* mutable_data(platform::Place place) {
-    PADDLE_ENFORCE(product(dims_) > 0,
-                   "Tensor's numel must be larger than zero to call "
-                   "Tensor::mutable_data. Call Tensor::set_dim first.");
-    if (holder_ == nullptr ||
-        !(holder_->place() ==
-          place) /* some versions of boost::variant don't have operator!= */
-        || holder_->size() < product(dims_) * sizeof(T) + offset_) {
-      if (platform::is_cpu_place(place)) {
-        holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
-            boost::get<platform::CPUPlace>(place), product(dims_) * sizeof(T)));
-      } else if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_ONLY_CPU
-        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
-#else
-        holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
-            boost::get<platform::GPUPlace>(place), product(dims_) * sizeof(T)));
-#endif
-      } else {
-        PADDLE_THROW("Unknown 'place'.");
-      }
-      offset_ = 0;
-    }
-    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                offset_);
-  }
+  inline T* mutable_data(DDim dims, platform::Place place);
 
+  /*! Return the dimensions of the memory block. */
+  inline const DDim& dims() const;
+
+  /*! Return the numel of the memory block. */
+  inline int64_t numel() const;
+
+  /*! Resize the dimensions of the memory block. */
+  inline Tensor& Resize(const DDim& dims);
+
+  /*! The internal of two tensors share the same memory block. */
+  inline Tensor& ShareDataWith(const Tensor& src);
+
+  /**
+   * @brief   Copy the content of external tensor to a new place.
+   *
+   * @param[in] src        The external tensor.
+   * @param[in] dst_place  The dst place.
+   * @param[in] ctx        The device context contains device resources.
+   *
+   * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+   */
+  // TODO(qijun): https://github.com/PaddlePaddle/Paddle/issues/4647
+  // Remove `CopyFrom` and `CopyFromVector` from Tensor interface
+  // and make them global functions
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                       const platform::DeviceContext& ctx);
+
+  /**
+   * @brief   Copy the content of an external vector to a tensor.
+   *
+   * @param[in] src        The external tensor.
+   * @param[in] ctx        The device context contains device resources.
+   *
+   * * @note    CopyFromVector assumes that the tensor has been resized
+   *            before invoking.
+   */
   template <typename T>
-  void ShareDataFrom(const Tensor& src) {
-    src.CheckDims<T>();
-    holder_ = src.holder_;
-    set_dims(src.dims());
-    offset_ = src.offset_;
+  inline void CopyFromVector(const std::vector<T>& src,
+                             const platform::DeviceContext& ctx);
+
+  /**
+   * @brief   Return the slice of the tensor.
+   *
+   * @param[in] begin_idx   The begin index of the slice.
+   * @param[in] end_idx     The end index of the slice.
+   */
+  inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+
+  platform::Place place() const {
+    PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get place() must contains holder");
+    return holder_->place();
   }
 
-  template <typename T>
-  void CopyFrom(const Tensor& src, platform::Place dst_place) {
-    PADDLE_ENFORCE(platform::is_cpu_place(src.holder_->place()) &&
-                       platform::is_cpu_place(dst_place),
-                   "Tensor::CopyFrom only support CPU now.");
-    src.CheckDims<T>();
-    size_t size = product(src.dims_) * sizeof(T);
-    set_dims(src.dims());
-    const void* src_ptr = static_cast<const void*>(src.data<T>());
-    void* dst_ptr = static_cast<void*>(mutable_data<T>(dst_place));
-    memcpy(dst_ptr, src_ptr, size);
-  }
-
-  template <typename T>
-  Tensor Slice(const int& begin_idx, const int& end_idx) const {
-    CheckDims<T>();
-    PADDLE_ENFORCE(begin_idx >= 0 && end_idx <= dims_[0],
-                   "Slice index is less than zero or out of bound.");
-    PADDLE_ENFORCE(begin_idx < end_idx,
-                   "Begin index must be less than end index.");
-    PADDLE_ENFORCE(dims_[0] != 1, "Can not slice a tensor with dims_[0] = 1.");
-    std::vector<int> d = vectorize(dims_);
-    int base = 1;
-    for (size_t i = 1; i < d.size(); ++i) {
-      base *= d[i];
-    }
-    Tensor dst;
-    dst.holder_ = holder_;
-    DDim dst_dims = dims_;
-    dst_dims[0] = end_idx - begin_idx;
-    dst.set_dims(dst_dims);
-    dst.offset_ = offset_ + begin_idx * base * sizeof(T);
-    return dst;
-  }
-
-  void set_dims(const DDim& dims) {
-    if (dims == dims_) {
-      return;
-    }
-    dims_ = dims;
-  }
-
-  DDim dims() const { return dims_; }
+  std::type_index type() const { return holder_->type(); }
 
  private:
-  // Placeholder hides type T, so it doesn't appear as a template
-  // parameter of Variable.
+  inline void check_memory_size() const;
+
+ private:
+  /**
+   * @note    Placeholder hides type T, so it doesn't appear as a template
+   *          parameter of Variable.
+   */
   struct Placeholder {
-    virtual ~Placeholder() {}
+    virtual ~Placeholder() = default;
     virtual void* ptr() const = 0;
-    virtual platform::Place place() const = 0;
     virtual size_t size() const = 0;
     virtual std::type_index type() const = 0;
+    virtual platform::Place place() const = 0;
+    virtual void set_type(std::type_index type) = 0;
   };
 
-  template <typename T, typename PlaceType>
+  template <typename Place>
   struct PlaceholderImpl : public Placeholder {
-   private:
-    template <typename PType>
-    class Deleter {
-     public:
-      Deleter(PType place) : place_(place) {}
-      void operator()(T* ptr) { memory::Free(place_, static_cast<void*>(ptr)); }
-
-     private:
-      PType place_;
-    };
-
-   public:
-    PlaceholderImpl(PlaceType place, size_t size)
-        : ptr_(static_cast<T*>(memory::Alloc(place, size)),
-               Deleter<PlaceType>(place)),
+    PlaceholderImpl(Place place, size_t size, std::type_index type)
+        : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size)),
+               memory::PODDeleter<uint8_t, Place>(place)),
           place_(place),
-          size_(size) {}
+          size_(size),
+          type_(type) {
+      PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
+                              (is_cpu_place(place_) ? "CPU" : "GPU"));
+    }
 
-    virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual size_t size() const { return size_; }
-    virtual paddle::platform::Place place() const { return place_; }
-    virtual std::type_index type() const { return std::type_index(typeid(T)); }
+    virtual platform::Place place() const { return place_; }
+    virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
+    virtual std::type_index type() const { return type_; }
+    virtual void set_type(std::type_index type) { type_ = type; }
 
-    std::unique_ptr<T, Deleter<PlaceType>> ptr_;
-    platform::Place place_;  // record the place of ptr_.
-    size_t size_;            // size of the memory block.
+    /*! the pointer of memory block. */
+    std::unique_ptr<uint8_t, memory::PODDeleter<uint8_t, Place>> ptr_;
+
+    /*! the place of memory block. */
+    platform::Place place_;
+
+    /*! the size of memory block. */
+    size_t size_;
+
+    /* the current type of memory */
+    std::type_index type_;
   };
 
-  template <typename T>
-  inline void CheckDims() const {
-    PADDLE_ENFORCE(holder_ != nullptr,
-                   "Tenosr holds no memory. Call Tensor::mutable_data first.");
-    PADDLE_ENFORCE(holder_->size() >= product(dims_) * sizeof(T) + offset_,
-                   "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
-                   "first to re-allocate memory.");
-  }
+  /*! holds the memory block if allocated. */
+  std::shared_ptr<Placeholder> holder_;
 
-  std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
+  /*! points to dimensions of memory block. */
   DDim dims_;
-  size_t offset_;  // marks the begin of tensor data area.
+
+  /**
+   * @brief   A PlaceHolder may be shared by more than one tensor.
+   *
+   * @note    Some of them may be slices of the others. So the offset_
+   *          is introduced here to indicate the byte offset between
+   *          PlaceHolder::ptr_ and where the tensor data really begins.
+   */
+  size_t offset_;
 };
 
 }  // namespace framework
 }  // namespace paddle
+
+#include "paddle/framework/tensor_impl.h"

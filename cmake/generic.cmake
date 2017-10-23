@@ -106,22 +106,22 @@ function(merge_static_libs TARGET_NAME)
   endforeach()
   list(REMOVE_DUPLICATES libs_deps)
 
-  if(APPLE) # Use OSX's libtool to merge archives
-    # To produce a library we need at least one source file.
-    # It is created by add_custom_command below and will helps
-    # also help to track dependencies.
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+  # To produce a library we need at least one source file.
+  # It is created by add_custom_command below and will helps
+  # also help to track dependencies.
+  set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
 
+  if(APPLE) # Use OSX's libtool to merge archives
     # Make the generated dummy source file depended on all static input
     # libs. If input lib changes,the source file is touched
     # which causes the desired effect (relink).
-    add_custom_command(OUTPUT ${dummyfile}
-      COMMAND ${CMAKE_COMMAND} -E touch ${dummyfile}
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
       DEPENDS ${libs})
 
     # Generate dummy staic lib
-    file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
-    add_library(${TARGET_NAME} STATIC ${dummyfile})
+    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     foreach(lib ${libs})
@@ -130,11 +130,14 @@ function(merge_static_libs TARGET_NAME)
     endforeach()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
-      COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
+      COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
+      )
   else() # general UNIX: use "ar" to extract objects and re-add to a common lib
+    set(target_DIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.dir)
+
     foreach(lib ${libs})
-      set(objlistfile ${lib}.objlist) # list of objects in the input library
-      set(objdir ${lib}.objdir)
+      set(objlistfile ${target_DIR}/${lib}.objlist) # list of objects in the input library
+      set(objdir ${target_DIR}/${lib}.objdir)
 
       add_custom_command(OUTPUT ${objdir}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir}
@@ -142,31 +145,32 @@ function(merge_static_libs TARGET_NAME)
 
       add_custom_command(OUTPUT ${objlistfile}
         COMMAND ${CMAKE_AR} -x "$<TARGET_FILE:${lib}>"
-        COMMAND ${CMAKE_AR} -t "$<TARGET_FILE:${lib}>" > ../${objlistfile}
+        COMMAND ${CMAKE_AR} -t "$<TARGET_FILE:${lib}>" > ${objlistfile}
         DEPENDS ${lib} ${objdir}
         WORKING_DIRECTORY ${objdir})
 
-      # Empty dummy source file that goes into merged library		
-      set(mergebase ${lib}.mergebase.c)		
-      add_custom_command(OUTPUT ${mergebase}		
-        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}		
-        DEPENDS ${objlistfile})		
-
-      list(APPEND mergebases "${mergebase}")
+      list(APPEND target_OBJS "${objlistfile}")
     endforeach()
 
-    add_library(${TARGET_NAME} STATIC ${mergebases})
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+      DEPENDS ${libs} ${target_OBJS})
+
+    # Generate dummy staic lib
+    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     # Get the file name of the generated library
-    set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
+    set(target_LIBNAME "$<TARGET_FILE:${TARGET_NAME}>")
 
-    foreach(lib ${libs})
-      add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_AR} cr ${outlibfile} *.o
-        COMMAND ${CMAKE_RANLIB} ${outlibfile}
-        WORKING_DIRECTORY ${lib}.objdir)
-    endforeach()
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
+        COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
+        WORKING_DIRECTORY ${target_DIR})
   endif()
 endfunction(merge_static_libs)
 
@@ -187,10 +191,16 @@ function(cc_library TARGET_NAME)
     endif()
     
     # cpplint code style
-    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS})
+    foreach(source_file ${cc_library_SRCS})
+      string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+        list(APPEND cc_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+      endif()
+    endforeach()
+    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS} ${cc_library_HEADERS})
 
   else(cc_library_SRCS)
-    if (cc_library_DEPS)
+    if(cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
     else()
       message(FATAL "Please specify source file or library in cc_library.")
@@ -239,6 +249,14 @@ function(nv_library TARGET_NAME)
         add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
         target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
       endif()
+      # cpplint code style
+      foreach(source_file ${nv_library_SRCS})
+        string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+        if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+          list(APPEND nv_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+        endif()
+      endforeach()
+      add_style_check_target(${TARGET_NAME} ${nv_library_SRCS} ${nv_library_HEADERS})
     else(nv_library_SRCS)
       if (nv_library_DEPS)
         merge_static_libs(${TARGET_NAME} ${nv_library_DEPS})
@@ -371,13 +389,60 @@ function(go_test TARGET_NAME)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction(go_test)
 
+# Modification of standard 'protobuf_generate_cpp()' with protobuf-lite support
+# Usage:
+#   paddle_protobuf_generate_cpp(<proto_srcs> <proto_hdrs> <proto_files>)
+
+function(paddle_protobuf_generate_cpp SRCS HDRS)
+  if(NOT ARGN)
+    message(SEND_ERROR "Error: paddle_protobuf_generate_cpp() called without any proto files")
+    return()
+  endif()
+
+  set(${SRCS})
+  set(${HDRS})
+
+  if (MOBILE_INFERENCE)
+      set(EXTRA_FLAG "lite:")  
+  else()
+      set(EXTRA_FLAG "") 
+  endif()
+
+  foreach(FIL ${ARGN})
+    get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
+    get_filename_component(FIL_WE ${FIL} NAME_WE)
+    
+    set(_protobuf_protoc_src "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc")
+    set(_protobuf_protoc_hdr "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h")
+    list(APPEND ${SRCS} "${_protobuf_protoc_src}")
+    list(APPEND ${HDRS} "${_protobuf_protoc_hdr}")
+    
+    add_custom_command(
+      OUTPUT "${_protobuf_protoc_src}"
+             "${_protobuf_protoc_hdr}"
+
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
+      -I${CMAKE_CURRENT_SOURCE_DIR}
+      --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      DEPENDS ${ABS_FIL} protoc
+      COMMENT "Running C++ protocol buffer compiler on ${FIL}"
+      VERBATIM )
+  endforeach()
+
+  set_source_files_properties(${${SRCS}} ${${HDRS}} PROPERTIES GENERATED TRUE)
+  set(${SRCS} ${${SRCS}} PARENT_SCOPE)
+  set(${HDRS} ${${HDRS}} PARENT_SCOPE)
+endfunction()
+
+
 function(proto_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   set(proto_srcs)
   set(proto_hdrs)
-  protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
+  paddle_protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
   cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS ${proto_library_DEPS} protobuf)
 endfunction()
 
@@ -388,4 +453,17 @@ function(py_proto_compile TARGET_NAME)
   set(py_srcs)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
+endfunction()
+
+function(py_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(options STATIC static SHARED shared)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
+    add_test(NAME ${TARGET_NAME}
+             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
+             python2 ${py_test_SRCS}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  endif()
 endfunction()

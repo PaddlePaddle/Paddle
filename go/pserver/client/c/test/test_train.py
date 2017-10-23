@@ -3,21 +3,11 @@ import paddle.v2.dataset.uci_housing as uci_housing
 import paddle.v2.master as master
 import os
 import cPickle as pickle
+from paddle.v2.reader.creator import cloud_reader
 
 etcd_ip = os.getenv("MASTER_IP", "127.0.0.1")
-etcd_endpoint = "http://" + etcd_ip + ":2379"
-
-
-def cloud_reader():
-    print "connecting to master, etcd endpoints: ", etcd_endpoint
-    master_client = master.client(etcd_endpoint, 5, 64)
-    master_client.set_dataset(
-        ["/pfs/dlnel/public/dataset/uci_housing/uci_housing-*-of-*"])
-    while 1:
-        r, e = master_client.next_record()
-        if not r:
-            break
-        yield pickle.loads(r)
+etcd_endpoints = "http://" + etcd_ip + ":2379"
+print "etcd endpoints: ", etcd_endpoints
 
 
 def main():
@@ -38,19 +28,20 @@ def main():
     parameters = paddle.parameters.create(cost)
 
     # create optimizer of new remote updater to pserver
-    optimizer = paddle.optimizer.Momentum(momentum=0)
+    optimizer = paddle.optimizer.Momentum(momentum=0, learning_rate=1e-3)
 
-    print "etcd endoint: ", etcd_endpoint
     trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,
                                  update_equation=optimizer,
                                  is_local=False,
-                                 pserver_spec=etcd_endpoint,
+                                 pserver_spec=etcd_endpoints,
                                  use_etcd=True)
 
     # event_handler to print training and testing info
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
+            # FIXME: for cloud data reader, pass number is managed by master
+            # should print the server side pass number
             if event.batch_id % 100 == 0:
                 print "Pass %d, Batch %d, Cost %f" % (
                     event.pass_id, event.batch_id, event.cost)
@@ -69,7 +60,11 @@ def main():
     trainer.train(
         reader=paddle.batch(
             paddle.reader.shuffle(
-                cloud_reader, buf_size=500), batch_size=2),
+                cloud_reader(
+                    ["/pfs/dlnel/public/dataset/uci_housing/uci_housing*"],
+                    etcd_endpoints),
+                buf_size=500),
+            batch_size=2),
         feeding={'x': 0,
                  'y': 1},
         event_handler=event_handler,

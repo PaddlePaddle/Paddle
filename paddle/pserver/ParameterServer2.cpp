@@ -1032,8 +1032,8 @@ void ParameterServer2::loadValueVector(const LoadValueRequest& request,
   Parameter::Header header;
   CHECK(fs.read(reinterpret_cast<char*>(&header), sizeof(header)))
       << "Fail to read parameters in pserver";
-  CHECK_EQ(header.version, Parameter::kFormatVersion)
-      << "Incorrect format version: " << header.version;
+  CHECK(Parameter::isHeaderFormatSupported(header.format))
+      << "Incorrect format version: " << header.format;
   CHECK_EQ(header.size, (size_t)size_)
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << size_ << ") of the pserver: " << serverId_;
@@ -1063,7 +1063,8 @@ void ParameterServer2::saveValueVector(const SaveValueRequest& request,
   CpuVector& vec = vectors_[PARAMETER_APPLY] ? *vectors_[PARAMETER_APPLY]
                                              : *vectors_[PARAMETER_VALUE];
   Parameter::Header header;
-  header.version = Parameter::kFormatVersion;
+  // TODO(TJ): save param headerFormat_
+  header.format = PARAM_FORMAT_ORIGINAL;
   header.valueSize = sizeof(real);
   header.size = size_;
 

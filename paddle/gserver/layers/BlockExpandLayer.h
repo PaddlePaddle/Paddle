@@ -50,8 +50,8 @@ protected:
   size_t blockH_, blockW_, strideH_, strideW_, paddingH_, paddingW_;
   size_t imgSizeH_, imgSizeW_, outputH_, outputW_, channels_;
 
-  /// auxiliary variable, which saves the transposed output value.
-  MatrixPtr outVTrans_;
+  TensorShape inputShape_;
+  TensorShape outputShape_;
 
 public:
   explicit BlockExpandLayer(const LayerConfig& config) : Layer(config) {}

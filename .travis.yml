@@ -4,7 +4,6 @@ cache:
     - $HOME/.ccache
     - $HOME/.cache/pip
     - $TRAVIS_BUILD_DIR/build/third_party
-    - $TRAVIS_BUILD_DIR/build_android/third_party
 sudo: required
 dist: trusty
 os:
@@ -12,7 +11,6 @@ os:
 env:
   - JOB=build_doc
   - JOB=check_style
-  - JOB=build_android
 addons:
   apt:
     packages:
@@ -23,7 +21,6 @@ addons:
       - python
       - python-pip
       - python2.7-dev
-      - python-numpy
       - python-wheel
       - libboost-dev
       - curl
@@ -37,12 +34,8 @@ before_install:
   - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
   # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
   # protobuf version.
-  - pip install numpy wheel 'protobuf==3.1' sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit requests==2.9.2 LinkChecker
-  - pip install rarfile
-  - curl https://glide.sh/get | bash
-  - eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
-  - go get -u github.com/alecthomas/gometalinter
-  - gometalinter --install
+  - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
+  - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit LinkChecker
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:

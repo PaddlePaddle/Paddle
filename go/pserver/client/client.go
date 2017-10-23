@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package client
 
 import (
@@ -13,9 +27,13 @@ import (
 
 // TODO(helin): add RPC call retry logic
 
-// Selector selects if the client should initialize parameter servers.
+// Selector selects if the client should initialize parameters and
+// reports the initialization process done.
 type Selector interface {
-	Select() bool
+	// Select selects if the client should initialize parameter servers.
+	Select() (bool, error)
+	// Done indicates the initialization process is done.
+	Done() error
 }
 
 // Server is the identification of a parameter Server.
@@ -101,7 +119,7 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 // servers. Other trainers will be blocked until the initialization is
 // done, and they need to get the initialized parameters from
 // parameter servers using GetParams.
-func (c *Client) BeginInitParams() bool {
+func (c *Client) BeginInitParams() (bool, error) {
 	return c.sel.Select()
 }
 
@@ -119,7 +137,7 @@ func (c *Client) FinishInitParams() error {
 			return err
 		}
 	}
-	return nil
+	return c.sel.Done()
 }
 
 // SendGrads sends gradients to parameter servers for updating
@@ -203,32 +221,6 @@ func (c *Client) GetParams(names []string) ([]pserver.Parameter, error) {
 	}
 
 	return ps, nil
-}
-
-// Save indicates parameters to save the parameter to the given path.
-func (c *Client) Save(path string) error {
-	errCh := make(chan error, len(c.pservers))
-
-	for _, p := range c.pservers {
-		err := p.Call("Service.Save", path, nil)
-		errCh <- err
-	}
-
-	recv := 0
-	for err := range errCh {
-		if err != nil {
-			return err
-		}
-
-		recv++
-		if recv == len(c.pservers) {
-			break
-		}
-	}
-
-	// TODO(helin): there will be many files under path, need to
-	// merge them into a single file.
-	return nil
 }
 
 func strHash(s string) uint32 {

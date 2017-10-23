@@ -1,5 +1,8 @@
-from setuptools import setup
+from setuptools import setup, Distribution
 import subprocess
+class BinaryDistribution(Distribution):
+    def has_ext_modules(foo):
+        return True
 
 MAJOR   = 0
 MINOR   = 10
@@ -52,6 +55,7 @@ def show():
 
 write_version_py(filename="${PROJ_ROOT}/python/paddle/version.py")
 
+
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
@@ -63,33 +67,46 @@ packages=['paddle',
           'paddle.v2.master',
           'paddle.v2.plot',
           'paddle.v2.framework',
-          'paddle.v2.framework.proto']
+          'paddle.v2.framework.proto',
+          'py_paddle']
 
-setup_requires=["requests",
-                "numpy",
-                "protobuf==3.1",
-                "recordio",
-                "matplotlib",
-                "rarfile",
-                "scipy>=0.19.0",
-                "Pillow",
-                "nltk"]
+with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
+    setup_requires = f.read().splitlines()
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
     setup_requires+=["opencv-python"]
 
-setup(name='paddle',
+# the prefix is sys.prefix which should always be usr
+paddle_bin_dir = 'opt/paddle/bin'
+paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle_usage',
+               '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
+               '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_merge_model',
+               '${PADDLE_BINARY_DIR}/paddle/pserver/paddle_pserver_main',
+               '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
+
+paddle_rt_lib_dir = 'lib'
+paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
+if '${MKL_SHARED_LIBS}'!= '':
+  paddle_rt_libs += '${MKL_SHARED_LIBS}'.split(';')
+
+setup(name='paddlepaddle',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
-      package_data={'paddle.v2.master': ['libpaddle_master.so'],
-            'paddle.v2.framework': ['core.so']
+      package_data={
+        'paddle.v2.master': ['libpaddle_master.so'],
+        'paddle.v2.framework': ['core.so'],
+        'py_paddle':['*.py','_swig_paddle.so']
       },
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
           # The paddle.v2.framework.proto will be generated while compiling.
           # So that package points to other directory.
-          'paddle.v2.framework.proto': '${PROJ_BINARY_ROOT}/paddle/framework'
+          'paddle.v2.framework.proto': '${PADDLE_BINARY_DIR}/paddle/framework',
+          'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
+      scripts=paddle_bins,
+      distclass=BinaryDistribution,
+      data_files=[(paddle_rt_lib_dir, paddle_rt_libs)]
 )

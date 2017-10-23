@@ -84,6 +84,7 @@ LAPACK_ROUTINE_EACH(DYNAMIC_LOAD_LAPACK_WRAP)
 
 namespace paddle {
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void gemm<float>(const CBLAS_TRANSPOSE transA,
                  const CBLAS_TRANSPOSE transB,
@@ -143,6 +144,7 @@ void gemm<double>(const CBLAS_TRANSPOSE transA,
               C,
               ldc);
 }
+#endif
 
 template <>
 int getrf<float>(const CBLAS_ORDER order,
@@ -182,6 +184,7 @@ int getri<double>(const CBLAS_ORDER order,
   return dynload::PADDLE_DGETRI(order, N, A, lda, ipiv);
 }
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void axpy<float>(const int n, const float alpha, const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
@@ -201,8 +204,9 @@ template <>
 double dotProduct<double>(const int n, const double* x, const double* y) {
   return cblas_ddot(n, x, 1, y, 1);
 }
+#endif
 
-#ifdef PADDLE_USE_MKL
+#if defined(PADDLE_USE_MKL) || defined(PADDLE_USE_MKLML)
 
 template <>
 void vExp<float>(const int n, const float* a, float* r) {
@@ -243,7 +247,55 @@ template <>
 void vAdd<double>(const int n, const double* a, const double* b, double* r) {
   vdAdd(n, a, b, r);
 }
+#else
 
+DEFINE_MATRIX_BINARY_OP(vExp, b = std::exp(a));
+template <class T>
+void vExp(const int n, const T* a, T* r) {
+  hl_cpu_apply_binary_op<T, binary::vExp<T>, 0, 0>(
+      binary::vExp<T>(), const_cast<T*>(a), r, 1, n, n, n);
+}
+
+DEFINE_MATRIX_BINARY_OP(vLog, b = std::log(a));
+template <class T>
+void vLog(const int n, const T* a, T* r) {
+  hl_cpu_apply_binary_op<T, binary::vLog<T>, 0, 0>(
+      binary::vLog<T>(), const_cast<T*>(a), r, 1, n, n, n);
+}
+
+DEFINE_MATRIX_BINARY_PARAMETER_OP(vPow, ONE_PARAMETER, b = std::pow(a, p));
+template <class T>
+void vPow(const int n, const T* a, const T b, T* r) {
+  hl_cpu_apply_binary_op<T, binary::vPow<T>, 0, 0>(
+      binary::vPow<T>(b), const_cast<T*>(a), r, 1, n, n, n);
+}
+
+DEFINE_MATRIX_TERNARY_OP(vAdd, c = a + b);
+template <class T>
+void vAdd(const int n, const T* a, const T* b, T* r) {
+  hl_cpu_apply_ternary_op<T, ternary::vAdd<T>, 0, 0>(ternary::vAdd<T>(),
+                                                     const_cast<T*>(a),
+                                                     const_cast<T*>(b),
+                                                     r,
+                                                     1,
+                                                     n,
+                                                     n,
+                                                     n,
+                                                     n);
+}
+
+template void vExp(const int n, const float* a, float* r);
+template void vExp(const int n, const double* a, double* r);
+template void vLog(const int n, const float* a, float* r);
+template void vLog(const int n, const double* a, double* r);
+template void vPow(const int n, const float* a, const float b, float* r);
+template void vPow(const int n, const double* a, const double b, double* r);
+template void vAdd(const int n, const float* a, const float* b, float* r);
+template void vAdd(const int n, const double* a, const double* b, double* r);
+
+#endif
+
+#ifdef PADDLE_USE_MKL
 template <>
 void vInvSqrt<float>(const int n, const float* a, float* r) {
   vsInvSqrt(n, a, r);
@@ -275,20 +327,6 @@ void vTanh<double>(const int n, const double* a, double* r) {
 }
 #else
 
-DEFINE_MATRIX_BINARY_OP(vExp, b = std::exp(a));
-template <class T>
-void vExp(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vExp<T>, 0, 0>(
-      binary::vExp<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-DEFINE_MATRIX_BINARY_OP(vLog, b = std::log(a));
-template <class T>
-void vLog(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vLog<T>, 0, 0>(
-      binary::vLog<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
 DEFINE_MATRIX_BINARY_OP(vInvSqrt, b = 1.0f / std::sqrt(a));
 template <class T>
 void vInvSqrt(const int n, const T* a, T* r) {
@@ -312,41 +350,12 @@ void vTanh(const int n, const T* a, T* r) {
       binary::vTanh<T>(), const_cast<T*>(a), r, 1, n, n, n);
 }
 
-DEFINE_MATRIX_BINARY_PARAMETER_OP(vPow, ONE_PARAMETER, b = std::pow(a, p));
-template <class T>
-void vPow(const int n, const T* a, const T b, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vPow<T>, 0, 0>(
-      binary::vPow<T>(b), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-DEFINE_MATRIX_TERNARY_OP(vAdd, c = a + b);
-template <class T>
-void vAdd(const int n, const T* a, const T* b, T* r) {
-  hl_cpu_apply_ternary_op<T, ternary::vAdd<T>, 0, 0>(ternary::vAdd<T>(),
-                                                     const_cast<T*>(a),
-                                                     const_cast<T*>(b),
-                                                     r,
-                                                     1,
-                                                     n,
-                                                     n,
-                                                     n,
-                                                     n);
-}
-
-template void vExp(const int n, const float* a, float* r);
-template void vExp(const int n, const double* a, double* r);
-template void vLog(const int n, const float* a, float* r);
-template void vLog(const int n, const double* a, double* r);
 template void vInvSqrt(const int n, const double* a, double* r);
 template void vInvSqrt(const int n, const float* a, float* r);
 template void vLog1p(const int n, const float* a, float* r);
 template void vLog1p(const int n, const double* a, double* r);
 template void vTanh(const int n, const float* a, float* r);
 template void vTanh(const int n, const double* a, double* r);
-template void vPow(const int n, const float* a, const float b, float* r);
-template void vPow(const int n, const double* a, const double b, double* r);
-template void vAdd(const int n, const float* a, const float* b, float* r);
-template void vAdd(const int n, const double* a, const double* b, double* r);
 
 #endif
 

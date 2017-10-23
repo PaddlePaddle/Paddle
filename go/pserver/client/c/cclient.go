@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 /*
@@ -41,10 +55,10 @@ var curHandle C.paddle_pserver_client
 func add(c *client.Client) C.paddle_pserver_client {
 	mu.Lock()
 	defer mu.Unlock()
-	client := curHandle
+	cli := curHandle
 	curHandle++
-	handleMap[client] = c
-	return client
+	handleMap[cli] = c
+	return cli
 }
 
 func get(client C.paddle_pserver_client) *client.Client {
@@ -76,8 +90,12 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 
 type selector bool
 
-func (s selector) Select() bool {
-	return bool(s)
+func (s selector) Select() (bool, error) {
+	return bool(s), nil
+}
+
+func (s selector) Done() error {
+	return nil
 }
 
 type lister []client.Server
@@ -100,11 +118,10 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcdEndpoints *C.char, selected int) C.paddle_pserver_client {
-	// TODO(Longfei: use etcd lock to decide which trainer to initialize the parameters)
+func paddle_new_etcd_pserver_client(etcdEndpoints *C.char) C.paddle_pserver_client {
 	addr := C.GoString(etcdEndpoints)
 	etcdClient := client.NewEtcd(addr)
-	c := client.NewClient(etcdClient, etcdClient.Desired(), selector(selected != 0))
+	c := client.NewClient(etcdClient, etcdClient.Desired(), etcdClient)
 	return add(c)
 }
 
@@ -113,13 +130,24 @@ func paddle_pserver_client_release(client C.paddle_pserver_client) {
 	remove(client)
 }
 
+// paddle_begin_init_params tells trainer if it needs to init the
+// parameters.
+//
+// returns 1 if the trainer needs to init the parameters. 0 if the
+// trainer does not need to init the parameters.
+//
 //export paddle_begin_init_params
 func paddle_begin_init_params(client C.paddle_pserver_client) C.int {
 	c := get(client)
-	if selected := c.BeginInitParams(); selected {
+	selected, err := c.BeginInitParams()
+	if err != nil {
+		panic(err)
+	}
+
+	if selected {
 		return 1
 	}
-	return C.PSERVER_OK
+	return 0
 }
 
 //export paddle_init_param
@@ -237,19 +265,6 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		C.memcpy(unsafe.Pointer(param.content), unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
 		param.content_len = C.int(len(p.Content))
 		param.element_type = C.paddle_element_type(p.ElementType)
-	}
-
-	return C.PSERVER_OK
-}
-
-//export paddle_save_model
-func paddle_save_model(client C.paddle_pserver_client, path *C.char) C.int {
-	p := C.GoString(path)
-	c := get(client)
-	err := c.Save(p)
-	if err != nil {
-		log.Errorln(err)
-		return C.PSERVER_ERROR
 	}
 
 	return C.PSERVER_OK

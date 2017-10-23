@@ -23,6 +23,17 @@ endmacro()
 
 filter_test(GSERVER_HEADER)
 filter_test(GSERVER_SOURCES)
+
+if(NOT WITH_MKLDNN)
+    file(GLOB_RECURSE DNN_HEADER RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLDNN*.h")
+    file(GLOB_RECURSE DNN_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLDNN*.cpp")
+    list(REMOVE_ITEM GSERVER_HEADER ${DNN_HEADER})
+    list(REMOVE_ITEM GSERVER_SOURCES ${DNN_SOURCES})
+    message(STATUS "Skip compiling with MKLDNNLayers and MKLDNNActivations")
+else()
+    message(STATUS "Compile with MKLDNNLayers and MKLDNNActivations")
+endif()
+
 if(NOT WITH_GPU)
     list(REMOVE_ITEM GSERVER_HEADER
         layers/CudnnConvBaseLayer.h
@@ -47,6 +58,36 @@ if(NOT WITH_PYTHON)
     
     list(REMOVE_ITEM GSERVER_HEADER
             dataproviders/PyDataProvider.h)
+endif()
+
+if(MOBILE_INFERENCE)
+    # Remove evaluators
+    list(REMOVE_ITEM GSERVER_SOURCES
+         layers/ValidationLayer.cpp
+         evaluators/Evaluator.cpp
+         evaluators/DetectionMAPEvaluator.cpp
+         evaluators/CTCErrorEvaluator.cpp
+         evaluators/ChunkEvaluator.cpp)
+
+    # Remove dataproviders
+    list(REMOVE_ITEM GSERVER_SOURCES
+         dataproviders/DataProvider.cpp
+         dataproviders/MultiDataProvider.cpp
+         dataproviders/ProtoDataProvider.cpp
+         dataproviders/PyDataProvider2.cpp
+         dataproviders/PyDataProvider.cpp)
+
+    # Remove useless gradientmachines
+    list(REMOVE_ITEM GSERVER_SOURCES
+         gradientmachines/MultiNetwork.cpp
+         gradientmachines/RecurrentGradientMachine.cpp
+         gradientmachines/ParallelNeuralNetwork.cpp
+         gradientmachines/GradientMachineMode.cpp
+         gradientmachines/MultiGradientMachine.cpp)
+
+    # Remove useless layers
+    list(REMOVE_ITEM GSERVER_SOURCES
+    	 layers/RecurrentLayerGroup.cpp)
 endif()
 
 if(WITH_GPU)

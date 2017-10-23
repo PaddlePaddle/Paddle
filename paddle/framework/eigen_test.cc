@@ -46,6 +46,17 @@ TEST(Eigen, Tensor) {
   }
 }
 
+TEST(Eigen, ScalarFrom) {
+  Tensor t;
+  int* p = t.mutable_data<int>(make_ddim({1}), platform::CPUPlace());
+  *p = static_cast<int>(100);
+
+  EigenScalar<int>::Type es = EigenScalar<int>::From(t);
+
+  ASSERT_EQ(0, es.dimension(0));
+  ASSERT_EQ(100, es(0));
+}
+
 TEST(Eigen, VectorFrom) {
   Tensor t;
   float* p = t.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
@@ -93,6 +104,25 @@ TEST(Eigen, Matrix) {
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 3; j++) {
       ASSERT_NEAR(i * 3 + j, em(i, j), 1e-6f);
+    }
+  }
+}
+
+TEST(Eigen, MatrixReshape) {
+  Tensor t;
+  float* p = t.mutable_data<float>({2, 3, 6, 4}, platform::CPUPlace());
+  for (int i = 0; i < 2 * 3 * 6 * 4; ++i) {
+    p[i] = static_cast<float>(i);
+  }
+
+  EigenMatrix<float>::Type em = EigenMatrix<float>::Reshape(t, 2);
+
+  ASSERT_EQ(2 * 3, em.dimension(0));
+  ASSERT_EQ(6 * 4, em.dimension(1));
+
+  for (int i = 0; i < 2 * 3; i++) {
+    for (int j = 0; j < 6 * 4; j++) {
+      ASSERT_NEAR(i * 6 * 4 + j, em(i, j), 1e-6f);
     }
   }
 }

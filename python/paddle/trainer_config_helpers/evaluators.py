@@ -298,8 +298,8 @@ def pnpair_evaluator(
         input,
         label,
         info,
-        name=None,
-        weight=None, ):
+        weight=None,
+        name=None, ):
     """
     Positive-negative pair rate Evaluator which adapts to rank task like
     learning to rank. This evaluator must contain at least three layers.
@@ -308,27 +308,31 @@ def pnpair_evaluator(
 
     .. code-block:: python
 
-       eval = pnpair_evaluator(input, info, label)
+       eval = pnpair_evaluator(input, label, info)
 
-    :param name: Evaluator name.
-    :type name: None|basestring
     :param input: Input Layer name. The output prediction of network.
     :type input: LayerOutput
     :param label: Label layer name.
     :type label: LayerOutput
-    :param info: Label layer name. (TODO, explaination)
+    :param info: Info layer name. (TODO, explaination)
     :type info: LayerOutput
     :param weight: Weight Layer name. It should be a matrix with size
                   [sample_num, 1]. (TODO, explaination)
     :type weight: LayerOutput
+    :param name: Evaluator name.
+    :type name: None|basestring
     """
+    if not isinstance(input, list):
+        input = [input]
+    if label:
+        input.append(label)
+    if info:
+        input.append(info)
     evaluator_base(
-        name=name,
-        type="pnpair",
         input=input,
-        label=label,
-        info=info,
-        weight=weight)
+        type="pnpair",
+        weight=weight,
+        name=name, )
 
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
@@ -429,12 +433,12 @@ def chunk_evaluator(
 
     .. code-block:: text
 
-        Scheme    Description                                                                                  
+        Scheme    Description
         plain    Use the same label for the whole chunk.
-        IOB      Two labels for chunk type X, B-X for chunk begining and I-X for chunk inside. 
+        IOB      Two labels for chunk type X, B-X for chunk begining and I-X for chunk inside.
         IOE      Two labels for chunk type X, E-X for chunk ending and I-X for chunk inside.
-        IOBES    Four labels for chunk type X, B-X for chunk begining, I-X for chunk inside, E-X for chunk end and S-X for single word chunk. 
-   
+        IOBES    Four labels for chunk type X, B-X for chunk begining, I-X for chunk inside, E-X for chunk end and S-X for single word chunk.
+
     To make it clear, let's illustrate by an NER example.
     Assuming that there are three named entity types including ORG, PER and LOC which are called 'chunk type' here,
     if 'IOB' scheme were used, the label set will be extended to a set including B-ORG, I-ORG, B-PER, I-PER, B-LOC, I-LOC and O,
@@ -451,7 +455,7 @@ def chunk_evaluator(
         tagType = label % numTagType
         chunkType = label / numTagType
         otherChunkType = numChunkTypes
-    
+
     The following table shows the mapping rule between tagType and tag type in each scheme.
 
     .. code-block:: text
@@ -475,7 +479,7 @@ def chunk_evaluator(
         O      6
 
     In this example, chunkType has three values: 0 for ORG, 1 for PER, 2 for LOC, because the scheme is
-    "IOB" so tagType has two values: 0 for B and 1 for I. 
+    "IOB" so tagType has two values: 0 for B and 1 for I.
     Here we will use I-LOC to explain the above mapping rules in detail.
     For I-LOC, the label id is 5, so we can get tagType=1 and chunkType=2, which means I-LOC is a part of NER chunk LOC
     and the tag is I.
@@ -486,7 +490,7 @@ def chunk_evaluator(
 
        eval = chunk_evaluator(input, label, chunk_scheme, num_chunk_types)
 
-    
+
     :param input: The input layers.
     :type input: LayerOutput
     :param label: An input layer containing the ground truth label.

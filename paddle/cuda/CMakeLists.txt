@@ -39,6 +39,7 @@ set(CUDA_CU_SOURCES
     src/hl_cuda_lstm.cu
     src/hl_top_k.cu
     src/hl_batch_transpose.cu
+    src/hl_batch_norm.cu
     src/hl_cuda_sequence.cu
     src/hl_table_apply.cu)
 

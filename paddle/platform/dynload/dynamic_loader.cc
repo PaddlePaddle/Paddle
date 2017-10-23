@@ -19,7 +19,7 @@ limitations under the License. */
 #include <string>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "paddle/framework/enforce.h"
+#include "paddle/platform/enforce.h"
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "

@@ -49,6 +49,12 @@ struct LayerState {
 };
 typedef std::shared_ptr<LayerState> LayerStatePtr;
 
+/// Paddle device ID, MKLDNN is -2, CPU is -1
+enum PADDLE_DEVICE_ID {
+  MKLDNN_DEVICE = -2,
+  CPU_DEVICE = -1,
+};
+
 /**
  * @brief Base class for layer.
  * Define necessary variables and functions for every layer.
@@ -59,7 +65,7 @@ protected:
   LayerConfig config_;
   /// whether to use GPU
   bool useGpu_;
-  /// Device Id. CPU is -1, and GPU is 0, 1, 2 ...
+  /// Device Id. MKLDNN is -2, CPU is -1, and GPU is 0, 1, 2 ...
   int deviceId_;
   /// Input layers
   std::vector<LayerPtr> inputLayers_;
@@ -77,8 +83,10 @@ protected:
   Argument output_;
   /// Several outputs stored on different devices, used in 'parallel_nn' case,
   /// and record them by deviceId_.
+  /// Also used in 'use_mkldnn' case.
   std::vector<Argument> outputOtherDevice_;
   /// If there are several outputs, map them by each name.
+  /// MKLDNNLayer use it only to merge output grad
   std::map<std::string, Argument*> outputMap_;
   /// Used to merge grad on different devices.
   MatrixPtr tmpGrad_;
@@ -173,6 +181,13 @@ protected:
   }
 
   /**
+   * Get the argument of input layer with deviceId.
+   */
+  const Argument& getInput(size_t inputIndex, int deviceId) const {
+    return inputLayers_[inputIndex]->getOutput(deviceId);
+  }
+
+  /**
    * Get the forward-input value.
    */
   const MatrixPtr& getInputValue(int inputIndex) {
@@ -187,6 +202,13 @@ protected:
   }
 
   /**
+   * Get the forward-input value with deviceId.
+   */
+  const MatrixPtr& getInputValue(int inputIndex, int deviceId) {
+    return inputLayers_[inputIndex]->getOutput(deviceId).value;
+  }
+
+  /**
    * Get the forward-input grad.
    */
   const MatrixPtr& getInputGrad(int inputIndex) {
@@ -198,6 +220,13 @@ protected:
    */
   const MatrixPtr& getInputGrad(const Layer& inputLayer) {
     return inputLayer.getOutput(deviceId_).grad;
+  }
+
+  /**
+   * Get the forward-input grad.
+   */
+  const MatrixPtr& getInputGrad(int inputIndex, int deviceId) {
+    return inputLayers_[inputIndex]->getOutput(deviceId).grad;
   }
 
   /**
@@ -296,6 +325,11 @@ public:
   void setOutput(const std::string& name, Argument* output) {
     outputMap_[name] = output;
   }
+
+  /**
+   * Get the output map size, if layer has multi-output.
+   */
+  size_t getOutputMapSize() { return outputMap_.size(); }
 
   /**
    * Get the output based on layer's name.

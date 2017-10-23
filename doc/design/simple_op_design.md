@@ -6,9 +6,9 @@ The Interaction between Python and C++ can be simplified as two steps:
 
 1. C++ tells Python how many Ops there are, and what parameter do users need to offer to initialize a new Op. Python then builds API for each Op at compile time.
 
-2. Users invoke APIs built by Python and provide necessary parameters. These parameters will be sent to C++ fo finish Op construction task.
+2. Users invoke APIs built by Python and provide necessary parameters. These parameters will be sent to C++ for finishing the Op construction task.
 
-### Message form C++ to Python
+### Message from C++ to Python
 
 We define a Protobuf message class `OpProto` to hold message needed in the first step. What should an `OpProto` contain? This question is equivalent to “What message do we need to offer, to build a Python API which is legal and user oriented and can use to describe a whole Op.”
 
@@ -49,6 +49,7 @@ message AttrProto {
 message VarProto {
 	required string name = 1;
 	required string comment = 2;
+	required bool is_tensor = 3;
 };
 
 message OpProto {
@@ -146,7 +147,7 @@ class CosineOp {
 struct CosineOpProtoMaker : public OpProtoMaker {
 	CosineOpProtoMaker(OpProto* proto) : OpProtoMaker(proto) {
 		AddInput("input", "input of cosine op");
-		AddAttr("scale", "scale of cosine op", float).Default(1.0).LargerThan(0.0);
+		AddAttr("scale", "scale of cosine op", float).Default(1.0).GreaterThan(0.0);
 		AddType("cos");
 		AddComment("This is cos op");
 	}
@@ -192,7 +193,7 @@ def fc_layer(input, size, with_bias, activation):
 	elif:
 		# ...
 	return act_output;
-``` 
+```
 
 ### Low Leval API
 

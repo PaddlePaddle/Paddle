@@ -23,7 +23,7 @@ using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
 static const string& configFile1 =
-    "trainer/tests/sample_trainer_config_qb_rnn.conf";
+    "trainer/tests/sample_trainer_config_compare_sparse.conf";
 
 DECLARE_bool(use_gpu);
 DECLARE_string(config);
@@ -174,7 +174,7 @@ TEST(compareSparse, multiGradientMachine) {
     FLAGS_local = local;
     FLAGS_ports_num_for_sparse = 5;
     for (bool useGpu : {false, true}) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
       if (useGpu) continue;
 #endif
       FLAGS_parallel_nn = useGpu;
@@ -198,7 +198,7 @@ TEST(compareSparse, NeuralNetwork) {
     FLAGS_local = local;
     FLAGS_ports_num_for_sparse = 5;
     for (bool useGpu : {false, true}) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
       if (useGpu) continue;
 #endif
       FLAGS_parallel_nn = useGpu;

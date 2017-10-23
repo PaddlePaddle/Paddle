@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "paddle/testing/TestUtil.h"
 using namespace std;  // NOLINT
@@ -67,6 +66,8 @@ struct InputDef {
   bool isStatic;
   std::vector<int> labelInitValue;
   std::vector<int> labelSeqStartPositions;
+  std::vector<int> labelSubSeqStartPositions;
+  std::vector<int> ids;
   MatrixPtr selfDefinedData;
 
   InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn) {
@@ -81,9 +82,28 @@ struct InputDef {
   InputDef(InputType type,
            string nameIn,
            MatrixPtr selfDefinedData,
-           std::vector<int> selfDefinedSeqStartPos = {})
+           std::vector<int> selfDefinedSeqStartPos = {},
+           std::vector<int> selfDefinedSubSeqStartPos = {})
       : labelSeqStartPositions(selfDefinedSeqStartPos),
+        labelSubSeqStartPositions(selfDefinedSubSeqStartPos),
         selfDefinedData(selfDefinedData) {
+    inputType = type;
+    name = nameIn;
+    dim = 0;
+    sparse = {""};
+    paraSize = 0;
+    isStatic = false;
+  }
+
+  InputDef(InputType type,
+           string nameIn,
+           const std::vector<int>& ids,
+           const std::vector<int>& selfDefinedSeqStartPos = {},
+           const std::vector<int>& selfDefinedSubSeqStartPos = {})
+      : labelSeqStartPositions(selfDefinedSeqStartPos),
+        labelSubSeqStartPositions(selfDefinedSubSeqStartPos),
+        ids(ids) {
+    selfDefinedData = nullptr;
     inputType = type;
     name = nameIn;
     dim = 0;

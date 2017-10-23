@@ -7,19 +7,19 @@ class TestDefaultScopeFuncs(unittest.TestCase):
         self.assertIsNotNone(get_cur_scope())
 
     def test_none_variable(self):
-        self.assertIsNone(get_var("test"))
+        self.assertIsNone(find_var("test"))
 
     def test_create_var_get_var(self):
-        var_a = create_var("var_a")
+        var_a = var("var_a")
         self.assertIsNotNone(var_a)
-        self.assertIsNotNone(get_cur_scope().get_var('var_a'))
+        self.assertIsNotNone(get_cur_scope().find_var('var_a'))
         enter_local_scope()
-        self.assertIsNotNone(get_cur_scope().get_var('var_a'))
+        self.assertIsNotNone(get_cur_scope().find_var('var_a'))
         leave_local_scope()
 
     def test_var_get_int(self):
         def __new_scope__():
-            i = create_var("var_i")
+            i = var("var_i")
             self.assertFalse(i.is_int())
             i.set_int(10)
             self.assertTrue(i.is_int())

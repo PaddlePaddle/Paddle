@@ -19,14 +19,14 @@ add_library(paddle_api STATIC ${API_SOURCES})
 add_dependencies(paddle_api paddle_proto paddle_trainer_lib)
 
 INCLUDE(${SWIG_USE_FILE})
-INCLUDE_DIRECTORIES(${PROJ_ROOT}/paddle)
+INCLUDE_DIRECTORIES(${PADDLE_SOURCE_DIR}/paddle)
 
-FILE(GLOB PY_PADDLE_PYTHON_FILES ${PROJ_ROOT}/paddle/py_paddle/*.py)
+FILE(GLOB PY_PADDLE_PYTHON_FILES ${PADDLE_SOURCE_DIR}/paddle/py_paddle/*.py)
 
 SET_SOURCE_FILES_PROPERTIES(Paddle.i PROPERTIES CPLUSPLUS ON)
 
 SET(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality -Wno-missing-field-initializers -Wno-self-assign")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality -Wno-missing-field-initializers -Wno-self-assign -ftls-model=global-dynamic")
 
 SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_parameter
@@ -79,22 +79,16 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${START_END}
 )
 
-add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PROJ_ROOT}/paddle/py_paddle
-    COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-    COMMAND ${CMAKE_COMMAND} -E touch dist/.timestamp
-    COMMAND rm -rf py_paddle.egg-info build
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle
+add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/paddle/py_paddle/_swig_paddle.so
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PADDLE_SOURCE_DIR}/paddle/py_paddle
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PADDLE_SOURCE_DIR}/paddle/py_paddle
+    COMMAND ${CMAKE_COMMAND} -E touch .timestamp
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle
     DEPENDS _swig_paddle
 )
 
 # TODO(yuyang18) : make wheel name calculated by cmake
-add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so)
-
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/dist/
-    DESTINATION opt/paddle/share/wheels
-)
+add_custom_target(python_api_wheel ALL DEPENDS ${PADDLE_SOURCE_DIR}/paddle/py_paddle/_swig_paddle.so)
 
 if(WITH_TESTING)
     IF(NOT PY_PIP_FOUND)
@@ -108,7 +102,7 @@ if(WITH_TESTING)
             BUILD_COMMAND       ""
             INSTALL_COMMAND     env ${py_env} ${PYTHON_EXECUTABLE} setup.py install
             BUILD_IN_SOURCE     1
-            DEPENDS python setuptools python_api_wheel
+            #DEPENDS python setuptools python_api_wheel
         )
     ENDIF()
     add_subdirectory(test)

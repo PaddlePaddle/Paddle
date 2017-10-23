@@ -388,19 +388,27 @@ void initDataLayer(TestConfig testConf,
         data.grad->zeroMem();
         break;
       case INPUT_SELF_DEFINE_DATA: {
-        size_t height = testConf.inputDefs[i].selfDefinedData->getHeight();
-        size_t width = testConf.inputDefs[i].selfDefinedData->getWidth();
-        CHECK_GT(static_cast<int>(height), 0);
-        CHECK_GT(static_cast<int>(width), 0);
-        data.value = Matrix::create(height, width, false, useGpu);
-        data.grad = Matrix::create(height, width, false, useGpu);
-        data.value->copyFrom(*testConf.inputDefs[i].selfDefinedData);
-        data.grad->zeroMem();
+        if (testConf.inputDefs[i].ids.size()) {
+          data.ids = IVector::create(testConf.inputDefs[i].ids.size(), useGpu);
+          data.ids->copyFrom(testConf.inputDefs[i].ids.data(),
+                             testConf.inputDefs[i].ids.size());
+        } else if (testConf.inputDefs[i].selfDefinedData) {
+          size_t height = testConf.inputDefs[i].selfDefinedData->getHeight();
+          size_t width = testConf.inputDefs[i].selfDefinedData->getWidth();
+          CHECK_GT(static_cast<int>(height), 0);
+          CHECK_GT(static_cast<int>(width), 0);
+          data.value = Matrix::create(height, width, false, useGpu);
+          data.grad = Matrix::create(height, width, false, useGpu);
+          data.value->copyFrom(*testConf.inputDefs[i].selfDefinedData);
+          data.grad->zeroMem();
+        } else {
+          LOG(FATAL) << "No self-defined data are given.";
+          return;
+        }
 
         const std::vector<int>& labelSeqStartPositions =
             testConf.inputDefs[i].labelSeqStartPositions;
         if (labelSeqStartPositions.size() != 0) {
-          CHECK(!sequenceStartPositions);
           CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
 
           sequenceStartPositions =
@@ -409,6 +417,19 @@ void initDataLayer(TestConfig testConf,
                                            labelSeqStartPositions.size(),
                                            useGpu);
           data.sequenceStartPositions = sequenceStartPositions;
+        }
+
+        const std::vector<int>& labelSubSeqStartPositions =
+            testConf.inputDefs[i].labelSubSeqStartPositions;
+        if (labelSubSeqStartPositions.size() != 0) {
+          CHECK_GE(static_cast<int>(labelSubSeqStartPositions.size()), 2);
+
+          subSequenceStartPositions =
+              ICpuGpuVector::create(labelSubSeqStartPositions.size(), useGpu);
+          subSequenceStartPositions->copyFrom(labelSubSeqStartPositions.data(),
+                                              labelSubSeqStartPositions.size(),
+                                              useGpu);
+          data.subSequenceStartPositions = subSequenceStartPositions;
         }
         break;
       }
@@ -653,7 +674,7 @@ void testLayerGradKernel(TestConfig testConf,
                          bool useGpu,
                          bool useWeight,
                          float epsilon) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   if (useGpu) return;
 #endif
   FLAGS_use_gpu = useGpu;

@@ -1,0 +1,23 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ssh-servers
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: ssh-servers
+    spec:
+      containers:
+      - name: ssh-servers
+        image: docker.paddlepaddlehub.com/paddlessh
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        ports:
+        - containerPort: 22

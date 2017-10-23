@@ -29,21 +29,81 @@ namespace paddle {
 REGISTER_LAYER(exconv, ExpandConvLayer);
 REGISTER_LAYER(exconvt, ExpandConvLayer);
 
+inline bool isDepthwiseConv(int channels, int groups) {
+  return channels == groups;
+}
+
 bool ExpandConvLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
-  ExpandConvBaseLayer::init(layerMap, parameterMap);
+  ConvBaseLayer::init(layerMap, parameterMap);
+
+  int index = 0;
+  for (auto &inputConfig : config_.inputs()) {
+    const ConvConfig &conf = inputConfig.conv_conf();
+    /* Consistent caffe mode for multiple input */
+    caffeMode_ = conf.caffe_mode();
+
+    // create a new weight
+    size_t height, width;
+    height = filterPixels_[index] * filterChannels_[index];
+    width = (!isDeconv_) ? numFilters_ : channels_[index];
+    CHECK_EQ(parameters_[index]->getSize(), width * height);
+    Weight *w = new Weight(height, width, parameters_[index]);
+    weights_.emplace_back(w);
+    index++;
+  }
+
+  if (biasParameter_.get()) {
+    if (sharedBiases_) {
+      CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
+      biases_ = std::unique_ptr<Weight>(
+          new Weight(1, numFilters_, biasParameter_, 0));
+    } else {
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_, 0));
+    }
+  }
+
+  getOutputSize();
 
   size_t numInputs = config_.inputs_size();
   inputShape_.resize(numInputs);
   filterShape_.resize(numInputs);
   outputShape_.resize(numInputs);
+
+  std::string convType;
+  std::string convGradInputType;
+  std::string convGradFilterType;
+
   for (int i = 0; i < config_.inputs_size(); i++) {
     std::vector<size_t> paddings = {(size_t)paddingY_[i], (size_t)padding_[i]};
     std::vector<size_t> strides = {(size_t)strideY_[i], (size_t)stride_[i]};
 
-    if (FLAGS_use_nnpack) {
-      CHECK_EQ(isDeconv_, false);
+    // Convolution Layer uses the GemmConv function by default.
+    convType = "GemmConv";
+    convGradInputType = "GemmConvGradInput";
+    convGradFilterType = "GemmConvGradFilter";
+
+    // If depth wise convolution and useGpu == true
+    if (useGpu_ && isDepthwiseConv(channels_[i], groups_[i]) && !isDeconv_) {
+      convType = "DepthwiseConv";
+      convGradInputType = "DepthwiseConvGradInput";
+      convGradFilterType = "DepthwiseConvGradFilter";
+    }
+
+    // If depth wise convolution and useGpu == false and ARM-NEON
+    if (!useGpu_ && isDepthwiseConv(channels_[i], groups_[i]) && !isDeconv_) {
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+      if ((filterSize_[i] == filterSizeY_[i]) &&
+          (filterSize_[i] == 3 || filterSize_[i] == 4) &&
+          (stride_[i] == strideY_[i]) && (stride_[i] == 1 || stride_[i] == 2)) {
+        convType = "NeonDepthwiseConv";
+      }
+#endif
+    }
+
+    if (FLAGS_use_nnpack && !isDeconv_) {
       createFunction(forward_,
                      "NNPACKConv",
                      FuncConfig()
@@ -53,21 +113,21 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
                          .set("algo", std::string("auto")));
     } else {
       createFunction(forward_,
-                     !isDeconv_ ? "GemmConv" : "GemmConvGradInput",
+                     !isDeconv_ ? convType : convGradInputType,
                      FuncConfig()
                          .set("paddings", paddings)
                          .set("strides", strides)
                          .set("groups", (size_t)groups_[i]));
 
       createFunction(backward_,
-                     !isDeconv_ ? "GemmConvGradInput" : "GemmConv",
+                     !isDeconv_ ? convGradInputType : convType,
                      FuncConfig()
                          .set("paddings", paddings)
                          .set("strides", strides)
                          .set("groups", (size_t)groups_[i]));
 
       createFunction(backward_,
-                     "GemmConvGradFilter",
+                     convGradFilterType,
                      FuncConfig()
                          .set("paddings", paddings)
                          .set("strides", strides)
@@ -75,6 +135,12 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
     }
   }
   return true;
+}
+
+size_t ExpandConvLayer::getOutputSize() {
+  CHECK_NE(inputLayers_.size(), 0UL);
+  size_t layerSize = ConvBaseLayer::calOutputSize();
+  return layerSize;
 }
 
 // i is the index of input layers
@@ -124,11 +190,7 @@ void ExpandConvLayer::forward(PassType passType) {
 
   /* add the bias-vector */
   if (biases_.get()) {
-    if (sharedBiases_) {
-      addSharedBias();
-    } else {
-      addUnsharedBias();
-    }
+    output_.value->addBias(*biases_->getW(), 1.0, sharedBiases_);
   }
 
   /* activation */
@@ -140,7 +202,7 @@ void ExpandConvLayer::backward(const UpdateCallback &callback) {
 
   MatrixPtr outGrad = getOutputGrad();
   if (biases_ && biases_->getWGrad()) {
-    bpropBiases(outGrad);
+    biases_->getWGrad()->collectBias(*getOutputGrad(), 1, sharedBiases_);
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);
   }

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -23,20 +24,21 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
-  void Init() override { x = 1; }
-  void InferShape(const ScopePtr& scope) const override {}
-  void Run(const ScopePtr& scope,
+  OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
+                      const VariableNameMap& outputs, const AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs), x(1) {}
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
-    op_run_num++;
-    ASSERT_EQ((int)inputs_.size(), 1);
-    ASSERT_EQ((int)outputs_.size(), 1);
-    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
+    ++op_run_num;
+    ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
+    ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
+    ASSERT_EQ(scope.FindVar(inputs_.at("input")[0]), nullptr);
     ASSERT_EQ(x, 1);
-    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
+    ASSERT_NE(scope.FindVar(outputs_.at("output")[0]), nullptr);
   }
 
  public:
-  float x = 0;
+  int x{0};
 };
 
 class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -54,25 +56,35 @@ class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(test_operator, paddle::framework::OpWithoutKernelTest,
-            paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
+static void BuildVar(const std::string& param_name,
+                     std::initializer_list<const char*> arguments,
+                     paddle::framework::OpDesc::Var* var) {
+  var->set_parameter(param_name);
+  for (auto& arg_name : arguments) {
+    *var->mutable_arguments()->Add() = arg_name;
+  }
+}
+
+REGISTER_OP_WITHOUT_GRADIENT(
+    test_operator, paddle::framework::OpWithoutKernelTest,
+    paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
 
 TEST(OperatorBase, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("test_operator");
-  *op_desc.mutable_inputs()->Add() = "IN1";
-  *op_desc.mutable_outputs()->Add() = "OUT1";
+  BuildVar("input", {"IN1"}, op_desc.add_inputs());
+  BuildVar("output", {"OUT1"}, op_desc.add_outputs());
+
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext device_context;
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
 
-  paddle::framework::OperatorPtr op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
-  scope->CreateVariable("OUT1");
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+  scope.Var("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->Run(scope, device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
@@ -89,7 +101,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is test op");
   }
 };
@@ -97,39 +109,26 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
  protected:
-  void InferShape(const std::vector<const Tensor*>& inputs,
-                  const std::vector<Tensor*>& outputs) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  DataType IndicateDataType(const ExecutionContext& ctx) const override {
+    return DataType::FP32;
+  }
 };
 
 template <typename T1, typename T2>
-class CPUKernelTest : public OpKernel {
+class CPUKernelTest : public OpKernel<float> {
  public:
-  void Compute(const KernelContext& ctx) const {
+  void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
-    std::cout << ctx.op_.DebugString() << std::endl;
+    std::cout << ctx.op().DebugString() << std::endl;
     cpu_kernel_run_num++;
-    ASSERT_EQ(ctx.op_.Input("x"), "IN1");
-    ASSERT_EQ(ctx.op_.Output("y"), "OUT1");
+    ASSERT_EQ(ctx.op().Input("x"), "IN1");
+    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
   }
-};
-
-// multiple inputs test
-class OperatorMultiInputsTest : public OperatorBase {
- public:
-  void Init() override { x = 1; }
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
-           const platform::DeviceContext& dev_ctx) const override {
-    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
-    ASSERT_EQ(x, 1);
-    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
-    ASSERT_EQ(Input("x"), "IN1");
-    ASSERT_EQ(Input("y"), "OUT1");
-  }
-
- public:
-  float x = 0;
 };
 
 class OpKernelTestMultiInputsProtoAndCheckerMaker
@@ -138,29 +137,47 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
   OpKernelTestMultiInputsProtoAndCheckerMaker(OpProto* proto,
                                               OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInputs("xs", "inputs of test op");
+    AddInput("xs", "inputs of test op").AsDuplicable();
     AddInput("k", "input of test op");
-    AddOutputs("ys", "outputs of test op");
+    AddOutput("ys", "outputs of test op").AsDuplicable();
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is test op");
   }
 };
 
-class CPUKernalMultiInputsTest : public OpKernel {
+class CPUKernalMultiInputsTest : public OpKernel<float> {
  public:
-  void Compute(const KernelContext& ctx) const {
-    auto xs = ctx.op_.Inputs("xs");
+  void Compute(const ExecutionContext& ctx) const {
+    auto xs = ctx.op().Inputs("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
     ASSERT_EQ(xs[1], "x1");
     ASSERT_EQ(xs[2], "x2");
 
-    auto k = ctx.op_.Input("k");
+    auto inVar0 = ctx.MultiInputVar("xs");
+    ASSERT_EQ(inVar0.size(), 3U);
+
+    auto intVar1 = ctx.InputVar("k");
+    ASSERT_NE(intVar1, nullptr);
+
+    auto outVar0 = ctx.MultiOutputVar("ys");
+    ASSERT_EQ(outVar0.size(), 2U);
+
+    auto inTensor0 = ctx.MultiInput<Tensor>("xs");
+    ASSERT_EQ(inTensor0.size(), 3U);
+
+    auto intTensor1 = ctx.Input<Tensor>("k");
+    ASSERT_NE(intTensor1, nullptr);
+
+    auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
+    ASSERT_EQ(outTensor0.size(), 2U);
+
+    auto k = ctx.op().Input("k");
     ASSERT_EQ(k, "k0");
 
-    auto ys = ctx.op_.Outputs("ys");
+    auto ys = ctx.op().Outputs("ys");
     ASSERT_EQ(ys.size(), 2UL);
     ASSERT_EQ(ys[0], "y0");
     ASSERT_EQ(ys[1], "y1");
@@ -170,8 +187,9 @@ class CPUKernalMultiInputsTest : public OpKernel {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(op_with_kernel, paddle::framework::OpWithKernelTest,
-            paddle::framework::OpKernelTestProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_with_kernel, paddle::framework::OpWithKernelTest,
+    paddle::framework::OpKernelTestProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(op_with_kernel,
                        paddle::framework::CPUKernelTest<float, float>);
 
@@ -179,25 +197,26 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 TEST(OpKernel, all) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
-  *op_desc.mutable_inputs()->Add() = "IN1";
-  *op_desc.mutable_outputs()->Add() = "OUT1";
+  BuildVar("x", {"IN1"}, op_desc.add_inputs());
+  BuildVar("y", {"OUT1"}, op_desc.add_outputs());
+
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext cpu_device_context;
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
 
-  paddle::framework::OperatorPtr op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_device_context);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
 }
 
-REGISTER_OP(op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,
-            paddle::framework::OpKernelTestMultiInputsProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,
+    paddle::framework::OpKernelTestMultiInputsProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
                        paddle::framework::CPUKernalMultiInputsTest);
 
@@ -207,35 +226,42 @@ TEST(OpKernel, multi_inputs) {
 
   OpDesc op_desc;
   op_desc.set_type("op_multi_inputs_with_kernel");
-  *op_desc.mutable_inputs()->Add() = "x0";
-  *op_desc.mutable_inputs()->Add() = "x1";
-  *op_desc.mutable_inputs()->Add() = "x2";
-  *op_desc.mutable_inputs()->Add() = "k0";
-  *op_desc.mutable_outputs()->Add() = "y0";
-  *op_desc.mutable_outputs()->Add() = "y1";
+  BuildVar("xs", {"x0", "x1", "x2"}, op_desc.add_inputs());
+  BuildVar("k", {"k0"}, op_desc.add_inputs());
+  BuildVar("ys", {"y0", "y1"}, op_desc.add_outputs());
+
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  auto attr0 = op_desc.mutable_attrs()->Add();
-  attr0->set_name("input_format");
-  attr0->set_type(paddle::framework::AttrType::INTS);
-  auto input_format = attr0->mutable_ints();
-  input_format->Add(0);  // x0
-  input_format->Add(3);  // k
-  input_format->Add(4);  // end
-
-  auto attr1 = op_desc.mutable_attrs()->Add();
-  attr1->set_name("output_format");
-  attr1->set_type(paddle::framework::AttrType::INTS);
-  auto output_format = attr1->mutable_ints();
-  output_format->Add(0);  // y0
-  output_format->Add(2);  // y1
-
   paddle::platform::CPUDeviceContext cpu_device_context;
-  auto scope = std::make_shared<Scope>();
+  paddle::framework::Scope scope;
+  scope.Var("x0")->GetMutable<Tensor>();
+  scope.Var("x1")->GetMutable<Tensor>();
+  scope.Var("x2")->GetMutable<Tensor>();
+  scope.Var("k0")->GetMutable<Tensor>();
+  scope.Var("y0")->GetMutable<Tensor>();
+  scope.Var("y1")->GetMutable<Tensor>();
 
-  OperatorPtr op(paddle::framework::OpRegistry::CreateOp(op_desc));
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
   op->Run(scope, cpu_device_context);
+}
+
+class OperatorClone : public paddle::framework::OperatorBase {
+ public:
+  DEFINE_OP_CLONE_METHOD(OperatorClone);
+  OperatorClone(const std::string& type,
+                const paddle::framework::VariableNameMap& inputs,
+                const paddle::framework::VariableNameMap& outputs,
+                const paddle::framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+  void Run(const paddle::framework::Scope& scope,
+           const paddle::platform::DeviceContext& dev_ctx) const override {}
+};
+
+TEST(Operator, Clone) {
+  OperatorClone a("ABC", {}, {}, {});
+  auto b = a.Clone();
+  ASSERT_EQ(a.Type(), b->Type());
 }

@@ -37,7 +37,7 @@ std::vector<std::string> Evaluator::getNames() const {
 double Evaluator::getValue(const std::string name) const {
   paddle::Error err;
   double v = m->rawPtr->getValue(name, &err);
-  if (err) {
+  if (!err.isOK()) {
     throw std::runtime_error(err.msg());
   }
   return v;

@@ -169,5 +169,6 @@ def convert(path):
     Converts dataset to recordio format
     """
     dict_size = 30000
-    paddle.v2.dataset.common.convert(path, train(dict_size), 10, "wmt14_train")
-    paddle.v2.dataset.common.convert(path, test(dict_size), 10, "wmt14_test")
+    paddle.v2.dataset.common.convert(path,
+                                     train(dict_size), 1000, "wmt14_train")
+    paddle.v2.dataset.common.convert(path, test(dict_size), 1000, "wmt14_test")

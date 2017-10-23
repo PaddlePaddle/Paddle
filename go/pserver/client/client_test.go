@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package client_test
 
 import (
@@ -45,7 +59,7 @@ func initClient() [numPserver]int {
 
 		go func(l net.Listener) {
 			var cp pserver.Checkpoint
-			s, err := pserver.NewService(0, 1, "", nil, cp)
+			s, err := pserver.NewService(0, time.Hour, "", nil, cp)
 			if err != nil {
 				panic(err)
 			}
@@ -110,8 +124,12 @@ func initEtcdClient() {
 
 type selector bool
 
-func (s selector) Select() bool {
-	return bool(s)
+func (s selector) Select() (bool, error) {
+	return bool(s), nil
+}
+
+func (s selector) Done() error {
+	return nil
 }
 
 type lister []client.Server
@@ -121,7 +139,11 @@ func (l lister) List() []client.Server {
 }
 
 func testClient(t *testing.T, c *client.Client) {
-	selected := c.BeginInitParams()
+	selected, err := c.BeginInitParams()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if !selected {
 		t.Fatal("should be selected.")
 	}

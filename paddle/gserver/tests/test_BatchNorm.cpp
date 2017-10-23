@@ -17,10 +17,11 @@ limitations under the License. */
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 #include "paddle/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
+#include "paddle/cuda/include/hl_batch_norm.h"
+#include "paddle/math/tests/TensorCheck.h"
 #include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
@@ -116,6 +117,74 @@ TEST(Layer, batchNorm) {
   CHECK_EQ(static_cast<int>(convLayer->getOutputValue()->getHeight()), 100);
   CHECK_EQ(static_cast<int>(convLayer->getOutputValue()->getWidth()), 576);
 }
+
+#ifdef PADDLE_WITH_CUDA
+void batchNormInference(int n, int c, int h, int w) {
+  MatrixPtr input = std::make_shared<GpuMatrix>(n, c * h * w);
+  MatrixPtr cudnnOut = std::make_shared<GpuMatrix>(n, c * h * w);
+  MatrixPtr cudaOut = std::make_shared<GpuMatrix>(n, c * h * w);
+  MatrixPtr cudnnCheck = std::make_shared<CpuMatrix>(n, c * h * w);
+  MatrixPtr cudaCheck = std::make_shared<CpuMatrix>(n, c * h * w);
+  input->randomizeUniform();
+  cudnnOut->zeroMem();
+  cudaOut->zeroMem();
+
+  MatrixPtr scale = std::make_shared<GpuMatrix>(1, c);
+  scale->randomizeUniform();
+  MatrixPtr bias = std::make_shared<GpuMatrix>(1, c);
+  bias->randomizeUniform();
+
+  MatrixPtr movingMean = std::make_shared<GpuMatrix>(1, c);
+  movingMean->randomizeUniform();
+
+  MatrixPtr movingVar = std::make_shared<GpuMatrix>(1, c);
+  movingVar->randomizeUniform();
+  movingVar->clip(0.01, 50);
+
+  hl_tensor_descriptor ioDesc;
+  hl_tensor_descriptor bnDesc;
+  hl_create_tensor_descriptor(&ioDesc);
+  hl_create_tensor_descriptor(&bnDesc);
+  hl_tensor_reshape(ioDesc, n, c, h, w);
+  hl_tensor_reshape(bnDesc, 1, c, 1, 1);
+
+  double EPS = 1E-5;
+  hl_batch_norm_forward_inference(ioDesc,
+                                  input->getData(),
+                                  ioDesc,
+                                  cudnnOut->getData(),
+                                  bnDesc,
+                                  scale->getData(),
+                                  bias->getData(),
+                                  movingMean->getData(),
+                                  movingVar->getData(),
+                                  EPS);
+
+  hl_batch_norm_cuda_inference(input->getData(),
+                               cudaOut->getData(),
+                               scale->getData(),
+                               bias->getData(),
+                               movingMean->getData(),
+                               movingVar->getData(),
+                               EPS,
+                               n,
+                               c,
+                               h,
+                               w);
+
+  cudnnCheck->copyFrom(*cudnnOut);
+  cudaCheck->copyFrom(*cudaOut);
+  autotest::TensorCheckErr(*cudnnCheck, *cudaCheck);
+
+  hl_destroy_tensor_descriptor(ioDesc);
+  hl_destroy_tensor_descriptor(bnDesc);
+}
+
+TEST(BatchNorm, Inference) {
+  batchNormInference(33, 267, 1, 1);
+  batchNormInference(19, 105, 4, 4);
+}
+#endif
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

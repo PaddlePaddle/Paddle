@@ -272,7 +272,7 @@ class ExtraLayerAttribute(object):
         for key in self.attr:
             if not hasattr(self, 'can_%s' % key) or \
                     not getattr(self, 'can_%s' % key):
-                raise NotImplementedError("Layer %s cannot support %s" %
+                raise NotImplementedError("Layer %s does not support %s" %
                                           (layer_name, key))
 
     @staticmethod
