@@ -103,6 +103,14 @@ add_unittest_without_exec(test_KmaxSeqScore
 add_test(NAME test_KmaxSeqScore
     COMMAND test_KmaxSeqScore)
 
+################# test_Expand #######################
+add_unittest_without_exec(test_Expand
+    test_Expand.cpp
+    LayerGradUtil.cpp)
+
+add_test(NAME test_Expand
+    COMMAND test_Expand)
+
 if(NOT MOBILE_INFERENCE)
 ################## test_Evaluator #######################
     add_unittest(test_Evaluator
