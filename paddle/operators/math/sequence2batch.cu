@@ -21,7 +21,7 @@ namespace math {
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void CopyMatrixRowsKernel(const T* src, T* dst, const size_t* index,
                                      int64_t height, int64_t width,
-                                     const bool is_src_index) {
+                                     bool is_src_index) {
   int idx = threadIdx.x;
   int idy = threadIdx.y;
   int id = blockIdx.x + idy * GridDimX;

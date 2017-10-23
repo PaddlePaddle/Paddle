@@ -52,7 +52,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     to_batch(ctx.device_context(), *input, *batch_gate, is_reverse);
 
     auto in_dims = input->dims();
-    int frame_size = in_dims[1] / 4;
+    int frame_size = static_cast<int>(in_dims[1] / 4);
     framework::DDim dims({in_dims[0], frame_size});
 
     if (bias) {
@@ -70,7 +70,7 @@ class LSTMKernel : public framework::OpKernel<T> {
 
     math::LstmMetaValue<T> lstm_value;
     T* bias_data = const_cast<T*>(bias->data<T>());
-    // the code styple in LstmMetaValue will be updated later.
+    // the code style in LstmMetaValue will be updated later.
     lstm_value.checkIg = bias_data + 4 * frame_size;
     lstm_value.checkFg = lstm_value.checkIg + frame_size;
     lstm_value.checkOg = lstm_value.checkFg + frame_size;
@@ -83,15 +83,15 @@ class LSTMKernel : public framework::OpKernel<T> {
     framework::LoDTensor batch_cell_pre_act;
     batch_cell_pre_act.mutable_data<T>(dims, ctx.GetPlace());
 
-    auto batch_lod = batch_gate->lod()[0];
-    int num_batch = batch_lod.size() - 1;
+    auto& batch_starts = batch_gate->lod()[0];
+    size_t num_batch = batch_starts.size() - 1;
     auto gate_act = ctx.Attr<std::string>("gateActivation");
     auto cell_act = ctx.Attr<std::string>("cellActivation");
     auto cand_act = ctx.Attr<std::string>("candidateActivation");
 
-    for (int n = 0; n < num_batch; n++) {
-      int bstart = batch_lod[n];
-      int bend = batch_lod[n + 1];
+    for (size_t n = 0; n < num_batch; n++) {
+      int bstart = static_cast<int>(batch_starts[n]);
+      int bend = static_cast<int>(batch_starts[n + 1]);
 
       Tensor gate_t = batch_gate->Slice<T>(bstart, bend);
       Tensor out_t = batch_out.Slice<T>(bstart, bend);
@@ -101,14 +101,14 @@ class LSTMKernel : public framework::OpKernel<T> {
       int cur_batch_size = bend - bstart;
 
       if (n != 0) {
-        int pre_h_start = batch_lod[n - 1];
+        int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_hidden_t = batch_out.Slice<T>(pre_h_start, pre_h_end);
         math::matmul<Place, T>(ctx.device_context(), pre_hidden_t, false,
                                *weight, false, static_cast<T>(1.0), &gate_t,
                                static_cast<T>(1.0));
       }
-      // else if : support the initial hidden and cell
+      // else if : FIXME support the initial hidden and cell
 
       lstm_value.gateValue = gate_t.data<T>();
       lstm_value.outputValue = out_t.data<T>();
