@@ -48,17 +48,6 @@ protected:
   // save forward primitive_desc, which can be used backward
   std::shared_ptr<conv_fwd::primitive_desc> fwdPD_;
 
-  // MKLDNNMatrixPtr which should be created from CPU Device
-  MKLDNNMatrixPtr cpuInVal_;
-  MKLDNNMatrixPtr cpuInGrad_;
-  MKLDNNMatrixPtr cpuOutVal_;
-  MKLDNNMatrixPtr cpuOutGrad_;
-  // convert handle between CPU device and MKLDNN device
-  std::shared_ptr<mkldnn::reorder> cvtInVal_;
-  std::shared_ptr<mkldnn::reorder> cvtInGrad_;
-  std::shared_ptr<mkldnn::reorder> cvtOutVal_;
-  std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
-
   // whether the weight has been init
   bool hasInitedWgt_;
 
@@ -94,8 +83,6 @@ public:
                 MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
-  void updateInputData() override;
-
   void updateWeights(const UpdateCallback& callback) override;
 
   void convertWeightsFromPaddle() override;
@@ -107,26 +94,6 @@ public:
     VLOG(MKLDNN_SIZES) << getName() << ": fh: " << fh_ << ", fw: " << fw_
                        << ": ph: " << ph_ << ", pw: " << pw_ << ", sh: " << sh_
                        << ", sw: " << sw_ << ", dh: " << dh_ << ", dw: " << dw_;
-  }
-
-  void printValueFormatFlow() override {
-    if (cpuInVal_) {
-      VLOG(MKLDNN_FMTS) << cpuInVal_->getFormat() << " >>>";
-    }
-    MKLDNNLayer::printValueFormatFlow();
-    if (cpuOutVal_) {
-      VLOG(MKLDNN_FMTS) << " >>> " << cpuOutVal_->getFormat();
-    }
-  }
-
-  void printGradFormatFlow() override {
-    if (cpuInGrad_) {
-      VLOG(MKLDNN_FMTS) << cpuInGrad_->getFormat() << " <<<";
-    }
-    MKLDNNLayer::printGradFormatFlow();
-    if (cpuOutGrad_) {
-      VLOG(MKLDNN_FMTS) << " <<< " << cpuOutGrad_->getFormat();
-    }
   }
 
 protected:
@@ -163,23 +130,6 @@ protected:
                         MKLDNNMatrixPtr& out);
 
   /**
-   * reset MKLDNNMatrix of input value
-   */
-  void resetInValue(std::shared_ptr<conv_fwd::primitive_desc>& pd,
-                    MKLDNNMatrixPtr& in);
-  /**
-   * reset MKLDNNMatrix of weight and bias value
-   */
-  void resetWgtBiasValue(std::shared_ptr<conv_fwd::primitive_desc>& pd,
-                         MKLDNNMatrixPtr& wgt,
-                         MKLDNNMatrixPtr& bias);
-  /**
-   * reset MKLDNNMatrix of output value
-   */
-  void resetOutValue(std::shared_ptr<conv_fwd::primitive_desc>& pd,
-                     MKLDNNMatrixPtr& out);
-
-  /**
    * reset the backward weight primitive descriptor.
    */
   void resetBwdWgtPD(std::shared_ptr<conv_bwdWgt::primitive_desc>& pd);
@@ -207,22 +157,6 @@ protected:
                         MKLDNNMatrixPtr& bias,
                         MKLDNNMatrixPtr& out);
 
-  /**
-   * reset MKLDNNMatrix of output grad
-   */
-  void resetOutGrad(std::shared_ptr<conv_bwdWgt::primitive_desc>& wgtPD,
-                    MKLDNNMatrixPtr& out);
-  /**
-   * reset MKLDNNMatrix of weight and bias grad
-   */
-  void resetWgtBiasGrad(std::shared_ptr<conv_bwdWgt::primitive_desc>& wgtPD,
-                        MKLDNNMatrixPtr& wgt,
-                        MKLDNNMatrixPtr& bias);
-  /**
-   * reset MKLDNNMatrix of input grad
-   */
-  void resetInGrad(std::shared_ptr<conv_bwdData::primitive_desc>& dataPD,
-                   MKLDNNMatrixPtr& in);
   /**
    * reset MKLDNNMatrix of weight value for backward data
    * since the primitive_desc would be different with wgtVal_
