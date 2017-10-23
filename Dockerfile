@@ -22,7 +22,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y \
-    git python-pip python-dev openssh-server bison libnccl-dev \
+    git python-pip python-dev openssh-server bison \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
@@ -63,6 +63,9 @@ RUN pip install pre-commit 'ipython==5.3.0' && \
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt
+COPY ./paddle/scripts/docker/build_nccl1.sh /root/
+RUN /root/build_nccl1.sh
+
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
