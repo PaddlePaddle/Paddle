@@ -3,7 +3,9 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable
 import re
 
-__all__ = ['fc', 'data', 'cross_entropy', 'conv2d', 'pool2d']
+__all__ = [
+    'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat'
+]
 
 
 def fc(input,
@@ -53,6 +55,24 @@ def fc(input,
     pre_activation = helper.append_bias_op(pre_bias)
     # add activation
     return helper.append_activation(pre_activation)
+
+
+def embedding(input,
+              size,
+              data_type='float32',
+              param_attr=None,
+              program=None,
+              init_program=None):
+    helper = LayerHelper('embedding', **locals())
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=size, dtype=data_type)
+    tmp = helper.create_tmp_variable(data_type)
+    helper.append_op(
+        type='lookup_table',
+        inputs={'Ids': input,
+                'W': w},
+        outputs={'Out': tmp})
+    return tmp
 
 
 def data(name,
@@ -120,6 +140,19 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+
+
+def concat(input, axis, program=None, init_program=None):
+    helper = LayerHelper('concat', **locals())
+    if not isinstance(input, list) and not isinstance(input, tuple):
+        input = [input]
+    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    helper.append_op(
+        type='concat',
+        inputs={'X': input},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
 
 
 def cross_entropy(input, label, **kwargs):

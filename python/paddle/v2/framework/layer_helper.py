@@ -264,10 +264,7 @@ class LayerHelper(object):
         if attr['name'] is None:
             attr['name'] = unique_name(".".join([self.name, suffix]))
         self.init_program.global_block().create_parameter(
-            name=attr['name'],
-            dtype=dtype,
-            shape=shape,
-            init_attr=attr['init_attr'])
+            dtype=dtype, shape=shape, **attr)
         return self.program.global_block().create_parameter(
             name=attr['name'], dtype=dtype, shape=shape)
 

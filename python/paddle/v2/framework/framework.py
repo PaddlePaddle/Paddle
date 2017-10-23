@@ -53,8 +53,8 @@ class Variable(object):
             if is_new_var:
                 self.desc.set_data_type(dtype)
             else:
-                old_dtype = self.data_type()
-                if dtype != old_shape:
+                old_dtype = self.data_type
+                if dtype != old_dtype:
                     raise ValueError("Variable {0} has been created before. "
                                      "The previous data type is {1}; the new "
                                      "data type is {2}. They are not "
@@ -195,7 +195,6 @@ class Operator(object):
                 "`type` to initilized an Operator can not be None.")
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
-
         if inputs is not None:
             given = set()
             need = set()
@@ -210,6 +209,7 @@ class Operator(object):
                         str(e) for e in given)))
 
             for in_proto in proto.inputs:
+
                 in_argus = inputs[in_proto.name]
                 if not isinstance(in_argus, list):
                     in_argus = [in_argus]
@@ -261,6 +261,7 @@ class Operator(object):
 
         self.desc.check_attrs()
         if type not in {'feed', 'fetch'}:
+            self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
     def __str__(self):
