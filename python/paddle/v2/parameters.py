@@ -101,6 +101,10 @@ class Parameters(object):
 
         self.__param_conf__[param_conf.name] = param_conf
 
+    def update_param_conf(self, model_config):
+        for p in model_config.parameters:
+            self.__param_conf__[p.name] = p
+
     def keys(self):
         """
         keys are the names of each parameter.

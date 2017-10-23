@@ -62,12 +62,19 @@ else()
     FIND_PACKAGE(CUDA REQUIRED)
 
     if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
-        message(FATAL_ERROR "Paddle need CUDA >= 7.0 to compile")
+        message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
     if(NOT CUDNN_FOUND)
-        message(FATAL_ERROR "Paddle need cudnn to compile")
+        message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
+    if (NOT NCCL_INCLUDE_DIR)
+        message(FATAL_ERROR "Paddle needs nccl header to compile")
+    endif()
+    if (NOT WITH_DSO AND NOT NCCL_LIBRARY)
+        message(FATAL_ERROR "Paddle needs nccl libraries when WITH_DSO=OFF")
+    endif()
+
 
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
 
