@@ -300,7 +300,7 @@ class BlockGuard(object):
 class StaticRNNGuard(BlockGuard):
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
-            raise TypeError("RNNGuard takes an RNNHelper")
+            raise TypeError("StaticRNNGuard takes an StaticRNN")
         super(StaticRNNGuard, self).__init__(rnn.helper.program)
         self.rnn = rnn
 

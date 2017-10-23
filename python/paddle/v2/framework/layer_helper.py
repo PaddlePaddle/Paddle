@@ -1,8 +1,10 @@
-from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program, \
-    Program, g_init_program
-import paddle.v2.framework.core as core
 import copy
 import itertools
+
+import paddle.v2.framework.core as core
+
+from paddle.v2.framework.framework import Variable, g_program, \
+    g_init_program
 
 
 def unique_name(prefix):
