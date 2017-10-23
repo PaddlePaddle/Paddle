@@ -42,7 +42,7 @@ class LinearChainCrfGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override;
 
  protected:
-  void BackwardOneSequence(const platform::DeviceContext& ctx,
+  void BackwardOneSequence(const platform::DeviceContext& ctx, const T ll_grad,
                            const Tensor* emission_exps,
                            const Tensor* transition_exps, const Tensor* alpha,
                            const Tensor* label, Tensor* beta,

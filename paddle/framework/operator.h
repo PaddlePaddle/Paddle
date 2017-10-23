@@ -659,7 +659,7 @@ class OperatorWithKernel : public OperatorBase {
           if (t != nullptr) {
             int tmp = static_cast<int>(ToDataType(t->type()));
             PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                           "DataType of Paddle Op must be same.");
+                           "DataType of Paddle Op must be the same.");
             data_type = tmp;
           }
         }

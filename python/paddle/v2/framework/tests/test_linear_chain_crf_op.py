@@ -4,8 +4,6 @@ import numpy as np
 
 from op_test import OpTest
 
-import pdb
-
 
 class LinearChainCrfForward(object):
     def __init__(self, seq_start_positions, emission_weights, emission_row_max,
@@ -65,10 +63,10 @@ class LinearChainCrfForward(object):
 
         # calculate the nominator part.
         log_likelihood += (
-            self.a[label[0]] + self.x[0, label[0]] + self.b[label[-1]])
+            self.a[label[0]] + x[0, label[0]] + self.b[label[-1]])
+
         for k in range(1, seq_len):
-            log_likelihood += (
-                self.x[k, label[k]] + self.w[label[k - 1], label[k]])
+            log_likelihood += (x[k, label[k]] + self.w[label[k - 1], label[k]])
         return -log_likelihood
 
     def crf_forward_compute(self):
@@ -77,7 +75,7 @@ class LinearChainCrfForward(object):
             end = self.seq_start_positions[i + 1]
 
             self.log_likelihood[i] = self._forward_a_sequence(
-                self.x[start:end], self.x_row_max[start:end, :],
+                self.x[start:end, :], self.x_row_max[start:end, :],
                 self.x_exps[start:end, :], self.labels[start:end, :],
                 self.alpha[start:end, :])
         return self.alpha, self.log_likelihood
@@ -85,10 +83,11 @@ class LinearChainCrfForward(object):
 
 class TestLinearChainCrfOp(OpTest):
     def set_test_data(self):
-        SEQ_NUM = 3
+        SEQ_NUM = 2
         TAG_NUM = 17
-        MAX_SEQ_LEN = 13
+        MAX_SEQ_LEN = 5
 
+        random.seed(1)
         # the linear_chain_crf operator only supports sequence (LoD level = 1)
         lod = [[0]]
         for i in range(SEQ_NUM):

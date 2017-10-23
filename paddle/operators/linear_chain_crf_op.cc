@@ -165,11 +165,11 @@ class LinearChainCrfOp : public framework::OperatorWithKernel {
                    "Output(LogLikelihood) should be not null.");
 
     auto emission_dims = ctx->GetInputDim("Emission");
-    auto transition_dims = ctx->GetInputDim("Transition");
-    auto label_dims = ctx->GetInputDim("Label");
-
     PADDLE_ENFORCE_EQ(emission_dims.size(), 2UL,
                       "The Input(Emission) should be a 2-D tensor.");
+    PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
+
+    auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
                       "The Input(Transition) should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
@@ -180,6 +180,8 @@ class LinearChainCrfOp : public framework::OperatorWithKernel {
         emission_dims[1], transition_dims[1],
         "The 2nd dimension of the Input(Emission) and the Input(Transition) "
         "should be equal to the tag number.");
+
+    auto label_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
                    "The Input(Label) should be a 2-D tensor with the 2nd "
                    "dimensions fixed to 1.");
@@ -204,7 +206,7 @@ class LinearChainCrfOp : public framework::OperatorWithKernel {
   // operator is determined by its input "Emission".
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Emission")->type());
+    return framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type());
   }
 };
 
@@ -224,6 +226,8 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
     auto* label = ctx.Input<LoDTensor>("Label");
 
     auto in_lod = emission_weights->lod();
+    PADDLE_ENFORCE(in_lod.size(), "Input(Emission) is not a sequence.");
+
     // TODO(caoying) The checks related to LoD information should be
     // moved into InferShape once after the InferShape is refactored.
     PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
@@ -266,12 +270,17 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
     for (size_t i = 0; i < seq_num; ++i) {
       int start_pos = static_cast<int>(in_lod[level][i]);
       int end_pos = static_cast<int>(in_lod[level][i + 1]);
+      if (end_pos == start_pos) {
+        // If an empty input sequence is given, pad 0 for its cost.
+        log_likelihood[i] = static_cast<T>(0.);
+        continue;
+      }
 
-      const Tensor one_seq = emission_weights->Slice<T>(start_pos, end_pos);
-      Tensor one_seq_row_max = emission_row_max.Slice<T>(start_pos, end_pos);
-      Tensor one_seq_exps = emission_exps->Slice<T>(start_pos, end_pos);
-      const Tensor one_seq_label = label->Slice<T>(start_pos, end_pos);
-      Tensor one_seq_alpha = alpha->Slice<T>(start_pos, end_pos);
+      const Tensor one_seq = emission_weights->Slice(start_pos, end_pos);
+      Tensor one_seq_row_max = emission_row_max.Slice(start_pos, end_pos);
+      Tensor one_seq_exps = emission_exps->Slice(start_pos, end_pos);
+      const Tensor one_seq_label = label->Slice(start_pos, end_pos);
+      Tensor one_seq_alpha = alpha->Slice(start_pos, end_pos);
 
       log_likelihood[i] = ForwardOneSequence(
           &one_seq, &one_seq_row_max, &one_seq_exps, transition_weights,
@@ -306,7 +315,7 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
 
     for (size_t k = 1; k < seq_length; ++k) {
       for (size_t i = 0; i < tag_num; ++i) {
-        T sum = 0.;
+        T sum = static_cast<T>(0.);
         for (size_t j = 0; j < tag_num; ++j) {
           sum += alpha_value[(k - 1) * tag_num + j] *
                  w_exps[(j + state_trans_base_idx) * tag_num + i];
@@ -326,11 +335,14 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
     PADDLE_ENFORCE_LT(
         *std::max_element(lbl, lbl + seq_length), tag_num,
         "An invalid tag label that execesses the largest tag number.");
+
     // Calculate the nominator part, which depends on the label sequence.
     ll += w[lbl[0]] /*start transition*/ + x[lbl[0]] +
           w[tag_num + lbl[seq_length - 1]] /*end transition*/;
-    for (size_t k = 1; k < seq_length; ++k)
-      ll += x[k * tag_num + lbl[k]] + w[lbl[k - 1] * tag_num + lbl[k]];
+    for (size_t k = 1; k < seq_length; ++k) {
+      ll += x[k * tag_num + lbl[k]] +
+            w[(lbl[k - 1] + state_trans_base_idx) * tag_num + lbl[k]];
+    }
     return -ll;
   }
 };
@@ -353,12 +365,13 @@ class LinearChainCrfGradOp : public framework::OperatorWithKernel {
                    "Output(Transition@GRAD) should be not null.");
 
     auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
-    auto transition_exps_dims =
-        ctx->GetInputDim(framework::GradVarName("TransitionExps"));
-    auto label_dims = ctx->GetInputDim("Label");
-
     PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2UL,
                       "The Input(EmissionExps) should be a 2-D tensor.");
+    PADDLE_ENFORCE(emission_exps_dims[0],
+                   "An empty mini-batch is not allowed.");
+
+    auto transition_exps_dims =
+        ctx->GetInputDim(framework::GradVarName("TransitionExps"));
     PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2UL,
                       "The Input(TransitionExps) should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
@@ -369,6 +382,8 @@ class LinearChainCrfGradOp : public framework::OperatorWithKernel {
         emission_exps_dims[1], transition_exps_dims[1],
         "The 2nd dimension of the Input(EmissionExps) and the "
         "Input(TransitionExps) should be equal to the tag number.");
+
+    auto label_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
                    "The Input(Label) should be a 2-D tensor with the 2nd "
                    "dimensions fixed to 1.");
@@ -381,6 +396,14 @@ class LinearChainCrfGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("Transition"),
                       transition_exps_dims);
   }
+
+ protected:
+  // Explicitly set that the data type of output of the linear_chain_crf_grad
+  // operator is determined by its input "EmissionExps".
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<LoDTensor>("EmissionExps")->type());
+  }
 };
 
 template <typename T>
@@ -390,12 +413,12 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "This kernel only runs on CPU.");
-    auto* ll_grad =
-        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"));
     auto* label = ctx.Input<LoDTensor>("Label");
     auto* emission_exps = ctx.Input<LoDTensor>("EmissionExps");
     auto* transition_exps = ctx.Input<Tensor>("TransitionExps");
-    auto* alpha = ctx.Input<Tensor>("Alpha");
+    auto* alpha = ctx.Input<LoDTensor>("Alpha");
+    const T* ll_grad =
+        ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
 
     auto* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
@@ -413,34 +436,31 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
     Tensor beta;
     beta.mutable_data<T>(emission_dims, platform::CPUPlace());
 
-    auto place = ctx.GetEigenDevice<platform::CPUPlace>();
-    auto x_grad = EigenMatrix<T>::From(*emission_grad);
-    auto out_grad = EigenMatrix<T>::From(*ll_grad);
-    x_grad.device(place) =
-        x_grad * out_grad.broadcast(Eigen::DSizes<int, 2>(1, emission_dims[1]));
-
     const size_t level = 0;  // currently, only support sequence.
-    auto lod = emission_exps->lod();
+    auto lod = label->lod();
+    PADDLE_ENFORCE(lod.size(), "Input(Label) is not a sequence.");
+
     for (size_t i = 0; i < lod[level].size() - 1; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
+      if (end_pos == start_pos) continue;
 
       const Tensor one_seq_emission_exps =
-          emission_exps->Slice<T>(start_pos, end_pos);
-      const Tensor one_seq_label = label->Slice<T>(start_pos, end_pos);
-      const Tensor one_seq_alpha = alpha->Slice<T>(start_pos, end_pos);
-      Tensor one_seq_beta = beta.Slice<T>(start_pos, end_pos);
-      Tensor one_seq_emission_grad =
-          emission_grad->Slice<T>(start_pos, end_pos);
+          emission_exps->Slice(start_pos, end_pos);
+      const Tensor one_seq_label = label->Slice(start_pos, end_pos);
+      const Tensor one_seq_alpha = alpha->Slice(start_pos, end_pos);
+      Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
+      Tensor one_seq_emission_grad = emission_grad->Slice(start_pos, end_pos);
 
-      BackwardOneSequence(ctx.device_context(), &one_seq_emission_exps,
-                          transition_exps, &one_seq_alpha, &one_seq_label,
-                          &one_seq_beta, trans_grad, &one_seq_emission_grad);
+      BackwardOneSequence(ctx.device_context(), ll_grad[i],
+                          &one_seq_emission_exps, transition_exps,
+                          &one_seq_alpha, &one_seq_label, &one_seq_beta,
+                          trans_grad, &one_seq_emission_grad);
     }
   }
 
  protected:
-  void BackwardOneSequence(const platform::DeviceContext& ctx,
+  void BackwardOneSequence(const platform::DeviceContext& ctx, const T ll_grad,
                            const Tensor* emission_exps,
                            const Tensor* transition_exps, const Tensor* alpha,
                            const Tensor* label, Tensor* beta,
@@ -457,12 +477,15 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
     const size_t state_trans_base_idx = 2;
 
     // Calculate the backwark vectors beta.
-    for (int i = 0; i < tag_num; ++i)
+    // First, calculate the initialition state.
+    for (int i = 0; i < tag_num; ++i) {
       beta_value[(seq_length - 1) * tag_num + i] = w_exps[tag_num + i];
+    }
     NormalizeL1<T>(beta_value + (seq_length - 1) * tag_num, tag_num);
+
     for (int k = seq_length - 2; k >= 0; --k) {
       for (int i = 0; i < tag_num; ++i) {
-        T sum = 0.;
+        T sum = static_cast<T>(0.);
         for (int j = 0; j < tag_num; ++j) {
           sum += w_exps[(i + state_trans_base_idx) * tag_num + j] *
                  x_exps[(k + 1) * tag_num + j] *
@@ -476,6 +499,7 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
     auto alpha_mat = EigenMatrix<T>::From(*alpha);
     auto beta_mat = EigenMatrix<T>::From(*beta);
     auto x_grad_mat = EigenMatrix<T>::From(*emission_grad);
+    x_grad_mat.setConstant(ll_grad);
 
     auto* place = ctx.GetEigenDevice<platform::CPUPlace>();
     x_grad_mat.device(*place) = alpha_mat * beta_mat;
@@ -483,8 +507,9 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
                       .reshape(Eigen::DSizes<int, 2>(seq_length, 1))
                       .broadcast(Eigen::DSizes<int, 2>(1, tag_num));
 
-    for (int k = 0; k < seq_length; ++k)
+    for (int k = 0; k < seq_length; ++k) {
       x_grad_mat(k, label_value[k]) -= static_cast<T>(1);
+    }
 
     if (transition_grad) {
       T* trans_grad = transition_grad->data<T>();
@@ -501,20 +526,23 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
                       .broadcast(Eigen::DSizes<int, 2>(1, tag_num));
 
       for (int k = 1; k < seq_length; ++k) {
-        T sum = 0.;
-        for (int i = 0; i < tag_num; ++i) {
-          for (int j = 0; j < tag_num; ++j)
-            sum += x_exps_mat(i, j) * alpha_mat(k - 1, i) * beta_mat(k, j);
-        }
-        sum = static_cast<T>(1) / sum;
+        T sum = static_cast<T>(0.);
         for (int i = 0; i < tag_num; ++i) {
           for (int j = 0; j < tag_num; ++j) {
-            trans_grad[(i + 2) * tag_num + j] +=
-                sum * x_exps_mat(i, j) * alpha_mat(k - 1, i) * beta_mat(k, j);
+            sum += w_exps[(i + state_trans_base_idx) * tag_num + j] *
+                   alpha_mat(k - 1, i) * beta_mat(k, j);
+          }
+        }
+        sum = static_cast<T>(1.) / sum;
+        for (int i = 0; i < tag_num; ++i) {
+          for (int j = 0; j < tag_num; ++j) {
+            trans_grad[(i + state_trans_base_idx) * tag_num + j] +=
+                sum * w_exps[(i + state_trans_base_idx) * tag_num + j] *
+                alpha_mat(k - 1, i) * beta_mat(k, j);
           }
         }
         trans_grad[label_value[k - 1] * tag_num + label_value[k]] -=
-            static_cast<T>(1);
+            static_cast<T>(1.);
       }
     }
   }
