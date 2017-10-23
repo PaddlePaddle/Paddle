@@ -8,6 +8,10 @@ class TestSeqProject(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = 'sequence_project'
+        if self.context_length == 1 and self.context_start == 0 and self.padding_trainable:
+            print "If context_start is 0 and context_length is 1, padding_trainable should be false."
+            return
+
         # one level, batch size
         x = np.random.uniform(
             0.1, 1, [self.input_size[0], self.input_size[1]]).astype('float32')
@@ -15,11 +19,15 @@ class TestSeqProject(OpTest):
         self.begin_pad = np.max([0, -self.context_start])
         self.end_pad = np.max([0, self.context_start + self.context_length - 1])
         self.total_pad = self.begin_pad + self.end_pad
-        w = np.random.uniform(
+        if self.total_pad == 0:
+            self.total_pad = 1
+        # PaddingData mast be not empty. Otherwise(EnforceNotMet: enforce numel() > 0 failed, 0 <= 0)
+        padding_data = np.random.uniform(
             0.1, 1, [self.total_pad, self.input_size[1]]).astype('float32')
+
         self.inputs = {
             'X': (x, self.lod),
-            'PaddingData': (w, [[0, self.total_pad]])
+            'PaddingData': (padding_data, [[0, self.total_pad]])
         }
         self.attrs = {
             'context_start': self.context_start,
@@ -34,7 +42,7 @@ class TestSeqProject(OpTest):
 
     def compute(self):
         x, lod = self.inputs['X']
-        w, _ = self.inputs['PaddingData']
+        pading_data, _ = self.inputs['PaddingData']
         out = self.outputs['Out']
         lod = lod[0]
         begin_pad = np.max([0, -self.context_start])
@@ -48,7 +56,7 @@ class TestSeqProject(OpTest):
                 if in_begin < lod[i]:
                     pad_size = np.min([lod[i] - in_begin, lod[i + 1] - lod[i]])
                     if self.padding_trainable:
-                        sub_w = w[j:j + pad_size, :]
+                        sub_w = pading_data[j:j + pad_size, :]
                         out[lod[i]:lod[i] + pad_size, j * self.input_size[1]:(
                             j + 1) * self.input_size[1]] = sub_w
                     out_begin = lod[i] + pad_size
@@ -58,8 +66,9 @@ class TestSeqProject(OpTest):
                     pad_size = np.min(
                         [in_end - lod[i + 1], lod[i + 1] - lod[i]])
                     if self.padding_trainable:
-                        sub_w = w[begin_pad + self.context_start + j - pad_size:
-                                  begin_pad + self.context_start + j, :]
+                        sub_w = pading_data[begin_pad + self.context_start + j -
+                                            pad_size:begin_pad +
+                                            self.context_start + j, :]
                         out[lod[i + 1] - pad_size:lod[i + 1], j * self.
                             input_size[1]:(j + 1) * self.input_size[1]] = sub_w
                     in_end = lod[i + 1]
@@ -75,8 +84,9 @@ class TestSeqProject(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            set(['X', 'PaddingData']), 'Out', max_relative_error=0.05)
+        if self.padding_trainable:
+            self.check_grad(
+                set(['X', 'PaddingData']), 'Out', max_relative_error=0.05)
 
     def test_check_grad_no_filter(self):
         self.check_grad(
@@ -86,12 +96,26 @@ class TestSeqProject(OpTest):
             no_grad_set=set(['PaddingData']))
 
     def test_check_grad_no_input(self):
-        self.check_grad(
-            ['PaddingData'],
-            'Out',
-            max_relative_error=0.05,
-            no_grad_set=set(['X']))
+        if self.padding_trainable:
+            self.check_grad(
+                ['PaddingData'],
+                'Out',
+                max_relative_error=0.05,
+                no_grad_set=set(['X']))
 
+    def init_test_case(self):
+        self.op_type = "sequence_project"
+        self.input_row = 11
+        self.context_start = 0
+        self.context_length = 1
+        self.padding_trainable = False
+        self.context_stride = 1
+
+        self.input_size = [self.input_row, 23]
+        self.lod = [[0, 4, 5, 8, self.input_row]]
+
+
+class TestSeqProjectCase1(TestSeqProject):
     def init_test_case(self):
         self.op_type = "sequence_project"
         self.input_row = 11
@@ -104,7 +128,7 @@ class TestSeqProject(OpTest):
         self.lod = [[0, 4, 5, 8, self.input_row]]
 
 
-class TestSeqProjectCase1(TestSeqProject):
+class TestSeqProjectCase2(TestSeqProject):
     def init_test_case(self):
         self.op_type = "sequence_project"
         self.input_row = 25
@@ -151,21 +175,17 @@ class TestSeqProjectCases(TestSeqProject):
                             ]
 
                         self.begin_pad = np.max([0, -self.context_start])
-                        self.end_pad = np.max(
-                            [0, self.context_start + self.context_length - 1])
+                        self.end_pad = np.max([0, self.context_start + self.context_length - 1])
                         self.total_pad = self.begin_pad + self.end_pad
-                        # w =  np.ones((self.total_pad, self.input_size[1])) * 100
-                        w = np.array(range(self.total_pad * self.input_size[1]))
-                        w.shape = self.total_pad, self.input_size[1]
-                        if self.total_pad * self.input_size[1] == 0:
-                            w = np.random.uniform(
-                                0.1, 1,
-                                (1, self.input_size[1])).astype('float32')
+                        if self.total_pad == 0:
                             self.total_pad = 1
+                        # PaddingData mast be not empty. Otherwise(EnforceNotMet: enforce numel() > 0 failed, 0 <= 0)
+                        padding_data = np.random.uniform(
+                            0.1, 1, [self.total_pad, self.input_size[1]]).astype('float32')
 
                         self.inputs = {
                             'X': (x, self.lod),
-                            'PaddingData': (w, [[0, self.total_pad]])
+                            'PaddingData': (padding_data, [[0, self.total_pad]])
                         }
                         self.attrs = {
                             'context_start': self.context_start,

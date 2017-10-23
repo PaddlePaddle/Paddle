@@ -55,26 +55,17 @@ class SequenceProjectKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
     auto lod_level_0 = in->lod()[0];
-    int64_t input_width = in->dims()[1];
-    int64_t output_width = out->dims()[1];
-    int64_t padding_width = 0;
-    PADDLE_ENFORCE(input_width * context_length == output_width,
-                   "Input size and pooling size should be consistent.");
 
     const LoDTensor* padding_data = nullptr;
     if (padding_trainable) {
       padding_data = context.Input<LoDTensor>("PaddingData");
-      PADDLE_ENFORCE_EQ(padding_data->dims().size(), 2UL,
-                        "Only support one level sequence now.");
-      padding_width = padding_data->dims()[1];
-      PADDLE_ENFORCE(padding_width == input_width,
-                     "Input size and pooling size should be consistent.");
     }
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
     int sequence_height, sequence_width;
     int input_row_begin, input_row_end;
+    sequence_width = static_cast<int>(in->dims()[1]);
 
     paddle::operators::math::Im2ColFunctor<
         paddle::operators::math::ColFormat::kOCF, Place, float>
@@ -90,7 +81,6 @@ class SequenceProjectKernel : public framework::OpKernel<T> {
                                 static_cast<int>(lod_level_0[i + 1]));
 
       sequence_height = static_cast<int>(out_t.dims()[0]);
-      sequence_width = static_cast<int>(in->dims()[1]);
 
       std::vector<int64_t> output_shape(
           {sequence_height, 1, 1, context_length,
@@ -190,13 +180,6 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
                       "Only support one level sequence now.");
     auto lod_g_level_0 = in->lod()[0];
 
-    int64_t input_width = in->dims()[1];
-    int64_t output_width = out_g->dims()[1];
-    int64_t padding_width = 0;
-
-    PADDLE_ENFORCE(input_width * context_length == output_width,
-                   "Input size and pooling size should be consistent.");
-
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
     int sequence_height, sequence_width;
@@ -250,11 +233,7 @@ class SequenceProjectGradKernel : public framework::OpKernel<T> {
 
     if (padding_trainable && padding_data_g) {
       padding_data_g->mutable_data<T>(context.GetPlace());
-      PADDLE_ENFORCE_EQ(padding_data_g->dims().size(), 2UL,
-                        "Only support one level sequence now.");
-      padding_width = padding_data_g->dims()[1];
-      PADDLE_ENFORCE(padding_width == input_width,
-                     "Input size and pooling size should be consistent.");
+
       math::SetConstant<Place, T> functor;
       functor(context.device_context(), padding_data_g, 0);
 
