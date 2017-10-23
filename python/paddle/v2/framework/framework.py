@@ -53,8 +53,8 @@ class Variable(object):
             if is_new_var:
                 self.desc.set_data_type(dtype)
             else:
-                old_dtype = self.data_type()
-                if dtype != old_shape:
+                old_dtype = self.data_type
+                if dtype != old_dtype:
                     raise ValueError("Variable {0} has been created before. "
                                      "The previous data type is {1}; the new "
                                      "data type is {2}. They are not "
@@ -258,6 +258,7 @@ class Operator(object):
 
         self.desc.check_attrs()
         if type not in {'feed', 'fetch'}:
+            self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
     def __str__(self):
