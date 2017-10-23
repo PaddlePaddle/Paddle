@@ -76,14 +76,12 @@ class LSTMKernel : public framework::OpKernel<T> {
     lstm_value.checkOg = lstm_value.checkFg + frame_size;
     lstm_value.prevStateValue = nullptr;
 
-    framework::LoDTensor batch_out;
+    framework::LoDTensor batch_out, batch_cell, batch_cell_pre_act;
     batch_out.mutable_data<T>(dims, ctx.GetPlace());
-    framework::LoDTensor batch_cell;
     batch_cell.mutable_data<T>(dims, ctx.GetPlace());
-    framework::LoDTensor batch_cell_pre_act;
     batch_cell_pre_act.mutable_data<T>(dims, ctx.GetPlace());
 
-    auto& batch_starts = batch_gate->lod()[0];
+    auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     auto gate_act = ctx.Attr<std::string>("gateActivation");
     auto cell_act = ctx.Attr<std::string>("cellActivation");

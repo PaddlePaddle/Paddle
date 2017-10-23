@@ -98,18 +98,18 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "batch size. `H0` and `C0` can be NULL but only at the same time");
     AddInput("Weight",
              "(Tensor) the learnable hidden-hidden weights."
-             " - The shape is (D x 4*D), where D is the hidden size. "
-             " - Weight = {W_ih, W_fh, W_ch, W_oh}");
+             " - The shape is (D x 4D), where D is the hidden size. "
+             " - Weight = {W_ch, W_ih, W_fh, W_oh}");
     AddInput("Bias",
              "(Tensor) the learnable weights, which contains two parts: "
              "input-hidden bias weight and peephole connections weight if "
-             "seting `usePeepholes` True. "
+             "setting `usePeepholes` True. "
              "1. `usePeepholes = False` "
-             " - The shape is (1 x 4*D). "
-             " - Bias = {b_i, b_f, b_c, b_o}."
+             " - The shape is (1 x 4D). "
+             " - Bias = {b_c, b_i, b_f, b_o}."
              "2. `usePeepholes = True` "
-             " - The shape is (1 x 7*D). "
-             " - Bias = {b_i, b_f, b_c, b_o, W_ic, W_fc, W_oc}.");
+             " - The shape is (1 x 7D). "
+             " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("BatchGate",
               "(LoDTensor) This LoDTensor contains input gate, forget gate "
               "and output gate after the nonlinear computation. This "
@@ -184,8 +184,8 @@ Set `usePeepholes` False to disable peephole connection [2]. The formula
 is omitted here.
 
 @note These \f$W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}\f$
-operations on the input x_{t} were NOT included in this operator. The
-users can choose to use fully-connect operator before LSTM operator.
+operations on the input x_{t} were NOT included in this operator.
+Users can choose to use fully-connect operator before LSTM operator.
 
 [1] Hasim Sak, Andrew Senior, and Francoise Beaufays. Long short-term memory
 recurrent neural network architectures for large scale acoustic modeling.
