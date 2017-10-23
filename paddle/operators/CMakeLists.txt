@@ -80,8 +80,8 @@ function(op_library TARGET)
     if ("${TARGET}" STREQUAL "nccl_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(ncclInit);\n")
-        # file(APPEND ${pybind_file} "USE_OP(ncclInit);\n")
+        file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclInit);\n")
+        file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
     endif()
     
     # reduce_op contains several operators

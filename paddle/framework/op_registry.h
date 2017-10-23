@@ -233,6 +233,10 @@ class OpKernelRegistrar : public Registrar {
   USE_OP_ITSELF(op_type);        \
   USE_OP_DEVICE_KERNEL(op_type, CPU);
 
+#define USE_GPU_ONLY_OP(op_type) \
+  USE_OP_ITSELF(op_type);        \
+  USE_OP_DEVICE_KERNEL(op_type, GPU)
+
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \
   USE_OP_KERNEL(op_type)

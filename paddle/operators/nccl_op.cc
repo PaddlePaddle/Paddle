@@ -67,6 +67,54 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
   }
 };
 
+// ReduceOp
+class NCCLReduceOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   " Input(X) of Reduce op input should not be NULL");
+    PADDLE_ENFORCE(
+        ctx->HasInput("Communicator"),
+        " Input(Communicator) of Reduce op input should not be NULL");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   " Input(X) of Reduce op input should not be NULL");
+
+    ctx->SetOutputsDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+// BcastSendOp
+class NCCLBcastSendOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   " Input(X) of Bcast op input should not be NULL");
+    PADDLE_ENFORCE(ctx->HasInput("Communicator"),
+                   " Input(Communicator) of Bcast op input should not be NULL");
+  }
+};
+
+// BcastRecvOp
+class NCCLBcastRecvOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Communicator"),
+                   " Input(Communicator) of Bcast op input should not be NULL");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   " Output(Out) of Bcast op output should not be NULL");
+  }
+};
+
 // AllreduceOp
 class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -85,15 +133,31 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-// BcastOp
-class NCCLBcastOpMaker : public framework::OpProtoAndCheckerMaker {
+// BcastSend should be in the root
+// BcastSendOp
+class NCCLBcastSendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLAllBcastOpMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  NCCLAllBcastSendOpMaker(framework::OpProto *proto,
+                          framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input of Bcast op");
+    AddInput("X", "The input of BcastSend op");
     AddInput("Communicator", "Communicator for communicating between gpus");
-    AddInput("root", "root gpu of Bcast");
+    AddAttr<int>("root", "root gpu of Bcast");
+    AddComment(R"DOC(
+            Bcast the tensors.
+        )DOC");
+  }
+};
+
+// BcastOp
+class NCCLBcastRecvOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  NCCLAllBcastRecvOpMaker(framework::OpProto *proto,
+                          framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("Communicator", "Communicator for communicating between gpus");
+    AddAttr<int>("root", "root gpu of BcastRecv");
+    AddOutput("Out", "The output of Bcast");
     AddComment(R"DOC(
             Bcast the tensors.
         )DOC");
@@ -108,7 +172,6 @@ class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of Reduce op");
     AddInput("Communicator", "Communicator for communicating between gpus");
-    AddInput("root", "root gpu of Reduce");
     AddOutput("Out", "The output of Reduce op");
     AddComment(R"DOC(
             Reduce the tensors.
@@ -123,4 +186,10 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce, ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);
 REGISTER_OP_WITHOUT_GRADIENT(ncclInit, ops::NCCLInitOp, ops::NCCLInitOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(ncclBcastSend, ops::NCCLBcastSendOp,
+                             ops::NCCLBcastSendOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(ncclBcastRecv, ops::NCCLBcastRecvOp,
+                             ops::NCCLBcastRecvOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(ncclReduce, ops::NCCLReduceOp,
+                             ops::NCCLReduceOpMaker);
 REGISTER_OP_CPU_KERNEL(ncclInit, ops::NCCLInitKernel<float>);
