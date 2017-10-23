@@ -97,6 +97,15 @@ size_t LoDTensor::NumElements(size_t level, size_t idx) const {
   return lod_[level][idx + 1] - lod_[level][idx];
 }
 
+size_t LoDTensor::NumInstancesInElement(size_t level, size_t idx) const {
+  PADDLE_ENFORCE_LT(level, NumLevels());
+  PADDLE_ENFORCE_LT(idx, NumElements(level));
+  auto abs_lod = ToAbsOffset(lod());
+  size_t begin = abs_lod[level][idx];
+  size_t end = abs_lod[level][idx + 1];
+  return end - begin;
+}
+
 void LoDTensor::ShrinkLevels(size_t level_begin, size_t level_end) {
   auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
   lod_ = new_lod;

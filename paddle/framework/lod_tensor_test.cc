@@ -39,6 +39,9 @@ class LoDTensorTester : public ::testing::Test {
     lod_tensor_.Resize({20 /*batch size*/, 128 /*dim*/});
     // malloc memory
     lod_tensor_.mutable_data<float>(place);
+    for (int i = 0; i < 20 * 128; i++) {
+      lod_tensor_.data<float>()[i] = i;
+    }
 
     lod_tensor_.set_lod(lod);
   }
@@ -86,11 +89,14 @@ TEST_F(LoDTensorTester, ShrinkInLevel) {
   size_t level = 0;
   LoDTensor new_lod_tensor = lod_tensor_;
   new_lod_tensor.ShrinkInLevel(level, 0, 1);
-  EXPECT_EQ(new_lod_tensor.NumLevels(), 3UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(0), 1UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(1), 2UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(2), 5UL);
-  ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
+  ASSERT_EQ(new_lod_tensor.NumLevels(), 3UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(1), 2UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(2), 5UL);
+  ASSERT_EQ(new_lod_tensor.dims()[0], 12);
+  for (int i = 0; i < 12 * 128; i++) {
+    ASSERT_EQ(new_lod_tensor.data<float>()[i], i);
+  }
 
   level = 1;
   new_lod_tensor = lod_tensor_;
@@ -98,7 +104,23 @@ TEST_F(LoDTensorTester, ShrinkInLevel) {
   ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
   ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
   ASSERT_EQ(new_lod_tensor.NumElements(1), 3UL);
-  ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
+  ASSERT_EQ(new_lod_tensor.dims()[0], 7);
+  for (int i = 5 * 128; i < 12 * 128; i++) {
+    ASSERT_EQ(new_lod_tensor.data<float>()[i - 5 * 128], i);
+  }
+
+  LoDTensor t1;
+  t1.set_lod(lod_tensor_.lod());
+  t1.ShareDataWith(lod_tensor_);
+
+  LoDTensor t2;
+  t2.set_lod(lod_tensor_.lod());
+  t2.ShareDataWith(lod_tensor_);
+
+  t1.ShrinkInLevel(0, 1, 2);
+  t2.ShrinkInLevel(0, 0, 1);
+  EXPECT_NE(t1.data<float>(), t2.data<float>());
+  EXPECT_NE(t1.data<float>(), lod_tensor_.data<float>());
 }
 
 TEST(LodExpand, test) {

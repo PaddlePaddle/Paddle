@@ -122,6 +122,12 @@ class LoDTensor : public Tensor {
   size_t NumElements(size_t level, size_t idx) const;
 
   /*
+   * Get the number of instances in the underlying tensor in the `idx`-th
+   * element.
+   */
+  size_t NumInstancesInElement(size_t level, size_t idx) const;
+
+  /*
    * Shrink levels[level_begin:level_end]
    */
   void ShrinkLevels(size_t level_begin, size_t level_end);
