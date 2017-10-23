@@ -176,9 +176,7 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
           saved_mean_e /= N * sample_size;
           for (int nc = 0; nc < N * C; ++nc) {
             saved_variance_e(nc % C) +=
-                (x_arr.col(nc) - saved_variance_e(nc % C))
-                    .matrix()
-                    .squaredNorm();
+                (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
           }
           saved_variance_e /= N * sample_size;
           break;
