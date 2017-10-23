@@ -37,14 +37,14 @@ class TestCase1(TestClipOp):
     def initTestCase(self):
         self.shape = (8, 16, 8)
         self.max = 0.7
-        self.min = 0
+        self.min = 0.0
 
 
 class TestCase2(TestClipOp):
     def initTestCase(self):
         self.shape = (8, 16)
-        self.max = 1
-        self.min = 0
+        self.max = 1.0
+        self.min = 0.0
 
 
 class TestCase3(TestClipOp):
