@@ -61,6 +61,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "Ids must be a column vector with rank = 2."
              "The 2nd dimension size must be 1");
     AddOutput("Out", "The lookup results, which have the same type with W.");
+    AddAttr<bool>("is_sparse", "Sparse update").SetDefault(false);
     AddComment(R"DOC(
 This operator is used to perform lookups on the parameter W,
 then concatenated into a dense tensor.
@@ -104,7 +105,12 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
     auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
-    block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
+    bool is_sparse = op_desc.GetAttrType("is_sparse");
+    if (is_sparse) {
+      block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
+    } else {
+      block->Var(out_var_name)->SetType(framework::VarDesc::LOD_TENSOR);
+    }
   }
 };
 
