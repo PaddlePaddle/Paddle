@@ -290,6 +290,15 @@ class ExecutionContext {
     return device_context_;
   }
 
+  //! Get a input which has multiple variables.
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+  //! Get an output which has multiple variables.
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
 #ifdef PADDLE_WITH_CUDA
   const platform::CUDADeviceContext& cuda_device_context() const {
     PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
