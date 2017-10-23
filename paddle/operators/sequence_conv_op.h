@@ -125,6 +125,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       auto temp = framework::EigenVector<T>::Flatten(col);
       temp.device(context.GetEigenDevice<Place>()) =
           temp.constant(static_cast<T>(0));
+
       math::matmul<Place, T>(context.device_context(), *out_g, false, *filter,
                              true, T(1.0), &col, T(1.0));
     }

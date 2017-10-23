@@ -69,7 +69,7 @@ template <typename Place, typename T>
 class SequenceProjectFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::LoDTensor*& in,
+                  const framework::LoDTensor* in,
                   const framework::LoDTensor* padding_data,
                   framework::LoDTensor* col, bool padding_trainable,
                   int context_start, int context_length, int context_stride,
