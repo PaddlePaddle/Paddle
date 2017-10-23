@@ -14,12 +14,11 @@
 
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/sequence_project_op.h"
+#include "paddle/operators/sequence_conv_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    sequence_project,
-    ops::SequenceProjectKernel<paddle::platform::GPUPlace, float>);
+    sequence_conv, ops::SequenceConvKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    sequence_project_grad,
-    ops::SequenceProjectGradKernel<paddle::platform::GPUPlace, float>);
+    sequence_conv_grad,
+    ops::SequenceConvGradKernel<paddle::platform::GPUPlace, float>);

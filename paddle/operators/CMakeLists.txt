@@ -115,7 +115,8 @@ set(DEPS_OPS
     softmax_with_cross_entropy_op
     sum_op
     pool_op
-    pool_with_index_op)
+    pool_with_index_op
+    sequence_conv_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -126,6 +127,8 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+op_library(sequence_conv_op DEPS sequence_project)
+
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})

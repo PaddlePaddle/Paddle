@@ -12,33 +12,40 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/sequence_project_op.h"
+#include "paddle/operators/sequence_conv_op.h"
 
 namespace paddle {
 namespace operators {
 
-class SequenceProjectOp : public framework::OperatorWithKernel {
+class SequenceConvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceProjectOp should not be null.");
+                   "Input(X) of SequenceConvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Filter"),
+                   "Input(Filter) of SequenceConvOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceProjectOp should not be null.");
+                   "Output(Out) of SequenceConvOp should not be null.");
     // PaddingData mast be not empty. Otherwise(EnforceNotMet: enforce numel() >
     // 0 failed, 0 <= 0)
-    PADDLE_ENFORCE(
-        ctx->HasInput("PaddingData"),
-        "Input(PaddingData) of SequenceProjectOp should not be null.");
-
-    auto in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(in_dims.size() == 2, "Input(X) should be 2-D tensor.");
+    PADDLE_ENFORCE(ctx->HasInput("PaddingData"),
+                   "Input(PaddingData) of SequenceConvOp should not be null.");
 
     int context_length = ctx->Attrs().Get<int>("context_length");
     bool padding_trainable = ctx->Attrs().Get<bool>("padding_trainable");
     int context_start = ctx->Attrs().Get<int>("context_start");
+
+    auto in_dims = ctx->GetInputDim("X");
+    auto filter_dims = ctx->GetInputDim("Filter");
+    PADDLE_ENFORCE(in_dims.size() == 2 && filter_dims.size() == 2,
+                   "Input(X, Filter) should be 2-D tensor.");
+    PADDLE_ENFORCE(
+        filter_dims[0] == context_length && filter_dims[1] == in_dims[1],
+        "Filter's shape should be (context_length x "
+        "number_of_input_features).");
 
     if (padding_trainable) {
       framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
@@ -60,12 +67,12 @@ class SequenceProjectOp : public framework::OperatorWithKernel {
           "and 'context_length'.");
     }
 
-    in_dims[1] = in_dims[1] * context_length;
+    in_dims[1] = 1;
     ctx->SetOutputDim("Out", in_dims);
   }
 };
 
-class SequenceProjectGradOp : public framework::OperatorWithKernel {
+class SequenceConvGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -77,60 +84,66 @@ class SequenceProjectGradOp : public framework::OperatorWithKernel {
 
     if (ctx->Attrs().Get<bool>("padding_trainable") &&
         ctx->HasOutput(framework::GradVarName("PaddingData"))) {
-      auto padding_dims = ctx->GetInputDim("PaddingData");
-      ctx->SetOutputDim(framework::GradVarName("PaddingData"), padding_dims);
+      ctx->SetOutputDim(framework::GradVarName("PaddingData"),
+                        ctx->GetInputDim("PaddingData"));
     }
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     }
+    if (ctx->HasOutput(framework::GradVarName("Filter"))) {
+      ctx->SetOutputDim(framework::GradVarName("Filter"),
+                        ctx->GetInputDim("Filter"));
+    }
   }
 };
 
-class SequenceProjectOpMaker : public framework::OpProtoAndCheckerMaker {
+class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceProjectOpMaker(framework::OpProto* proto,
-                         framework::OpAttrChecker* op_checker)
+  SequenceConvOpMaker(framework::OpProto* proto,
+                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(A float LoDTensor) the input of SequenceProjectOp, a vector of "
+             "(A float LoDTensor) the input of SequenceConvOp, a vector of "
              "2-D matrix of size (minibatch, number_of_input_features).");
-    AddOutput("Out",
-              "(A float LoDTensor) the output of SequenceProjectOp, a vector "
-              "of 2-D matrix of size (minibatch, number_of_input_features x "
-              "context_length).");
     AddInput("PaddingData",
-             "(A float LoDTensor) the input of SequenceProjectOp, a vector of "
+             "(A float LoDTensor) the input of SequenceConvOp, a vector of "
              "2-D matrix of size (up_pad + down_pad, "
              "number_of_input_features). ");
+    AddInput("Filter",
+             "(A float LoDTensor) the input of SequenceConvOp, a vector of "
+             "2-D matrix of size (context_length x number_of_input_features).");
+    AddOutput("Out",
+              "(A float LoDTensor) the output of SequenceConvOp, a vector "
+              "of 2-D matrix of size (minibatch, 1).");
 
     AddAttr<bool>("padding_trainable",
-                  "(bool, default false) the padding data of SequenceProjectOp "
+                  "(bool, default false) the padding data of SequenceConvOp "
                   "is trainable or not.")
         .SetDefault(false);
     AddAttr<int>("context_length",
-                 "(int, default 3) the context_length of SequenceProjectOp.")
+                 "(int, default 3) the context_length of SequenceConvOp.")
         .SetDefault(3)
         .GreaterThan(0);
     AddAttr<int>("context_start",
-                 "(int, default 0) the context_start of SequenceProjectOp.")
+                 "(int, default 0) the context_start of SequenceConvOp.")
         .SetDefault(0);
     AddAttr<int>("context_stride",
-                 "(int, default 1) the context_stride of SequenceProjectOp. "
+                 "(int, default 1) the context_stride of SequenceConvOp. "
                  "Currently, sequence_project_op only support "
                  "context_stride=1.")
         .SetDefault(1)
         .GreaterThan(0);
 
     AddComment(R"DOC(
-    SequenceProjectOp projects features of context_length time-steps of each instance.
+    SequenceConvOp projects features of context_length time-steps of each instance.
 
     For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
 
     Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3, 4].
     Besides, for the sake of simplicity, we assume M=1 and N=2.
 
-    X = [[a1, a2,
-          b1, b2.
+    X = [[a1, a2;
+          b1, b2;
           c1, c2]
          [d1, d2]]
 
@@ -141,19 +154,19 @@ class SequenceProjectOpMaker : public framework::OpProtoAndCheckerMaker {
     If context_start is -1 and padding_trainable is false, we use zero to pad instead of learned weight to pad,
     and the context_lenth is 3, the output (Out) is:
 
-    Out = [0,  0,  a1, a2, b1, b2;
+    Out =[[0,  0,  a1, a2, b1, b2;
            a1, a2, b1, b2, c1, c2;
-           b1, b2, c1, c2, 0,  0;
-           0,  0,  d1, d2, 0,  0]
+           b1, b2, c1, c2, 0,  0 ]
+           [0,  0,  d1, d2, 0,  0 ]]
 
     - Case2:
     If context_start is -1 and padding_trainable is true, we use learned weight to pad,
     and the context_lenth is 3, the output (Out) is:
 
-    Out = [w1, w2, a1, a2, b1, b2;
+    Out = [[w1, w2, a1, a2, b1, b2;
            a1, a2, b1, b2, c1, c2;
-           b1, b2, c1, c2, w3, w4;
-           w1, w2, d1, d2, w3, w4]
+           b1, b2, c1, c2, w3, w4]
+           [w1, w2, d1, d2, w3, w4]]
 
     )DOC");
   }
@@ -163,13 +176,11 @@ class SequenceProjectOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_project, ops::SequenceProjectOp,
-            ops::SequenceProjectOpMaker, sequence_project_grad,
-            ops::SequenceProjectGradOp);
+REGISTER_OP(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
+            sequence_conv_grad, ops::SequenceConvGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    sequence_project,
-    ops::SequenceProjectKernel<paddle::platform::CPUPlace, float>);
+    sequence_conv, ops::SequenceConvKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    sequence_project_grad,
-    ops::SequenceProjectGradKernel<paddle::platform::CPUPlace, float>);
+    sequence_conv_grad,
+    ops::SequenceConvGradKernel<paddle::platform::CPUPlace, float>);
