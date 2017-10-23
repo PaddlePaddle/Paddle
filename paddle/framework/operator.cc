@@ -252,5 +252,20 @@ std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
+bool OpSupportGPU(const std::string& op_type) {
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+  auto it = all_kernels.find(op_type);
+  if (it == all_kernels.end()) {
+    // All control operator must support GPU
+    return true;
+  }
+  for (auto& kern_pair : it->second) {
+    if (platform::is_gpu_place(kern_pair.first.place_)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace framework
 }  // namespace paddle

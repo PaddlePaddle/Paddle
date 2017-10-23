@@ -64,9 +64,9 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-      Tensor in_t = in->Slice<T>(static_cast<int>(lod_level_0[i]),
-                                 static_cast<int>(lod_level_0[i + 1]));
-      Tensor out_t = out->Slice<T>(i, i + 1);
+      Tensor in_t = in->Slice(static_cast<int>(lod_level_0[i]),
+                              static_cast<int>(lod_level_0[i + 1]));
+      Tensor out_t = out->Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod_level_0[i + 1] - lod_level_0[i]);
       auto in_e = EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
@@ -116,9 +116,9 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     }
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      auto in_g_t = in_g->Slice<T>(static_cast<int>(lod[i]),
-                                   static_cast<int>(lod[i + 1]));
-      auto out_g_t = out_g->Slice<T>(i, i + 1);
+      auto in_g_t =
+          in_g->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
+      auto out_g_t = out_g->Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
       auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});

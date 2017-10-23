@@ -107,11 +107,8 @@ class LoDTensor2BatchFunctor {
         size_t seq_len = seq_info[i].length;
         int start = seq_info[i].start;
         if (n < seq_len) {
-          if (!is_reverse) {
-            seq2batch_idx[batch_id] = start + n;
-          } else {
-            seq2batch_idx[batch_id] = start + seq_len - 1 - n;
-          }
+          seq2batch_idx[batch_id] =
+              is_reverse ? start + seq_len - 1 - n : start + n;
           batch_id++;
         } else {
           break;

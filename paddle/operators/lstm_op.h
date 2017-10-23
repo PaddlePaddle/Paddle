@@ -91,17 +91,17 @@ class LSTMKernel : public framework::OpKernel<T> {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
 
-      Tensor gate_t = batch_gate->Slice<T>(bstart, bend);
-      Tensor out_t = batch_out.Slice<T>(bstart, bend);
-      Tensor cell_t = batch_cell.Slice<T>(bstart, bend);
-      Tensor cell_pre_act_t = batch_cell_pre_act.Slice<T>(bstart, bend);
+      Tensor gate_t = batch_gate->Slice(bstart, bend);
+      Tensor out_t = batch_out.Slice(bstart, bend);
+      Tensor cell_t = batch_cell.Slice(bstart, bend);
+      Tensor cell_pre_act_t = batch_cell_pre_act.Slice(bstart, bend);
 
       int cur_batch_size = bend - bstart;
 
       if (n != 0) {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
-        auto pre_hidden_t = batch_out.Slice<T>(pre_h_start, pre_h_end);
+        auto pre_hidden_t = batch_out.Slice(pre_h_start, pre_h_end);
         math::matmul<Place, T>(ctx.device_context(), pre_hidden_t, false,
                                *weight, false, static_cast<T>(1.0), &gate_t,
                                static_cast<T>(1.0));

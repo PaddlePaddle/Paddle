@@ -141,10 +141,17 @@ RUN sed -i '${APT_MIRROR}' /etc/apt/sources.list
 EOF
 fi
 
+if [[ ${WITH_GPU} == "ON"  ]]; then
+  NCCL_DEPS="apt-get install -y libnccl-dev &&"
+else
+  NCCL_DEPS="" 
+fi
+
 cat >> /paddle/build/Dockerfile <<EOF
 ADD python/dist/*.whl /
 # run paddle version to install python packages first
 RUN apt-get update &&\
+    ${NCCL_DEPS}\
     apt-get install -y wget python-pip && pip install -U pip && \
     pip install /*.whl; apt-get install -f -y && \
     apt-get clean -y && \
