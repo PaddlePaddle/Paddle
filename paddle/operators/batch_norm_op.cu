@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/operators/batch_norm_op.h"
 
 #include <cfloat>
+#include "paddle/operators/math/math_function.h"
 #include "paddle/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -111,6 +112,13 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
 
+    math::SetConstant<platform::GPUPlace, T> functor;
+    functor(ctx.device_context(), saved_mean, 0);
+    functor(ctx.device_context(), saved_variance, 0);
+    // FIXME(qiao) should not set zero self
+    functor(ctx.device_context(), mean_out, 0);
+    functor(ctx.device_context(), variance_out, 0);
+
     auto handle = ctx.cuda_device_context().cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
@@ -158,10 +166,13 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class BatchNormGradKernel<platform::CPUPlace, T>
+class BatchNormGradKernel<platform::GPUPlace, T>
     : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {}
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                   "It must use GPUPlace.");
+  }
 
  private:
 };
@@ -170,8 +181,9 @@ class BatchNormGradKernel<platform::CPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(batch_norm,
-                       ops::BatchNormKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    BATCH_NORM_GRAD,
+    batch_norm,
+    ops::BatchNormKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    batch_norm_grad,
     ops::BatchNormGradKernel<paddle::platform::GPUPlace, float>);
