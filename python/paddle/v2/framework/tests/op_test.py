@@ -293,9 +293,10 @@ class OpTest(unittest.TestCase):
         return feed_map
 
     def check_output_with_place(self, place, atol):
-        # FIXME: how do i know an op.support_gpu() from OpDesc ...
-        # if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
-        #     return
+        if isinstance(place,
+                      core.GPUPlace) and not core.op_support_gpu(self.op_type):
+            return
+
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
         #self.scope = core.Scope()
@@ -364,8 +365,8 @@ class OpTest(unittest.TestCase):
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
-        # if core.is_compile_gpu():
-        #     places.append(core.GPUPlace(0))
+        if core.is_compile_gpu():
+            places.append(core.GPUPlace(0))
         for place in places:
             self.check_output_with_place(place, atol)
 
