@@ -11,7 +11,7 @@ When defining an operator in Paddle, a corresponding [OpProtoMaker](https://gith
   - If an operator's Input/Output are tensors in math, not match to any meaningful words, input name should starts from `X`. e.g. `X`, `Y`, and output name should starts from `Out`. e.g. `Out`. This rule intends making operators which have few inputs/outputs unified.
 
 - Attribute.
-  - Attribute name follows the **camelCase**. e.g. `x`, `y`, `axis`, `rowwiseMatrix`. Also, attribute name prefers to meaningful English words.
+  - Attribute name follows the **snake_case**. e.g. `x`, `y`, `axis`, `rowwise_matrix`. Also, attribute name prefers to meaningful English words.
 
 - Comments.
   - Input/Output/Attr comment follow the format of **(type,default value) usage**, corresponding to which type it can be and how it will be used in the operator. e.g.  Attribute in Accumulator`"gamma" `,`(float, default 1.0) Accumulation multiplier`.

@@ -26,8 +26,9 @@ __all__ = [
     'sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
     "img_conv_bn_pool", 'lstmemory_group', 'lstmemory_unit', 'small_vgg',
     'img_conv_group', 'vgg_16_network', 'gru_unit', 'gru_group', 'simple_gru',
-    'simple_attention', 'simple_gru2', 'bidirectional_gru', 'text_conv_pool',
-    'bidirectional_lstm', 'inputs', 'outputs'
+    'simple_attention', 'dot_product_attention', 'simple_gru2',
+    'bidirectional_gru', 'text_conv_pool', 'bidirectional_lstm', 'inputs',
+    'outputs'
 ]
 
 ######################################################
@@ -1361,6 +1362,7 @@ def simple_attention(encoded_sequence,
                                 compute attention weight.
     :type transform_param_attr: ParameterAttribute
     :return: a context vector
+    :rtype: LayerOutput
     """
     assert encoded_proj.size == decoder_state.size
     proj_size = encoded_proj.size
@@ -1390,6 +1392,90 @@ def simple_attention(encoded_sequence,
     scaled = scaling_layer(
         weight=attention_weight,
         input=encoded_sequence,
+        name='%s_scaling' % name)
+
+    return pooling_layer(
+        input=scaled, pooling_type=SumPooling(), name="%s_pooling" % name)
+
+
+@wrap_name_default()
+def dot_product_attention(encoded_sequence,
+                          attended_sequence,
+                          transformed_state,
+                          softmax_param_attr=None,
+                          name=None):
+    """
+    Calculate and return a context vector with dot-product attention mechanism.
+    The dimension of the context vector equals to that of the attended_sequence.
+
+    ..  math::
+
+        a(s_{i-1},h_{j}) & = s_{i-1}^\mathrm{T} h_{j}
+
+        e_{i,j} & = a(s_{i-1}, h_{j})
+
+        a_{i,j} & = \\frac{exp(e_{i,j})}{\\sum_{k=1}^{T_x}{exp(e_{i,k})}}
+
+        c_{i} & = \\sum_{j=1}^{T_{x}}a_{i,j}z_{j}
+
+    where :math:`h_{j}` is the jth element of encoded_sequence,
+    :math:`z_{j}` is the jth element of attended_sequence,
+    :math:`s_{i-1}` is transformed_state.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        context = dot_product_attention(encoded_sequence=enc_seq,
+                                        attended_sequence=att_seq,
+                                        transformed_state=state,)
+
+    :param name: A prefix attached to the name of each layer that defined inside
+                 the dot_product_attention.
+    :type name: basestring
+    :param softmax_param_attr: The parameter attribute of sequence softmax
+                               that is used to produce attention weight.
+    :type softmax_param_attr: ParameterAttribute
+    :param encoded_sequence: The output hidden vectors of the encoder.
+    :type encoded_sequence: LayerOutput
+    :param attended_sequence: The attention weight is computed by a feed forward neural
+                              network which has two inputs : decoder's transformed hidden
+                              state of previous time step and encoder's output.
+                              attended_sequence is the sequence to be attended.
+    :type attended_sequence: LayerOutput
+    :param transformed_state: The transformed hidden state of decoder in previous time step.
+                              Since the dot-product operation will be performed on it and the
+                              encoded_sequence, their dimensions must be equal. For flexibility,
+                              we suppose transformations of the decoder's hidden state have been
+                              done outside dot_product_attention and no more will be performed
+                              inside. Then users can use either the original or transformed one.
+    :type transformed_state: LayerOutput
+    :return: The context vector.
+    :rtype: LayerOutput
+    """
+    assert transformed_state.size == encoded_sequence.size
+
+    expanded = expand_layer(
+        input=transformed_state,
+        expand_as=encoded_sequence,
+        name='%s_expand' % name)
+
+    m = linear_comb_layer(
+        weights=expanded,
+        vectors=encoded_sequence,
+        name='%s_dot-product' % name)
+
+    attention_weight = fc_layer(
+        input=m,
+        size=1,
+        act=SequenceSoftmaxActivation(),
+        param_attr=softmax_param_attr,
+        name="%s_softmax" % name,
+        bias_attr=False)
+
+    scaled = scaling_layer(
+        weight=attention_weight,
+        input=attended_sequence,
         name='%s_scaling' % name)
 
     return pooling_layer(

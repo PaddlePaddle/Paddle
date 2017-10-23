@@ -18,27 +18,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using ProgDescMap =
-    std::unordered_map<ProgramDesc *, std::unique_ptr<ProgramDescBind>>;
-static ProgDescMap *g_bind_map = nullptr;
-
-ProgramDescBind &ProgramDescBind::Instance(ProgramDesc *prog) {
-  if (g_bind_map == nullptr) {
-    g_bind_map = new ProgDescMap();
-  }
-  auto &map = *g_bind_map;
-  auto &ptr = map[prog];
-
-  if (ptr == nullptr) {
-    ptr.reset(new ProgramDescBind(prog));
-  }
-  return *ptr;
-}
-
 BlockDescBind *ProgramDescBind::AppendBlock(const BlockDescBind &parent) {
-  auto *b = prog_->add_blocks();
+  auto *b = prog_.add_blocks();
   b->set_parent_idx(parent.ID());
-  b->set_idx(prog_->blocks_size() - 1);
+  b->set_idx(prog_.blocks_size() - 1);
   blocks_.emplace_back(new BlockDescBind(this, b));
   return blocks_.back().get();
 }
@@ -47,13 +30,22 @@ ProgramDesc *ProgramDescBind::Proto() {
   for (auto &block : blocks_) {
     block->Flush();
   }
-  return prog_;
+  return &prog_;
 }
 
-ProgramDescBind::ProgramDescBind(ProgramDesc *prog) {
-  prog_ = prog;
-  for (auto &block : *prog->mutable_blocks()) {
-    blocks_.emplace_back(new BlockDescBind(this, &block));
+ProgramDescBind::ProgramDescBind() {
+  auto *block = prog_.mutable_blocks()->Add();
+  block->set_idx(kRootBlockIndex);
+  block->set_parent_idx(kNoneBlockIndex);
+  blocks_.emplace_back(new BlockDescBind(this, block));
+}
+
+ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
+  prog_ = o.prog_;
+
+  for (int i = 0; i < prog_.blocks_size(); ++i) {
+    auto *block = prog_.mutable_blocks(i);
+    blocks_.emplace_back(new BlockDescBind(*o.blocks_[i], block, this));
   }
 }
 }  // namespace framework

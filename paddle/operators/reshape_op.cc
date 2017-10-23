@@ -25,7 +25,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
             const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     // input check
     PADDLE_ENFORCE(ctx->HasInput("X"),
@@ -93,7 +92,6 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
                 const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),

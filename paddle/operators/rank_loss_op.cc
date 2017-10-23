@@ -24,7 +24,6 @@ class RankLossOp : public framework::OperatorWithKernel {
              const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     // input check
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null");
@@ -89,7 +88,6 @@ class RankLossGradOp : public framework::OperatorWithKernel {
                  const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("Left"), "Input(Left) shouldn't be null.");

@@ -44,7 +44,6 @@ class Conv2DOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
@@ -52,7 +51,6 @@ class Conv2DOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
@@ -110,17 +108,17 @@ class GemmConv2DKernel : public framework::OpKernel<T> {
     int in_step = input_channels / groups;
     int out_step = output_channels / groups;
     for (int i = 0; i < batch_size; i++) {
-      Tensor in_batch = input->Slice<T>(i, i + 1).Resize(input_shape);
-      Tensor out_batch = output->Slice<T>(i, i + 1).Resize(output_matrix_shape);
+      Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
+      Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
       for (int g = 0; g < groups; g++) {
         // im2col
-        Tensor in_slice = in_batch.Slice<T>(g * in_step, (g + 1) * in_step);
+        Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
         im2col(context.device_context(), in_slice, col, strides[0], strides[1],
                paddings[0], paddings[0], paddings[1], paddings[1]);
 
         // gemm
-        Tensor out_slice = out_batch.Slice<T>(g * out_step, (g + 1) * out_step);
-        Tensor filter_slice = filter.Slice<T>(g * out_step, (g + 1) * out_step);
+        Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
+        Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
         math::matmul<Place, T>(context.device_context(), filter_slice, false,
                                col_matrix, false, T(1.0), &out_slice, T(0.0));
       }
@@ -200,22 +198,20 @@ class GemmConvGrad2DKernel : public framework::OpKernel<T> {
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
-            output_grad->Slice<T>(i, i + 1).Resize(output_matrix_shape);
-        Tensor in_grad_batch =
-            input_grad->Slice<T>(i, i + 1).Resize(input_shape);
+            output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor in_grad_batch = input_grad->Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; g++) {
           // gemm
           Tensor out_grad_slice =
-              out_grad_batch.Slice<T>(g * out_step, (g + 1) * out_step);
-          Tensor filter_slice =
-              filter.Slice<T>(g * out_step, (g + 1) * out_step);
+              out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
+          Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
           math::matmul<Place, T>(context.device_context(), filter_slice, true,
                                  out_grad_slice, false, T(1.0), &col_matrix,
                                  T(0.0));
 
           // col2im
           Tensor in_grad_slice =
-              in_grad_batch.Slice<T>(g * in_step, (g + 1) * in_step);
+              in_grad_batch.Slice(g * in_step, (g + 1) * in_step);
           col2im(context.device_context(), in_grad_slice, col, strides[0],
                  strides[1], paddings[0], paddings[0], paddings[1],
                  paddings[1]);
@@ -232,20 +228,20 @@ class GemmConvGrad2DKernel : public framework::OpKernel<T> {
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
-            output_grad->Slice<T>(i, i + 1).Resize(output_matrix_shape);
-        Tensor in_batch = input->Slice<T>(i, i + 1).Resize(input_shape);
+            output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; g++) {
           // im2col
           Tensor out_grad_slice =
-              out_grad_batch.Slice<T>(g * out_step, (g + 1) * out_step);
-          Tensor in_slice = in_batch.Slice<T>(g * in_step, (g + 1) * in_step);
+              out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
+          Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
           im2col(context.device_context(), in_slice, col, strides[0],
                  strides[1], paddings[0], paddings[0], paddings[1],
                  paddings[1]);
 
           // gemm
           Tensor filter_grad_slice =
-              filter_grad_.Slice<T>(g * out_step, (g + 1) * out_step);
+              filter_grad_.Slice(g * out_step, (g + 1) * out_step);
           math::matmul<Place, T>(context.device_context(), out_grad_slice,
                                  false, col_matrix, true, T(1.0),
                                  &filter_grad_slice, T(1.0));
