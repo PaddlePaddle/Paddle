@@ -152,9 +152,10 @@ TEST(TensorArray, LodPack) {
   }
 
   std::array<LoD, 3> lods;
-  lods[0].assign({{0, 1, 2}});
-  lods[1].assign({{0, 2, 4}});
-  lods[2].assign({{0, 2, 2, 3, 5}});
+  std::vector<std::vector<size_t>> levels{{0, 1, 2}, {0, 2, 4}, {0, 2, 2, 3, 5}};
+  for (int i = 0; i < 3; i++) {
+    lods[i].emplace_back(levels[i].begin(), levels[i].end());
+  }
 
   TensorArray ta;
   for (int i = 0; i < 3; i++) {
