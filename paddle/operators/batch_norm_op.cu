@@ -171,69 +171,89 @@ class BatchNormGradKernel<platform::GPUPlace, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
-    const auto &X = Input(INPUT);
-    const auto &scale = Input(SCALE);
-    const auto &dY = Input(OUTPUT_GRAD);
+    double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
+    const auto *X = ctx.Input<Tensor>("X");
+    const auto *dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<Tensor>("Scale");
 
-    CAFFE_ENFORCE_GE(X.ndim(), 3);
-    const int N = X.dim32(0);
+    const auto &x_dims = X->dims();
+
+    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
+                   "The Input dim size should be between 3 and 5");
+    const int N = x_dims[0];
     const int C =
-        X.ndim() > 3 ? (order_ == StorageOrder::NCHW ? X.dim32(1)
-                                                     : X.dim32(X.ndim() - 1))
-                     : (order_ == StorageOrder::NCHW ? X.dim32(1) : X.dim32(2));
-    const int H = (order_ == StorageOrder::NCHW ? X.dim32(2) : X.dim32(1));
-    const int W = X.ndim() > 3
-                      ? (order_ == StorageOrder::NCHW ? X.dim32(3) : X.dim32(2))
-                      : 1;
-    const int D = X.ndim() > 4
-                      ? (order_ == StorageOrder::NCHW ? X.dim32(4) : X.dim32(3))
-                      : 1;
-    CAFFE_ENFORCE_EQ(scale.ndim(), 1);
-    CAFFE_ENFORCE_EQ(scale.dim32(0), C);
-    // See if we need to reshape.
-    if (X.dims() != cudnn_input_dims_) {
-      if (order_ == StorageOrder::NCHW) {
-        vector<int> dims = {N, C, H, W, D};
-        vector<int> strides = {C * H * W * D, H * W * D, W * D, D, 1};
-        CUDNN_ENFORCE(cudnnSetTensorNdDescriptor(
-            data_desc_, cudnnTypeWrapper<T>::type, X.ndim() > 3 ? X.ndim() : 4,
-            dims.data(), strides.data()));
-      } else {
-        vector<int> dims = {N, C, H, W, D};
-        vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
-        CUDNN_ENFORCE(cudnnSetTensorNdDescriptor(
-            data_desc_, cudnnTypeWrapper<T>::type, X.ndim() > 3 ? X.ndim() : 4,
-            dims.data(), strides.data()));
-      }
-      CUDNN_ENFORCE(
-          cudnnDeriveBNTensorDescriptor(bn_param_desc_, data_desc_, mode_));
+        (tensor_format == TensorFormat::NCHW ? x_dims[1]
+                                             : x_dims[x_dims.size() - 1]);
+    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
+    const int W =
+        x_dims.size() > 3
+            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
+            : 1;
+    const int D =
+        x_dims.size() > 4
+            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
+            : 1;
+
+    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
+    PADDLE_ENFORCE_EQ(scale->dims()[0], C);
+
+    // ------------------- cudnn descriptors ---------------------
+    cudnnTensorDescriptor_t data_desc_;
+    cudnnTensorDescriptor_t bn_param_desc_;
+    cudnnBatchNormMode_t mode_;
+
+    PADDLE_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE(
+        platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+    if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
+      LOG(ERROR) << "Provided epsilon is smaller than "
+                 << "CUDNN_BN_MIN_EPSILON. Setting it to "
+                 << "CUDNN_BN_MIN_EPSILON instead.";
     }
+    epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
+#if CUDNN_VERSION_MIN(7, 0, 0)
+    mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+#else
+    mode_ = CUDNN_BATCHNORM_SPATIAL;
+#endif
 
-    auto *dX = Output(INPUT_GRAD);
-    auto *dScale = Output(SCALE_GRAD);
-    auto *dBias = Output(BIAS_GRAD);
-    dX->ResizeLike(X);
-    dScale->ResizeLike(scale);
-    dBias->ResizeLike(scale);
+    vector<int> dims = {N, C, H, W, D};
+    vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
+    PADDLE_ENFORCE(cudnnSetTensorNdDescriptor(
+        data_desc_, CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
+    PADDLE_ENFORCE(
+        cudnnDeriveBNTensorDescriptor(bn_param_desc_, data_desc_, mode_));
 
-    const auto &saved_mean = Input(SAVED_MEAN);
-    const auto &saved_var = Input(SAVED_INV_VAR);
-    const void *saved_mean_data = saved_mean.template data<BNParamType>();
-    const void *saved_var_data = saved_var.template data<BNParamType>();
+    // init output
+    auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *dScale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *dBias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    PADDLE_ENFORCE(cudnnBatchNormalizationBackward(
-        cudnn_wrapper_.inline_cudnn_handle(), mode_,
-        cudnnTypeWrapper<T>::kOne(), cudnnTypeWrapper<T>::kZero(),
-        cudnnTypeWrapper<T>::kOne(), cudnnTypeWrapper<T>::kZero(), data_desc_,
-        X.template data<T>(), data_desc_, dY.template data<T>(), data_desc_,
+    dX->mutable_data<T>(ctx.GetPlace());
+    dScale->mutable_data<T>(ctx.GetPlace());
+    dBias->mutable_data<T>(ctx.GetPlace());
+
+    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
+    const void *saved_mean_data = saved_mean->template data<T>();
+    const void *saved_var_data = saved_var->template data<T>();
+
+    PADDLE_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
+        ctx.cuda_device_context().cudnn_handle(), mode_,
+        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
+        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
+        X->template data<T>(), data_desc_, dY->template data<T>(), data_desc_,
         dX->template mutable_data<T>(), bn_param_desc_,
-        scale.template data<BNParamType>(),
-        dScale->template mutable_data<BNParamType>(),
-        dBias->template mutable_data<BNParamType>(), epsilon_, saved_mean_data,
+        scale->template data<T>(), dScale->template mutable_data<T>(),
+        dBias->template mutable_data<T>(), epsilon, saved_mean_data,
         saved_var_data));
-  }
 
- private:
+    // clean when exit.
+    PADDLE_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE(
+        platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+  }
 };
 
 }  // namespace operators
