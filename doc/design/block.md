@@ -189,7 +189,7 @@ OpDesc {
   inputs = {0} // the index of x in vars of BlockDesc above
   outputs = {5, 3} // indices of act and hidden_out in vars of BlockDesc above
   attrs {
-    "memories" : {1} // the index of h
+    "states" : {1} // the index of h
     "step_net" : <above step net>
   }
 };
