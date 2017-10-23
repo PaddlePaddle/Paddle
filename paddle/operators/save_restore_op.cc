@@ -42,7 +42,7 @@ class SaveKernel : public framework::OpKernel<T> {
       fout << bytes;
       fout.close();
     }
-    VLOG(1) << "Compelete saving variables. Items count: " << ins.size();
+    VLOG(1) << "Compelete saving variables. Items count: " << tensors.size();
   }
 };
 

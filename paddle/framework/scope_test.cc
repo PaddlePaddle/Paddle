@@ -58,7 +58,7 @@ TEST(Scope, FindScope) {
 
 TEST(Scope, GetAllNames) {
   Scope s;
-  Variable* v = s.NewVar("a");
+  Variable* v = s.Var("a");
   EXPECT_EQ(&s, s.FindScope(v));
 
   std::vector<std::string> ans = s.GetAllNames();
