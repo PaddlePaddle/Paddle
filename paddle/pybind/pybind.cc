@@ -466,6 +466,8 @@ All parameter, weight, gradient are variables in Paddle.
   BindVarDsec(m);
   BindOpDesc(m);
 
+  m.def("op_support_gpu", OpSupportGPU);
+
   return m.ptr();
 }
 }  // namespace pybind
