@@ -54,12 +54,11 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W",
              "An input represents embedding tensors,"
              " which is a learnable parameter.");
-    AddInput(
-        "Ids",
-        "An input with type int32 or int64"
-        "contains the ids to be looked up in W."
-        "Ids must be a column vector with rank = 2."
-        "The 1st dimension is batch size, and the 2nd dimension must be 1");
+    AddInput("Ids",
+             "An input with type int32 or int64"
+             "contains the ids to be looked up in W."
+             "Ids must be a column vector with rank = 2."
+             "The 2nd dimension size must be 1");
     AddOutput("Out", "The lookup results, which have the same type with W.");
     AddComment(R"DOC(
 This operator is used to perform lookups on the parameter W,
