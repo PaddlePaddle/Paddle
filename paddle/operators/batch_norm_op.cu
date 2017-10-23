@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/operators/batch_norm_op.h"
 
+#include <cfloat>
 #include "paddle/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -30,7 +31,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
-    const float epsilon = ctx.Attr<float>("epsilon");
+    double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const std::string tensor_format_str =
         ctx.Attr<std::string>("tensor_format");
@@ -57,8 +58,6 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
             ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
             : 1;
 
-    const int sample_size = H * W * D;
-
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
@@ -68,12 +67,12 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     PADDLE_ENFORCE(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 
-    if (epsilon_ <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
+    if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
                  << "CUDNN_BN_MIN_EPSILON. Setting it to "
                  << "CUDNN_BN_MIN_EPSILON instead.";
     }
-    epsilon_ = std::max(epsilon_, CUDNN_BN_MIN_EPSILON);
+    epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 #if CUDNN_VERSION_MIN(7, 0, 0)
     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #else
@@ -81,7 +80,6 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 #endif
 
     VLOG(1) << "Setting descriptors.";
-    std::vector<int64_t> cudnn_input_dims_ = x_dims;
     std::vector<int> dims;
     std::vector<int> strides;
     if (tensor_format == TensorFormat::NCHW) {
@@ -121,10 +119,8 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
       // Run inference mode.
-      const auto &est_mean = Input(EST_MEAN);
-      const auto &est_var = Input(EST_VAR);
       PADDLE_ENFORCE_EQ(est_mean->dims().size(), 1UL);
-      PADDLE_ENFORCE_EQ(est_var > dims().size(), 1UL);
+      PADDLE_ENFORCE_EQ(est_var->dims().size(), 1UL);
       PADDLE_ENFORCE_EQ(est_mean->dims()[0], C);
       PADDLE_ENFORCE_EQ(est_var->dims()[0], C);
 
@@ -142,18 +138,16 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       // initialize them.
       double this_factor = 1. - momentum;
 
-      void *save_var_data = save_var->template mutable_data<T>();
-
       PADDLE_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
           handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
           data_desc_, x->template data<T>(), data_desc_,
-          y->template mutable_data<T>(), bn_param_desc_,
-          scale->template data<BNParamType>(),
-          bias->template data<BNParamType>(), this_factor,
-          mean_out->template mutable_data<T>(),
-          variance_out->template mutable_data<T>(), epsilon,
-          saved_mean->template mutable_data<T>(),
-          saved_variance->template mutable_data<T>()));
+          y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
+          scale->template data<T>(),
+          bias->template data<T>(), this_factor,
+          mean_out->template mutable_data<T>(ctx.GetPlace()),
+          variance_out->template mutable_data<T>(ctx.GetPlace()), epsilon,
+          saved_mean->template mutable_data<T>(ctx.GetPlace()),
+          saved_variance->template mutable_data<T>(ctx.GetPlace())));
     }
 
     // clean when exit.
