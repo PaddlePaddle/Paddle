@@ -36,23 +36,23 @@ void OpDescNewVar(const std::string& param_name,
 // create a LoD tensor in scope with specific dims
 LoDTensor* CreateVar(Scope& scope, std::string name, framework::DDim dims,
                      const platform::Place& place) {
-  auto* var = scope.NewVar(name);
+  auto* var = scope.Var(name);
   auto* tensor = var->GetMutable<LoDTensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(place);
   return tensor;
 }
 
-class DynamicRecurrentOpTestHelper : public ::testing::Test {
+class RNNAlgorithmTestHelper : public ::testing::Test {
  protected:
-  const rnn::ArgumentName argname = DynamicRecurrentOp::kArgName;
+  const rnn::ArgumentName argname = RNNAlgorithm::kArgNames[0];
 
   virtual void SetUp() override {
     CreateGlobalVariables();
 
     auto op_desc = CreateOpDesc();
-    op = paddle::framework::OpRegistry::CreateOp(op_desc);
-    dop = dynamic_cast<DynamicRecurrentOp*>(op.get());
+    op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+    dop = &(dynamic_cast<DynamicRecurrentOp*>(op.get())->rnn);
     InitCacheManually();
     InitStepNet();
   }
@@ -63,20 +63,20 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
     op_desc.set_type("dynamic_recurrent");
 
     OpDescNewVar(argname.inlinks, {"in0"}, op_desc.add_inputs());
-    OpDescNewVar(argname.boot_memories, {"boot_mem"}, op_desc.add_inputs());
+    OpDescNewVar(argname.initial_states, {"boot_mem"}, op_desc.add_inputs());
     OpDescNewVar(argname.step_scopes, {"step_scopes"}, op_desc.add_outputs());
     OpDescNewVar(argname.outlinks, {"out0"}, op_desc.add_outputs());
 
-    // set pre-memories
+    // set pre-states
     auto pre_memories = op_desc.mutable_attrs()->Add();
-    pre_memories->set_name(argname.pre_memories);
+    pre_memories->set_name(argname.ex_states);
     pre_memories->set_type(paddle::framework::AttrType::STRINGS);
     auto pre_memories_item = pre_memories->add_strings();
     *pre_memories_item = "mem@pre";
 
-    // set memories
+    // set states
     auto memories = op_desc.mutable_attrs()->Add();
-    memories->set_name(argname.memories);
+    memories->set_name(argname.states);
     memories->set_type(paddle::framework::AttrType::STRINGS);
     auto memories_item = memories->add_strings();
     *memories_item = "mem";
@@ -85,9 +85,8 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
 
   void CreateGlobalVariables() {
     platform::CPUPlace place;
-    scope.NewVar("step_scopes");
+    scope.Var("step_scopes");
     CreateVar(scope, "boot_mem", framework::make_ddim({10, 20}), place);
-    // auto* out0 =
     CreateVar(scope, "out0", framework::make_ddim({10, 20}), place);
     auto* in0 = CreateVar(scope, "in0", framework::make_ddim({10, 8}), place);
     // 10 instanes with 4 sentences, length is 4, 3, 2, 1 respectively.
@@ -114,32 +113,33 @@ class DynamicRecurrentOpTestHelper : public ::testing::Test {
   }
 
   void InitCacheManually() {
-    dop->cache_.Init(DynamicRecurrentOp::kArgName, *dop, scope, &dop->arg_);
+    dop->cache_.Init(RNNAlgorithm::kArgNames[0], *op, scope, &device_context,
+                     &dop->arg_);
   }
 
   void InitStepNet() {
     std::unique_ptr<framework::OperatorBase> stepnet{new NetOp};
     dynamic_cast<NetOp*>(stepnet.get())
         ->AppendOp(std::unique_ptr<TestOp>(new TestOp(
-            "test", {{"inlinks", {"in0"}}, {"boot_memories", {"boot_mem"}}},
-            {{"outlinks", {"out0"}}, {"step_scopes", {"step_scopes"}}}, {})));
-    dop->SetStepNet(std::move(stepnet));
+            "test", {{"inputs", {"in0"}}, {"initial_states", {"boot_mem"}}},
+            {{"outputs", {"out0"}}, {"step_scopes", {"step_scopes"}}}, {})));
+    dop->SetStepUnit(std::move(stepnet));
   }
 
  protected:
-  DynamicRecurrentOp* dop;
+  RNNAlgorithm* dop;
   std::unique_ptr<framework::OperatorBase> op;
   paddle::platform::CPUDeviceContext device_context;
   paddle::framework::Scope scope;
 };
 
-TEST_F(DynamicRecurrentOpTestHelper, CreateCache) {
+TEST_F(RNNAlgorithmTestHelper, CreateCache) {
   const rnn::Argument& arg = dop->arg_;
   ASSERT_EQ(arg.inlinks.size(), 1UL);
   ASSERT_EQ(arg.outlinks.size(), 1UL);
 }
 
-TEST_F(DynamicRecurrentOpTestHelper, SplitInputs) {
+TEST_F(RNNAlgorithmTestHelper, SplitInputs) {
   dop->SplitInputs();
   auto& in0_ta = dop->step_inputs_["in0"];
   ASSERT_EQ(in0_ta.size(), 4UL);
@@ -154,14 +154,14 @@ TEST_F(DynamicRecurrentOpTestHelper, SplitInputs) {
   EXPECT_EQ(batch3.dims()[0], 1);
 }
 
-TEST_F(DynamicRecurrentOpTestHelper, CreateScopes) {
+TEST_F(RNNAlgorithmTestHelper, CreateScopes) {
   dop->SplitInputs();
   dop->CreateScopes();
   ASSERT_EQ(dop->cache_.num_steps, 4UL);
   ASSERT_EQ(dop->cache_.scopes->size(), 4UL);
 }
 
-TEST_F(DynamicRecurrentOpTestHelper, WriteStepInputs) {
+TEST_F(RNNAlgorithmTestHelper, WriteStepInputs) {
   dop->SplitInputs();
   dop->CreateScopes();
   dop->WriteStepInputs();
@@ -174,7 +174,7 @@ TEST_F(DynamicRecurrentOpTestHelper, WriteStepInputs) {
   }
 }
 
-TEST_F(DynamicRecurrentOpTestHelper, WriteStepOutputs) {
+TEST_F(RNNAlgorithmTestHelper, WriteStepOutputs) {
   dop->SplitInputs();
   dop->CreateScopes();
   dop->WriteStepInputs();
@@ -188,11 +188,12 @@ TEST_F(DynamicRecurrentOpTestHelper, WriteStepOutputs) {
   }
 }
 
-TEST_F(DynamicRecurrentOpTestHelper, ConcatOutputs) {
+TEST_F(RNNAlgorithmTestHelper, ConcatOutputs) {
   // Let's leave this test to python unittest.
 }
 
-TEST_F(DynamicRecurrentOpTestHelper, InitStates) {
+TEST_F(RNNAlgorithmTestHelper, InitStates) {
+  dop->SetComputeMode(RNNAlgorithm::ComputeMode::kForward);
   dop->SplitInputs();
   dop->CreateScopes();
   dop->WriteStepInputs();
@@ -209,12 +210,6 @@ TEST_F(DynamicRecurrentOpTestHelper, InitStates) {
 
     auto* boot_state = scope.FindVar("boot_mem");
     ASSERT_TRUE(boot_state != nullptr);
-
-    if (step == 0) {
-      // check pre_state is a reference of boot_state
-      ASSERT_EQ(boot_state->Get<LoDTensor>().data<float>(),
-                pre_state->Get<LoDTensor>().data<float>());
-    }
   }
 }
 

@@ -42,7 +42,6 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GaussianRandomOp should not be null.");
@@ -57,9 +56,10 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("data_type"));
+    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
   }
 };
 

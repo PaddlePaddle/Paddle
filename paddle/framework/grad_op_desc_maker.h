@@ -13,6 +13,8 @@
    limitations under the License. */
 
 #pragma once
+#include <string>
+#include <unordered_set>
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/operator.h"
 
@@ -21,27 +23,50 @@ namespace framework {
 
 class GradOpDescMakerBase {
  public:
-  explicit GradOpDescMakerBase(const OpDescBind& fwd_op) : fwd_op_(fwd_op) {}
+  explicit GradOpDescMakerBase(
+      const OpDescBind& fwd_op,
+      const std::unordered_set<std::string>& no_grad_set,
+      std::unordered_map<std::string, std::string>* grad_to_var)
+      : fwd_op_(fwd_op), no_grad_set_(no_grad_set), grad_to_var_(grad_to_var) {}
 
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
 
  protected:
-  static std::vector<std::string> ToGradNames(
-      const std::vector<std::string>& var_names) {
+  std::vector<std::string> InputGrad(const std::string& name,
+                                     bool drop_empty_grad = true) const {
     std::vector<std::string> ret_val;
+    auto var_names = this->Input(name);
     ret_val.reserve(var_names.size());
     std::transform(var_names.begin(), var_names.end(),
-                   std::back_inserter(ret_val), GradVarName);
-    return ret_val;
-  }
-
-  std::vector<std::string> InputGrad(const std::string& name) const {
-    return ToGradNames(fwd_op_.Input(name));
+                   std::back_inserter(ret_val),
+                   [this](const std::string& fwd_var_name) -> std::string {
+                     auto g_name = GradVarName(fwd_var_name);
+                     if (no_grad_set_.count(g_name)) {
+                       return kEmptyVarName;
+                     } else {
+                       (*this->grad_to_var_)[g_name] = fwd_var_name;
+                       return g_name;
+                     }
+                   });
+    if (!drop_empty_grad) {
+      return ret_val;
+    }
+    std::vector<std::string> dropped_ret_val;
+    dropped_ret_val.reserve(ret_val.size());
+    std::copy_if(ret_val.begin(), ret_val.end(),
+                 std::back_inserter(dropped_ret_val),
+                 [](const std::string& str) { return str != kEmptyVarName; });
+    return dropped_ret_val;
   }
 
   std::vector<std::string> OutputGrad(const std::string& name) const {
-    return ToGradNames(fwd_op_.Output(name));
+    std::vector<std::string> ret_val;
+    auto onames = this->Output(name);
+    ret_val.reserve(onames.size());
+    std::transform(onames.begin(), onames.end(), std::back_inserter(ret_val),
+                   GradVarName);
+    return ret_val;
   }
 
   std::vector<std::string> InputNames() const {
@@ -75,6 +100,8 @@ class GradOpDescMakerBase {
 
  private:
   const OpDescBind& fwd_op_;
+  const std::unordered_set<std::string>& no_grad_set_;
+  std::unordered_map<std::string, std::string>* grad_to_var_;
 };
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {
@@ -91,6 +118,7 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
   virtual std::unique_ptr<OpDescBind> Apply() const = 0;
 };
 
+template <bool DropEmptyIG = true>
 class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
  public:
   using SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -102,7 +130,8 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
-      grad->SetOutput(GradVarName(input_param), this->InputGrad(input_param));
+      grad->SetOutput(GradVarName(input_param),
+                      this->InputGrad(input_param, DropEmptyIG));
     }
 
     for (auto& output_param : this->OutputNames()) {
@@ -117,6 +146,14 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 
   virtual std::string GradOpType() const {
     return this->ForwardOpType() + "_grad";
+  }
+};
+
+class EmptyGradOpMaker : public GradOpDescMakerBase {
+ public:
+  using GradOpDescMakerBase::GradOpDescMakerBase;
+  std::vector<std::unique_ptr<OpDescBind>> operator()() const override {
+    return {};
   }
 };
 

@@ -21,7 +21,6 @@ class SumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
     auto x_dims = ctx->GetInputsDim("X");
@@ -34,7 +33,7 @@ class SumOp : public framework::OperatorWithKernel {
     auto in_dim = x_dims[0];
     for (size_t i = 1; i < N; i++) {
       auto dim = x_dims[i];
-      PADDLE_ENFORCE(in_dim == dim, "Input tensors must have same shape");
+      PADDLE_ENFORCE_EQ(in_dim, dim, "Input tensors must have same shape");
     }
     ctx->SetOutputDim("Out", in_dim);
     ctx->ShareLoD("X", /*->*/ "Out");

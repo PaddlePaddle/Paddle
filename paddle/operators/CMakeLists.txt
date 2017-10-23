@@ -84,8 +84,9 @@ function(op_library TARGET)
     endif()
 
     # pybind USE_NO_KERNEL_OP
+    # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
     file(READ ${TARGET}.cc TARGET_CONTENT)
-    string(REGEX MATCH "OperatorWithKernel" regex_result "${TARGET_CONTENT}")
+    string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
     if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
         file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
@@ -112,7 +113,10 @@ set(DEPS_OPS
     cond_op
     cross_entropy_op
     softmax_with_cross_entropy_op
-    sum_op)
+    sum_op
+    pool_op
+    pool_with_index_op
+    lstm_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -121,6 +125,9 @@ op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
+op_library(pool_op DEPS pooling)
+op_library(pool_with_index_op DEPS pooling)
+op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})

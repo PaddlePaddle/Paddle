@@ -55,6 +55,7 @@ message OpDesc {
   repeated Var inputs = 1;
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
+  optional bool is_target = 5 [ default = false ];
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
@@ -67,6 +68,7 @@ message OpProto {
 
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
+    optional bool dispensable = 5 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -97,16 +99,28 @@ enum DataType {
   FP64 = 6;
 }
 
-message LoDTensorDesc {
+message TensorDesc {
   required DataType data_type = 1;
   repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
-  optional int32 lod_level = 3 [ default = 0 ];
+}
+
+message LoDTensorDesc {
+  required TensorDesc tensor = 1;
+  optional int32 lod_level = 2 [ default = 0 ];
 }
 
 message VarDesc {
+  enum VarType {
+    LOD_TENSOR = 1;
+    SELECTED_ROWS = 2;
+    FEED_MINIBATCH = 3;
+    FETCH_LIST = 4;
+  }
   required string name = 1;
-  optional LoDTensorDesc lod_tensor = 2;
-  optional bool persistable = 3 [ default = false ];
+  required VarType type = 2;
+  optional LoDTensorDesc lod_tensor = 3;
+  optional TensorDesc selected_rows = 4;
+  optional bool persistable = 5 [ default = false ];
 }
 
 message BlockDesc {

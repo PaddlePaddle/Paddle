@@ -91,7 +91,7 @@ class TensorArrayPackTester : public ::testing::Test {
       size_t begin = level[i];
       size_t end = level[i + 1];
       for (size_t j = begin; j < end; j++) {
-        auto record = source.Slice<int>(j, j + 1);
+        auto record = source.Slice(j, j + 1);
         for (int dim = 0; dim < 128; dim++) {
           record.mutable_data<int>(platform::CPUPlace())[dim] = j - begin;
         }

@@ -39,23 +39,36 @@ using Vector = thrust::host_vector<
 #endif
 
 /*
- * 3-level LoD stores
+ * LoD is short for Level of Details.
  *
- * 0 10 20
- * 0 5 10 15 20
- * 0 2 5 7 10 12 15 20
- *
- * - in a level, each element indicates offset in the underlying Tensor
+ * - in a level, each element indicates relative offset of the lower level
  * - the first element should be 0 and that indicates that this sequence start
  * from 0
  * - each sequence's begin and end(no-inclusive) is level[id, id+1]
+ *
+ * For example:
+ *    3-level LoD stores
+ *
+ *    0 2 3
+ *    0 2 4 7
+ *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<Vector<size_t>>;
 
+/*
+ * Slice levels from a LoD.
+ * NOTE the lowest level should always be the absolute offsets of the underlying
+ * tensor instances. So if higher layers are sliced without the lowest level,
+ * the lower level of the sliced LoD will be transformed to the absolute offset.
+ */
 LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
 
 LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
                  size_t elem_end);
+/*
+ * Transform an LoD from relative offsets to absolute offsets.
+ */
+LoD ToAbsOffset(const LoD& in);
 
 bool operator==(const LoD& a, const LoD& b);
 
@@ -74,12 +87,12 @@ class LoDTensor : public Tensor {
   LoD lod() const { return lod_; }
 
   /*
-   * Get a element from LoD.
+   * Get the start offset and end offset of an  element from LoD.
    */
-  size_t lod_element(size_t level, size_t elem) const {
+  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
     PADDLE_ENFORCE_LT(level, NumLevels());
     PADDLE_ENFORCE_LT(elem, NumElements(level));
-    return (lod_)[level][elem];
+    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
   }
 
   /*
