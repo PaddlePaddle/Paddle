@@ -18,6 +18,9 @@ fi
 
 mkdir -p /paddle/build
 cd /paddle/build
+# Copy nccl1 to build dir
+mkdir -p /paddle/build/libnccl
+cp /usr/local/cuda/targets/x86_64-linux/lib/*nccl*so* /paddle/build/libnccl/
 
 # build script will not fail if *.deb does not exist
 rm *.deb 2>/dev/null || true
@@ -142,16 +145,16 @@ EOF
 fi
 
 if [[ ${WITH_GPU} == "ON"  ]]; then
-  NCCL_DEPS="apt-get install -y libnccl-dev &&"
+  NCCL_DEPS="ADD ./libnccl/* /usr/local/cuda/targets/x86_64-linux/"
 else
   NCCL_DEPS="" 
 fi
 
 cat >> /paddle/build/Dockerfile <<EOF
 ADD python/dist/*.whl /
+${NCCL_DEPS}
 # run paddle version to install python packages first
 RUN apt-get update &&\
-    ${NCCL_DEPS}\
     apt-get install -y wget python-pip && pip install -U pip && \
     pip install /*.whl; apt-get install -f -y && \
     apt-get clean -y && \
