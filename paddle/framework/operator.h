@@ -241,7 +241,7 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
-    auto names = op_.Inputs(name);
+    auto names = Inputs(name);
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
@@ -254,7 +254,7 @@ class ExecutionContext {
 
   template <typename T>
   std::vector<T*> MultiOutput(const std::string& name) const {
-    auto names = op_.Outputs(name);
+    auto names = Outputs(name);
     std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),

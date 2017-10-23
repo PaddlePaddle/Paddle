@@ -20,23 +20,29 @@ namespace operators {
 using framework::Tensor;
 using framework::LoDTensor;
 
+inline static std::string VarToFileName(const std::string& folder_path,
+                                        const std::string& var_name) {
+  return folder_path + "/__" + var_name + "__";
+}
+
 template <typename T>
 class SaveKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<LoDTensor>("X");
-    std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
+    std::string folder_path = ctx.template Attr<std::string>("folderPath");
+    auto tensors = ctx.MultiInput<LoDTensor>("X");
+    auto& var_names = ctx.Inputs("X");
 
-    std::ofstream fout(absolutePath, std::ofstream::out);
-    VLOG(1) << "Open model file : " << absolutePath;
-    PADDLE_ENFORCE(fout.is_open(), "Open model file failed.");
-    for (size_t i = 0; i < ins.size(); ++i) {
-      std::string bytes = ins[i]->SerializeToString();
+    VLOG(1) << "Save variables to folder: " << folder_path;
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      std::string file_name = VarToFileName(folder_path, var_names.at(i));
+      std::ofstream fout(file_name, std::ofstream::out);
+      PADDLE_ENFORCE(fout.is_open(), "Fail to create file %s.", file_name);
+      std::string bytes = tensors[i]->SerializeToString();
       fout << bytes;
+      fout.close();
     }
-
-    fout.close();
-    VLOG(1) << "Save model finished. Items count : " << ins.size();
+    VLOG(1) << "Compelete saving variables. Items count: " << ins.size();
   }
 };
 
@@ -44,34 +50,26 @@ template <typename Place, typename T>
 class RestoreKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto outs = ctx.MultiOutput<LoDTensor>("Out");
-    std::string absolutePath = ctx.template Attr<std::string>("absolutePath");
+    std::string folder_path = ctx.template Attr<std::string>("folderPath");
+    VLOG(1) << "Try loading variables from folder: " << folder_path;
+    auto tensors = ctx.MultiOutput<LoDTensor>("Out");
+    auto& var_names = ctx.Outputs("Out");
 
-    std::ifstream fin(absolutePath, std::ifstream::in);
-    VLOG(1) << "Open model file : " << absolutePath;
-    PADDLE_ENFORCE(fin.is_open(), "Open model file failed.");
-
-    int tensor_idx = 0;
-    while (fin) {
-      std::string line;
-      size_t tensor_size = 0;
-      const size_t kBufferSize =
-          4096;  // read chuck by chuck for switch pageing.
+    for (size_t i = 0; i < var_names.size(); ++i) {
+      std::string file_name = VarToFileName(folder_path, var_names[i]);
+      std::ifstream fin(file_name, std::ifstream::in);
+      PADDLE_ENFORCE(fin.is_open(), "Fail to open file %s.", file_name);
+      const size_t kBufferSize = 4096;  // equal to linux page size
       char buffer[kBufferSize];
-
-      if (fin.read((char*)(tensor_size), sizeof(size_t))) {
-        size_t read_size = std::min(kBufferSize, tensor_size);
-        tensor_size -= kBufferSize;
-        while (read_size > 0 && fin.read(buffer, read_size)) {
-          line.append(buffer, read_size);
-        }
+      std::string cache;
+      while (!fin.eof()) {
+        fin.read(buffer, kBufferSize);
+        cache.append(buffer, fin.gcount());
       }
-      PADDLE_ENFORCE(tensor_size == line.size(), "Read tensor error.");
-      VLOG(1) << "Item " << tensor_idx << " size " << line.size() << " content "
-              << line;
-      outs[tensor_idx++]->DeserializeFromString(line, ctx.GetPlace());
+      tensors.at(i)->DeserializeFromString(cache, ctx.GetPlace());
+      fin.close();
     }
-    fin.close();
+    VLOG(1) << "Complete loading variables.";
   }
 };
 
@@ -83,9 +81,9 @@ class SaveOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("X"),
                    "Input(X) of SaveOp should not be null.");
-    auto absolutePath = ctx->Attrs().Get<std::string>("absolutePath");
-    PADDLE_ENFORCE(!absolutePath.empty(),
-                   "Input(absolutePath) of SaveOp should not be null.");
+    auto folder_path = ctx->Attrs().Get<std::string>("folderPath");
+    PADDLE_ENFORCE(!folder_path.empty(),
+                   "Input(folder_path) of SaveOp should not be null.");
   }
 };
 
@@ -97,7 +95,7 @@ class SaveOpMaker : public framework::OpProtoAndCheckerMaker {
              "(tensor), the tensor count can be 1~INT_MAX, tensors names which "
              "values will be saved.")
         .AsDuplicable();
-    AddAttr<std::string>("absolutePath", "the absolutePath for save model.");
+    AddAttr<std::string>("folderPath", "the folderPath for save model.");
     AddComment(R"DOC(
 Save the input tensors to a binary file based on input tensor names and absolute path.
 
@@ -115,9 +113,9 @@ class RestoreOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
                    "Output(X) of RestoreOp should not be null.");
-    auto absolutePath = ctx->Attrs().Get<std::string>("absolutePath");
-    PADDLE_ENFORCE(!absolutePath.empty(),
-                   "Input(absolutePath) of Restore Op should not be null.");
+    auto folder_path = ctx->Attrs().Get<std::string>("folderPath");
+    PADDLE_ENFORCE(!folder_path.empty(),
+                   "Input(folder_path) of Restore Op should not be null.");
   }
 
   framework::DataType IndicateDataType(
@@ -135,7 +133,7 @@ class RestoreOpMaker : public framework::OpProtoAndCheckerMaker {
               "(tensor), the tensor count can be 1~INT_MAX, tensors which "
               "values will be restores.")
         .AsDuplicable();
-    AddAttr<std::string>("absolutePath", "the absolutePath for model file.");
+    AddAttr<std::string>("folderPath", "the folderPath for model file.");
     AddAttr<int>("data_type", "output tensor data type")
         .SetDefault(framework::DataType::FP32);
     AddComment(R"DOC(
