@@ -128,7 +128,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom<float>(input_tmp, *place, *context);
+    input.CopyFrom(input_tmp, *place, *context);
   }
 
   col2im(*context, input, output_cfo, stride, stride, padding, padding, padding,
@@ -138,7 +138,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    input_tmp.CopyFrom<float>(input, paddle::platform::CPUPlace(), *context);
+    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -150,7 +150,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom<float>(input_tmp, *place, *context);
+    input.CopyFrom(input_tmp, *place, *context);
   }
 
   col2im_ocf(*context, input, output_ocf, stride, stride, padding, padding,
@@ -159,7 +159,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    input_tmp.CopyFrom<float>(input, paddle::platform::CPUPlace(), *context);
+    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {

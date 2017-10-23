@@ -282,7 +282,7 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                ++filter_row_idx) {
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
-              int im_row_offset =  // change or not ？？？
+              int im_row_offset =
                   col_row_idx * stride_height + filter_row_idx - padding_up;
               int im_col_offset =
                   col_col_idx * stride_width + filter_col_idx - padding_left;
