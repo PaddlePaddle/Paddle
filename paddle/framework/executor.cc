@@ -68,19 +68,23 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
 
   for (auto& var : block.vars()) {
     if (var.persistable()) {
-      scope->Var(var.name());
+      auto* ptr = scope->Var(var.name());
+      VLOG(3) << "Create Variable " << var.name()
+              << " global, which pointer is " << ptr;
     } else {
-      local_scope.Var(var.name());
+      auto* ptr = local_scope.Var(var.name());
+      VLOG(3) << "Create Variable " << var.name()
+              << " locally, which pointer is " << ptr;
     }
   }
 
   for (auto& op_desc : block.ops()) {
-    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    auto op = paddle::framework::OpRegistry::CreateOp(
+        op_desc, const_cast<ProgramDesc*>(&pdesc));
     op->Run(local_scope, *device);
   }
 
-  // TODO(tonyyang-svail):
-  //  - Destroy local_scope
+  scope->DeleteScope(&local_scope);
 }
 
 }  // namespace framework

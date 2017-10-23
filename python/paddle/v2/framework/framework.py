@@ -15,6 +15,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
+                 persistable=None,
                  **kwargs):
         self.block = block
 
@@ -70,6 +71,17 @@ class Variable(object):
                                      "lod_level is {2}. They are not "
                                      "matched".format(self.name, self.lod_level,
                                                       lod_level))
+        if persistable is not None:
+            if is_new_var:
+                self.desc.set_persistable(persistable)
+            else:
+                if persistable != self.persistable:
+                    raise ValueError(
+                        "Variable {0} has been created before."
+                        "The previous persistable is {1}; the new "
+                        "persistable is {2}. They are not matched".format(
+                            self.name, self.persistable, persistable))
+
         self.block.vars[name] = self
         self.op = None
 
@@ -79,6 +91,10 @@ class Variable(object):
         return proto.__str__()
 
     __repr__ = __str__
+
+    @property
+    def persistable(self):
+        return self.desc.persistable()
 
     @property
     def name(self):
@@ -232,7 +248,7 @@ class Operator(object):
         if attrs is not None:
             for attr in proto.attrs:
                 attr_name = attr.name
-                if not attr_name in attrs:
+                if (not attr_name in attrs) or (attrs[attr_name] is None):
                     continue
                 if not isinstance(attrs[attr_name], Block):
                     self.desc.set_attr(attr_name, attrs[attr_name])
@@ -240,7 +256,8 @@ class Operator(object):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
 
         self.desc.check_attrs()
-        self.desc.infer_shape(self.block.desc)
+        if type not in {'feed', 'fetch'}:
+            self.desc.infer_shape(self.block.desc)
 
     def __str__(self):
         protostr = self.desc.serialize_to_string()
@@ -307,9 +324,12 @@ class Block(object):
         return self.desc.id
 
     def var(self, name):
-        if name not in self.vars:
+        if not isinstance(name, basestring):
+            raise TypeError()
+        v = self.vars.get(name, None)
+        if v is None:
             raise ValueError("var %s not in this block" % name)
-        return self.vars[name]
+        return v
 
     def all_parameters(self):
         return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
@@ -323,6 +343,8 @@ class Block(object):
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
+        if 'init_attr' in kwargs:
+            self._prepend_initialize_ops_(param, kwargs['init_attr'])
         return param
 
     def append_op(self, *args, **kwargs):
@@ -344,19 +366,26 @@ class Block(object):
                 self.create_var(name=var.name(), desc=var, type=var.type())
 
         # sync operators from cpp
-        ops_in_cpp = self.desc.all_ops()
-        first_op_in_python = self.ops[0].desc
-        last_op_in_python = self.ops[len(self.ops) - 1].desc
-        start_index = None
-        end_index = None
-        for index in range(len(ops_in_cpp)):
-            if first_op_in_python == ops_in_cpp[index]:
-                start_index = index
-            if last_op_in_python == ops_in_cpp[index]:
-                end_index = index
-        assert start_index is not None
-        assert end_index is not None
-        assert start_index <= end_index
+        ops_in_cpp = []
+        for op_idx in range(0, self.desc.op_size()):
+            ops_in_cpp.append(self.desc.op(op_idx))
+
+        if len(self.ops) != 0:
+            first_op_in_python = self.ops[0].desc
+            last_op_in_python = self.ops[len(self.ops) - 1].desc
+            start_index = None
+            end_index = None
+            for index in range(len(ops_in_cpp)):
+                if first_op_in_python == ops_in_cpp[index]:
+                    start_index = index
+                if last_op_in_python == ops_in_cpp[index]:
+                    end_index = index
+            assert start_index is not None
+            assert end_index is not None
+            assert start_index <= end_index
+        else:
+            start_index = 0
+            end_index = -1
 
         # sync ops append to the head of cpp_ops
         for index in range((start_index - 1 - 1), -1, -1):
@@ -374,20 +403,21 @@ class Block(object):
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
 
+    def _prepend_initialize_ops_(self, param, init_attr):
+        op_type = init_attr['type']
+        init_attr['shape'] = param.shape
+        init_attr['data_type'] = int(param.data_type)
+        op = self.prepend_op(
+            type=op_type,
+            inputs=None,
+            outputs={'Out': [param]},
+            attrs=init_attr)
+        param.op = op
+
 
 class Program(object):
-    @classmethod
-    def instance(cls):
-        # From https://stackoverflow.com/questions/8212053
-        # Making Program as a Singleton class.
-        if not hasattr(cls, '_instance'):
-            cls._instance = cls()
-        return cls._instance
-
-    def __init__(self, desc=None):
-        if desc is None:
-            desc = core.ProgramDesc.instance()
-        self.desc = desc
+    def __init__(self):
+        self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
 
@@ -396,7 +426,15 @@ class Program(object):
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return proto.__str__()
 
-    __repr__ = __str__
+    def clone(self):
+        p = Program()
+        p.desc = core.ProgramDesc(self.desc)
+        p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+        p.sync_with_cpp()
+        return p
+
+    def __repr__(self):
+        return str(self)
 
     def global_block(self):
         return self.blocks[0]
@@ -407,11 +445,13 @@ class Program(object):
     def current_block(self):
         return self.blocks[self.current_block_idx]
 
-    def append_backward(self, target, no_grad_set):
+    def append_backward(self, target, no_grad_set=None):
         """
         return map(param_name -> (grad_name, block_index, op_index))
         """
         assert isinstance(target, Variable)
+        if no_grad_set is None:
+            no_grad_set = set()
         param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
         self.sync_with_cpp()
         return param_to_grad_info
@@ -444,29 +484,14 @@ class Parameter(Variable):
             if each < 0:
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
-        Variable.__init__(self, block, shape=shape, dtype=dtype, **kwargs)
+
+        Variable.__init__(
+            self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
-        self.init_attr = kwargs.get('initialize_attr', {
-            'type': 'uniform_random',
-            'min': -1.0,
-            'max': 1.0
-        })
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
-        self._append_initialize_ops_()
-
-    def _append_initialize_ops_(self):
-        attr = self.init_attr
-        op_type = attr.pop('type', None)
-        block = self.block
-        assert isinstance(block, Block)
-        shape = self.shape
-        attr['dims'] = shape
-        attr['data_type'] = int(self.data_type)
-        op = block.prepend_op(
-            type=op_type, inputs=None, outputs={'Out': [self]}, attrs=attr)
-        self.op = op
 
 
 # program is a global instance.
-g_program = Program.instance()
+g_program = Program()
+g_init_program = Program()
