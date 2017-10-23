@@ -8,7 +8,7 @@ import cStringIO
 import os
 
 
-def _dump_all_persistable_vare_(absolute_folder_path, program=None):
+def _dump_all_persistable_vars_(folder_path, program=None):
     if program is None:
         program = framework.g_program
     dump_program = framework.Program()
@@ -23,7 +23,7 @@ def _dump_all_persistable_vare_(absolute_folder_path, program=None):
     dump_block.append_op(
         type="save",
         inputs={"X": save_op_inputs},
-        attrs={"absolutePath", absolute_folder_path})
+        attrs={"absolutePath", folder_path})
 
     exe = executor.Executor(core.CPUPlace())
     exe.run(dump_program, feed={}, fetch_list=[])
@@ -33,8 +33,6 @@ def dump_inference_model(folder_path,
                          target_var,
                          program=None,
                          init_program=None):
-    if not folder_path.startswith("/"):
-        folder_path = os.getcwd() + "/" + folder_path
     if program is None:
         program = framework.g_program
     if init_program is None:
@@ -56,12 +54,10 @@ def dump_inference_model(folder_path,
             tar.addfile(tarinfo=tarinfo, fileobj=buf)
 
     # Build another program to hold save_ops
-    _dump_all_persistable_vare_(folder_path, program)
+    _dump_all_persistable_vars_(folder_path, program)
 
 
 def dump_checkpoint(folder_path, program=None):
-    if not folder_path.startswith("/"):
-        folder_path = os.getcwd() + "/" + folder_path
     if program is None:
         program = framework.g_program
-    _dump_all_persistable_vare_(folder_path, program)
+    _dump_all_persistable_vars_(folder_path, program)
