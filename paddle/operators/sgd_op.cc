@@ -21,23 +21,34 @@ class SGDOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(
-        ctx.Input<Tensor>("param")->dims() == ctx.Input<Tensor>("grad")->dims(),
-        "Two input of SGD Op's dimension must be same.");
-    ctx.Output<Tensor>("param_out")->Resize(ctx.Input<Tensor>("param")->dims());
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(Param) of SGDOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(Grad) of SGDOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of SGDOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of SGDOp should not be null.");
+
+    auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "Learning rate should have 1 element");
+    auto param_dim = ctx->GetInputDim("Param");
+    // TODO(qijun): check dimensions of Param and Grad at complie
+    // and run time.
+    ctx->SetOutputDim("ParamOut", param_dim);
   }
 };
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SGDOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("param", "input parameter");
-    AddInput("grad", "input gradient");
-    AddOutput("param_out", "output parameter");
-    AddAttr<float>("learning_rate", "learning rate of sgd");
+    AddInput("Param", "Input parameter");
+    AddInput("LearningRate", "Learning rate of SGD");
+    AddInput("Grad", "Input gradient");
+    AddOutput("ParamOut", "output parameter");
     AddComment(R"DOC(
 
 Simplest sgd algorithm.
@@ -47,6 +58,38 @@ param_out = param - learning_rate * grad;
 )DOC");
   }
 };
+
+template <typename T>
+struct SparseSGDFunctor<platform::CPUPlace, T> {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::SelectedRows& input,
+                  const framework::Tensor& learning_rate,
+                  framework::Tensor* output) {
+    auto in_height = input.height();
+    auto out_dims = output->dims();
+    PADDLE_ENFORCE_EQ(in_height, out_dims[0]);
+
+    auto& in_value = input.value();
+    auto& in_rows = input.rows();
+
+    int64_t in_row_numel = in_value.numel() / in_rows.size();
+    PADDLE_ENFORCE_EQ(in_row_numel, output->numel() / in_height);
+
+    auto* in_data = in_value.data<T>();
+    auto* out_data = output->data<T>();
+    auto* lr = learning_rate.data<T>();
+
+    for (size_t i = 0; i < in_rows.size(); i++) {
+      for (int64_t j = 0; j < in_row_numel; j++) {
+        out_data[in_rows[i] * in_row_numel + j] -=
+            lr[0] * in_data[i * in_row_numel + j];
+      }
+    }
+  }
+};
+
+template struct SparseSGDFunctor<platform::CPUPlace, float>;
+
 }  // namespace operators
 }  // namespace paddle
 

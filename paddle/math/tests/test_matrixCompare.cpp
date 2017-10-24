@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 /// This unittest checks GpuMatrix/CpuMatrix get same result, so disable when
 /// only cpu version.
 
@@ -825,9 +825,8 @@ void testMaxPoolFwdBwd(int numSamples,
                        int strideW,
                        int padH,
                        int padW) {
-  int outH = 0, outW = 0;
-  outH = (imgSizeH - ksizeH + 2 * padH + strideH - 1) / strideH + 1;
-  outW = (imgSizeW - ksizeW + 2 * padW + strideW - 1) / strideW + 1;
+  int outH = outputSize(imgSizeH, ksizeH, padH, strideH, true);
+  int outW = outputSize(imgSizeW, ksizeW, padW, strideW, true);
 
   int inWidth = imgSizeH * imgSizeW * channels;
   MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);
@@ -927,9 +926,8 @@ void testAvgPoolFwdBwd(int numSamples,
                        int strideW,
                        int padH,
                        int padW) {
-  int outH = 0, outW = 0;
-  outH = (imgSizeH - ksizeH + 2 * padH + strideH - 1) / strideH + 1;
-  outW = (imgSizeW - ksizeW + 2 * padW + strideW - 1) / strideW + 1;
+  int outH = outputSize(imgSizeH, ksizeH, padH, strideH, true);
+  int outW = outputSize(imgSizeW, ksizeW, padW, strideW, true);
 
   int inWidth = imgSizeH * imgSizeW * channels;
   MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);

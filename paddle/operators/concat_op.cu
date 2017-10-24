@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define EIGEN_USE_GPU
 #include "paddle/operators/concat_op.h"
-
 namespace ops = paddle::operators;
-// TODO(Yancey1989) Add GPU kernel
+REGISTER_OP_GPU_KERNEL(concat,
+                       ops::ConcatKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    concat_grad, ops::ConcatGradKernel<paddle::platform::GPUPlace, float>);

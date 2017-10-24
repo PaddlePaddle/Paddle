@@ -23,7 +23,9 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type, const VariableNameMap& inputs,
     const VariableNameMap& outputs, AttributeMap attrs) {
   auto& info = OpInfoMap::Instance().Get(type);
-  info.Checker().Check(attrs);
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(attrs);
+  }
   auto op = info.Creator()(type, inputs, outputs, attrs);
   return std::unique_ptr<OperatorBase>(op);
 }
@@ -41,20 +43,21 @@ static VariableNameMap ConvertOpDescVarsToVarNameMap(
   return ret_val;
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc,
+                                                   ProgramDesc* program) {
   VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
   AttributeMap attrs;
   for (auto& attr : op_desc.attrs()) {
-    attrs[attr.name()] = GetAttrValue(attr);
+    attrs[attr.name()] = GetAttrValue(attr, program);
   }
 
   return CreateOp(op_desc.type(), inputs, outputs, attrs);
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateGradOp(const OperatorBase& op) {
-  PADDLE_ENFORCE(!op.IsNetOp(), "Use framework::Backward to get backward ops");
-  return std::unique_ptr<OperatorBase>(BuildGradOp(&op));
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDescBind& op_desc) {
+  return CreateOp(op_desc.Type(), op_desc.Inputs(), op_desc.Outputs(),
+                  op_desc.GetAttrMap());
 }
 
 }  // namespace framework

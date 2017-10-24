@@ -4,7 +4,7 @@ from paddle.v2.framework.op import Operator
 import numpy
 
 
-class GaussianRandomTest(unittest.TestCase):
+class TestGaussianRandomOp(unittest.TestCase):
     def test_cpu(self):
         self.gaussian_random_test(place=core.CPUPlace())
 
@@ -14,7 +14,7 @@ class GaussianRandomTest(unittest.TestCase):
 
     def gaussian_random_test(self, place):
         scope = core.Scope()
-        scope.new_var('Out').get_tensor()
+        scope.var('Out').get_tensor()
 
         op = Operator(
             "gaussian_random",
@@ -24,7 +24,6 @@ class GaussianRandomTest(unittest.TestCase):
             std=1.,
             seed=10)
 
-        op.infer_shape(scope)
         context = core.DeviceContext.create(place)
         op.run(scope, context)
         tensor = numpy.array(scope.find_var('Out').get_tensor())

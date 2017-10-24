@@ -37,7 +37,7 @@ struct GaussianGenerator {
 };
 
 template <typename T>
-class GPUGaussianRandomKernel : public framework::OpKernel {
+class GPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");

@@ -40,17 +40,56 @@ public:
   /**
    * Create MKLDNNMatrix from a MatrixPtr and memory primitive_desc
    */
-  static MKLDNNMatrixPtr create(MatrixPtr m, mkldnn::memory::primitive_desc pd);
+  static MKLDNNMatrixPtr create(mkldnn::memory::primitive_desc pd,
+                                MatrixPtr m = nullptr);
 
   /**
    * Create MKLDNNMatrix from a MatrixPtr and memory details info
    */
   static MKLDNNMatrixPtr create(
-      MatrixPtr m,
       mkldnn::memory::dims dims,
       mkldnn::memory::format fmt,
       mkldnn::engine& eg,
+      MatrixPtr m = nullptr,
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
+
+  /**
+   * Create primitive descriptor.
+   * default with f32 dtype
+   */
+  static mkldnn::memory::primitive_desc createPrimitiveDesc(
+      const mkldnn::memory::dims dims,
+      const mkldnn::memory::format& fmt,
+      const mkldnn::engine& eg,
+      const mkldnn::memory::data_type& dtype = mkldnn::memory::data_type::f32) {
+    return mkldnn::memory::primitive_desc(memory::desc(dims, dtype, fmt), eg);
+  }
+
+  /**
+   * Create Memory descriptor.
+   * default with any format and f32 dtype
+   */
+  static mkldnn::memory::desc createMemoryDesc(
+      const mkldnn::memory::dims dims,
+      const mkldnn::memory::format& fmt = mkldnn::memory::format::any,
+      const mkldnn::memory::data_type& dtype = mkldnn::memory::data_type::f32) {
+    return mkldnn::memory::desc(dims, dtype, fmt);
+  }
+
+  /**
+   * Create reorder primitive.
+   * Create a mkldnn::reorder handle for converting src MKLDNNMatrix to dst.
+   * checkData: whether to check the data handle of src and dst.
+   *            if true, it will check the data and do not allow them equal;
+   *            otherwise, it will not check them, then the reorder created
+   *            may have inplace buffer.
+   *            Do not set false, if you can not guarantee the inplace logical
+   *            would work with your reorder.
+   */
+  static std::shared_ptr<mkldnn::reorder> createReorder(
+      const MKLDNNMatrixPtr& src,
+      const MKLDNNMatrixPtr& dst,
+      bool checkData = true);
 
 public:
   /**

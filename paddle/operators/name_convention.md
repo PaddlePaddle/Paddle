@@ -11,7 +11,7 @@ When defining an operator in Paddle, a corresponding [OpProtoMaker](https://gith
   - If an operator's Input/Output are tensors in math, not match to any meaningful words, input name should starts from `X`. e.g. `X`, `Y`, and output name should starts from `Out`. e.g. `Out`. This rule intends making operators which have few inputs/outputs unified.
 
 - Attribute.
-  - Attribute name follows the **camelCase**. e.g. `x`, `y`, `axis`, `rowwiseMatrix`. Also, attribute name prefers to meaningful English words.
+  - Attribute name follows the **snake_case**. e.g. `x`, `y`, `axis`, `rowwise_matrix`. Also, attribute name prefers to meaningful English words.
 
 - Comments.
   - Input/Output/Attr comment follow the format of **(type,default value) usage**, corresponding to which type it can be and how it will be used in the operator. e.g.  Attribute in Accumulator`"gamma" `,`(float, default 1.0) Accumulation multiplier`.
@@ -38,9 +38,11 @@ public:
   AccumulateOpMaker(framework::OpProto *proto,
                             framework::OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) The input tensor that has to be accumulated to the output tensor. If the output size is not the same as input size, the output tensor is first reshaped and initialized to zero, and only then, accumulation is done.");
+    AddInput("X", "(Tensor) The input tensor that has to be accumulated to the output tensor. 
+    If the output size is not the same as input size, 
+    the output tensor is first reshaped and initialized to zero, and only then, accumulation is done.");
     AddOutput("Out", "(Tensor) Accumulated output tensor");
-    AddAttr<float>("gamma", "(float, default 1.0) Accumulation multiplier");
+    AddAttr<float>("gamma", "(float, default 1.0) Accumulation multiplier").SetDefault(1.0f);
     AddComment(R"DOC(
 Accumulate operator accumulates the input tensor to the output tensor. If the
 output tensor already has the right size, we add to it; otherwise, we first
@@ -51,7 +53,7 @@ Accumulation is done as shown:
 
 Out = 1*X + gamma*Out
 
-where X is the input tensor, Y is the output tensor and gamma is the multiplier
+where X is the input tensor, Out is the output tensor and gamma is the multiplier
 argument.
 )DOC");
   }

@@ -23,29 +23,40 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
-class GatherOpKernel : public framework::OpKernel {
+template <typename T>
+class GatherOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *Index = ctx.Input<Tensor>("Index");
-    auto *Y = ctx.Output<Tensor>("Out");
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "This kernel only runs on CPU.");
 
-    Y->mutable_data<T>(ctx.GetPlace());
-    Gather<T>(ctx.GetPlace(), X, Index, Y);
+    auto *x = ctx.Input<Tensor>("X");
+    auto *index = ctx.Input<Tensor>("Index");
+    auto *output = ctx.Output<Tensor>("Out");
+
+    output->mutable_data<T>(ctx.GetPlace());
+
+    CPUGather<T>(ctx.device_context(), *x, *index, output);
   }
 };
 
-template <typename Place, typename T>
-class GatherGradientOpKernel : public framework::OpKernel {
+template <typename T>
+class GatherGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
+                   "This kernel only runs on CPU.");
+
     auto *Index = ctx.Input<Tensor>("Index");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     dX->mutable_data<T>(ctx.GetPlace());
-    ScatterUpdate<T>(ctx.GetPlace(), dO, Index, dX);
+    auto dxt = framework::EigenVector<T>::Flatten(*dX);
+    auto place = ctx.GetEigenDevice<platform::CPUPlace>();
+    dxt.device(place) = dxt.constant(static_cast<T>(0));
+
+    ScatterAssign<T>(ctx.device_context(), *dO, *Index, dX);
   }
 };
 

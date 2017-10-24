@@ -169,7 +169,7 @@ private:
 
 REGISTER_TYPED_FUNC(Crop, CPU, CropFunc);
 REGISTER_TYPED_FUNC(CropGrad, CPU, CropGradFunc);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(Crop, GPU, CropFunc);
 REGISTER_TYPED_FUNC(CropGrad, GPU, CropGradFunc);
 #endif

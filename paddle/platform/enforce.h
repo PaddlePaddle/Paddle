@@ -25,11 +25,18 @@ limitations under the License. */
 #include "paddle/string/printf.h"
 #include "paddle/string/to_string.h"
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef __GNUC__
+#include <cxxabi.h>  // for __cxa_demangle
+#endif
+
+#include <glog/logging.h>
+
+#ifdef PADDLE_WITH_CUDA
 
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
+#include "paddle/platform/dynload/nccl.h"
 
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -37,10 +44,23 @@ limitations under the License. */
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 namespace paddle {
 namespace platform {
+
+namespace {
+#ifdef __GNUC__
+inline std::string demangle(std::string name) {
+  int status = -4;  // some arbitrary value to eliminate the compiler warning
+  std::unique_ptr<char, void (*)(void*)> res{
+      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+  return (status == 0) ? res.get() : name;
+}
+#else
+inline std::string demangle(std::string name) { return name; }
+#endif
+}
 
 struct EnforceNotMet : public std::exception {
   std::exception_ptr exp_;
@@ -61,8 +81,8 @@ struct EnforceNotMet : public std::exception {
 
       Dl_info info;
       for (int i = 0; i < size; ++i) {
-        if (dladdr(call_stack[i], &info)) {
-          auto demangled = info.dli_sname;
+        if (dladdr(call_stack[i], &info) && info.dli_sname) {
+          auto demangled = demangle(info.dli_sname);
           auto addr_offset = static_cast<char*>(call_stack[i]) -
                              static_cast<char*>(info.dli_saddr);
           sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
@@ -90,13 +110,13 @@ struct EnforceNotMet : public std::exception {
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    int stat, const Args&... args) {
+    bool stat, const Args&... args) {
   if (UNLIKELY(!(stat))) {
     throw std::runtime_error(string::Sprintf(args...));
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
@@ -155,6 +175,17 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   throw std::runtime_error(err + string::Sprintf(args...));
 }
 
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    ncclResult_t stat, const Args&... args) {
+  if (stat == ncclSuccess) {
+    return;
+  } else {
+    throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
+                             string::Sprintf(args...));
+  }
+}
+
 #endif  // PADDLE_ONLY_CPU
 
 template <typename T>
@@ -168,7 +199,7 @@ inline void throw_on_error(T e) {
         std::make_exception_ptr(                                       \
             std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
         __FILE__, __LINE__);                                           \
-  } while (0)
+  } while (false)
 
 #define PADDLE_ENFORCE(...)                                             \
   do {                                                                  \
@@ -178,7 +209,7 @@ inline void throw_on_error(T e) {
       throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
                                               __FILE__, __LINE__);      \
     }                                                                   \
-  } while (0)
+  } while (false)
 
 /*
  * Some enforce helpers here, usage:

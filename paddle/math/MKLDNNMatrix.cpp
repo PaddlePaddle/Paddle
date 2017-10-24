@@ -18,7 +18,7 @@ using namespace mkldnn;  // NOLINT
 
 namespace paddle {
 
-MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m, memory::primitive_desc pd) {
+MKLDNNMatrixPtr MKLDNNMatrix::create(memory::primitive_desc pd, MatrixPtr m) {
   memory::desc md = pd.desc();
   size_t ndims = md.data.ndims;
   int* dims = md.data.dims;
@@ -41,12 +41,33 @@ MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m, memory::primitive_desc pd) {
   return std::make_shared<MKLDNNMatrix>(cpuMatrix, pd);
 }
 
-MKLDNNMatrixPtr MKLDNNMatrix::create(MatrixPtr m,
-                                     memory::dims dims,
+MKLDNNMatrixPtr MKLDNNMatrix::create(memory::dims dims,
                                      memory::format fmt,
                                      engine& eg,
+                                     MatrixPtr m,
                                      mkldnn::memory::data_type dtype) {
-  return create(m, memory::primitive_desc(memory::desc(dims, dtype, fmt), eg));
+  return create(createPrimitiveDesc(dims, fmt, eg, dtype), m);
+}
+
+std::shared_ptr<reorder> MKLDNNMatrix::createReorder(const MKLDNNMatrixPtr& src,
+                                                     const MKLDNNMatrixPtr& dst,
+                                                     bool checkData) {
+  if (src == dst || src->getPrimitiveDesc() == dst->getPrimitiveDesc()) {
+    return nullptr;
+  }
+
+  if (checkData && (src->getData() == dst->getData())) {
+    LOG(FATAL) << "can not create reorder with inplace data";
+    return nullptr;
+  }
+
+  memory::dims srcDims = src->getDims();
+  memory::dims dstDims = dst->getDims();
+  CHECK_EQ(srcDims.size(), dstDims.size());
+  for (size_t i = 0; i < srcDims.size(); ++i) {
+    CHECK_EQ(srcDims[i], dstDims[i]);
+  }
+  return std::make_shared<reorder>(*src, *dst);
 }
 
 void MKLDNNMatrix::reorderDataFrom(const MKLDNNMatrixPtr& m,

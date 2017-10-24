@@ -12,48 +12,12 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/platform/assert.h"
+#include "paddle/operators/cross_entropy_op.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename T>
-__host__ __device__ T clipping_log(const T x) {
-  PADDLE_ASSERT(std::is_floating_point<T>::value);
-  const T kApproInf = 1e20;
-  T v = log(x);
-  if (v == INFINITY) {
-    return kApproInf;
-  }
-  if (v == -INFINITY) {
-    return -kApproInf;
-  }
-  return v;
-}
-
-template <typename T>
-__global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
-                                   const int N, const int D) {
-  // TOOD(qingqing) define CUDA_1D_KERNEL_LOOP macro in a common file.
-  // CUDA_1D_KERNEL_LOOP(i, N) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
-    Y[i] = -clipping_log(X[i * D + label[i]]);
-  }
-}
-
-// TODO(qingqing): make zero setting an common function.
-template <typename T>
-__global__ void zero(T* X, const int N) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    X[i] = 0.0;
-  }
-}
+namespace {
 
 template <typename T>
 __global__ void CrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
@@ -69,57 +33,74 @@ __global__ void CrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
 }
 
 template <typename T>
-class OnehotCrossEntropyOpCUDAKernel : public framework::OpKernel {
+__global__ void SoftCrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
+                                               const T* label, const int N,
+                                               const int D) {
+  int ids = blockIdx.x * blockDim.x + threadIdx.x;
+  if (ids < N * D) {
+    int row_ids = ids / D;
+    dX[ids] = -label[ids] * dY[row_ids] / X[ids];
+  }
+}
+}  // namespace
+
+template <typename T>
+class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "This kernel only runs on GPU device.");
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* label = ctx.Input<Tensor>("Label");
+    Tensor* y = ctx.Output<Tensor>("Y");
+    y->mutable_data<T>(ctx.GetPlace());
 
-    auto X = ctx.Input<Tensor>("X");
-    const T* Xdata = X->data<T>();
-    const int* label_data = ctx.Input<Tensor>("label")->data<int>();
-    auto Y = ctx.Output<Tensor>("Y");
-    Y->mutable_data<T>(ctx.GetPlace());
-    T* Ydata = Y->data<T>();
-
-    int N = X->dims()[0];
-    int D = X->dims()[1];
-    int block = 512;
-    int grid = (N + block - 1) / block;
-    // TODO(qingqing) launch kernel on specified stream
-    // base on ExecutionContext.
-    CrossEntropyKernel<T><<<grid, block>>>(Ydata, Xdata, label_data, N, D);
+    math::CrossEntropyFunctor<platform::GPUPlace, T>()(
+        ctx.device_context(), y, x, label, ctx.Attr<bool>("soft_label"));
   }
 };
 
 template <typename T>
-class OnehotCrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
+class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "This kernel only runs on GPU device.");
 
-    auto X = ctx.Input<Tensor>("X");
-    auto dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto label = ctx.Input<Tensor>("label");
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* label = ctx.Input<Tensor>("Label");
+    Tensor* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
 
-    auto* dXdata = dX->template mutable_data<T>(ctx.GetPlace());
-    auto* dYdata = dY->template data<T>();
-    auto* Xdata = X->template data<T>();
-    auto* label_data = label->data<int>();
+    const T* dy_data =
+        ctx.Input<Tensor>(framework::GradVarName("Y"))->data<T>();
+    T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    const T* x_data = x->data<T>();
 
-    int N = X->dims()[0];
-    int D = X->dims()[1];
+    int batch_size = x->dims()[0];
+    int class_num = x->dims()[1];
+
     int block = 512;
-    int grid = (N * D + block - 1) / block;
-    zero<T><<<grid, block>>>(dXdata, N * D);
+    int grid = (batch_size * class_num + block - 1) / block;
 
-    grid = (N + block - 1) / block;
-    // TODO(qingqing): launch kernel on specified stream
-    // base on ExecutionContext.
-    CrossEntropyGradientKernel<T><<<grid, block>>>(dXdata, dYdata, Xdata,
-                                                   label_data, N, D);
+    if (ctx.Attr<bool>("soft_label")) {
+      auto* label_data = label->data<T>();
+      SoftCrossEntropyGradientKernel<T><<<
+          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                              ctx.device_context())
+                              .stream()>>>(dx_data, dy_data, x_data, label_data,
+                                           batch_size, class_num);
+    } else {
+      math::SetConstant<platform::GPUPlace, T> functor;
+      functor(ctx.device_context(), dx, 0);
+      auto* label_data = label->data<int>();
+      grid = (batch_size + block - 1) / block;
+      CrossEntropyGradientKernel<T><<<
+          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                              ctx.device_context())
+                              .stream()>>>(dx_data, dy_data, x_data, label_data,
+                                           batch_size, class_num);
+    }
   }
 };
 
@@ -127,7 +108,6 @@ class OnehotCrossEntropyGradientOpCUDAKernel : public framework::OpKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(onehot_cross_entropy,
-                       ops::OnehotCrossEntropyOpCUDAKernel<float>);
-REGISTER_OP_GPU_KERNEL(onehot_cross_entropy_grad,
-                       ops::OnehotCrossEntropyGradientOpCUDAKernel<float>);
+REGISTER_OP_GPU_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>);
+REGISTER_OP_GPU_KERNEL(cross_entropy_grad,
+                       ops::CrossEntropyGradientOpCUDAKernel<float>);

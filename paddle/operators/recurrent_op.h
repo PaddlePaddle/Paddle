@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
-// TODO(Yan Chunwei):
+// TODO(Superjom)
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
 // 3. Internal Memory.
@@ -41,11 +41,6 @@ class RecurrentAlgorithm {
     stepnet_ = stepnet;
   }
 
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const;
-
  protected:
   /*
    * The step scopes will be stored in the father scope as a variable.
@@ -53,7 +48,7 @@ class RecurrentAlgorithm {
    * NOTE the scopes are reused in both the forward and backward, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(const framework::Scope& scope) const;
+  void CreateScopes(const framework::Scope& scope, size_t seq_len) const;
 
   const std::vector<framework::Scope*>& GetStepScopes(
       const framework::Scope& scope) const {
@@ -61,12 +56,11 @@ class RecurrentAlgorithm {
                 ->GetMutable<std::vector<framework::Scope*>>();
   }
 
-  void InitMemories(framework::Scope* step_scopes, bool infer_shape_mode) const;
+  void InitMemories(framework::Scope* step_scopes) const;
 
  private:
   std::unique_ptr<framework::OperatorBase>* stepnet_;
   rnn::Argument* arg_;
-  mutable size_t seq_len_;
 };
 
 class RecurrentGradientAlgorithm {
@@ -91,13 +85,7 @@ class RecurrentGradientAlgorithm {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
-  void LinkBootMemoryGradients(framework::Scope* step_scopes,
-                               bool infer_shape_mode) const;
-
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const;
+  void LinkBootMemoryGradients(framework::Scope* step_scopes) const;
 
  protected:
   inline const std::vector<framework::Scope*>& GetStepScopes(
@@ -108,7 +96,6 @@ class RecurrentGradientAlgorithm {
 
  private:
   rnn::Argument* arg_;
-  mutable size_t seq_len_;
   std::unique_ptr<framework::OperatorBase>* stepnet_;
 };
 
@@ -124,12 +111,6 @@ class RecurrentOp : public framework::OperatorBase {
     // TODO(yuyang18): Implement copy ctor well.
     PADDLE_THROW("Not implemented");
   }
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const override {
-    alg_.InferShape(scope);
-  }
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -139,6 +120,7 @@ class RecurrentOp : public framework::OperatorBase {
   void set_stepnet(std::unique_ptr<OperatorBase> net) {
     stepnet_ = std::move(net);
   }
+
   const OperatorBase& stepnet() const { return *stepnet_; }
 
   static const rnn::ArgumentName kArgName;
@@ -163,13 +145,6 @@ class RecurrentGradientOp : public framework::OperatorBase {
     PADDLE_THROW("Not Implemented");
   }
 
-  /**
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const override {
-    alg_.InferShape(scope);
-  }
-
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
@@ -177,6 +152,9 @@ class RecurrentGradientOp : public framework::OperatorBase {
 
   static const rnn::ArgumentName kArgName;
 
+  /*
+   * set a stepnet that is created according to a RecurrentOp's stepnet.
+   */
   void set_stepnet(std::unique_ptr<OperatorBase> net) {
     stepnet_ = std::move(net);
   }
