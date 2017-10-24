@@ -83,53 +83,77 @@ class TestBatchNromOp1(OpTest):
         grad_x_ref, grad_scale_ref, grad_bias_ref = _reference_grad(
             x_val, y_grad, scale_val, saved_mean, var_ref, epsilon, data_format)
 
-        # c++
-        place = core.CPUPlace()
-        scope = core.Scope()
+        def test_with_place(place):
+            # place = core.CPUPlace()
+            scope = core.Scope()
 
-        # create input
-        x_tensor = create_tensor_on_place(scope, "x_val", x_val, place)
-        scale_tensor = create_tensor_on_place(scope, "scale_val", scale_val,
-                                              place)
-        bias_tensor = create_tensor_on_place(scope, "bias_val", bias_val, place)
-        mean_tensor = create_tensor_on_place(scope, "mean", mean, place)
-        variance_tensor = create_tensor_on_place(scope, "variance", variance,
+            # create input
+            x_tensor = create_tensor_on_place(scope, "x_val", x_val, place)
+            scale_tensor = create_tensor_on_place(scope, "scale_val", scale_val,
+                                                  place)
+            bias_tensor = create_tensor_on_place(scope, "bias_val", bias_val,
                                                  place)
+            mean_tensor = create_tensor_on_place(scope, "mean", mean, place)
+            variance_tensor = create_tensor_on_place(scope, "variance",
+                                                     variance, place)
 
-        # create output
-        y_tensor = create_tensor_on_place(scope, "y_out", None, place)
-        saved_mean_tensor = create_tensor_on_place(scope, "saved_mean", None,
-                                                   place)
-        saved_variance_tensor = create_tensor_on_place(scope, "saved_variance",
+            # create output
+            y_tensor = create_tensor_on_place(scope, "y_out", None, place)
+            saved_mean_tensor = create_tensor_on_place(scope, "saved_mean",
                                                        None, place)
-        mean_out_tensor = mean_tensor
-        variance_out_tensor = variance_tensor
+            saved_variance_tensor = create_tensor_on_place(
+                scope, "saved_variance", None, place)
+            mean_out_tensor = mean_tensor
+            variance_out_tensor = variance_tensor
 
-        batch_norm_op = Operator(
-            "batch_norm",
-            # inputs
-            X="x_val",
-            Scale="scale_val",
-            Bias="bias_val",
-            Mean="mean",
-            Variance="variance",
-            # outputs
-            Y="y_out",
-            MeanOut="mean",
-            VarianceOut="variance",
-            SavedMean="saved_mean",
-            SavedVariance="saved_variance",
-            # attrs
-            is_test=False,
-            tensor_format=data_format,
-            epsilon=epsilon)
+            batch_norm_op = Operator(
+                "batch_norm",
+                # inputs
+                X="x_val",
+                Scale="scale_val",
+                Bias="bias_val",
+                Mean="mean",
+                Variance="variance",
+                # outputs
+                Y="y_out",
+                MeanOut="mean",
+                VarianceOut="variance",
+                SavedMean="saved_mean",
+                SavedVariance="saved_variance",
+                # attrs
+                is_test=False,
+                tensor_format=data_format,
+                epsilon=epsilon)
 
-        ctx = core.DeviceContext.create(place)
-        batch_norm_op.run(scope, ctx)
+            ctx = core.DeviceContext.create(place)
+            batch_norm_op.run(scope, ctx)
 
-        # get result
-        print(np.array(y_tensor))
-        print(y_out)
+            # get result
+            self.assertTrue(
+                np.allclose(
+                    np.array(y_tensor), y_out, atol=1e-4), "y_out")
+            self.assertTrue(
+                np.allclose(
+                    np.array(saved_mean_tensor), saved_mean, atol=1e-4),
+                "saved_mean")
+            self.assertTrue(
+                np.allclose(
+                    np.array(saved_variance_tensor), saved_variance, atol=1e-4),
+                "saved_variance")
+            self.assertTrue(
+                np.allclose(
+                    np.array(mean_out_tensor), mean_out, atol=1e-4),
+                "mean_out")
+            self.assertTrue(
+                np.allclose(
+                    np.array(variance_out_tensor), variance_out, atol=1e-4),
+                "variance_out")
+
+        places = [core.CPUPlace()]
+        if core.is_compile_gpu():
+            places.append(core.GPUPlace(0))
+        for place in places:
+            test_with_place(place)
 
 
 class TestBatchNormOp(OpTest):
