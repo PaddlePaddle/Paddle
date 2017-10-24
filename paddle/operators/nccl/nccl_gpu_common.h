@@ -46,7 +46,8 @@ struct Communicator {
 
   ~Communicator() {
     for (size_t i = 0; i < comms_.size(); ++i) {
-      PADDLE_ENFORCE(dynload::ncclCommDestroy(comms_[i]));
+      // FIXME(dzh) : PADDLE_ENFORCE return void
+      dynload::ncclCommDestroy(comms_[i]);
     }
   }
 

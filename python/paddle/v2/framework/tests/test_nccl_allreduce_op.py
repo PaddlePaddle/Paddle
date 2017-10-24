@@ -53,6 +53,9 @@ def thread_allreduce_op(thread_id, gpu_id):
     op = create_op(scope, "ncclAllReduce", inputs, outputs, attrs={})
     place = core.GPUPlace(gpus[i])
     set_input(scope, op, inputs, place)
+    # # print scope.find_var("Out").get_tensor()
+    # # print scope.find_var("X").get_tensor()
+    print scope.find_var("Communicator").get_communicator()
 
     ctx = core.DeviceContext.create(place)
 
@@ -83,13 +86,13 @@ class TestNCCLAllReduce(unittest.TestCase):
                     i,
                     gpus[i], ))
             th.start()
-            ops.append(ops)
-        for th in ops:
-            th.join()
+            ops.append(th)
+        for t in ops:
+            t.join()
 
         idx = 0
-        for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
-            actual = np.array(scope.find_var(out_name).get_tensor())
+        for out_name, out_dup in Operator.get_op_outputs(self.op_type):
+            actual = np.array(g_scope.find_var(out_name).get_tensor())
             expect = output_data[idx]
 
             idx += 1

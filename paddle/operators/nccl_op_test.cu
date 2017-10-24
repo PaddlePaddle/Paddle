@@ -16,6 +16,11 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
+#include "paddle/framework/block_desc.h"
+#include "paddle/framework/op_desc.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/program_desc.h"
+#include "paddle/framework/var_desc.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/gpu_info.h"
@@ -26,8 +31,8 @@
 
 static std::vector<int> gpu_list;
 
-using f = paddle::framework;
-using ops = paddle::operators;
+namespace f = paddle::framework;
+namespace ops = paddle::operators;
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,
@@ -50,21 +55,39 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
   op->SetAttrMap(attrs);
 }
 
-TEST(NCCL, ncclInitOp) {
+TEST(NCCL, ncclInit) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op = block->AppendOp();
+
+  paddle::platform::Communicator comm;
+  op->SetType("ncclInit");
+  op->SetOutput("Communicator", )
+
+      AddOp("ncclInit", {}, {{"Communicator", {comm}}}, {{"gpus", {gpu_list}}},
+            block);
 }
 
+// TEST(NCCL, ncclAllReduce) {
+//   f::ProgramDescBind program;
+//   f::BlockDescBind *block = program.Block(0);
+
+//   paddle::platform::Communicator comm;
+//   AddOp("ncclInit", {}, {{"Communicator", {comm}}, {"gpus", {gpu_list}}},
+//   block);
+// }
+
 int main(int argc, char **argv) {
-  static constexpr int gpu_count = paddle::platform::GetCUDADeviceCount();
-  for (int i = 0; i < gpu_count; ++i) {
-    gpu_list.emplace_back(i);
-  }
+  static int dev_count = paddle::platform::GetCUDADeviceCount();
   if (dev_count <= 1) {
     LOG(WARNING)
         << "Cannot test multi-gpu nccl, because the CUDA device count is "
         << dev_count;
     return 0;
+  }
+
+  for (int i = 0; i < dev_count; ++i) {
+    gpu_list.emplace_back(i);
   }
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
