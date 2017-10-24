@@ -78,7 +78,5 @@ REGISTER_OP_WITHOUT_GRADIENT(fill_constant_batch_size_like,
                              ops::FillConstantBatchSizeLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    fill_constant_batch_size_like,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, float>,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, double>);
