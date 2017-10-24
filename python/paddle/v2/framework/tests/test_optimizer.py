@@ -87,7 +87,7 @@ class TestMomentumOptimizer(unittest.TestCase):
             attrs={"x_num_col_dims": 1})
         momentum_optimizer = self.MockMomentum(
             learning_rate=0.01, momentum=0.2, use_nesterov=True)
-        params_grads = momentum_optimizer.create_backward_pass(mul_out)
+        params_grads = append_backward_ops(mul_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(params_grads,
