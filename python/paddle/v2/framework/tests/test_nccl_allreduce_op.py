@@ -36,9 +36,6 @@ input_data = [
 ]
 output_data = allreduce(input_data, gpus)
 
-# output_vars = [g_scope.var("Out_"+str(i)).get_tensor()
-#                for i in range(len(gpus))]
-
 
 def thread_allreduce_op(thread_id, gpu_id):
     i = gpu_id
@@ -53,9 +50,6 @@ def thread_allreduce_op(thread_id, gpu_id):
     op = create_op(scope, "ncclAllReduce", inputs, outputs, attrs={})
     place = core.GPUPlace(gpus[i])
     set_input(scope, op, inputs, place)
-    # # print scope.find_var("Out").get_tensor()
-    # # print scope.find_var("X").get_tensor()
-    print scope.find_var("Communicator").get_communicator()
 
     ctx = core.DeviceContext.create(place)
 
