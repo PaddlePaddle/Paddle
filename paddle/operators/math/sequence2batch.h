@@ -53,7 +53,17 @@ class LoDTensor2BatchFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::LoDTensor& lod_tensor,
-                  framework::LoDTensor& batch, bool is_reverse) const {
+                  framework::LoDTensor& batch, bool is_cal_batch_lod,
+                  bool is_reverse = false) const {
+    if (!is_cal_batch_lod) {
+      auto lods = batch.lod();
+      PADDLE_ENFORCE_EQ(lods.size(), 2UL);
+      PADDLE_ENFORCE_EQ(lods[1].size(), lod_tensor.dims()[1]);
+      CopyMatrixRowsFunctor<Place, T> to_batch;
+      to_batch(context, lod_tensor, lods[1].data(), batch, true);
+      return;
+    }
+
     auto lods = lod_tensor.lod();
     PADDLE_ENFORCE_EQ(lods.size(), 1UL, "Only support one level sequence now.");
     auto lod = lods[0];
