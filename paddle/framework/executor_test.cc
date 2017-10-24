@@ -121,6 +121,7 @@ TEST_F(ExecutorRNNForward, CPU) {
   // "pointer being freed was not allocated" error will appear.
   paddle::memory::Used(cpu_place);
 
+  Scope s;
   std::unique_ptr<Executor> executor(new Executor(places));
-  executor->Run(pdesc_, &GetGlobalScope(), 0);
+  executor->Run(pdesc_, &s, 0);
 }

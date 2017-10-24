@@ -383,22 +383,20 @@ All parameter, weight, gradient are variables in Paddle.
 
   // recurrent_op
   py::class_<operators::RecurrentOp, OperatorBase>(m, "RecurrentOp")
-      .def_static(
-          "create",
-          [](py::bytes protobin) -> operators::RecurrentOp * {
-            OpDesc desc;
-            PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                           "Cannot parse user input to OpDesc");
-            PADDLE_ENFORCE(desc.IsInitialized(),
-                           "User OpDesc is not initialized, reason %s",
-                           desc.InitializationErrorString());
-            auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
-            return static_cast<operators::RecurrentOp *>(rnn_op.release());
-          })
-      .def("set_stepnet", [](operators::RecurrentOp &self,
-                             const operators::NetOp &net) -> void {
-        self.set_stepnet(net.Clone());
+      .def_static("create", [](py::bytes protobin) -> operators::RecurrentOp * {
+        OpDesc desc;
+        PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                       "Cannot parse user input to OpDesc");
+        PADDLE_ENFORCE(desc.IsInitialized(),
+                       "User OpDesc is not initialized, reason %s",
+                       desc.InitializationErrorString());
+        auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
+        return static_cast<operators::RecurrentOp *>(rnn_op.release());
       });
+  // .def("set_stepnet", [](operators::RecurrentOp &self,
+  //                        const operators::NetOp &net) -> void {
+  //   self.set_stepnet(net.Clone());
+  // });
 
   py::class_<operators::DynamicRecurrentOp, OperatorBase>(m,
                                                           "DynamicRecurrentOp")
