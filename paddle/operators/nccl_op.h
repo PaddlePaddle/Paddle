@@ -40,9 +40,9 @@ template <typename T>
 class NCCLInitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* gpus = ctx.Input<std::vector<int>>("gpus");
+    std::vector<int> gpus = ctx.Attr<std::vector<int>>("gpus");
     auto* comm = ctx.Output<Communicator>("Communicator");
-    comm->InitAll(*gpus);
+    comm->InitAll(gpus);
   }
 };
 

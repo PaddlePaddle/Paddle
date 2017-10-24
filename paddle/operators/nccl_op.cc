@@ -21,9 +21,14 @@ class NCCLInitOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Communicator"),
-        " Output(Communicator) of ncclInit op input should not be NULL");
+    PADDLE_ENFORCE(ctx->HasOutput("Communicator"),
+                   " Output(Communicator) of ncclInitOp should not be NULL");
+  }
+
+ protected:
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext &ctx) const override {
+    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
   }
 };
 
@@ -32,9 +37,11 @@ class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
   NCCLInitOpMaker(framework::OpProto *proto,
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<std::vector<int>>("gpus", "gpu id lists");
     AddOutput("Communicator",
               "Create Communicator for communicating between gpus");
+    AddAttr<std::vector<int>>("gpus", "gpu id lists");
+    AddAttr<int>("data_type", "output data type")
+        .SetDefault(framework::DataType::FP32);
     AddComment(R"DOC(
                create communicator.
         )DOC");
@@ -58,10 +65,10 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputsDim("X");
 
-    std::string reduction = ctx->Attrs().Get<std::string>("reduction");
-    PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
-                    reduction == "ncclMin" || reduction == "ncclMax"),
-                   "invalid reduction.");
+    // std::string reduction = ctx->Attrs().Get<std::string>("reduction");
+    // PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
+    //                 reduction == "ncclMin" || reduction == "ncclMax"),
+    //                "invalid reduction.");
 
     ctx->SetOutputsDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -122,8 +129,8 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input of AllReduce op");
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of AllReduce op");
-    AddAttr<std::string>("reduction",
-                         "{'ncclmin', 'ncclmax', 'ncclprod', 'ncclsum'}.");
+    // AddAttr<std::string>("reduction",
+    //                      "{'ncclmin', 'ncclmax', 'ncclprod', 'ncclsum'}.");
     // AddAttr<std::vector<int>>("gpus", "gpu id lists");
     AddComment(R"DOC(
             AllReduce the input tensors.

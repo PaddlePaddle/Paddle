@@ -26,7 +26,6 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
 
     auto ins = ctx.MultiInput<Tensor>("X");
     auto outs = ctx.MultiOutput<Tensor>("Out");
-    std::string reduction = ctx.Attr<std::string>("reduction");
 
     auto* comm = ctx.Input<Communicator>("Communicator");
 

@@ -53,7 +53,5 @@ struct Communicator {
   // DISABLE_COPY_AND_ASSIGN(Communicator);
 };
 
-Communicator* NewCommunicator(const std::vector<int>& gpus);
-
 }  // namespace platform
 }  // namespace paddle
