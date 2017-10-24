@@ -179,7 +179,12 @@ def get_backward_op(scope, op, no_grad_set):
     return backward_op
 
 
-def get_gradient(scope, op, inputs, outputs, grad_name, place,
+def get_gradient(scope,
+                 op,
+                 inputs,
+                 outputs,
+                 grad_names,
+                 place,
                  no_grad_set=None):
     ctx = core.DeviceContext.create(place)
 
@@ -195,8 +200,10 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
     backward_op.run(scope, ctx)
 
-    out = np.array(scope.find_var(grad_name).get_tensor())
-    return out
+    return [
+        np.array(scope.find_var(grad_name).get_tensor())
+        for grad_name in grad_names
+    ]
 
 
 def append_input_output(block, op_proto, np_list, is_input):
@@ -326,20 +333,31 @@ class OpTest(unittest.TestCase):
                                          type(sub_out))
                 for sub_out_name, expect in sub_out:
                     idx = find_actual(sub_out_name, fetch_list)
-                    actual = outs[idx]
+                    actual_t = np.array(outs[idx])
+                    expect_t = expect[0] \
+                        if isinstance(expect, tuple) else expect
                     self.assertTrue(
                         np.allclose(
-                            actual, expect, atol=atol),
+                            actual_t, expect_t, atol=atol),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
+                    if isinstance(expect, tuple):
+                        self.assertListEqual(
+                            actual_t.lod(), expect[1], "Output (" + sub_out_name
+                            + ") has different lod at " + str(place))
             else:
                 idx = find_actual(out_name, fetch_list)
-                actual = outs[idx]
+                actual_t = outs[idx]
                 expect = self.outputs[out_name]
+                expect_t = expect[0] if isinstance(expect, tuple) else expect
                 self.assertTrue(
                     np.allclose(
-                        actual, expect, atol=atol),
+                        actual_t, expect_t, atol=atol),
                     "Output (" + out_name + ") has diff at " + str(place))
+                if isinstance(expect, tuple):
+                    self.assertListEqual(actual_t.lod(), expect[1],
+                                         "Output (" + out_name +
+                                         ") has different lod at " + str(place))
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
@@ -399,11 +417,9 @@ class OpTest(unittest.TestCase):
         ]
 
         cpu_place = core.CPUPlace()
-        cpu_analytic_grads = [
-            get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                         grad_name, cpu_place, no_grad_set)
-            for grad_name in grad_names
-        ]
+        cpu_analytic_grads = get_gradient(self.scope, self.op, self.inputs,
+                                          self.outputs, grad_names, cpu_place,
+                                          no_grad_set)
 
         self.__assert_is_close(numeric_grads, cpu_analytic_grads, grad_names,
                                max_relative_error,
@@ -411,11 +427,9 @@ class OpTest(unittest.TestCase):
 
         if core.is_compile_gpu() and self.op.support_gpu():
             gpu_place = core.GPUPlace(0)
-            gpu_analytic_grads = [
-                get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                             grad_name, gpu_place, no_grad_set)
-                for grad_name in grad_names
-            ]
+            gpu_analytic_grads = get_gradient(self.scope, self.op, self.inputs,
+                                              self.outputs, grad_names,
+                                              gpu_place, no_grad_set)
 
             self.__assert_is_close(numeric_grads, gpu_analytic_grads,
                                    grad_names, max_relative_error,
