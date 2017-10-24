@@ -351,20 +351,20 @@ class StaticRNN(object):
         if self.status != StaticRNN.IN_RNN_BLOCK:
             raise ValueError("You must invoke {0} in rnn block".format(method))
 
-    def memory(self, init=None, shape=None, dtype=None, init_value=0):
+    def memory(self, init=None, ref=None, shape=None, dtype=None, init_value=0):
         self._assert_in_rnn_block_('memory')
         if init is None:
-            if shape is None or dtype is None:
+            if shape is None or dtype is None or ref is None:
                 raise ValueError(
-                    "if init is None, memory at least need shape and dtype")
+                    "if init is None, memory at least need ref, shape and dtype")
             parent_block = self.parent_block()
             var_name = unique_name("@".join([self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
                 name=var_name, shape=shape, dtype=dtype, persistable=False)
 
             parent_block.append_op(
-                type="fill_constant",
-                inputs={},
+                type="fill_constant_batch_size_like",
+                inputs={'Input': [ref]},
                 outputs={'Out': [boot_var]},
                 attrs={
                     'value': init_value,
