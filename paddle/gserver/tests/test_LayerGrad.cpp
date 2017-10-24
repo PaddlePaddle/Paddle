@@ -33,6 +33,7 @@ DECLARE_int32(gpu_id);
 DECLARE_double(checkgrad_eps);
 DECLARE_bool(thread_local_rand_use_global_seed);
 DECLARE_bool(prev_batch_state);
+DECLARE_int32(fixed_seq_length);
 
 TEST(Operator, dot_mul) {
   TestConfig config;
@@ -883,19 +884,19 @@ TEST(Layer, huber_two_class) {
 }
 
 void testExpandLayer(string trans_type, bool hasSubseq) {
+  if (hasSubseq && trans_type == "seq") {
+    FLAGS_fixed_seq_length = 1;
+  }
   TestConfig config;
   config.layerConfig.set_type("expand");
 
-  config.inputDefs.push_back(
-      {trans_type == "non-seq" ? INPUT_DENSE_DIM_DATA : INPUT_SEQUENCE_DATA,
-       "layer_0",
-       10,
-       0});
-  config.inputDefs.push_back(
-      {hasSubseq ? INPUT_HASSUB_SEQUENCE_DATA : INPUT_SEQUENCE_DATA,
-       "layer_1",
-       10,
-       0});
+  auto inputType1 =
+      trans_type == "non-seq" ? INPUT_DENSE_DIM_DATA : INPUT_SEQUENCE_DATA;
+  config.inputDefs.push_back({inputType1, "layer_0", 10, 0});
+  auto inputType2 =
+      hasSubseq ? INPUT_HASSUB_SEQUENCE_DATA : INPUT_SEQUENCE_DATA;
+  config.inputDefs.push_back({inputType2, "layer_1", 10, 0});
+
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
   config.layerConfig.set_trans_type(trans_type);

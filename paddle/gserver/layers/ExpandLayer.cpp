@@ -57,11 +57,10 @@ void ExpandLayer::forward(PassType passType) {
   const int* starts = startPositions->getData(false);
 
   CHECK_EQ(starts[numSequences], shapeInput.getBatchSize());
+  CHECK_EQ(dataInput.getBatchSize(), shapeInput.getNumSequences());
   if (type_) {
     // when trans_type = seq, input[1] must hasSubseq
     CHECK_EQ(shapeInput.hasSubseq(), 1UL);
-  } else {
-    CHECK_EQ(dataInput.getBatchSize(), shapeInput.getNumSequences());
   }
 
   // set output sequence info as shape sequence
