@@ -172,6 +172,9 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
+    const std::string tensor_format_str =
+        ctx.Attr<std::string>("tensor_format");
+    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
     const auto *X = ctx.Input<Tensor>("X");
     const auto *dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -217,12 +220,12 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif
 
-    vector<int> dims = {N, C, H, W, D};
-    vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
-    PADDLE_ENFORCE(cudnnSetTensorNdDescriptor(
+    std::vector<int> dims = {N, C, H, W, D};
+    std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
+    PADDLE_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE(platform::dynload::
         cudnnDeriveBNTensorDescriptor(bn_param_desc_, data_desc_, mode_));
 
     // init output
@@ -244,10 +247,11 @@ class BatchNormGradKernel<platform::GPUPlace, T>
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
         X->template data<T>(), data_desc_, dY->template data<T>(), data_desc_,
-        dX->template mutable_data<T>(), bn_param_desc_,
-        scale->template data<T>(), dScale->template mutable_data<T>(),
-        dBias->template mutable_data<T>(), epsilon, saved_mean_data,
-        saved_var_data));
+        dX->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
+        scale->template data<T>(),
+        dScale->template mutable_data<T>(ctx.GetPlace()),
+        dBias->template mutable_data<T>(ctx.GetPlace()),
+        epsilon, saved_mean_data, saved_var_data));
 
     // clean when exit.
     PADDLE_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
