@@ -325,9 +325,9 @@ class Parameters(object):
         """
         Save parameters to a tar file.
 
-        WARNING: Do not use this function to save parameters directly unless you
-            know exactly what you are doing. `paddle.v2.trainer.SGD.save_parameter_to_tar(f)`
-            should be used instead.
+        WARNING: You should use `paddle.v2.trainer.SGD.save_parameter_to_tar(f)`
+            to save parameters most of the time. Otherwise, some settings such
+            as model average will not take effect.
 
         :param f:
         :type f: file
