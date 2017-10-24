@@ -135,39 +135,18 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         .GreaterThan(0);
 
     AddComment(R"DOC(
-    SequenceConvOp projects features of context_length time-steps of each instance.
+    SequenceConvOp performs convolution operation on features of
+    context_length time-steps of each instance.
+    The convolution operation calculates the output based on the input, filter
+    and strides, paddings parameters. The size of each dimension of the
+    parameters is checked in the infer-shape.
 
-    For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
-
-    Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3, 4].
-    Besides, for the sake of simplicity, we assume M=1 and N=2.
-
-    X = [[a1, a2;
-          b1, b2;
-          c1, c2]
-         [d1, d2]]
-
-    This is to say that input (X) has 4 words and the dimension of each word
-    representation is 2.
-
-    - Case1:
-    If context_start is -1 and padding_trainable is false, we use zero to pad instead of learned weight to pad,
-    and the context_lenth is 3, the output (Out) is:
-
-    Out =[[0,  0,  a1, a2, b1, b2;
-           a1, a2, b1, b2, c1, c2;
-           b1, b2, c1, c2, 0,  0 ]
-           [0,  0,  d1, d2, 0,  0 ]]
-
-    - Case2:
-    If context_start is -1 and padding_trainable is true, we use learned weight to pad,
-    and the context_lenth is 3, the output (Out) is:
-
-    Out = [[w1, w2, a1, a2, b1, b2;
-           a1, a2, b1, b2, c1, c2;
-           b1, b2, c1, c2, w3, w4]
-           [w1, w2, d1, d2, w3, w4]]
-
+Example:
+  Input:
+       X shape: (minibatch, number_of_input_features)
+       Filter shape: (context_length, number_of_input_features)
+  Output:
+       Out shape: (minibatch, 1)
     )DOC");
   }
 };

@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/operators/math/im2col.h"
-#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -32,37 +31,59 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 /*
- * \brief Converts the feature data of four dimensions(CDHW) into a colData of
- *        seven dimensions in the Vol2ColFunctor calculation,
- *        And in the Col2VolFunctor calculation, it is reversed.
+ * \brief SequenceProject projects features of context_length time-steps of each
+ * instance.
  *
- * \param volData   Vol data.
- * \param volShape  The shape of volData,
- *                 [input_channels, input_depth, input_height, input_width].
- * \param colData  Column data.
- * \param colShape The shape of colData.
+ * \param in            Input data.
+ * \param inShape       The shape of Input data,
+ *                      [minibatch, number_of_input_features].
+ * \param inShape       A float LoDTensor.
  *
- * The shape of colData is:
- * [input_channels, filter_depth, filter_height, filter_width, output_depth,
- * output_height, output_width]
- * So, it is easy to reshape into a convolution matrix for convolution
- * calculation based on matrix multiplication.
- * The shape of convolution matrix is [height, width], where the height is equal
- * input_channels * filter_depth * filter_height * filter_width, and the width
- * is equal output_depth * output_height * output_width.
+ * \param padding_data  Padding data.
+ * \param inShape       The shape of Padding data,
+ *                      [up_pad + down_pad, number_of_input_features].
+ * \param inShape       A float LoDTensor.
  *
- * Reshape:
- *     shape of colData           shape of convolution matrix
- *     [input_channels,
- *      filter_depth,
- *      filter_height,
- *      filter_width,      ======>      [height, width]
- *      output_depth,
- *      output_height,
- *      output_width]
+ * \param col           Col data.
+ * \param inShape       The shape of Col data,
+ *                      [minibatch, 1].
+ * \param inShape       A float LoDTensor.
  *
- * \note The caller needs to ensure that volShape.inputChannels is equal to
- *       colShape.inputChannels.
+ * For a mini-batch of 2 variable lengths sentences, containing 3, and 1
+ * time-steps:
+ *
+ * Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3,
+ * 4].
+ * Besides, for the sake of simplicity, we assume M=1 and N=2.
+ *
+ * X = [[a1, a2;
+ *       b1, b2;
+ *       c1, c2]
+ *      [d1, d2]]
+ *
+ * This is to say that input (X) has 4 words and the dimension of each word
+ * representation is 2.
+ *
+ * - Case1:
+ * If context_start is -1 and padding_trainable is false, we use zero to pad
+ * instead of learned weight to pad,
+ * and the context_lenth is 3, the output (Out) is:
+ *
+ * Out =[[0,  0,  a1, a2, b1, b2;
+ *        a1, a2, b1, b2, c1, c2;
+ *        b1, b2, c1, c2, 0,  0 ]
+ *       [0,  0,  d1, d2, 0,  0 ]]
+ *
+ * - Case2:
+ * If context_start is -1 and padding_trainable is true, we use learned weight
+ * to pad,
+ * and the context_lenth is 3, the output (Out) is:
+ *
+ * Out = [[w1, w2, a1, a2, b1, b2;
+ *         a1, a2, b1, b2, c1, c2;
+ *         b1, b2, c1, c2, w3, w4]
+ *        [w1, w2, d1, d2, w3, w4]]
+ *
  */
 
 template <typename Place, typename T>
@@ -96,14 +117,16 @@ class SequenceProjectFunctor {
 
       sequence_height = static_cast<int>(out_t.dims()[0]);
 
-      std::vector<int64_t> output_shape(
-          {sequence_height, 1, 1, context_length,
-           sequence_width});  // output_height, output_width,
-      // input_channels, filter_height, filter_width
-      out_t.Resize(framework::make_ddim(output_shape));
-
       if (input_row_begin < input_row_end) {
         framework::Tensor in_t = in->Slice(input_row_begin, input_row_end);
+
+        std::vector<int64_t> output_shape(
+            {sequence_height, 1, 1, context_length,
+             sequence_width});  // output_height, output_width,
+        // input_channels, filter_height, filter_width
+
+        out_t.Resize(framework::make_ddim(output_shape));
+
         std::vector<int64_t> input_shape(
             {1, input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width

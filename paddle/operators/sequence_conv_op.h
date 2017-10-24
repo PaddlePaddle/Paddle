@@ -182,12 +182,6 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       functor(context.device_context(), padding_data_g, 0);
 
       for (int i = 0; i < static_cast<int>(lod_g_level_0.size()) - 1; ++i) {
-        input_row_begin =
-            (context_start > 0)
-                ? static_cast<int>(lod_g_level_0[i]) + context_start
-                : static_cast<int>(lod_g_level_0[i]);
-        input_row_end = static_cast<int>(lod_g_level_0[i + 1]);
-
         Tensor col_t = col.Slice(static_cast<int>(lod_g_level_0[i]),
                                  static_cast<int>(lod_g_level_0[i + 1]));
 
