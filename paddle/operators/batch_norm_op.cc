@@ -86,9 +86,9 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
     AddAttr<std::string>("tensor_format", "").SetDefault("NCHW");
-    AddInput("X", "The input 4-dimensional tensor");
+    AddInput("X", "The input tensor");
     AddInput("Scale",
-             "Bias is a 1-dimensional tensor of size C "
+             "Scale is a 1-dimensional tensor of size C "
              "to be applied to the output");
     AddInput("Bias",
              "Bias is a 1-dimensional tensor of size C "
@@ -99,7 +99,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or the estimated Variance (for testing)");
-    AddOutput("Y", "result after normalized");
+    AddOutput("Y", "result after normalization");
     AddOutput("MeanOut",
               "Share memory with Mean. "
               "Store the global mean when training");
