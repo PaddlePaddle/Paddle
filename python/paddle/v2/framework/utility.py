@@ -15,15 +15,15 @@ def _dump_all_persistable_vars_(folder_path, program=None):
     dump_block = dump_program.global_block()
 
     save_op_inputs = []
-    for var_name, var in program.global_block().vars:
+    for var in program.global_block().vars.itervalues():
         if var.desc.persistable():
             v = dump_block.create_var(
                 name=var.name, dtype=var.data_type, persistable=True)
-            save_op_inputs.append(var.name)
+            save_op_inputs.append(var)
     dump_block.append_op(
         type="save",
         inputs={"X": save_op_inputs},
-        attrs={"absolutePath", folder_path})
+        attrs={"folderPath": folder_path})
 
     exe = executor.Executor(core.CPUPlace())
     exe.run(dump_program, feed={}, fetch_list=[])
@@ -37,6 +37,9 @@ def dump_inference_model(folder_path,
         program = framework.g_program
     if init_program is None:
         init_program = framework.g_init_program
+
+    if not os.path.isdir(folder_path):
+        os.makedirs(folder_path)
 
     # Dump network topology
     dump_list = [(program, "__program_desc__"),
@@ -60,4 +63,6 @@ def dump_inference_model(folder_path,
 def dump_checkpoint(folder_path, program=None):
     if program is None:
         program = framework.g_program
+    if not os.path.isdir(folder_path):
+        os.makedirs(folder_path)
     _dump_all_persistable_vars_(folder_path, program)
