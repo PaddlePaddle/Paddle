@@ -499,8 +499,6 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
     auto alpha_mat = EigenMatrix<T>::From(*alpha);
     auto beta_mat = EigenMatrix<T>::From(*beta);
     auto x_grad_mat = EigenMatrix<T>::From(*emission_grad);
-    x_grad_mat.setConstant(ll_grad);
-
     auto* place = ctx.GetEigenDevice<platform::CPUPlace>();
     x_grad_mat.device(*place) = alpha_mat * beta_mat;
     x_grad_mat /= x_grad_mat.sum(Eigen::DSizes<int, 1>(1))
@@ -556,7 +554,9 @@ REGISTER_OP(linear_chain_crf, ops::LinearChainCrfOp, ops::LinearChainCrfOpMaker,
             linear_chain_crf_grad, ops::LinearChainCrfGradOp);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
-    ops::LinearChainCrfOpKernel<paddle::platform::CPUPlace, float>);
+    ops::LinearChainCrfOpKernel<paddle::platform::CPUPlace, float>,
+    ops::LinearChainCrfOpKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf_grad,
-    ops::LinearChainCrfGradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::LinearChainCrfGradOpKernel<paddle::platform::CPUPlace, float>,
+    ops::LinearChainCrfGradOpKernel<paddle::platform::CPUPlace, double>);
