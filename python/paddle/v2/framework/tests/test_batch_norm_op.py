@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_backward_op, grad_var_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
 
@@ -50,6 +50,24 @@ def create_tensor_on_place(scope, var_name, var, place):
     return tensor
 
 
+def set_output_grad(scope, outputs, place):
+    def __set_tensor__(name):
+        out_tensor = scope.find_var(name).get_tensor()
+        grad_tensor = scope.var(grad_var_name(name)).get_tensor()
+        out_dtype = out_tensor.dtype()
+        if out_dtype == core.DataType.FP64:
+            data = np.ones(out_tensor.shape(), dtype=np.float64)
+        elif out_dtype == core.DataType.FP32:
+            data = np.ones(out_tensor.shape(), dtype=np.float32)
+        else:
+            raise ValueError("Not supported data type " + str(out_dtype))
+
+        grad_tensor.set(data, place)
+
+    for output in outputs:
+        __set_tensor__(output)
+
+
 class TestBatchNromOp1(OpTest):
     def test_forward(self):
         # attr
@@ -84,7 +102,6 @@ class TestBatchNromOp1(OpTest):
             x_val, y_grad, scale_val, saved_mean, var_ref, epsilon, data_format)
 
         def test_with_place(place):
-            # place = core.CPUPlace()
             scope = core.Scope()
 
             # create input
@@ -123,6 +140,7 @@ class TestBatchNromOp1(OpTest):
                 # attrs
                 is_test=False,
                 tensor_format=data_format,
+                momentum=momentum,
                 epsilon=epsilon)
 
             ctx = core.DeviceContext.create(place)
@@ -148,6 +166,35 @@ class TestBatchNromOp1(OpTest):
                 np.allclose(
                     np.array(variance_out_tensor), variance_out, atol=1e-4),
                 "variance_out")
+
+            batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
+            set_output_grad(
+                scope,
+                ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
+                place)
+            batch_norm_op_grad.run(scope, ctx)
+
+            x_grad_tensor = create_tensor_on_place(scope,
+                                                   grad_var_name("x_val"), None,
+                                                   place)
+            scale_grad_tensor = create_tensor_on_place(
+                scope, grad_var_name("scale_val"), None, place)
+            bias_grad_tensor = create_tensor_on_place(scope,
+                                                      grad_var_name("bias_val"),
+                                                      None, place)
+
+            self.assertTrue(
+                np.allclose(
+                    np.array(x_grad_tensor), grad_x_ref, atol=1e-4),
+                "y_out")
+            self.assertTrue(
+                np.allclose(
+                    np.array(scale_grad_tensor), grad_scale_ref, atol=1e-4),
+                "grad_scale_ref")
+            self.assertTrue(
+                np.allclose(
+                    np.array(bias_grad_tensor), grad_bias_ref, atol=1e-4),
+                "grad_bias_ref")
 
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
