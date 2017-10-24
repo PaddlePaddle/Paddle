@@ -32,15 +32,15 @@ class TestHuberLossOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.008)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("residual"))
+            ['Y'], 'Out', max_relative_error=0.008, no_grad_set=set("residual"))
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('residual'))
+            ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual'))
 
 
 if __name__ == '__main__':
