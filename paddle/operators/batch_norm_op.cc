@@ -182,7 +182,7 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
           break;
         }
         case TensorFormat::NHWC: {
-          ConstEigenArrayMap<float> x_arr(x->data<float>(), C, N * sample_size);
+          ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
           for (int i = 0; i < N * sample_size; ++i) {
             saved_mean_e += x_arr.col(i);
           }
