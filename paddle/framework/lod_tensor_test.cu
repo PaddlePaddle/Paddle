@@ -48,3 +48,30 @@ TEST(LoDTensor, LoDInGPU) {
     CHECK_EQ(lod[0].data()[i], src_lod[0].data()[i] * 2);
   }
 }
+
+TEST(LoDTensor, SerializeDeserialize) {
+  paddle::framework::LoDTensor lod_tensor;
+  paddle::platform::GPUPlace place(0);
+
+  paddle::framework::LoD src_lod;
+  src_lod.push_back(std::vector<size_t>{0, 2, 4, 6, 8, 10, 12, 14});
+
+  lod_tensor.Resize({14, 16});
+  lod_tensor.mutable_data<float>(place);
+
+  lod_tensor.set_lod(src_lod);
+  CHECK_EQ(lod_tensor.lod_element(0, 2).first, 4UL);
+  CHECK_EQ(lod_tensor.lod_element(0, 4).first, 8UL);
+
+  test<<<1, 8>>>(src_lod[0].data(), src_lod[0].size());
+  cudaDeviceSynchronize();
+
+  std::string s = lod_tensor.SerializeToString();
+  paddle::framework::LoDTensor dst;
+  dst.DeserializeFromString(s, place);
+  paddle::framework::LoD dst_lod = dst.lod();
+
+  for (size_t i = 0; i < dst_lod[0].size(); ++i) {
+    CHECK_EQ(src_lod[0].data()[i], dst_lod[0].data()[i] * 2);
+  }
+}

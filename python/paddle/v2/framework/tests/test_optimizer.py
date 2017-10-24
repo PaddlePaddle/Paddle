@@ -2,6 +2,7 @@ import unittest
 
 import paddle.v2.framework.framework as framework
 import paddle.v2.framework.optimizer as optimizer
+from paddle.v2.framework.backward import append_backward_ops
 
 
 class TestOptimizer(unittest.TestCase):
@@ -51,7 +52,7 @@ class TestMomentumOptimizer(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
         momentum_optimizer = self.MockMomentum(learning_rate=0.01, momentum=0.2)
-        params_grads = momentum_optimizer.create_backward_pass(mul_out)
+        params_grads = append_backward_ops(mul_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(params_grads,
@@ -129,7 +130,7 @@ class TestAdagradOptimizer(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
         adagrad_optimizer = self.MockAdagrad(learning_rate=0.01, epsilon=1.0e-6)
-        params_grads = adagrad_optimizer.create_backward_pass(mul_out)
+        params_grads = append_backward_ops(mul_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adagrad_optimizer.get_accumulators()), 0)
         opts = adagrad_optimizer.create_optimization_pass(params_grads, mul_out)
@@ -174,7 +175,7 @@ class TestAdamOptimizer(unittest.TestCase):
             attrs={"x_num_col_dims": 1})
         adam_optimizer = self.MockAdam(
             learning_rate=0.01, beta1=0.9, beta2=0.999)
-        params_grads = adam_optimizer.create_backward_pass(mul_out)
+        params_grads = append_backward_ops(mul_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         opts = adam_optimizer.create_optimization_pass(params_grads, mul_out)
