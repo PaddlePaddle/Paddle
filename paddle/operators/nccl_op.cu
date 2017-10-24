@@ -39,7 +39,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     int idx = comm->GetCommId(device_id);
 
     for (size_t i = 0; i < ins.size(); ++i) {
-      PADDLE_ENFORCE(ncclAllReduce(
+      PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           ins[i]->data<T>(), outs[i]->mutable_data<T>(ctx.GetPlace()),
           outs[i]->numel() * sizeof(T), NCCLTypeWrapper<T>::type, ncclSum,
           comm->comms_[idx], stream));
@@ -76,9 +76,9 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
       if (root == device_id) {
         recvbuffer = outs[i]->mutable_data<T>(ctx.GetPlace());
       }
-      PADDLE_ENFORCE(ncclReduce(ins[i]->data<T>(), recvbuffer, ins[i]->numel(),
-                                NCCLTypeWrapper<T>::type, ncclSum, root,
-                                comm->comms_[idx], stream));
+      PADDLE_ENFORCE(platform::dynload::ncclReduce(
+          ins[i]->data<T>(), recvbuffer, ins[i]->numel(),
+          NCCLTypeWrapper<T>::type, ncclSum, root, comm->comms_[idx], stream));
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
     }
   }
@@ -105,17 +105,17 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     if (idx == root) {
       auto ins = ctx.MultiInput<Tensor>("X");
       for (size_t i = 0; i < ins.size(); ++i) {
-        PADDLE_ENFORCE(ncclBcast((void*)ins[i]->data<T>(), ins[i]->numel(),
-                                 NCCLTypeWrapper<T>::type, root,
-                                 comm->comms_[idx], stream));
+        PADDLE_ENFORCE(platform::dynload::ncclBcast(
+            (void*)ins[i]->data<T>(), ins[i]->numel(), NCCLTypeWrapper<T>::type,
+            root, comm->comms_[idx], stream));
         PADDLE_ENFORCE(cudaStreamSynchronize(stream));
       }
     } else {
       auto outs = ctx.MultiOutput<Tensor>("Out");
       for (size_t i = 0; i < outs.size(); ++i) {
-        PADDLE_ENFORCE(ncclBcast(outs[i]->mutable_data<T>(ctx.GetPlace()),
-                                 outs[i]->numel(), NCCLTypeWrapper<T>::type,
-                                 root, comm->comms_[idx], stream));
+        PADDLE_ENFORCE(platform::dynload::ncclBcast(
+            outs[i]->mutable_data<T>(ctx.GetPlace()), outs[i]->numel(),
+            NCCLTypeWrapper<T>::type, root, comm->comms_[idx], stream));
         PADDLE_ENFORCE(cudaStreamSynchronize(stream));
       }
     }

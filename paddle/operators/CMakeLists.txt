@@ -80,8 +80,8 @@ function(op_library TARGET)
     if ("${TARGET}" STREQUAL "nccl_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclInit);\n")
         file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
+        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(ncclInit);\n")
     endif()
     
     # reduce_op contains several operators
@@ -148,7 +148,6 @@ foreach(src ${GENERAL_OPS})
 endforeach()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
-message(STATUS "operators_list: ${OP_LIBRARY}")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)

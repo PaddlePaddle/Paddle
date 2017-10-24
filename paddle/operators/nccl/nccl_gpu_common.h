@@ -23,47 +23,11 @@
 #include <vector>
 
 #include "paddle/platform/device_context.h"
+#include "paddle/platform/dynload/nccl.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
-
-class WaitGroup {
- public:
-  inline void Add(int n) {
-    std::unique_lock<std::mutex> lk(mu_);
-    PADDLE_ENFORCE(n >= 0, "add wait must >=0.");
-    counter_ += n;
-  }
-
-  inline void Done(int n) {
-    std::unique_lock<std::mutex> lk(mu_);
-    PADDLE_ENFORCE(n <= counter_, " wait group done unmatch to add.");
-    counter_ -= n;
-    if (counter_ == 0) {
-      cv_.notify_all();
-    }
-  }
-
-  inline void Add() { Add(1); }
-
-  inline void Done() { Done(1); }
-
-  inline void Wait() {
-    std::unique_lock<std::mutex> lk(mu_);
-    cv_.wait(lk, [&] { return counter_ == 0; });
-  }
-
-  inline int GetCount() {
-    std::unique_lock<std::mutex> lk(mu_);
-    return counter_;
-  }
-
- private:
-  int counter_ = 0;
-  std::mutex mu_;
-  std::condition_variable cv_;
-};
 
 struct Communicator {
   std::vector<ncclComm_t> comms_;
@@ -76,12 +40,13 @@ struct Communicator {
     for (size_t i = 0; i < gpus.size(); ++i) {
       comm_id_map_[gpus[i]] = i;
     }
-    PADDLE_ENFORCE(ncclCommInitAll(comms_.data(), gpus.size(), gpus.data()));
+    PADDLE_ENFORCE(
+        dynload::ncclCommInitAll(comms_.data(), gpus.size(), gpus.data()));
   }
 
   ~Communicator() {
     for (size_t i = 0; i < comms_.size(); ++i) {
-      PADDLE_ENFORCE(ncclCommDestroy(comms_[i]));
+      PADDLE_ENFORCE(dynload::ncclCommDestroy(comms_[i]));
     }
   }
 

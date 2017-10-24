@@ -21,8 +21,9 @@ class NCCLInitOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Communicator"),
-                   " Input(X) of AllReduce op input should not be NULL");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Communicator"),
+        " Output(Communicator) of ncclInit op input should not be NULL");
   }
 };
 
@@ -123,7 +124,7 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of AllReduce op");
     AddAttr<std::string>("reduction",
                          "{'ncclmin', 'ncclmax', 'ncclprod', 'ncclsum'}.");
-    AddAttr<std::vector<int>>("gpus", "gpu id lists");
+    // AddAttr<std::vector<int>>("gpus", "gpu id lists");
     AddComment(R"DOC(
             AllReduce the input tensors.
         )DOC");
