@@ -73,7 +73,7 @@ function(op_library TARGET)
     if ("${TARGET}" STREQUAL "save_restore_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(save);\n")
+        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(save);\n")
     endif()
 
     # activation_op contains several operators
