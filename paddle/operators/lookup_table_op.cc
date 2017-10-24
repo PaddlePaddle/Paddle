@@ -33,6 +33,8 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
 
+    bool is_sparse = ctx->Attrs().Get<bool>("is_sparse");
+    LOG(INFO) << "InferShape " << is_sparse;
     PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
     PADDLE_ENFORCE_EQ(ids_dims[1], 1);
 
@@ -72,25 +74,25 @@ or not. And the output only shares the LoD with input `Ids`.
   }
 };
 
+class LookupTableOpGradDescMaker
+    : public framework::DefaultGradOpDescMaker<true> {
+  using ::paddle::framework::DefaultGradOpDescMaker<
+      true>::DefaultGradOpDescMaker;
+
+ protected:
+  virtual std::string GradOpType() const { return "lookup_table_grad"; }
+};
+
 class LookupTableOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    LOG(INFO) << "into LookupTableOpGrad InferShape";
     auto ids_dims = ctx->GetInputDim("Ids");
     auto table_dims = ctx->GetInputDim("W");
-    if (dynamic_cast<framework::CompileTimeInferShapeContext*>(ctx)) {
-      ctx->SetOutputDim(framework::GradVarName("W"),
-                        {ids_dims[0], table_dims[1]});
-    } else if (dynamic_cast<framework::RuntimeInferShapeContext*>(ctx)) {
-      auto* d_table_var =
-          dynamic_cast<framework::RuntimeInferShapeContext*>(ctx)->OutputVar(
-              framework::GradVarName("W"));
-      auto* sr = d_table_var->GetMutable<framework::SelectedRows>();
-      sr->set_height(table_dims[0]);
-      framework::Tensor* sr_value = sr->mutable_value();
-      sr_value->Resize({ids_dims[0], table_dims[1]});
-    }
+    ctx->SetOutputDim(framework::GradVarName("W"),
+                      {ids_dims[0], table_dims[1]});
   }
 
  protected:
@@ -104,13 +106,18 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
+    LOG(INFO) << "into LookupTableOpGradVarTypeInference";
     auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
     bool is_sparse = op_desc.GetAttrType("is_sparse");
+    LOG(INFO) << is_sparse;
     if (is_sparse) {
+      LOG(INFO) << "set SELECTED_ROWS";
       block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
     } else {
+      LOG(INFO) << "set lod tensor";
       block->Var(out_var_name)->SetType(framework::VarDesc::LOD_TENSOR);
     }
+    LOG(INFO) << "after LookupTableOpGradVarTypeInference";
   }
 };
 
@@ -118,7 +125,8 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker);
+REGISTER_OPERATOR(lookup_table, ops::LookupTableOp,
+                  ops::LookupTableOpGradDescMaker, ops::LookupTableOpMaker);
 REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
                   ops::LookupTableOpGradVarTypeInference);
 

@@ -127,6 +127,7 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
   virtual std::unique_ptr<OpDescBind> Apply() const {
     auto* grad = new OpDescBind();
     grad->SetType(this->GradOpType());
+    LOG(INFO) << this->GradOpType();
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));

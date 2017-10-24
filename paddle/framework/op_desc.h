@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <unordered_map>
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/type_defs.h"
 #include "paddle/framework/var_desc.h"

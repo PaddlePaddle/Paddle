@@ -315,6 +315,7 @@ static void CreateGradVarInBlock(
                      return false; /* not break */
                    });
     if (need_infer_shape) {
+      ops[op_index]->InferVarType(block_desc);
       ops[op_index]->InferShape(*block_desc);
     }
   }
@@ -442,7 +443,7 @@ ParamGradInfoMap AppendBackward(
   }
 
   const int root_block_idx = 0;
-  auto root_block = program_desc.Block(root_block_idx);
+  auto* root_block = program_desc.Block(root_block_idx);
 
   // insert fill one op for target
   // TODO(qiao) add some check to the target.
@@ -457,6 +458,9 @@ ParamGradInfoMap AppendBackward(
                      {{"shape", target_shape},
                       {"value", static_cast<float>(1.0)},
                       {"data_type", framework::DataType::FP32}}));
+  // infer var type of fill_one_op_out
+  fill_one_op->InferVarType(root_block);
+
   root_block->AppendAllocatedOp(std::move(fill_one_op));
   size_t forward_op_num = root_block->OpSize();
   size_t forward_block_num = program_desc.Size();
@@ -473,8 +477,8 @@ ParamGradInfoMap AppendBackward(
 
   // Create target gradient variable
   std::unordered_map<std::string, GradVarInfo> retv;
-
   auto var = root_block->Var(fill_one_op_out);
+
   // FIXME(qiao) infer the data type
   var->SetDataType(framework::DataType::FP32);
   var->SetShape(target.Shape());
@@ -490,6 +494,7 @@ ParamGradInfoMap AppendBackward(
     CreateGradVarInBlock(0, grad_to_var, program_desc.Block(block_index),
                          &retv);
   }
+
   return retv;
 }
 

@@ -230,6 +230,7 @@ void OpDescBind::CheckAttrs() {
 }
 
 void OpDescBind::InferShape(const BlockDescBind &block) const {
+  LOG(INFO) << this->Type() << " InferShape";
   auto &funcs = InferShapeFuncs();
   auto it = funcs.find(this->Type());
   if (it == funcs.end()) {
@@ -237,9 +238,11 @@ void OpDescBind::InferShape(const BlockDescBind &block) const {
   }
   CompileTimeInferShapeContext ctx(*this, block);
   it->second(&ctx);
+  LOG(INFO) << this->Type() << " InferShape Done";
 }
 
 void OpDescBind::InferVarType(BlockDescBind *block) const {
+  LOG(INFO) << this->Type() << " InferVarType";
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
     info.infer_var_type_(*this, block);
@@ -251,6 +254,7 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
       }
     }
   }
+  LOG(INFO) << this->Type() << " InferVarType Done";
 }
 
 }  // namespace framework
