@@ -322,6 +322,17 @@ class Parameters(object):
         self.set(name, arr.reshape(self.get_shape(name)))
 
     def to_tar(self, f):
+        """
+        Save parameters to a tar file.
+
+        WARNING: Do not use this function to save parameters directly unless you
+            know exactly what you are doing. `paddle.v2.trainer.SGD.save_parameter_to_tar(f)`
+            should be used instead.
+
+        :param f:
+        :type f: file
+        :return:
+        """
         tar = tarfile.TarFile(fileobj=f, mode='w')
         for nm in self.names():
             buf = cStringIO.StringIO()
