@@ -22,6 +22,18 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+template <typename T>
+using EigenArrayMap =
+    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using ConstEigenArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using ConstEigenVectorArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
+
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -110,7 +122,6 @@ NCHW `[batch, in_channels, in_height, in_width]`
   }
 };
 
-// BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
 class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
@@ -131,17 +142,7 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
-    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
-    const int W =
-        x_dims.size() > 3
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
-            : 1;
-    const int D =
-        x_dims.size() > 4
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
-            : 1;
-
-    const int sample_size = H * W * D;
+    const int sample_size = x->numel() / N / C;
 
     auto *y = ctx.Output<Tensor>("Y");
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
@@ -290,7 +291,6 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
-// BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
 class BatchNormGradKernel<platform::CPUPlace, T>
     : public framework::OpKernel<T> {
@@ -315,17 +315,7 @@ class BatchNormGradKernel<platform::CPUPlace, T>
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
-    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
-    const int W =
-        x_dims.size() > 3
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
-            : 1;
-    const int D =
-        x_dims.size() > 4
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
-            : 1;
-
-    const int sample_size = H * W * D;
+    const int sample_size = x->numel() / N / C;
 
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(saved_mean->data<T>(), C);
