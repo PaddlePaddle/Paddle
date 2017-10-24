@@ -68,11 +68,11 @@ def set_output_grad(scope, outputs, place):
         __set_tensor__(output)
 
 
-class TestBatchNromOp1(OpTest):
+class TestBatchNormOp(OpTest):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-    def test_forward(self):
+    def test_forward_backward(self):
         # attr
         data_format = "NHWC"
         epsilon = 0.00001
@@ -191,73 +191,6 @@ class TestBatchNromOp1(OpTest):
             places.append(core.GPUPlace(0))
         for place in places:
             test_with_place(place)
-
-
-class TestBatchNormOp(OpTest):
-    def setUp(self):
-        self.op_type = "batch_norm"
-
-        channel_num = 2
-        x_shape = [2, 3, 4, channel_num]
-        scale_shape = [channel_num]
-
-        # input
-        x_val = np.random.random_sample(x_shape).astype(np.float32)
-        scale_val = np.random.random_sample(scale_shape).astype(np.float32)
-        bias_val = np.random.random_sample(scale_shape).astype(np.float32)
-
-        mean = np.zeros(scale_shape).astype(np.float32)
-        variance = np.zeros(scale_shape).astype(np.float32)
-
-        data_format = "NHWC"
-        epsilon = 0.00001
-
-        y_ref, mean_ref, var_ref = _reference_training(
-            x_val, scale_val, bias_val, epsilon, data_format)
-
-        momentum = 0.9
-        mean_out = mean_ref * (1 - momentum)
-        variance_out = var_ref * (1 - momentum)
-        saved_variance = 1 / np.sqrt(var_ref + epsilon)
-
-        #  for gradient test
-        y_grad = np.ones(x_shape).astype(np.float32)
-        grad_x_ref, grad_scale_ref, grad_bias_ref = _reference_grad(
-            x_val, y_grad, scale_val, mean_ref, var_ref, epsilon, data_format)
-        self.grad_x_ref = grad_x_ref
-        self.grad_scale_ref = grad_scale_ref
-        self.grad_bias_ref = grad_bias_ref
-
-        self.inputs = {
-            "X": x_val,
-            "Scale": scale_val,
-            "Bias": bias_val,
-            "Mean": mean,
-            "Variance": variance
-        }
-        self.outputs = {
-            "Y": y_ref,
-            "MeanOut": mean_out,
-            "VarianceOut": variance_out,
-            "SavedMean": mean_ref,
-            "SavedVariance":
-            saved_variance  # SavedVariance have been sqrt and revert to speed up training.
-        }
-        self.attrs = {
-            'is_test': False,
-            "tensor_format": data_format,
-            "epsilon": epsilon
-        }
-
-    def _check_output(self):
-        self.check_output()
-
-    def _check_grad(self):
-        user_defined_grads = [
-            self.grad_x_ref, self.grad_scale_ref, self.grad_bias_ref
-        ]
-        self.check_grad(
-            ['X', 'Scale', 'Bias'], 'Y', user_defined_grads=user_defined_grads)
 
 
 if __name__ == '__main__':
