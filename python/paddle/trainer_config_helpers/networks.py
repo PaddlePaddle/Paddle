@@ -14,7 +14,8 @@
 
 
 from activations import LinearActivation, ReluActivation, SoftmaxActivation, \
-    IdentityActivation, TanhActivation, SequenceSoftmaxActivation
+    IdentityActivation, TanhActivation, SequenceSoftmaxActivation, \
+    SigmoidActivation
 from attrs import ExtraAttr
 from default_decorators import wrap_name_default, wrap_act_default, \
     wrap_param_default, wrap_bias_attr_default, wrap_param_attr_default
@@ -23,12 +24,12 @@ from poolings import MaxPooling, SumPooling
 from paddle.trainer.config_parser import *
 
 __all__ = [
-    'sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
-    "img_conv_bn_pool", 'lstmemory_group', 'lstmemory_unit', 'small_vgg',
-    'img_conv_group', 'vgg_16_network', 'gru_unit', 'gru_group', 'simple_gru',
-    'simple_attention', 'dot_product_attention', 'simple_gru2',
-    'bidirectional_gru', 'text_conv_pool', 'bidirectional_lstm', 'inputs',
-    'outputs'
+    'sequence_conv_pool', 'gated_linear_unit', 'simple_lstm',
+    "simple_img_conv_pool", "img_conv_bn_pool", 'lstmemory_group',
+    'lstmemory_unit', 'small_vgg', 'img_conv_group', 'vgg_16_network',
+    'gru_unit', 'gru_group', 'simple_gru', 'simple_attention',
+    'dot_product_attention', 'simple_gru2', 'bidirectional_gru',
+    'text_conv_pool', 'bidirectional_lstm', 'inputs', 'outputs'
 ]
 
 ######################################################
@@ -134,6 +135,127 @@ def sequence_conv_pool(input,
 
 
 text_conv_pool = sequence_conv_pool
+
+
+@wrap_name_default("gated_linear_unit")
+def gated_linear_unit(input,
+                      context_len,
+                      hidden_size,
+                      name=None,
+                      context_proj_layer_name=None,
+                      context_start=None,
+                      context_attr=None,
+                      context_proj_padding_attr=None,
+                      fc_linear_layer_name=None,
+                      fc_linear_attr=None,
+                      fc_linear_param_attr=None,
+                      fc_linear_bias_attr=None,
+                      fc_gated_layer_name=None,
+                      fc_gated_attr=None,
+                      fc_gated_param_attr=None,
+                      fc_gated_bias_attr=None,
+                      dotmul_layer_name=None):
+    """
+    Calculate the context vector with a gated convolution operation.
+    Please refer to **Language Modeling with Gated Convolutional Networks** 
+    for more details. The link is as follows:
+    https://arxiv.org/pdf/1612.08083.pdf.
+ 
+    The example usage is:
+ 
+    ..  code-block:: python
+ 
+         context = gated_linear_unit(input=hidden_state,
+                                     context_len=3,
+                                     hidden_size=128)
+                                     
+    :param name: The name of gated linear unit layer.
+    :type name: basestring
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param context_len: The context projection length. 
+    :type size: int
+    :param hidden_size: The size of output layer.
+    :type hidden_size: int
+    :param context_proj_layer_name: The context projection layer name.
+    :type context_proj_layer_name: basestring
+    :param context_start: The context start position.
+    :type context_start: int
+    :param context_attr: The extra attribute of context projection layer.
+    :type context_attr: ExtraLayerAttribute
+    :param context_proj_padding_attr: The padding parameter attribute of the
+                                    context projection layer.
+    :type context_proj_padding_attr: ParameterAttribute
+    :param fc_linear_layer_name: The name of the FC layer with linear activation.
+    :type fc_linear_layer_name: basestring
+    :param fc_linear_attr: The extra attribute of the FC layer with 
+                           linear activation.
+    :type fc_linear_attr: ExtraLayerAttribute
+    :param fc_linear_param_attr: The parameter attribute of the FC layer 
+                           with linear activation.
+    :type fc_linear_param_attr: ParameterAttribute
+    :param fc_linear_bias_attr: The bias parameter attribute of the FC layer 
+                           with linear activation.
+    :type fc_linear_bias_attr: ParameterAttribute  
+    :param fc_gated_layer_name: The name of the FC layer with sigmoid activation.
+    :type fc_gated_layer_name: basestring
+    :param fc_gated_attr: The extra attribute of the FC layer with 
+                           sigmoid activation.
+    :type fc_gated_attr: ExtraLayerAttribute
+    :param fc_gated_param_attr: The parameter attribute of the FC layer 
+                           with sigmoid activation.
+    :type fc_gated_param_attr: ParameterAttribute
+    :param fc_gated_bias_attr: The bias parameter attribute of the FC layer
+                           with sigmoid activation.
+    :type fc_gated_bias_attr: ParameterAttribute
+    :param dotmul_layer_name: The name of dotmul operator layer.
+    :type dotmul_layer_name: basestring
+    :return: Layer's output.
+    :rtype: LayerOutput
+    """
+
+    context_proj_layer_name = "%s_context_proj" % name \
+        if context_proj_layer_name is None else context_proj_layer_name
+    with mixed_layer(
+            name=context_proj_layer_name,
+            size=input.size * context_len,
+            act=LinearActivation(),
+            layer_attr=context_attr) as context_proj:
+        context_proj += context_projection(
+            input,
+            context_len=context_len,
+            context_start=context_start,
+            padding_attr=context_proj_padding_attr)
+
+    fc_linear_layer_name = "%s_fc_linear" % name \
+        if fc_linear_layer_name is None else fc_linear_layer_name
+    fc_linear = fc_layer(
+        name=fc_linear_layer_name,
+        input=context_proj,
+        size=hidden_size,
+        act=LinearActivation(),
+        layer_attr=fc_linear_attr,
+        param_attr=fc_linear_param_attr,
+        bias_attr=fc_linear_bias_attr)
+
+    fc_gated_layer_name = "%s_fc_gated" % name \
+        if fc_gated_layer_name is None else fc_gated_layer_name
+    fc_gated = fc_layer(
+        name=fc_gated_layer_name,
+        input=context_proj,
+        size=hidden_size,
+        act=SigmoidActivation(),
+        layer_attr=fc_gated_attr,
+        param_attr=fc_gated_param_attr,
+        bias_attr=fc_gated_bias_attr)
+
+    dotmul_layer_name = "%s_dotmul" % name \
+        if dotmul_layer_name is None else dotmul_layer_name
+    with mixed_layer(name=dotmul_layer_name, size=hidden_size) as glu_out:
+        glu_out += dotmul_operator(fc_linear, fc_gated)
+
+    return glu_out
+
 
 ############################################################################
 #                       Images                                             #
@@ -1495,7 +1617,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(*[l.name for l in layers])
+    Inputs(* [l.name for l in layers])
 
 
 def outputs(layers, *args):
@@ -1545,7 +1667,7 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(*[l.name for l in layers])
+        Outputs(* [l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:
