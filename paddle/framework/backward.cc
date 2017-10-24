@@ -452,6 +452,8 @@ ParamGradInfoMap AppendBackward(
   std::transform(target_shape_desc.begin(), target_shape_desc.end(),
                  std::back_inserter(target_shape),
                  [](int64_t dim) { return static_cast<int>(dim); });
+  VLOG(3) << "backward from loss=" << target.Name()
+          << " data_type=" << target.GetDataType();
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
                      {{"shape", target_shape},
