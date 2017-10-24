@@ -136,8 +136,5 @@ class LoDTensor : public Tensor {
   LoD lod_;
 };
 
-Vector<size_t> expand_lod(Vector<size_t> level, Vector<size_t> indexes,
-                          Vector<size_t> scales, bool repeat);
-
 }  // namespace framework
 }  // namespace paddle

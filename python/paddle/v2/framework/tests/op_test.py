@@ -246,8 +246,6 @@ class OpTest(unittest.TestCase):
             else:
                 actual = np.array(self.scope.find_var(out_name).get_tensor())
                 expect = self.outputs[out_name]
-                print "actual= %s" % actual
-                print "expect = %s" % expect
                 self.assertTrue(
                     np.allclose(
                         actual, expect, atol=atol),

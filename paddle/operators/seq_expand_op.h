@@ -31,93 +31,28 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     auto* out = context.Output<LoDTensor>("Out");
     const T* x_data = x->data<T>();
     auto x_dims = x->dims();
-    auto x_lod = x->lod();
-
-    framework::Vector<size_t> level;
-    size_t num = (x_lod.size() == 0) ? (x->dims()[0] + 1) : x_lod[0].size();
-    for (int i = 0; i < num; ++i) {
-      level.push_back(i);
-    }
-    x_lod.push_back(level);
-
-    size_t repeat = static_cast<size_t>(context.Attr<int>("repeat"));
-    framework::Vector<size_t> scales;
-    if (repeat != 0) {
-      for (int i = 0; i < x_lod[0].size() - 1; ++i) {
-        scales.push_back(repeat);
-      }
-      std::vector<int64_t> dims = framework::vectorize(x->dims());
-      dims[0] = dims[0] * repeat;
-      auto out_dims = framework::make_ddim(dims);
-      out->Resize(out_dims);
-    } else {
-      auto* y = context.Input<LoDTensor>("Y");
-      auto y_lod = y->lod();
-      auto y_abs_lod = y_lod.ToAbsOffset();
-      auto x_abs_lod = x_lod.ToAbsOffset();
-      for (int i = 0; i < y_abs_lod[0].size() - 1; ++i) {
-        scales.push_back((y_abs_lod[0][i + 1] - y_abs_lod[0][i]) /
-                         (x_abs_lod[0][i + 1] - x_abs_lod[0][i]));
-      }
-      out->Resize(y->dims());
-    }
-
-    framework::Vector<size_t> indexes;
-    for (int size_t i = 0; i < x_lod[0]; ++i) {
-      indexes[i] = x_lod[0];
-    }
-    framework::LoD out_lod;
-    auto level0 = framework::expand_lod(indexes, x_lod[0], scales, false);
-    out_lod.push_back(level0);
-    for (int i = 1; i < x_lod.size(); ++i) {
-      for (int j = 0; j < indexes.size(); ++j) {
-        indexes[j] = x_lod[i - 1][indexes[j]];
-      }
-      out_lod.push_back(framework::expand_lod(x_lod[i], indexes, scales, true));
-    }
-
+    auto* y = context.Input<LoDTensor>("Y");
+    PADDLE_ENFORCE_EQ(x_dims[0], y->lod().back().size() - 1,
+                      "The size of last lod level in Input(Y)"
+                      "must be equal to dims[0] of Input(X).");
+    out->set_lod(y->lod());
+    out->Resize(y->dims());
+    auto place = context.GetEigenDevice<Place>();
     size_t element_len = framework::product(x_dims) / x_dims[0];
     T* out_data = out->mutable_data<T>(context.GetPlace());
+    auto out_starts = out->lod().back();
 
-    // copy data
-    auto place = context.GetPlace();
-    size_t count = 0;
-    if (platform::is_cpu_place(place)) {
-      auto& cpu_place = boost::get<platform::CPUPlace>(place);
-      for (size_t i = 0; i < scales.size(); ++i) {
-        count = element_len * (x_abs_lod[0][i + 1] - x_abs_lod[0][i]);
-        for (size_t j = 0; j < scales[i]; ++j) {
-          memory::Copy(cpu_place, out_data, cpu_place, x_data,
-                       sizeof(T) * count);
-          out_data += count;
-        }
-        x_data += count;
-      }
-    } else {
-#ifdef PADDLE_WITH_CUDA
-      auto& gpu_place = boost::get<platform::GPUPlace>(place);
-      auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                        context.device_context())
-                        .stream();
-      for (size_t i = 0; i < scales.size(); ++i) {
-        count = element_len * (x_abs_lod[0][i + 1] - x_abs_lod[0][i]);
-        for (size_t j = 0; j < scales[i]; ++j) {
-          memory::Copy(gpu_place, out_data, gpu_place, x_data,
-                       sizeof(T) * count, stream);
-          out_data += count;
-        }
-        x_data += count;
-      }
-#else
-      PADDLE_THROW("Paddle is not compiled with GPU");
-#endif
-    }
-
-    out->set_lod(out_lod);
-    for (size_t i = 0; i < lod.size; i++) {
-      for (size_t j = 0; j < lod[i].size(); j++) {
-        LOG(INFO) << "lod[" << i << "][" << j "] = " << lod[i][j];
-      }
+    for (size_t i = 0; i < out_starts.size() - 1; i++) {
+      int scale = out_starts[i + 1] - out_starts[i];
+      Eigen::TensorMap<
+          Eigen::Tensor<const T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
+          x_t(x_data, 1, element_len);
+      Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
+          out_t(out_data, scale, element_len);
+      Eigen::array<int, 2> cast({scale, 1});
+      out_t.device(place) = x_t.broadcast(cast);
+      x_data += element_len;
+      out_data += element_len * scale;
     }
   }
 };
@@ -130,25 +65,24 @@ class SeqExpandGradKernel : public framework::OpKernel<T> {
     auto* x = context.Input<LoDTensor>("X");
     auto* out = context.Input<LoDTensor>("Out");
     auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto out_lod = out->lod();
-    auto out_abs_lod = out_lod.ToAbsOffset();
+    auto out_last_level = out->lod().back();
     d_x->set_lod(x->lod());
     const T* d_out_data = d_out->data<T>();
     auto d_out_dims = d_out->dims();
     T* d_x_data = d_x->mutable_data<T>(context.GetPlace());
     size_t element_len = framework::product(d_out_dims) / d_out_dims[0];
-    for (size_t i = 0; i < out->NumElements(); ++i) {
-      size_t ele_count = out_abs_lod[0][i + 1] - out_abs_lod[0][i];
-      size_t repeat = out->NumElements(0, i);
-      Eigen::TensorMap<Eigen::Tensor<const T, 2>> d_out_t(
-          d_out_data, static_cast<int>(repeat),
-          static_cast<int>((ele_count * element_len) / repeat));
-      Eigen::TensorMap<Eigen::Tensor<T, 1>> d_x_t(
-          d_x_data, static_cast<int>((ele_count * element_len) / repeat));
+
+    for (size_t i = 0; i < out_last_level.size() - 1; ++i) {
+      size_t repeat = out_last_level[i + 1] - out_last_level[i];
+      Eigen::TensorMap<
+          Eigen::Tensor<const T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
+      d_out_t(d_out_data, static_cast<int>(repeat), element_len);
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>
+      d_x_t(d_x_data, static_cast<int>(element_len));
       auto place = context.GetEigenDevice<Place>();
       d_x_t.device(place) = d_out_t.sum(Eigen::array<int, 1>({{0}}));
-      d_out_data += (ele_count * element_len);
-      d_x_data += ((ele_count * element_len) / repeat);
+      d_out_data += (repeat * element_len);
+      d_x_data += element_len;
     }
   }
 };
