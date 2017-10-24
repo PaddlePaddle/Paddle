@@ -75,8 +75,7 @@ class Im2ColFunctor {
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& im, framework::Tensor& col,
                   int stride_height, int stride_width, int padding_up,
-                  int padding_down, int padding_left = 0,
-                  int padding_right = 0);
+                  int padding_down, int padding_left, int padding_right);
 };
 
 template <ColFormat Format, typename Place, typename T>
@@ -85,7 +84,7 @@ class Col2ImFunctor {
   void operator()(const platform::DeviceContext& context, framework::Tensor& im,
                   const framework::Tensor& col, int stride_height,
                   int stride_width, int padding_up, int padding_down,
-                  int padding_left = 0, int padding_right = 0);
+                  int padding_left, int padding_right);
 };
 
 }  // namespace math
