@@ -113,6 +113,10 @@ class Variable(object):
     def lod_level(self):
         return self.desc.lod_level()
 
+    @property
+    def type(self):
+        return self.desc.type()
+
     @staticmethod
     def _unique_var_name_():
         uid = core.unique_integer()  # unique during whole process.
@@ -257,7 +261,8 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        if type not in {'feed', 'fetch'}:
+        no_kernel_op_set = {'feed', 'fetch', 'save', 'restore'}
+        if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 

@@ -23,7 +23,7 @@ public:
     if (update_delta_) delete update_delta_;
   }
   void Update(const Tensor *gradient);
-  const char *SerializeState(int *state_len);
+  std::string SerializeState();
   void DeserializeState(const std::string &state);
 
 private:

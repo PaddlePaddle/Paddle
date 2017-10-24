@@ -1,7 +1,10 @@
-from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program, g_init_program
-import paddle.v2.framework.core as core
 import copy
 import itertools
+
+import paddle.v2.framework.core as core
+
+from paddle.v2.framework.framework import Variable, g_program, \
+    g_init_program
 
 
 def unique_name(prefix):
@@ -129,6 +132,9 @@ class LayerHelper(object):
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
             persistable=False)
+
+    def create_variable(self, *args, **kwargs):
+        return self.program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, *args, **kwargs):
         return self.program.global_block().create_var(
