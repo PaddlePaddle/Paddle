@@ -13,10 +13,12 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/l2_loss_op.h"
+#include "paddle/operators/squared_l2_norm_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(l2_loss,
-                       ops::L2LossKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    l2_loss_grad, ops::L2LossGradKernel<paddle::platform::GPUPlace, float>);
+    squared_l2_norm,
+    ops::SquaredL2NormKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    squared_l2_norm_grad,
+    ops::SquaredL2NormGradKernel<paddle::platform::GPUPlace, float>);

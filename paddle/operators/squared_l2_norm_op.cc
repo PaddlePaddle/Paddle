@@ -12,14 +12,14 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/l2_loss_op.h"
+#include "paddle/operators/squared_l2_norm_op.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
 
-class L2LossOp : public framework::OperatorWithKernel {
+class SquaredL2NormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -32,7 +32,7 @@ class L2LossOp : public framework::OperatorWithKernel {
   }
 };
 
-class L2LossGradOp : public framework::OperatorWithKernel {
+class SquaredL2NormGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -47,18 +47,19 @@ class L2LossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class L2LossOpMaker : public framework::OpProtoAndCheckerMaker {
+class SquaredL2NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  L2LossOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  SquaredL2NormOpMaker(framework::OpProto* proto,
+                       framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) The input of l2_loss op.");
-    AddOutput("Out", "(Tensor) The output of l2_loss op.");
+    AddInput("X", "(Tensor) The input of squared_l2_norm op.");
+    AddOutput("Out", "(Tensor) The output of squared_l2_norm op.");
     AddComment(R"DOC(
-L2Loss Operator.
+SquaredL2Norm Operator.
 
-Computes half the squared L2 norm of a tensor.
+Computes the squared L2 norm of a tensor.
 
-Out = sum (X ** 2) / 2
+Out = sum (X ** 2)
 
 )DOC");
   }
@@ -68,9 +69,11 @@ Out = sum (X ** 2) / 2
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(l2_loss, ops::L2LossOp, ops::L2LossOpMaker, l2_loss_grad,
-            ops::L2LossGradOp);
-REGISTER_OP_CPU_KERNEL(l2_loss,
-                       ops::L2LossKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP(squared_l2_norm, ops::SquaredL2NormOp, ops::SquaredL2NormOpMaker,
+            squared_l2_norm_grad, ops::SquaredL2NormGradOp);
 REGISTER_OP_CPU_KERNEL(
-    l2_loss_grad, ops::L2LossGradKernel<paddle::platform::CPUPlace, float>);
+    squared_l2_norm,
+    ops::SquaredL2NormKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    squared_l2_norm_grad,
+    ops::SquaredL2NormGradKernel<paddle::platform::CPUPlace, float>);

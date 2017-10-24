@@ -19,9 +19,9 @@
 namespace paddle {
 namespace operators {
 
-// Out = 1/2 * sum(square(X))
+// Out = sum(square(X))
 template <typename Place, typename T>
-class L2LossKernel : public framework::OpKernel<T> {
+class SquaredL2NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const framework::Tensor *X = context.Input<framework::Tensor>("X");
@@ -32,19 +32,20 @@ class L2LossKernel : public framework::OpKernel<T> {
     auto out = framework::EigenVector<T>::Flatten(*Out);
     auto place = context.GetEigenDevice<Place>();
 
-    out.device(place) = x.square().sum() * static_cast<T>(0.5);
+    out.device(place) = x.square().sum();
   }
 };
 
 // dX = X
 template <typename Place, typename T>
-class L2LossGradKernel : public framework::OpKernel<T> {
+class SquaredL2NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const framework::Tensor *X = context.Input<framework::Tensor>("X");
     const framework::Tensor *dOut =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(dOut->numel() == 1, "L2 Loss Gradient should be scalar");
+    PADDLE_ENFORCE(dOut->numel() == 1,
+                   "Squared L2 Norm Gradient should be scalar");
     framework::Tensor *dX =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
@@ -55,7 +56,7 @@ class L2LossGradKernel : public framework::OpKernel<T> {
     auto place = context.GetEigenDevice<Place>();
 
     Eigen::DSizes<int, 1> x_dsize(X->numel());
-    dx.device(place) = dout.broadcast(x_dsize) * x;
+    dx.device(place) = (dout.broadcast(x_dsize) * x) * static_cast<T>(2.0);
   }
 };
 
