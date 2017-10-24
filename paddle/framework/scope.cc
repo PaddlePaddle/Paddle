@@ -65,6 +65,23 @@ void Scope::DropKids() {
   kids_.clear();
 }
 
+std::vector<std::string> Scope::GetAllNames(bool recursive) const {
+  std::vector<std::string> known_vars(vars_.size());
+
+  if (recursive) {
+    for (auto& kid : kids_) {
+      auto kid_vars = kid->GetAllNames();
+      for (auto& p : kid_vars) {
+        known_vars.emplace_back(p);
+      }
+    }
+  }
+  for (auto& p : vars_) {
+    known_vars.emplace_back(p.first);
+  }
+  return known_vars;
+}
+
 void Scope::DeleteScope(Scope* scope) {
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
