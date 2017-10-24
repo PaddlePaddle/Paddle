@@ -46,7 +46,7 @@ class TestRmspropOp1(OpTest):
 
 
 class TestRmspropOp2(OpTest):
-    '''Test RMSProp with defaukt values for attributes
+    '''Test RMSProp with default values for attributes
     '''
 
     def setUp(self):

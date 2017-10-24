@@ -43,7 +43,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
     LOG(INFO) << "step " << step_id << " run";
     if (step_id > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1);
+      rnn::LinkMemories(step_scopes, arg_->states, step_id, -1);
     }
     for (auto& op : **stepnet_) {
       op->Run(*step_scopes[step_id], dev_ctx);
@@ -78,7 +78,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
 }
 
 void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
-  for (auto& attr : arg_->memories) {
+  for (auto& attr : arg_->states) {
     auto* pre_mem = step_scope->Var(attr.pre_var)->GetMutable<LoDTensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists", attr.var,
@@ -92,12 +92,12 @@ void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
 }
 
 const rnn::ArgumentName RecurrentOp::kArgName{
-    "step_net", "step_scopes",  "inlinks",      "outlinks",
-    "memories", "pre_memories", "boot_memories"};
+    "step_net", "step_scopes", "inputs",        "outputs",
+    "states",   "ex_states",   "initial_states"};
 
 const rnn::ArgumentName RecurrentGradientOp::kArgName{
-    "step_net", "step_scopes@GRAD", "outlinks@GRAD",     "inlinks@GRAD",
-    "memories", "pre_memories",     "boot_memories@GRAD"};
+    "step_net", "step_scopes@GRAD", "outputs@GRAD",       "inputs@GRAD",
+    "states",   "ex_states",        "initial_states@GRAD"};
 
 RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::VariableNameMap& inputs,
@@ -119,7 +119,7 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     AddInput(name.inlinks,
              "the inputs that need to be segmented for each step.")
         .AsDuplicable();
-    AddInput(name.boot_memories, "variables to initialize memories.")
+    AddInput(name.initial_states, "variables to initialize states.")
         .AsDuplicable();
 
     AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
@@ -127,9 +127,8 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.pre_memories,
-                                      "names of pre-memories");
-    AddAttr<std::vector<std::string>>(name.memories, "names of memories");
+    AddAttr<std::vector<std::string>>(name.ex_states, "names of pre-states");
+    AddAttr<std::vector<std::string>>(name.states, "names of states");
 
     AddComment("This is a recurrent group operator.");
   }
@@ -144,7 +143,7 @@ void RecurrentGradientAlgorithm::Run(
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len - 1) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
+      rnn::LinkMemories(step_scopes, arg_->states, step_id, 1);
     }
     for (auto& op : **stepnet_) {
       op->Run(*step_scopes[step_id], dev_ctx);
@@ -156,7 +155,7 @@ void RecurrentGradientAlgorithm::Run(
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
     Scope* step_scope) const {
-  for (auto& attr : arg_->memories) {
+  for (auto& attr : arg_->states) {
     PADDLE_ENFORCE(step_scope->FindVar(attr.var) != nullptr,
                    "memory variable [%s] does not exists", attr.var);
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,

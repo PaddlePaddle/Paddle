@@ -34,6 +34,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     float mu = ctx.Attr<float>("mu");
+    bool use_nesterov = ctx.Attr<bool>("useNesterov");
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
@@ -46,8 +47,14 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetEigenDevice<Place>();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
+
     v_out.device(place) = v * mu + g;
-    p_out.device(place) = p - lr.broadcast(grad_dsize) * v_out;
+    if (use_nesterov) {
+      p_out.device(place) = p - g * lr.broadcast(grad_dsize) +
+                            v_out * mu * lr.broadcast(grad_dsize);
+    } else {
+      p_out.device(place) = p - lr.broadcast(grad_dsize) * v_out;
+    }
   }
 };
 
