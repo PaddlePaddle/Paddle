@@ -26,7 +26,10 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             dtype="float32")
 
         self.inputs = {"Logits": logits, "Label": labels}
-        self.outputs = {"Softmax": softmax, "Loss": cross_entropy}
+        self.outputs = {
+            "Softmax": softmax.astype('float32'),
+            "Loss": cross_entropy.astype('float32')
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -56,7 +59,10 @@ class TestSoftmaxWithCrossEntropyOp2(OpTest):
             axis=1, keepdims=True).astype("float32")
 
         self.inputs = {"Logits": logits, "Label": labels}
-        self.outputs = {"Softmax": softmax, "Loss": cross_entropy}
+        self.outputs = {
+            "Softmax": softmax.astype('float32'),
+            "Loss": cross_entropy.astype('float32')
+        }
         self.attrs = {"soft_label": True}
 
     def test_check_output(self):

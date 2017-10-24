@@ -448,29 +448,33 @@ class OpTest(unittest.TestCase):
             outputs=outputs,
             attrs=getattr(self, 'attrs', {}))
 
-        mean_inputs = OpTest._merge_list((outputs[oname]
-                                          for oname in output_names))
+        mean_inputs = map(block.var, output_names)
 
-        loss_list = []
-        for loss in mean_inputs:
-            avg_loss = block.create_var(dtype=loss.data_type, shape=[1])
-
+        if len(mean_inputs) == 1:
+            loss = block.create_var(dtype=mean_inputs[0].data_type, shape=[1])
             block.append_op(
-                inputs={"X": loss}, outputs={"Out": avg_loss}, type='mean')
-            loss_list.append(avg_loss)
-
-        if len(loss_list) == 1:
-            loss = loss_list[0]
+                inputs={"X": mean_inputs}, outputs={"Out": loss}, type='mean')
         else:
-            sum_loss = block.create_var(dtype=loss_list[0].data_type, shape=[1])
+            avg_sum = []
+            for cur_loss in mean_inputs:
+                cur_avg_loss = block.create_var(
+                    dtype=cur_loss.data_type, shape=[1])
+                block.append_op(
+                    inputs={"X": [cur_loss]},
+                    outputs={"Out": [cur_avg_loss]},
+                    type="mean")
+                avg_sum.append(cur_avg_loss)
+
+            loss_sum = block.create_var(dtype=avg_sum[0].data_type, shape=[1])
             block.append_op(
-                inputs={"X": loss_list}, outputs={"Out": sum_loss}, type="sum")
-            loss = block.create_var(dtype=sum_loss.data_type, shape=[1])
+                inputs={"X": avg_sum}, outputs={"Out": loss_sum}, type='sum')
+
+            loss = block.create_var(dtype=loss_sum.data_type, shape=[1])
             block.append_op(
-                inputs={"X": sum_loss},
+                inputs={"X": loss_sum},
                 outputs={"Out": loss},
-                type="scale",
-                attrs={"scale": 1 / float(len(loss_list))})
+                type='scale',
+                attrs={'scale': 1.0 / float(len(avg_sum))})
 
         param_grad_list = append_backward_ops(
             loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)

@@ -414,7 +414,9 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.FindVarRecursive(name)->Shape());
+    auto var = block_.FindVarRecursive(name);
+    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+    return framework::make_ddim(var->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
