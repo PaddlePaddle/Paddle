@@ -11,7 +11,6 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#include "paddle/operators/nccl_op.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -65,11 +64,11 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 TEST(NCCL, ncclInitOp) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
-  f::OpDescBind *op1 = block->AppendOp();
+  f::OpDescBind *op_desc = block->AppendOp();
 
-  op1->SetType("ncclInit");
-  op1->SetOutput("Communicator", {"x1"});
-  op1->SetAttr("gpus", {gpu_list});
+  op_desc->SetType("ncclInit");
+  op_desc->SetOutput("Communicator", {"x1"});
+  op_desc->SetAttr("gpus", {gpu_list});
   f::Scope g_scope;
   paddle::platform::DeviceContext *ctx =
       new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
@@ -77,7 +76,30 @@ TEST(NCCL, ncclInitOp) {
   auto *var = g_scope.Var("x1");
   var->GetMutable<paddle::platform::Communicator>();
 
-  auto op = f::OpRegistry::CreateOp(*op1);
+  auto op = f::OpRegistry::CreateOp(*op_desc);
+  VLOG(1) << "invoke NCCLInitOp.";
+  op->Run(g_scope, *ctx);
+  VLOG(1) << "NCCLInitOp finished.";
+}
+
+// ncclAllReduceOp with desc
+TEST(NCCL, ncclInitOp) {
+  f::ProgramDescBind program;
+  f::BlockDescBind *block = program.Block(0);
+  f::OpDescBind *op_desc = block->AppendOp();
+
+  op_desc->SetType("ncclAllReduce");
+
+  op_desc->SetOutput("Communicator", {"x1"});
+  op_desc->SetAttr("gpus", {gpu_list});
+  f::Scope g_scope;
+  paddle::platform::DeviceContext *ctx =
+      new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
+
+  auto *var = g_scope.Var("x1");
+  var->GetMutable<paddle::platform::Communicator>();
+
+  auto op = f::OpRegistry::CreateOp(*op_desc);
   VLOG(1) << "invoke NCCLInitOp.";
   op->Run(g_scope, *ctx);
   VLOG(1) << "NCCLInitOp finished.";

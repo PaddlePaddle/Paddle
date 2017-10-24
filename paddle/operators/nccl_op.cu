@@ -12,10 +12,29 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #include <functional>
 
-#include "paddle/operators/nccl_op.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/operators/nccl/nccl_gpu_common.h"
 
 namespace paddle {
 namespace operators {
+
+using framework::Tensor;
+using platform::Communicator;
+
+template <typename Type>
+class NCCLTypeWrapper;
+
+template <>
+class NCCLTypeWrapper<float> {
+ public:
+  static const ncclDataType_t type = ncclFloat;
+};
+
+template <>
+class NCCLTypeWrapper<double> {
+ public:
+  static const ncclDataType_t type = ncclDouble;
+};
 
 template <typename T>
 class NCCLAllReduceKernel : public framework::OpKernel<T> {
