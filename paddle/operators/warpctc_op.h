@@ -167,8 +167,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     // warpctc accesses labels in CPU memory
     Tensor warpctc_label;
-    warpctc_label.CopyFrom<int>(*label, platform::CPUPlace(),
-                                ctx.device_context());
+    warpctc_label.CopyFrom(*label, platform::CPUPlace(), ctx.device_context());
     const int* warpctc_label_data = warpctc_label.data<int>();
 
     // warpctc stores loss in CPU memory
@@ -187,7 +186,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       std::cout << warpctc_loss_data[i] << std::endl;
 
     // Copy the loss back
-    loss->CopyFrom<T>(warpctc_loss, ctx.GetPlace(), ctx.device_context());
+    loss->CopyFrom(warpctc_loss, ctx.GetPlace(), ctx.device_context());
   }
 };
 

@@ -85,7 +85,7 @@ class Seq2BatchFunctor<true, platform::GPUPlace, T> {
                               static_cast<int64_t>(sequence_width)});
 
     if (!norm_by_times && num_sequences == 1) {
-      batch.CopyFrom<T>(seq, context.GetPlace(), context);
+      batch.CopyFrom(seq, context.GetPlace(), context);
       batch.Resize(batch_dims);
       return;
     }
@@ -158,7 +158,7 @@ class Batch2SeqFunctor<true, platform::GPUPlace, T> {
                               static_cast<int64_t>(sequence_width)});
 
     if (!norm_by_times && num_sequences == 1) {
-      seq.CopyFrom<T>(batch, context.GetPlace(), context);
+      seq.CopyFrom(batch, context.GetPlace(), context);
       seq.Resize(seq_dims);
       return;
     }

@@ -222,7 +222,9 @@ void BindVarDsec(py::module &m) {
 
   py::enum_<VarDesc::VarType>(var_desc, "VarType", "")
       .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
-      .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS);
+      .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS)
+      .value("FEED_MINIBATCH", VarDesc::FEED_MINIBATCH)
+      .value("FETCH_LIST", VarDesc::FETCH_LIST);
 }
 
 void BindOpDesc(py::module &m) {
@@ -255,6 +257,7 @@ void BindOpDesc(py::module &m) {
       .def("block_attr", &OpDescBind::GetBlockAttr)
       .def("check_attrs", &OpDescBind::CheckAttrs)
       .def("infer_shape", &OpDescBind::InferShape)
+      .def("infer_var_type", &OpDescBind::InferVarType)
       .def("serialize_to_string", [](OpDescBind &op_desc) -> py::bytes {
         const OpDesc *desc = op_desc.Proto();
         PADDLE_ENFORCE(desc->IsInitialized(),
