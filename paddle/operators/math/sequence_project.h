@@ -133,8 +133,8 @@ class SequenceProjectFunctor {
         in_t.Resize(framework::make_ddim(input_shape));
 
         im2col_ocf(context, in_t, out_t,
-                   /*stride_height*/ context_stride, /*stride_width*/ 0, up_pad,
-                   down_pad);
+                   /*stride_height*/ context_stride, /*stride_width*/ 1, up_pad,
+                   down_pad, 0, 0);
       }
 
       if (padding_trainable) {

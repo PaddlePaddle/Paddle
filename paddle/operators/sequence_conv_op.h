@@ -167,8 +167,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
           in_t.Resize(framework::make_ddim(input_shape));
 
           col2im_ocf(context.device_context(), in_t, col_t,
-                     /*stride_height*/ context_stride, /*stride_width*/ 0,
-                     up_pad, down_pad);
+                     /*stride_height*/ context_stride, /*stride_width*/ 1,
+                     up_pad, down_pad, 0, 0);
         }
         col_t.Resize(framework::make_ddim(
             {sequence_height, context_length * sequence_width}));

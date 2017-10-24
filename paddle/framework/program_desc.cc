@@ -35,8 +35,8 @@ ProgramDesc *ProgramDescBind::Proto() {
 
 ProgramDescBind::ProgramDescBind() {
   auto *block = prog_.mutable_blocks()->Add();
-  block->set_idx(0);
-  block->set_parent_idx(-1);
+  block->set_idx(kRootBlockIndex);
+  block->set_parent_idx(kNoneBlockIndex);
   blocks_.emplace_back(new BlockDescBind(this, block));
 }
 

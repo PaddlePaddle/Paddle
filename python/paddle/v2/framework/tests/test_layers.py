@@ -88,6 +88,77 @@ class TestBook(unittest.TestCase):
 
         print str(program)
 
+    def test_word_embedding(self):
+        program = Program()
+        dict_size = 10000
+        embed_size = 32
+        first_word = layers.data(
+            name='firstw', shape=[1], data_type='int32', program=program)
+        second_word = layers.data(
+            name='secondw', shape=[1], data_type='int32', program=program)
+        third_word = layers.data(
+            name='thirdw', shape=[1], data_type='int32', program=program)
+        forth_word = layers.data(
+            name='forthw', shape=[1], data_type='int32', program=program)
+        next_word = layers.data(
+            name='nextw', shape=[1], data_type='int32', program=program)
+
+        embed_param_attr_1 = {
+            'name': 'shared_w',
+            'init_attr': {
+                'max': 1.0,
+                'type': 'uniform_random',
+                'min': -1.0
+            }
+        }
+        embed_param_attr_2 = {'name': 'shared_w'}
+
+        embed_first = layers.embedding(
+            input=first_word,
+            size=[dict_size, embed_size],
+            data_type='float32',
+            param_attr=embed_param_attr_1,
+            program=program)
+        embed_second = layers.embedding(
+            input=second_word,
+            size=[dict_size, embed_size],
+            data_type='float32',
+            param_attr=embed_param_attr_2,
+            program=program)
+
+        embed_third = layers.embedding(
+            input=third_word,
+            size=[dict_size, embed_size],
+            data_type='float32',
+            param_attr=embed_param_attr_2,
+            program=program)
+        embed_forth = layers.embedding(
+            input=forth_word,
+            size=[dict_size, embed_size],
+            data_type='float32',
+            param_attr=embed_param_attr_2,
+            program=program)
+
+        concat_embed = layers.concat(
+            input=[embed_first, embed_second, embed_third, embed_forth],
+            axis=1,
+            program=program)
+
+        hidden1 = layers.fc(input=concat_embed,
+                            size=256,
+                            act='sigmoid',
+                            program=program)
+        predict_word = layers.fc(input=hidden1,
+                                 size=dict_size,
+                                 act='softmax',
+                                 program=program)
+        cost = layers.cross_entropy(
+            input=predict_word, label=next_word, program=program)
+        avg_cost = layers.mean(x=cost, program=program)
+        self.assertIsNotNone(avg_cost)
+
+        print str(program)
+
 
 if __name__ == '__main__':
     unittest.main()
