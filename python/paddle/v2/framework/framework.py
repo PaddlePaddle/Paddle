@@ -113,6 +113,10 @@ class Variable(object):
     def lod_level(self):
         return self.desc.lod_level()
 
+    @property
+    def type(self):
+        return self.desc.type()
+
     @staticmethod
     def _unique_var_name_():
         uid = core.unique_integer()  # unique during whole process.
