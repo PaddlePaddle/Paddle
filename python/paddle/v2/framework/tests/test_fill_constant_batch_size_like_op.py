@@ -3,7 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestFillZerosLikeOp(OpTest):
+class TestFillConstantBatchSizeLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
