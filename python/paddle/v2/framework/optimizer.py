@@ -248,13 +248,14 @@ class MomentumOptimizer(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(self, learning_rate, momentum):
+    def __init__(self, learning_rate, momentum, use_nesterov=False):
         assert learning_rate is not None
         assert momentum is not None
         super(MomentumOptimizer, self).__init__()
         self.type = "momentum"
         self._learning_rate = learning_rate
         self._momentum = momentum
+        self._use_nesterov = bool(use_nesterov)
 
     def _initialize_tensors(self, block):
         assert isinstance(block, framework.Block)
@@ -296,7 +297,8 @@ class MomentumOptimizer(Optimizer):
                 "ParamOut": param_and_grad[0],
                 "VelocityOut": velocity_acc
             },
-            attrs={"mu": self._momentum})
+            attrs={"mu": self._momentum,
+                   "useNesterov": self._use_nesterov})
 
         return momentum_op
 
