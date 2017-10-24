@@ -25,7 +25,7 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-    auto value = ctx.Attr<T>("value");
+    auto value = ctx.Attr<float>("value");
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*out);
     auto place = ctx.GetEigenDevice<Place>();
