@@ -2,7 +2,7 @@ INCLUDE(ExternalProject)
 
 SET(NCCL_SOURCE_DIR ${THIRD_PARTY_PATH}/nccl)
 
-INCLUDE_DIRECTORIES(${NCCL_SOURCE_DIR}/src/extern_nccl)
+INCLUDE_DIRECTORIES(${NCCL_SOURCE_DIR}/src/extern_nccl/src)
 
 
 if(WITH_DSO)
