@@ -359,11 +359,20 @@ class OpTest(unittest.TestCase):
         for param_name in var_dict:
             var = var_dict[param_name]
             if not isinstance(var, list) and not isinstance(var, tuple):
-                var = [(param_name, var)]
+                var = [(param_name, var, None)]
+            if not isinstance(var[0], list) and not isinstance(var[0], tuple):
+                var = [(param_name, var[0], var[1])]
+
+            for i, item in enumerate(var):
+                if not isinstance(item[0], basestring):
+                    item = [[param_name] + list(item)]
+                if len(item) == 2:
+                    # only set var name and value, set lod to None
+                    var[i] = list(item) + [None]
 
             var_descs = [(block.create_var(
-                name=name, shape=each.shape, dtype=each.dtype), each)
-                         for name, each in var]
+                name=name, shape=each.shape, dtype=each.dtype), each, lod)
+                         for name, each, lod in var]
 
             yield param_name, var_descs
 
@@ -372,9 +381,11 @@ class OpTest(unittest.TestCase):
         return reduce(lambda a, b: list(a) + list(b), iterable, [])
 
     @staticmethod
-    def _numpy_to_lod_tensor(np_value, place):
+    def _numpy_to_lod_tensor(np_value, lod, place):
         tensor = core.LoDTensor()
         tensor.set(np_value, place)
+        if lod is not None:
+            tensor.set_lod(lod)
         return tensor
 
     def _get_gradient(self, input_to_check, place, output_names, no_grad_set):
@@ -416,7 +427,7 @@ class OpTest(unittest.TestCase):
             loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)
 
         feed_dict = {
-            item[0].name: OpTest._numpy_to_lod_tensor(item[1], place)
+            item[0].name: OpTest._numpy_to_lod_tensor(item[1], item[2], place)
             for p_name in inputs_with_np for item in inputs_with_np[p_name]
         }
 
