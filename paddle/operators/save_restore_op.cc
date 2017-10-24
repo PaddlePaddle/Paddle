@@ -25,65 +25,35 @@ inline static std::string VarToFileName(const std::string& folder_path,
   return folder_path + "/__" + var_name + "__";
 }
 
-template <typename T>
-class SaveKernel : public framework::OpKernel<T> {
+class SaveOp : public framework::OperatorBase {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    std::string folder_path = ctx.template Attr<std::string>("folderPath");
-    auto tensors = ctx.MultiInput<LoDTensor>("X");
-    auto& var_names = ctx.Inputs("X");
+  SaveOp(const std::string& type, const framework::VariableNameMap& inputs,
+         const framework::VariableNameMap& outputs,
+         const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
+    const auto& var_names = this->Inputs("X");
+    for (const auto& name : var_names) {
+      PADDLE_ENFORCE_NOT_NULL(scope.FindVar(name),
+                              "Can not find variable '%s' in the scope.", name);
+    }
+    std::string folder_path = this->Attr<std::string>("folderPath");
+    PADDLE_ENFORCE(!folder_path.empty(),
+                   "'folderPath' of SaveOp shouldn't be empty.");
 
     VLOG(1) << "Save variables to folder: " << folder_path;
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      std::string file_name = VarToFileName(folder_path, var_names.at(i));
+    for (const auto& name : var_names) {
+      std::string file_name = VarToFileName(folder_path, name);
       std::ofstream fout(file_name, std::ofstream::out);
       PADDLE_ENFORCE(fout.is_open(), "Fail to create file %s.", file_name);
-      std::string bytes = tensors[i]->SerializeToString();
+      const LoDTensor& tensor = scope.FindVar(name)->Get<LoDTensor>();
+      std::string bytes = tensor.SerializeToString();
       fout << bytes;
       fout.close();
     }
-    VLOG(1) << "Compelete saving variables. Items count: " << tensors.size();
-  }
-};
-
-template <typename Place, typename T>
-class RestoreKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    std::string folder_path = ctx.template Attr<std::string>("folderPath");
-    VLOG(1) << "Try loading variables from folder: " << folder_path;
-    auto tensors = ctx.MultiOutput<LoDTensor>("Out");
-    auto& var_names = ctx.Outputs("Out");
-
-    for (size_t i = 0; i < var_names.size(); ++i) {
-      std::string file_name = VarToFileName(folder_path, var_names[i]);
-      std::ifstream fin(file_name, std::ifstream::in);
-      PADDLE_ENFORCE(fin.is_open(), "Fail to open file %s.", file_name);
-      const size_t kBufferSize = 4096;  // equal to linux page size
-      char buffer[kBufferSize];
-      std::string cache;
-      while (!fin.eof()) {
-        fin.read(buffer, kBufferSize);
-        cache.append(buffer, fin.gcount());
-      }
-      tensors.at(i)->DeserializeFromString(cache, ctx.GetPlace());
-      fin.close();
-    }
-    VLOG(1) << "Complete loading variables.";
-  }
-};
-
-class SaveOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"),
-                   "Input(X) of SaveOp should not be null.");
-    auto folder_path = ctx->Attrs().Get<std::string>("folderPath");
-    PADDLE_ENFORCE(!folder_path.empty(),
-                   "Input(folder_path) of SaveOp should not be null.");
+    VLOG(1) << "Compelete saving variables. Items count: " << var_names.size();
   }
 };
 
@@ -105,22 +75,42 @@ or not.
   }
 };
 
-class RestoreOp : public framework::OperatorWithKernel {
+class RestoreOp : public framework::OperatorBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  RestoreOp(const std::string& type, const framework::VariableNameMap& inputs,
+            const framework::VariableNameMap& outputs,
+            const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "Output(X) of RestoreOp should not be null.");
-    auto folder_path = ctx->Attrs().Get<std::string>("folderPath");
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
+    const auto& var_names = this->Outputs("Out");
+    for (const auto& name : var_names) {
+      PADDLE_ENFORCE_NOT_NULL(scope.FindVar(name),
+                              "Can not find variable '%s' in the scope.", name);
+    }
+    std::string folder_path = this->Attr<std::string>("folderPath");
     PADDLE_ENFORCE(!folder_path.empty(),
-                   "Input(folder_path) of Restore Op should not be null.");
-  }
+                   "'folderPath' of RestoreOp shouldn't be empty.");
 
-  framework::DataType IndicateDataType(
-      const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("data_type"));
+    VLOG(1) << "Try loading variables from folder: " << folder_path;
+
+    for (const auto& name : var_names) {
+      std::string file_name = VarToFileName(folder_path, name);
+      std::ifstream fin(file_name, std::ifstream::in);
+      PADDLE_ENFORCE(fin.is_open(), "Fail to open file %s.", file_name);
+      const size_t kBufferSize = 4096;  // equal to linux page size
+      char buffer[kBufferSize];
+      std::string cache;
+      while (!fin.eof()) {
+        fin.read(buffer, kBufferSize);
+        cache.append(buffer, fin.gcount());
+      }
+      LoDTensor* tensor = scope.FindVar(name)->GetMutable<LoDTensor>();
+      tensor->DeserializeFromString(cache, dev_ctx.GetPlace());
+      fin.close();
+    }
+    VLOG(1) << "Complete loading variables.";
   }
 };
 
@@ -148,11 +138,10 @@ or not.
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
+REGISTER_OPERATOR(save, paddle::operators::SaveOp,
+                  paddle::framework::EmptyGradOpMaker,
+                  paddle::operators::SaveOpMaker);
 
-REGISTER_OP_WITHOUT_GRADIENT(save, ops::SaveOp, ops::SaveOpMaker);
-REGISTER_OP_CPU_KERNEL(save, ops::SaveKernel<float>);
-
-REGISTER_OP_WITHOUT_GRADIENT(restore, ops::RestoreOp, ops::RestoreOpMaker);
-REGISTER_OP_CPU_KERNEL(restore,
-                       ops::RestoreKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OPERATOR(restore, paddle::operators::RestoreOp,
+                  paddle::framework::EmptyGradOpMaker,
+                  paddle::operators::RestoreOpMaker);

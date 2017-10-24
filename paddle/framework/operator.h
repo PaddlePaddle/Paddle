@@ -241,7 +241,7 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
-    auto names = Inputs(name);
+    auto names = op_.Inputs(name);
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
@@ -254,7 +254,7 @@ class ExecutionContext {
 
   template <typename T>
   std::vector<T*> MultiOutput(const std::string& name) const {
-    auto names = Outputs(name);
+    auto names = op_.Outputs(name);
     std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
@@ -288,15 +288,6 @@ class ExecutionContext {
 
   const platform::DeviceContext& device_context() const {
     return device_context_;
-  }
-
-  //! Get a input which has multiple variables.
-  const std::vector<std::string>& Inputs(const std::string& name) const {
-    return op_.Inputs(name);
-  }
-  //! Get an output which has multiple variables.
-  const std::vector<std::string>& Outputs(const std::string& name) const {
-    return op_.Outputs(name);
   }
 
 #ifdef PADDLE_WITH_CUDA
