@@ -85,33 +85,5 @@ class Test1DReduce(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestNorm(OpTest):
-    def setUp(self):
-        # use x away from 0 to avoid errors of numerical gradient when gradient near 0
-        x = np.random.random((5, 6, 10)).astype("float32") + 0.2
-        p = 2
-        dim = 1
-        keep_dim = False
-        abs_out = np.absolute(x)
-        pow_out = np.power(x, p)
-        sum_out = np.sum(pow_out, axis=dim, keepdims=keep_dim)
-        out = np.power(sum_out, 1. / p)
-        self.op_type = "norm"
-        self.inputs = {'X': x}
-        self.attrs = {"p": p, "dim": dim, "keep_dim": keep_dim}
-        self.outputs = {
-            "AbsOut": abs_out,
-            "PowOut": pow_out,
-            "SumOut": sum_out,
-            "Out": out
-        }
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
-
-
 if __name__ == '__main__':
     unittest.main()
