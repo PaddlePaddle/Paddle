@@ -333,20 +333,31 @@ class OpTest(unittest.TestCase):
                                          type(sub_out))
                 for sub_out_name, expect in sub_out:
                     idx = find_actual(sub_out_name, fetch_list)
-                    actual = outs[idx]
+                    actual_t = np.array(outs[idx])
+                    expect_t = expect[0] \
+                        if isinstance(expect, tuple) else expect
                     self.assertTrue(
                         np.allclose(
-                            actual, expect, atol=atol),
+                            actual_t, expect_t, atol=atol),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
+                    if isinstance(expect, tuple):
+                        self.assertListEqual(
+                            actual_t.lod(), expect[1], "Output (" + sub_out_name
+                            + ") has different lod at " + str(place))
             else:
                 idx = find_actual(out_name, fetch_list)
-                actual = outs[idx]
+                actual_t = outs[idx]
                 expect = self.outputs[out_name]
+                expect_t = expect[0] if isinstance(expect, tuple) else expect
                 self.assertTrue(
                     np.allclose(
-                        actual, expect, atol=atol),
+                        actual_t, expect_t, atol=atol),
                     "Output (" + out_name + ") has diff at " + str(place))
+                if isinstance(expect, tuple):
+                    self.assertListEqual(actual_t.lod(), expect[1],
+                                         "Output (" + out_name +
+                                         ") has different lod at " + str(place))
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
