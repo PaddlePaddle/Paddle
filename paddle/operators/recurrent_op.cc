@@ -122,6 +122,8 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     AddInput(name.initial_states, "variables to initialize states.")
         .AsDuplicable();
 
+    AddInput("parameters", "parameter variables used inside").AsDuplicable();
+
     AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
         .AsDuplicable();
     AddOutput(name.step_scopes, "step scopes");

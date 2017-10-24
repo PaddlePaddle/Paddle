@@ -1,6 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, \
+    Operator
 import re
 
 __all__ = [
@@ -440,4 +441,34 @@ class StaticRNN(object):
     def complete_rnn_op(self):
         # TODO(yuyang18): Create RNN Op here.
         # Implement this method after RNN op complete.
-        pass
+        program = self.helper.program
+        rnn_block = program.current_block()
+        parent_block = self.parent_block()
+
+        local_inputs = set()
+
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
+        for var in self.inputs:
+            local_inputs.add(var.name)
+        for m in self.memories:
+            local_inputs.add(m)
+
+        params = list()
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for iname in op.input_names:
+                for in_var_name in op.input(iname):
+                    if in_var_name not in local_inputs:
+                        params.append(in_var_name)
+
+        inlinks = [parent_block.var(i.name) for i in self.inputs]
+        outlinks = self.outputs
+        print outlinks
+
+        print params
+        exit(1)
