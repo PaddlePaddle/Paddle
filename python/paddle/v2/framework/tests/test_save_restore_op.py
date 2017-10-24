@@ -14,7 +14,7 @@ FOLDER_PATH = "./tmp_test_dir"
 class TestSaveRestoreOp(unittest.TestCase):
     def test_save_restore_op(self):
         tensor_1_val = np.random.rand(3, 9).astype("float32")
-        tensor_2_val = np.random.rand(4, 2).astype("float32")
+        tensor_2_val = np.random.randint(0, 20, size=(4, 2)).astype("int32")
         place = core.CPUPlace()
 
         program = framework.Program()
@@ -22,7 +22,7 @@ class TestSaveRestoreOp(unittest.TestCase):
         v_a = block.create_var(
             dtype="float32", shape=[3, 9], lod_level=0, name="tensor_1")
         v_b = block.create_var(
-            dtype="float32", shape=[4, 2], lod_level=0, name="tensor_2")
+            dtype="int32", shape=[4, 2], lod_level=0, name="tensor_2")
 
         t_1 = core.LoDTensor()
         t_1.set(tensor_1_val, place)
