@@ -225,15 +225,16 @@ All parameter, weight, gradient are variables in Paddle.
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
-
-    OpInfoMap::Instance().IterAllInfo([&ret_values](const std::string &type,
-                                                    const OpInfo &info) {
-      if (!info.HasOpProtoAndChecker()) return;
-      std::string str;
-      PADDLE_ENFORCE(info.Proto().SerializeToString(&str),
-                     "Serialize OpProto Error. This could be a bug of Paddle.");
-      ret_values.emplace_back(str);
-    });
+    for (auto &iter : OpInfoMap::Instance().map()) {
+      auto &info = iter.second;
+      if (info.HasOpProtoAndChecker()) {
+        std::string str;
+        PADDLE_ENFORCE(
+            info.Proto().SerializeToString(&str),
+            "Serialize OpProto Error. This could be a bug of Paddle.");
+        ret_values.emplace_back(str);
+      }
+    }
     return ret_values;
   });
   m.def_submodule(
@@ -465,6 +466,8 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(m);
   BindVarDsec(m);
   BindOpDesc(m);
+
+  m.def("op_support_gpu", OpSupportGPU);
 
   return m.ptr();
 }

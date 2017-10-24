@@ -4,6 +4,8 @@ import random
 import itertools
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
+from paddle.v2.framework.executor import Executor
+from paddle.v2.framework.framework import Program, OpProtoHolder
 
 
 def grad_var_name(var_name):
@@ -177,7 +179,12 @@ def get_backward_op(scope, op, no_grad_set):
     return backward_op
 
 
-def get_gradient(scope, op, inputs, outputs, grad_name, place,
+def get_gradient(scope,
+                 op,
+                 inputs,
+                 outputs,
+                 grad_names,
+                 place,
                  no_grad_set=None):
     ctx = core.DeviceContext.create(place)
 
@@ -193,8 +200,52 @@ def get_gradient(scope, op, inputs, outputs, grad_name, place,
 
     backward_op.run(scope, ctx)
 
-    out = np.array(scope.find_var(grad_name).get_tensor())
-    return out
+    return [
+        np.array(scope.find_var(grad_name).get_tensor())
+        for grad_name in grad_names
+    ]
+
+
+def append_input_output(block, op_proto, np_list, is_input):
+    '''Insert VarDesc and generate Python variable instance'''
+    proto_list = op_proto.inputs if is_input else op_proto.outputs
+
+    def create_var(block, name, np_list, var_proto):
+        if name not in np_list:
+            assert var_proto.intermediate, "{} not found".format(name)
+            shape = None
+            lod_level = None
+        else:
+            np_value = np_list[name]
+            if isinstance(np_value, tuple):
+                shape = list(np_value[0].shape)
+                lod_level = len(np_value[1])
+            else:
+                shape = list(np_value.shape)
+                lod_level = 0
+        return block.create_var(
+            dtype="float32", shape=shape, lod_level=lod_level, name=name)
+
+    var_dict = {}
+    for var_proto in proto_list:
+        var_name = str(var_proto.name)
+        if is_input:
+            if (var_name not in np_list) and var_proto.dispensable:
+                continue
+            assert (var_name in np_list) or (var_proto.dispensable), \
+                            "Missing {} as input".format(var_name)
+        if var_proto.duplicable:
+            assert isinstance(np_list[var_name], list), \
+                "Duplicable {} should be set as list".format(var_name)
+            var_list = []
+            for (name, np_value) in np_list[var_name]:
+                var_list.append(
+                    create_var(block, name, {name: np_value}, var_proto))
+            var_dict[var_name] = var_list
+        else:
+            var_dict[var_name] = create_var(block, var_name, np_list, var_proto)
+
+    return var_dict
 
 
 class OpTest(unittest.TestCase):
@@ -213,48 +264,104 @@ class OpTest(unittest.TestCase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-    def check_output_with_place(self, place, atol):
-        self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
-                            op_attrs)
-        if isinstance(place, core.GPUPlace) and not self.op.support_gpu():
-            return
-        set_input(self.scope, self.op, self.inputs, place)
-        ctx = core.DeviceContext.create(place)
-        self.op.run(self.scope, ctx)
+    def feed_var(self, input_vars, place):
+        feed_map = {}
+        for var_name in input_vars:
+            if isinstance(input_vars[var_name], list):
+                for name, np_value in self.inputs[var_name]:
+                    tensor = core.LoDTensor()
+                    tensor.set(np_value, place)
+                    feed_map[name] = tensor
+            else:
+                tensor = core.LoDTensor()
+                if isinstance(self.inputs[var_name], tuple):
+                    tensor.set(self.inputs[var_name][0], place)
+                    tensor.set_lod(self.inputs[var_name][1])
+                else:
+                    tensor.set(self.inputs[var_name], place)
+                feed_map[var_name] = tensor
 
-        for out_name, out_dup in Operator.get_op_outputs(self.op.type()):
+        return feed_map
+
+    def check_output_with_place(self, place, atol):
+        op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+
+        program = Program()
+        block = program.global_block()
+
+        inputs = append_input_output(block, op_proto, self.inputs, True)
+        outputs = append_input_output(block, op_proto, self.outputs, False)
+
+        op = block.append_op(
+            type=self.op_type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=self.attrs if hasattr(self, "attrs") else dict())
+
+        fetch_list = []
+        for var_name, var in outputs.iteritems():
+            if var_name in self.outputs:
+                if isinstance(var, list):
+                    for v in var:
+                        fetch_list.append(v)
+                else:
+                    fetch_list.append(var)
+
+        feed_map = self.feed_var(inputs, place)
+
+        exe = Executor(place)
+        outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
+
+        for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
+
+            def find_actual(target_name, fetch_list):
+                found = [
+                    i for i, var in enumerate(fetch_list)
+                    if var.name == target_name
+                ]
+                self.assertTrue(
+                    len(found) == 1, "Found {} {}".format(
+                        len(found), target_name))
+                return found[0]
 
             if out_dup:
                 sub_out = self.outputs[out_name]
                 if not isinstance(sub_out, list):
                     raise AssertionError("sub_out type %s is not list",
                                          type(sub_out))
-
                 for sub_out_name, expect in sub_out:
-                    actual = np.array(
-                        self.scope.find_var(sub_out_name).get_tensor())
+                    idx = find_actual(sub_out_name, fetch_list)
+                    actual_t = np.array(outs[idx])
+                    expect_t = expect[0] \
+                        if isinstance(expect, tuple) else expect
                     self.assertTrue(
                         np.allclose(
-                            actual, expect, atol=atol),
-                        "output name: " + out_name + " has diff.")
+                            actual_t, expect_t, atol=atol),
+                        "Output (" + sub_out_name + ") has diff at " +
+                        str(place))
+                    if isinstance(expect, tuple):
+                        self.assertListEqual(
+                            actual_t.lod(), expect[1], "Output (" + sub_out_name
+                            + ") has different lod at " + str(place))
             else:
-                actual = np.array(self.scope.find_var(out_name).get_tensor())
+                idx = find_actual(out_name, fetch_list)
+                actual_t = outs[idx]
                 expect = self.outputs[out_name]
-
+                expect_t = expect[0] if isinstance(expect, tuple) else expect
                 self.assertTrue(
                     np.allclose(
-                        actual, expect, atol=atol),
-                    "output name: " + out_name + " has diff.")
+                        actual_t, expect_t, atol=atol),
+                    "Output (" + out_name + ") has diff at " + str(place))
+                if isinstance(expect, tuple):
+                    self.assertListEqual(actual_t.lod(), expect[1],
+                                         "Output (" + out_name +
+                                         ") has different lod at " + str(place))
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
-        if core.is_compile_gpu():
+        if core.is_compile_gpu() and core.op_support_gpu(self.op_type):
             places.append(core.GPUPlace(0))
         for place in places:
             self.check_output_with_place(place, atol)
@@ -310,11 +417,9 @@ class OpTest(unittest.TestCase):
         ]
 
         cpu_place = core.CPUPlace()
-        cpu_analytic_grads = [
-            get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                         grad_name, cpu_place, no_grad_set)
-            for grad_name in grad_names
-        ]
+        cpu_analytic_grads = get_gradient(self.scope, self.op, self.inputs,
+                                          self.outputs, grad_names, cpu_place,
+                                          no_grad_set)
 
         self.__assert_is_close(numeric_grads, cpu_analytic_grads, grad_names,
                                max_relative_error,
@@ -322,11 +427,9 @@ class OpTest(unittest.TestCase):
 
         if core.is_compile_gpu() and self.op.support_gpu():
             gpu_place = core.GPUPlace(0)
-            gpu_analytic_grads = [
-                get_gradient(self.scope, self.op, self.inputs, self.outputs,
-                             grad_name, gpu_place, no_grad_set)
-                for grad_name in grad_names
-            ]
+            gpu_analytic_grads = get_gradient(self.scope, self.op, self.inputs,
+                                              self.outputs, grad_names,
+                                              gpu_place, no_grad_set)
 
             self.__assert_is_close(numeric_grads, gpu_analytic_grads,
                                    grad_names, max_relative_error,

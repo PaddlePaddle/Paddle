@@ -69,6 +69,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
+    # save_restore_op contains several operators
+    if ("${TARGET}" STREQUAL "save_restore_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(save);\n")
+    endif()
+
     # activation_op contains several operators
     if ("${TARGET}" STREQUAL "activation_op")
         set(pybind_flag 1)
@@ -115,7 +122,8 @@ set(DEPS_OPS
     softmax_with_cross_entropy_op
     sum_op
     pool_op
-    pool_with_index_op)
+    pool_with_index_op
+    lstm_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -126,6 +134,7 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
