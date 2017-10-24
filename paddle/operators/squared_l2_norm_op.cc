@@ -28,7 +28,6 @@ class SquaredL2NormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
 
     ctx->SetOutputDim("Out", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -53,7 +52,7 @@ class SquaredL2NormOpMaker : public framework::OpProtoAndCheckerMaker {
                        framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input of squared_l2_norm op.");
-    AddOutput("Out", "(Tensor) The output of squared_l2_norm op.");
+    AddOutput("Out", "(Float) The output of squared_l2_norm op.");
     AddComment(R"DOC(
 SquaredL2Norm Operator.
 
