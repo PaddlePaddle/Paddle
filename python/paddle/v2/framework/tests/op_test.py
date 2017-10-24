@@ -27,8 +27,6 @@ def create_op(scope, op_type, inputs, outputs, attrs):
             else:
                 __create_var__(in_name, in_name)
 
-    out_var_names = []
-
     for out_name, out_dup in Operator.get_op_outputs(op_type):
         if out_name in outputs:
             kwargs[out_name] = []
@@ -36,41 +34,17 @@ def create_op(scope, op_type, inputs, outputs, attrs):
                 sub_out = outputs[out_name]
                 for sub_out_name, _ in sub_out:
                     __create_var__(out_name, sub_out_name)
-                    out_var_names.append(sub_out_name)
             else:
                 __create_var__(out_name, out_name)
-                out_var_names.append(out_name)
 
     for attr_name in Operator.get_op_attr_names(op_type):
         if attr_name in attrs:
             kwargs[attr_name] = attrs[attr_name]
 
-    net = core.Net.create()
-    net.append_op(Operator(op_type, **kwargs))
-    if len(out_var_names) == 1:
-        scope.var("__mean_out__")
-        net.append_op(Operator('mean', X=out_var_names[0], Out='__mean_out__'))
-    else:
-        for i in xrange(len(out_var_names)):
-            mean_out = "__mean_out__{0}".format(i)
-            scope.var(mean_out)
-            net.append_op(Operator('mean', X=out_var_names[i], Out=mean_out))
-        scope.var("__sum_out__")
-        net.append_op(
-            Operator(
-                'sum',
-                X=[
-                    "__mean_out__{0}".format(i)
-                    for i in xrange(len(out_var_names))
-                ],
-                Out="__sum_out__"))
-        scope.var("__mean_out__")
-        net.append_op(Operator('mean', X="__sum_out__", Out="__mean_out__"))
-    net.complete_add_op(True)
-    return net
+    return Operator(op_type, **kwargs)
 
 
-def set_input(op_type, scope, op, inputs, place):
+def set_input(scope, op, inputs, place):
     def __set_input__(var_name, var):
         if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
@@ -84,7 +58,7 @@ def set_input(op_type, scope, op, inputs, place):
         elif isinstance(var, int):
             scope.find_var(var_name).set_int(var)
 
-    for in_name, in_dup in Operator.get_op_inputs(op_type):
+    for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]
@@ -94,14 +68,14 @@ def set_input(op_type, scope, op, inputs, place):
                 __set_input__(in_name, inputs[in_name])
 
 
-def get_numeric_gradient(op_type,
-                         scope,
+def get_numeric_gradient(scope,
                          op,
                          inputs,
                          input_to_check,
+                         output_names,
                          delta=0.005,
                          in_place=False):
-    set_input(op_type, scope, op, inputs, core.CPUPlace())
+    set_input(scope, op, inputs, core.CPUPlace())
 
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
@@ -109,8 +83,12 @@ def get_numeric_gradient(op_type,
     ctx = core.DeviceContext.create(core.CPUPlace())
 
     def get_output():
-        op.run(scope, ctx)
-        return np.array(scope.find_var('__mean_out__').get_tensor()).mean()
+        sum = []
+        for output_name in output_names:
+            op.run(scope, ctx)
+            sum.append(
+                np.array(scope.find_var(output_name).get_tensor()).mean())
+        return np.array(sum).mean()
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
@@ -363,11 +341,11 @@ class OpTest(unittest.TestCase):
 
         numeric_grads = [
             get_numeric_gradient(
-                self.op_type,
                 self.scope,
                 self.op,
                 self.inputs,
                 input_to_check,
+                output_names,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
         cpu_place = core.CPUPlace()
@@ -382,6 +360,7 @@ class OpTest(unittest.TestCase):
             gpu_place = core.GPUPlace(0)
             gpu_analytic_grads = self._get_gradient(inputs_to_check, gpu_place,
                                                     output_names, no_grad_set)
+
             self.__assert_is_close(numeric_grads, gpu_analytic_grads,
                                    input_to_check, max_relative_error,
                                    "Gradient Check On %s" % str(gpu_place))
