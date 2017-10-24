@@ -13,8 +13,11 @@
    limitations under the License. */
 #include "paddle/operators/nccl_op.h"
 
-#include "glog/logging.h"
-#include "gtest/gtest.h"
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <thrust/device_vector.h>
+#include <memory>
+#include <vector>
 
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/op_desc.h"
@@ -24,10 +27,13 @@
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/gpu_info.h"
+#include "paddle/platform/place.h"
 
-#include <thrust/device_vector.h>
-#include <memory>
-#include <vector>
+USE_CPU_ONLY_OP(ncclInit);
+USE_GPU_ONLY_OP(ncclAllReduce);
+USE_GPU_ONLY_OP(ncclReduce);
+USE_GPU_ONLY_OP(ncclBcastSend);
+USE_GPU_ONLY_OP(ncclBcastRecv);
 
 static std::vector<int> gpu_list;
 
@@ -55,27 +61,27 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
   op->SetAttrMap(attrs);
 }
 
-TEST(NCCL, ncclInit) {
+// ncclInitOp with desc
+TEST(NCCL, ncclInitOp) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.Block(0);
-  f::OpDescBind *op = block->AppendOp();
+  f::OpDescBind *op1 = block->AppendOp();
 
-  paddle::platform::Communicator comm;
-  op->SetType("ncclInit");
-  op->SetOutput("Communicator", )
+  op1->SetType("ncclInit");
+  op1->SetOutput("Communicator", {"x1"});
+  op1->SetAttr("gpus", {gpu_list});
+  f::Scope g_scope;
+  paddle::platform::DeviceContext *ctx =
+      new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
 
-      AddOp("ncclInit", {}, {{"Communicator", {comm}}}, {{"gpus", {gpu_list}}},
-            block);
+  auto *var = g_scope.Var("x1");
+  var->GetMutable<paddle::platform::Communicator>();
+
+  auto op = f::OpRegistry::CreateOp(*op1);
+  VLOG(1) << "invoke NCCLInitOp.";
+  op->Run(g_scope, *ctx);
+  VLOG(1) << "NCCLInitOp finished.";
 }
-
-// TEST(NCCL, ncclAllReduce) {
-//   f::ProgramDescBind program;
-//   f::BlockDescBind *block = program.Block(0);
-
-//   paddle::platform::Communicator comm;
-//   AddOp("ncclInit", {}, {{"Communicator", {comm}}, {"gpus", {gpu_list}}},
-//   block);
-// }
 
 int main(int argc, char **argv) {
   static int dev_count = paddle::platform::GetCUDADeviceCount();
