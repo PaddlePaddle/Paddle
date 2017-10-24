@@ -272,7 +272,7 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
       int end_pos = static_cast<int>(in_lod[level][i + 1]);
       if (end_pos == start_pos) {
         // If an empty input sequence is given, pad 0 for its cost.
-        log_likelihood[i] = static_cast<T>(0.);
+        log_likelihood[i] = 0.;
         continue;
       }
 
@@ -305,7 +305,7 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
     const size_t tag_num = x_dims[1];
     // The 1st row of w are transition weights for start mask.
     // The 2nd row of w are transition weights for end mask.
-    // Transition weights among other tags begins from the 3rd row of w.
+    // Transition weights among other tags begin from the 3rd row of w.
     const size_t state_trans_base_idx = 2;
 
     for (size_t i = 0; i < tag_num; ++i) {
@@ -315,7 +315,7 @@ class LinearChainCrfOpKernel<platform::CPUPlace, T>
 
     for (size_t k = 1; k < seq_length; ++k) {
       for (size_t i = 0; i < tag_num; ++i) {
-        T sum = static_cast<T>(0.);
+        T sum = 0.;
         for (size_t j = 0; j < tag_num; ++j) {
           sum += alpha_value[(k - 1) * tag_num + j] *
                  w_exps[(j + state_trans_base_idx) * tag_num + i];
@@ -476,17 +476,17 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
     const size_t tag_num = x_dims[1];
     const size_t state_trans_base_idx = 2;
 
-    // Calculate the backwark vectors beta.
+    // Calculate the backward vectors: beta.
     // First, calculate the initialition state.
-    for (int i = 0; i < tag_num; ++i) {
+    for (size_t i = 0; i < tag_num; ++i) {
       beta_value[(seq_length - 1) * tag_num + i] = w_exps[tag_num + i];
     }
     NormalizeL1<T>(beta_value + (seq_length - 1) * tag_num, tag_num);
 
-    for (int k = seq_length - 2; k >= 0; --k) {
-      for (int i = 0; i < tag_num; ++i) {
-        T sum = static_cast<T>(0.);
-        for (int j = 0; j < tag_num; ++j) {
+    for (int k = static_cast<int>(seq_length) - 2; k >= 0; --k) {
+      for (size_t i = 0; i < tag_num; ++i) {
+        T sum = 0.;
+        for (size_t j = 0; j < tag_num; ++j) {
           sum += w_exps[(i + state_trans_base_idx) * tag_num + j] *
                  x_exps[(k + 1) * tag_num + j] *
                  beta_value[(k + 1) * tag_num + j];
@@ -500,13 +500,14 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
     auto beta_mat = EigenMatrix<T>::From(*beta);
     auto x_grad_mat = EigenMatrix<T>::From(*emission_grad);
     auto* place = ctx.GetEigenDevice<platform::CPUPlace>();
-    x_grad_mat.device(*place) = alpha_mat * beta_mat;
-    x_grad_mat /= x_grad_mat.sum(Eigen::DSizes<int, 1>(1))
-                      .reshape(Eigen::DSizes<int, 2>(seq_length, 1))
-                      .broadcast(Eigen::DSizes<int, 2>(1, tag_num));
+    auto prob = alpha_mat * beta_mat;
+    auto row_sum = prob.sum(Eigen::DSizes<int, 1>(1))
+                       .reshape(Eigen::DSizes<int, 2>(seq_length, 1))
+                       .broadcast(Eigen::DSizes<int, 2>(1, tag_num));
+    x_grad_mat.device(*place) = prob / row_sum;
 
-    for (int k = 0; k < seq_length; ++k) {
-      x_grad_mat(k, label_value[k]) -= static_cast<T>(1);
+    for (size_t k = 0; k < seq_length; ++k) {
+      x_grad_mat(k, label_value[k]) -= static_cast<T>(1.);
     }
 
     if (transition_grad) {
@@ -518,29 +519,35 @@ class LinearChainCrfGradOpKernel<platform::CPUPlace, T>
       }
 
       auto x_exps_mat = EigenMatrix<T>::From(*emission_exps);
-      beta_mat = beta_mat * x_exps_mat;
-      beta_mat /= beta_mat.sum(Eigen::DSizes<int, 1>(1))
-                      .reshape(Eigen::DSizes<int, 2>(seq_length, 1))
-                      .broadcast(Eigen::DSizes<int, 2>(1, tag_num));
 
-      for (int k = 1; k < seq_length; ++k) {
-        T sum = static_cast<T>(0.);
-        for (int i = 0; i < tag_num; ++i) {
-          for (int j = 0; j < tag_num; ++j) {
+      // TODO(caoying): Fix this to avoid using this local variable.
+      Tensor tmp;
+      tmp.mutable_data<T>(beta->dims(), platform::CPUPlace());
+      auto tmp_mat = EigenMatrix<T>::From(tmp);
+      auto prob = beta_mat * x_exps_mat;
+      auto row_sum = prob.sum(Eigen::DSizes<int, 1>(1))
+                         .reshape(Eigen::DSizes<int, 2>(seq_length, 1))
+                         .broadcast(Eigen::DSizes<int, 2>(1, tag_num));
+      tmp_mat.device(*place) = prob / row_sum;
+
+      for (size_t k = 1; k < seq_length; ++k) {
+        T sum = 0.;
+        for (size_t i = 0; i < tag_num; ++i) {
+          for (size_t j = 0; j < tag_num; ++j) {
             sum += w_exps[(i + state_trans_base_idx) * tag_num + j] *
-                   alpha_mat(k - 1, i) * beta_mat(k, j);
+                   alpha_mat(k - 1, i) * tmp_mat(k, j);
           }
         }
-        sum = static_cast<T>(1.) / sum;
-        for (int i = 0; i < tag_num; ++i) {
-          for (int j = 0; j < tag_num; ++j) {
+        sum = 1. / sum;
+        for (size_t i = 0; i < tag_num; ++i) {
+          for (size_t j = 0; j < tag_num; ++j) {
             trans_grad[(i + state_trans_base_idx) * tag_num + j] +=
                 sum * w_exps[(i + state_trans_base_idx) * tag_num + j] *
-                alpha_mat(k - 1, i) * beta_mat(k, j);
+                alpha_mat(k - 1, i) * tmp_mat(k, j);
           }
         }
-        trans_grad[label_value[k - 1] * tag_num + label_value[k]] -=
-            static_cast<T>(1.);
+        trans_grad[(label_value[k - 1] + state_trans_base_idx) * tag_num +
+                   label_value[k]] -= static_cast<T>(1.);
       }
     }
   }
@@ -554,9 +561,7 @@ REGISTER_OP(linear_chain_crf, ops::LinearChainCrfOp, ops::LinearChainCrfOpMaker,
             linear_chain_crf_grad, ops::LinearChainCrfGradOp);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
-    ops::LinearChainCrfOpKernel<paddle::platform::CPUPlace, float>,
-    ops::LinearChainCrfOpKernel<paddle::platform::CPUPlace, double>);
+    ops::LinearChainCrfOpKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf_grad,
-    ops::LinearChainCrfGradOpKernel<paddle::platform::CPUPlace, float>,
-    ops::LinearChainCrfGradOpKernel<paddle::platform::CPUPlace, double>);
+    ops::LinearChainCrfGradOpKernel<paddle::platform::CPUPlace, float>);

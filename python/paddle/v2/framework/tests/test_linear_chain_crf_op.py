@@ -83,11 +83,10 @@ class LinearChainCrfForward(object):
 
 class TestLinearChainCrfOp(OpTest):
     def set_test_data(self):
-        SEQ_NUM = 2
+        SEQ_NUM = 3
         TAG_NUM = 17
         MAX_SEQ_LEN = 5
 
-        random.seed(1)
         # the linear_chain_crf operator only supports sequence (LoD level = 1)
         lod = [[0]]
         for i in range(SEQ_NUM):
@@ -109,7 +108,6 @@ class TestLinearChainCrfOp(OpTest):
             "Transition": transition,
             "Label": (labels, lod)
         }
-
         crf = LinearChainCrfForward(lod[0], emission, emission_row_max,
                                     emission_exps, transition, transition_exps,
                                     labels)
@@ -130,11 +128,17 @@ class TestLinearChainCrfOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Emission", "Transition"], "LogLikelihood")
+        self.check_grad(
+            ["Emission", "Transition"],
+            "LogLikelihood",
+            max_relative_error=0.05)
 
     def test_check_grad_ignore_transition(self):
         self.check_grad(
-            ["Emission"], "LogLikelihood", no_grad_set=set("Transition"))
+            ["Emission"],
+            "LogLikelihood",
+            max_relative_error=0.05,
+            no_grad_set=set("Transition"))
 
 
 if __name__ == "__main__":
