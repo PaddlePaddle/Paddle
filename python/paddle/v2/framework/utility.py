@@ -8,7 +8,7 @@ def add_feed_components(block, feeded_var_names, feed_var_name):
         name=feed_var_name,
         type=core.VarDesc.VarType.FEED_MINIBATCH,
         persistable=True)
-    feed_indexes = dict()
+    feed_order = []
     for i, name in enumerate(feeded_var_names):
         out = block.var(name)
         block.prepend_op(
@@ -16,8 +16,8 @@ def add_feed_components(block, feeded_var_names, feed_var_name):
             inputs={"X": [feed_var]},
             outputs={"Out": [out]},
             attrs={"col": i})
-        feed_indexes[name] = i
-    return feed_indexes
+        feed_order.append(name)
+    return feed_order
 
 
 def add_fetch_components(block, fetched_vars, fetch_var_name):
@@ -25,12 +25,12 @@ def add_fetch_components(block, fetched_vars, fetch_var_name):
         name=fetch_var_name,
         type=core.VarDesc.VarType.FETCH_LIST,
         persistable=True)
-    fetch_indexes = dict()
+    fetch_order = []
     for i, var in enumerate(fetched_vars):
         block.append_op(
             type="fetch",
             inputs={"X": [var]},
             outputs={"Out": [fetch_var]},
             attrs={"col": i})
-        fetch_indexes[var.name] = i
-    return fetch_indexes
+        fetch_order.append(var.name)
+    return fetch_order

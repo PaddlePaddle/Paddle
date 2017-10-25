@@ -33,17 +33,16 @@ class Executor(object):
 
         program = program.clone()
         global_block = program.global_block()
-        feed_indexes = utility.add_feed_components(global_block,
-                                                   feed.keys(), feed_var_name)
-        for feeded_name, idx in feed_indexes.iteritems():
-            core.set_feed_variable(scope, feed[feeded_name], feed_var_name, idx)
+        feed_order = utility.add_feed_components(global_block,
+                                                 feed.keys(), feed_var_name)
+        for i, feeded_name in enumerate(feed_order):
+            core.set_feed_variable(scope, feed[feeded_name], feed_var_name, i)
 
-        fetch_indexes = utility.add_fetch_components(global_block, fetch_list,
-                                                     fetch_var_name)
+        fetch_order = utility.add_fetch_components(global_block, fetch_list,
+                                                   fetch_var_name)
 
         self.executor.run(program.desc, scope, 0)
         return [
-            core.get_fetch_variable(scope,
-                                    fetch_var_name, fetch_indexes[var.name])
-            for var in fetch_list
+            core.get_fetch_variable(scope, fetch_var_name, i)
+            for i in xrange(len(fetch_order))
         ]

@@ -309,6 +309,9 @@ class Operator(object):
     def block_attr(self, name):
         return self.desc.block_attr(name)
 
+    def mark_as_target(self):
+        self.desc.mark_as_target()
+
 
 class Block(object):
     def __init__(self, program, idx):

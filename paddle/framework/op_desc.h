@@ -104,6 +104,8 @@ class OpDescBind {
 
   void InferVarType(BlockDescBind *block) const;
 
+  void MarkAsTarget() { op_desc_.set_is_target(true); }
+
   void Flush();
 
  private:
