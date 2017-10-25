@@ -294,6 +294,7 @@ class BlockGuard(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.program.rollback()
         if exc_type is not None:
+            raise exc_val
             return False  # re-raise exception
         return True
 
@@ -466,20 +467,16 @@ class StaticRNN(object):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
 
+        parameters = [parent_block.var(name) for name in params]
+
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
 
-        print 'inlinks ' + ('-' * 10)
         inlinks = [parent_block.var(i.name) for i in self.inputs]
-        print inlinks
-
-        print 'outlinks ' + ('-' * 10)
         outlinks = self.outputs
-        print outlinks
-        print params
 
         boot_memories = []
-        pre_memories = [],
+        pre_memories = []
         memories = []
         for _, mem in self.memories.iteritems():
             boot_memories.append(mem.init)
@@ -488,10 +485,16 @@ class StaticRNN(object):
 
         parent_block.append_op(
             type='recurrent',
-            inputs={'inlinks': inlinks,
-                    'boot_memories': boot_memories},
-            outputs={'outlinks': outlinks,
+            inputs={
+                'inputs': inlinks,
+                'initial_states': boot_memories,
+                'parameters': parameters
+            },
+            outputs={'outputs': outlinks,
                      'step_scopes': [step_scope]},
-            attrs={'pre_memories': pre_memories,
-                   'memories': memories})
-        exit(1)
+            attrs={
+                'ex_states': pre_memories,
+                'states': memories,
+                'block_idx': rnn_block
+            })
+        # exit(1)

@@ -131,6 +131,7 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     // Attributes stored in AttributeMap
     AddAttr<std::vector<std::string>>(name.ex_states, "names of pre-states");
     AddAttr<std::vector<std::string>>(name.states, "names of states");
+    AddAttr<paddle::framework::BlockDesc*>("block_idx", "rnn block idx");
 
     AddComment("This is a recurrent group operator.");
   }
