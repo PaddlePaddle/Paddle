@@ -185,15 +185,14 @@ class TestWarpCTCOp(OpTest):
             "Logits": (logits, logits_lod),
             "Label": (labels, labels_lod)
         }
-        self.outputs = {"WarpCTCGrad": gradient, "Loss": loss}
+        self.outputs = {"Loss": loss}
         self.attrs = {"blank": blank, "normByTimes": norm_by_times}
 
     def test_check_output(self):
-        # Only check "Loss", because "WarpCTCGrad" is an intermediate output to
-        # store the gradients of warp-ctc temporary.
-        self.check_output("Loss")
+        self.check_output()
 
     def test_check_grad(self):
+        self.outputs["WarpCTCGrad"] = None
         self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
 
 

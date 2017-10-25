@@ -283,7 +283,7 @@ class OpTest(unittest.TestCase):
 
         return feed_map
 
-    def check_output_with_place(self, place, outputs_to_check, atol):
+    def check_output_with_place(self, place, atol):
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
         program = Program()
@@ -314,9 +314,6 @@ class OpTest(unittest.TestCase):
 
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
-                continue
-
-            if out_name not in outputs_to_check:
                 continue
 
             def find_actual(target_name, fetch_list):
@@ -362,15 +359,12 @@ class OpTest(unittest.TestCase):
                                          "Output (" + out_name +
                                          ") has different lod at " + str(place))
 
-    def check_output(self, outputs_to_check=None, atol=1e-5):
-        if outputs_to_check is None:
-            outputs_to_check = self.outputs
-
+    def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and core.op_support_gpu(self.op_type):
             places.append(core.GPUPlace(0))
         for place in places:
-            self.check_output_with_place(place, outputs_to_check, atol)
+            self.check_output_with_place(place, atol)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):
