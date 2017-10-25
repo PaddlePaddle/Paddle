@@ -76,16 +76,14 @@ class SaveOp : public framework::OperatorBase {
       auto dims = framework::vectorize(tensor.dims());
       auto *pb_dims = desc.mutable_dims();
       pb_dims->Reserve(static_cast<int>(dims.size()));
-      std::copy(dims.begin(), dims.end(), pb_dims->begin());
+      std::copy(dims.begin(), dims.end(), std::back_inserter(*pb_dims));
       int32_t size = desc.ByteSize();
       fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
       auto out = desc.SerializeAsString();
       fout.write(out.data(), size);
     }
     {  // the 3rd field, tensor data
-       // uint64_t memory size in byte.
       uint64_t size = tensor.memory_size();
-      fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
       auto *data_ptr = tensor.data<void>();
       PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
                      "Index overflow when writing tensor");

@@ -87,6 +87,8 @@ class LoDTensor : public Tensor {
 
   LoD lod() const { return lod_; }
 
+  LoD* mutable_lod() const { return &lod_; }
+
   /*
    * Get the start offset and end offset of an  element from LoD.
    */
