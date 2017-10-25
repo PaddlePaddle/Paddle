@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, randomize_probability
 
 
 class TestCrossEntropyOp1(OpTest):
@@ -12,8 +12,8 @@ class TestCrossEntropyOp1(OpTest):
         batch_size = 30
         class_num = 10
 
-        X = np.random.uniform(0.1, 1.0,
-                              [batch_size, class_num]).astype("float32")
+        X = randomize_probability(batch_size, class_num)
+
         label = np.random.randint(0, class_num, (batch_size, 1), dtype="int32")
         cross_entropy = np.asmatrix(
             [[-np.log(X[i][label[i][0]])] for i in range(X.shape[0])],
@@ -39,8 +39,7 @@ class TestCrossEntropyOp2(OpTest):
         batch_size = 5
         class_num = 37
 
-        X = np.random.uniform(0.1, 1.0,
-                              [batch_size, class_num]).astype("float32")
+        X = randomize_probability(batch_size, class_num)
         label = np.random.uniform(0.1, 1.0,
                                   [batch_size, class_num]).astype("float32")
         label /= label.sum(axis=1, keepdims=True)
@@ -67,8 +66,7 @@ class TestCrossEntropyOp3(OpTest):
         batch_size = 5
         class_num = 17
 
-        X = np.random.uniform(0.1, 1.0,
-                              [batch_size, class_num]).astype("float32")
+        X = randomize_probability(batch_size, class_num)
         label_index = np.random.randint(
             0, class_num, (batch_size), dtype="int32")
         label = np.zeros(X.shape)
