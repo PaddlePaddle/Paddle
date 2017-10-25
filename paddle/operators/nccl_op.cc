@@ -93,6 +93,10 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
         " Input(Communicator) of Reduce op input should not be NULL");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    " Input(X) of Reduce op input should not be NULL");
+
+    auto x_dims = ctx->GetInputsDim("X");
+    ctx->SetOutputsDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
