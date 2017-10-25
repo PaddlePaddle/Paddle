@@ -15,6 +15,7 @@
 package master
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -130,12 +131,22 @@ func (c *Client) getRecords(passID int) {
 				c.ch <- record{nil, err}
 				break
 			}
+
+			i := 0
 			if err.Error() == ErrPassAfter.Error() {
+				// to prevent too many logs
+				if i%60 == 0 {
+					log.Debug(fmt.Sprintf("getTask passID:%d error.", passID), log.Ctx{"error": err})
+				}
 				// wait util last pass finishes
 				time.Sleep(time.Second * 3)
+				i += 3
 				continue
 			}
+
 			log.Error("getTask error.", log.Ctx{"error": err})
+			c.ch <- record{nil, err}
+			break
 		}
 
 		for _, chunk := range t.Chunks {
