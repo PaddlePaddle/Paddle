@@ -22,7 +22,8 @@ class TestRNN(unittest.TestCase):
         with rnn.step():
             hidden = rnn.step_input(hidden)
             self.assertEqual((-1, 100), hidden.shape)
-            memory = rnn.memory(shape=(-1, 32), dtype='float32', init_value=0.0)
+            memory = rnn.memory(
+                ref=img, shape=(-1, 32), dtype='float32', init_value=0.0)
 
             rnn_out = fc(input=[hidden, memory], size=32, act='sigmoid')
             self.assertEqual((-1, 32), rnn_out.shape)
