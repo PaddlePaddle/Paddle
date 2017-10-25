@@ -83,6 +83,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
 
     auto ins = ctx.MultiInput<LoDTensor>("X");  // x0, x1, x2
     auto outs = ctx.MultiOutput<LoDTensor>("Out");
+    int root = ctx.Attr<int>("root");
 
     auto* comm = ctx.Input<Communicator>("Communicator");
 
@@ -97,7 +98,9 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     auto ins_names = ctx.Inputs("X");
     std::hash<std::string> hasher;
     for (size_t i = 0; i < ins.size(); ++i) {
-      int root = hasher(ins_names[i]) % comm->comms_.size();
+      if (root == -1) {
+        root = hasher(ins_names[i]) % comm->comms_.size();
+      }
       T* recvbuffer = nullptr;
       if (root == device_id) {
         recvbuffer = outs[i]->mutable_data<T>(ctx.GetPlace());
@@ -135,8 +138,9 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     int device_id =
         boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(device_id);
+
     if (idx == root) {
-      auto ins = ctx.MultiInput<Tensor>("X");
+      auto ins = ctx.MultiInput<LoDTensor>("X");
       for (size_t i = 0; i < ins.size(); ++i) {
         PADDLE_ENFORCE(platform::dynload::ncclBcast(
             (void*)ins[i]->data<T>(), ins[i]->numel(), NCCLTypeWrapper<T>::type,
@@ -144,7 +148,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE(cudaStreamSynchronize(stream));
       }
     } else {
-      auto outs = ctx.MultiOutput<Tensor>("Out");
+      auto outs = ctx.MultiOutput<LoDTensor>("Out");
       for (size_t i = 0; i < outs.size(); ++i) {
         PADDLE_ENFORCE(platform::dynload::ncclBcast(
             outs[i]->mutable_data<T>(ctx.GetPlace()), outs[i]->numel(),
@@ -160,6 +164,5 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(ncclAllReduce, ops::NCCLAllReduceKernel<float>);
-REGISTER_OP_GPU_KERNEL(ncclBcastSend, ops::NCCLBcastKernel<float>);
+REGISTER_OP_GPU_KERNEL(ncclBcast, ops::NCCLBcastKernel<float>);
 REGISTER_OP_GPU_KERNEL(ncclReduce, ops::NCCLReduceKernel<float>);
-REGISTER_OP_GPU_KERNEL(ncclBcastRecv, ops::NCCLBcastKernel<float>);
