@@ -181,7 +181,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       insert_position.push_back(
           {dup_op.back(),
            OpRegistry::CreateOp("sum", {{"X", dup_outputs}}, {{"Out", {name}}},
-                                {{"is_internal", false}})});
+                                {{"is_internal", true}})});
     }
 
     // make sure the inserted `sum` ops follow the BFS order.
@@ -416,7 +416,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       }
       std::unique_ptr<OpDescBind> sum_op(
           new OpDescBind("sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}},
-                         {{"is_internal", false}}));
+                         {{"is_internal", true}}));
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
     }
   }
