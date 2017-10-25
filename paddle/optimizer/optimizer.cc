@@ -1,4 +1,7 @@
 #include "optimizer.h"
+#include <glog/logging.h>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 
 #include "parameter_optimizer.h"
@@ -78,7 +81,13 @@ int paddle_optimizer_get_weights(paddle_optimizer* o, void** param_buffer) {
 }
 
 int paddle_optimizer_get_state(paddle_optimizer* o, const char** state) {
-  int state_len = 0;
-  *state = o->impl->SerializeState(&state_len);
+  std::string s = o->impl->SerializeState();
+  int state_len = s.size();
+
+  if (state_len > 0) {
+    *state = (char*)std::malloc(state_len);
+    std::memcpy((void*)*state, (const void*)s.c_str(), state_len);
+  }
+
   return state_len;
 }
