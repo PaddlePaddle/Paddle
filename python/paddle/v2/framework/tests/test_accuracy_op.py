@@ -16,7 +16,9 @@ class TestAccuracyOp(OpTest):
                 if ele == label[rowid]:
                     num_correct += 1
                     break
-        self.outputs = {'Accuracy': [num_correct / float(n)]}
+        self.outputs = {
+            'Accuracy': np.array([num_correct / float(n)]).astype("float32")
+        }
 
     def test_check_output(self):
         self.check_output()

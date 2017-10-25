@@ -297,6 +297,13 @@ func (s *Service) checkpoint() (err error) {
 		return
 	}
 
+	if _, err = os.Stat(s.checkpointPath); os.IsNotExist(err) {
+		err = os.MkdirAll(s.checkpointPath, os.ModePerm)
+		if err != nil {
+			return
+		}
+	}
+
 	id := uuid.NewV4().String()
 	p := path.Join(s.checkpointPath, id)
 	f, err := os.Create(p)

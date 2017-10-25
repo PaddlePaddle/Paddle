@@ -339,9 +339,13 @@ private:
    * clear all grad
    */
   void clearGrads() {
-    output_.grad->zeroMem();
+    if (output_.grad) {
+      output_.grad->zeroMem();
+    }
     for (size_t i = 0; i < outputOtherDevice_.size(); i++) {
-      outputOtherDevice_[i].grad->zeroMem();
+      if (outputOtherDevice_[i].grad) {
+        outputOtherDevice_[i].grad->zeroMem();
+      }
     }
   }
 
