@@ -84,9 +84,6 @@ class SumKernel : public framework::OpKernel<T> {
       out_value->mutable_data<T>(context.GetPlace());
       out->set_height(in_vars[0]->Get<SelectedRows>().height());
 
-      LOG(INFO) << out->rows().size();
-      LOG(INFO) << out->height();
-
       math::SelectedRowsSum<Place, T> functor;
 
       int64_t offset = 0;
