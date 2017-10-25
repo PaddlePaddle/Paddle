@@ -32,6 +32,7 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
       Tensor *parameter,
       const OptimizerConfig &config) -> ParameterOptimizer * {
     if (config.optimizer() == OptimizerConfig::SGD) {
+      LOG(INFO) << "creating SGD optimizer";
       return new SGDOptimizer(parameter,
                               lr,
                               config.sgd().momentum(),
@@ -39,6 +40,7 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
                               config.sgd().nesterov());
     }
     if (config.optimizer() == OptimizerConfig::Adadelta) {
+      LOG(INFO) << "creating Adadelta optimizer";
       return new AdadeltaOptimizer(parameter,
                                    lr,
                                    config.adadelta().rho(),
@@ -46,10 +48,12 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
                                    config.adadelta().decay());
     }
     if (config.optimizer() == OptimizerConfig::Adagrad) {
+      LOG(INFO) << "creating Adagrad optimizer";
       return new AdagradOptimizer(
           parameter, lr, config.adagrad().epsilon(), config.adagrad().decay());
     }
     if (config.optimizer() == OptimizerConfig::Adam) {
+      LOG(INFO) << "creating Adam optimizer";
       return new AdamOptimizer(parameter,
                                lr,
                                config.adam().beta_1(),
