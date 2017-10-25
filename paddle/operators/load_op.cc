@@ -60,7 +60,7 @@ class LoadOp : public framework::OperatorBase {
       tensor->Resize(framework::make_ddim(dims));
 
       void *buf;
-      platform::Place cpu(platform::CPUPlace());
+      platform::Place cpu = platform::CPUPlace();
       switch (desc.data_type()) {
         case framework::FP32:
           buf = tensor->mutable_data<float>(cpu);
@@ -110,11 +110,23 @@ class LoadOp : public framework::OperatorBase {
   }
 };
 
-class LoadOpProtomaker : public framework::OpProtoAndCheckerMaker {
+class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoadOpProtomaker(framework::OpProto *proto,
+  LoadOpProtoMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddOutput("Out", "The tensor need to be loaded");
+    AddComment(R"DOC(Load Operator
+Load operator will load a tensor variable from disk file.
+)DOC");
+    AddAttr<std::string>("file_path",
+                         "Variable will be loaded from \"file_path\".")
+        .AddCustomChecker(
+            [](const std::string &path) { return !path.empty(); });
+  }
 };
 }  // namespace operators
 }  // namespace paddle
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);

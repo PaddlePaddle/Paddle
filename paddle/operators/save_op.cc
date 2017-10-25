@@ -13,16 +13,47 @@
    limitations under the License. */
 
 #include <fstream>
+#include <numeric>
+
+#include <sys/stat.h>
+
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 
-#include <boost/filesystem.hpp>
-#include <numeric>
-
 namespace paddle {
 namespace operators {
+
+// TODO(yuyang18): If the functions below are needed by other files, move them
+// to paddle::filesystem namespace.
+constexpr char kSEP = '/';
+static bool FileExists(const std::string &filepath) {
+  struct stat buffer;
+  return (stat(filepath.c_str(), &buffer) == 0);
+}
+
+static std::string DirName(const std::string &filepath) {
+  auto pos = filepath.rfind(kSEP);
+  if (pos == std::string::npos) {
+    return "";
+  }
+  return filepath.substr(0, pos);
+}
+
+static void MkDir(const char *path) {
+  if (mkdir(path, 0755)) {
+    PADDLE_ENFORCE_EQ(errno, EEXIST, "%s mkdir failed!", path);
+  }
+}
+
+static void MkDirRecursively(const char *fullpath) {
+  if (*fullpath == '\0') return;  // empty string
+  if (FileExists(fullpath)) return;
+
+  MkDirRecursively(DirName(fullpath).c_str());
+  MkDir(fullpath);
+}
 
 class SaveOp : public framework::OperatorBase {
  public:
@@ -35,24 +66,18 @@ class SaveOp : public framework::OperatorBase {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
 
-    boost::filesystem::path path(filename);
-    if (boost::filesystem::exists(path) && !overwrite) {
+    if (FileExists(filename) && !overwrite) {
       PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
                    filename, overwrite);
     }
-    auto parent_dir = path.parent_path();
-    if (!parent_dir.empty() && !boost::filesystem::exists(parent_dir)) {
-      boost::system::error_code error;
-      PADDLE_ENFORCE(boost::filesystem::create_directories(parent_dir, error),
-                     "mkdir -p %s failed, %s", parent_dir.string(),
-                     error.message());
-    }
+
+    MkDirRecursively(DirName(filename).c_str());
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::ofstream fout(path.string());
+    std::ofstream fout(filename);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   path.string());
+                   filename);
 
     auto iname = Input("X");
     auto *var = scope.FindVar(iname);
@@ -75,8 +100,8 @@ class SaveOp : public framework::OperatorBase {
       desc.set_data_type(framework::ToDataType(tensor.type()));
       auto dims = framework::vectorize(tensor.dims());
       auto *pb_dims = desc.mutable_dims();
-      pb_dims->Reserve(static_cast<int>(dims.size()));
-      std::copy(dims.begin(), dims.end(), std::back_inserter(*pb_dims));
+      pb_dims->Resize(static_cast<int>(dims.size()), 0);
+      std::copy(dims.begin(), dims.end(), pb_dims->begin());
       int32_t size = desc.ByteSize();
       fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
       auto out = desc.SerializeAsString();
@@ -120,7 +145,8 @@ Save operator will serialize and write a tensor variable to disk file.
 )DOC");
     AddAttr<bool>("overwrite", "Overwrite the output file if exist")
         .SetDefault(true);
-    AddAttr<std::string>("file_path", "Variable will save to \"file_path\".")
+    AddAttr<std::string>("file_path",
+                         "Variable will be saved to \"file_path\".")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
   }
