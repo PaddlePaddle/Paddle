@@ -24,33 +24,34 @@ class LRNOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of LRNOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of LRNOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("mid_out"),
-                            "mid_out(Out) of LRNOp should not be null.");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LRNOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of LRNOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("MidOut"),
+                   "MidOut(Out) of LRNOp should not be null.");
 
-    auto x_dim = ctx.Input<Tensor>("X")->dims();
+    auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
 
-    ctx.Output<Tensor>("Out")->Resize(x_dim);
-    ctx.Output<Tensor>("mid_out")->Resize(x_dim);
-    ctx.ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", x_dim);
+    ctx->SetOutputDim("MidOut", x_dim);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LRNOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  LRNOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", R"DOC(
- (Tensor)Input of lrn op.It must be a 4 rank tenor with NCHW format.
+ (Tensor) The input of LRN operator. It must be a 4D tenor with NCHW format.
  )DOC");
 
-    AddOutput("Out", "(Tensor)The output of lrn op");
-    AddOutput("mid_out", R"Doc(
+    AddOutput("Out",
+              "(Tensor) The output of LRN operator, which is also the 4D "
+              "tensor with NCHW format.");
+    AddOutput("MidOut", R"Doc(
 (Tensor)Middle result of lrn op.It's computed in forward process 
 and also used in backward process.
     )Doc");
@@ -117,16 +118,15 @@ class LRNOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("mid_out")),
-                            "Input(mid_out@GRAD) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("MidOut")),
+                   "Input(MidOut@GRAD) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
 
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_g = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    x_g->Resize(x_dims);
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
 };
 

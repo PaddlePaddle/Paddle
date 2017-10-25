@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class LRNKernel : public framework::OpKernel {
+class LRNKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
 
@@ -43,9 +43,9 @@ class LRNKernel : public framework::OpKernel {
     Tensor* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    // mid_out save the intermediate result for backward
-    Tensor* mid_out = ctx.Output<Tensor>("mid_out");
-    mid_out->mutable_data<T>(ctx.GetPlace());
+    // MidOut save the intermediate result for backward
+    Tensor* mid = ctx.Output<Tensor>("MidOut");
+    mid->mutable_data<T>(ctx.GetPlace());
 
     int n = ctx.Attr<int>("n");
     float alpha = ctx.Attr<float>("alpha");
@@ -62,7 +62,7 @@ class LRNKernel : public framework::OpKernel {
     const int start = -(n - 1) / 2;
     const int end = start + n;
 
-    auto e_mid = framework::EigenTensor<T, 4>::From(*mid_out);
+    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
     e_mid.device(ctx.GetEigenDevice<Place>()) = e_mid.constant(k);
 
     auto e_x = framework::EigenTensor<T, 4>::From(*x);
@@ -99,7 +99,7 @@ class LRNKernel : public framework::OpKernel {
  *
  * InputGrad = OutputGrad * denoms ^ (-beta)
  *    -- upper
- *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / mid_out) * InputValue
+ *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / MidOut) * InputValue
  *    -- lower
  *
  * The data of inputs/outputs format is the same as the forward interface
@@ -109,14 +109,14 @@ class LRNKernel : public framework::OpKernel {
  * is also the same as forward.
  */
 template <typename Place, typename T>
-class LRNGradKernel : public framework::OpKernel {
+class LRNGradKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* out = ctx.Input<Tensor>("Out");
     const Tensor* out_g = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    const Tensor* mid = ctx.Input<Tensor>("mid_out");
+    const Tensor* mid = ctx.Input<Tensor>("MidOut");
 
     auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());
@@ -131,9 +131,9 @@ class LRNGradKernel : public framework::OpKernel {
     int W = x_dims[3];
 
     int n = ctx.Attr<int>("n");
-    float alpha = ctx.Attr<float>("alpha");
-    float beta = ctx.Attr<float>("beta");
-    float ratio = -2 * alpha * beta;
+    T alpha = ctx.Attr<T>("alpha");
+    T beta = ctx.Attr<T>("beta");
+    T ratio = -2 * alpha * beta;
 
     auto e_x = framework::EigenTensor<T, 4>::From(*x);
     auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);

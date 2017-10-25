@@ -63,7 +63,7 @@ class TestLRNOp(OpTest):
         self.out, self.mid_out = self.get_out()
 
         self.inputs = {'X': self.x}
-        self.outputs = {'Out': self.out, 'mid_out': self.mid_out}
+        self.outputs = {'Out': self.out, 'MidOut': self.mid_out}
         self.attrs = self.get_attrs()
 
     def test_check_output(self):
