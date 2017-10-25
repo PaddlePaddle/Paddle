@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/math/seq2batch.h"
+#include "paddle/operators/math/sequence_padding.h"
 #include <gtest/gtest.h>
 
 template <typename Place, typename T>
-void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
-                          const size_t sequence_width) {
+void TestSequencePadding(const paddle::framework::LoD& lod,
+                         const size_t sequence_width) {
   paddle::framework::LoDTensor cpu_seq;
   paddle::framework::LoDTensor cpu_seq_back;
   paddle::framework::LoDTensor seq;
   paddle::framework::LoDTensor seq_back;
-  paddle::framework::Tensor batch;
+  paddle::framework::Tensor padding;
 
   const size_t level = lod.size() - 1;
   auto seq_dims =
@@ -41,12 +41,12 @@ void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
     context =
         new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
   } else {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
     context =
         new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
 #else
-    PADDLE_THROW("no GPU support");
-#endif  // PADDLE_ONLY_CPU
+    PADDLE_THROW("no CUDA support");
+#endif  // PADDLE_WITH_CUDA
   }
 
   if (paddle::platform::is_cpu_place(*place)) {
@@ -56,13 +56,12 @@ void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
     seq.set_lod(lod);
   }
 
-  paddle::operators::math::Seq2BatchFunctor<true, Place, T> seq2batch;
-  paddle::operators::math::Batch2SeqFunctor<true, Place, T> batch2seq;
-
-  seq2batch(*context, seq, batch, false);
+  paddle::operators::math::PaddingSequenceFunctor<Place, T>()(*context, seq,
+                                                              padding, false);
 
   seq_back.set_lod(lod);
-  batch2seq(*context, seq_back, batch, false);
+  paddle::operators::math::UnpaddingSequenceFunctor<Place, T>()(
+      *context, seq_back, padding, false);
 
   if (paddle::platform::is_cpu_place(*place)) {
     cpu_seq_back = seq_back;
@@ -84,21 +83,21 @@ void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
 TEST(Seq2BatchPadding, CPU) {
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
-  TestSeq2BatchPadding<paddle::platform::CPUPlace, float>(lod1, 16);
+  TestSequencePadding<paddle::platform::CPUPlace, float>(lod1, 16);
 
   paddle::framework::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
-  TestSeq2BatchPadding<paddle::platform::CPUPlace, float>(lod2, 128);
+  TestSequencePadding<paddle::platform::CPUPlace, float>(lod2, 128);
 }
 
-#ifndef PADDLE_ONLY_CPU
-TEST(Seq2BatchPadding, GPU) {
+#ifdef PADDLE_WITH_CUDA
+TEST(SequencePadding, CUDA) {
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
-  TestSeq2BatchPadding<paddle::platform::GPUPlace, float>(lod1, 16);
+  TestSequencePadding<paddle::platform::GPUPlace, float>(lod1, 16);
 
   paddle::framework::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
-  TestSeq2BatchPadding<paddle::platform::GPUPlace, float>(lod2, 128);
+  TestSequencePadding<paddle::platform::GPUPlace, float>(lod2, 128);
 }
 #endif

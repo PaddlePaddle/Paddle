@@ -35,36 +35,37 @@ inline static size_t MaximumSequenceLength(const framework::LoD& lod,
 }
 
 /*
- * \brief   Memory copy from sequence/batch to batch/sequence
+ * \brief   Padding/Unpadding sequence to/from normal Tensor of the shape
+ *          [max_sequence_length, num_sequences, sequence_width].
  *
- *  Copy from sequence to batch:
- *        batch[i] = seq[lod[level][i]]
- *  Copy from batch to seq:
- *        seq[lod[level][i]] = batch[i]
+ *  Padding sequence:
+ *        padding[i] = seq[lod[level][i]]
+ *  Unpadding sequence:
+ *        seq[lod[level][i]] = padding[i]
  *
- *  When Padding is true, all sequences will be padded to the same length.
+ *  All sequences will be padded to the same length.
  *  Example:
- *    seq   (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
- *    batch (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
+ *    seq     (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
+ *    padding (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
  *
  * \param context       device context of this functor.
  * \param seq           LoDTensor which is stored in sequence format.
- * \param batch         Tensor which is stored in batch format.
+ * \param padding       Tensor which is padded to the same length.
  * \param norm_by_times whether dividing sequence's length.
  */
-template <bool Padding, typename Place, typename T>
-class Seq2BatchFunctor {
+template <typename Place, typename T>
+class PaddingSequenceFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::LoDTensor& seq, framework::Tensor& batch,
+                  const framework::LoDTensor& seq, framework::Tensor& padding,
                   bool norm_by_times);
 };
 
-template <bool Padding, typename Place, typename T>
-class Batch2SeqFunctor {
+template <typename Place, typename T>
+class UnpaddingSequenceFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  framework::LoDTensor& seq, const framework::Tensor& batch,
+                  framework::LoDTensor& seq, const framework::Tensor& padding,
                   bool norm_by_times);
 };
 

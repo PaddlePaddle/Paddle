@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/seq2batch.h"
+#include "paddle/operators/math/sequence_padding.h"
 #include "paddle/platform/dynload/warpctc.h"
 
 namespace paddle {
@@ -150,7 +150,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     // warpctc needs sequences data stored in batch format
     Tensor warpctc_logits;
-    math::Seq2BatchFunctor<true, Place, T>()(ctx.device_context(), *logits,
+    math::PaddingSequenceFunctor<Place, T>()(ctx.device_context(), *logits,
                                              warpctc_logits, false);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
@@ -201,8 +201,8 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     bool norm_by_times = ctx.Attr<bool>("normByTimes");
 
     logits_grad->set_lod(logits->lod());
-    math::Batch2SeqFunctor<true, Place, T>()(ctx.device_context(), *logits_grad,
-                                             *warpctc_grad, norm_by_times);
+    math::UnpaddingSequenceFunctor<Place, T>()(
+        ctx.device_context(), *logits_grad, *warpctc_grad, norm_by_times);
   }
 };
 

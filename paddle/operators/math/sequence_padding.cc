@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/math/seq2batch.h"
+#include "paddle/operators/math/sequence_padding.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 template <typename T>
-class Seq2BatchFunctor<true, platform::CPUPlace, T> {
+class PaddingSequenceFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::LoDTensor& seq, framework::Tensor& batch,
+                  const framework::LoDTensor& seq, framework::Tensor& padding,
                   bool norm_by_times) {
     auto lod = seq.lod();
     PADDLE_ENFORCE_GT(lod.size(), 0UL,
@@ -41,13 +41,13 @@ class Seq2BatchFunctor<true, platform::CPUPlace, T> {
                       "equal to the sum of all sequences's length.");
 
     const size_t sequence_width = seq.numel() / seq_dims[0];
-    auto batch_dims =
+    auto padding_dims =
         framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
 
     const T* seq_data = seq.data<T>();
-    T* batch_data = batch.mutable_data<T>(batch_dims, context.GetPlace());
+    T* padding_data = padding.mutable_data<T>(padding_dims, context.GetPlace());
     for (size_t i = 0; i < max_sequence_length; ++i) {
       for (size_t j = 0; j < num_sequences; ++j) {
         size_t start_pos = abs_offset_lod[level][j];
@@ -57,11 +57,11 @@ class Seq2BatchFunctor<true, platform::CPUPlace, T> {
           T scale =
               norm_by_times ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
           for (size_t k = 0; k < sequence_width; ++k) {
-            batch_data[(i * num_sequences + j) * sequence_width + k] =
+            padding_data[(i * num_sequences + j) * sequence_width + k] =
                 seq_data[(start_pos + i) * sequence_width + k] * scale;
           }
         } else {
-          memset(batch_data + (i * num_sequences + j) * sequence_width, 0,
+          memset(padding_data + (i * num_sequences + j) * sequence_width, 0,
                  sequence_width * sizeof(T));
         }
       }
@@ -70,10 +70,10 @@ class Seq2BatchFunctor<true, platform::CPUPlace, T> {
 };
 
 template <typename T>
-class Batch2SeqFunctor<true, platform::CPUPlace, T> {
+class UnpaddingSequenceFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  framework::LoDTensor& seq, const framework::Tensor& batch,
+                  framework::LoDTensor& seq, const framework::Tensor& padding,
                   bool norm_by_times) {
     auto lod = seq.lod();
     PADDLE_ENFORCE_GT(lod.size(), 0UL,
@@ -86,22 +86,22 @@ class Batch2SeqFunctor<true, platform::CPUPlace, T> {
     // Compute maximum sequence length
     const size_t max_sequence_length = MaximumSequenceLength(lod, level);
 
-    auto batch_dims = batch.dims();
-    PADDLE_ENFORCE_EQ(batch_dims.size(), 3UL,
-                      "The input batch should be a 3-D Tensor.");
-    PADDLE_ENFORCE_EQ(batch_dims[0], max_sequence_length,
-                      "The first dimension of Tensor batch should be "
+    auto padding_dims = padding.dims();
+    PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
+                      "The input padding should be a 3-D Tensor.");
+    PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
+                      "The first dimension of Tensor padding should be "
                       "equal to the maximum sequence's length.");
-    PADDLE_ENFORCE_EQ(batch_dims[1], num_sequences,
-                      "The second dimension of Tensor batch should be "
+    PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
+                      "The second dimension of Tensor padding should be "
                       "equal to the number of sequences.");
 
-    const size_t sequence_width = batch_dims[2];
+    const size_t sequence_width = padding_dims[2];
     auto seq_dims = framework::make_ddim(
         {static_cast<int64_t>(abs_offset_lod[level].back()),
          static_cast<int64_t>(sequence_width)});
 
-    const T* batch_data = batch.data<T>();
+    const T* padding_data = padding.data<T>();
     T* seq_data = seq.mutable_data<T>(seq_dims, context.GetPlace());
     for (size_t i = 0; i < num_sequences; ++i) {
       size_t start_pos = abs_offset_lod[level][i];
@@ -112,15 +112,16 @@ class Batch2SeqFunctor<true, platform::CPUPlace, T> {
             norm_by_times ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
         for (size_t k = 0; k < sequence_width; ++k) {
           seq_data[(start_pos + j) * sequence_width + k] =
-              batch_data[(j * num_sequences + i) * sequence_width + k] * scale;
+              padding_data[(j * num_sequences + i) * sequence_width + k] *
+              scale;
         }
       }
     }
   }
 };
 
-template class Seq2BatchFunctor<true, platform::CPUPlace, float>;
-template class Batch2SeqFunctor<true, platform::CPUPlace, float>;
+template class PaddingSequenceFunctor<platform::CPUPlace, float>;
+template class UnpaddingSequenceFunctor<platform::CPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators

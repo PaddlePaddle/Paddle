@@ -53,9 +53,10 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Logits",
              "(LodTensor, default: LoDTensor<float>), the unscaled "
              "probabilities of variable-length sequences, which is a 2-D "
-             "Tensor with LoD information. It is of the shape [Lp, K], where "
-             "Lp is the sum of all input sequences' length and K is the number "
-             "of classes.");
+             "Tensor with LoD information. It is of the shape "
+             "[Lp, num_classes + 1], where Lp is the sum of all input "
+             "sequences' length and num_classes is the true number of classes "
+             "(not including the blank label).");
     AddInput("Label",
              "(LodTensor, default: LoDTensor<int>), the ground truth "
              "of variable-length sequence, which is a 2-D Tensor with LoD "
@@ -64,8 +65,8 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("WarpCTCGrad",
               "(Tensor, default: Tensor<float>), a temporary "
               "output Tensor to store the gradients of warp-ctc, which is "
-              "computed with loss together in one call. It is a 3-D Tensor "
-              "of the shape [max_sequence_length, batch_size, num_classes].")
+              "computed with loss together in one call. It is a 3-D Tensor of "
+              "the shape [max_sequence_length, batch_size, num_classes + 1].")
         .AsIntermediate();
     AddOutput("Loss",
               "(Tensor, default: Tensor<float>), the Connectionist "
@@ -74,8 +75,7 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("blank",
                  "(int, default: 0), the blank label of Connectionist "
                  "Temporal Classification (CTC) loss, which is in the "
-                 "half-opened interval [0, num_classes), "
-                 "where the true number of classes is num_classes - 1.")
+                 "half-opened interval [0, num_classes + 1).")
         .SetDefault(0);
     AddAttr<bool>("normByTimes",
                   "(bool, default: false), whether to "
