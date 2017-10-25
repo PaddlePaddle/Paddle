@@ -148,9 +148,9 @@ class SGD(object):
         out_args = api.Arguments.createArguments(0)
         feeder = DataFeeder(self.__data_types__, feeding)
         for pass_id in xrange(num_passes):
-            self.__parameter_updater__.startPass()
-            pass_evaluator.start()
             event_handler(v2_event.BeginPass(pass_id))
+            pass_evaluator.start()
+            self.__parameter_updater__.startPass()
             for batch_id, data_batch in enumerate(reader()):
                 batch_evaluator.start()
                 event_handler(

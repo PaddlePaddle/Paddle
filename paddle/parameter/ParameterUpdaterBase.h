@@ -58,7 +58,9 @@ public:
   void update(Parameter* para) {
     SetDevice setDevice(para->getDeviceId());
     this->updateImpl(para);
-    para->updateHook();
+    if (para->useGpu()) {
+      para->updateHook();
+    }
   }
   // it will be called before layer forwardbackward in training process, do the
   // preprocess for the parameters. Such as drop some parameters in dynamic
