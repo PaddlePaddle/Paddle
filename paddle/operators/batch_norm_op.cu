@@ -66,8 +66,8 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_;
 
-    PADDLE_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    PADDLE_ENFORCE(
+    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+    CUDNN_ENFORCE(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
@@ -92,10 +92,10 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       dims = {N, C, H, W, D};
       strides = {H * W * D * C, 1, W * D * C, D * C, C};
     }
-    PADDLE_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    PADDLE_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
+    CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -134,7 +134,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(est_mean->dims()[0], C);
       PADDLE_ENFORCE_EQ(est_var->dims()[0], C);
 
-      PADDLE_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardInference(
+      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardInference(
           handle,
           // Note: PERSISTENT not implemented for inference
           CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
@@ -148,7 +148,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       // initialize them.
       double this_factor = 1. - momentum;
 
-      PADDLE_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
+      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
           handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
           data_desc_, x->template data<T>(), data_desc_,
           y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
@@ -160,8 +160,8 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     }
 
     // clean when exit.
-    PADDLE_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    PADDLE_ENFORCE(
+    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    CUDNN_ENFORCE(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
   }
 };
@@ -196,8 +196,8 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_;
 
-    PADDLE_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    PADDLE_ENFORCE(
+    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+    CUDNN_ENFORCE(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -213,10 +213,10 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
-    PADDLE_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    PADDLE_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
+    CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
     // init output
@@ -233,7 +233,7 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     const void *saved_mean_data = saved_mean->template data<T>();
     const void *saved_var_data = saved_var->template data<T>();
 
-    PADDLE_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
+    CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
         ctx.cuda_device_context().cudnn_handle(), mode_,
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
@@ -245,8 +245,8 @@ class BatchNormGradKernel<platform::GPUPlace, T>
         saved_mean_data, saved_var_data));
 
     // clean when exit.
-    PADDLE_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    PADDLE_ENFORCE(
+    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    CUDNN_ENFORCE(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
   }
 };

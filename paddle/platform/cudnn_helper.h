@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-namespace detail {
-
 inline const char* cudnnGetErrorString(cudnnStatus_t status) {
   switch (status) {
     case CUDNN_STATUS_SUCCESS:
@@ -53,16 +51,16 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
   }
 }
 
-}  // namespace detail
-
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                            \
-  do {                                                      \
-    cudnnStatus_t status = condition;                       \
-    PADDLE_ENFORCE_EQ(status, CUDNN_STATUS_SUCCESS,         \
-                      detail::cudnnGetErrorString(status)); \
+#define CUDNN_ENFORCE(condition)                                  \
+  do {                                                            \
+    cudnnStatus_t status = condition;                             \
+    if (status != CUDNN_STATUS_SUCCESS) {                         \
+      VLOG(1) << ::paddle::platform::cudnnGetErrorString(status); \
+      PADDLE_THROW("cuDNN call failed");                          \
+    }                                                             \
   } while (false)
 
 enum class DataLayout {
