@@ -32,7 +32,7 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 // ElementType is the type of elements of a Parameter.
@@ -209,7 +209,7 @@ func (s *Service) FinishInitParams(_ int, _ *int) error {
 		for range t {
 			err := s.checkpoint()
 			if err != nil {
-				log.Errorln(err)
+				log.Error("finish init params error", log.Ctx{"error": err})
 			}
 		}
 	}()
@@ -262,7 +262,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 
 func traceTime(start time.Time, name string) {
 	elapsed := time.Since(start)
-	log.Infof("%s took %v", name, elapsed)
+	log.Info("time elapsed", log.Ctx{"name": name, "elapsed": elapsed})
 }
 
 // checkpoint saves checkpoint to disk.
@@ -270,7 +270,7 @@ func traceTime(start time.Time, name string) {
 // checkpoint should be only called after the parameters are
 // initialized.
 func (s *Service) checkpoint() (err error) {
-	log.Infoln("Begin save checkpoint.")
+	log.Info("Begin save checkpoint.")
 	defer traceTime(time.Now(), "save checkpoint")
 
 	s.mu.Lock()
@@ -297,6 +297,13 @@ func (s *Service) checkpoint() (err error) {
 		return
 	}
 
+	if _, err = os.Stat(s.checkpointPath); os.IsNotExist(err) {
+		err = os.MkdirAll(s.checkpointPath, os.ModePerm)
+		if err != nil {
+			return
+		}
+	}
+
 	id := uuid.NewV4().String()
 	p := path.Join(s.checkpointPath, id)
 	f, err := os.Create(p)
@@ -308,7 +315,7 @@ func (s *Service) checkpoint() (err error) {
 		closeErr := f.Close()
 		if closeErr != nil {
 			if err != nil {
-				log.Errorln(closeErr)
+				log.Error("error close checkpoint file", log.Ctx{"error": closeErr})
 			} else {
 				// Set closeErr as return value.
 				err = closeErr
@@ -329,7 +336,7 @@ func (s *Service) checkpoint() (err error) {
 
 	oldMeta, err := loadMeta(s.client, s.idx)
 	if err == ErrCheckpointNotFound {
-		log.Infoln("Do not have existing checkpoint.")
+		log.Info("Do not have existing checkpoint.")
 		err = nil
 	}
 
@@ -361,7 +368,7 @@ func (s *Service) checkpoint() (err error) {
 		if rmErr != nil {
 			// log error, but still treat checkpoint as
 			// successful.
-			log.Errorln(rmErr)
+			log.Error("remove old meta file error", log.Ctx{"error": rmErr})
 		}
 	}
 
