@@ -16,7 +16,8 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self):
+    def __init__(self, global_step=None):
+        self._global_step = global_step
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
@@ -107,6 +108,26 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
+    def _increment_global_step(self, block):
+        """Increment the global step by 1 after every iteration
+
+        Args:
+            block: the block in which the loss variable is present
+
+        Returns:
+            list with global_step increment op as its only element
+        """
+        assert isinstance(block, framework.Block)
+        assert self._global_step is not None
+        # create the increment op
+        increment_op = block.append_op(
+            type="increment",
+            inputs={"X": self._global_step},
+            outputs={"Out": self._global_step},
+            attrs={"step": 1.0})
+
+        return [increment_op]
+
     def create_optimization_pass(self, parameters_and_grads, loss):
         """Add optimization operators to update gradients to variables.
 
@@ -150,6 +171,8 @@ class Optimizer(object):
         if finish_ops is not None:
             return_ops += finish_ops
 
+        if self._global_step is not None:
+            return_ops += self._increment_global_step(loss.block)
         return return_ops
 
     def minimize(self, loss, parameter_list=None, no_grad_set=None):
@@ -168,9 +191,9 @@ class SGDOptimizer(Optimizer):
     """ Simple SGD optimizer without any state.
     """
 
-    def __init__(self, learning_rate):
+    def __init__(self, learning_rate, global_step=None):
         assert learning_rate is not None
-        super(SGDOptimizer, self).__init__()
+        super(SGDOptimizer, self).__init__(global_step)
         self.type = "sgd"
         self._learning_rate = learning_rate
 
@@ -211,10 +234,10 @@ class MomentumOptimizer(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(self, learning_rate, momentum):
+    def __init__(self, learning_rate, momentum, global_step=None):
         assert learning_rate is not None
         assert momentum is not None
-        super(MomentumOptimizer, self).__init__()
+        super(MomentumOptimizer, self).__init__(global_step)
         self.type = "momentum"
         self._learning_rate = learning_rate
         self._momentum = momentum
@@ -269,10 +292,10 @@ class AdagradOptimizer(Optimizer):
     """
     _moment_acc_str = "moment"
 
-    def __init__(self, learning_rate, epsilon=1.0e-6):
+    def __init__(self, learning_rate, epsilon=1.0e-6, global_step=None):
         assert learning_rate is not None
         assert epsilon is not None
-        super(AdagradOptimizer, self).__init__()
+        super(AdagradOptimizer, self).__init__(global_step)
         self.type = "adagrad"
         self._learning_rate = learning_rate
         self._epsilon = epsilon
@@ -331,12 +354,13 @@ class AdamOptimizer(Optimizer):
                  learning_rate=0.001,
                  beta1=0.9,
                  beta2=0.999,
-                 epsilon=1e-8):
+                 epsilon=1e-8,
+                 global_step=None):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamOptimizer, self).__init__()
+        super(AdamOptimizer, self).__init__(global_step)
         self.type = "adam"
         self._learning_rate = learning_rate
         self._beta1 = beta1
