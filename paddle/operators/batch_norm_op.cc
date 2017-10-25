@@ -22,6 +22,18 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+template <typename T>
+using EigenArrayMap =
+    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using ConstEigenArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using ConstEigenVectorArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
+
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -74,9 +86,9 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
     AddAttr<std::string>("tensor_format", "").SetDefault("NCHW");
-    AddInput("X", "The input 4-dimensional tensor");
+    AddInput("X", "The input tensor");
     AddInput("Scale",
-             "Bias is a 1-dimensional tensor of size C "
+             "Scale is a 1-dimensional tensor of size C "
              "to be applied to the output");
     AddInput("Bias",
              "Bias is a 1-dimensional tensor of size C "
@@ -87,7 +99,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or the estimated Variance (for testing)");
-    AddOutput("Y", "result after normalized");
+    AddOutput("Y", "result after normalization");
     AddOutput("MeanOut",
               "Share memory with Mean. "
               "Store the global mean when training");
@@ -110,7 +122,6 @@ NCHW `[batch, in_channels, in_height, in_width]`
   }
 };
 
-// BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
 class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
@@ -131,17 +142,7 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
-    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
-    const int W =
-        x_dims.size() > 3
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
-            : 1;
-    const int D =
-        x_dims.size() > 4
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
-            : 1;
-
-    const int sample_size = H * W * D;
+    const int sample_size = x->numel() / N / C;
 
     auto *y = ctx.Output<Tensor>("Y");
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
@@ -290,14 +291,13 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
-// BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
 class BatchNormGradKernel<platform::CPUPlace, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
-    const auto *dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     // SavedVariance have been reverted in forward operator
@@ -315,89 +315,81 @@ class BatchNormGradKernel<platform::CPUPlace, T>
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
-    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
-    const int W =
-        x_dims.size() > 3
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
-            : 1;
-    const int D =
-        x_dims.size() > 4
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
-            : 1;
-
-    const int sample_size = H * W * D;
+    const int sample_size = x->numel() / N / C;
 
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(saved_mean->data<T>(), C);
     ConstEigenVectorArrayMap<T> inv_var_arr(saved_inv_variance->data<T>(), C);
 
     // init output
-    auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *dScale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *dBias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    dX->mutable_data<T>(ctx.GetPlace());
-    dScale->mutable_data<T>(ctx.GetPlace());
-    dBias->mutable_data<T>(ctx.GetPlace());
+    d_x->mutable_data<T>(ctx.GetPlace());
+    d_scale->mutable_data<T>(ctx.GetPlace());
+    d_bias->mutable_data<T>(ctx.GetPlace());
 
-    // dBias = np.sum(dY, axis=0)
-    // dScale = np.sum((X - mean) / inv_std * dy, axis=0)
-    // dX = (1. / N) * scale * inv_var * (N * dY - np.sum(dY, axis=0)
-    //   - (X - mean) * inv_var * inv_var * np.sum(dY * (X - mean), axis=0))
+    // d_bias = np.sum(d_y, axis=0)
+    // d_scale = np.sum((X - mean) / inv_std * dy, axis=0)
+    // d_x = (1. / N) * scale * inv_var * (N * d_y - np.sum(d_y, axis=0)
+    //   - (X - mean) * inv_var * inv_var * np.sum(d_y * (X - mean), axis=0))
 
-    EigenVectorArrayMap<T> dBias_arr(dBias->mutable_data<T>(ctx.GetPlace()), C);
-    EigenVectorArrayMap<T> dScale_arr(dScale->mutable_data<T>(ctx.GetPlace()),
+    EigenVectorArrayMap<T> d_bias_arr(d_bias->mutable_data<T>(ctx.GetPlace()),
                                       C);
+    EigenVectorArrayMap<T> d_scale_arr(d_scale->mutable_data<T>(ctx.GetPlace()),
+                                       C);
 
-    dBias_arr.setZero();
-    dScale_arr.setZero();
+    d_bias_arr.setZero();
+    d_scale_arr.setZero();
 
-    const auto scaleInvVarNHW = scale_arr * inv_var_arr / (N * sample_size);
+    const auto scale_inv_var_nhw = scale_arr * inv_var_arr / (N * sample_size);
 
     switch (tensor_format) {
       case TensorFormat::NCHW: {
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
-        ConstEigenArrayMap<T> dy_arr(dY->data<T>(), sample_size, N * C);
-        EigenArrayMap<T> dx_arr(dX->mutable_data<T>(ctx.GetPlace()),
-                                sample_size, N * C);
-        dx_arr.setZero();
+        ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
+        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
+                                 sample_size, N * C);
+        d_x_arr.setZero();
 
         for (int nc = 0; nc < N * C; ++nc) {
           int c = nc % C;
-          dBias_arr(c) += dy_arr.col(nc).sum();
-          dScale_arr(c) +=
-              ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * dy_arr.col(nc))
+          d_bias_arr(c) += d_y_arr.col(nc).sum();
+          d_scale_arr(c) +=
+              ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(nc))
                   .sum();
         }
         for (int nc = 0; nc < N * C; ++nc) {
           int c = nc % C;
-          dx_arr.col(nc) +=
-              scaleInvVarNHW(c) *
-              (dy_arr.col(nc) * N * sample_size - dBias_arr(c) -
-               (x_arr.col(nc) - mean_arr[c]) * dScale_arr(c) * inv_var_arr(c));
+          d_x_arr.col(nc) +=
+              scale_inv_var_nhw(c) *
+              (d_y_arr.col(nc) * N * sample_size - d_bias_arr(c) -
+               (x_arr.col(nc) - mean_arr[c]) * d_scale_arr(c) * inv_var_arr(c));
         }
         break;
       }
       case TensorFormat::NHWC: {
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
-        ConstEigenArrayMap<T> dy_arr(dY->data<T>(), C, N * sample_size);
-        EigenArrayMap<T> dx_arr(dX->mutable_data<T>(ctx.GetPlace()), C,
-                                N * sample_size);
-        dx_arr.setZero();
+        ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
+        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
+                                 N * sample_size);
+        d_x_arr.setZero();
 
-        const auto dYRowSum = dy_arr.rowwise().sum();
-        const auto XMinusMean = x_arr.colwise() - mean_arr;
-        const auto dYMulXMinusMeanRowSum =
-            (dy_arr * XMinusMean).rowwise().sum();
-        const auto invVarSqr = inv_var_arr * inv_var_arr;
+        const auto d_y_row_sum = d_y_arr.rowwise().sum();
+        const auto x_minus_mean = x_arr.colwise() - mean_arr;
+        const auto d_y_mul_x_minus_mean_row_sum =
+            (d_y_arr * x_minus_mean).rowwise().sum();
+        const auto inv_var_sqr = inv_var_arr * inv_var_arr;
         for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-          dBias_arr += dy_arr.col(nhw);
-          dScale_arr +=
-              (x_arr.col(nhw) - mean_arr) * inv_var_arr * dy_arr.col(nhw);
-          dx_arr.col(nhw) +=
-              scaleInvVarNHW *
-              (dy_arr.col(nhw) * N * sample_size - dYRowSum -
-               XMinusMean.col(nhw) * invVarSqr * dYMulXMinusMeanRowSum);
+          d_bias_arr += d_y_arr.col(nhw);
+          d_scale_arr +=
+              (x_arr.col(nhw) - mean_arr) * inv_var_arr * d_y_arr.col(nhw);
+          d_x_arr.col(nhw) +=
+              scale_inv_var_nhw *
+              (d_y_arr.col(nhw) * N * sample_size - d_y_row_sum -
+               x_minus_mean.col(nhw) * inv_var_sqr *
+                   d_y_mul_x_minus_mean_row_sum);
         }
         break;
       }
