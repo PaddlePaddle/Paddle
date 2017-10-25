@@ -1,4 +1,5 @@
 import paddle.v2.framework.core as core
+import paddle.v2.framework.utility as utility
 from paddle.v2.framework.framework import Block, Program
 
 g_scope = core.Scope()
@@ -32,33 +33,17 @@ class Executor(object):
 
         program = program.clone()
         global_block = program.global_block()
-        feed_var = global_block.create_var(
-            name=feed_var_name,
-            type=core.VarDesc.VarType.FEED_MINIBATCH,
-            persistable=True)
+        feed_indexes = utility.add_feed_components(global_block,
+                                                   feed.keys(), feed_var_name)
+        for feeded_name, idx in feed_indexes.iteritems():
+            core.set_feed_variable(scope, feed[feeded_name], feed_var_name, idx)
 
-        for i, name in enumerate(feed):
-            out = global_block.var(name)
-            global_block.prepend_op(
-                'feed',
-                inputs={'X': [feed_var]},
-                outputs={'Out': [out]},
-                attrs={'col': i})
-            core.set_feed_variable(scope, feed[name], feed_var.name, i)
-
-        fetch_var = global_block.create_var(
-            name=fetch_var_name,
-            type=core.VarDesc.VarType.FETCH_LIST,
-            persistable=True)
-        for i, var in enumerate(fetch_list):
-            global_block.append_op(
-                type='fetch',
-                inputs={'X': [var]},
-                outputs={'Out': [fetch_var]},
-                attrs={'col': i})
+        fetch_indexes = utility.add_fetch_components(global_block, fetch_list,
+                                                     fetch_var_name)
 
         self.executor.run(program.desc, scope, 0)
         return [
-            core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in xrange(len(fetch_list))
+            core.get_fetch_variable(scope,
+                                    fetch_var_name, fetch_indexes[var.name])
+            for var in fetch_list
         ]
