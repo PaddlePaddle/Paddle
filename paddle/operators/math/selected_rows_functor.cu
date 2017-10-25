@@ -78,7 +78,7 @@ namespace {
 template <typename T, int block_size>
 __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
                                             const int64_t* rows, T* tensor_out,
-                                            int64_t row_numel, int block_size) {
+                                            int64_t row_numel) {
   const int ty = blockIdx.y;
   int tid = threadIdx.x;
 
@@ -156,7 +156,7 @@ struct SelectedRowsAddTo<platform::GPUPlace, T> {
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE(platform::is_gpu_place(in1_place));
-    auto in2_place = input2.place();
+    auto in2_place = input2->place();
     PADDLE_ENFORCE(platform::is_gpu_place(in2_place));
 
     auto* in1_data = in1_value.data<T>();
@@ -164,7 +164,7 @@ struct SelectedRowsAddTo<platform::GPUPlace, T> {
     memory::Copy(
         boost::get<platform::GPUPlace>(in2_place), in2_data + input2_offset,
         boost::get<platform::GPUPlace>(in1_place), in1_data,
-        in1_value->numel() * sizeof(T),
+        in1_value.numel() * sizeof(T),
         reinterpret_cast<const platform::CUDADeviceContext&>(context).stream());
   }
 };
@@ -210,7 +210,7 @@ struct SelectedRowsAddToTensor<platform::GPUPlace, T> {
     auto* in2_data = input2->data<T>();
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid(1, in_rows.size());
+    dim3 grid(1, in1_rows.size());
     SelectedRowsAddToTensorKernel<T, block_size><<<
         grid, threads, 0,
         reinterpret_cast<const platform::CUDADeviceContext&>(context)
