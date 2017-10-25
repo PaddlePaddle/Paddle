@@ -102,6 +102,7 @@ class CrossEntropyFunctor<platform::GPUPlace, T> {
 };
 
 template class CrossEntropyFunctor<platform::GPUPlace, float>;
+template class CrossEntropyFunctor<platform::GPUPlace, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

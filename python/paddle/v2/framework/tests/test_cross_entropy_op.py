@@ -12,12 +12,12 @@ class TestCrossEntropyOp1(OpTest):
         batch_size = 30
         class_num = 10
 
-        X = randomize_probability(batch_size, class_num)
+        X = randomize_probability(batch_size, class_num, dtype='float64')
 
         label = np.random.randint(0, class_num, (batch_size, 1), dtype="int32")
         cross_entropy = np.asmatrix(
             [[-np.log(X[i][label[i][0]])] for i in range(X.shape[0])],
-            dtype="float32")
+            dtype="float64")
 
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": cross_entropy}
@@ -27,7 +27,7 @@ class TestCrossEntropyOp1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Y")
+        self.check_grad(["X"], "Y", numeric_grad_delta=0.001)
 
 
 class TestCrossEntropyOp2(OpTest):
@@ -54,7 +54,8 @@ class TestCrossEntropyOp2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Y", max_relative_error=0.05)
+        self.check_grad(
+            ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001)
 
 
 class TestCrossEntropyOp3(OpTest):
@@ -86,7 +87,8 @@ class TestCrossEntropyOp3(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Y", max_relative_error=0.05)
+        self.check_grad(
+            ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001)
 
 
 if __name__ == "__main__":

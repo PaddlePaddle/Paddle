@@ -388,9 +388,9 @@ class OpTest(unittest.TestCase):
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
                 return ("%s Variable %s max gradient diff %f over limit %f, "
-                        "the first error element is %d") % (
+                        "the first error element is %d, %f, %f") % (
                             msg_prefix, name, max_diff, max_relative_error,
-                            offset)
+                            offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
@@ -398,6 +398,7 @@ class OpTest(unittest.TestCase):
                    inputs_to_check,
                    output_names,
                    no_grad_set=None,
+                   numeric_grad_delta=0.005,
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None):
@@ -420,6 +421,7 @@ class OpTest(unittest.TestCase):
                 self.inputs,
                 input_to_check,
                 output_names,
+                delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
         grad_names = [
