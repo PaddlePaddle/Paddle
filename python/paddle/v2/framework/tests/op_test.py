@@ -354,7 +354,7 @@ class OpTest(unittest.TestCase):
                                                 output_names, no_grad_set)
 
         self.__assert_is_close(numeric_grads, cpu_analytic_grads,
-                               input_to_check, max_relative_error,
+                               inputs_to_check, max_relative_error,
                                "Gradient Check On %s" % str(cpu_place))
 
         if core.is_compile_gpu() and self.op.support_gpu():
@@ -363,7 +363,7 @@ class OpTest(unittest.TestCase):
                                                     output_names, no_grad_set)
 
             self.__assert_is_close(numeric_grads, gpu_analytic_grads,
-                                   input_to_check, max_relative_error,
+                                   inputs_to_check, max_relative_error,
                                    "Gradient Check On %s" % str(gpu_place))
 
     @staticmethod
