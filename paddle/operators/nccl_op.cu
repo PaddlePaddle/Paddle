@@ -142,18 +142,26 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     if (idx == root) {
       auto ins = ctx.MultiInput<LoDTensor>("X");
       for (size_t i = 0; i < ins.size(); ++i) {
+        VLOG(1) << " invoke Bcast. send " << ins[i]->numel();
+
         PADDLE_ENFORCE(platform::dynload::ncclBcast(
             (void*)ins[i]->data<T>(), ins[i]->numel(), NCCLTypeWrapper<T>::type,
             root, comm->comms_[idx], stream));
         PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+
+        VLOG(1) << " finished Bcast.";
       }
     } else {
       auto outs = ctx.MultiOutput<LoDTensor>("Out");
       for (size_t i = 0; i < outs.size(); ++i) {
+        VLOG(1) << " invoke Bcast. recv. ";
+
         PADDLE_ENFORCE(platform::dynload::ncclBcast(
             outs[i]->mutable_data<T>(ctx.GetPlace()), outs[i]->numel(),
             NCCLTypeWrapper<T>::type, root, comm->comms_[idx], stream));
         PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+
+        VLOG(1) << " finished Bcast. recv " << outs[i]->numel();
       }
     }
   }
