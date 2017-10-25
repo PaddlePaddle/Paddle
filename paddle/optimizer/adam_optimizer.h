@@ -25,7 +25,7 @@ public:
     if (velocitys_) delete velocitys_;
   }
   void Update(const Tensor *gradient);
-  const char *SerializeState(int *state_len);
+  std::string SerializeState();
   void DeserializeState(const std::string &state);
 
 private:
