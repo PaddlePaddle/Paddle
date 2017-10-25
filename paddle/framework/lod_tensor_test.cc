@@ -17,9 +17,12 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 namespace paddle {
 namespace framework {
+
+const int kLodTensorSize = 20 * 128;
 
 class LoDTensorTester : public ::testing::Test {
  public:
@@ -30,15 +33,18 @@ class LoDTensorTester : public ::testing::Test {
     // 0 5 10 15 20
     // 0 2 5 7 10 12 15 20
     LoD lod;
-    lod.push_back(std::vector<size_t>{0, 10, 20});
-    lod.push_back(std::vector<size_t>{0, 5, 10, 15, 20});
+    lod.push_back(std::vector<size_t>{0, 2, 3});
+    lod.push_back(std::vector<size_t>{0, 2, 5, 8});
     lod.push_back(std::vector<size_t>{0, 2, 5, 7, 10, 12, 15, 17, 20});
 
     ASSERT_EQ(lod.size(), 3UL);
 
     lod_tensor_.Resize({20 /*batch size*/, 128 /*dim*/});
     // malloc memory
-    lod_tensor_.mutable_data<float>(place);
+    float* dst_ptr = lod_tensor_.mutable_data<float>(place);
+    for (int i = 0; i < kLodTensorSize; ++i) {
+      dst_ptr[i] = i;
+    }
 
     lod_tensor_.set_lod(lod);
   }
@@ -52,8 +58,14 @@ TEST_F(LoDTensorTester, NumLevels) { ASSERT_EQ(lod_tensor_.NumLevels(), 3UL); }
 
 TEST_F(LoDTensorTester, NumElements) {
   ASSERT_EQ(lod_tensor_.NumElements(0), 2UL);
-  ASSERT_EQ(lod_tensor_.NumElements(1), 4UL);
+  ASSERT_EQ(lod_tensor_.NumElements(1), 3UL);
   ASSERT_EQ(lod_tensor_.NumElements(2), 8UL);
+}
+
+TEST_F(LoDTensorTester, NumElements2) {
+  ASSERT_EQ(lod_tensor_.NumElements(0, 0), 2UL);
+  ASSERT_EQ(lod_tensor_.NumElements(0, 1), 1UL);
+  ASSERT_EQ(lod_tensor_.NumElements(1, 1), 3UL);
 }
 
 TEST_F(LoDTensorTester, ShrinkLevels) {
@@ -62,17 +74,16 @@ TEST_F(LoDTensorTester, ShrinkLevels) {
     LoDTensor new_lod_tensor = lod_tensor_;
     new_lod_tensor.ShrinkLevels(level, level + 1);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
-    ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor_.NumElements(level));
     ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
   }
-  // slice 2 level
+  // shrink 2 level
   for (size_t level = 0; level < 2UL; ++level) {
     LoDTensor new_lod_tensor = lod_tensor_;
     new_lod_tensor.ShrinkLevels(level, level + 2);
+    // the lowest level's last element should be the tensor's batch_size.
+    ASSERT_EQ(new_lod_tensor.lod().back().back(),
+              lod_tensor_.lod().back().back());
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
-    ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor_.NumElements(level));
-    ASSERT_EQ(new_lod_tensor.NumElements(1),
-              lod_tensor_.NumElements(level + 1));
     ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
   }
 }
@@ -80,20 +91,36 @@ TEST_F(LoDTensorTester, ShrinkLevels) {
 TEST_F(LoDTensorTester, ShrinkInLevel) {
   size_t level = 0;
   LoDTensor new_lod_tensor = lod_tensor_;
-  new_lod_tensor.ShrinkInLevel(level, 0, 2);
+  new_lod_tensor.ShrinkInLevel(level, 0, 1);
   EXPECT_EQ(new_lod_tensor.NumLevels(), 3UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(0), 2UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(1), 4UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(2), 8UL);
+  EXPECT_EQ(new_lod_tensor.NumElements(0), 1UL);
+  EXPECT_EQ(new_lod_tensor.NumElements(1), 2UL);
+  EXPECT_EQ(new_lod_tensor.NumElements(2), 5UL);
   ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
 
   level = 1;
   new_lod_tensor = lod_tensor_;
-  new_lod_tensor.ShrinkInLevel(level, 0, 2);
+  new_lod_tensor.ShrinkInLevel(level, 1, 2);
   ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(1), 3UL);
   ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
+}
+
+TEST_F(LoDTensorTester, SerializeDeserialize) {
+  LoDTensor new_lod_tensor = lod_tensor_;
+  float* src_ptr = lod_tensor_.data<float>();
+  std::string s = lod_tensor_.SerializeToString();
+  LoDTensor dst;
+  dst.DeserializeFromString(s, platform::CPUPlace());
+  float* dst_ptr = dst.data<float>();
+  for (int i = 0; i < kLodTensorSize; ++i) {
+    EXPECT_EQ(dst_ptr[i], src_ptr[i]);
+  }
+
+  ASSERT_EQ(dst.NumElements(0), 2UL);
+  ASSERT_EQ(dst.NumElements(1), 3UL);
+  ASSERT_EQ(dst.NumElements(2), 8UL);
 }
 
 }  // namespace framework

@@ -279,7 +279,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int* indices,
 }
 
 template <typename T>
-class TopkOpCUDAKernel : public framework::OpKernel {
+class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -301,14 +301,16 @@ class TopkOpCUDAKernel : public framework::OpKernel {
 
     // NOTE: pass lds and dim same to input width.
     // NOTE: old matrix implementation of stride is different to eigen.
-    // TODO(typhoonzero): launch kernel on specified stream.
     // TODO(typhoonzero): refine this kernel.
     dim3 threads(256, 1);
     dim3 grid(input_height, 1);
 
-    KeMatrixTopK<T, 5, 256><<<grid, threads>>>(
-        output_data, output->dims()[1], indices_data, input_data, input_width,
-        input_width, int(k));
+    KeMatrixTopK<T, 5, 256><<<
+        grid, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                              ctx.device_context())
+                              .stream()>>>(output_data, output->dims()[1],
+                                           indices_data, input_data,
+                                           input_width, input_width, int(k));
   }
 };
 

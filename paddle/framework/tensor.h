@@ -29,20 +29,12 @@ limitations under the License. */
 
 namespace paddle {
 
-namespace pybind {
-namespace details {
-template <bool less, size_t i, typename... args>
-struct CastToPyBufferImpl;
-}
-}  // namespace pybind
-
 namespace framework {
+
+class LoDTensor;
 
 class Tensor {
  public:
-  template <bool less, size_t i, typename... args>
-  friend struct pybind::details::CastToPyBufferImpl;
-
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
 
@@ -70,6 +62,10 @@ class Tensor {
   template <typename T>
   inline T* mutable_data(platform::Place place);
 
+  inline void* mutable_data(platform::Place place, std::type_index type);
+
+  inline void* mutable_data(platform::Place place);
+
   /**
    * @brief     Return a pointer to mutable memory block.
    *
@@ -91,19 +87,35 @@ class Tensor {
   inline Tensor& Resize(const DDim& dims);
 
   /*! The internal of two tensors share the same memory block. */
-  template <typename T>
   inline Tensor& ShareDataWith(const Tensor& src);
 
   /**
    * @brief   Copy the content of external tensor to a new place.
    *
-   * @param[in] src   The external tensor.
-   * @param[in] ctx   The device context contains place where to store.
+   * @param[in] src        The external tensor.
+   * @param[in] dst_place  The dst place.
+   * @param[in] ctx        The device context contains device resources.
    *
    * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
    */
+  // TODO(qijun): https://github.com/PaddlePaddle/Paddle/issues/4647
+  // Remove `CopyFrom` and `CopyFromVector` from Tensor interface
+  // and make them global functions
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                       const platform::DeviceContext& ctx);
+
+  /**
+   * @brief   Copy the content of an external vector to a tensor.
+   *
+   * @param[in] src        The external tensor.
+   * @param[in] ctx        The device context contains device resources.
+   *
+   * * @note    CopyFromVector assumes that the tensor has been resized
+   *            before invoking.
+   */
   template <typename T>
-  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
+  inline void CopyFromVector(const std::vector<T>& src,
+                             const platform::DeviceContext& ctx);
 
   /**
    * @brief   Return the slice of the tensor.
@@ -111,7 +123,6 @@ class Tensor {
    * @param[in] begin_idx   The begin index of the slice.
    * @param[in] end_idx     The end index of the slice.
    */
-  template <typename T>
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
 
   platform::Place place() const {
@@ -119,30 +130,35 @@ class Tensor {
     return holder_->place();
   }
 
+  std::type_index type() const { return holder_->type(); }
+
  private:
-  template <typename T>
   inline void check_memory_size() const;
 
  private:
+  friend class LoDTensor;
+
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template
    *          parameter of Variable.
    */
   struct Placeholder {
-    virtual ~Placeholder() {}
+    virtual ~Placeholder() = default;
     virtual void* ptr() const = 0;
     virtual size_t size() const = 0;
     virtual std::type_index type() const = 0;
     virtual platform::Place place() const = 0;
+    virtual void set_type(std::type_index type) = 0;
   };
 
-  template <typename T, typename Place>
+  template <typename Place>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(Place place, size_t size)
-        : ptr_(static_cast<T*>(memory::Alloc(place, size)),
-               memory::PODDeleter<T, Place>(place)),
+    PlaceholderImpl(Place place, size_t size, std::type_index type)
+        : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size)),
+               memory::PODDeleter<uint8_t, Place>(place)),
           place_(place),
-          size_(size) {
+          size_(size),
+          type_(type) {
       PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
                               (is_cpu_place(place_) ? "CPU" : "GPU"));
     }
@@ -150,22 +166,31 @@ class Tensor {
     virtual size_t size() const { return size_; }
     virtual platform::Place place() const { return place_; }
     virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
-    virtual std::type_index type() const { return std::type_index(typeid(T)); }
+    virtual std::type_index type() const { return type_; }
+    virtual void set_type(std::type_index type) { type_ = type; }
 
     /*! the pointer of memory block. */
-    std::unique_ptr<T, memory::PODDeleter<T, Place>> ptr_;
+    std::unique_ptr<uint8_t, memory::PODDeleter<uint8_t, Place>> ptr_;
 
     /*! the place of memory block. */
     platform::Place place_;
 
     /*! the size of memory block. */
     size_t size_;
+
+    /* the current type of memory */
+    std::type_index type_;
   };
 
   /*! holds the memory block if allocated. */
   std::shared_ptr<Placeholder> holder_;
 
-  /*! points to dimensions of memory block. */
+  /**
+   * @brief points to elements dimensions.
+   *
+   * @note dims_ do not indicate the memory block size.
+   */
+
   DDim dims_;
 
   /**
