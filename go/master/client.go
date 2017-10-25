@@ -135,7 +135,7 @@ func (c *Client) getRecords(passID int) {
 			if i%60 == 0 {
 				log.Debug("getTask of passID error.",
 					log.Ctx{"error": err, "passID": passID})
-				i = 3
+				i = 0
 			}
 
 			// if err.Error() == ErrPassAfter.Error()
