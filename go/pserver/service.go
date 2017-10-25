@@ -124,6 +124,9 @@ func loadMeta(e *EtcdClient, idx int) (meta checkpointMeta, err error) {
 
 // LoadCheckpoint loads checkpoint from file.
 func LoadCheckpoint(e *EtcdClient, idx int) (Checkpoint, error) {
+	log.Info("Loading checkpoint", "pserver index", idx)
+	defer traceTime(time.Now(), "load checkpoint")
+
 	cpMeta, err := loadMeta(e, idx)
 	if err != nil {
 		return nil, err
@@ -178,6 +181,7 @@ func NewService(idx int, interval time.Duration, path string, client *EtcdClient
 func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, _ *int) error {
 	select {
 	case <-s.initialized:
+		log.Warn("init param called but parameters already initialized.")
 		return errors.New(AlreadyInitialized)
 	default:
 	}
@@ -191,6 +195,13 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, _ *int) error 
 	// properly memory aligned, if not, make copy to a memory
 	// aligned region.
 	s.optMap[paramWithConfigs.Param.Name] = newOptimizer(paramWithConfigs, nil)
+	log.Info(
+		"init parameter",
+		"name", paramWithConfigs.Param.Name,
+		"config len", len(paramWithConfigs.Config),
+		"param len", len(paramWithConfigs.Param.Content),
+		"type", paramWithConfigs.Param.ElementType,
+	)
 	return nil
 }
 
@@ -199,6 +210,7 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, _ *int) error 
 func (s *Service) FinishInitParams(_ int, _ *int) error {
 	select {
 	case <-s.initialized:
+		log.Warn("finished init param called but parameters already initialized.")
 		return errors.New(AlreadyInitialized)
 	default:
 	}
@@ -213,6 +225,8 @@ func (s *Service) FinishInitParams(_ int, _ *int) error {
 			}
 		}
 	}()
+
+	log.Info("init parameter finished.")
 	return nil
 }
 
@@ -222,6 +236,7 @@ func (s *Service) SendGrad(g Gradient, _ *int) error {
 	select {
 	case <-s.initialized:
 	default:
+		log.Warn("received gradient before initialization.", "name", g.Name, "size", len(g.Content), "type", g.ElementType)
 		return errors.New(Uninitialized)
 	}
 
@@ -233,6 +248,7 @@ func (s *Service) SendGrad(g Gradient, _ *int) error {
 		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
+	log.Info("received gradient from trainer, updating gradient.", "name", g.Name, "size", len(g.Content), "type", g.ElementType)
 	return o.UpdateParameter(g)
 }
 
@@ -244,6 +260,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 
 	opt, ok := s.optMap[name]
 	if !ok {
+		log.Warn("trainer wants to get a parameter that does not exist.", "name", name)
 		return fmt.Errorf("parameter: %s does not exist", name)
 	}
 
@@ -257,6 +274,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	parameter.Name = name
 	parameter.ElementType = opt.elementType
 	parameter.Content = opt.GetWeights()
+	log.Info("sending parameter to the trainer", "name", parameter.Name, "size", len(parameter.Content), "type", parameter.ElementType)
 	return nil
 }
 
