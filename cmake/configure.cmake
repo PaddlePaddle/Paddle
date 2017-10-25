@@ -68,13 +68,6 @@ else()
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
-    if (NOT NCCL_INCLUDE_DIR)
-        message(FATAL_ERROR "Paddle needs nccl header to compile")
-    endif()
-    if (NOT WITH_DSO AND NOT NCCL_LIBRARY)
-        message(FATAL_ERROR "Paddle needs nccl libraries when WITH_DSO=OFF")
-    endif()
-
 
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
 

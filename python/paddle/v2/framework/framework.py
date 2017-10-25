@@ -113,6 +113,10 @@ class Variable(object):
     def lod_level(self):
         return self.desc.lod_level()
 
+    @property
+    def type(self):
+        return self.desc.type()
+
     @staticmethod
     def _unique_var_name_():
         uid = core.unique_integer()  # unique during whole process.
@@ -191,32 +195,33 @@ class Operator(object):
                 "`type` to initilized an Operator can not be None.")
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
+
+        def find_name(var_list, name):
+            for var_name in var_list:
+                if var_name == name:
+                    return True
+            return False
+
         if inputs is not None:
-            given = set()
-            need = set()
-            for n in inputs:
-                given.add(n)
-            for m in proto.inputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(
-                    "Incorrect setting for input(s) of operator \"%s\". Need: [%s] Given: [%s]"
-                    % (type, ", ".join(str(e) for e in need), ", ".join(
-                        str(e) for e in given)))
-
             for in_proto in proto.inputs:
+                found = find_name(inputs, in_proto.name)
+                assert found or in_proto.dispensable, "Input {} not found".format(
+                    in_proto.name)
 
-                in_argus = inputs[in_proto.name]
-                if not isinstance(in_argus, list):
-                    in_argus = [in_argus]
-                if not in_proto.duplicable and len(in_argus) > 1:
-                    raise ValueError(
-                        "Input %s expects only one input, but %d are given." %
-                        (in_proto.name, len(in_argus)))
-                in_argu_names = []
-                for argu in in_argus:
-                    in_argu_names.append(argu.name)
-                self.desc.set_input(in_proto.name, in_argu_names)
+                if found:
+                    in_argus = inputs[in_proto.name]
+                    if not isinstance(in_argus, list):
+                        in_argus = [in_argus]
+                    if not in_proto.duplicable and len(in_argus) > 1:
+                        raise ValueError(
+                            "Input %s expects only one input, but %d are given."
+                            % (in_proto.name, len(in_argus)))
+                    in_argu_names = []
+                    for argu in in_argus:
+                        in_argu_names.append(argu.name)
+                    self.desc.set_input(in_proto.name, in_argu_names)
+                else:
+                    self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
             given = set()
@@ -250,10 +255,10 @@ class Operator(object):
                 attr_name = attr.name
                 if (not attr_name in attrs) or (attrs[attr_name] is None):
                     continue
-                if not isinstance(attrs[attr_name], Block):
-                    self.desc.set_attr(attr_name, attrs[attr_name])
-                else:
+                if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+                else:
+                    self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
         if type not in {'feed', 'fetch'}:
