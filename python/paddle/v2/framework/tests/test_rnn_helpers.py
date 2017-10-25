@@ -15,18 +15,18 @@ class TestRNN(unittest.TestCase):
             name='image')
         hidden = fc(input=img, size=100, act='sigmoid', num_flatten_dims=2)
         self.assertEqual((-1, 80, 100), hidden.shape)
-        # hidden = fc(input=hidden, size=100, act='sigmoid', num_flatten_dims=2)
-        # self.assertEqual((-1, 80, 100), hidden.shape)
 
         rnn = StaticRNN()
         with rnn.step():
-            hidden = rnn.step_input(hidden)
-            self.assertEqual((-1, 100), hidden.shape)
             memory = rnn.memory(
                 ref=img, shape=(-1, 32), dtype='float32', init_value=0.0)
 
+            hidden = rnn.step_input(hidden)
+            self.assertEqual((-1, 100), hidden.shape)
+
             rnn_out = fc(input=[hidden, memory], size=32, act='sigmoid')
             self.assertEqual((-1, 32), rnn_out.shape)
+
             rnn.update_memory(memory, rnn_out)
             rnn.output(rnn_out)
 

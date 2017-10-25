@@ -466,9 +466,32 @@ class StaticRNN(object):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
 
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+
+        print 'inlinks ' + ('-' * 10)
         inlinks = [parent_block.var(i.name) for i in self.inputs]
+        print inlinks
+
+        print 'outlinks ' + ('-' * 10)
         outlinks = self.outputs
         print outlinks
-
         print params
+
+        boot_memories = []
+        pre_memories = [],
+        memories = []
+        for _, mem in self.memories.iteritems():
+            boot_memories.append(mem.init)
+            pre_memories.append(mem.pre_mem.name)
+            memories.append(mem.mem.name)
+
+        parent_block.append_op(
+            type='recurrent',
+            inputs={'inlinks': inlinks,
+                    'boot_memories': boot_memories},
+            outputs={'outlinks': outlinks,
+                     'step_scopes': [step_scope]},
+            attrs={'pre_memories': pre_memories,
+                   'memories': memories})
         exit(1)
