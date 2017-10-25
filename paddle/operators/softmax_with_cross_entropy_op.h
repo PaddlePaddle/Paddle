@@ -67,8 +67,8 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
 
       logit_grad_mat.device(context.GetEigenDevice<platform::CPUPlace>()) =
           logit_grad_mat *
-              out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) -
-          lbl_mat;
+          (out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) -
+           lbl_mat);
     } else {
       const int batch_size = logit_grad->dims()[0];
       const int* label_data = labels->data<int>();
@@ -78,7 +78,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < batch_size; ++i) {
         int index = i * class_num + label_data[i];
         logit_grad_data[index] =
-            (out_grad_data[i] * logit_grad_data[index] - 1.);
+            out_grad_data[i] * (logit_grad_data[index] - 1.);
       }
     }
   }
