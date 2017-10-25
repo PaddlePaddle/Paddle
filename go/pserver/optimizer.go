@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 type optimizer struct {
@@ -56,12 +56,12 @@ func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer
 	c := paramWithConfigs.Config
 	s := State
 	paramBufferSize := C.size_t(len(p.Content))
-	log.WithFields(log.Fields{
+	log.Info("New Optimizer Created with config", log.Ctx{
 		"ElementType": p.ElementType,
 		"ParamSize":   paramBufferSize,
 		"ConfigSize":  len(c),
 		"StateSize":   len(s),
-	}).Info("New Optimizer Created with config:")
+	})
 	var cbuffer unsafe.Pointer
 	cbuffer = C.malloc(paramBufferSize)
 
