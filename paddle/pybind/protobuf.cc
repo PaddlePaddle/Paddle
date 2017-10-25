@@ -224,7 +224,8 @@ void BindVarDsec(py::module &m) {
       .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
       .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS)
       .value("FEED_MINIBATCH", VarDesc::FEED_MINIBATCH)
-      .value("FETCH_LIST", VarDesc::FETCH_LIST);
+      .value("FETCH_LIST", VarDesc::FETCH_LIST)
+      .value("STEP_SCOPES", VarDesc::STEP_SCOPES);
 }
 
 void BindOpDesc(py::module &m) {
