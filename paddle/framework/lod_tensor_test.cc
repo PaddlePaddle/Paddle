@@ -107,21 +107,5 @@ TEST_F(LoDTensorTester, ShrinkInLevel) {
   ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
 }
 
-TEST_F(LoDTensorTester, SerializeDeserialize) {
-  LoDTensor new_lod_tensor = lod_tensor_;
-  float* src_ptr = lod_tensor_.data<float>();
-  std::string s = lod_tensor_.SerializeToString();
-  LoDTensor dst;
-  dst.DeserializeFromString(s, platform::CPUPlace());
-  float* dst_ptr = dst.data<float>();
-  for (int i = 0; i < kLodTensorSize; ++i) {
-    EXPECT_EQ(dst_ptr[i], src_ptr[i]);
-  }
-
-  ASSERT_EQ(dst.NumElements(0), 2UL);
-  ASSERT_EQ(dst.NumElements(1), 3UL);
-  ASSERT_EQ(dst.NumElements(2), 8UL);
-}
-
 }  // namespace framework
 }  // namespace paddle

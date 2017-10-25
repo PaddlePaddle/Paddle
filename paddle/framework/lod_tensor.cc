@@ -13,7 +13,6 @@
    limitations under the License. */
 
 #include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/saver.pb.h"
 
 #include "paddle/memory/memcpy.h"
 #include "paddle/memory/memory.h"
