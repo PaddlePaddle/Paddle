@@ -19,7 +19,7 @@ Simple Gated Recurrent Neural Network
 
 Recurrent neural network process a sequence at each time step sequentially. An example of the architecture of LSTM is listed below.
 
-.. image:: ../../../tutorials/sentiment_analysis/src/bi_lstm.jpg
+.. image:: src/bi_lstm.jpg
      :align: center
 
 Generally speaking, a recurrent network perform the following operations from :math:`t=1` to :math:`t=T`, or reversely from :math:`t=T` to :math:`t=1`.
@@ -78,7 +78,7 @@ Sequence to Sequence Model with Attention
 -----------------------------------------
 We will use the sequence to sequence model with attention as an example to demonstrate how you can configure complex recurrent neural network models. An illustration of the sequence to sequence model with attention is shown in the following figure.
 
-.. image:: ../../../tutorials/text_generation/encoder-decoder-attention-model.png
+.. image:: src/encoder-decoder-attention-model.png
       :align: center
 
 In this model, the source sequence :math:`S = \{s_1, \dots, s_T\}` is encoded with a bidirectional gated recurrent neural networks. The hidden states of the bidirectional gated recurrent neural network :math:`H_S = \{H_1, \dots, H_T\}` is called *encoder vector* The decoder is a gated recurrent neural network. When decoding each token :math:`y_t`, the gated recurrent neural network generates a set of weights :math:`W_S^t = \{W_1^t, \dots, W_T^t\}`, which are used to compute a weighted sum of the encoder vector. The weighted sum of the encoder vector is utilized to condition the generation of the token :math:`y_t`.

@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/cross_entropy.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +27,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
-class CrossEntropyOpKernel : public framework::OpKernel {
+class CrossEntropyOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -37,12 +38,12 @@ class CrossEntropyOpKernel : public framework::OpKernel {
     y->mutable_data<T>(ctx.GetPlace());
 
     math::CrossEntropyFunctor<platform::CPUPlace, T>()(
-        ctx, y, x, labels, ctx.Attr<bool>("softLabel"));
+        ctx.device_context(), y, x, labels, ctx.Attr<bool>("soft_label"));
   }
 };
 
 template <typename T>
-class CrossEntropyGradientOpKernel : public framework::OpKernel {
+class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -54,7 +55,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel {
     T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
     int class_num = x->dims()[1];
-    if (ctx.Attr<bool>("softLabel")) {
+    if (ctx.Attr<bool>("soft_label")) {
       auto x_mat = EigenMatrix<T>::From(*x);
       auto dy_mat = EigenMatrix<T>::From(*dy);
       auto lbl_mat = EigenMatrix<T>::From(*label);
@@ -69,8 +70,8 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel {
       const T* x_data = x->data<T>();
       const int* label_data = label->data<int>();
 
-      // TODO(qingqing): make zero setting a common function.
-      memset(dx_data, 0, sizeof(T) * batch_size * class_num);
+      math::SetConstant<platform::CPUPlace, T> functor;
+      functor(ctx.device_context(), dx, 0);
 
       for (int i = 0; i < batch_size; ++i) {
         PADDLE_ASSERT(label_data[i] >= 0 || label_data[i] < class_num);

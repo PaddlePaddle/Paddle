@@ -37,9 +37,7 @@ struct TolerableValue {
 template <typename Place, typename T>
 class CrossEntropyFunctor {
  public:
-  // (TODO caoying) it is much better to use DeviceContext as the first
-  // parameter.
-  void operator()(const framework::ExecutionContext& context,
+  void operator()(const platform::DeviceContext& context,
                   framework::Tensor* out, const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel);
 };

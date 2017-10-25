@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/scope.h"
+
+#include <memory>  // for unique_ptr
+#include <mutex>   // for call_once
 #include "paddle/string/printf.h"
 
 namespace paddle {
@@ -28,7 +31,7 @@ Scope& Scope::NewScope() const {
   return *kids_.back();
 }
 
-Variable* Scope::NewVar(const std::string& name) {
+Variable* Scope::Var(const std::string& name) {
   auto iter = vars_.find(name);
   if (iter != vars_.end()) {
     return iter->second;
@@ -39,8 +42,8 @@ Variable* Scope::NewVar(const std::string& name) {
   return v;
 }
 
-Variable* Scope::NewVar() {
-  return NewVar(string::Sprintf("%p.%d", this, vars_.size()));
+Variable* Scope::Var() {
+  return Var(string::Sprintf("%p.%d", this, vars_.size()));
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
@@ -60,6 +63,30 @@ const Scope* Scope::FindScope(const Variable* var) const {
 void Scope::DropKids() {
   for (Scope* s : kids_) delete s;
   kids_.clear();
+}
+
+std::vector<std::string> Scope::GetAllNames(bool recursive) const {
+  std::vector<std::string> known_vars(vars_.size());
+
+  if (recursive) {
+    for (auto& kid : kids_) {
+      auto kid_vars = kid->GetAllNames();
+      for (auto& p : kid_vars) {
+        known_vars.emplace_back(p);
+      }
+    }
+  }
+  for (auto& p : vars_) {
+    known_vars.emplace_back(p.first);
+  }
+  return known_vars;
+}
+
+void Scope::DeleteScope(Scope* scope) {
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+  PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
+  this->kids_.erase(it);
+  delete scope;
 }
 
 }  // namespace framework

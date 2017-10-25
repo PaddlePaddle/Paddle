@@ -42,7 +42,7 @@ template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<true, I, ARGS...> {
   using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
   py::buffer_info operator()(framework::Tensor &tensor) {
-    if (std::type_index(typeid(CUR_TYPE)) == tensor.holder_->type()) {
+    if (std::type_index(typeid(CUR_TYPE)) == tensor.type()) {
       auto dim_vec = framework::vectorize(tensor.dims());
       std::vector<size_t> dims_outside;
       std::vector<size_t> strides;
@@ -56,13 +56,24 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         prod *= dims_outside[i - 1];
       }
       framework::Tensor dst_tensor;
-      if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
-        dst_tensor.CopyFrom<CUR_TYPE>(tensor, platform::CPUPlace());
-      } else if (paddle::platform::is_cpu_place(tensor.holder_->place())) {
+      if (paddle::platform::is_gpu_place(tensor.place())) {
+#ifdef PADDLE_WITH_CUDA
+        auto *src_ptr = static_cast<const void *>(tensor.data<CUR_TYPE>());
+        auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
+            tensor.dims(), platform::CPUPlace()));
+        // TODO(qijun): Here we use default CUDA stream to set GPU Tensor to
+        // a Python numpy array. It's better to manage CDUA stream unifiedly.
+        paddle::platform::GpuMemcpySync(dst_ptr, src_ptr,
+                                        sizeof(CUR_TYPE) * tensor.numel(),
+                                        cudaMemcpyDeviceToHost);
+#else
+        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#endif
+      } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
       }
       return py::buffer_info(
-          dst_tensor.mutable_data<CUR_TYPE>(dst_tensor.holder_->place()),
+          dst_tensor.mutable_data<CUR_TYPE>(dst_tensor.place()),
           sizeof(CUR_TYPE), py::format_descriptor<CUR_TYPE>::format(),
           (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
     } else {
@@ -73,8 +84,21 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 };
 }  // namespace details
 inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
-  auto buffer_info = details::CastToPyBufferImpl<true, 0, float, int>()(tensor);
+  auto buffer_info =
+      details::CastToPyBufferImpl<true, 0, float, int, double>()(tensor);
   return buffer_info;
+}
+
+template <typename T>
+T TensorGetElement(framework::Tensor &self, size_t offset) {
+  PADDLE_ENFORCE(platform::is_cpu_place(self.place()));
+  return self.data<T>()[offset];
+}
+
+template <typename T>
+void TensorSetElement(framework::Tensor &self, size_t offset, T elem) {
+  PADDLE_ENFORCE(platform::is_cpu_place(self.place()));
+  self.data<T>()[offset] = elem;
 }
 
 template <typename T>
@@ -93,7 +117,7 @@ void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
@@ -107,6 +131,8 @@ void PyCUDATensorSetFromArray(
 
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
+  // TODO(qijun): Here we use default CUDA stream to set a Python numpy
+  // array to a GPU Tensor. It's better to manage CDUA stream unifiedly.
   paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
                                   cudaMemcpyHostToDevice);
 }

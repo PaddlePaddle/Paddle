@@ -21,8 +21,7 @@ class MeanOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of MeanOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -36,7 +35,7 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
   MeanOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
-    AddOutput("Out", "The output of mean op").NotInGradient();
+    AddOutput("Out", "The output of mean op");
     AddComment(R"DOC( Mean Operator
 )DOC");
   }
@@ -46,9 +45,23 @@ class MeanGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+};
+
+class MeanGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto* grad_op = new framework::OpDescBind();
+    grad_op->SetType("mean_grad");
+    grad_op->SetInput("X", Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    return std::unique_ptr<framework::OpDescBind>(grad_op);
   }
 };
 
@@ -56,7 +69,8 @@ class MeanGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mean, ops::MeanOp, ops::MeanOpMaker, mean_grad, ops::MeanGradOp);
+REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanGradMaker);
+REGISTER_OPERATOR(mean_grad, ops::MeanGradOp);
 REGISTER_OP_CPU_KERNEL(mean,
                        ops::MeanKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mean_grad,
