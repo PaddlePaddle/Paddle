@@ -155,7 +155,11 @@ class TestLstmOp(OpTest):
             'Weight': w,
             'Bias': b
         }
-        self.outputs = {'Hidden': h, 'Cell': c, 'BatchGate': g_sort}
+        self.outputs = {
+            'Hidden': (h, self.lod),
+            'Cell': (c, self.lod),
+            'BatchGate': g_sort
+        }
         self.attrs = {
             'usePeepholes': True,
             'isReverse': self.is_reverse,

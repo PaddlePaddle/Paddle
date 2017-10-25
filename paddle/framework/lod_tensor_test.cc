@@ -17,9 +17,12 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 namespace paddle {
 namespace framework {
+
+const int kLodTensorSize = 20 * 128;
 
 class LoDTensorTester : public ::testing::Test {
  public:
@@ -38,7 +41,10 @@ class LoDTensorTester : public ::testing::Test {
 
     lod_tensor_.Resize({20 /*batch size*/, 128 /*dim*/});
     // malloc memory
-    lod_tensor_.mutable_data<float>(place);
+    float* dst_ptr = lod_tensor_.mutable_data<float>(place);
+    for (int i = 0; i < kLodTensorSize; ++i) {
+      dst_ptr[i] = i;
+    }
 
     lod_tensor_.set_lod(lod);
   }
@@ -99,6 +105,22 @@ TEST_F(LoDTensorTester, ShrinkInLevel) {
   ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
   ASSERT_EQ(new_lod_tensor.NumElements(1), 3UL);
   ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
+}
+
+TEST_F(LoDTensorTester, SerializeDeserialize) {
+  LoDTensor new_lod_tensor = lod_tensor_;
+  float* src_ptr = lod_tensor_.data<float>();
+  std::string s = lod_tensor_.SerializeToString();
+  LoDTensor dst;
+  dst.DeserializeFromString(s, platform::CPUPlace());
+  float* dst_ptr = dst.data<float>();
+  for (int i = 0; i < kLodTensorSize; ++i) {
+    EXPECT_EQ(dst_ptr[i], src_ptr[i]);
+  }
+
+  ASSERT_EQ(dst.NumElements(0), 2UL);
+  ASSERT_EQ(dst.NumElements(1), 3UL);
+  ASSERT_EQ(dst.NumElements(2), 8UL);
 }
 
 }  // namespace framework
