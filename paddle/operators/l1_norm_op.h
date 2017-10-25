@@ -36,7 +36,7 @@ class L1NormKernel : public framework::OpKernel<T> {
   }
 };
 
-// dX = sign(X)
+// dX = dout * sign(X)
 template <typename Place, typename T>
 class L1NormGradKernel : public framework::OpKernel<T> {
  public:
