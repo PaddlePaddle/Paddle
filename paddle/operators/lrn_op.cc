@@ -40,6 +40,7 @@ class LRNOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
 class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   LRNOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
@@ -62,19 +63,19 @@ and also used in backward process.
         .SetDefault(5)
         .GreaterThan(0);
 
-    AddAttr<float>("k", R"DOC(
+    AddAttr<T>("k", R"DOC(
 (float, default 2.0)k is the bias.
         )DOC")
         .SetDefault(2.0)
         .GreaterThan(0.0);
 
-    AddAttr<float>("alpha", R"DOC(
+    AddAttr<T>("alpha", R"DOC(
 (float, default 0.0001)alpha is the scale number.
         )DOC")
         .SetDefault(0.0001)
         .GreaterThan(0.0);
 
-    AddAttr<float>("beta", R"DOC(
+    AddAttr<T>("beta", R"DOC(
 (float, default 0.75)beta is the power number.
         )DOC")
         .SetDefault(0.75)
@@ -120,9 +121,9 @@ class LRNOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("MidOut")),
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("MidOut")),
                    "Input(MidOut@GRAD) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
 
     auto x_dims = ctx->GetInputDim("X");
@@ -134,7 +135,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(lrn, ops::LRNOp, ops::LRNOpMaker, lrn_grad, ops::LRNOpGrad);
+REGISTER_OP(lrn, ops::LRNOp, ops::LRNOpMaker<float>, lrn_grad, ops::LRNOpGrad);
 REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(lrn_grad,
                        ops::LRNGradKernel<paddle::platform::CPUPlace, float>);
