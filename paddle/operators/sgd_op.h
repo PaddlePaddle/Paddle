@@ -39,6 +39,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
     auto* grad_var = ctx.InputVar("Grad");
     // Actually, all tensors are LoDTensor except SelectedRows.
     if (grad_var->IsType<framework::LoDTensor>()) {
+      VLOG(3) << "sgd op makes normal update";
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
 
@@ -51,6 +52,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
       Eigen::DSizes<int, 1> grad_dsize(grad->numel());
       o.device(place) = p - lr.broadcast(grad_dsize) * g;
     } else if (grad_var->IsType<framework::SelectedRows>()) {
+      VLOG(3) << "sgd op makes sparse update";
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
       // This manual optimization brings difficulty to track data dependency.
       // It's better to find a more elegant solution.

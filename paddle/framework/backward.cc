@@ -179,8 +179,9 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       // collect all the offset for each alias,
       // insert a sum operator to add all aliases to output
       insert_position.push_back(
-          {dup_op.back(), OpRegistry::CreateOp("sum", {{"X", dup_outputs}},
-                                               {{"Out", {name}}}, {})});
+          {dup_op.back(),
+           OpRegistry::CreateOp("sum", {{"X", dup_outputs}}, {{"Out", {name}}},
+                                {{"is_internal", true}})});
     }
 
     // make sure the inserted `sum` ops follow the BFS order.
@@ -315,6 +316,7 @@ static void CreateGradVarInBlock(
                      return false; /* not break */
                    });
     if (need_infer_shape) {
+      ops[op_index]->InferVarType(block_desc);
       ops[op_index]->InferShape(*block_desc);
     }
   }
@@ -341,7 +343,6 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
   grad_op_descs = OpInfoMap::Instance()
                       .Get(op_desc->Type())
                       .GradOpMaker()(*op_desc, *no_grad_vars, grad_to_var);
-
   std::list<std::unique_ptr<OpDescBind>> pending_fill_zeros_ops;
   for (auto& desc : grad_op_descs) {
     for (const std::string& in_name : desc->InputArgumentNames()) {
@@ -413,8 +414,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
         backward_descs[dup_op[i]]->Rename(out_name, new_name);
         sum_op_inputs.emplace_back(new_name);
       }
-      std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
-          "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));
+      std::unique_ptr<OpDescBind> sum_op(
+          new OpDescBind("sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}},
+                         {{"is_internal", true}}));
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
     }
   }
@@ -442,7 +444,7 @@ ParamGradInfoMap AppendBackward(
   }
 
   const int root_block_idx = 0;
-  auto root_block = program_desc.Block(root_block_idx);
+  auto* root_block = program_desc.Block(root_block_idx);
 
   // insert fill one op for target
   // TODO(qiao) add some check to the target.
@@ -457,6 +459,9 @@ ParamGradInfoMap AppendBackward(
                      {{"shape", target_shape},
                       {"value", static_cast<float>(1.0)},
                       {"data_type", framework::DataType::FP32}}));
+  // infer var type of fill_one_op_out
+  fill_one_op->InferVarType(root_block);
+
   root_block->AppendAllocatedOp(std::move(fill_one_op));
   size_t forward_op_num = root_block->OpSize();
   size_t forward_block_num = program_desc.Size();
@@ -473,8 +478,8 @@ ParamGradInfoMap AppendBackward(
 
   // Create target gradient variable
   std::unordered_map<std::string, GradVarInfo> retv;
-
   auto var = root_block->Var(fill_one_op_out);
+
   // FIXME(qiao) infer the data type
   var->SetDataType(framework::DataType::FP32);
   var->SetShape(target.Shape());
@@ -490,6 +495,7 @@ ParamGradInfoMap AppendBackward(
     CreateGradVarInBlock(0, grad_to_var, program_desc.Block(block_index),
                          &retv);
   }
+  LOG(INFO) << "AppendBackward Done";
   return retv;
 }
 

@@ -20,7 +20,7 @@ namespace math {
 
 namespace {
 template <typename T>
-__global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
+__global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
                                    const int N, const int D) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
@@ -90,7 +90,7 @@ class CrossEntropyFunctor<platform::GPUPlace, T> {
           reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
           loss_data, prob_data, label_data, class_num);
     } else {
-      const int* label_data = labels->data<int>();
+      const int64_t* label_data = labels->data<int64_t>();
       int block = 512;
       int grid = (batch_size + block - 1) / block;
       CrossEntropyKernel<T><<<
