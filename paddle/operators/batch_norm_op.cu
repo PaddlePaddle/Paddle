@@ -25,6 +25,21 @@ using Tensor = framework::Tensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
+void ExtractNCWHD(const framework::DDim &dims,
+                  const TensorFormat &tensor_format, int *N, int *C, int *H,
+                  int *W, int *D) {
+  *N = dims[0];
+  *C = tensor_format == TensorFormat::NCHW ? x_dims[1]
+                                           : x_dims[x_dims.size() - 1];
+  *H = tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1];
+  *W = x_dims.size() > 3
+           ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
+           : 1;
+  *D = x_dims.size() > 4
+           ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
+           : 1;
+}
+
 template <typename T>
 class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
  public:
@@ -33,9 +48,9 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
                    "It must use GPUPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
+    const bool is_test = ctx.Attr<bool>("is_test");
     const std::string tensor_format_str =
         ctx.Attr<std::string>("tensor_format");
-    const bool is_test = ctx.Attr<bool>("is_test");
     const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
 
     // Get the size for each dimension.
@@ -44,19 +59,8 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
-    const int N = x_dims[0];
-    const int C =
-        (tensor_format == TensorFormat::NCHW ? x_dims[1]
-                                             : x_dims[x_dims.size() - 1]);
-    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
-    const int W =
-        x_dims.size() > 3
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
-            : 1;
-    const int D =
-        x_dims.size() > 4
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
-            : 1;
+    int N, C, H, W, D;
+    ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
 
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
@@ -182,19 +186,8 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
-    const int N = x_dims[0];
-    const int C =
-        (tensor_format == TensorFormat::NCHW ? x_dims[1]
-                                             : x_dims[x_dims.size() - 1]);
-    const int H = (tensor_format == TensorFormat::NCHW ? x_dims[2] : x_dims[1]);
-    const int W =
-        x_dims.size() > 3
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[3] : x_dims[2])
-            : 1;
-    const int D =
-        x_dims.size() > 4
-            ? (tensor_format == TensorFormat::NCHW ? x_dims[4] : x_dims[3])
-            : 1;
+    int N, C, H, W, D;
+    ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
 
     PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
     PADDLE_ENFORCE_EQ(scale->dims()[0], C);
