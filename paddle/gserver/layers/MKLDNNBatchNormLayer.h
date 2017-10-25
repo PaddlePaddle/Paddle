@@ -56,8 +56,10 @@ protected:
   bool hasInitedWgt_;
 
   // local mean and variance
-  MKLDNNMatrixPtr mean_;  // output of mkldnn: m
-  MKLDNNMatrixPtr var_;   // output of mkldnn: v^2
+  // when useGlobalStats_ they are loaded from moving mean and variance
+  // when do not useGlobalStats_ they are calculated from this mini-batch
+  MKLDNNMatrixPtr mean_;
+  MKLDNNMatrixPtr var_;
 
 public:
   explicit MKLDNNBatchNormLayer(const LayerConfig& config)
