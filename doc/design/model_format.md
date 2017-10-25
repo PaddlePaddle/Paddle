@@ -34,5 +34,5 @@ The table below shows a tensor's byte view in detail. Note that all the signed v
 ## Summary
 
 - We introduce a model format.
-- The `ProgramDesc` describe the model **topology**. 
+- The model represented by its forward-pass computation procedure saved in a **ProgramDesc** protobuf message.
 - A bunch of specified format binary tensors describe the **parameters**.
