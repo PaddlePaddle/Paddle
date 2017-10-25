@@ -25,7 +25,6 @@ using Tensor = framework::Tensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
-// BatchNormKernel for CPU, now only support NCHW data format
 template <typename T>
 class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
  public:
@@ -175,11 +174,11 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     const std::string tensor_format_str =
         ctx.Attr<std::string>("tensor_format");
     const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
-    const auto *X = ctx.Input<Tensor>("X");
-    const auto *dY = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
 
-    const auto &x_dims = X->dims();
+    const auto &x_dims = x->dims();
 
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
@@ -229,13 +228,13 @@ class BatchNormGradKernel<platform::GPUPlace, T>
         bn_param_desc_, data_desc_, mode_));
 
     // init output
-    auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *dScale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *dBias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    dX->mutable_data<T>(ctx.GetPlace());
-    dScale->mutable_data<T>(ctx.GetPlace());
-    dBias->mutable_data<T>(ctx.GetPlace());
+    d_x->mutable_data<T>(ctx.GetPlace());
+    d_scale->mutable_data<T>(ctx.GetPlace());
+    d_bias->mutable_data<T>(ctx.GetPlace());
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
@@ -246,11 +245,11 @@ class BatchNormGradKernel<platform::GPUPlace, T>
         ctx.cuda_device_context().cudnn_handle(), mode_,
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
-        X->template data<T>(), data_desc_, dY->template data<T>(), data_desc_,
-        dX->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
+        x->template data<T>(), data_desc_, d_y->template data<T>(), data_desc_,
+        d_x->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
         scale->template data<T>(),
-        dScale->template mutable_data<T>(ctx.GetPlace()),
-        dBias->template mutable_data<T>(ctx.GetPlace()), epsilon,
+        d_scale->template mutable_data<T>(ctx.GetPlace()),
+        d_bias->template mutable_data<T>(ctx.GetPlace()), epsilon,
         saved_mean_data, saved_var_data));
 
     // clean when exit.
