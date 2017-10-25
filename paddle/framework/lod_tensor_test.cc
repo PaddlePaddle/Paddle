@@ -135,7 +135,8 @@ TEST(LodExpand, test) {
   tensor.data<float>()[0] = 0;
   tensor.data<float>()[1] = 1;
 
-  LoD target{{0, 3, 5}};
+  LoD target;
+  target.emplace_back(std::vector<size_t>{0, 3, 5});
   auto new_tensor = LodExpand<float>(tensor, target, 0UL, platform::CPUPlace());
   std::vector<int> result{{0, 0, 0, 1, 1}};
   for (size_t i = 0; i < 5; i++) {
