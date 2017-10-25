@@ -49,6 +49,32 @@ void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
 }
 
 template <>
+void gemm<platform::CPUPlace, float>(const platform::DeviceContext& context,
+                                     const bool transA, const bool transB,
+                                     const int M, const int N, const int K,
+                                     const float alpha, const float* A,
+                                     const int lda, const float* B,
+                                     const int ldb, const float beta, float* C,
+                                     const int ldc) {
+  cblas_sgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+              lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
+                                      const bool transA, const bool transB,
+                                      const int M, const int N, const int K,
+                                      const double alpha, const double* A,
+                                      const int lda, const double* B,
+                                      const int ldb, const double beta,
+                                      double* C, const int ldc) {
+  cblas_dgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+              lda, B, ldb, beta, C, ldc);
+}
+
+template <>
 void matmul<platform::CPUPlace, float>(
     const platform::DeviceContext& context, const framework::Tensor& matrix_a,
     bool trans_a, const framework::Tensor& matrix_b, bool trans_b, float alpha,
@@ -103,6 +129,89 @@ void matmul<platform::CPUPlace, double>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
+
+#ifdef PADDLE_USE_MKLML
+// Use cblas_{s,d}gemm_batched if available: Run with 1 group of size batchSize.
+template <>
+void batched_gemm<platform::CPUPlace, float>(
+    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float alpha, const float* A, const float* B, const float beta,
+    float* C, const int batchCount, const int strideA, const int strideB) {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  auto a_array = std::vector<const float*>(batchCount);
+  auto b_array = std::vector<const float*>(batchCount);
+  auto c_array = std::vector<float*>(batchCount);
+  for (int k = 0; k < batchCount; ++k) {
+    a_array[k] = &A[k * strideA];
+    b_array[k] = &B[k * strideB];
+    c_array[k] = &C[k * M * N];
+  }
+  cblas_sgemm_batch(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
+                    a_array.data(), &lda, b_array.data(), &ldb, &beta,
+                    c_array.data(), &ldc, 1 /* group_count */, &batchCount);
+}
+
+template <>
+void batched_gemm<platform::CPUPlace, double>(
+    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const double alpha, const double* A, const double* B, const double beta,
+    double* C, const int batchCount, const int strideA, const int strideB) {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  auto a_array = std::vector<const double*>(batchCount);
+  auto b_array = std::vector<const double*>(batchCount);
+  auto c_array = std::vector<double*>(batchCount);
+  for (int k = 0; k < batchCount; ++k) {
+    a_array[k] = &A[k * strideA];
+    b_array[k] = &B[k * strideB];
+    c_array[k] = &C[k * M * N];
+  }
+  cblas_dgemm_batch(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
+                    a_array.data(), &lda, b_array.data(), &ldb, &beta,
+                    c_array.data(), &ldc, 1 /* group_count */, &batchCount);
+}
+#else
+// The below is a naive but correct serial implementation that just loops
+// over the batch dimension. This is a fallback for when the batched gemm
+// functions of Intel MKL are not available. In the future, this computation
+// should be parallelized.
+template <>
+void batched_gemm<platform::CPUPlace, float>(
+    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float alpha, const float* A, const float* B, const float beta,
+    float* C, const int batchCount, const int strideA, const int strideB) {
+  for (int k = 0; k < batchCount; ++k) {
+    const float* Ak = &A[k * strideA];
+    const float* Bk = &B[k * strideB];
+    float* Ck = &C[k * M * N];
+    gemm<platform::CPUPlace, float>(context, transA, transB, M, N, K, alpha, Ak,
+                                    Bk, beta, Ck);
+  }
+}
+
+template <>
+void batched_gemm<platform::CPUPlace, double>(
+    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const double alpha, const double* A, const double* B, const double beta,
+    double* C, const int batchCount, const int strideA, const int strideB) {
+  for (int k = 0; k < batchCount; ++k) {
+    const double* Ak = &A[k * strideA];
+    const double* Bk = &B[k * strideB];
+    double* Ck = &C[k * M * N];
+    gemm<platform::CPUPlace, double>(context, transA, transB, M, N, K, alpha,
+                                     Ak, Bk, beta, Ck);
+  }
+}
+#endif
+
+template struct SetConstant<platform::CPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators

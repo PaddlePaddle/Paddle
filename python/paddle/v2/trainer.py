@@ -64,6 +64,11 @@ class SGD(object):
                             "paddle.v2.optimizer.Optimizer")
         import py_paddle.swig_paddle as api
         topology = Topology(cost, extra_layers=extra_layers)
+        # HACK(typhoonzero): update ParameterConfig(proto) in case of optimizers
+        # are defined after layers, or between layers.
+        topology.update_from_default()
+        parameters.update_param_conf(topology.proto())
+
         self.__optimizer__ = update_equation
         self.__topology__ = topology
         self.__parameters__ = parameters
@@ -90,6 +95,9 @@ class SGD(object):
         self.__gradient_machine__.randParameters()
         self.__parameters__.append_gradient_machine(gm)
         self.__parameter_updater__ = None
+
+    def get_topology_proto(self):
+        return self.__topology_in_proto__
 
     def __use_remote_sparse_updater__(self):
         return self.__use_sparse_updater__ and not self.__is_local__
@@ -168,11 +176,18 @@ class SGD(object):
                                                           pass_type)
                 self.__gradient_machine__.eval(pass_evaluator)
                 self.__gradient_machine__.eval(batch_evaluator)
+                event_handler(
+                    v2_event.EndForwardBackward(
+                        pass_id=pass_id,
+                        batch_id=batch_id,
+                        gm=self.__gradient_machine__))
                 for each_param in self.__gradient_machine__.getNonStaticParameters(
                 ):
                     self.__parameter_updater__.update(each_param)
                 cost_sum = out_args.sum()
                 cost = cost_sum / len(data_batch)
+                self.__parameter_updater__.finishBatch(cost)
+                batch_evaluator.finish()
                 event_handler(
                     v2_event.EndIteration(
                         pass_id=pass_id,
@@ -180,8 +195,6 @@ class SGD(object):
                         cost=cost,
                         evaluator=batch_evaluator,
                         gm=self.__gradient_machine__))
-                self.__parameter_updater__.finishBatch(cost)
-                batch_evaluator.finish()
 
             self.__parameter_updater__.finishPass()
             pass_evaluator.finish()

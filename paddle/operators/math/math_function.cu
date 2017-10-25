@@ -64,6 +64,42 @@ void gemm<platform::GPUPlace, double>(const platform::DeviceContext& context,
 }
 
 template <>
+void gemm<platform::GPUPlace, float>(const platform::DeviceContext& context,
+                                     const bool transA, const bool transB,
+                                     const int M, const int N, const int K,
+                                     const float alpha, const float* A,
+                                     const int lda, const float* B,
+                                     const int ldb, const float beta, float* C,
+                                     const int ldc) {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
+  PADDLE_ENFORCE(platform::dynload::cublasSgemm(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+}
+
+template <>
+void gemm<platform::GPUPlace, double>(const platform::DeviceContext& context,
+                                      const bool transA, const bool transB,
+                                      const int M, const int N, const int K,
+                                      const double alpha, const double* A,
+                                      const int lda, const double* B,
+                                      const int ldb, const double beta,
+                                      double* C, const int ldc) {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
+  PADDLE_ENFORCE(platform::dynload::cublasDgemm(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+}
+
+template <>
 void matmul<platform::GPUPlace, float>(
     const platform::DeviceContext& context, const framework::Tensor& matrix_a,
     bool trans_a, const framework::Tensor& matrix_b, bool trans_b, float alpha,
@@ -118,6 +154,56 @@ void matmul<platform::GPUPlace, double>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
+
+template <>
+void batched_gemm<platform::GPUPlace, float>(
+    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float alpha, const float* A, const float* B, const float beta,
+    float* C, const int batchCount, const int strideA, const int strideB) {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const int strideC = M * N;
+
+  PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, strideB, A, lda, strideA,
+      &beta, C, ldc, strideC, batchCount));
+}
+
+template <>
+void batched_gemm<platform::GPUPlace, double>(
+    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const double alpha, const double* A, const double* B, const double beta,
+    double* C, const int batchCount, const int strideA, const int strideB) {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const int strideC = M * N;
+
+  PADDLE_ENFORCE(platform::dynload::cublasDgemmStridedBatched(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, strideB, A, lda, strideA,
+      &beta, C, ldc, strideC, batchCount));
+}
+
+template struct SetConstant<platform::GPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators

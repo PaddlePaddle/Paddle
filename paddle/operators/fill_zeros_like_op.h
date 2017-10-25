@@ -20,10 +20,10 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class FillZerosLikeKernel : public framework::OpKernel {
+class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output = context.Output<framework::Tensor>("Dst");
+    auto* output = context.Output<framework::Tensor>("Y");
     output->mutable_data<T>(context.GetPlace());
     auto t = framework::EigenVector<T>::Flatten(*output);
     t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));

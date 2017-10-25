@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
 #include <gtest/gtest.h>
@@ -21,7 +21,6 @@ limitations under the License. */
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/math/MathUtils.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/testing/TestUtil.h"
@@ -258,7 +257,7 @@ void testProjectionConv(size_t groups, bool isDeconv) {
                      true);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(Projection, conv) {
   /// test ConvProjection
   testProjectionConv(1, false);
@@ -422,7 +421,7 @@ TEST(Layer, depthwiseConvLayer) {
   //  'depthwise_conv' is a sepecial case of 'exconv' whose
   //  groups size equals to the input channels size.
   testDepthwiseConvLayer("exconv", /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testDepthwiseConvLayer("exconv", /* useGpu= */ true);
 #endif
 }
@@ -480,7 +479,7 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, convLayer) {
   testConvLayer("exconv", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testConvLayer("exconv", /* trans= */ false, /* useGpu= */ true);
   testConvLayer("cudnn_conv", /* trans= */ false, /* useGpu= */ true);
 #endif
@@ -525,7 +524,7 @@ TEST(Layer, convTransLayer) {
   for (auto useGpu : {false, true}) {
     testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ useGpu);
   }
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testConvTransLayer("cudnn_convt", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
@@ -638,7 +637,7 @@ TEST(Layer, SelectiveFullyConnectedLayer) {
                 /* trans= */ false,
                 /* useGup= */ false,
                 false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testLayerGrad(config,
                 "selective_fc",
                 100,
@@ -1210,7 +1209,7 @@ void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
   testLayerGrad(config, "pool", 100, trans, useGpu);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
   TestConfig config;
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 3200, 0});
@@ -1236,7 +1235,7 @@ TEST(Layer, PoolLayer) {
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ false);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
@@ -1309,7 +1308,7 @@ void testPool3DLayer(const string& poolType, bool trans, bool useGpu) {
 TEST(Layer, Pool3DLayer) {
   testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ false);
   testPool3DLayer("max", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ true);
   testPool3DLayer("max", /* trans= */ false, /* useGpu= */ true);
 #endif
@@ -1695,7 +1694,7 @@ void testBatchNormLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, BatchNormalizationLayer) {
   testBatchNormLayer("batch_norm", false, false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testBatchNormLayer("batch_norm", false, true);
   if (hl_get_cudnn_lib_version() >= int(4000)) {
     testBatchNormLayer("cudnn_batch_norm", false, true);
@@ -1744,7 +1743,7 @@ void testBatchNorm3DLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, testBatchNorm3DLayer) {
   testBatchNorm3DLayer("batch_norm", false, false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testBatchNorm3DLayer("batch_norm", false, true);
   if (hl_get_cudnn_lib_version() >= int(4000)) {
     testBatchNorm3DLayer("cudnn_batch_norm", false, true);
@@ -2262,7 +2261,7 @@ void test3DConvLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, test3DConvLayer) {
   test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
@@ -2339,7 +2338,7 @@ void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, test3DDeConvLayer) {
   test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ true);
 #endif
 }

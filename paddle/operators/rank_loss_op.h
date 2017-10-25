@@ -21,10 +21,10 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class RankLossKernel : public framework::OpKernel {
+class RankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* out_t = ctx.Output<framework::LoDTensor>("Out");
+    auto* out_t = ctx.Output<framework::Tensor>("Out");
     auto* label_t = ctx.Input<framework::Tensor>("Label");
     auto* left_t = ctx.Input<framework::Tensor>("Left");
     auto* right_t = ctx.Input<framework::Tensor>("Right");
@@ -42,13 +42,13 @@ class RankLossKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class RankLossGradKernel : public framework::OpKernel {
+class RankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_left_t =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Left"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Left"));
     auto* d_right_t =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Right"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Right"));
 
     auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* label_t = ctx.Input<framework::Tensor>("Label");

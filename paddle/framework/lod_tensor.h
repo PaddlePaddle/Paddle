@@ -15,7 +15,7 @@
 #pragma once
 
 #include <memory>
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
@@ -25,11 +25,12 @@
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
 template <typename T>
 using Vector = std::vector<T>;
 #else
@@ -38,12 +39,37 @@ using Vector = thrust::host_vector<
     T, thrust::system::cuda::experimental::pinned_allocator<T>>;
 #endif
 
+/*
+ * LoD is short for Level of Details.
+ *
+ * - in a level, each element indicates relative offset of the lower level
+ * - the first element should be 0 and that indicates that this sequence start
+ * from 0
+ * - each sequence's begin and end(no-inclusive) is level[id, id+1]
+ *
+ * For example:
+ *    3-level LoD stores
+ *
+ *    0 2 3
+ *    0 2 4 7
+ *    0 2 5 7 10 12 15 20
+ */
 using LoD = std::vector<Vector<size_t>>;
 
+/*
+ * Slice levels from a LoD.
+ * NOTE the lowest level should always be the absolute offsets of the underlying
+ * tensor instances. So if higher layers are sliced without the lowest level,
+ * the lower level of the sliced LoD will be transformed to the absolute offset.
+ */
 LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
 
 LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
                  size_t elem_end);
+/*
+ * Transform an LoD from relative offsets to absolute offsets.
+ */
+LoD ToAbsOffset(const LoD& in);
 
 bool operator==(const LoD& a, const LoD& b);
 
@@ -62,15 +88,12 @@ class LoDTensor : public Tensor {
   LoD lod() const { return lod_; }
 
   /*
-   * Get a element from LoD.
+   * Get the start offset and end offset of an  element from LoD.
    */
-  size_t lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                   NumLevels());
-    PADDLE_ENFORCE(elem < NumElements(level),
-                   "element begin [%d] out of range [%d]", elem,
-                   NumElements(level));
-    return (lod_)[level][elem];
+  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
+    PADDLE_ENFORCE_LT(level, NumLevels());
+    PADDLE_ENFORCE_LT(elem, NumElements(level));
+    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
   }
 
   /*
@@ -82,22 +105,54 @@ class LoDTensor : public Tensor {
    * Number of elements in a level.
    */
   size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                   NumLevels());
+    PADDLE_ENFORCE_LT(level, NumLevels());
     // the last offset is the end of last element
     return (lod_)[level].size() - 1;
   }
 
   /*
-   * Slice of levels[level_begin:level_end]
+   * Number of lower-level elements.
+   * For example, a 2-level lod-tensor
+   *
+   * 0-th level   |   |
+   * 1-th level   ||  |||
+   *
+   * NumElements(0, 0) get 2
+   * NumElements(0, 1) get 3
    */
-  void SliceLevels(size_t level_begin, size_t level_end);
+  size_t NumElements(size_t level, size_t idx) const;
 
   /*
-   * Slice of elements of a level, [elem_begin: elem_end]
+   * Shrink levels[level_begin:level_end]
+   */
+  void ShrinkLevels(size_t level_begin, size_t level_end);
+
+  /*
+   * Shrink elements of a level, [elem_begin: elem_end]
    * @note: low performance in slice lod_.
    */
-  void SliceInLevel(size_t level, size_t elem_begin, size_t elem_end);
+  void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
+
+  /**
+   *  @brief Serialize tensor to char bytes.
+   *  Please check model_format.md for the format detail.
+   *  NOTE: GPUTensor will copy data to cpu implicitly.
+   *  @return return string
+   */
+
+  // FIXME(dzh) : Currently, this interface should only be used in
+  // save/restore model and checkpoint. ParameterServer do not use shape
+  // information to do the optimization, as a result, when we serialize
+  // parameter/gradient to string, we should serialize the tensor
+  // to string in the ps trainer instead of LoDTensor.
+  std::string SerializeToString() const;
+
+  /**
+   *  @brief Deserialize char bytes to tensor.
+   *  @return return string
+   */
+  void DeserializeFromString(const std::string& s,
+                             const platform::Place& dst_place);
 
  private:
   LoD lod_;
