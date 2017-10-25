@@ -58,12 +58,6 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
         boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(device_id);
 
-    size_t N = ins.size();
-    for (size_t i = 0; i < N; ++i) {
-      VLOG(1) << " inference (X) " << framework::product(ins[i]->dims())
-              << " (Out)" << framework::product(outs[i]->dims());
-    }
-
     for (size_t i = 0; i < ins.size(); ++i) {
       VLOG(1) << " invoke allreduce. send " << ins[i]->numel() << " recv "
               << outs[i]->numel();
@@ -87,8 +81,8 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
 
-    auto ins = ctx.MultiInput<Tensor>("X");  // x0, x1, x2
-    auto outs = ctx.MultiOutput<Tensor>("Out");
+    auto ins = ctx.MultiInput<LoDTensor>("X");  // x0, x1, x2
+    auto outs = ctx.MultiOutput<LoDTensor>("Out");
 
     auto* comm = ctx.Input<Communicator>("Communicator");
 
@@ -108,10 +102,17 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
       if (root == device_id) {
         recvbuffer = outs[i]->mutable_data<T>(ctx.GetPlace());
       }
+
+      VLOG(1) << " invoke reduce. send " << ins[i]->numel() << " recv "
+              << outs[i]->numel();
+
       PADDLE_ENFORCE(platform::dynload::ncclReduce(
           ins[i]->data<T>(), recvbuffer, ins[i]->numel(),
           NCCLTypeWrapper<T>::type, ncclSum, root, comm->comms_[idx], stream));
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+
+      VLOG(1) << " finished reduce. send " << ins[i]->numel() << " recv "
+              << outs[i]->numel();
     }
   }
 };
