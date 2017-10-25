@@ -158,7 +158,7 @@ class TestWarpCTCOp(OpTest):
         self.op_type = "warpctc"
 
         batch_size = 4
-        num_classes = 20
+        num_classes = 8
         logits_lod = [[0, 4, 5, 8, 11]]
         logits = np.random.uniform(0.1, 1.0,
                                    [11, num_classes]).astype("float32")
@@ -181,8 +181,6 @@ class TestWarpCTCOp(OpTest):
         gradient = np.zeros(
             [max_sequence_length, batch_size, num_classes], dtype="float32")
 
-        print "loss:\n", loss
-
         self.inputs = {
             "Logits": (logits, logits_lod),
             "Label": (labels, labels_lod)
@@ -191,7 +189,12 @@ class TestWarpCTCOp(OpTest):
         self.attrs = {"blank": blank, "normByTimes": norm_by_times}
 
     def test_check_output(self):
-        self.check_output()
+        # Only check "Loss", because "WarpCTCGrad" is an intermediate output to
+        # store the gradients of warp-ctc temporary.
+        self.check_output("Loss")
+
+    def test_check_grad(self):
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
 
 
 if __name__ == "__main__":

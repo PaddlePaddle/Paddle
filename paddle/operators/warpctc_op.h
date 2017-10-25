@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/seq2batch.h"
 #include "paddle/platform/dynload/warpctc.h"
 
@@ -24,6 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+template <typename Place>
 class WarpCTCFunctor {
  public:
   /*
@@ -74,6 +76,7 @@ class WarpCTCFunctor {
     float* workspace_data = workspace.mutable_data<float>(
         framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
         ctx.GetPlace());
+    math::SetConstant<Place, float>()(ctx.device_context(), &workspace, 0.0);
 
     // compute loss and gradient
     status = platform::dynload::compute_ctc_loss(
@@ -177,13 +180,10 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
 
-    WarpCTCFunctor()(ctx, warpctc_logits_data, warpctc_grad_data,
-                     warpctc_label_data, warpctc_label_lengths.data(),
-                     warpctc_logits_lengths.data(), sequence_width,
-                     num_sequences, blank, warpctc_loss_data);
-    std::cout << "Loss in warpctc_op:" << std::endl;
-    for (size_t i = 0; i < num_sequences; i++)
-      std::cout << warpctc_loss_data[i] << std::endl;
+    WarpCTCFunctor<Place>()(ctx, warpctc_logits_data, warpctc_grad_data,
+                            warpctc_label_data, warpctc_label_lengths.data(),
+                            warpctc_logits_lengths.data(), sequence_width,
+                            num_sequences, blank, warpctc_loss_data);
 
     // Copy the loss back
     loss->CopyFrom(warpctc_loss, ctx.GetPlace(), ctx.device_context());
@@ -196,9 +196,11 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* warpctc_grad = ctx.Input<Tensor>("WarpCTCGrad");
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
+    auto* logits = ctx.Input<LoDTensor>("Logits");
 
     bool norm_by_times = ctx.Attr<bool>("normByTimes");
 
+    logits_grad->set_lod(logits->lod());
     math::Batch2SeqFunctor<true, Place, T>()(ctx.device_context(), *logits_grad,
                                              *warpctc_grad, norm_by_times);
   }
