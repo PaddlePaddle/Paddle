@@ -123,7 +123,6 @@ Example:
        X shape: (N, C, H_in, W_in)
   Output:
        Out shape: (N, C, H_out, W_out)
-       Mask shape: (N, C, H_out, W_out)
   where
        H_out = (H_in - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
        W_out = (W_in - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
@@ -190,7 +189,6 @@ Example:
        X shape: (N, C, D_in, H_in, W_in)
   Output:
        Out shape: (N, C, D_out, H_out, W_out)
-       Mask shape: (N, C, D_out, H_out, W_out)
   where
        D_out = (D_in - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
        H_out = (H_in - ksize[1] + 2 * paddings[1]) / strides[1] + 1;

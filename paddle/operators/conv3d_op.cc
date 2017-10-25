@@ -38,11 +38,12 @@ void Conv3DOp::InferShape(framework::InferShapeContext* ctx) const {
   int input_channels = in_dims[1];
   int output_channels = filter_dims[0];
 
-  PADDLE_ENFORCE_EQ(in_dims.size(), 5, "Conv3DOp input should be 5-D.");
-  PADDLE_ENFORCE_EQ(filter_dims.size(), 5, "Conv3DOp filter should be 5-D.");
+  PADDLE_ENFORCE_EQ(in_dims.size(), 5, "Conv3DOp input should be 5-D tensor.");
+  PADDLE_ENFORCE_EQ(filter_dims.size(), 5,
+                    "Conv3DOp filter should be 5-D tensor.");
   PADDLE_ENFORCE_EQ(input_channels, filter_dims[1] * groups,
                     "The number of input channels should be equal to filter "
-                    "channels * groups.");
+                    "(channels * groups).");
   PADDLE_ENFORCE_EQ(
       output_channels % groups, 0,
       "The number of output channels should be divided by groups.");
@@ -71,27 +72,31 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
-      "The input tensor of convolution operator. "
+      "(Tensor), the input tensor of convolution operator. "
       "The format of input tensor is NCDHW. Where N is batch size, C is the "
       "number of channels, D, H and W is the depth, height and width of "
       "image.");
   AddInput("Filter",
-           "The filter tensor of convolution operator."
+           "(Tensor), the filter tensor of convolution operator."
            "The format of the filter tensor is MCDHW, where M is the number of "
            "output image channels, C is the number of input image channels, "
            "D, H and W is depth, height and width of filter. "
            "If the groups attribute is greater than 1, C equal the number of "
            "input image channels divided by the groups.");
   AddOutput("Output",
-            "The output tensor of convolution operator."
+            "(Tensor), the output tensor of convolution operator."
             "The format of output tensor is also NCDHW.");
-  AddAttr<std::vector<int>>("strides", "strides of convolution operator.")
+  AddAttr<std::vector<int>>(
+      "strides",
+      "(vector, default {0,0,0}), the strides of convolution operator.")
       .SetDefault({1, 1, 1});
-  AddAttr<std::vector<int>>("paddings", "The paddings of convolution operator.")
+  AddAttr<std::vector<int>>(
+      "paddings",
+      "(vector, default {0,0,0}), the paddings of convolution operator.")
       .SetDefault({0, 0, 0});
   AddAttr<int>(
       "groups",
-      "The group size of convolution operator. "
+      "(int, default 1) the group size of convolution operator. "
       "Refer to grouped convolution in Alex Krizhevsky's paper: "
       "when group=2, the first half of the filters are only connected to the "
       "first half of the input channels, and the second half only connected "
@@ -101,6 +106,22 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
 The convolution operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
+Input(Input, Filter) and output(Output) are in NCDHW format. Where N is batch
+size, C is the number of channels, D, H and W is the depth, height and
+width of feature. Parameters(ksize, strides, paddings) are three elements.
+These three elements represent depth, height and width, respectively.
+The input(X) size and output(Out) size may be different.
+
+Example:
+  Input:
+       Input shape: (N, C_in, D_in, H_in, W_in)
+       Filter shape: (C_out, C_in, D_f, H_f, W_f)
+  Output:
+       Output shape: (N, C_out, D_out, H_out, W_out)
+  where
+       D_out = (D_in - filter_size[0] + 2 * paddings[0]) / strides[0] + 1;
+       H_out = (H_in - filter_size[1] + 2 * paddings[1]) / strides[1] + 1;
+       W_out = (W_in - filter_size[2] + 2 * paddings[2]) / strides[2] + 1;
 )DOC");
 }
 
