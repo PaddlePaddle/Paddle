@@ -52,18 +52,15 @@ void ExpandLayer::forward(PassType passType) {
   const Argument& shapeInput = getInput(1);
   const Argument& dataInput = getInput(0);
   size_t outputBatchSize = shapeInput.getBatchSize();
-  auto startPositions = type_ ? shapeInput.subSequenceStartPositions
-                              : shapeInput.sequenceStartPositions;
+  auto startPositions = shapeInput.sequenceStartPositions;
   size_t numSequences = startPositions->getSize() - 1;
   const int* starts = startPositions->getData(false);
 
   CHECK_EQ(starts[numSequences], shapeInput.getBatchSize());
+  CHECK_EQ(dataInput.getBatchSize(), shapeInput.getNumSequences());
   if (type_) {
     // when trans_type = seq, input[1] must hasSubseq
     CHECK_EQ(shapeInput.hasSubseq(), 1UL);
-    CHECK_EQ(dataInput.getNumSequences(), shapeInput.getNumSequences());
-  } else {
-    CHECK_EQ(dataInput.getBatchSize(), shapeInput.getNumSequences());
   }
 
   // set output sequence info as shape sequence
@@ -105,8 +102,7 @@ void ExpandLayer::backward(const UpdateCallback& callback) {
   if (!getInputGrad(0)) return;
   MatrixPtr inputGrad = getInputGrad(0);
   MatrixPtr outputGrad = getOutputGrad();
-  auto cpuSeqStartPos = type_ ? getInput(1).subSequenceStartPositions
-                              : getInput(1).sequenceStartPositions;
+  auto cpuSeqStartPos = getInput(1).sequenceStartPositions;
   size_t numSequences = cpuSeqStartPos->getSize() - 1;
   const int* starts = cpuSeqStartPos->getData(false);
 
