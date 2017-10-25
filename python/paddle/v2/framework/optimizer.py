@@ -170,8 +170,6 @@ class Optimizer(object):
         """
         params_grads = self.create_backward_pass(loss, parameter_list,
                                                  no_grad_set or set())
-        print "*" * 20
-        print "create_backward_pass done"
         optimize_ops = self.create_optimization_pass(params_grads, loss)
         return optimize_ops
 

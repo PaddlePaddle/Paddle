@@ -137,9 +137,10 @@ struct SelectedRowsAddTensor<platform::GPUPlace, T> {
 template struct SelectedRowsAddTensor<platform::GPUPlace, float>;
 
 template <typename T>
-struct SelectedRowsAddTo<platform::GPUPlace, T> {
+struct SelectedRowsSum<platform::GPUPlace, T> {
   void operator()(const platform::DeviceContext& context,
                   const framework::SelectedRows& input1,
+                  const int64_t input2_offset,
                   framework::SelectedRows* input2) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
@@ -147,14 +148,11 @@ struct SelectedRowsAddTo<platform::GPUPlace, T> {
     auto& in1_rows = input1.rows();
     auto& in2_rows = input2->mutable_rows();
 
-    // concat rows
-    in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
-
     auto& in1_value = input1.value();
     auto* in2_value = input2->mutable_value();
 
-    auto in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(in1_row_numel, in2_value->numel() / in2_rows.size());
+    // concat rows
+    in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE(platform::is_gpu_place(in1_place));
@@ -164,15 +162,14 @@ struct SelectedRowsAddTo<platform::GPUPlace, T> {
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
     memory::Copy(
-        boost::get<platform::GPUPlace>(in2_place),
-        in2_data + in2_value->numel(),
+        boost::get<platform::GPUPlace>(in2_place), in2_data + input2_offset,
         boost::get<platform::GPUPlace>(in1_place), in1_data,
         in1_value->numel() * sizeof(T),
         reinterpret_cast<const platform::CUDADeviceContext&>(context).stream());
   }
 };
 
-template struct SelectedRowsAddTo<platform::GPUPlace, float>;
+template struct SelectedRowsSum<platform::GPUPlace, float>;
 
 namespace {
 template <typename T, int block_size>

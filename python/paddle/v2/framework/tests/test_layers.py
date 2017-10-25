@@ -163,12 +163,12 @@ class TestBook(unittest.TestCase):
         cost = layers.cross_entropy(
             input=predict_word, label=next_word, program=program)
         avg_cost = layers.mean(x=cost, program=program)
-        program.append_backward(avg_cost)
-        # sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-        # opts = sgd_optimizer.minimize(avg_cost)
-        # self.assertIsNotNone(avg_cost)
+        # program.append_backward(avg_cost)
+        sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+        opts = sgd_optimizer.minimize(avg_cost)
+        self.assertIsNotNone(avg_cost)
 
-        print str(program)
+        # print str(program)
 
 
 if __name__ == '__main__':

@@ -112,10 +112,13 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
                     "Tensor's numel must be larger than zero to call "
                     "Tensor::mutable_data. Call Tensor::set_dim first.");
   int64_t size = numel() * SizeOfType(type);
+  LOG(INFO) << size;
+  LOG(INFO) << holder_;
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
     if (platform::is_cpu_place(place)) {
+      LOG(INFO) << "reset holder_";
       holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size, type));
     } else if (platform::is_gpu_place(place)) {

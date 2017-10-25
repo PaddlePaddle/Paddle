@@ -59,12 +59,15 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       auto* ids_data = ids->data<int64_t>();
       auto ids_dim = ids->dims();
+      LOG(INFO) << ids_dim;
       framework::Vector<int64_t> new_rows;
       new_rows.reserve(ids_dim[0]);
       for (int64_t i = 0; i < ids_dim[0]; i++) {
         new_rows.push_back(ids_data[i]);
       }
       d_table->set_rows(new_rows);
+
+      LOG(INFO) << d_table->rows().size();
 
       auto* d_table_value = d_table->mutable_value();
       d_table_value->mutable_data<T>(context.GetPlace());

@@ -110,9 +110,10 @@ struct SelectedRowsAddTensor<platform::CPUPlace, T> {
 template struct SelectedRowsAddTensor<platform::CPUPlace, float>;
 
 template <typename T>
-struct SelectedRowsAddTo<platform::CPUPlace, T> {
+struct SelectedRowsSum<platform::CPUPlace, T> {
   void operator()(const platform::DeviceContext& context,
                   const framework::SelectedRows& input1,
+                  const int64_t input2_offset,
                   framework::SelectedRows* input2) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
@@ -120,14 +121,11 @@ struct SelectedRowsAddTo<platform::CPUPlace, T> {
     auto& in1_rows = input1.rows();
     auto& in2_rows = input2->mutable_rows();
 
-    // concat rows
-    in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
-
     auto& in1_value = input1.value();
     auto* in2_value = input2->mutable_value();
 
-    auto in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(in1_row_numel, in2_value->numel() / in2_rows.size());
+    // concat rows
+    in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE(platform::is_cpu_place(in1_place));
@@ -137,13 +135,13 @@ struct SelectedRowsAddTo<platform::CPUPlace, T> {
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
     memory::Copy(boost::get<platform::CPUPlace>(in2_place),
-                 in2_data + in2_value->numel(),
+                 in2_data + input2_offset,
                  boost::get<platform::CPUPlace>(in1_place), in1_data,
                  in1_value.numel() * sizeof(T));
   }
 };
 
-template struct SelectedRowsAddTo<platform::CPUPlace, float>;
+template struct SelectedRowsSum<platform::CPUPlace, float>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
