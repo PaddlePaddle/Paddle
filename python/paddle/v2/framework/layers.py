@@ -142,6 +142,8 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+_create_op_func_('elementwise_add')
+_create_op_func_('sigmoid')
 
 
 def concat(input, axis, program=None, init_program=None):
@@ -311,6 +313,8 @@ class StaticRNNGuard(BlockGuard):
         return super(StaticRNNGuard, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            raise exc_val
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn.complete_rnn_op()
         return super(StaticRNNGuard, self).__exit__(exc_type, exc_val, exc_tb)
@@ -429,6 +433,10 @@ class StaticRNN(object):
         parent_block = prog.block(parent_idx)
         return parent_block
 
+    def current_block(self):
+        prog = self.helper.program
+        return prog.current_block()
+
     def __call__(self, *args, **kwargs):
         if self.status != StaticRNN.AFTER_RNN_BLOCK:
             raise ValueError("RNN output can only be retrieved after rnn block")
@@ -440,8 +448,6 @@ class StaticRNN(object):
             return self.outputs
 
     def complete_rnn_op(self):
-        # TODO(yuyang18): Create RNN Op here.
-        # Implement this method after RNN op complete.
         program = self.helper.program
         rnn_block = program.current_block()
         parent_block = self.parent_block()
@@ -497,4 +503,3 @@ class StaticRNN(object):
                 'states': memories,
                 'block_idx': rnn_block
             })
-        # exit(1)

@@ -1,9 +1,13 @@
-import logging
-import paddle.v2.framework.core as core
 import unittest
-import numpy as np
-from paddle.v2.framework.op import Operator, RecurrentOp
+
+import logging
+
 from op_test import get_numeric_gradient
+from paddle.v2.framework.layers import *
+from paddle.v2.framework.framework import g_program, g_init_program
+from paddle.v2.framework.executor import Executor
+import numpy as np
+import paddle.v2.framework.core as core
 
 
 def py_sigmoid(x):
@@ -65,10 +69,9 @@ class PySimpleRNNTest(unittest.TestCase):
         output = self.rnn.forward()
 
 
-def create_tensor(scope, name, shape, np_data):
-    tensor = scope.var(name).get_tensor()
-    tensor.set_dims(shape)
-    tensor.set(np_data, core.CPUPlace())
+def create_tensor(np_data, place):
+    tensor = core.LoDTensor()
+    tensor.set(np_data, place)
     return tensor
 
 
@@ -97,62 +100,50 @@ class RecurrentOpTest(unittest.TestCase):
     def setUp(self):
         self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
                                   self.weight_dim, self.sent_len)
+        self.output = self.create_rnn_op()
 
     def forward(self):
-        self.scope = core.Scope()
-        self.create_global_variables()
-        self.create_rnn_op()
-        self.create_step_net()
-        ctx = core.DeviceContext.create(core.CPUPlace())
-        self.rnnop.run(self.scope, ctx)
-        return np.array(self.scope.find_var("h@mem").get_tensor()).astype(
-            "float32")
+        place = core.CPUPlace()
 
-    def create_global_variables(self):
-        # create inlink
-        x_np_data = self.py_rnn.x
-        create_tensor(self.scope, "x",
-                      [self.sent_len, self.batch_size, self.input_dim],
-                      x_np_data)
-        W_np_data = self.py_rnn.W
-        create_tensor(self.scope, "W", [self.input_dim, self.input_dim],
-                      W_np_data)
+        feed_map = {}
+        feed_map["x"] = create_tensor(self.py_rnn.x, place)
+        feed_map["W"] = create_tensor(self.py_rnn.W, place)
+        feed_map["U"] = create_tensor(self.py_rnn.U, place)
+        feed_map["h_boot"] = create_tensor(self.py_rnn.h_boot, place)
 
-        U_np_data = self.py_rnn.U
-        create_tensor(self.scope, "U", [self.input_dim, self.input_dim],
-                      U_np_data)
+        exe = Executor(place)
+        out = exe.run(g_program, feed=feed_map, fetch_list=[self.output])
 
-        h_boot_np_data = self.py_rnn.h_boot
-        create_tensor(self.scope, "h_boot", [self.batch_size, self.input_dim],
-                      h_boot_np_data)
-        self.scope.var("step_scopes")
-        self.scope.var("h@mem")
+        return np.array(out[0])
 
     def create_rnn_op(self):
-        # create RNNOp
-        self.rnnop = RecurrentOp(
-            # inputs
-            inputs=["x"],
-            initial_states=["h_boot"],
-            step_net="stepnet",
-            # outputs
-            outputs=["h@mem"],
-            step_scopes="step_scopes",
-            # attributes
-            ex_states=["h@pre"],
-            states=["h@mem"])
+        x = data(
+            shape=[self.sent_len, self.input_dim],
+            data_type='float32',
+            name='x')
+        h_boot = data(
+            shape=[self.input_dim], data_type='float32', name='h_boot')
 
-    def create_step_net(self):
-        stepnet = core.Net.create()
-        x_fc_op = Operator("mul", X="x", Y="W", Out="Wx")
-        h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
-        sum_op = Operator("sum", X=["Wx", "Uh"], Out="sum")
-        sig_op = Operator("sigmoid", X="sum", Y="h@mem")
+        rnn = StaticRNN()
+        with rnn.step():
+            h_pre = rnn.memory(init=h_boot)
+            x_t = rnn.step_input(x)
 
-        for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
-            stepnet.append_op(op)
-        stepnet.complete_add_op(True)
-        self.rnnop.set_stepnet(stepnet)
+            temp_l = fc(input=x_t,
+                        size=self.input_dim,
+                        param_attr={'name': 'W'},
+                        bias_attr=False)
+            temp_r = fc(input=h_pre,
+                        size=self.input_dim,
+                        param_attr={'name': 'U'},
+                        bias_attr=False)
+
+            h = sigmoid(x=elementwise_add(x=temp_l, y=temp_r))
+
+            rnn.update_memory(h_pre, h)
+            rnn.output(h)
+
+        return rnn()
 
     def test_forward(self):
         print 'test recurrent op forward'
@@ -165,40 +156,39 @@ class RecurrentOpTest(unittest.TestCase):
         self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
 
 
-class RecurrentGradientOpTest(unittest.TestCase):
-    def create_forward_op(self):
-        self.forward_op = RecurrentOp(
-            # inputs
-            inputs=["x"],
-            initial_states=["h_boot"],
-            step_net="stepnet",
-            # outputs
-            outputs=["h"],
-            step_scopes="step_scopes",
-            # attributes
-            ex_states=["h@pre"],
-            states=["h@alias"])
-
-        # create a stepnet for RNN
-        stepnet = core.Net.create()
-        x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
-        h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
-        sum_op = Operator("sum", X=["Wx", "Uh"], Out="sum")
-        sig_op = Operator("sigmoid", X="sum", Y="h@alias")
-
-        for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
-            stepnet.append_op(op)
-        stepnet.complete_add_op(True)
-        self.forward_op.set_stepnet(stepnet)
-
-    def create_gradient_op(self):
-        a = set()
-        backward_op = core.RecurrentOp.backward(self.forward_op, a)
-
-    def test_grad(self):
-        self.create_forward_op()
-        self.create_gradient_op()
-
+# class RecurrentGradientOpTest(unittest.TestCase):
+#     def create_forward_op(self):
+#         self.forward_op = RecurrentOp(
+#             # inputs
+#             inputs=["x"],
+#             initial_states=["h_boot"],
+#             step_net="stepnet",
+#             # outputs
+#             outputs=["h"],
+#             step_scopes="step_scopes",
+#             # attributes
+#             ex_states=["h@pre"],
+#             states=["h@alias"])
+# 
+#         # create a stepnet for RNN
+#         stepnet = core.Net.create()
+#         x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
+#         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
+#         sum_op = Operator("sum", X=["Wx", "Uh"], Out="sum")
+#         sig_op = Operator("sigmoid", X="sum", Y="h@alias")
+# 
+#         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
+#             stepnet.append_op(op)
+#         stepnet.complete_add_op(True)
+#         self.forward_op.set_stepnet(stepnet)
+# 
+#     def create_gradient_op(self):
+#         a = set()
+#         backward_op = core.RecurrentOp.backward(self.forward_op, a)
+# 
+#     def test_grad(self):
+#         self.create_forward_op()
+#         self.create_gradient_op()
 
 if __name__ == '__main__':
     unittest.main()
