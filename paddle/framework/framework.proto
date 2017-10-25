@@ -55,6 +55,7 @@ message OpDesc {
   repeated Var inputs = 1;
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
+  optional bool is_target = 5 [ default = false ];
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
@@ -67,6 +68,7 @@ message OpProto {
 
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
+    optional bool dispensable = 5 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -111,6 +113,9 @@ message VarDesc {
   enum VarType {
     LOD_TENSOR = 1;
     SELECTED_ROWS = 2;
+    FEED_MINIBATCH = 3;
+    FETCH_LIST = 4;
+    STEP_SCOPES = 5;
   }
   required string name = 1;
   required VarType type = 2;

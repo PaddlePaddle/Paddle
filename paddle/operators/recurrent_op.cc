@@ -42,7 +42,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
 
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
     if (step_id > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1);
+      rnn::LinkMemories(step_scopes, arg_->states, step_id, -1);
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
@@ -59,7 +59,8 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
 
   // Now all variables in scope must be created outside of op.
   PADDLE_ENFORCE_NOT_NULL(stepnet_);
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(), "stepnet_ op has no outputs");
+  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(),
+                 "step_unit_ op has no outputs");
 
   if (seq_len > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len; ++i) {
@@ -70,14 +71,14 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
         // the weight are located in parent scope
         for (auto& var_name : input.second) {
           if (!step_scope.FindVar(var_name)) {
-            step_scope.NewVar(var_name)->GetMutable<LoDTensor>();
+            step_scope.Var(var_name)->GetMutable<LoDTensor>();
           }
         }
       }
       // create stepnet's outputs
       for (const auto& output : (*stepnet_)->Outputs()) {
         for (auto& var_name : output.second) {
-          step_scope.NewVar(var_name);
+          step_scope.Var(var_name);
         }
       }
       step_scopes->emplace_back(&step_scope);
@@ -86,8 +87,8 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
 }
 
 void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
-  for (auto& attr : arg_->memories) {
-    auto* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<LoDTensor>();
+  for (auto& attr : arg_->states) {
+    auto* pre_mem = step_scope->Var(attr.pre_var)->GetMutable<LoDTensor>();
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists", attr.var,
                    attr.boot_var);
@@ -95,17 +96,17 @@ void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
         step_scope->FindVar(attr.boot_var)->GetMutable<LoDTensor>();
     pre_mem->Resize(boot_mem->dims());
     PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
-    pre_mem->ShareDataWith<float>(*boot_mem);
+    pre_mem->ShareDataWith(*boot_mem);
   }
 }
 
 const rnn::ArgumentName RecurrentOp::kArgName{
-    "step_net", "step_scopes",  "inlinks",      "outlinks",
-    "memories", "pre_memories", "boot_memories"};
+    "step_net", "step_scopes", "inputs",        "outputs",
+    "states",   "ex_states",   "initial_states"};
 
 const rnn::ArgumentName RecurrentGradientOp::kArgName{
-    "step_net", "step_scopes@GRAD", "outlinks@GRAD",     "inlinks@GRAD",
-    "memories", "pre_memories",     "boot_memories@GRAD"};
+    "step_net", "step_scopes@GRAD", "outputs@GRAD",       "inputs@GRAD",
+    "states",   "ex_states",        "initial_states@GRAD"};
 
 RecurrentOp::RecurrentOp(const std::string& type,
                          const framework::VariableNameMap& inputs,
@@ -127,7 +128,7 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     AddInput(name.inlinks,
              "the inputs that need to be segmented for each step.")
         .AsDuplicable();
-    AddInput(name.boot_memories, "variables to initialize memories.")
+    AddInput(name.initial_states, "variables to initialize states.")
         .AsDuplicable();
 
     AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
@@ -135,9 +136,8 @@ class RecurrentAlgorithmProtoAndCheckerMaker
     AddOutput(name.step_scopes, "step scopes");
 
     // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.pre_memories,
-                                      "names of pre-memories");
-    AddAttr<std::vector<std::string>>(name.memories, "names of memories");
+    AddAttr<std::vector<std::string>>(name.ex_states, "names of pre-states");
+    AddAttr<std::vector<std::string>>(name.states, "names of states");
 
     AddComment("This is a recurrent group operator.");
   }
@@ -152,7 +152,7 @@ void RecurrentGradientAlgorithm::Run(
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len - 1) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
+      rnn::LinkMemories(step_scopes, arg_->states, step_id, 1);
     }
     (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
   }
@@ -162,16 +162,16 @@ void RecurrentGradientAlgorithm::Run(
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
     Scope* step_scope) const {
-  for (auto& attr : arg_->memories) {
+  for (auto& attr : arg_->states) {
     PADDLE_ENFORCE(step_scope->FindVar(attr.var) != nullptr,
                    "memory variable [%s] does not exists", attr.var);
     PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "boot variable [%s] does not exists", attr.boot_var);
-    auto* mem_grad = step_scope->NewVar(attr.var)->GetMutable<LoDTensor>();
+    auto* mem_grad = step_scope->Var(attr.var)->GetMutable<LoDTensor>();
     auto* boot_mem_grad =
-        step_scope->NewVar(attr.boot_var)->GetMutable<LoDTensor>();
+        step_scope->Var(attr.boot_var)->GetMutable<LoDTensor>();
     boot_mem_grad->Resize(mem_grad->dims());
-    boot_mem_grad->ShareDataWith<float>(*mem_grad);
+    boot_mem_grad->ShareDataWith(*mem_grad);
   }
 }
 

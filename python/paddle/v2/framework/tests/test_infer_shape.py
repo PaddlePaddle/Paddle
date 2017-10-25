@@ -5,7 +5,7 @@ import paddle.v2.framework.core as core
 
 class TestInferShape(unittest.TestCase):
     def test_sum_op(self):
-        prog = core.ProgramDesc.__create_program_desc__()
+        prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
@@ -13,14 +13,14 @@ class TestInferShape(unittest.TestCase):
         shape = [10, 20]
 
         # prepare input/output
-        x1 = block.new_var("x1")
+        x1 = block.var("x1")
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
-        x2 = block.new_var("x2")
+        x2 = block.var("x2")
         x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x2.set_shape(shape)
 
-        out = block.new_var("out")
+        out = block.var("out")
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator
@@ -33,7 +33,7 @@ class TestInferShape(unittest.TestCase):
         self.assertEqual(out.shape(), shape)
 
     def test_mul_op(self):
-        prog = core.ProgramDesc.__create_program_desc__()
+        prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
         block = prog.block(0)
         self.assertIsNotNone(block)
@@ -42,14 +42,14 @@ class TestInferShape(unittest.TestCase):
         y_shape = [20, 30]
 
         # prepare input/output
-        x1 = block.new_var("x")
+        x1 = block.var("x")
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(x_shape)
-        x2 = block.new_var("y")
+        x2 = block.var("y")
         x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x2.set_shape(y_shape)
 
-        out = block.new_var("out")
+        out = block.var("out")
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator
