@@ -877,6 +877,13 @@ public:
    * @param param
    */
   void update(Parameter* param);
+
+  /**
+   *@brief preprocess param before forwardBackward
+   *@param  param
+   *@param  currentPass
+   *@param  currentBatch
+   */
   void preprocess(Parameter* param, size_t currentPass, size_t currentBatch);
 
   /**
