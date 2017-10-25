@@ -126,14 +126,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     const size_t level = 0;
 
-    auto logits_lod = logits->lod();
+    auto logits_lod = framework::ToAbsOffset(logits->lod());
     auto logits_dims = logits->dims();
     PADDLE_ENFORCE_EQ(logits_dims[0],
                       static_cast<int64_t>(logits_lod[level].back()),
                       "The first dimension of Input(Logits) should be equal to "
                       "the sum of all sequences' lengths.");
 
-    auto label_lod = label->lod();
+    auto label_lod = framework::ToAbsOffset(label->lod());
     auto label_dims = label->dims();
     PADDLE_ENFORCE_EQ(
         label_dims[0], label->numel(),

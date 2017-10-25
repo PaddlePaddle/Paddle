@@ -33,9 +33,8 @@ __global__ void Seq2BatchPaddingKernel(T* batch, T* sequence,
       (sequence_idx * num_sequences + batch_idx) * sequence_width;
   size_t sequence_base_idx = (start_pos + sequence_idx) * sequence_width;
 
-  T scale = NormByTimes ? (1.0 / static_cast<T>(sequence_length)) : 1.0;
-
   if (sequence_idx < sequence_length) {
+    T scale = NormByTimes ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
     if (Seq2Batch) {
       /* sequence -> batch */
       for (size_t i = threadIdx.x; i < sequence_width; i += blockDim.x) {
@@ -68,13 +67,14 @@ class Seq2BatchFunctor<true, platform::GPUPlace, T> {
                       "The lod of LoDTensor seq should not be null.");
 
     const size_t level = 0;
-    const size_t num_sequences = lod[level].size() - 1;
+    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    const size_t num_sequences = abs_offset_lod[level].size() - 1;
 
     // Compute maximum sequence length
     size_t max_sequence_length = MaximumSequenceLength(lod, level);
 
     auto seq_dims = seq.dims();
-    PADDLE_ENFORCE_EQ(seq_dims[0], lod[level].back(),
+    PADDLE_ENFORCE_EQ(seq_dims[0], abs_offset_lod[level].back(),
                       "The first dimension of LoDTensor seq should be "
                       "equal to the sum of all sequences's length.");
 
@@ -84,7 +84,7 @@ class Seq2BatchFunctor<true, platform::GPUPlace, T> {
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
 
-    if (!norm_by_times && num_sequences == 1) {
+    if (!norm_by_times && num_sequences == 1UL) {
       batch.CopyFrom(seq, context.GetPlace(), context);
       batch.Resize(batch_dims);
       return;
@@ -112,7 +112,7 @@ class Seq2BatchFunctor<true, platform::GPUPlace, T> {
           1><<<grid, threads, 0,
                reinterpret_cast<const platform::CUDADeviceContext&>(context)
                    .stream()>>>(batch_data, const_cast<T*>(seq_data),
-                                lod[level].data(), sequence_width,
+                                abs_offset_lod[level].data(), sequence_width,
                                 max_sequence_length, num_sequences);
     } else {
       Seq2BatchPaddingKernel<
@@ -120,7 +120,7 @@ class Seq2BatchFunctor<true, platform::GPUPlace, T> {
           1><<<grid, threads, 0,
                reinterpret_cast<const platform::CUDADeviceContext&>(context)
                    .stream()>>>(batch_data, const_cast<T*>(seq_data),
-                                lod[level].data(), sequence_width,
+                                abs_offset_lod[level].data(), sequence_width,
                                 max_sequence_length, num_sequences);
     }
   }
@@ -137,7 +137,8 @@ class Batch2SeqFunctor<true, platform::GPUPlace, T> {
                       "The lod of LoDTensor seq should not be null.");
 
     const size_t level = 0;
-    const size_t num_sequences = lod[level].size() - 1;
+    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    const size_t num_sequences = abs_offset_lod[level].size() - 1;
 
     // Compute maximum sequence length
     size_t max_sequence_length = MaximumSequenceLength(lod, level);
@@ -153,11 +154,11 @@ class Batch2SeqFunctor<true, platform::GPUPlace, T> {
                       "equal to the number of sequences.");
 
     const size_t sequence_width = batch_dims[2];
-    auto seq_dims =
-        framework::make_ddim({static_cast<int64_t>(lod[level].back()),
-                              static_cast<int64_t>(sequence_width)});
+    auto seq_dims = framework::make_ddim(
+        {static_cast<int64_t>(abs_offset_lod[level].back()),
+         static_cast<int64_t>(sequence_width)});
 
-    if (!norm_by_times && num_sequences == 1) {
+    if (!norm_by_times && num_sequences == 1UL) {
       seq.CopyFrom(batch, context.GetPlace(), context);
       seq.Resize(seq_dims);
       return;
@@ -185,7 +186,7 @@ class Batch2SeqFunctor<true, platform::GPUPlace, T> {
           0><<<grid, threads, 0,
                reinterpret_cast<const platform::CUDADeviceContext&>(context)
                    .stream()>>>(const_cast<T*>(batch_data), seq_data,
-                                lod[level].data(), sequence_width,
+                                abs_offset_lod[level].data(), sequence_width,
                                 max_sequence_length, num_sequences);
     } else {
       Seq2BatchPaddingKernel<
@@ -193,7 +194,7 @@ class Batch2SeqFunctor<true, platform::GPUPlace, T> {
           0><<<grid, threads, 0,
                reinterpret_cast<const platform::CUDADeviceContext&>(context)
                    .stream()>>>(const_cast<T*>(batch_data), seq_data,
-                                lod[level].data(), sequence_width,
+                                abs_offset_lod[level].data(), sequence_width,
                                 max_sequence_length, num_sequences);
     }
   }

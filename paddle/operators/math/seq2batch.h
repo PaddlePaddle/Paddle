@@ -25,9 +25,11 @@ inline static size_t MaximumSequenceLength(const framework::LoD& lod,
                                            const size_t level) {
   const size_t num_sequences = lod[level].size() - 1;
   size_t max_sequence_length = 0;
+  framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
   for (size_t i = 0; i < num_sequences; ++i) {
     max_sequence_length =
-        std::max(max_sequence_length, lod[level][i + 1] - lod[level][i]);
+        std::max(max_sequence_length,
+                 abs_offset_lod[level][i + 1] - abs_offset_lod[level][i]);
   }
   return max_sequence_length;
 }

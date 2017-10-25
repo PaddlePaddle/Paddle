@@ -24,8 +24,9 @@ void TestSeq2BatchPadding(const paddle::framework::LoD& lod,
   paddle::framework::LoDTensor seq_back;
   paddle::framework::Tensor batch;
 
+  const size_t level = lod.size() - 1;
   auto seq_dims =
-      paddle::framework::make_ddim({static_cast<int64_t>(lod[0].back()),
+      paddle::framework::make_ddim({static_cast<int64_t>(lod[level].back()),
                                     static_cast<int64_t>(sequence_width)});
 
   cpu_seq.set_lod(lod);
