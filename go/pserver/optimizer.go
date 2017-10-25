@@ -71,9 +71,13 @@ func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer
 		cstate = unsafe.Pointer(&s[0])
 	}
 
+	var cptr (*C.uchar)
+	if len(c) > 0 {
+		cptr = (*C.uchar)(&c[0])
+	}
 	o.config = c
 	o.opt = C.paddle_create_optimizer(
-		(*C.uchar)(&c[0]),
+		cptr,
 		C.int(len(c)),
 		C.paddle_element_type(p.ElementType),
 		cbuffer,
