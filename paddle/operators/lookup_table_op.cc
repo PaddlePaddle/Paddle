@@ -33,11 +33,8 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
 
-    bool is_sparse = ctx->Attrs().Get<bool>("is_sparse");
-    LOG(INFO) << "InferShape " << is_sparse;
     PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
     PADDLE_ENFORCE_EQ(ids_dims[1], 1);
-
     ctx->SetOutputDim("Out", {ids_dims[0], table_dims[1]});
     ctx->ShareLoD("Ids", /*->*/ "Out");
   }
@@ -88,11 +85,15 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    LOG(INFO) << "into LookupTableOpGrad InferShape";
     auto ids_dims = ctx->GetInputDim("Ids");
     auto table_dims = ctx->GetInputDim("W");
-    ctx->SetOutputDim(framework::GradVarName("W"),
-                      {ids_dims[0], table_dims[1]});
+    bool is_sparse = ctx->Attrs().Get<bool>("is_sparse");
+    if (is_sparse) {
+      ctx->SetOutputDim(framework::GradVarName("W"),
+                        {ids_dims[0], table_dims[1]});
+    } else {
+      ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+    }
   }
 
  protected:
@@ -106,18 +107,18 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
-    LOG(INFO) << "into LookupTableOpGradVarTypeInference";
     auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
-    bool is_sparse = op_desc.GetAttrType("is_sparse");
-    LOG(INFO) << is_sparse;
+    auto attr = op_desc.GetAttr("is_sparse");
+    bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
-      LOG(INFO) << "set SELECTED_ROWS";
+      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
+              << " is set to SelectedRows";
       block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
     } else {
-      LOG(INFO) << "set lod tensor";
+      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
+              << " is set to LoDTensor";
       block->Var(out_var_name)->SetType(framework::VarDesc::LOD_TENSOR);
     }
-    LOG(INFO) << "after LookupTableOpGradVarTypeInference";
   }
 };
 

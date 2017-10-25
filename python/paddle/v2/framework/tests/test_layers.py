@@ -93,6 +93,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         dict_size = 10000
         embed_size = 32
+        is_sparse = True
         first_word = layers.data(
             name='firstw', shape=[1], data_type='int32', program=program)
         second_word = layers.data(
@@ -118,12 +119,14 @@ class TestBook(unittest.TestCase):
             input=first_word,
             size=[dict_size, embed_size],
             data_type='float32',
+            is_sparse=is_sparse,
             param_attr=embed_param_attr_1,
             program=program)
         embed_second = layers.embedding(
             input=second_word,
             size=[dict_size, embed_size],
             data_type='float32',
+            is_sparse=is_sparse,
             param_attr=embed_param_attr_2,
             program=program)
 
@@ -160,12 +163,12 @@ class TestBook(unittest.TestCase):
         cost = layers.cross_entropy(
             input=predict_word, label=next_word, program=program)
         avg_cost = layers.mean(x=cost, program=program)
-        sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-        opts = sgd_optimizer.minimize(avg_cost)
-        self.assertIsNotNone(avg_cost)
+        program.append_backward(avg_cost)
+        # sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+        # opts = sgd_optimizer.minimize(avg_cost)
+        # self.assertIsNotNone(avg_cost)
 
-        print str(g_init_program)
-        # print str(program)
+        print str(program)
 
 
 if __name__ == '__main__':

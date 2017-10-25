@@ -504,16 +504,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return true;
   }
 
-  const Variable* InputVar(const std::string& name) const {
-    auto ipt = op_.Input(name);
-    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-  }
-
-  Variable* OutputVar(const std::string& name) const {
-    auto opt = op_.Output(name);
-    return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-  }
-
   DDim GetInputDim(const std::string& name) const override {
     return GetDim(op_.Input(name));
   }

@@ -342,7 +342,6 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
   grad_op_descs = OpInfoMap::Instance()
                       .Get(op_desc->Type())
                       .GradOpMaker()(*op_desc, *no_grad_vars, grad_to_var);
-
   std::list<std::unique_ptr<OpDescBind>> pending_fill_zeros_ops;
   for (auto& desc : grad_op_descs) {
     for (const std::string& in_name : desc->InputArgumentNames()) {
@@ -494,7 +493,7 @@ ParamGradInfoMap AppendBackward(
     CreateGradVarInBlock(0, grad_to_var, program_desc.Block(block_index),
                          &retv);
   }
-
+  LOG(INFO) << "AppendBackward Done";
   return retv;
 }
 

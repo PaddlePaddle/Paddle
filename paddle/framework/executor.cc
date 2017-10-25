@@ -58,7 +58,6 @@ Executor::~Executor() {
 }
 
 void CreateTensor(Variable* var, VarDesc::VarType var_type) {
-  LOG(INFO) << var_type;
   if (var_type == VarDesc::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == VarDesc::SELECTED_ROWS) {
