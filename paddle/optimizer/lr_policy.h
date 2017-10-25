@@ -10,7 +10,7 @@ class LrPolicy {
 public:
   virtual ~LrPolicy() {}
   virtual double LearningRate(const uint64_t num_sample_passed) = 0;
-  virtual const char *SerializeState(int *state_len) = 0;
+  virtual std::string SerializeState() = 0;
   virtual void DeserializeState(const std::string &state) = 0;
 };
 
@@ -21,12 +21,10 @@ public:
   double LearningRate(const uint64_t num_sample_passed) {
     return learning_rate_;
   }
-  const char *SerializeState(int *state_len) {
+  std::string SerializeState() {
     LrPolicyState state;
     state.set_learning_rate(learning_rate_);
-    auto str = state.SerializeAsString();
-    *state_len = str.size();
-    return str.c_str();
+    return state.SerializeAsString();
   }
   void DeserializeState(const std::string &str) {
     LrPolicyState state;
@@ -46,14 +44,12 @@ public:
     return std::max(learning_rate_ - lr_decay_a_ * num_sample_passed,
                     lr_decay_b_);
   }
-  const char *SerializeState(int *state_len) {
+  std::string SerializeState() {
     LrPolicyState state;
     state.set_learning_rate(learning_rate_);
     state.set_lr_decay_a(lr_decay_a_);
     state.set_lr_decay_b(lr_decay_b_);
-    auto str = state.SerializeAsString();
-    *state_len = str.size();
-    return str.c_str();
+    return state.SerializeAsString();
   }
   void DeserializeState(const std::string &str) {
     LrPolicyState state;
