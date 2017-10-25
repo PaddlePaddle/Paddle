@@ -10,20 +10,20 @@ import cStringIO
 import os
 
 
-def _dump_all_persistable_vars_(folder_path, program=None, exempt_list=None):
+def _dump_all_persistable_vars_(folder_path, program=None, exempt_set=None):
     if program is None:
         program = framework.g_program
+    if exempt_set is None:
+        exempt_set = {}
     dump_program = framework.Program()
     dump_block = dump_program.global_block()
-    if exempt_list is None:
-        exempt_list = {}
 
     save_op_inputs = []
     for var in program.global_block().vars.itervalues():
-        if var.desc.persistable() and not var.name in exempt_list:
+        if var.desc.persistable() and not var.name in exempt_set:
             v = dump_block.create_var(
                 name=var.name, dtype=var.data_type, persistable=True)
-            save_op_inputs.append(var)
+            save_op_inputs.append(v)
     dump_block.append_op(
         type="save",
         inputs={"X": save_op_inputs},
@@ -31,6 +31,29 @@ def _dump_all_persistable_vars_(folder_path, program=None, exempt_list=None):
 
     exe = executor.Executor(core.CPUPlace())
     exe.run(dump_program, feed={}, fetch_list=[])
+
+
+def _load_all_persistable_vars_(folder_path, program=None, exempt_set=None):
+    if program is None:
+        program = framework.g_program
+    if exempt_set is None:
+        exempt_set = {}
+    load_program = framework.Program()
+    load_block = load_program.global_block()
+
+    load_op_outputs = []
+    for var in program.global_block().vars.itervalues():
+        if var.desc.persistable() and not var.name in exempt_set:
+            v = load_block.create_var(
+                name=var.name, dtype=var.data_type, persistable=True)
+            load_op_outputs.append(v)
+    load_block.append_op(
+        type="restore",
+        outputs={"Out": load_op_outputs},
+        attrs={"folderPath": folder_path})
+
+    exe = executor.Executor(core.CPUPlace())
+    exe.run(load_program, feed={}, fetch_list=[])
 
 
 def dump_inference_model(folder_path,
@@ -75,8 +98,7 @@ def dump_inference_model(folder_path,
 
     # Build another program to hold save_ops
     _dump_all_persistable_vars_(
-        folder_path=folder_path, program=program,
-        exempt_list={"feed", "fetch"})
+        folder_path=folder_path, program=program, exempt_set={"feed", "fetch"})
 
 
 def dump_checkpoint(folder_path, program=None):
@@ -84,9 +106,19 @@ def dump_checkpoint(folder_path, program=None):
         program = framework.g_program
     if not os.path.isdir(folder_path):
         os.makedirs(folder_path)
-    _dump_all_persistable_vars_(folder_path=folder_path, program=program)
+    _dump_all_persistable_vars_(
+        folder_path=folder_path, program=program, exempt_set={"feed", "fetch"})
 
 
 def load_inference_model(folder_path):
     if not os.path.isdir(folder_path):
         raise ValueError("No folder named '%s'.", folder_path)
+
+
+def load_checkpoint(folder_path, program=None):
+    if program is None:
+        programe = framework.g_program
+    if not os.path.isdir(folder_path):
+        raise ValueError("No folder named '%s'.", folder_path)
+    _load_all_persistable_vars_(
+        folder_path, program=program, exempt_set={"feed", "fetch"})
