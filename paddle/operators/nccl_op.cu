@@ -12,6 +12,7 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #include <functional>
 
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/nccl/nccl_gpu_common.h"
 
@@ -20,6 +21,7 @@ namespace operators {
 
 using framework::Tensor;
 using platform::Communicator;
+using framework::LoDTensor;
 
 template <typename Type>
 class NCCLTypeWrapper;
@@ -43,8 +45,8 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
 
-    auto ins = ctx.MultiInput<Tensor>("X");
-    auto outs = ctx.MultiOutput<Tensor>("Out");
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto outs = ctx.MultiOutput<LoDTensor>("Out");
 
     auto* comm = ctx.Input<Communicator>("Communicator");
 
@@ -56,12 +58,24 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
         boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(device_id);
 
+    size_t N = ins.size();
+    for (size_t i = 0; i < N; ++i) {
+      VLOG(1) << " inference (X) " << framework::product(ins[i]->dims())
+              << " (Out)" << framework::product(outs[i]->dims());
+    }
+
     for (size_t i = 0; i < ins.size(); ++i) {
+      VLOG(1) << " invoke allreduce. send " << ins[i]->numel() << " recv "
+              << outs[i]->numel();
+
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           ins[i]->data<T>(), outs[i]->mutable_data<T>(ctx.GetPlace()),
-          outs[i]->numel() * sizeof(T), NCCLTypeWrapper<T>::type, ncclSum,
+          outs[i]->numel(), NCCLTypeWrapper<T>::type, ncclSum,
           comm->comms_[idx], stream));
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+
+      VLOG(1) << " finished allreduce. send " << ins[i]->numel() << " recv "
+              << outs[i]->numel();
     }
   }
 };

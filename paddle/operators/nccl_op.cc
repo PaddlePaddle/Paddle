@@ -74,8 +74,15 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
     //                 reduction == "ncclMin" || reduction == "ncclMax"),
     //                "invalid reduction.");
 
+    // auto in_dim = x_dims[0];
     ctx->SetOutputsDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
+    size_t N = x_dims.size();
+    auto out_dims = ctx->GetOutputsDim("Out");
+    for (size_t i = 0; i < N; ++i) {
+      VLOG(1) << " inference (X) " << framework::product(x_dims[i]) << " (Out)"
+              << framework::product(out_dims[i]);
+    }
   }
 };
 
