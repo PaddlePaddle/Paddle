@@ -41,21 +41,21 @@ template <typename Place, typename T>
 class L1NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *X = context.Input<framework::Tensor>("X");
+    const framework::Tensor *x = context.Input<framework::Tensor>("X");
     const framework::Tensor *d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE(d_out->numel() == 1, "L1 Norm Gradient should be scalar");
-    framework::Tensor *dX =
+    framework::Tensor *dx =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
-    dX->mutable_data<T>(context.GetPlace());
+    dx->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(*X);
-    auto dout = framework::EigenVector<T>::Flatten(*d_out);
-    auto dx = framework::EigenVector<T>::Flatten(*dX);
+    auto x_eigen = framework::EigenVector<T>::Flatten(*x);
+    auto d_out_eigen = framework::EigenVector<T>::Flatten(*d_out);
+    auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
     auto place = context.GetEigenDevice<Place>();
 
-    Eigen::DSizes<int, 1> x_dsize(X->numel());
-    dx.device(place) = dout.broadcast(x_dsize) * x.sign();
+    Eigen::DSizes<int, 1> x_dsize(x->numel());
+    dx_eigen.device(place) = d_out_eigen.broadcast(x_dsize) * x_eigen.sign();
   }
 };
 
