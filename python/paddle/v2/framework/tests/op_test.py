@@ -23,7 +23,7 @@ def create_op(scope, op_type, inputs, outputs, attrs):
     kwargs = dict()
 
     def __create_var__(name, var_name):
-        scope.var(var_name)
+        scope.var(var_name).get_tensor()
         kwargs[name].append(var_name)
 
     for in_name, in_dup in Operator.get_op_inputs(op_type):
@@ -242,6 +242,9 @@ class OpTest(unittest.TestCase):
             inputs=inputs,
             outputs=outputs,
             attrs=self.attrs if hasattr(self, "attrs") else dict())
+        # infer variable type and infer shape in compile-time
+        op.desc.infer_var_type(block.desc)
+        op.desc.infer_shape(block.desc)
 
         fetch_list = []
         for var_name, var in outputs.iteritems():
@@ -435,39 +438,51 @@ class OpTest(unittest.TestCase):
             for k in outputs_with_np
         }
 
-        block.append_op(
+        op = block.append_op(
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
             attrs=getattr(self, 'attrs', {}))
 
+        # infer variable type and infer shape in compile-time
+        op.desc.infer_var_type(block.desc)
+        op.desc.infer_shape(block.desc)
+
         mean_inputs = map(block.var, output_names)
 
         if len(mean_inputs) == 1:
             loss = block.create_var(dtype=mean_inputs[0].data_type, shape=[1])
-            block.append_op(
+            op = block.append_op(
                 inputs={"X": mean_inputs}, outputs={"Out": loss}, type='mean')
+            op.desc.infer_var_type(block.desc)
+            op.desc.infer_shape(block.desc)
         else:
             avg_sum = []
             for cur_loss in mean_inputs:
                 cur_avg_loss = block.create_var(
                     dtype=cur_loss.data_type, shape=[1])
-                block.append_op(
+                op = block.append_op(
                     inputs={"X": [cur_loss]},
                     outputs={"Out": [cur_avg_loss]},
                     type="mean")
+                op.desc.infer_var_type(block.desc)
+                op.desc.infer_shape(block.desc)
                 avg_sum.append(cur_avg_loss)
 
             loss_sum = block.create_var(dtype=avg_sum[0].data_type, shape=[1])
-            block.append_op(
+            op_sum = block.append_op(
                 inputs={"X": avg_sum}, outputs={"Out": loss_sum}, type='sum')
+            op_sum.desc.infer_var_type(block.desc)
+            op_sum.desc.infer_shape(block.desc)
 
             loss = block.create_var(dtype=loss_sum.data_type, shape=[1])
-            block.append_op(
+            op_loss = block.append_op(
                 inputs={"X": loss_sum},
                 outputs={"Out": loss},
                 type='scale',
                 attrs={'scale': 1.0 / float(len(avg_sum))})
+            op_loss.desc.infer_var_type(block.desc)
+            op_loss.desc.infer_shape(block.desc)
 
         param_grad_list = append_backward_ops(
             loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)
