@@ -412,7 +412,9 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.FindVarRecursive(name)->Shape());
+    auto var = block_.FindVarRecursive(name);
+    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+    return framework::make_ddim(var->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
@@ -656,8 +658,9 @@ class OperatorWithKernel : public OperatorBase {
           }
           if (t != nullptr) {
             int tmp = static_cast<int>(ToDataType(t->type()));
+            VLOG(3) << "Input " << ipt_name << " with data_type " << tmp;
             PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                           "DataType of Paddle Op must be same.");
+                           "DataType of Paddle Op %s must be same.", Type());
             data_type = tmp;
           }
         }
