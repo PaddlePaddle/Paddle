@@ -316,6 +316,7 @@ static void CreateGradVarInBlock(
                      return false; /* not break */
                    });
     if (need_infer_shape) {
+      ops[op_index]->InferVarType(block_desc);
       ops[op_index]->InferShape(*block_desc);
     }
   }
@@ -459,6 +460,9 @@ ParamGradInfoMap AppendBackward(
                      {{"shape", target_shape},
                       {"value", static_cast<float>(1.0)},
                       {"data_type", framework::DataType::FP32}}));
+  // infer var type of fill_one_op
+  fill_one_op->InferVarType(root_block);
+
   root_block->AppendAllocatedOp(std::move(fill_one_op));
   size_t forward_op_num = root_block->OpSize();
   size_t forward_block_num = program_desc.Size();
