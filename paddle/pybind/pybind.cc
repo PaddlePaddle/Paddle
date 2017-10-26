@@ -34,6 +34,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/operators/nccl/nccl_gpu_common.h"
+#include "paddle/platform/gpu_info.h"
 #endif
 
 namespace paddle {
@@ -482,6 +483,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(m);
 
   m.def("op_support_gpu", OpSupportGPU);
+  m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
 
   return m.ptr();
 }
