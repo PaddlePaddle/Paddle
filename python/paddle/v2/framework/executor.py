@@ -20,11 +20,16 @@ class Executor(object):
 
     def run(self,
             program,
-            feed,
-            fetch_list,
+            feed=None,
+            fetch_list=None,
             feed_var_name='feed',
             fetch_var_name='fetch',
             scope=None):
+        if feed is None:
+            feed = {}
+        if fetch_list is None:
+            fetch_list = []
+
         if not isinstance(program, Program):
             raise TypeError()
 
