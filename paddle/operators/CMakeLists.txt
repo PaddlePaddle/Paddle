@@ -76,13 +76,20 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
     endif()
 
+    # save_restore_op contains several operators
+    if ("${TARGET}" STREQUAL "save_restore_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(save);\n")
+    endif()
+
     # activation_op contains several operators
     if ("${TARGET}" STREQUAL "activation_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
-    
+
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)
@@ -91,8 +98,9 @@ function(op_library TARGET)
     endif()
 
     # pybind USE_NO_KERNEL_OP
+    # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
     file(READ ${TARGET}.cc TARGET_CONTENT)
-    string(REGEX MATCH "OperatorWithKernel" regex_result "${TARGET_CONTENT}")
+    string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
     if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
         file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
@@ -121,7 +129,8 @@ set(DEPS_OPS
     softmax_with_cross_entropy_op
     sum_op
     pool_op
-    pool_with_index_op)
+    pool_with_index_op
+    lstm_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -132,6 +141,7 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
@@ -145,3 +155,4 @@ cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
 cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc DEPS dynamic_recurrent_op recurrent_op tensor_array)
+cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)

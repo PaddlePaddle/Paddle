@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.framework.graph import g_program
+from paddle.v2.framework.framework import g_program
 import paddle.v2.framework.core as core
 
 

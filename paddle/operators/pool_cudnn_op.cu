@@ -25,7 +25,7 @@ using DataLayout = platform::DataLayout;
 using PoolingMode = platform::PoolingMode;
 
 // NOTE: copy from conv_cudnn
-std::vector<int> Dims2Vector(const framework::DDim &dims) {
+std::vector<int> Dims2VectorPool(const framework::DDim &dims) {
   std::vector<int> ret;
   for (int i = 0; i < dims.size(); i++) {
     ret.push_back(dims[i]);
@@ -46,11 +46,11 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>(ctx.GetPlace());
 
-    std::string pooling_type = ctx.Attr<std::string>("poolingType");
+    std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
-    if (ctx.Attr<bool>("globalPooling")) {
+    if (ctx.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         ksize[i] = static_cast<int>(input->dims()[i + 2]);
       }
@@ -63,9 +63,9 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
     DataLayout layout = DataLayout::kNCHW;
 
     cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, Dims2Vector(input->dims()));
+        input_desc.descriptor<T>(layout, Dims2VectorPool(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc =
-        output_desc.descriptor<T>(layout, Dims2Vector(output->dims()));
+        output_desc.descriptor<T>(layout, Dims2VectorPool(output->dims()));
 
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
@@ -100,12 +100,12 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
         ctx.Input<Tensor>(framework::GradVarName("Out"));
     Tensor *input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    std::string pooling_type = ctx.Attr<std::string>("poolingType");
+    std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
 
-    if (ctx.Attr<bool>("globalPooling")) {
+    if (ctx.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i)
         ksize[i] = static_cast<int>(input->dims()[i + 2]);
     }
@@ -123,12 +123,12 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
     DataLayout layout = DataLayout::kNCHW;
 
     cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, Dims2Vector(input->dims()));
+        input_desc.descriptor<T>(layout, Dims2VectorPool(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc =
-        output_desc.descriptor<T>(layout, Dims2Vector(output->dims()));
+        output_desc.descriptor<T>(layout, Dims2VectorPool(output->dims()));
     cudnnTensorDescriptor_t cudnn_output_grad_desc =
         output_grad_desc.descriptor<T>(layout,
-                                       Dims2Vector(output_grad->dims()));
+                                       Dims2VectorPool(output_grad->dims()));
 
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
@@ -152,7 +152,7 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
       cudnnTensorDescriptor_t cudnn_input_grad_desc =
           input_grad_desc.descriptor<T>(layout,
-                                        Dims2Vector(input_grad->dims()));
+                                        Dims2VectorPool(input_grad->dims()));
 
       PADDLE_ENFORCE(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,

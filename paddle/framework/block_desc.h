@@ -16,9 +16,12 @@ limitations under the License. */
 
 #include <deque>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/framework/op_desc.h"
+#include "paddle/framework/proto_desc.h"
 #include "paddle/framework/var_desc.h"
 #include "paddle/platform/macros.h"
 
@@ -33,26 +36,38 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
-  friend std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
-      ProgramDescBind &program_desc, int block_idx,
-      std::unordered_set<std::string> &no_grad_vars);
-
-  friend void AppendBackward(
-      ProgramDescBind &program_desc,
-      const std::unordered_set<std::string> &no_grad_vars);
-
   BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
       : prog_(prog), desc_(desc), need_update_(false) {}
+
+  BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+                ProgramDescBind *prog);
+
+  ~BlockDescBind() {
+    this->ClearPBVars();
+    this->ClearPBOps();
+  }
 
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
-  VarDescBind *NewVar(const std::string &name_bytes);
+  VarDescBind *Var(const std::string &name_bytes);
 
-  VarDescBind *Var(const std::string &name_bytes) const;
+  VarDescBind *FindVar(const std::string &name_bytes) const;
 
   bool HasVar(const std::string &var_name) const;
+
+  VarDescBind *FindVarRecursive(const std::string &name_bytes) const;
+
+  bool HasVarRecursive(const std::string &var_name) const;
+
+  std::set<std::string> LocalVarNames() const {
+    std::set<std::string> var_names;
+    for (auto &var : vars_) {
+      var_names.insert(var.first);
+    }
+    return var_names;
+  }
 
   std::vector<VarDescBind *> AllVars() const;
 
@@ -60,13 +75,23 @@ class BlockDescBind {
 
   OpDescBind *AppendOp();
 
+  void AppendAllocatedOp(std::unique_ptr<OpDescBind> &&op_desc);
+
   OpDescBind *PrependOp();
 
   std::vector<OpDescBind *> AllOps() const;
 
-  void Sync();
+  size_t OpSize() const { return ops_.size(); }
 
-  BlockDesc *RawPtr() { return desc_; }
+  OpDescBind *Op(int idx) { return ops_.at(idx).get(); }
+
+  void Flush();
+
+  BlockDesc *Proto();
+
+ private:
+  void ClearPBOps();
+  void ClearPBVars();
 
  private:
   ProgramDescBind *prog_;  // not_own

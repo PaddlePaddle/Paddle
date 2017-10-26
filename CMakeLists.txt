@@ -105,6 +105,12 @@ if (WITH_C_API AND WITH_PYTHON)
     "different Python interpreter from compiling.")
 endif()
 
+if(MOBILE_INFERENCE)
+    set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
+else()
+    set(THIRD_PARTY_BUILD_TYPE Release)
+endif()
+
 ########################################################################################
 
 include(external/mklml)     # download mklml package
@@ -121,6 +127,7 @@ include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)    # download pybind11
+include(external/nccl)
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
@@ -153,7 +160,7 @@ set(EXTERNAL_LIBS
 if(WITH_GPU)
     list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
     if(NOT WITH_DSO)
-        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 

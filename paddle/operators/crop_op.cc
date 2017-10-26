@@ -24,7 +24,6 @@ class CropOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of CropOp should not be null.");
@@ -60,7 +59,8 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input should be a k-D tensor(k > 0 and k < 7)");
     AddInput("Y",
              "The input used as reference for cropping"
-             " with the same dimension as X. ");
+             " with the same dimension as X. ")
+        .AsDispensable();
     AddOutput("Out",
               "The output of crop op "
               "with the same dimension as X.");
@@ -114,7 +114,6 @@ class CropOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),

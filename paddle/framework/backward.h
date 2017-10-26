@@ -14,7 +14,10 @@
 
 #pragma once
 
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
+
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
 
@@ -27,8 +30,27 @@ extern std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
 
-void AppendBackward(ProgramDescBind& program_desc,
-                    const std::unordered_set<std::string>& no_grad_vars);
+struct GradVarInfo {
+  GradVarInfo() {}
+  GradVarInfo(const std::string& name, int block_idx, int op_idx)
+      : name_(name), block_idx_(block_idx), op_idx_(op_idx) {}
+
+  bool operator==(const GradVarInfo& b) const {
+    return name_ == b.name_ && block_idx_ == b.block_idx_ &&
+           op_idx_ == b.op_idx_;
+  }
+
+  std::string name_;
+  int block_idx_;
+  int op_idx_;
+};
+
+using ParamGradInfoMap = std::unordered_map<std::string /*fwd_var_name*/,
+                                            GradVarInfo /*grad_var_info*/>;
+
+ParamGradInfoMap AppendBackward(
+    ProgramDescBind& program_desc, const VarDescBind& target,
+    const std::unordered_set<std::string>& no_grad_vars);
 
 }  // namespace framework
 }  // namespace paddle

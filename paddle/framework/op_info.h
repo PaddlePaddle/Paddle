@@ -19,7 +19,6 @@
 #include <unordered_map>
 
 #include "paddle/framework/attribute.h"
-#include "paddle/framework/op_desc.h"
 #include "paddle/framework/type_defs.h"
 #include "paddle/platform/macros.h"
 
@@ -31,6 +30,7 @@ struct OpInfo {
   GradOpMakerFN grad_op_maker_;
   OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
+  InferVarTypeFN infer_var_type_;
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
@@ -87,11 +87,8 @@ class OpInfoMap {
     }
   }
 
-  template <typename Callback>
-  void IterAllInfo(Callback callback) {
-    for (auto& it : map_) {
-      callback(it.first, it.second);
-    }
+  const std::unordered_map<std::string, const OpInfo>& map() const {
+    return map_;
   }
 
  private:

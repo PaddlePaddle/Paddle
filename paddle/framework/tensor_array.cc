@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <limits>
 
+#include "paddle/framework/eigen.h"
+
 namespace paddle {
 namespace framework {
 
@@ -76,6 +78,17 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
                            const std::vector<DySeqMeta>& meta, const LoD& lod,
                            size_t level);
 
+std::vector<size_t> GenDyBatchIndice(const DySeqMetaBatch& meta, int batch_id) {
+  // collect indice need to copy to the batch
+  std::vector<size_t> indice;
+  for (const auto& seq : meta) {
+    size_t id = seq.begin + batch_id;
+    if (id >= seq.end) break;
+    indice.push_back(id);
+  }
+  return indice;
+}
+
 }  // namespace detail
 
 const LoDTensor& TensorArray::Read(size_t index) const {
@@ -93,9 +106,10 @@ void TensorArray::Write(size_t index, const LoDTensor& value) {
     values_.resize(index + 1);
   }
 
+  values_[index].set_lod(value.lod());
   values_[index].Resize(value.dims());
-  values_[index].mutable_data<value_type>(platform::CPUPlace());
-  values_[index].CopyFrom<value_type>(value, platform::CPUPlace());
+  values_[index].mutable_data<value_type>(value.place());
+  values_[index].CopyFrom(value, value.place(), platform::CPUDeviceContext());
 }
 
 void TensorArray::WriteShared(size_t index, const LoDTensor& value) {
@@ -104,7 +118,8 @@ void TensorArray::WriteShared(size_t index, const LoDTensor& value) {
     values_.resize(index + 1);
   }
 
-  values_[index].ShareDataWith<value_type>(value);
+  values_[index].set_lod(value.lod());
+  values_[index].ShareDataWith(value);
 }
 
 LoDTensor TensorArray::Pack(size_t level, const std::vector<DySeqMeta>& meta,
@@ -112,8 +127,8 @@ LoDTensor TensorArray::Pack(size_t level, const std::vector<DySeqMeta>& meta,
   return detail::PackDynamicBatch(values_, meta, lod, level);
 }
 
-std::vector<DySeqMeta> TensorArray::Unpack(const LoDTensor& source, int level,
-                                           bool length_desend) {
+DySeqMetaBatch TensorArray::Unpack(const LoDTensor& source, int level,
+                                   bool length_desend) {
   detail::DynamicBatchUnpacker unpacker(source, level,
                                         length_desend /*descend*/);
 
@@ -128,7 +143,157 @@ std::vector<DySeqMeta> TensorArray::Unpack(const LoDTensor& source, int level,
     Write(batch_id, unpacker.GetBatch(batch_id));
   }
 
+  PADDLE_ENFORCE(!unpacker.meta.empty());
   return unpacker.meta;
+}
+
+LoDTensor TensorArray::LodPack(size_t level) const {
+  PADDLE_ENFORCE_GT(size(), 0UL, "no time step exists");
+  // the levels should be no less than 2
+  LoDTensor merged;
+  const LoDTensor *pre, *cur;
+  pre = &Read(0);
+
+  for (size_t step = 1; step < size(); step++) {
+    cur = &Read(step);
+    PADDLE_ENFORCE_GT(cur->NumLevels(), 0);
+    PADDLE_ENFORCE_GT(pre->NumLevels(), 0);
+    PADDLE_ENFORCE_EQ(pre->NumLevels(), cur->NumLevels());
+    PADDLE_ENFORCE_EQ(pre->NumElements(level), cur->NumElements(level));
+
+    merged = LodPackTwo(*pre, *cur, level);
+    pre = &merged;
+  }
+  return merged;
+}
+
+/*
+ * NOTE currently, only the lowest level supports packing.
+ * The lowest LoD will be changed, while the relative offsets in levels above
+ * stay unchanged.
+ *
+ * previous step : [0] [1] [3]
+ * current step: [0 1 2] [2 3] []
+ * packed to
+ *   [0 0] [0 1] [0 2] [1 2] [1 3] [3]
+ */
+LoDTensor TensorArray::LodPackTwo(const LoDTensor& pre, const LoDTensor& cur,
+                                  size_t level) const {
+  PADDLE_ENFORCE_EQ(pre.NumLevels(), cur.NumLevels());
+  PADDLE_ENFORCE_EQ(pre.NumLevels(), level + 1,
+                    "Only the lowest LoD level supports pack temporarily.");
+  // calculate the result tensor's shape first
+  size_t num_instances = 0;
+  for (size_t elem = 0; elem < pre.NumElements(level); elem++) {
+    size_t prefix_size = pre.NumElements(level, elem);
+    size_t num_candidates = cur.NumElements(level, elem);
+    if (num_candidates > 0) {
+      num_instances += num_candidates * (prefix_size + 1);
+    } else {
+      num_instances += prefix_size;
+    }
+  }
+
+  auto res_dims = pre.dims();
+  res_dims[0] = num_instances;
+  LoDTensor result;
+  result.Resize(res_dims);
+  result.mutable_data<value_type>(cur.place());
+
+  Vector<size_t> last_lod_level;
+  // copy data
+  size_t index = 0;
+  last_lod_level.push_back(index);
+  for (size_t elem = 0; elem < pre.NumElements(level); elem++) {
+    size_t prefix_size = pre.NumElements(level, elem);
+    size_t num_candidates = cur.NumElements(level, elem);
+
+    // slice the prefix Tensor
+    LoDTensor prefix = pre;
+    prefix.ShrinkInLevel(level, elem, elem + 1);
+    LoDTensor candidate = cur;
+    if (num_candidates > 0) {
+      candidate.ShrinkInLevel(level, elem, elem + 1);
+    } else {  // just push prefix
+      result.Slice(index, index + prefix_size)
+          .CopyFrom(prefix, result.place(), platform::CPUDeviceContext());
+      index += prefix_size;
+      last_lod_level.push_back(index);
+    }
+    for (size_t candi = 0; candi < num_candidates; candi++) {
+      // TODO(superjom) support GPU
+      result.Slice(index, index + prefix_size)
+          .CopyFrom(prefix, result.place(), platform::CPUDeviceContext());
+      index += prefix_size;
+      // copy candidate record
+      result.Slice(index, index + 1)
+          .CopyFrom(candidate.Slice(candi, candi + 1), result.place(),
+                    platform::CPUDeviceContext());
+      index++;
+      last_lod_level.push_back(index);
+    }
+  }
+
+  // update lod
+  auto lod = cur.lod();
+  lod.back() = last_lod_level;
+  result.set_lod(lod);
+  return result;
+}
+
+/*
+ * source [0 1 2] [3 4] [5 6 7] will be transformd to a list of LoDTensors such
+ * as
+ * [0 3 5] [1 4 6] [2 7] with 1-level LoDs:
+ * - [0 1 2 3]
+ * - [0 1 2 3]
+ * - [0 1 1 2], the [1,1) here means the second sequence is empty
+ *
+ * NOTE Unpack a LoDTensor in this approach may result in a big LoD.
+ */
+void TensorArray::LodUnpack(const LoDTensor& source, size_t level) {
+  PADDLE_ENFORCE_EQ(level, source.NumLevels() - 1,
+                    "only the lowest LoD level supports unpack.");
+  const size_t non_empty_instances = source.dims()[0];
+  size_t index = 0;
+  Vector<size_t> lowest_lod_level;
+  lowest_lod_level.push_back(index);
+
+  for (size_t step = 0; step < non_empty_instances; step++) {
+    size_t num_instances = 0;
+    for (size_t id = 0; id < source.NumElements(level); id++) {
+      auto instance = source;
+      instance.ShrinkInLevel(level, id, id + 1);
+      if (static_cast<size_t>(instance.dims()[0]) > step) {
+        num_instances++;
+        index++;
+      }
+      lowest_lod_level.push_back(index);
+    }
+
+    // create tensor for this time step
+    LoDTensor tensor;
+    auto dims = source.dims();
+    dims[0] = num_instances;
+    // set lod
+    auto lod = source.lod();
+    lod.back() = lowest_lod_level;
+    tensor.set_lod(lod);
+
+    index = 0;
+    for (size_t id = 0; id < source.NumElements(level); id++) {
+      auto instance = source;
+      instance.ShrinkInLevel(level, id, id + 1);
+      if (static_cast<size_t>(instance.dims()[0]) > step) {
+        // copy this instance
+        tensor.Slice(index, index + 1)
+            .CopyFrom(instance.Slice(step, step + 1), tensor.place(),
+                      platform::CPUDeviceContext());
+        index++;
+      }
+    }
+    Write(step, tensor);
+  }
 }
 
 LoDTensor TensorArray::Stack() const {
@@ -150,8 +315,9 @@ LoDTensor TensorArray::Stack() const {
   result.mutable_data<value_type>(platform::CPUPlace());
 
   for (size_t idx = 0; idx < size(); idx++) {
-    result.Slice<value_type>(idx, idx + 1)
-        .CopyFrom<value_type>(Read(idx), platform::CPUPlace());
+    result.Slice(idx, idx + 1)
+        .CopyFrom(Read(idx), platform::CPUPlace(),
+                  platform::CPUDeviceContext());
   }
   return result;
 }
@@ -177,12 +343,12 @@ void TensorArray::Unstack(const LoDTensor& source, bool data_shared) const {
     auto& value = values_[elem];
     if (data_shared) {
       // share memory
-      value.ShareDataWith<value_type>(source.Slice<value_type>(elem, elem + 1));
+      value.ShareDataWith(source.Slice(elem, elem + 1));
     } else {
       // copy
       value.Resize(value_dims);
-      value.CopyFrom<value_type>(source.Slice<value_type>(elem, elem + 1),
-                                 platform::CPUPlace());
+      value.CopyFrom(source.Slice(elem, elem + 1), platform::CPUPlace(),
+                     platform::CPUDeviceContext());
     }
   }
 }
@@ -215,13 +381,7 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
   PADDLE_ENFORCE(!meta.empty(), "should build meta first");
   LoDTensor result;
 
-  // collect indice need to copy to the batch
-  std::vector<size_t> indice;
-  for (const auto& seq : meta) {
-    size_t id = seq.begin + index;
-    if (id >= seq.end) break;
-    indice.push_back(id);
-  }
+  auto indice = detail::GenDyBatchIndice(meta, index);
   PADDLE_ENFORCE(!indice.empty(), "invalid batch at %d", index);
 
   // copy the indice of records in LoDTensor
@@ -233,10 +393,10 @@ LoDTensor DynamicBatchUnpacker::GetBatch(size_t index) {
 
   for (size_t i = 0; i < indice.size(); i++) {
     auto index = indice[i];
-    auto target = result.Slice<value_type>(i, i + 1);
-    auto source_ = source->Slice<value_type>(index, index + 1);
+    auto target = result.Slice(i, i + 1);
+    auto slice = source->Slice(index, index + 1);
 
-    target.CopyFrom<value_type>(source_, platform::CPUPlace());
+    target.CopyFrom(slice, platform::CPUPlace(), platform::CPUDeviceContext());
   }
 
   return result;
@@ -267,9 +427,10 @@ LoDTensor PackDynamicBatch(const std::vector<LoDTensor>& source,
       // target is result[index]
       auto index = seq_meta.begin + batch_id;
       if (index >= seq_meta.end) break;
-      auto source_ = source[batch_id].Slice<float>(seq_id, seq_id + 1);
-      auto target = result.Slice<float>(index, index + 1);
-      target.CopyFrom<float>(source_, platform::CPUPlace());
+      auto source_ = source[batch_id].Slice(seq_id, seq_id + 1);
+      auto target = result.Slice(index, index + 1);
+      target.CopyFrom(source_, platform::CPUPlace(),
+                      platform::CPUDeviceContext());
     }
   }
 

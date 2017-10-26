@@ -35,6 +35,12 @@ void testIm2col() {
    *
    * output_ocf = [0, 1, 3, 4
    *               1, 2, 4, 5]
+   *
+   * col2im_cfo = [0, 2, 2
+   *               3, 4, 5]
+   *
+   * col2im_ocf = [0, 2, 2
+   *               3, 4, 5]
    */
   int input_height = 2;
   int input_width = 3;
@@ -49,23 +55,6 @@ void testIm2col() {
   memcpy(input_ptr, arr, 6 * sizeof(float));
 
   auto* place = new Place();
-  if (paddle::platform::is_cpu_place(*place)) {
-    input = input_tmp;
-  } else {
-    input.CopyFrom<float>(input_tmp, *place);
-  }
-  output_cfo.mutable_data<float>(
-      {1, filter_size, filter_size, output_height, output_width}, *place);
-  output_ocf.mutable_data<float>(
-      {output_height, output_width, 1, filter_size, filter_size}, *place);
-
-  paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kCFO, Place, float>
-      im2col;
-  paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kOCF, Place, float>
-      im2col_ocf;
-
   paddle::platform::DeviceContext* context;
   if (paddle::platform::is_cpu_place(*place)) {
     context =
@@ -76,42 +65,106 @@ void testIm2col() {
         new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
 #else
     PADDLE_THROW("no GPU support");
-#endif  // PADDLE_ONLY_CPU
+#endif  // PADDLE_WITH_CUDA
   }
-  im2col(*context, input, output_cfo, stride, stride, padding, padding);
-  im2col_ocf(*context, input, output_ocf, stride, stride, padding, padding);
+  if (paddle::platform::is_cpu_place(*place)) {
+    input = input_tmp;
+  } else {
+    input.CopyFrom(input_tmp, *place, *context);
+  }
+  output_cfo.mutable_data<float>(
+      {1, filter_size, filter_size, output_height, output_width}, *place);
+  output_ocf.mutable_data<float>(
+      {output_height, output_width, 1, filter_size, filter_size}, *place);
+
+  // Im2Col
+  paddle::operators::math::Im2ColFunctor<
+      paddle::operators::math::ColFormat::kCFO, Place, float>
+      im2col;
+  paddle::operators::math::Im2ColFunctor<
+      paddle::operators::math::ColFormat::kOCF, Place, float>
+      im2col_ocf;
+
+  im2col(*context, input, output_cfo, stride, stride, padding, padding, padding,
+         padding);
+  im2col_ocf(*context, input, output_ocf, stride, stride, padding, padding,
+             padding, padding);
+
+  float out_cfo_data[] = {0, 1, 1, 2, 3, 4, 4, 5};
+  float out_ocf_data[] = {0, 1, 3, 4, 1, 2, 4, 5};
 
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
-    output_tmp.CopyFrom<float>(output_cfo, paddle::platform::CPUPlace());
+    output_tmp.CopyFrom(output_cfo, paddle::platform::CPUPlace(), *context);
     out_cfo_ptr = output_tmp.data<float>();
   }
-  EXPECT_EQ(out_cfo_ptr[0], 0);
-  EXPECT_EQ(out_cfo_ptr[1], 1);
-  EXPECT_EQ(out_cfo_ptr[2], 1);
-  EXPECT_EQ(out_cfo_ptr[3], 2);
-  EXPECT_EQ(out_cfo_ptr[4], 3);
-  EXPECT_EQ(out_cfo_ptr[5], 4);
-  EXPECT_EQ(out_cfo_ptr[6], 4);
-  EXPECT_EQ(out_cfo_ptr[7], 5);
+  for (int i = 0; i < 6; ++i) {
+    EXPECT_EQ(out_cfo_ptr[i], out_cfo_data[i]);
+  }
 
   float* out_ocf_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
-    output_tmp.CopyFrom<float>(output_ocf, paddle::platform::CPUPlace());
+    output_tmp.CopyFrom(output_ocf, paddle::platform::CPUPlace(), *context);
     out_ocf_ptr = output_tmp.data<float>();
   }
-  EXPECT_EQ(out_ocf_ptr[0], 0);
-  EXPECT_EQ(out_ocf_ptr[1], 1);
-  EXPECT_EQ(out_ocf_ptr[2], 3);
-  EXPECT_EQ(out_ocf_ptr[3], 4);
-  EXPECT_EQ(out_ocf_ptr[4], 1);
-  EXPECT_EQ(out_ocf_ptr[5], 2);
-  EXPECT_EQ(out_ocf_ptr[6], 4);
-  EXPECT_EQ(out_ocf_ptr[7], 5);
+  for (int i = 0; i < 6; ++i) {
+    EXPECT_EQ(out_ocf_ptr[i], out_ocf_data[i]);
+  }
+
+  // Col2Im: kCFO
+  paddle::operators::math::Col2ImFunctor<
+      paddle::operators::math::ColFormat::kCFO, Place, float>
+      col2im;
+  paddle::operators::math::Col2ImFunctor<
+      paddle::operators::math::ColFormat::kOCF, Place, float>
+      col2im_ocf;
+  float col2im_data[] = {0, 2, 2, 3, 8, 5};
+
+  memset(input_ptr, 0, 6 * sizeof(float));
+  if (paddle::platform::is_cpu_place(*place)) {
+    input = input_tmp;
+  } else {
+    input.CopyFrom(input_tmp, *place, *context);
+  }
+
+  col2im(*context, input, output_cfo, stride, stride, padding, padding, padding,
+         padding);
+
+  float* in_ptr;
+  if (paddle::platform::is_cpu_place(*place)) {
+    in_ptr = input.data<float>();
+  } else {
+    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
+    in_ptr = input_tmp.data<float>();
+  }
+  for (int i = 0; i < 6; ++i) {
+    EXPECT_EQ(in_ptr[i], col2im_data[i]);
+  }
+
+  // Col2Im: kOCF
+  memset(input_ptr, 0, 6 * sizeof(float));
+  if (paddle::platform::is_cpu_place(*place)) {
+    input = input_tmp;
+  } else {
+    input.CopyFrom(input_tmp, *place, *context);
+  }
+
+  col2im_ocf(*context, input, output_ocf, stride, stride, padding, padding,
+             padding, padding);
+
+  if (paddle::platform::is_cpu_place(*place)) {
+    in_ptr = input.data<float>();
+  } else {
+    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
+    in_ptr = input_tmp.data<float>();
+  }
+  for (int i = 0; i < 6; ++i) {
+    EXPECT_EQ(in_ptr[i], col2im_data[i]);
+  }
 }
 
 TEST(math, im2col) {

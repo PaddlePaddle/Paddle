@@ -44,7 +44,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
                                                   logits, softmax);
     math::CrossEntropyFunctor<platform::CPUPlace, T>()(
         context.device_context(), loss, softmax, labels,
-        context.Attr<bool>("softLabel"));
+        context.Attr<bool>("soft_label"));
   }
 };
 
@@ -57,10 +57,10 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
-    logit_grad->ShareDataWith<T>(*context.Input<Tensor>("Softmax"));
+    logit_grad->ShareDataWith(*context.Input<Tensor>("Softmax"));
 
     const int class_num = logit_grad->dims()[1];
-    if (context.Attr<bool>("softLabel")) {
+    if (context.Attr<bool>("soft_label")) {
       auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
       auto logit_grad_mat = EigenMatrix<T>::From(*logit_grad);
       auto lbl_mat = EigenMatrix<T>::From(*labels);
