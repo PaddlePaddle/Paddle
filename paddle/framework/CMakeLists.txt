@@ -46,13 +46,6 @@ cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
 
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
-set(EXECUTOR_TEST_OP elementwise_add_op gaussian_random_op feed_op fetch_op    
-    mul_op sum_op squared_l2_distance_op fill_constant_op sgd_op mean_op recurrent_op activation_op)
-if(WITH_GPU)    
-    nv_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})    
-else()    
-    cc_test(executor_test SRCS executor_test.cc DEPS executor ${EXECUTOR_TEST_OP})    
-endif()   
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

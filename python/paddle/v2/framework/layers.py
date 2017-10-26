@@ -297,7 +297,6 @@ class BlockGuard(object):
         self.program.rollback()
         if exc_type is not None:
             raise exc_val
-            return False  # re-raise exception
         return True
 
 
@@ -432,10 +431,6 @@ class StaticRNN(object):
         assert parent_idx >= 0
         parent_block = prog.block(parent_idx)
         return parent_block
-
-    def current_block(self):
-        prog = self.helper.program
-        return prog.current_block()
 
     def __call__(self, *args, **kwargs):
         if self.status != StaticRNN.AFTER_RNN_BLOCK:
