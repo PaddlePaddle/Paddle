@@ -42,15 +42,15 @@ class L1NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    const framework::Tensor *dOut =
+    const framework::Tensor *d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(dOut->numel() == 1, "L1 Norm Gradient should be scalar");
+    PADDLE_ENFORCE(d_out->numel() == 1, "L1 Norm Gradient should be scalar");
     framework::Tensor *dX =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
 
     auto x = framework::EigenVector<T>::Flatten(*X);
-    auto dout = framework::EigenVector<T>::Flatten(*dOut);
+    auto dout = framework::EigenVector<T>::Flatten(*d_out);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
     auto place = context.GetEigenDevice<Place>();
 

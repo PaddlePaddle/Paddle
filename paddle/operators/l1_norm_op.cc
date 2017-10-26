@@ -51,7 +51,7 @@ class L1NormOpMaker : public framework::OpProtoAndCheckerMaker {
   L1NormOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input of l1_norm op.");
-    AddOutput("Out", "(Float) The output of l1_norm op.");
+    AddOutput("Out", "(Scalar) The output of l1_norm op.");
     AddComment(R"DOC(
 L1 Norm Operator.
 
