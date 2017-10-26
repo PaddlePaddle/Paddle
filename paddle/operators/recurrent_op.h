@@ -83,17 +83,26 @@ class RecurrentGradientAlgorithm {
    */
  public:
   void Init(rnn::Argument* arg, StepNet* stepnet,
-            std::vector<std::string>* vars) {
+            std::vector<std::string>* vars,
+            const std::vector<std::string>& parameters) {
     PADDLE_ENFORCE_NOT_NULL(stepnet, "stepnet should be set before.");
     arg_ = std::move(arg);
     stepnet_ = stepnet;
     vars_ = vars;
+    parameters_ = parameters;
   }
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const;
 
   void LinkBootMemoryGradients(framework::Scope* step_scopes) const;
+
+  void CreateParamLocalGradients(
+      const std::vector<framework::Scope*>& step_scopes, size_t seq_len) const;
+
+  void ExposeWeightGradients(const std::vector<framework::Scope*>& scope,
+                             size_t seq_len,
+                             const platform::DeviceContext& dev_ctx) const;
 
  protected:
   inline const std::vector<framework::Scope*>& GetStepScopes(
@@ -106,6 +115,7 @@ class RecurrentGradientAlgorithm {
   rnn::Argument* arg_;
   StepNet* stepnet_;
   std::vector<std::string>* vars_;
+  std::vector<std::string> parameters_;
 };
 
 class RecurrentOp : public framework::OperatorBase {

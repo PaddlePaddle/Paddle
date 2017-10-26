@@ -17,6 +17,7 @@
 #include <cstring>
 #include <sstream>
 
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/net_op.h"
 
@@ -144,6 +145,7 @@ void RecurrentGradientAlgorithm::Run(
   size_t seq_len = input0->GetMutable<LoDTensor>()->dims()[0];
   auto& step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
+  CreateParamLocalGradients(step_scopes, seq_len);
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len - 1) {
       rnn::LinkMemories(step_scopes, arg_->states, step_id, 1);
@@ -154,6 +156,7 @@ void RecurrentGradientAlgorithm::Run(
   }
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
   LinkBootMemoryGradients(step_scopes[0]);
+  ExposeWeightGradients(step_scopes, seq_len, dev_ctx);
 }
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
@@ -177,7 +180,49 @@ RecurrentGradientOp::RecurrentGradientOp(
     const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs) {
   rnn::InitArgument(kArgName, &arg_, *this, true /*is grad*/);
-  alg_.Init(&arg_, &stepnet_, &vars_);
+  alg_.Init(&arg_, &stepnet_, &vars_, Inputs("parameters"));
+}
+
+void RecurrentGradientAlgorithm::CreateParamLocalGradients(
+    const std::vector<Scope*>& step_scopes, size_t seq_len) const {
+  for (const std::string& param_name : parameters_) {
+    for (size_t step = 0; step < seq_len; step++) {
+      step_scopes[step]->Var(param_name);
+    }
+  }
+}
+
+void RecurrentGradientAlgorithm::ExposeWeightGradients(
+    const std::vector<framework::Scope*>& step_scopes, size_t seq_len,
+    const platform::DeviceContext& dev_ctx) const {
+  // NOTE addto the gradients in global scope is not thread-safe
+  // sum the gradients in all the step_scopes
+  // output to the global scope
+
+  auto& parent_scope = step_scopes.front()->parent();
+
+  for (auto& param : parameters_) {
+    // TODO(superjom) Make sure that parameter names will be transformed to
+    // gradient name.
+    // std::string param_grad_name = framework::GradVarName(param);
+    std::string param_grad_name = param;
+    const framework::LoDTensor& param_gradient =
+        *parent_scope.FindVar(param_grad_name)->GetMutable<LoDTensor>();
+    auto param_gradient_eigen =
+        framework::EigenVector<float>::Flatten(param_gradient);
+
+    auto place = dev_ctx.GetEigenDevice<platform::CPUPlace>();
+    for (size_t step = 0; step < seq_len; step++) {
+      Tensor& step_param_gradient =
+          *step_scopes[step]->Var(param_grad_name)->GetMutable<LoDTensor>();
+      auto step_param_gradient_eigen =
+          framework::EigenVector<float>::Flatten(step_param_gradient);
+      // add the gradient
+      // TODO(superjom) here can't compile
+      param_gradient_eigen.device(place) =
+          step_param_gradient_eigen + param_gradient_eigen;
+    }
+  }
 }
 
 }  // namespace operators
