@@ -38,22 +38,22 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
   int input_size = desc_.inputs_size();
   for (int i = 0; i < input_size; ++i) {
     const OpDesc::Var &var = desc_.inputs(i);
-    std::vector<std::string> &argus = inputs_[var.parameter()];
+    std::vector<std::string> &args = inputs_[var.parameter()];
     int argu_size = var.arguments_size();
-    argus.reserve(argu_size);
+    args.reserve(argu_size);
     for (int j = 0; j < argu_size; ++j) {
-      argus.push_back(var.arguments(j));
+      args.push_back(var.arguments(j));
     }
   }
   // restore outputs_
   int output_size = desc_.outputs_size();
   for (int i = 0; i < output_size; ++i) {
     const OpDesc::Var &var = desc_.outputs(i);
-    std::vector<std::string> &argus = outputs_[var.parameter()];
+    std::vector<std::string> &args = outputs_[var.parameter()];
     int argu_size = var.arguments_size();
-    argus.reserve(argu_size);
+    args.reserve(argu_size);
     for (int j = 0; j < argu_size; ++j) {
-      argus.push_back(var.arguments(j));
+      args.push_back(var.arguments(j));
     }
   }
   // restore attrs_
