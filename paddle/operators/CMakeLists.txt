@@ -88,7 +88,6 @@ function(op_library TARGET)
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
-        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(ncclInit);\n")
     endif()
     
     # reduce_op contains several operators
