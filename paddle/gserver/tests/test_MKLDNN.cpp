@@ -212,6 +212,66 @@ TEST(MKLDNNLayer, PoolLayer) {
   testPoolLayer({2, 8, 56, 56, 29, 29, 3, 3, 1, 1, 2, 2});
 }
 
+struct testBatchNormDesc {
+  int bs;
+  int ic;
+  int ih, iw;
+};
+
+static void getMKLDNNBatchNormConfig(TestConfig& cfg,
+                                     const testBatchNormDesc& pm) {
+  cfg.layerConfig.set_size(pm.ic * pm.ih * pm.iw);
+  cfg.layerConfig.set_type("mkldnn_batch_norm");
+  cfg.biasSize = pm.ic;
+  cfg.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
+       /* size of weight= */ size_t(pm.ic)});
+  cfg.inputDefs.push_back(
+      {INPUT_DATA, "layer_1_moving_mean", 1, size_t(pm.ic)});
+  cfg.inputDefs.back().isStatic = true;
+  cfg.inputDefs.push_back({INPUT_DATA, "layer_2_moving_var", 1, size_t(pm.ic)});
+  cfg.inputDefs.back().isStatic = true;
+  LayerInputConfig* input = cfg.layerConfig.add_inputs();
+  // TODO(TJ): uncomment me when refine and support comparing all zeroes vector
+  // cfg.layerConfig.set_active_type("relu");
+  cfg.layerConfig.add_inputs();
+  cfg.layerConfig.add_inputs();
+  ImageConfig* img_conf = input->mutable_image_conf();
+  img_conf->set_channels(pm.ic);
+  img_conf->set_img_size_y(pm.ih);
+  img_conf->set_img_size(pm.iw);
+}
+
+void testBatchNormLayer(const testBatchNormDesc& pm) {
+  TestConfig dnnConfig;
+  getMKLDNNBatchNormConfig(dnnConfig, pm);
+  TestConfig refConfig = dnnConfig;
+  refConfig.layerConfig.set_type("batch_norm");
+  // for PASS_TRAIN, use_global_stats always should be false, and batchsize != 1
+  VLOG(MKLDNN_TESTS) << "check train phase";
+  dnnConfig.layerConfig.set_use_global_stats(false);
+  refConfig.layerConfig.set_use_global_stats(false);
+  MKLDNNTester tester;
+  tester.run(dnnConfig, refConfig, pm.bs, pm.ih, pm.iw, PASS_TRAIN);
+  // for PASS_TEST, check use_global_stats true and false, and batchsize 1
+  VLOG(MKLDNN_TESTS) << "check test phase";
+  for (auto useGS : {false, true}) {
+    dnnConfig.layerConfig.set_use_global_stats(useGS);
+    refConfig.layerConfig.set_use_global_stats(useGS);
+    MKLDNNTester tester;
+    for (auto bs : {pm.bs, 1}) {
+      tester.run(dnnConfig, refConfig, bs, pm.ih, pm.iw, PASS_TEST);
+    }
+  }
+}
+
+TEST(MKLDNNLayer, BatchNormLayer) {
+  testBatchNormLayer({4, 10, 6, 6});
+  testBatchNormLayer({16, 32, 16, 16});
+}
+
 struct testActDesc {
   int bs, ic, ih, iw;
 };
