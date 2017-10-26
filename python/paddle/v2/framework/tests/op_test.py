@@ -297,6 +297,9 @@ class OpTest(unittest.TestCase):
             inputs=inputs,
             outputs=outputs,
             attrs=self.attrs if hasattr(self, "attrs") else dict())
+        # infer variable type and infer shape in compile-time
+        op.desc.infer_var_type(block.desc)
+        op.desc.infer_shape(block.desc)
 
         fetch_list = []
         for var_name, var in outputs.iteritems():
