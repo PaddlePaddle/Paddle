@@ -483,7 +483,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(m);
 
   m.def("op_support_gpu", OpSupportGPU);
+#ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+#endif
 
   return m.ptr();
 }
