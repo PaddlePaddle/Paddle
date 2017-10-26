@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace framework {
 
@@ -262,6 +264,7 @@ void OpDescBind::CheckAttrs() {
 }
 
 void OpDescBind::InferShape(const BlockDescBind &block) const {
+  VLOG(3) << "CompileTime infer shape on " << Type();
   auto &funcs = InferShapeFuncs();
   auto it = funcs.find(this->Type());
   if (it == funcs.end()) {

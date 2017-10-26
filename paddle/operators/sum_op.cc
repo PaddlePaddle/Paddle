@@ -84,4 +84,5 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker);
-REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>,
+                       ops::SumKernel<paddle::platform::CPUPlace, double>);
