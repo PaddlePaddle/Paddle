@@ -25,6 +25,7 @@
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/dynload/nccl.h"
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace platform {
@@ -51,7 +52,7 @@ struct Communicator {
     }
   }
 
-  // DISABLE_COPY_AND_ASSIGN(Communicator);
+  DISABLE_COPY_AND_ASSIGN(Communicator);
 };
 
 }  // namespace platform
