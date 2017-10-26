@@ -3,7 +3,7 @@ import paddle.v2.framework.framework as framework
 __all__ = ['append_regularization_ops', 'L2DecayRegularizer']
 
 
-def append_regularization_ops(self, parameters_and_grads):
+def append_regularization_ops(parameters_and_grads):
     """Create and add backward regularization Operators
 
     Creates and adds backward regularization operators in the BlockDesc.

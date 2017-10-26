@@ -35,5 +35,9 @@ class TestL2DecayRegularizer(unittest.TestCase):
         params_grads = optimizer.append_regularization_ops(params_grads)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(block.ops), count_ops + 2)
-        self.assertTrue(block.ops[-1].type(), 'elementwise_add')
-        self.assertTrue(block.ops[-2].type(), 'scale')
+        self.assertEqual(block.ops[-1].type, 'elementwise_add')
+        self.assertEqual(block.ops[-2].type, 'scale')
+
+
+if __name__ == '__main__':
+    unittest.main()
