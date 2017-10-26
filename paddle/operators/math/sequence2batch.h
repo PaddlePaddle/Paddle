@@ -58,7 +58,7 @@ class LoDTensor2BatchFunctor {
     if (!is_cal_batch_lod) {
       auto lods = batch.lod();
       PADDLE_ENFORCE_EQ(lods.size(), 2UL);
-      PADDLE_ENFORCE_EQ(lods[1].size(), lod_tensor.dims()[1]);
+      PADDLE_ENFORCE_EQ(lods[1].size(), lod_tensor.dims()[0]);
       CopyMatrixRowsFunctor<Place, T> to_batch;
       to_batch(context, lod_tensor, lods[1].data(), batch, true);
       return;
@@ -142,11 +142,8 @@ class Batch2LoDTensorFunctor {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_EQ(in_lod.size(), 2UL,
                       "The LoD size of input `batch` should be 2.");
-    auto out_lod = lod_tensor.lod()[0];
-    auto num = out_lod[out_lod.size() - 1];
-    PADDLE_ENFORCE_EQ(num, lod_tensor.dims()[0]);
-    PADDLE_ENFORCE_EQ(num, in_lod[1].size());
-    PADDLE_ENFORCE_EQ(num, batch.dims()[0]);
+    PADDLE_ENFORCE_EQ(in_lod[1].size(),
+                      static_cast<size_t>(lod_tensor.dims()[0]));
     CopyMatrixRowsFunctor<Place, T> to_seq;
     size_t* index = in_lod[1].data();
     to_seq(context, batch, index, lod_tensor, false);

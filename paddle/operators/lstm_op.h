@@ -74,6 +74,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     if (bias) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       // the code style in LstmMetaValue will be updated later.
+
       lstm_value.checkIg = bias_data + 4 * frame_size;
       lstm_value.checkFg = lstm_value.checkIg + frame_size;
       lstm_value.checkOg = lstm_value.checkFg + frame_size;
@@ -86,10 +87,10 @@ class LSTMKernel : public framework::OpKernel<T> {
 
     // Use the local variable as here.
     LoDTensor batch_hidden, batch_cell;
-    auto batch_cell_pre_act = *(ctx.Output<LoDTensor>("BatchCellPreAct"));
+    auto* batch_cell_pre_act = ctx.Output<LoDTensor>("BatchCellPreAct");
     batch_hidden.mutable_data<T>(dims, ctx.GetPlace());
     batch_cell.mutable_data<T>(dims, ctx.GetPlace());
-    batch_cell_pre_act.mutable_data<T>(dims, ctx.GetPlace());
+    batch_cell_pre_act->mutable_data<T>(dims, ctx.GetPlace());
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
@@ -104,7 +105,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       Tensor gate_t = batch_gate->Slice(bstart, bend);
       Tensor out_t = batch_hidden.Slice(bstart, bend);
       Tensor cell_t = batch_cell.Slice(bstart, bend);
-      Tensor cell_pre_act_t = batch_cell_pre_act.Slice(bstart, bend);
+      Tensor cell_pre_act_t = batch_cell_pre_act->Slice(bstart, bend);
 
       int cur_batch_size = bend - bstart;
 
@@ -162,6 +163,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
 
     auto& device_ctx = ctx.device_context();
     if (weight_g) {
+      weight_g->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<Place, T> zero;
       zero(device_ctx, weight_g, static_cast<T>(0.0));
     }
@@ -228,7 +230,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    for (int n = static_cast<int>(num_batch); n >= 0; n--) {
+    for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
 
@@ -282,19 +284,32 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     math::Batch2LoDTensorFunctor<Place, T> to_seq;
     if (in_g) {
       /* backward data */
+      in_g->mutable_data<T>(ctx.GetPlace());
       to_seq(device_ctx, batch_gate_g, *in_g);
     }
     if (bias && bias_g) {
       /* backward bias */
-      bias_g->mutable_data<T>(ctx.GetPlace());
-      auto bias_g_e = EigenMatrix<T>::From(*bias_g);
-      auto gate_g_e = EigenMatrix<T>::From(batch_gate_g);
-      Eigen::array<int, 2> extents({{1, 4 * frame_size}});
-      Eigen::array<int, 2> offsets({{0, 0}});
-      auto bg = bias_g_e.slice(offsets, extents)
-                    .reshape(Eigen::array<int, 2>({{1, frame_size * 4}}));
-      bg.device(ctx.GetEigenDevice<Place>()) =
-          gate_g_e.sum(Eigen::array<int, 1>({{0}}));
+      // Following Eigen computation failed for double type on GPU device.
+      // bias_g->mutable_data<T>(ctx.GetPlace());
+      // Tensor bias_mat;
+      // bias_mat.ShareDataWith(*bias_g);
+      // bias_mat.Resize({1, 4 * frame_size});
+
+      // auto bias_g_e = EigenVector<T>::Flatten(bias_mat);
+      // auto gate_g_e = EigenMatrix<T>::From(batch_gate_g);
+      // Eigen::array<int, 1> dims{{0}};
+      // bias_g_e.device(ctx.GetEigenDevice<Place>()) = gate_g_e.sum(dims);
+
+      int m = static_cast<int>(batch_gate_g.dims()[0]);
+      int n = static_cast<int>(batch_gate_g.dims()[1]);
+
+      Tensor ones;
+      ones.mutable_data<T>({1, m}, ctx.GetPlace());
+      math::SetConstant<Place, T> set;
+      set(device_ctx, &ones, static_cast<T>(1.0));
+
+      math::gemv<Place, T>(device_ctx, true, m, n, 1., batch_gate_g.data<T>(),
+                           ones.data<T>(), 0., bias_g->data<T>());
     }
   }
 };
