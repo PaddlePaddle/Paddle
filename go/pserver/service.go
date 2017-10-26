@@ -17,12 +17,11 @@ package pserver
 import (
 	"bufio"
 	"bytes"
-	"crypto/md5"
 	"encoding/gob"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io/ioutil"
 	"os"
 	"path"
@@ -40,7 +39,7 @@ type ElementType int
 
 // ErrCheckpointNotFound indicates that the pserver checkpoint could
 // not be found.
-var ErrCheckpointNotFound = errors.New("checkpoint not found")
+var ErrCheckpointNotFound = errors.New("checkpoint not found in etcd")
 
 // RPC error message.
 const (
@@ -76,7 +75,7 @@ type ParameterWithConfig struct {
 type checkpointMeta struct {
 	UUID      string `json:"uuid"`
 	Path      string `json:"path"`
-	MD5       string `json:"md5"`
+	CRC32     uint32 `json:"crc32"`
 	Timestamp int64  `json:"timestamp"`
 }
 
@@ -92,7 +91,7 @@ type Service struct {
 	idx                int
 	checkpointInterval time.Duration
 	checkpointPath     string
-	client             *EtcdClient
+	client             KVStore
 
 	mu     sync.Mutex
 	optMap map[string]*optimizer
@@ -104,7 +103,12 @@ type parameterCheckpoint struct {
 	State []byte
 }
 
-func loadMeta(e *EtcdClient, idx int) (meta checkpointMeta, err error) {
+type KVStore interface {
+	GetKey(key string, timeout time.Duration) ([]byte, error)
+	PutKey(key string, value []byte, timeout time.Duration, withLease bool) error
+}
+
+func loadMeta(e KVStore, idx int) (meta checkpointMeta, err error) {
 	v, err := e.GetKey(PsCheckpoint+strconv.Itoa(idx), 3*time.Second)
 	if err != nil {
 		return
@@ -123,7 +127,7 @@ func loadMeta(e *EtcdClient, idx int) (meta checkpointMeta, err error) {
 }
 
 // LoadCheckpoint loads checkpoint from file.
-func LoadCheckpoint(e *EtcdClient, idx int) (Checkpoint, error) {
+func LoadCheckpoint(e KVStore, idx int) (Checkpoint, error) {
 	log.Info("Loading checkpoint", "pserver index", idx)
 	defer traceTime(time.Now(), "load checkpoint")
 
@@ -137,11 +141,8 @@ func LoadCheckpoint(e *EtcdClient, idx int) (Checkpoint, error) {
 		return nil, err
 	}
 
-	// TODO(helin): change MD5 to CRC since CRC is better for file
-	// checksum in our use case (emphasize speed over security).
-	h := md5.New()
-	md5 := hex.EncodeToString(h.Sum(content))
-	if md5 != cpMeta.MD5 {
+	crc32 := crc32.ChecksumIEEE(content)
+	if crc32 != cpMeta.CRC32 {
 		return nil, errors.New(WrongChecksum)
 	}
 
@@ -150,12 +151,13 @@ func LoadCheckpoint(e *EtcdClient, idx int) (Checkpoint, error) {
 	if err = dec.Decode(&cp); err != nil {
 		return nil, err
 	}
+
 	return cp, nil
 }
 
 // NewService creates a new service, will bypass etcd registration if no
 // endpoints specified. It will recovery from checkpoint file if a exists a specified checkpoint.
-func NewService(idx int, interval time.Duration, path string, client *EtcdClient, cp Checkpoint) (*Service, error) {
+func NewService(idx int, interval time.Duration, path string, client KVStore, cp Checkpoint) (*Service, error) {
 	s := &Service{
 		idx:                idx,
 		checkpointInterval: interval,
@@ -173,6 +175,7 @@ func NewService(idx int, interval time.Duration, path string, client *EtcdClient
 			}
 			s.optMap[p.Param.Name] = newOptimizer(p, item.State)
 		}
+		close(s.initialized)
 	}
 	return s, nil
 }
@@ -221,7 +224,7 @@ func (s *Service) FinishInitParams(_ int, _ *int) error {
 		for range t {
 			err := s.checkpoint()
 			if err != nil {
-				log.Error("finish init params error", log.Ctx{"error": err})
+				log.Error("checkpoint error", log.Ctx{"error": err})
 			}
 		}
 	}()
@@ -274,6 +277,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	parameter.Name = name
 	parameter.ElementType = opt.elementType
 	parameter.Content = opt.GetWeights()
+
 	log.Info("sending parameter to the trainer", "name", parameter.Name, "size", len(parameter.Content), "type", parameter.ElementType)
 	return nil
 }
@@ -354,20 +358,29 @@ func (s *Service) checkpoint() (err error) {
 
 	oldMeta, err := loadMeta(s.client, s.idx)
 	if err == ErrCheckpointNotFound {
-		log.Info("Do not have existing checkpoint.")
+		log.Info("old meta not found, skip removing old meta")
 		err = nil
+	} else if err == nil {
+		log.Info("removing old meta")
+		if oldMeta.Path != "" {
+			rmErr := os.Remove(oldMeta.Path)
+			if rmErr != nil {
+				// log error, but still treat checkpoint as
+				// successful.
+				log.Error("remove old meta file error", log.Ctx{"error": rmErr})
+			}
+		}
 	}
 
 	if err != nil {
 		return
 	}
 
-	h := md5.New()
-	md5 := hex.EncodeToString(h.Sum(buf.Bytes()))
+	crc32 := crc32.ChecksumIEEE(buf.Bytes())
 	cpMeta := checkpointMeta{
 		UUID:      id,
 		Timestamp: time.Now().UnixNano(),
-		MD5:       md5,
+		CRC32:     crc32,
 		Path:      p,
 	}
 
@@ -379,15 +392,6 @@ func (s *Service) checkpoint() (err error) {
 	err = s.client.PutKey(PsCheckpoint+strconv.Itoa(s.idx), json, 3*time.Second, false)
 	if err != nil {
 		return
-	}
-
-	if oldMeta.Path != "" {
-		rmErr := os.Remove(oldMeta.Path)
-		if rmErr != nil {
-			// log error, but still treat checkpoint as
-			// successful.
-			log.Error("remove old meta file error", log.Ctx{"error": rmErr})
-		}
 	}
 
 	return

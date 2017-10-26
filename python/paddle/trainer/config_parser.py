@@ -2420,6 +2420,7 @@ class BatchNormLayer(LayerBase):
         # If not use is_static, even set learning_rate = 0, decay_rate = 0,
         # these paras will change if set average_window in configure.
         use_gpu = bool(int(g_command_config_args.get("use_gpu", 0)))
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
         is_shared = True if not use_gpu else False
         for i in xrange(2):
             inputs.append(
@@ -2433,11 +2434,17 @@ class BatchNormLayer(LayerBase):
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
-        # Automatically select cudnn_batch_norm for GPU and batch_norm for CPU.
-        # Also based on cudnn version.
+        # Automatically select cudnn_batch_norm for GPU, batch_norm for CPU
+        # and mkldnn_batch_norm for MKLDNN. Also based on cudnn version.
+        if batch_norm_type == "mkldnn_batch_norm":
+            config_assert(use_mkldnn, "mkldnn_batch_norm only support MKLDNN")
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
+                not use_mkldnn and batch_norm_type != "mkldnn_batch_norm" and \
                 ((not parallel_nn) or self.config.device > -1)
-        self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
+        if use_cudnn:
+            self.layer_type = "cudnn_batch_norm"
+        else:
+            self.layer_type = "mkldnn_batch_norm" if use_mkldnn else "batch_norm"
         super(BatchNormLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **xargs)
 
