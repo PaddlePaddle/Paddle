@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN'
+    'StaticRNN', 'sequence_conv_pool'
 ]
 
 
@@ -274,6 +274,30 @@ def pool2d(input,
         })
 
     return pool_out
+
+
+def sequence_conv_pool(input,
+                       hidden_size,
+                       context_len,
+                       context_start=None,
+                       context_stride=None,
+                       padding_trainable=False):
+    helper = LayerHelper('conv2d', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="sequence_conv",
+        inputs={"X": input,
+                "Filter": filter,
+                "PaddingData": PaddingData},
+        outputs={"Out": pool_out},
+        attrs={
+            "context_length": context_length,
+            "context_start": context_start,
+            "context_stride": context_stride,
+            "padding_trainable": padding_trainable
+        })
 
 
 class BlockGuard(object):
