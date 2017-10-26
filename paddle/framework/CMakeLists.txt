@@ -42,7 +42,7 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 cc_library(backward SRCS backward.cc DEPS net_op)
-cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
+cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
 
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
 

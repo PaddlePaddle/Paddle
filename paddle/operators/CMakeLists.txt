@@ -132,7 +132,7 @@ op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
-op_library(sum_op DEPS net_op)
+op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(sequence_conv_op DEPS context_project)
