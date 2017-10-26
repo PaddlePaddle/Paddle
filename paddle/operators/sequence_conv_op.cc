@@ -29,10 +29,6 @@ class SequenceConvOp : public framework::OperatorWithKernel {
                    "Input(Filter) of SequenceConvOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceConvOp should not be null.");
-    // PaddingData mast be not empty. Otherwise(EnforceNotMet: enforce numel() >
-    // 0 failed, 0 <= 0)
-    PADDLE_ENFORCE(ctx->HasInput("PaddingData"),
-                   "Input(PaddingData) of SequenceConvOp should not be null.");
 
     int context_length = ctx->Attrs().Get<int>("context_length");
     bool padding_trainable = ctx->Attrs().Get<bool>("padding_trainable");
@@ -48,6 +44,9 @@ class SequenceConvOp : public framework::OperatorWithKernel {
         "number_of_input_features).");
 
     if (padding_trainable) {
+      PADDLE_ENFORCE(
+          ctx->HasInput("PaddingData"),
+          "Input(PaddingData) of SequenceConvOp should not be null.");
       framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
       int down_pad = std::max(0, context_start + context_length - 1);
@@ -106,11 +105,12 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
              "(A float LoDTensor) the input of SequenceConvOp, a vector of "
              "2-D matrix of size (minibatch, number_of_input_features).");
     AddInput("PaddingData",
-             "(A float LoDTensor) the input of SequenceConvOp, a vector of "
+             "(Tensor) the input of SequenceConvOp, a vector of "
              "2-D matrix of size (up_pad + down_pad, "
-             "number_of_input_features). ");
+             "number_of_input_features). ")
+        .AsDispensable();
     AddInput("Filter",
-             "(A float LoDTensor) the input of SequenceConvOp, a vector of "
+             "(Tensor) the input of SequenceConvOp, a vector of "
              "2-D matrix of size (context_length x number_of_input_features).");
     AddOutput("Out",
               "(A float LoDTensor) the output of SequenceConvOp, a vector "

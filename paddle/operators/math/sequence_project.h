@@ -90,8 +90,8 @@ template <typename Place, typename T>
 class SequenceProjectFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  framework::LoDTensor& in, framework::LoDTensor& padding_data,
-                  framework::LoDTensor& col, bool padding_trainable,
+                  framework::LoDTensor& in, framework::Tensor& padding_data,
+                  framework::Tensor& col, bool padding_trainable,
                   int context_start, int context_length, int context_stride,
                   int up_pad, int down_pad, bool gradient, bool input_grad,
                   bool pad_grad) {

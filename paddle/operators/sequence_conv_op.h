@@ -36,7 +36,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    auto filter = *context.Input<LoDTensor>("Filter");
+    auto filter = *context.Input<Tensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
     //  out->set_lod(in->lod());
@@ -50,9 +50,9 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
 
-    const LoDTensor* padding_data = nullptr;
+    const Tensor* padding_data = nullptr;
     if (padding_trainable) {
-      padding_data = context.Input<LoDTensor>("PaddingData");
+      padding_data = context.Input<Tensor>("PaddingData");
     }
 
     int up_pad = std::max(0, -context_start);
@@ -63,7 +63,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
-    LoDTensor col;
+    Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
     // Because if padding_trainable is false, padding data should be zeros.
     auto temp = framework::EigenVector<T>::Flatten(col);
@@ -73,7 +73,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     paddle::operators::math::SequenceProjectFunctor<Place, T>
         seq_project_functor;
     LoDTensor* input = const_cast<LoDTensor*>(in);
-    LoDTensor* pad_data = const_cast<LoDTensor*>(padding_data);
+    Tensor* pad_data = const_cast<Tensor*>(padding_data);
 
     seq_project_functor(context.device_context(), *input, *pad_data, col,
                         padding_trainable, context_start, context_length,
@@ -91,12 +91,11 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* filter_g =
-        context.Output<LoDTensor>(framework::GradVarName("Filter"));
+    auto* filter_g = context.Output<Tensor>(framework::GradVarName("Filter"));
     auto* padding_data_g =
-        context.Output<LoDTensor>(framework::GradVarName("PaddingData"));
+        context.Output<Tensor>(framework::GradVarName("PaddingData"));
     auto* in = context.Input<LoDTensor>("X");
-    auto* filter = context.Input<LoDTensor>("Filter");
+    auto* filter = context.Input<Tensor>("Filter");
 
     int context_start = context.Attr<int>("context_start");
     int context_length = context.Attr<int>("context_length");
@@ -115,7 +114,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
-    LoDTensor col;
+    Tensor col;
 
     if (in_g || filter_g || (padding_trainable && padding_data_g)) {
       col.mutable_data<T>(col_shape, context.GetPlace());
@@ -161,17 +160,17 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       functor(context.device_context(), filter_g, 0);
 
       Tensor filter_grad_ = *filter_g;
-      Tensor out_grad_ = *out_g;
+      LoDTensor out_grad_ = *out_g;
 
-      const LoDTensor* padding_data = nullptr;
+      const Tensor* padding_data = nullptr;
       if (padding_trainable) {
-        padding_data = context.Input<LoDTensor>("PaddingData");
+        padding_data = context.Input<Tensor>("PaddingData");
       }
 
       sequence_width = static_cast<int>(in->dims()[1]);
 
       LoDTensor* input = const_cast<LoDTensor*>(in);
-      LoDTensor* pad_data = const_cast<LoDTensor*>(padding_data);
+      Tensor* pad_data = const_cast<Tensor*>(padding_data);
 
       seq_project_functor(context.device_context(), *input, *pad_data, col,
                           padding_trainable, context_start, context_length,
