@@ -1,7 +1,7 @@
 # Regularization in PaddlePaddle
 
 ## Introduction to Regularization
-A central problem in machine learning is how to design an algorithm that will perform well not just on the training data, but also on new data. A frequently faced problem in machine learning is the problem of **overfitting**, where the model dopes not make reliable predictions on new unseen data. **Regularization** is the process of introducing additional information in order to prevent overfitting. This is usually done by adding extra penalties to the loss function that restricts the parameter spaces that an optimization algorithm can explore.
+A central problem in machine learning is how to design an algorithm that will perform well not just on the training data, but also on new data. A frequently faced problem is the problem of **overfitting**, where the model does not make reliable predictions on new unseen data. **Regularization** is the process of introducing additional information in order to prevent overfitting. This is usually done by adding extra penalties to the loss function that restricts the parameter spaces that an optimization algorithm can explore.
 
 ### Parameter Norm Penalties
 Most common regularization approaches in deep learning are based on limiting the capacity of the models by adding a parameter norm penalty to the objective function `J`. This is given as follows:
@@ -20,7 +20,7 @@ The most commonly used norm penalties are the L2 norm penalty and the L1 norm pe
 
 A much more detailed mathematical background of regularization can be found [here](http://www.deeplearningbook.org/contents/regularization.html).
 
-## Regularization SUrvey
+## Regularization Survey
 
 A detailed survey of regularization in various deep learning frameworks can be found [here](https://github.com/PaddlePaddle/Paddle/wiki/Regularization-Survey). 
 
