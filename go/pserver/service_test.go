@@ -15,6 +15,7 @@
 package pserver_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"reflect"
 	"sync"
@@ -181,4 +182,11 @@ func TestBlockUntilInitialized(t *testing.T) {
 
 func TestCheckpointSpeed(t *testing.T) {
 	//TODO(zhihong): test speed
+}
+
+func TestGradientString(t *testing.T) {
+	g := pserver.Gradient{}
+	g.ElementType = pserver.Float32
+	g.Content = []byte{0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40, 0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40}
+	fmt.Println(g.String())
 }

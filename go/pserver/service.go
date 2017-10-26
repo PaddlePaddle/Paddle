@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/md5"
+	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
@@ -64,6 +65,46 @@ type Parameter struct {
 	Name        string
 	ElementType ElementType
 	Content     []byte
+}
+
+func float32ToString(b []byte) string {
+	f := make([]float32, len(b)/4)
+	buf := bytes.NewReader(b)
+	err := binary.Read(buf, binary.LittleEndian, &f)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%v", f)
+}
+
+func float32ByteToString(c []byte) string {
+	var a []byte
+	var b []byte
+	if len(c) <= 80 {
+		a = c
+	} else {
+		a = c[0:40]
+		b = c[len(c)-40:]
+	}
+
+	var s string
+	s = "top:" + float32ToString(a)
+
+	if b == nil {
+		return s
+	}
+
+	s += "...tail:" + float32ToString(b)
+	return s
+}
+
+func (p Gradient) String() string {
+	if p.ElementType != Float32 {
+		return fmt.Sprintf("name:%v ElementType:%v",
+			p.Name, p.ElementType)
+	}
+
+	return float32ByteToString(p.Content)
 }
 
 // ParameterWithConfig contains the parameter and the configuration.
@@ -236,7 +277,8 @@ func (s *Service) SendGrad(g Gradient, _ *int) error {
 	select {
 	case <-s.initialized:
 	default:
-		log.Warn("received gradient before initialization.", "name", g.Name, "size", len(g.Content), "type", g.ElementType)
+		log.Warn("received gradient before initialization.",
+			"name", g.Name, "size", len(g.Content), "type", g.ElementType)
 		return errors.New(Uninitialized)
 	}
 
@@ -245,10 +287,14 @@ func (s *Service) SendGrad(g Gradient, _ *int) error {
 
 	o, ok := s.optMap[g.Name]
 	if !ok {
+		log.Warn("received gradient but can't find name.",
+			"name", g.Name, "size", len(g.Content), "type", g.ElementType)
 		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
-	log.Info("received gradient from trainer, updating gradient.", "name", g.Name, "size", len(g.Content), "type", g.ElementType)
+	log.Debug(g.String())
+	log.Info("received gradient from trainer, updating gradient.",
+		"name", g.Name, "size", len(g.Content), "type", g.ElementType)
 	return o.UpdateParameter(g)
 }
 
