@@ -121,10 +121,10 @@ BlockDesc *BlockDescBind::Proto() {
   return desc_;
 }
 
-BlockDescBind::BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
+BlockDescBind::BlockDescBind(const ProgramDescBind *prog, const BlockDesc *desc)
     : prog_(prog), desc_(desc), need_update_(false) {
   int var_size = desc_->vars_size();
-  for (int i = 0; i < vars_size; ++i) {
+  for (int i = 0; i < var_size; ++i) {
     const VarDesc &var_desc = desc_->vars(i);
     vars_[var_desc.name()] = new VarDescBind(var_desc);
   }
