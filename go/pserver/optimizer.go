@@ -74,6 +74,8 @@ func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer
 	var cptr (*C.uchar)
 	if len(c) > 0 {
 		cptr = (*C.uchar)(&c[0])
+	} else {
+		log.Error("empty config", "param name", paramWithConfigs.Param.Name)
 	}
 	o.config = c
 	o.opt = C.paddle_create_optimizer(
