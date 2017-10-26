@@ -271,7 +271,6 @@ void BindOpDesc(py::module &m) {
       .def("check_attrs", &OpDescBind::CheckAttrs)
       .def("infer_shape", &OpDescBind::InferShape)
       .def("infer_var_type", &OpDescBind::InferVarType)
-      .def("mark_as_target", &OpDescBind::MarkAsTarget)
       .def("serialize_to_string", [](OpDescBind &op_desc) -> py::bytes {
         const OpDesc *desc = op_desc.Proto();
         PADDLE_ENFORCE(desc->IsInitialized(),

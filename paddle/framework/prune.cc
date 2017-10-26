@@ -101,7 +101,7 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
   }
 }
 
-// TODO (fengjiayi): Prune() should be inplaced to avoid unnecessary copies
+// TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
 void Prune(const ProgramDesc& input, ProgramDesc* output) {
   prune_impl(input, output, 0);
 }

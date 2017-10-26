@@ -293,6 +293,14 @@ class Operator(object):
     def output_names(self):
         return self.desc.output_names()
 
+    @property
+    def idx(self):
+        for i, op in enumerate(self.block.ops):
+            if op == self:
+                return i
+        raise ValueError(
+            "Can't find op itself in it's block. It could be a bug of Paddle.")
+
     def has_attr(self, name):
         return self.desc.has_attr(name)
 
@@ -308,9 +316,6 @@ class Operator(object):
 
     def block_attr(self, name):
         return self.desc.block_attr(name)
-
-    def mark_as_target(self):
-        self.desc.mark_as_target()
 
 
 class Block(object):
@@ -434,7 +439,7 @@ class Program(object):
         self.current_block_idx = 0
 
     def __str__(self):
-        protostr = self.desc.serialize_to_string()
+        protostr = self.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return proto.__str__()
 
@@ -444,6 +449,22 @@ class Program(object):
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
         return p
+
+    def prune(self, targets):
+        if not isinstance(targets, list):
+            targets = [targets]
+        targets_idx = []
+        for t in targets:
+            if not isinstance(t, Operator):
+                if isinstance(t, Variable):
+                    t = t.op
+                else:
+                    raise ValueError(
+                        "All targets of prune() can only be Variable or Operator."
+                    )
+
+            targets_idx.append((t.block.idx, t.idx))
+        return core.prune(self, targets_idx)
 
     @staticmethod
     def parse_from_string(binary_str):
