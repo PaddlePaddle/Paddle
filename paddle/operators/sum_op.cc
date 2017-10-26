@@ -31,23 +31,13 @@ class SumOp : public framework::OperatorWithKernel {
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
 
-    bool is_internal = ctx->Attrs().Get<bool>("is_internal");
-    if (is_internal) {
-      if (dynamic_cast<framework::CompileTimeInferShapeContext*>(ctx)) {
-        auto in_dim = x_dims[0];
-        ctx->SetOutputDim("Out", in_dim);
-      } else if (dynamic_cast<framework::RuntimeInferShapeContext*>(ctx)) {
-        // Runtime InferShape InferShape is done in Compute method.
-      }
-    } else {
-      auto in_dim = x_dims[0];
-      for (size_t i = 1; i < N; i++) {
-        auto dim = x_dims[i];
-        PADDLE_ENFORCE_EQ(in_dim, dim, "Input tensors must have same shape");
-      }
-      ctx->SetOutputDim("Out", in_dim);
-      ctx->ShareLoD("X", /*->*/ "Out");
+    auto in_dim = x_dims[0];
+    for (size_t i = 1; i < N; i++) {
+      auto dim = x_dims[i];
+      PADDLE_ENFORCE_EQ(in_dim, dim, "Input tensors must have same shape");
     }
+    ctx->SetOutputDim("Out", in_dim);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -57,8 +47,6 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input tensors of sum operator.").AsDuplicable();
     AddOutput("Out", "the output tensor of sum operator.");
-    AddAttr<bool>("is_internal", "Used internally when suming Gradient")
-        .SetDefault(false);
     AddComment(R"DOC(
 Sum the input tensors.
 
@@ -118,4 +106,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
                   ops::SumOpVarTypeInference);
-REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>,
+                       ops::SumKernel<paddle::platform::CPUPlace, double>);

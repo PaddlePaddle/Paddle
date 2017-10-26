@@ -423,30 +423,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const BlockDescBind& block_;
 };
 
-static const Tensor* GetTensorFromVar(const Variable* var) {
-  const Tensor* t = nullptr;
-  if (var->IsType<LoDTensor>()) {
-    t = &(var->Get<LoDTensor>());
-  } else if (var->IsType<SelectedRows>()) {
-    t = &(var->Get<SelectedRows>().value());
-  } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
-  }
-  return t;
-}
-
-static Tensor* GetMutableTensorFromVar(Variable* var) {
-  Tensor* t = nullptr;
-  if (var->IsType<LoDTensor>()) {
-    t = var->GetMutable<LoDTensor>();
-  } else if (var->IsType<SelectedRows>()) {
-    t = var->GetMutable<SelectedRows>()->mutable_value();
-  } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
-  }
-  return t;
-}
-
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
@@ -535,12 +511,24 @@ class RuntimeInferShapeContext : public InferShapeContext {
  private:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
-    return GetTensorFromVar(var)->dims();
+    if (var->IsType<LoDTensor>()) {
+      return var->Get<LoDTensor>().dims();
+    } else if (var->IsType<SelectedRows>()) {
+      return var->Get<SelectedRows>().GetCompleteDims();
+    } else {
+      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    }
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
     Variable* var = scope_.FindVar(name);
-    GetMutableTensorFromVar(var)->Resize(dim);
+    if (var->IsType<LoDTensor>()) {
+      var->GetMutable<LoDTensor>()->Resize(dim);
+    } else if (var->IsType<SelectedRows>()) {
+      var->GetMutable<SelectedRows>()->set_height(dim[0]);
+    } else {
+      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    }
   }
 
   const OperatorBase& op_;

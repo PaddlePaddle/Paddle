@@ -68,6 +68,7 @@ struct SelectedRowsAdd<platform::CPUPlace, T> {
 };
 
 template struct SelectedRowsAdd<platform::CPUPlace, float>;
+template struct SelectedRowsAdd<platform::CPUPlace, double>;
 
 template <typename T>
 struct SelectedRowsAddTensor<platform::CPUPlace, T> {
@@ -108,6 +109,7 @@ struct SelectedRowsAddTensor<platform::CPUPlace, T> {
 };
 
 template struct SelectedRowsAddTensor<platform::CPUPlace, float>;
+template struct SelectedRowsAddTensor<platform::CPUPlace, double>;
 
 template <typename T>
 struct SelectedRowsAddTo<platform::CPUPlace, T> {
@@ -119,13 +121,13 @@ struct SelectedRowsAddTo<platform::CPUPlace, T> {
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
 
     auto& in1_rows = input1.rows();
-    auto& in2_rows = input2->mutable_rows();
+    auto& in2_rows = *(input2->mutable_rows());
 
     auto& in1_value = input1.value();
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
+    *in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE(platform::is_cpu_place(in1_place));
@@ -142,6 +144,7 @@ struct SelectedRowsAddTo<platform::CPUPlace, T> {
 };
 
 template struct SelectedRowsAddTo<platform::CPUPlace, float>;
+template struct SelectedRowsAddTo<platform::CPUPlace, double>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
@@ -171,6 +174,7 @@ struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
 };
 
 template struct SelectedRowsAddToTensor<platform::CPUPlace, float>;
+template struct SelectedRowsAddToTensor<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

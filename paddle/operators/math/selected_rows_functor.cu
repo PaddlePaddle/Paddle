@@ -73,6 +73,7 @@ struct SelectedRowsAdd<platform::GPUPlace, T> {
 };
 
 template struct SelectedRowsAdd<platform::GPUPlace, float>;
+template struct SelectedRowsAdd<platform::GPUPlace, double>;
 
 namespace {
 template <typename T, int block_size>
@@ -135,6 +136,7 @@ struct SelectedRowsAddTensor<platform::GPUPlace, T> {
 };
 
 template struct SelectedRowsAddTensor<platform::GPUPlace, float>;
+template struct SelectedRowsAddTensor<platform::GPUPlace, double>;
 
 template <typename T>
 struct SelectedRowsAddTo<platform::GPUPlace, T> {
@@ -146,7 +148,7 @@ struct SelectedRowsAddTo<platform::GPUPlace, T> {
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
 
     auto& in1_rows = input1.rows();
-    auto& in2_rows = input2->mutable_rows();
+    auto& in2_rows = *(input2->mutable_rows());
 
     auto& in1_value = input1.value();
     auto* in2_value = input2->mutable_value();
@@ -170,6 +172,7 @@ struct SelectedRowsAddTo<platform::GPUPlace, T> {
 };
 
 template struct SelectedRowsAddTo<platform::GPUPlace, float>;
+template struct SelectedRowsAddTo<platform::GPUPlace, double>;
 
 namespace {
 template <typename T, int block_size>
@@ -219,6 +222,7 @@ struct SelectedRowsAddToTensor<platform::GPUPlace, T> {
 };
 
 template struct SelectedRowsAddToTensor<platform::GPUPlace, float>;
+template struct SelectedRowsAddToTensor<platform::GPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

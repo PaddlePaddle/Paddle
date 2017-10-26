@@ -28,7 +28,6 @@ class TestInferShape(unittest.TestCase):
         sum_op_desc.set_type("sum")
         sum_op_desc.set_input("X", ["x1", "x2"])
         sum_op_desc.set_output("Out", ["out"])
-        sum_op_desc.set_attr("is_internal", False)
 
         sum_op_desc.check_attrs()
         sum_op_desc.infer_shape(block)

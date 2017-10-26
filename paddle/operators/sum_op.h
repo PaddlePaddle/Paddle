@@ -68,24 +68,25 @@ class SumKernel : public framework::OpKernel<T> {
       auto* out_value = out->mutable_value();
 
       // Runtime InferShape
-      size_t dim0 = 0;
+      size_t first_dim = 0;
       for (int i = 0; i < N; i++) {
-        dim0 += in_vars[i]->Get<SelectedRows>().rows().size();
+        first_dim += in_vars[i]->Get<SelectedRows>().rows().size();
       }
       auto in_dim = in_vars[0]->Get<SelectedRows>().value().dims();
-      auto in_dim_vec = framework::vectorize(in_dim);
 
-      in_dim_vec[0] = static_cast<int64_t>(dim0);
+      auto in_dim_vec = framework::vectorize(in_dim);
+      in_dim_vec[0] = static_cast<int64_t>(first_dim);
 
       out_value->Resize(framework::make_ddim(in_dim_vec));
 
       out_value->mutable_data<T>(context.GetPlace());
-      out->set_height(in_vars[0]->Get<SelectedRows>().height());
 
       math::SelectedRowsAddTo<Place, T> functor;
 
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
+        PADDLE_ENFORCE_EQ(out->height(),
+                          in_vars[i]->Get<SelectedRows>().height())
         functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
                 offset, out);
         offset += in_vars[i]->Get<SelectedRows>().value().numel();

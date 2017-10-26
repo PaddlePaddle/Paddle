@@ -179,9 +179,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       // collect all the offset for each alias,
       // insert a sum operator to add all aliases to output
       insert_position.push_back(
-          {dup_op.back(),
-           OpRegistry::CreateOp("sum", {{"X", dup_outputs}}, {{"Out", {name}}},
-                                {{"is_internal", true}})});
+          {dup_op.back(), OpRegistry::CreateOp("sum", {{"X", dup_outputs}},
+                                               {{"Out", {name}}}, {})});
     }
 
     // make sure the inserted `sum` ops follow the BFS order.
@@ -415,9 +414,8 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
         backward_descs[dup_op[i]]->Rename(out_name, new_name);
         sum_op_inputs.emplace_back(new_name);
       }
-      std::unique_ptr<OpDescBind> sum_op(
-          new OpDescBind("sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}},
-                         {{"is_internal", true}}));
+      std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
+          "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
     }
   }

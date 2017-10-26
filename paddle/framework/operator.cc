@@ -186,6 +186,30 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+static const Tensor* GetTensorFromVar(const Variable* var) {
+  const Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = &(var->Get<LoDTensor>());
+  } else if (var->IsType<SelectedRows>()) {
+    t = &(var->Get<SelectedRows>().value());
+  } else {
+    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+  }
+  return t;
+}
+
+static Tensor* GetMutableTensorFromVar(Variable* var) {
+  Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+  }
+  return t;
+}
+
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
