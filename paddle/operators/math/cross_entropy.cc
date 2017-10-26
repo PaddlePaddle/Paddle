@@ -54,6 +54,7 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
 };
 
 template class CrossEntropyFunctor<platform::CPUPlace, float>;
+template class CrossEntropyFunctor<platform::CPUPlace, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
