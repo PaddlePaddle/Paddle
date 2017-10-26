@@ -8,6 +8,15 @@ from paddle.v2.framework.executor import Executor
 from paddle.v2.framework.framework import Program, OpProtoHolder
 
 
+def randomize_probability(batch_size, class_num, dtype='float32'):
+    prob = np.random.uniform(
+        0.1, 1.0, size=(batch_size, class_num)).astype(dtype)
+    prob_sum = prob.sum(axis=1)
+    for i in xrange(len(prob)):
+        prob[i] /= prob_sum[i]
+    return prob
+
+
 def grad_var_name(var_name):
     return var_name + "@GRAD"
 
@@ -233,7 +242,7 @@ def append_input_output(block, op_proto, np_list, is_input):
             if (var_name not in np_list) and var_proto.dispensable:
                 continue
             assert (var_name in np_list) or (var_proto.dispensable), \
-                            "Missing {} as input".format(var_name)
+                "Missing {} as input".format(var_name)
         if var_proto.duplicable:
             assert isinstance(np_list[var_name], list), \
                 "Duplicable {} should be set as list".format(var_name)
@@ -379,9 +388,9 @@ class OpTest(unittest.TestCase):
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
                 return ("%s Variable %s max gradient diff %f over limit %f, "
-                        "the first error element is %d") % (
+                        "the first error element is %d, %f, %f") % (
                             msg_prefix, name, max_diff, max_relative_error,
-                            offset)
+                            offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
@@ -389,8 +398,10 @@ class OpTest(unittest.TestCase):
                    inputs_to_check,
                    output_names,
                    no_grad_set=None,
+                   numeric_grad_delta=0.005,
                    in_place=False,
-                   max_relative_error=0.005):
+                   max_relative_error=0.005,
+                   user_defined_grads=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -403,13 +414,14 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        numeric_grads = [
+        numeric_grads = user_defined_grads or [
             get_numeric_gradient(
                 self.scope,
                 self.op,
                 self.inputs,
                 input_to_check,
                 output_names,
+                delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
         grad_names = [

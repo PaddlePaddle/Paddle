@@ -91,6 +91,11 @@ public:
       const MKLDNNMatrixPtr& dst,
       bool checkData = true);
 
+  void copyFrom(const Matrix& src) {
+    // TODO(TJ): reorder data if this format is not nchw or x
+    m_->copyFrom(src);
+  }
+
 public:
   /**
    * Reorder this MKLDNNMatrix from other format.
