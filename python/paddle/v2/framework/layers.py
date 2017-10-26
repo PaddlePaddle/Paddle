@@ -61,6 +61,7 @@ def fc(input,
 def embedding(input,
               size,
               data_type='float32',
+              is_sparse=False,
               param_attr=None,
               program=None,
               init_program=None):
@@ -72,7 +73,8 @@ def embedding(input,
         type='lookup_table',
         inputs={'Ids': input,
                 'W': w},
-        outputs={'Out': tmp})
+        outputs={'Out': tmp},
+        attrs={'is_sparse': is_sparse})
     return tmp
 
 
