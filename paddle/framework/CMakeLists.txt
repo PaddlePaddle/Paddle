@@ -1,6 +1,5 @@
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
-proto_library(saver_proto SRCS framework.proto saver.proto)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
@@ -10,7 +9,7 @@ cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor saver_proto framework_proto)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 

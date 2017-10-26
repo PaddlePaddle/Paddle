@@ -31,6 +31,8 @@ class ProgramDescBind {
 
   ProgramDescBind(const ProgramDescBind &o);
 
+  explicit ProgramDescBind(const std::string &binary_str);
+
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
   BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
@@ -40,7 +42,7 @@ class ProgramDescBind {
   ProgramDesc *Proto();
 
  private:
-  ProgramDesc prog_;
+  ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
 };
