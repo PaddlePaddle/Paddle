@@ -58,8 +58,9 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
-def embedding(input,
+def embedding(Ids,
               size,
+              name="default_embedding",
               data_type='float32',
               param_attr=None,
               program=None,
@@ -69,10 +70,8 @@ def embedding(input,
         attr=helper.param_attr, shape=size, dtype=data_type)
     tmp = helper.create_tmp_variable(data_type)
     helper.append_op(
-        type='lookup_table',
-        inputs={'Ids': input,
-                'W': w},
-        outputs={'Out': tmp})
+        type='lookup_table', inputs={'Ids': Ids,
+                                     'W': w}, outputs={'Out': tmp})
     return tmp
 
 

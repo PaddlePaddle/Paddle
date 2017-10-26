@@ -50,43 +50,33 @@ next_word = layers.data(
     program=program,
     init_program=init_program)
 
-embed_param_attr_1 = {
-    'name': 'shared_w',
-    'init_attr': {
-        'max': 1.0,
-        'type': 'uniform_random',
-        'min': -1.0
-    }
-}
-embed_param_attr_2 = {'name': 'shared_w'}
-
 embed_first = layers.embedding(
-    input=first_word,
+    Ids=first_word,
+    name="embed_table",
     size=[dict_size, embed_size],
     data_type='float32',
-    param_attr=embed_param_attr_1,
     program=program,
     init_program=init_program)
 embed_second = layers.embedding(
-    input=second_word,
+    Ids=second_word,
+    name="embed_table",
     size=[dict_size, embed_size],
     data_type='float32',
-    param_attr=embed_param_attr_2,
     program=program,
     init_program=init_program)
 
 embed_third = layers.embedding(
-    input=third_word,
+    Ids=third_word,
+    name="embed_table",
     size=[dict_size, embed_size],
     data_type='float32',
-    param_attr=embed_param_attr_2,
     program=program,
     init_program=init_program)
 embed_forth = layers.embedding(
-    input=forth_word,
+    Ids=forth_word,
+    name="embed_table",
     size=[dict_size, embed_size],
     data_type='float32',
-    param_attr=embed_param_attr_2,
     program=program,
     init_program=init_program)
 
@@ -160,6 +150,7 @@ for pass_id in range(PASS_NUM):
                        },
                        fetch_list=[avg_cost])
         out = np.array(outs[0])
+        print out
         if out[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
 exit(1)
