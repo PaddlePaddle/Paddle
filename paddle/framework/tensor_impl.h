@@ -228,8 +228,9 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   PADDLE_ENFORCE_GE(begin_idx, 0,
                     "The start row index must be greater than 0.");
   PADDLE_ENFORCE_LE(end_idx, dims_[0], "The end row index is out of bound.");
-  PADDLE_ENFORCE_LT(begin_idx, end_idx,
-                    "The start row index must be less than the end row index.");
+  PADDLE_ENFORCE_LT(
+      begin_idx, end_idx,
+      "The start row index must be smaller than the end row index.");
 
   if (dims_[0] == 1) {
     return *this;

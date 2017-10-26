@@ -25,7 +25,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class LinearChainCrfOpKernel : public framework::OpKernel<T> {
+class LinearChainCRFOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
 
@@ -37,7 +37,7 @@ class LinearChainCrfOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename Place, typename T>
-class LinearChainCrfGradOpKernel : public framework::OpKernel<T> {
+class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
 
