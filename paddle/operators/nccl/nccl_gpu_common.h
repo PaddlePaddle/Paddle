@@ -34,6 +34,8 @@ struct Communicator {
   std::vector<ncclComm_t> comms_;
   std::unordered_map<int, int> comm_id_map_;
 
+  Communicator() {}
+
   int GetCommId(int device_id) const { return comm_id_map_.at(device_id); }
 
   void InitAll(const std::vector<int>& gpus) {
