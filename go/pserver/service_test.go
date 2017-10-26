@@ -185,8 +185,14 @@ func TestCheckpointSpeed(t *testing.T) {
 }
 
 func TestGradientString(t *testing.T) {
-	g := pserver.Gradient{}
+	g := pserver.Parameter{}
 	g.ElementType = pserver.Float32
 	g.Content = []byte{0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40, 0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40}
-	fmt.Println(g.String())
+	if g.String() != "top:[3.3702806e+12 2.142699 3.3702806e+12 2.142699]" {
+		t.Fatal("get float data error!")
+	}
+	fmt.Println(g)
+}
+
+func TestInitParam(t *testing.T) {
 }

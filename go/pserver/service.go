@@ -31,8 +31,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	uuid "github.com/satori/go.uuid"
 
+	pb "github.com/PaddlePaddle/Paddle/proto"
 	log "github.com/inconshreveable/log15"
 )
 
@@ -98,7 +100,7 @@ func float32ByteToString(c []byte) string {
 	return s
 }
 
-func (p Gradient) String() string {
+func (p Parameter) String() string {
 	if p.ElementType != Float32 {
 		return fmt.Sprintf("name:%v ElementType:%v",
 			p.Name, p.ElementType)
@@ -228,6 +230,9 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, _ *int) error 
 	}
 
 	// TODO(helin): parse parameter config
+	c := &pb.OptimizerConfig{}
+	proto.Unmarshal(paramWithConfigs.Config, c)
+	log.Debug(fmt.Sprintf("%v", c))
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -292,7 +297,7 @@ func (s *Service) SendGrad(g Gradient, _ *int) error {
 		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
-	log.Debug(g.String())
+	log.Debug(Parameter(g).String())
 	log.Info("received gradient from trainer, updating gradient.",
 		"name", g.Name, "size", len(g.Content), "type", g.ElementType)
 	return o.UpdateParameter(g)
@@ -320,6 +325,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	parameter.Name = name
 	parameter.ElementType = opt.elementType
 	parameter.Content = opt.GetWeights()
+	log.Debug(parameter.String())
 	log.Info("sending parameter to the trainer", "name", parameter.Name, "size", len(parameter.Content), "type", parameter.ElementType)
 	return nil
 }
