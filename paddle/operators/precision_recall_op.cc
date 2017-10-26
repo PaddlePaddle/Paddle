@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/operators/precision_recall_op.h"
+
 namespace paddle {
 namespace operators {
 
@@ -37,13 +39,15 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("Weights")) {
       auto weights_dims = ctx->GetInputDim("Weights");
-      PADDLE_ENFORCE_EQ(weights_dims, {predictions_dims[0], 1},
+      PADDLE_ENFORCE_EQ(weights_dims,
+                        framework::make_ddim({predictions_dims[0], 1}),
                         "The shape of Input(Weights) should be "
                         "[batch_size, 1].");
     }
     if (ctx->HasInput("StatesInfo")) {
       auto states_dims = ctx->GetInputDim("StatesInfo");
-      PADDLE_ENFORCE_EQ(states_dims, {predictions_dims[1], 4},
+      PADDLE_ENFORCE_EQ(states_dims,
+                        framework::make_ddim({predictions_dims[1], 4}),
                         "The shape of Input(StatesInfo) should be "
                         "[class_number, 4].");
     }
@@ -70,6 +74,12 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
     // The layout of each row is:
     // [ TP, FP, TN, FN ]
     ctx->SetOutputDim("AccumStatesInfo", {predictions_dims[1], 4});
+  }
+
+ protected:
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("Predictions")->type());
   }
 };
 
@@ -98,6 +108,9 @@ class PrecisionRecallOpMaker : public framework::OpProtoAndCheckerMaker {
              "provided, current state will be accumulated to this state and "
              "the accumulation state will be as the output state.")
         .AsDispensable();
+    AddOutput("BatchMetrics", "");
+    AddOutput("AccumMetrics", "");
+    AddOutput("AccumStatesInfo", "");
 
     AddComment(R"DOC(
 )DOC");
@@ -113,6 +126,4 @@ REGISTER_OP_WITHOUT_GRADIENT(precision_recall, ops::PrecisionRecallOp,
 REGISTER_OP_CPU_KERNEL(
     precision_recall,
     ops::PrecisionRecallKernel<paddle::platform::CPUPlace, float>,
-    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, int>,
-    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, double>,
-    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, int64_t>,
+    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, double>);

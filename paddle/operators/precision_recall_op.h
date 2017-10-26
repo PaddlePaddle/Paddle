@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +39,7 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
     auto* out2 = ctx.Output<Tensor>("AccumStatesInfo");
 
     const T* predictions_data = in0->data<T>();
-    const T* labels_data = in1->data<T>();
+    const int* labels_data = in1->data<int>();
     const T* weights_data = in2 ? in2->data<T>() : nullptr;
     const T* states_data = in3 ? in3->data<T>() : nullptr;
     T* batch_metrics_data = out0->mutable_data<T>(ctx.GetPlace());
@@ -45,7 +47,7 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
     out2->mutable_data<T>(ctx.GetPlace());
     auto accum_states = EigenMatrix<T>::From(*out2);
     accum_states.setZero();
-    T* accum_states_data = out2->data<T>(ctx.GetPlace());
+    T* accum_states_data = out2->data<T>();
 
     size_t sample_num = in0->dims()[0];
     size_t class_dim = in0->dims()[1];
@@ -76,7 +78,7 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
           accum_states_data[j * state_var_num + TN] += w;
         }
         accum_states_data[max_idx * state_var_num + TN] -= w;
-        accum_states_data[labels_data[j] * state_var_num + TN] -= w;
+        accum_states_data[labels_data[i] * state_var_num + TN] -= w;
       }
     }
 
@@ -108,7 +110,7 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
     if (tp_count > 0.0 || fn_count > 0.0) {
       return tp_count / (tp_count + fn_count);
     }
-    return 1.0
+    return 1.0;
   }
 
   static inline T CalcF1Score(T precision, T recall) {
@@ -120,7 +122,7 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
 
  protected:
   void ComputeMetrics(const T* states_data, T* metrics_data,
-                      size_t state_var_num, size_t class_dim) {
+                      size_t state_var_num, size_t class_dim) const {
     T total_tp_count = 0;
     T total_fp_count = 0;
     T total_fn_count = 0;
@@ -143,7 +145,7 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
 
     T micro_avg_precision = CalcPrecision(total_tp_count, total_fp_count);
     T micro_avg_recall = CalcRecall(total_tp_count, total_fn_count);
-    T micro_f1_score = CalcRecall(micro_avg_precision, micro_avg_recall);
+    T micro_f1_score = CalcF1Score(micro_avg_precision, micro_avg_recall);
 
     // fill metrics data
     metrics_data[0] = macro_avg_precision;
