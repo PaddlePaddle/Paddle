@@ -162,9 +162,9 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto* bias_g = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     auto& device_ctx = ctx.device_context();
+    math::SetConstant<Place, T> zero;
     if (weight_g) {
       weight_g->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> zero;
       zero(device_ctx, weight_g, static_cast<T>(0.0));
     }
 
@@ -188,6 +188,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     math::LstmMetaGrad<T> lstm_grad;
     if (bias && bias_g) {
       T* bias_g_data = const_cast<T*>(bias_g->mutable_data<T>(ctx.GetPlace()));
+      zero(device_ctx, bias_g, static_cast<T>(0.0));
       lstm_grad.checkIgGrad = bias_g_data + 4 * frame_size;
       lstm_grad.checkFgGrad = lstm_grad.checkIgGrad + frame_size;
       lstm_grad.checkOgGrad = lstm_grad.checkFgGrad + frame_size;
@@ -219,6 +220,8 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     batch_cell_g.mutable_data<T>(out_dims, ctx.GetPlace());
     batch_cell_g.set_lod(batch_gate->lod());
     to_batch(device_ctx, *cell_g, batch_cell_g, false);
+    // TODO(qingqing) support the case output cell has gradient.
+    zero(device_ctx, &batch_cell_g, static_cast<T>(0.0));
 
     LoDTensor batch_gate_g;
     batch_gate_g.mutable_data<T>(batch_gate->dims(), ctx.GetPlace());
@@ -304,7 +307,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       int n = static_cast<int>(batch_gate_g.dims()[1]);
 
       Tensor ones;
-      ones.mutable_data<T>({1, m}, ctx.GetPlace());
+      ones.mutable_data<T>({m}, ctx.GetPlace());
       math::SetConstant<Place, T> set;
       set(device_ctx, &ones, static_cast<T>(1.0));
 
