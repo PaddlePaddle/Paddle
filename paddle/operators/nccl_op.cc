@@ -114,6 +114,9 @@ class NCCLBcastOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    " Output(Out) of Bcast op output should not be NULL");
 
+    int root = ctx->Attrs().Get<int>("root");
+    PADDLE_ENFORCE(root != -1, "Bcast root must be set.");
+
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
