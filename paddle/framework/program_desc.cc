@@ -49,19 +49,13 @@ ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
   }
 }
 
-ProgramDescBind::ProgramDescBind(ProgrameDesc &desc) {
-  desc_ = desc;
+ProgramDescBind::ProgramDescBind(const std::string &binary_str) {
+  PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
+                 "Fail to parse program_desc from binary string.");
   int block_size = desc_.blocks_size();
   for (int i = 0; i < block_size; ++i) {
-    blocks_.emplace_back(new BlockDescBind(this, &desc_.blocks(i));
+    blocks_.emplace_back(new BlockDescBind(this, desc_.mutable_blocks(i));
   }
-}
-
-ProgramDescBind::ProgramDescBind(const std::string &binary_str) {
-  ProgramDesc desc;
-  PADDLE_ENFORCE(desc.ParseFromString(binary_str),
-                 "Fail to parse program_desc from binary string.");
-  ProgramDescBind(desc);
 }
 
 }  // namespace framework

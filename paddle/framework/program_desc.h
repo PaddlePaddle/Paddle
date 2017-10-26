@@ -33,8 +33,6 @@ class ProgramDescBind {
 
   ProgramDescBind(const std::string &binary_str);
 
-  ProgramDescBind(ProgramDesc &desc);
-
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
   BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }

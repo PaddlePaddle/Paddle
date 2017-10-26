@@ -36,7 +36,7 @@ OpDescBind::OpDescBind(const OpDesc &desc, const ProgramDescBind *prog)
   // restore inputs_
   int input_size = desc_.inputs_size();
   for (int i = 0; i < input_size; ++i) {
-    OpDesc::Var &var = desc_.inputs(i);
+    const OpDesc::Var &var = desc_.inputs(i);
     std::vector<std::string> &argus = inputs_[var.parameter()];
     int argu_size = var.arguments_size();
     argus.reserve(argu_size);
@@ -47,8 +47,8 @@ OpDescBind::OpDescBind(const OpDesc &desc, const ProgramDescBind *prog)
   // restore outputs_
   int output_size = desc_.outputs_size();
   for (int i = 0; i < outputs_size; ++i) {
-    OpDesc::Var &var = desc_.outputs(i);
-    vector<std::string> &argus = outputs_[var.parameter()];
+    const OpDesc::Var &var = desc_.outputs(i);
+    std::vector<std::string> &argus = outputs_[var.parameter()];
     int argu_size = var.arguments_size();
     argus.reserve(argu_size);
     for (int j = 0; j < argu_size; ++j) {
@@ -58,7 +58,7 @@ OpDescBind::OpDescBind(const OpDesc &desc, const ProgramDescBind *prog)
   // restore attrs_
   int attr_size = desc_.attrs_size();
   for (int i = 0; i < attr_size; ++i) {
-    OpDesc::Attr &attr = desc_.attrs(i);
+    const OpDesc::Attr &attr = desc_.attrs(i);
     std::string attr_name = attr.name();
     attrs_[attr_name] = GetAttrValue(attr, prog->Proto());
   }

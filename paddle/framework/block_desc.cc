@@ -121,7 +121,7 @@ BlockDesc *BlockDescBind::Proto() {
   return desc_;
 }
 
-BlockDescBind::BlockDescBind(const ProgramDescBind *prog, const BlockDesc *desc)
+BlockDescBind::BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
     : prog_(prog), desc_(desc), need_update_(false) {
   int var_size = desc_->vars_size();
   for (int i = 0; i < var_size; ++i) {
@@ -131,7 +131,7 @@ BlockDescBind::BlockDescBind(const ProgramDescBind *prog, const BlockDesc *desc)
   int op_size = desc_->ops_size();
   for (int i = 0; i < op_size; ++i) {
     const OpDesc &op_desc = desc_->ops(i);
-    ops_.push_back(new OpDescBind(&op_desc, prog));
+    ops_.push_back(new OpDescBind(op_desc, prog));
   }
 }
 
