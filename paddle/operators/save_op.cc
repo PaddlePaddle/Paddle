@@ -122,8 +122,8 @@ class SaveOp : public framework::OperatorBase {
         uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
         while (size != 0) {
           size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-
-          memory::Copy(cpu, buf.get(), tensor.place(),
+          memory::Copy(cpu, buf.get(),
+                       boost::get<platform::GPUPlace>(tensor.place()),
                        reinterpret_cast<const void *>(data), size_to_write,
                        gpu_dev_ctx.stream());
           gpu_dev_ctx.Wait();
