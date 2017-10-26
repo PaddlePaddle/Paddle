@@ -486,7 +486,7 @@ class Program(object):
         for block in self.blocks:
             block.sync_with_cpp()
 
-    def iter_all_vars(self):
+    def list_vars(self):
         for each_block in self.blocks:
             for each_var in each_block.vars.itervalues():
                 yield each_var

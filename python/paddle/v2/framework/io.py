@@ -51,7 +51,7 @@ def save_vars(executor, dirname, program=None, vars=None, predicate=None):
         save_vars(
             executor,
             dirname=dirname,
-            vars=filter(predicate, program.iter_all_vars()))
+            vars=filter(predicate, program.list_vars()))
     else:
         save_program = Program()
         save_block = save_program.global_block()
@@ -112,7 +112,7 @@ def load_vars(executor, dirname, program=None, vars=None, predicate=None):
         load_vars(
             executor,
             dirname=dirname,
-            vars=filter(predicate, program.iter_all_vars()))
+            vars=filter(predicate, program.list_vars()))
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
