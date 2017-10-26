@@ -19,7 +19,7 @@ class TestUniformRandomOp(unittest.TestCase):
         op = Operator(
             "uniform_random",
             Out='X',
-            dims=[1000, 784],
+            shape=[1000, 784],
             min=-5.0,
             max=10.0,
             seed=10)

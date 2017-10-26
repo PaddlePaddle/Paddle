@@ -53,10 +53,10 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
-    auto& dims = ctx->Attrs().Get<std::vector<int>>("dims");
+    auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
     std::vector<int64_t> temp;
-    temp.reserve(dims.size());
-    for (auto dim : dims) {
+    temp.reserve(shape.size());
+    for (auto dim : shape) {
       temp.push_back(static_cast<int64_t>(dim));
     }
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
@@ -65,7 +65,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
  protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(Attr<int>("data_type"));
+    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
   }
 };
 
@@ -78,7 +78,7 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(Uniform random operator.
 Used to initialize tensor with uniform random generator.
 )DOC");
-    AddAttr<std::vector<int>>("dims", "the dimension of random tensor");
+    AddAttr<std::vector<int>>("shape", "the dimension of random tensor");
     AddAttr<float>("min", "Minimum value of uniform random").SetDefault(-1.0f);
     AddAttr<float>("max", "Maximun value of uniform random").SetDefault(1.0f);
     AddAttr<int>("seed",

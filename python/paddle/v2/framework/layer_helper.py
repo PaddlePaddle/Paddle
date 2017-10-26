@@ -1,7 +1,10 @@
-from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program
-import paddle.v2.framework.core as core
 import copy
 import itertools
+
+import paddle.v2.framework.core as core
+
+from paddle.v2.framework.framework import Variable, g_program, \
+    g_init_program
 
 
 def unique_name(prefix):
@@ -26,6 +29,14 @@ class LayerHelper(object):
         prog = self.kwargs.get('program', None)
         if prog is None:
             return g_program
+        else:
+            return prog
+
+    @property
+    def init_program(self):
+        prog = self.kwargs.get('init_program', None)
+        if prog is None:
+            return g_init_program
         else:
             return prog
 
@@ -66,16 +77,14 @@ class LayerHelper(object):
         actual = self.kwargs.get('param_attr', None)
         return actual if actual is not None else default
 
-    def bias_attr(self, size, dtype):
-        bias_attr = self.kwargs.get('bias_attr', False)
-        if bias_attr is None or bias_attr:
+    def bias_attr(self):
+        bias_attr = self.kwargs.get('bias_attr', None)
+        if bias_attr is True:
             bias_attr = {
                 'name': None,
                 'init_attr': {
                     'type': 'fill_constant',
-                    'value': 0.0,
-                    'shape': [size],
-                    'dataType': dtype
+                    'value': 0.0
                 }
             }
         return bias_attr
@@ -113,29 +122,32 @@ class LayerHelper(object):
     def create_parameter(self, attr, shape, dtype, suffix='w'):
         if attr['name'] is None:
             attr['name'] = unique_name(".".join([self.name, suffix]))
+        self.init_program.global_block().create_parameter(
+            dtype=dtype, shape=shape, **attr)
         return self.program.global_block().create_parameter(
-            name=attr['name'],
-            dtype=dtype,
-            shape=shape,
-            initialize_attr=attr['init_attr'])
+            name=attr['name'], dtype=dtype, shape=shape)
 
     def create_tmp_variable(self, dtype):
         return self.program.current_block().create_var(
-            name=unique_name(".".join([self.name, 'tmp'])), dtype=dtype)
+            name=unique_name(".".join([self.name, 'tmp'])),
+            dtype=dtype,
+            persistable=False)
+
+    def create_variable(self, *args, **kwargs):
+        return self.program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, *args, **kwargs):
-        return self.program.global_block().create_var(*args, **kwargs)
+        return self.program.global_block().create_var(
+            *args, persistable=False, **kwargs)
 
     def append_bias_op(self, input_var):
-        bias_attr = self.bias_attr(
-            self.kwargs['size'], dtype=input_var.data_type)
+        size = list(input_var.shape[1:])
+        bias_attr = self.bias_attr()
         if not bias_attr:
             return input_var
+
         b = self.create_parameter(
-            attr=bias_attr,
-            shape=[self.kwargs['size']],
-            dtype=input_var.data_type,
-            suffix='b')
+            attr=bias_attr, shape=size, dtype=input_var.data_type, suffix='b')
         tmp = self.create_tmp_variable(dtype=input_var.data_type)
         self.append_op(
             type='elementwise_add',

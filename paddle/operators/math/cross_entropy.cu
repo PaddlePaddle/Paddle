@@ -22,8 +22,6 @@ namespace {
 template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
                                    const int N, const int D) {
-  // TOOD(qingqing) define CUDA_1D_KERNEL_LOOP macro in a common file.
-  // CUDA_1D_KERNEL_LOOP(i, N) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
