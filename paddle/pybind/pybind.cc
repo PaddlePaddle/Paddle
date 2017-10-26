@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
-#include "paddle/operators/nccl/nccl_gpu_common.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
@@ -32,6 +31,10 @@ limitations under the License. */
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/operators/nccl/nccl_gpu_common.h"
+#endif
 
 namespace paddle {
 namespace pybind {
