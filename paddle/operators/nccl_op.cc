@@ -94,6 +94,11 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    " Input(X) of Reduce op input should not be NULL");
 
+    std::string reduction = ctx->Attrs().Get<std::string>("reduction");
+    PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
+                    reduction == "ncclMin" || reduction == "ncclMax"),
+                   "invalid reduction.");
+
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -150,6 +155,9 @@ class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input of Reduce op");
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of Reduce op");
+    AddAttr<std::string>("reduction",
+                         "{'ncclMin', 'ncclMax', 'ncclProd', 'ncclSum'}.")
+        .SetDefault("ncclSum");
     AddAttr<int>("root",
                  "root gpu of the parameter. if not "
                  "set(platform::kInvalidGPUId). hashed by name.")
