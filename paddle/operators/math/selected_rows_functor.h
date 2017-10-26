@@ -44,7 +44,7 @@ struct SelectedRowsAddTo {
                   const int64_t input2_offset, framework::SelectedRows* input2);
 };
 
-// input2 = input2 + input2
+// input2 = input1 + input2
 template <typename Place, typename T>
 struct SelectedRowsAddToTensor {
   void operator()(const platform::DeviceContext& context,
